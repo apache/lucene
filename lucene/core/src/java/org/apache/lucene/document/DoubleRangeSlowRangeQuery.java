@@ -20,7 +20,7 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 
@@ -79,8 +79,8 @@ class DoubleRangeSlowRangeQuery extends BinaryRangeFieldRangeQuery {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    return super.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    return super.rewrite(reader);
   }
 
   private static byte[] encodeRanges(double[] min, double[] max) {

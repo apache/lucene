@@ -29,11 +29,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests special cases of BlockPostingsFormat */
-@Nightly // N-2 formats are only tested on nightly runs
 public class TestBlockPostingsFormat2 extends LuceneTestCase {
   Directory dir;
   RandomIndexWriter iw;

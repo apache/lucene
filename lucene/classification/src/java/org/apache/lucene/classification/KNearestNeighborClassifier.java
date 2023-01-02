@@ -29,7 +29,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.mlt.MoreLikeThis;
 import org.apache.lucene.search.BooleanClause;
@@ -97,8 +96,7 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
       int minDocsFreq,
       int minTermFreq,
       String classFieldName,
-      String... textFieldNames)
-      throws IOException {
+      String... textFieldNames) {
     this.textFieldNames = textFieldNames;
     this.classFieldName = classFieldName;
     this.mlt = new MoreLikeThis(indexReader);
@@ -193,10 +191,8 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
     Map<BytesRef, Double> classBoosts =
         new HashMap<>(); // this is a boost based on class ranking positions in topDocs
     float maxScore = topDocs.totalHits.value == 0 ? Float.NaN : topDocs.scoreDocs[0].score;
-    StoredFields storedFields = indexSearcher.storedFields();
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-      IndexableField[] storableFields =
-          storedFields.document(scoreDoc.doc).getFields(classFieldName);
+      IndexableField[] storableFields = indexSearcher.doc(scoreDoc.doc).getFields(classFieldName);
       for (IndexableField singleStorableField : storableFields) {
         if (singleStorableField != null) {
           BytesRef cl = new BytesRef(singleStorableField.stringValue());

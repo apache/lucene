@@ -24,13 +24,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.expressions.Expression;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 /** Tests customing the function map */
-public class TestCustomFunctions extends CompilerTestCase {
+public class TestCustomFunctions extends LuceneTestCase {
   private static double DELTA = 0.0000001;
 
   /** empty list of methods */
@@ -40,7 +41,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              compile("sqrt(20)", functions);
+              JavascriptCompiler.compile("sqrt(20)", functions, getClass().getClassLoader());
             });
     assertEquals(
         "Invalid expression 'sqrt(20)': Unrecognized function call (sqrt).", expected.getMessage());
@@ -50,7 +51,8 @@ public class TestCustomFunctions extends CompilerTestCase {
   /** using the default map explicitly */
   public void testDefaultList() throws Exception {
     Map<String, Method> functions = JavascriptCompiler.DEFAULT_FUNCTIONS;
-    Expression expr = compile("sqrt(20)", functions);
+    Expression expr =
+        JavascriptCompiler.compile("sqrt(20)", functions, getClass().getClassLoader());
     assertEquals(Math.sqrt(20), expr.evaluate(null), DELTA);
   }
 
@@ -62,7 +64,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   public void testNoArgMethod() throws Exception {
     Map<String, Method> functions = new HashMap<>();
     functions.put("foo", getClass().getMethod("zeroArgMethod"));
-    Expression expr = compile("foo()", functions);
+    Expression expr = JavascriptCompiler.compile("foo()", functions, getClass().getClassLoader());
     assertEquals(5, expr.evaluate(null), DELTA);
   }
 
@@ -74,7 +76,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   public void testOneArgMethod() throws Exception {
     Map<String, Method> functions = new HashMap<>();
     functions.put("foo", getClass().getMethod("oneArgMethod", double.class));
-    Expression expr = compile("foo(3)", functions);
+    Expression expr = JavascriptCompiler.compile("foo(3)", functions, getClass().getClassLoader());
     assertEquals(6, expr.evaluate(null), DELTA);
   }
 
@@ -87,7 +89,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     Map<String, Method> functions = new HashMap<>();
     functions.put(
         "foo", getClass().getMethod("threeArgMethod", double.class, double.class, double.class));
-    Expression expr = compile("foo(3, 4, 5)", functions);
+    Expression expr =
+        JavascriptCompiler.compile("foo(3, 4, 5)", functions, getClass().getClassLoader());
     assertEquals(12, expr.evaluate(null), DELTA);
   }
 
@@ -96,7 +99,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     Map<String, Method> functions = new HashMap<>();
     functions.put("foo", getClass().getMethod("zeroArgMethod"));
     functions.put("bar", getClass().getMethod("oneArgMethod", double.class));
-    Expression expr = compile("foo() + bar(3)", functions);
+    Expression expr =
+        JavascriptCompiler.compile("foo() + bar(3)", functions, getClass().getClassLoader());
     assertEquals(11, expr.evaluate(null), DELTA);
   }
 
@@ -106,7 +110,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              compile("method()");
+              JavascriptCompiler.compile("method()");
             });
     assertEquals(
         "Invalid expression 'method()': Unrecognized function call (method).",
@@ -117,7 +121,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              compile("method.method(1)");
+              JavascriptCompiler.compile("method.method(1)");
             });
     assertEquals(
         "Invalid expression 'method.method(1)': Unrecognized function call (method.method).",
@@ -128,7 +132,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             ParseException.class,
             () -> {
-              compile("1 + method()");
+              JavascriptCompiler.compile("1 + method()");
             });
     assertEquals(
         "Invalid expression '1 + method()': Unrecognized function call (method).",
@@ -148,7 +152,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("foo()", functions);
+              JavascriptCompiler.compile("foo()", functions, getClass().getClassLoader());
             });
     assertTrue(expected.getMessage().contains("does not return a double"));
   }
@@ -165,7 +169,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("foo(2)", functions);
+              JavascriptCompiler.compile("foo(2)", functions, getClass().getClassLoader());
             });
     assertTrue(expected.getMessage().contains("must take only double parameters"));
   }
@@ -182,7 +186,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("foo()", functions);
+              JavascriptCompiler.compile("foo()", functions, getClass().getClassLoader());
             });
     assertTrue(expected.getMessage().contains("is not static"));
   }
@@ -199,7 +203,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("foo()", functions);
+              JavascriptCompiler.compile("foo()", functions, getClass().getClassLoader());
             });
     assertTrue(expected.getMessage().contains("not public"));
   }
@@ -218,7 +222,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("foo()", functions);
+              JavascriptCompiler.compile("foo()", functions, getClass().getClassLoader());
             });
     assertTrue(expected.getMessage().contains("not public"));
   }
@@ -285,7 +289,7 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertNotSame(thisLoader, barMethod.getDeclaringClass().getClassLoader());
 
     // this should pass:
-    Expression expr = compile("bar()", functions, childLoader);
+    Expression expr = JavascriptCompiler.compile("bar()", functions, childLoader);
     assertEquals(2.0, expr.evaluate(null), DELTA);
 
     // use our classloader, not the foreign one, which should fail!
@@ -293,7 +297,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("bar()", functions, thisLoader);
+              JavascriptCompiler.compile("bar()", functions, thisLoader);
             });
     assertTrue(
         expected
@@ -304,9 +308,9 @@ public class TestCustomFunctions extends CompilerTestCase {
     // mix foreign and default functions
     Map<String, Method> mixedFunctions = new HashMap<>(JavascriptCompiler.DEFAULT_FUNCTIONS);
     mixedFunctions.putAll(functions);
-    expr = compile("bar()", mixedFunctions, childLoader);
+    expr = JavascriptCompiler.compile("bar()", mixedFunctions, childLoader);
     assertEquals(2.0, expr.evaluate(null), DELTA);
-    expr = compile("sqrt(20)", mixedFunctions, childLoader);
+    expr = JavascriptCompiler.compile("sqrt(20)", mixedFunctions, childLoader);
     assertEquals(Math.sqrt(20), expr.evaluate(null), DELTA);
 
     // use our classloader, not the foreign one, which should fail!
@@ -314,7 +318,7 @@ public class TestCustomFunctions extends CompilerTestCase {
         expectThrows(
             IllegalArgumentException.class,
             () -> {
-              compile("bar()", mixedFunctions, thisLoader);
+              JavascriptCompiler.compile("bar()", mixedFunctions, thisLoader);
             });
     assertTrue(
         expected
@@ -339,7 +343,7 @@ public class TestCustomFunctions extends CompilerTestCase {
     Map<String, Method> functions = new HashMap<>();
     functions.put("foo", StaticThrowingException.class.getMethod("method"));
     String source = "3 * foo() / 5";
-    Expression expr = compile(source, functions);
+    Expression expr = JavascriptCompiler.compile(source, functions, getClass().getClassLoader());
     ArithmeticException expected =
         expectThrows(
             ArithmeticException.class,
@@ -360,7 +364,7 @@ public class TestCustomFunctions extends CompilerTestCase {
     Map<String, Method> functions = new HashMap<>();
     functions.put("foo.bar", getClass().getMethod("zeroArgMethod"));
     String source = "foo.bar()";
-    Expression expr = compile(source, functions);
+    Expression expr = JavascriptCompiler.compile(source, functions, getClass().getClassLoader());
     assertEquals(5, expr.evaluate(null), DELTA);
   }
 }

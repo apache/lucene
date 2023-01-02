@@ -68,7 +68,7 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     long gen = info.getDelGen();
     String name = IndexFileNames.fileNameFromGeneration(info.info.name, EXTENSION, gen);
     final int length = info.info.maxDoc();
-    try (ChecksumIndexInput input = dir.openChecksumInput(name)) {
+    try (ChecksumIndexInput input = dir.openChecksumInput(name, context)) {
       Throwable priorE = null;
       try {
         CodecUtil.checkIndexHeader(

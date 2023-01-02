@@ -19,17 +19,12 @@ package org.apache.lucene.util.automaton;
 // The following code was generated with the moman/finenight pkg
 // This package is available under the MIT License, see NOTICE.txt
 // for more details.
-// This source file is auto-generated, Please do not modify it directly.
-// You should modify the gradle/generation/moman/createAutomata.py instead.
 
 import org.apache.lucene.util.automaton.LevenshteinAutomata.ParametricDescription;
 
 /**
  * Parametric description for generating a Levenshtein automaton of degree 2, with transpositions as
- * primitive edits. The comment in Lev1ParametricDescription may be helpful for you to understand
- * this class.
- *
- * @see Lev1ParametricDescription
+ * primitive edits
  */
 class Lev2TParametricDescription extends ParametricDescription {
 

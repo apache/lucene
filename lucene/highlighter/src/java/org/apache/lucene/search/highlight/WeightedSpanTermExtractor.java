@@ -245,11 +245,9 @@ public class WeightedSpanTermExtractor {
       final IndexReader reader = getLeafContext().reader();
       Query rewritten;
       if (query instanceof MultiTermQuery) {
-        rewritten =
-            MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(
-                new IndexSearcher(reader), (MultiTermQuery) query);
+        rewritten = MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(reader, (MultiTermQuery) query);
       } else {
-        rewritten = origQuery.rewrite(new IndexSearcher(reader));
+        rewritten = origQuery.rewrite(reader);
       }
       if (rewritten != origQuery) {
         // only rewrite once and then flatten again - the rewritten query could have a special

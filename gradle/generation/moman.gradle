@@ -41,17 +41,14 @@ configure(project(":lucene:core")) {
   task utilGenPackedInternal(dependsOn: installMoman) {
     def targetDir = file("src/java/org/apache/lucene/util/packed")
 
-    def templateFiles = [
-        file("${resources}/gen_BulkOperation.py"),
-        file("${resources}/gen_Packed64SingleBlock.py")
-    ]
-
     inputs.property("source", momanSource)
-    inputs.files templateFiles
     outputs.files fileTree(dir: targetDir, includes: ["Packed64SingleBlock.java", "BulkOperation*.java"])
 
     doLast {
-      templateFiles.each { prog ->
+      [
+        file("${resources}/gen_BulkOperation.py"),
+        file("${resources}/gen_Packed64SingleBlock.py")
+      ].each { prog ->
         logger.lifecycle("Executing: ${prog} in ${targetDir}")
         quietExec {
           workingDir targetDir
@@ -72,10 +69,7 @@ configure(project(":lucene:core")) {
   task utilGenLevInternal(dependsOn: installMoman) {
     def targetDir = file("src/java/org/apache/lucene/util/automaton")
 
-    def templateFile = file("${resources}/createLevAutomata.py")
-
     inputs.property("source", momanSource)
-    inputs.file templateFile
     outputs.files fileTree(dir: targetDir, includes: ["*ParametricDescription.java"])
 
     doLast {
@@ -85,7 +79,7 @@ configure(project(":lucene:core")) {
             workingDir targetDir
             executable project.externalTool("python3")
             args = ['-B',
-                    templateFile.toString(),
+                    file("${resources}/createLevAutomata.py").toString(),
                     num,
                     transpose,
                     "${momanDir}/finenight/python"]

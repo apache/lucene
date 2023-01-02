@@ -39,10 +39,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermState;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
@@ -111,59 +108,19 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public TermVectors termVectors() throws IOException {
-    return new AssertingTermVectors(super.termVectors());
-  }
-
-  @Override
-  public StoredFields storedFields() throws IOException {
-    return new AssertingStoredFields(super.storedFields());
-  }
-
-  /** Wraps a StoredFields but with additional asserts */
-  public static class AssertingStoredFields extends StoredFields {
-    private final StoredFields in;
-    private final Thread creationThread = Thread.currentThread();
-
-    public AssertingStoredFields(StoredFields in) {
-      this.in = in;
-    }
-
-    @Override
-    public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-      assertThread("StoredFields", creationThread);
-      in.document(docID, visitor);
-    }
-  }
-
-  /** Wraps a TermVectors but with additional asserts */
-  public static class AssertingTermVectors extends TermVectors {
-    private final TermVectors in;
-    private final Thread creationThread = Thread.currentThread();
-
-    public AssertingTermVectors(TermVectors in) {
-      this.in = in;
-    }
-
-    @Override
-    public Fields get(int doc) throws IOException {
-      assertThread("TermVectors", creationThread);
-      Fields fields = in.get(doc);
-      return fields == null ? null : new AssertingFields(fields);
-    }
+  public Fields getTermVectors(int docID) throws IOException {
+    Fields fields = super.getTermVectors(docID);
+    return fields == null ? null : new AssertingFields(fields);
   }
 
   /** Wraps a Fields but with additional asserts */
   public static class AssertingFields extends FilterFields {
-    private final Thread creationThread = Thread.currentThread();
-
     public AssertingFields(Fields in) {
       super(in);
     }
 
     @Override
     public Iterator<String> iterator() {
-      assertThread("Fields", creationThread);
       Iterator<String> iterator = super.iterator();
       assert iterator != null;
       return iterator;
@@ -171,7 +128,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public Terms terms(String field) throws IOException {
-      assertThread("Fields", creationThread);
       Terms terms = super.terms(field);
       return terms == null ? null : new AssertingTerms(terms);
     }
@@ -179,15 +135,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
   /** Wraps a Terms but with additional asserts */
   public static class AssertingTerms extends FilterTerms {
-    private final Thread creationThread = Thread.currentThread();
-
     public AssertingTerms(Terms in) {
       super(in);
     }
 
     @Override
     public TermsEnum intersect(CompiledAutomaton automaton, BytesRef bytes) throws IOException {
-      assertThread("Terms", creationThread);
       TermsEnum termsEnum = in.intersect(automaton, bytes);
       assert termsEnum != null;
       assert bytes == null || bytes.isValid();
@@ -196,7 +149,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public BytesRef getMin() throws IOException {
-      assertThread("Terms", creationThread);
       BytesRef v = in.getMin();
       assert v == null || v.isValid();
       return v;
@@ -204,7 +156,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public BytesRef getMax() throws IOException {
-      assertThread("Terms", creationThread);
       BytesRef v = in.getMax();
       assert v == null || v.isValid();
       return v;
@@ -212,7 +163,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public int getDocCount() throws IOException {
-      assertThread("Terms", creationThread);
       final int docCount = in.getDocCount();
       assert docCount > 0;
       return docCount;
@@ -220,7 +170,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public long getSumDocFreq() throws IOException {
-      assertThread("Terms", creationThread);
       final long sumDf = in.getSumDocFreq();
       assert sumDf >= getDocCount();
       return sumDf;
@@ -228,7 +177,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public long getSumTotalTermFreq() throws IOException {
-      assertThread("Terms", creationThread);
       final long sumTtf = in.getSumTotalTermFreq();
       if (hasFreqs() == false) {
         assert sumTtf == in.getSumDocFreq();
@@ -239,7 +187,6 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public TermsEnum iterator() throws IOException {
-      assertThread("Terms", creationThread);
       TermsEnum termsEnum = super.iterator();
       assert termsEnum != null;
       return new AssertingTermsEnum(termsEnum, hasFreqs());
@@ -1030,7 +977,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     private final int maxDoc;
     private final long valueCount;
     private int lastDocID = -1;
-    private int ordsRetrieved;
+    private long lastOrd = NO_MORE_ORDS;
     private boolean exists;
 
     private AssertingSortedSetDocValues(SortedSetDocValues in, int maxDoc) {
@@ -1064,8 +1011,8 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert docID == NO_MORE_DOCS || docID < maxDoc;
       assert docID == in.docID();
       lastDocID = docID;
+      lastOrd = -2;
       exists = docID != NO_MORE_DOCS;
-      ordsRetrieved = 0;
       return docID;
     }
 
@@ -1079,8 +1026,8 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert docID >= target;
       assert docID == NO_MORE_DOCS || docID < maxDoc;
       lastDocID = docID;
+      lastOrd = -2;
       exists = docID != NO_MORE_DOCS;
-      ordsRetrieved = 0;
       return docID;
     }
 
@@ -1093,7 +1040,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       exists = in.advanceExact(target);
       assert in.docID() == target;
       lastDocID = target;
-      ordsRetrieved = 0;
+      lastOrd = -2;
       return exists;
     }
 
@@ -1108,11 +1055,12 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public long nextOrd() throws IOException {
       assertThread("Sorted set doc values", creationThread);
+      assert lastOrd != NO_MORE_ORDS;
       assert exists;
-      assert ordsRetrieved < docValueCount();
-      ordsRetrieved++;
       long ord = in.nextOrd();
       assert ord < valueCount;
+      assert ord == NO_MORE_ORDS || ord > lastOrd;
+      lastOrd = ord;
       return ord;
     }
 

@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.index.IndexWriter;
@@ -163,13 +162,13 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
         reopenLock.unlock();
       }
 
-      long startMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+      long startMS = System.nanoTime() / 1000000;
 
       while (targetGen > searchingGen) {
         if (maxMS < 0) {
           wait();
         } else {
-          long msLeft = (startMS + maxMS) - TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+          long msLeft = (startMS + maxMS) - System.nanoTime() / 1000000;
           if (msLeft <= 0) {
             return false;
           } else {

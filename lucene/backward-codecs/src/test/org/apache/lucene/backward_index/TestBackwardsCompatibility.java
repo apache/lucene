@@ -91,9 +91,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StandardDirectoryReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -164,6 +162,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final int DOCS_COUNT = 35;
   private static final int DELETED_ID = 7;
 
+  // change version to 9 when we update 9 backward indices to include KNN field
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
@@ -352,20 +351,64 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   static final String[] oldNames = {
-    "9.0.0-cfs", // Force on separate lines
+    "8.0.0-cfs",
+    "8.0.0-nocfs",
+    "8.1.0-cfs",
+    "8.1.0-nocfs",
+    "8.1.1-cfs",
+    "8.1.1-nocfs",
+    "8.2.0-cfs",
+    "8.2.0-nocfs",
+    "8.3.0-cfs",
+    "8.3.0-nocfs",
+    "8.3.1-cfs",
+    "8.3.1-nocfs",
+    "8.4.0-cfs",
+    "8.4.0-nocfs",
+    "8.4.1-cfs",
+    "8.4.1-nocfs",
+    "8.5.0-cfs",
+    "8.5.0-nocfs",
+    "8.5.1-cfs",
+    "8.5.1-nocfs",
+    "8.5.2-cfs",
+    "8.5.2-nocfs",
+    "8.6.0-cfs",
+    "8.6.0-nocfs",
+    "8.6.1-cfs",
+    "8.6.1-nocfs",
+    "8.6.2-cfs",
+    "8.6.2-nocfs",
+    "8.6.3-cfs",
+    "8.6.3-nocfs",
+    "8.7.0-cfs",
+    "8.7.0-nocfs",
+    "8.8.0-cfs",
+    "8.8.0-nocfs",
+    "8.8.1-cfs",
+    "8.8.1-nocfs",
+    "8.8.2-cfs",
+    "8.8.2-nocfs",
+    "8.9.0-cfs",
+    "8.9.0-nocfs",
+    "8.10.0-cfs",
+    "8.10.0-nocfs",
+    "8.10.1-cfs",
+    "8.10.1-nocfs",
+    "8.11.0-cfs",
+    "8.11.0-nocfs",
+    "8.11.1-cfs",
+    "8.11.1-nocfs",
+    "8.11.2-cfs",
+    "8.11.2-nocfs",
+    "9.0.0-cfs",
     "9.0.0-nocfs",
     "9.1.0-cfs",
     "9.1.0-nocfs",
     "9.2.0-cfs",
     "9.2.0-nocfs",
     "9.3.0-cfs",
-    "9.3.0-nocfs",
-    "9.4.0-cfs",
-    "9.4.0-nocfs",
-    "9.4.1-cfs",
-    "9.4.1-nocfs",
-    "9.4.2-cfs",
-    "9.4.2-nocfs"
+    "9.3.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -373,13 +416,35 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   }
 
   static final String[] oldSortedNames = {
-    "sorted.9.0.0", // Force on separate lines
+    "sorted.8.0.0",
+    "sorted.8.1.0",
+    "sorted.8.1.1",
+    "sorted.8.10.0",
+    "sorted.8.2.0",
+    "sorted.8.3.0",
+    "sorted.8.3.1",
+    "sorted.8.4.0",
+    "sorted.8.4.1",
+    "sorted.8.5.0",
+    "sorted.8.5.1",
+    "sorted.8.5.2",
+    "sorted.8.6.0",
+    "sorted.8.6.1",
+    "sorted.8.6.2",
+    "sorted.8.6.3",
+    "sorted.8.7.0",
+    "sorted.8.8.0",
+    "sorted.8.8.1",
+    "sorted.8.8.2",
+    "sorted.8.9.0",
+    "sorted.8.10.1",
+    "sorted.8.11.0",
+    "sorted.8.11.1",
+    "sorted.8.11.2",
+    "sorted.9.0.0",
     "sorted.9.1.0",
     "sorted.9.2.0",
-    "sorted.9.3.0",
-    "sorted.9.4.0",
-    "sorted.9.4.1",
-    "sorted.9.4.2"
+    "sorted.9.3.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -583,57 +648,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "7.7.2-cfs",
     "7.7.2-nocfs",
     "7.7.3-cfs",
-    "7.7.3-nocfs",
-    "8.0.0-cfs",
-    "8.0.0-nocfs",
-    "8.1.0-cfs",
-    "8.1.0-nocfs",
-    "8.1.1-cfs",
-    "8.1.1-nocfs",
-    "8.2.0-cfs",
-    "8.2.0-nocfs",
-    "8.3.0-cfs",
-    "8.3.0-nocfs",
-    "8.3.1-cfs",
-    "8.3.1-nocfs",
-    "8.4.0-cfs",
-    "8.4.0-nocfs",
-    "8.4.1-cfs",
-    "8.4.1-nocfs",
-    "8.5.0-cfs",
-    "8.5.0-nocfs",
-    "8.5.1-cfs",
-    "8.5.1-nocfs",
-    "8.5.2-cfs",
-    "8.5.2-nocfs",
-    "8.6.0-cfs",
-    "8.6.0-nocfs",
-    "8.6.1-cfs",
-    "8.6.1-nocfs",
-    "8.6.2-cfs",
-    "8.6.2-nocfs",
-    "8.6.3-cfs",
-    "8.6.3-nocfs",
-    "8.7.0-cfs",
-    "8.7.0-nocfs",
-    "8.8.0-cfs",
-    "8.8.0-nocfs",
-    "8.8.1-cfs",
-    "8.8.1-nocfs",
-    "8.8.2-cfs",
-    "8.8.2-nocfs",
-    "8.9.0-cfs",
-    "8.9.0-nocfs",
-    "8.10.0-cfs",
-    "8.10.0-nocfs",
-    "8.10.1-cfs",
-    "8.10.1-nocfs",
-    "8.11.0-cfs",
-    "8.11.0-nocfs",
-    "8.11.1-cfs",
-    "8.11.1-nocfs",
-    "8.11.2-cfs",
-    "8.11.2-nocfs"
+    "7.7.3-nocfs"
   };
 
   static final int MIN_BINARY_SUPPORTED_MAJOR = Version.MIN_SUPPORTED_MAJOR - 1;
@@ -928,17 +943,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       CheckIndex checker = new CheckIndex(dir);
       checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8));
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (unsupportedNames[i].startsWith("8.")) {
+      if (unsupportedNames[i].startsWith("7.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);
-        // CheckIndex doesn't enforce a minimum version, so we either get an
-        // IndexFormatTooOldException
-        // or an IllegalArgumentException saying that the codec doesn't exist.
-        boolean formatTooOld =
-            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName());
-        boolean missingCodec = bos.toString(IOUtils.UTF_8).contains("Could not load codec");
-        assertTrue(formatTooOld || missingCodec);
+        assertTrue(
+            bos.toString(IOUtils.UTF_8).contains(IndexFormatTooOldException.class.getName()));
       }
       checker.close();
 
@@ -1011,7 +1021,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
               .filter( // depending on the MergePolicy we might see these segments merged away
                   sci ->
                       sci.getId() != null
-                          && sci.info.getVersion().onOrAfter(Version.fromBits(8, 6, 0)) == false)
+                          && sci.info.getVersion().onOrAfter(Version.LUCENE_8_6_0) == false)
               .findAny()
               .orElse(null));
       if (VERBOSE) {
@@ -1038,7 +1048,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
                 IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
         assertEquals(
             e.getMessage(),
-            "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
+            "Cannot merge a segment that has been created with major version 8 into this index which has been created by major version 9");
         w.close();
         targetDir2.close();
 
@@ -1101,19 +1111,15 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       throws IOException {
     final int hitCount = hits.length;
     assertEquals("wrong number of hits", expectedCount, hitCount);
-    StoredFields storedFields = reader.storedFields();
-    TermVectors termVectors = reader.termVectors();
     for (int i = 0; i < hitCount; i++) {
-      storedFields.document(hits[i].doc);
-      termVectors.get(hits[i].doc);
+      reader.document(hits[i].doc);
+      reader.getTermVectors(hits[i].doc);
     }
   }
 
   public void searchIndex(
       Directory dir, String oldName, int minIndexMajorVersion, Version nameVersion)
       throws IOException {
-    // QueryParser parser = new QueryParser("contents", new MockAnalyzer(random));
-    // Query query = parser.parse("handle:1");
     IndexCommit indexCommit = DirectoryReader.listCommits(dir).get(0);
     IndexReader reader = DirectoryReader.open(indexCommit, minIndexMajorVersion, null);
     IndexSearcher searcher = newSearcher(reader);
@@ -1122,12 +1128,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     final Bits liveDocs = MultiBits.getLiveDocs(reader);
     assertNotNull(liveDocs);
-    StoredFields storedFields = reader.storedFields();
-    TermVectors termVectors = reader.termVectors();
 
     for (int i = 0; i < DOCS_COUNT; i++) {
       if (liveDocs.get(i)) {
-        Document d = storedFields.document(i);
+        Document d = reader.document(i);
         List<IndexableField> fields = d.getFields();
         boolean isProxDoc = d.getField("content3") == null;
         if (isProxDoc) {
@@ -1150,7 +1154,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           assertEquals("field with non-ascii name", f.stringValue());
         }
 
-        Fields tfvFields = termVectors.get(i);
+        Fields tfvFields = reader.getTermVectors(i);
         assertNotNull("i=" + i, tfvFields);
         Terms tfv = tfvFields.terms("utf8");
         assertNotNull("docID=" + i + " index=" + oldName, tfv);
@@ -1182,7 +1186,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         MultiDocValues.getSortedNumericValues(reader, "dvSortedNumeric");
 
     for (int i = 0; i < DOCS_COUNT; i++) {
-      int id = Integer.parseInt(storedFields.document(i).get("id"));
+      int id = Integer.parseInt(reader.document(i).get("id"));
       assertEquals(i, dvByte.nextDoc());
       assertEquals(id, dvByte.longValue());
 
@@ -1225,6 +1229,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       assertEquals(i, dvSortedSet.nextDoc());
       assertEquals(1, dvSortedSet.docValueCount());
       long ord = dvSortedSet.nextOrd();
+      assertEquals(SortedSetDocValues.NO_MORE_ORDS, dvSortedSet.nextOrd());
       term = dvSortedSet.lookupOrd(ord);
       assertEquals(expectedRef, term);
 
@@ -1237,7 +1242,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         searcher.search(new TermQuery(new Term(new String("content"), "aaa")), 1000).scoreDocs;
 
     // First document should be #0
-    Document d = storedFields.document(hits[0].doc);
+    Document d = searcher.getIndexReader().document(hits[0].doc);
     assertEquals("didn't get the right document first", "0", d.get("id"));
 
     doTestHits(hits, 34, searcher.getIndexReader());
@@ -1343,7 +1348,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       // test KNN search
       ScoreDoc[] scoreDocs = assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
       for (int i = 0; i < scoreDocs.length; i++) {
-        int id = Integer.parseInt(storedFields.document(scoreDocs[i].doc).get("id"));
+        int id = Integer.parseInt(reader.document(scoreDocs[i].doc).get("id"));
         int expectedId = i < DELETED_ID ? i : i + 1;
         assertEquals(expectedId, id);
       }
@@ -1362,7 +1367,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     ScoreDoc[] hits =
         searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
     assertEquals("wrong number of hits", expectedHitsCount, hits.length);
-    Document d = searcher.storedFields().document(hits[0].doc);
+    Document d = searcher.doc(hits[0].doc);
     assertEquals("wrong first document", expectedFirstDocId, d.get("id"));
     return hits;
   }
@@ -1394,7 +1399,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
-    Document d = searcher.getIndexReader().storedFields().document(hits[0].doc);
+    Document d = searcher.getIndexReader().document(hits[0].doc);
     assertEquals("wrong first document", "0", d.get("id"));
     doTestHits(hits, 44, searcher.getIndexReader());
 
@@ -1426,7 +1431,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // make sure searching sees right # hits fot term search
     hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
     assertEquals("wrong number of hits", 44, hits.length);
-    d = searcher.storedFields().document(hits[0].doc);
+    d = searcher.doc(hits[0].doc);
     doTestHits(hits, 44, searcher.getIndexReader());
     assertEquals("wrong first document", "0", d.get("id"));
 
@@ -1451,7 +1456,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
     assertEquals("wrong number of hits", 34, hits.length);
-    Document d = searcher.storedFields().document(hits[0].doc);
+    Document d = searcher.doc(hits[0].doc);
     assertEquals("wrong first document", "0", d.get("id"));
 
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
@@ -1714,7 +1719,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       Directory dir = oldIndexDirs.get(name);
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
       for (SegmentCommitInfo info : infos) {
-        if (info.info.getVersion().onOrAfter(Version.fromBits(8, 6, 0))) {
+        if (info.info.getVersion().onOrAfter(Version.LUCENE_8_6_0)) {
           assertNotNull(info.toString(), info.getId());
         } else {
           assertNull(info.toString(), info.getId());
@@ -2214,16 +2219,24 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     for (String name : oldNames) {
       Directory directory = oldIndexDirs.get(name);
       IndexCommit commit = DirectoryReader.listCommits(directory).get(0);
-      IndexFormatTooOldException ex =
-          expectThrows(
-              IndexFormatTooOldException.class,
-              () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
-      assertTrue(
-          ex.getMessage()
-              .contains(
-                  "only supports reading from version " + Version.LATEST.major + " upwards."));
-      // now open with allowed min version
-      StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
+
+      final int createdMajor;
+      // No exception when opening with the allowed min version
+      try (IndexReader reader =
+          StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null)) {
+        createdMajor = reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
+      }
+
+      if (createdMajor < Version.LATEST.major) {
+        IndexFormatTooOldException ex =
+            expectThrows(
+                IndexFormatTooOldException.class,
+                () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
+        assertTrue(
+            ex.getMessage()
+                .contains(
+                    "only supports reading from version " + Version.LATEST.major + " upwards."));
+      }
     }
   }
 

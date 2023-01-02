@@ -20,7 +20,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 abstract class DocValuesLeafReader extends LeafReader {
   @Override
@@ -60,12 +59,6 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public final void checkIntegrity() throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -76,7 +69,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final TermVectors termVectors() throws IOException {
+  public final Fields getTermVectors(int docID) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -91,7 +84,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final StoredFields storedFields() throws IOException {
+  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
     throw new UnsupportedOperationException();
   }
 

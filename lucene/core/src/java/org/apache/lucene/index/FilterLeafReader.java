@@ -358,15 +358,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public TermVectors termVectors() throws IOException {
+  public Fields getTermVectors(int docID) throws IOException {
     ensureOpen();
-    return in.termVectors();
+    return in.getTermVectors(docID);
   }
 
   @Override
@@ -382,9 +376,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public StoredFields storedFields() throws IOException {
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
     ensureOpen();
-    return in.storedFields();
+    in.document(docID, visitor);
   }
 
   @Override

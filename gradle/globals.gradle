@@ -22,7 +22,9 @@ allprojects {
 
   // Repositories to fetch dependencies from.
   repositories {
-    mavenCentral()
+    maven {
+      url "https://jfrog.fkinternal.com/artifactory/maven_virtual"
+    }
   }
 
   // Artifacts will have names after full gradle project path
@@ -113,8 +115,6 @@ allprojects {
               "code: ${result.exitValue}, " +
               "output at: ${outputFile} (and logged above).")
         }
-      } else {
-        logger.info(new String(outputFile.bytes))
       }
 
       return result

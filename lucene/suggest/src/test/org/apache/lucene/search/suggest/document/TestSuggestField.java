@@ -40,7 +40,7 @@ import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -49,7 +49,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -715,13 +714,12 @@ public class TestSuggestField extends LuceneTestCase {
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
     assertEquals(num, suggest.totalHits.value);
-    StoredFields storedFields = reader.storedFields();
     for (SuggestScoreDoc suggestScoreDoc : suggest.scoreLookupDocs()) {
       String key = suggestScoreDoc.key.toString();
       assertTrue(key.startsWith("abc_"));
       String substring = key.substring(4);
       int fieldValue = Integer.parseInt(substring);
-      Document doc = storedFields.document(suggestScoreDoc.doc);
+      Document doc = reader.document(suggestScoreDoc.doc);
       assertEquals(doc.getField("int_field").numericValue().intValue(), fieldValue);
     }
 
@@ -961,7 +959,7 @@ public class TestSuggestField extends LuceneTestCase {
     IndexWriterConfig iwc = newIndexWriterConfig(random(), analyzer);
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
-        new Lucene95Codec() {
+        new Lucene92Codec() {
           CompletionPostingsFormat.FSTLoadMode fstLoadMode =
               RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
           PostingsFormat postingsFormat = new Completion90PostingsFormat(fstLoadMode);

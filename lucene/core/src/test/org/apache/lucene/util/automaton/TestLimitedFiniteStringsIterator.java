@@ -40,11 +40,11 @@ public class TestLimitedFiniteStringsIterator extends LuceneTestCase {
         getFiniteStrings(new LimitedFiniteStringsIterator(a, TestUtil.nextInt(random(), 1, 1000)));
         // NOTE: cannot do this, because the method is not
         // guaranteed to detect cycles when you have a limit
-        // assertTrue(AutomatonTestUtil.isFinite(a));
+        // assertTrue(Operations.isFinite(a));
       } catch (
           @SuppressWarnings("unused")
           IllegalArgumentException iae) {
-        assertFalse(AutomatonTestUtil.isFinite(a));
+        assertFalse(Operations.isFinite(a));
       }
     }
   }

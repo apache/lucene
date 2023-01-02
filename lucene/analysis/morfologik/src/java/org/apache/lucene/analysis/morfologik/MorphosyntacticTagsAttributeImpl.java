@@ -1,3 +1,4 @@
+// -*- c-basic-offset: 2 -*-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,8 +17,7 @@
  */
 package org.apache.lucene.analysis.morfologik;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 

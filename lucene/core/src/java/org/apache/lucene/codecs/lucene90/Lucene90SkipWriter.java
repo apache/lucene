@@ -50,6 +50,7 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
   private long[] lastSkipDocPointer;
   private long[] lastSkipPosPointer;
   private long[] lastSkipPayPointer;
+  private int[] lastPayloadByteUpto;
 
   private final IndexOutput docOut;
   private final IndexOutput posOut;
@@ -85,6 +86,7 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
       if (payOut != null) {
         lastSkipPayPointer = new long[maxSkipLevels];
       }
+      lastPayloadByteUpto = new int[maxSkipLevels];
     }
     curCompetitiveFreqNorms = new CompetitiveImpactAccumulator[maxSkipLevels];
     for (int i = 0; i < maxSkipLevels; ++i) {
@@ -135,6 +137,9 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
       Arrays.fill(lastSkipDocPointer, lastDocFP);
       if (fieldHasPositions) {
         Arrays.fill(lastSkipPosPointer, lastPosFP);
+        if (fieldHasPayloads) {
+          Arrays.fill(lastPayloadByteUpto, 0);
+        }
         if (fieldHasOffsets || fieldHasPayloads) {
           Arrays.fill(lastSkipPayPointer, lastPayFP);
         }

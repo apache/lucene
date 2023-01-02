@@ -940,6 +940,9 @@ public abstract class DocValuesConsumer implements Closeable {
               @Override
               public long nextOrd() throws IOException {
                 long subOrd = currentSub.values.nextOrd();
+                if (subOrd == NO_MORE_ORDS) {
+                  return NO_MORE_ORDS;
+                }
                 return currentSub.map.get(subOrd);
               }
 

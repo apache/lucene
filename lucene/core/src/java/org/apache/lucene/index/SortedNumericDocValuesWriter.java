@@ -21,7 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
-import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
@@ -73,9 +72,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     if (currentDoc == -1) {
       return;
     }
-    if (currentUpto > 1) {
-      Arrays.sort(currentValues, 0, currentUpto);
-    }
+    Arrays.sort(currentValues, 0, currentUpto);
     for (int i = 0; i < currentUpto; i++) {
       pending.add(currentValues[i]);
     }
@@ -176,20 +173,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       valueCounts = finalValuesCount;
     }
 
-    if (valueCounts == null) {
-      DocValuesProducer singleValueProducer =
-          NumericDocValuesWriter.getDocValuesProducer(fieldInfo, values, docsWithField, sortMap);
-      dvConsumer.addSortedNumericField(
-          fieldInfo,
-          new EmptyDocValuesProducer() {
-            @Override
-            public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfo) throws IOException {
-              return DocValues.singleton(singleValueProducer.getNumeric(fieldInfo));
-            }
-          });
-      return;
-    }
-
     final LongValues sorted;
     if (sortMap != null) {
       sorted =
@@ -270,6 +253,9 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
 
     @Override
     public long nextValue() {
+      if (valueUpto == valueCount) {
+        throw new IllegalStateException();
+      }
       valueUpto++;
       return valuesIter.next();
     }
@@ -286,6 +272,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     private int docID = -1;
     private long upto;
     private int numValues = -1;
+    private long limit;
 
     SortingSortedNumericDocValues(SortedNumericDocValues in, LongValues values) {
       this.in = in;
@@ -307,6 +294,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       } while (values.offsets[docID] <= 0);
       upto = values.offsets[docID];
       numValues = Math.toIntExact(values.values.get(upto - 1));
+      limit = upto + numValues;
       return docID;
     }
 
@@ -321,14 +309,21 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       upto = values.offsets[docID];
       if (values.offsets[docID] > 0) {
         numValues = Math.toIntExact(values.values.get(upto - 1));
+        limit = upto + numValues;
         return true;
+      } else {
+        limit = upto;
       }
       return false;
     }
 
     @Override
     public long nextValue() {
-      return values.values.get(upto++);
+      if (upto == limit) {
+        throw new AssertionError();
+      } else {
+        return values.values.get(upto++);
+      }
     }
 
     @Override

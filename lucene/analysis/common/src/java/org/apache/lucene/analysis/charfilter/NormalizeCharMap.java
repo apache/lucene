@@ -94,9 +94,10 @@ public class NormalizeCharMap {
       if (match.length() == 0) {
         throw new IllegalArgumentException("cannot match the empty string");
       }
-      if (pendingPairs.putIfAbsent(match, replacement) != null) {
+      if (pendingPairs.containsKey(match)) {
         throw new IllegalArgumentException("match \"" + match + "\" was already added");
       }
+      pendingPairs.put(match, replacement);
     }
 
     /** Builds the NormalizeCharMap; call this once you are done calling {@link #add}. */

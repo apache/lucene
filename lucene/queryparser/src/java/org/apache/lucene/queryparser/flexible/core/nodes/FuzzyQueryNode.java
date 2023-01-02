@@ -84,9 +84,7 @@ public class FuzzyQueryNode extends FieldQueryNode {
     return clone;
   }
 
-  /**
-   * @return the similarity
-   */
+  /** @return the similarity */
   public float getSimilarity() {
     return this.similarity;
   }

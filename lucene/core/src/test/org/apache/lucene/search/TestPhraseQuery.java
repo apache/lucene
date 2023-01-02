@@ -567,7 +567,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   /* test that a single term is rewritten to a term query */
   public void testRewrite() throws IOException {
     PhraseQuery pq = new PhraseQuery("foo", "bar");
-    Query rewritten = pq.rewrite(searcher);
+    Query rewritten = pq.rewrite(searcher.getIndexReader());
     assertTrue(rewritten instanceof TermQuery);
   }
 

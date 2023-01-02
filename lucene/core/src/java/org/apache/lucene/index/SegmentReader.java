@@ -247,17 +247,13 @@ public final class SegmentReader extends CodecReader {
   @Override
   public TermVectorsReader getTermVectorsReader() {
     ensureOpen();
-    if (core.termVectorsReaderOrig == null) {
-      return null;
-    } else {
-      return core.termVectorsReaderOrig.clone();
-    }
+    return core.termVectorsLocal.get();
   }
 
   @Override
   public StoredFieldsReader getFieldsReader() {
     ensureOpen();
-    return core.fieldsReaderOrig.clone();
+    return core.fieldsReaderLocal.get();
   }
 
   @Override

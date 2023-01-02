@@ -351,7 +351,7 @@ public class TestLongBitSet extends LuceneTestCase {
     assertFalse(newBits.get(1));
   }
 
-  @Monster("needs hundreds of MB of heap")
+  @Nightly
   public void testHugeCapacity() {
     long moreThanMaxInt = (long) Integer.MAX_VALUE + 5;
 

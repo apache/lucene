@@ -26,12 +26,12 @@ package org.apache.lucene.analysis.pt;
  *
  * @see RSLPStemmerBase
  */
-class PortugueseMinimalStemmer extends RSLPStemmerBase {
+public class PortugueseMinimalStemmer extends RSLPStemmerBase {
 
   private static final Step pluralStep =
       parse(PortugueseMinimalStemmer.class, "portuguese.rslp").get("Plural");
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     return pluralStep.apply(s, len);
   }
 }

@@ -31,7 +31,6 @@ import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -51,9 +50,9 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public void close() throws IOException {}
 
             @Override
-            public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
+            public void compress(byte[] bytes, int off, int len, DataOutput out)
                 throws IOException {
-              out.copyBytes(buffersInput, buffersInput.size());
+              out.writeBytes(bytes, off, len);
             }
           };
         }
@@ -113,7 +112,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
       CopyVisitor visitor = new CopyVisitor(sortWriter);
       for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
         sortWriter.startDocument();
-        reader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
+        reader.visitDocument(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
         sortWriter.finishDocument();
       }
       sortWriter.finish(state.segmentInfo.maxDoc());

@@ -59,9 +59,9 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>This stemmer implements the "UniNE" algorithm in: <i>Light Stemming Approaches for the French,
  * Portuguese, German and Hungarian Languages</i> Jacques Savoy
  */
-class PortugueseLightStemmer {
+public class PortugueseLightStemmer {
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     if (len < 4) return len;
 
     len = removeSuffix(s, len);

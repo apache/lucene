@@ -400,18 +400,25 @@ public class FacetsConfig {
         indexDrillDownTerms(doc, indexFieldName, dimConfig, facetLabel);
       }
 
-      // Dedupe and encode the ordinals. It's not important that we sort here
-      // (SortedNumericDocValuesField will handle this internally), but we
-      // sort to identify dups (since SNDVF doesn't dedupe):
+      // Store the taxonomy ordinals associated with each doc. Prefer to use SortedNumericDocValues
+      // but "fall back" to a custom binary format to maintain backwards compatibility with Lucene 8
+      // indexes.
       IntsRef ords = ordinals.get();
-      Arrays.sort(ords.ints, ords.offset, ords.offset + ords.length);
-      int prev = -1;
-      for (int i = 0; i < ords.length; i++) {
-        int ord = ords.ints[ords.offset + i];
-        if (ord > prev) {
-          doc.add(new SortedNumericDocValuesField(indexFieldName, ord));
-          prev = ord;
+      if (taxoWriter.useNumericDocValuesForOrdinals()) {
+        // Dedupe and encode the ordinals. It's not important that we sort here
+        // (SortedNumericDocValuesField will handle this internally), but we
+        // sort to identify dups (since SNDVF doesn't dedupe):
+        Arrays.sort(ords.ints, ords.offset, ords.offset + ords.length);
+        int prev = -1;
+        for (int i = 0; i < ords.length; i++) {
+          int ord = ords.ints[ords.offset + i];
+          if (ord > prev) {
+            doc.add(new SortedNumericDocValuesField(indexFieldName, ord));
+            prev = ord;
+          }
         }
+      } else {
+        doc.add(new BinaryDocValuesField(indexFieldName, dedupAndEncode(ords)));
       }
     }
   }
@@ -531,6 +538,60 @@ public class FacetsConfig {
       }
       doc.add(new BinaryDocValuesField(indexFieldName, new BytesRef(bytes, 0, upto)));
     }
+  }
+
+  /**
+   * Encodes ordinals into a BytesRef; expert: subclass can override this to change encoding.
+   *
+   * @deprecated Starting in Lucene 9, we moved to a more straight-forward numeric doc values
+   *     encoding and no longer support custom binary encodings.
+   */
+  @Deprecated
+  protected BytesRef dedupAndEncode(IntsRef ordinals) {
+    Arrays.sort(ordinals.ints, ordinals.offset, ordinals.length);
+    byte[] bytes = new byte[5 * ordinals.length];
+    int lastOrd = -1;
+    int upto = 0;
+    for (int i = 0; i < ordinals.length; i++) {
+      int ord = ordinals.ints[ordinals.offset + i];
+      // ord could be == lastOrd, so we must dedup:
+      if (ord > lastOrd) {
+        int delta;
+        if (lastOrd == -1) {
+          delta = ord;
+        } else {
+          delta = ord - lastOrd;
+        }
+        if ((delta & ~0x7F) == 0) {
+          bytes[upto] = (byte) delta;
+          upto++;
+        } else if ((delta & ~0x3FFF) == 0) {
+          bytes[upto] = (byte) (0x80 | ((delta & 0x3F80) >> 7));
+          bytes[upto + 1] = (byte) (delta & 0x7F);
+          upto += 2;
+        } else if ((delta & ~0x1FFFFF) == 0) {
+          bytes[upto] = (byte) (0x80 | ((delta & 0x1FC000) >> 14));
+          bytes[upto + 1] = (byte) (0x80 | ((delta & 0x3F80) >> 7));
+          bytes[upto + 2] = (byte) (delta & 0x7F);
+          upto += 3;
+        } else if ((delta & ~0xFFFFFFF) == 0) {
+          bytes[upto] = (byte) (0x80 | ((delta & 0xFE00000) >> 21));
+          bytes[upto + 1] = (byte) (0x80 | ((delta & 0x1FC000) >> 14));
+          bytes[upto + 2] = (byte) (0x80 | ((delta & 0x3F80) >> 7));
+          bytes[upto + 3] = (byte) (delta & 0x7F);
+          upto += 4;
+        } else {
+          bytes[upto] = (byte) (0x80 | ((delta & 0xF0000000) >> 28));
+          bytes[upto + 1] = (byte) (0x80 | ((delta & 0xFE00000) >> 21));
+          bytes[upto + 2] = (byte) (0x80 | ((delta & 0x1FC000) >> 14));
+          bytes[upto + 3] = (byte) (0x80 | ((delta & 0x3F80) >> 7));
+          bytes[upto + 4] = (byte) (delta & 0x7F);
+          upto += 5;
+        }
+        lastOrd = ord;
+      }
+    }
+    return new BytesRef(bytes, 0, upto);
   }
 
   private void checkTaxoWriter(TaxonomyWriter taxoWriter) {

@@ -37,7 +37,7 @@ public class PrefixQuery extends AutomatonQuery {
    * Constructs a query for terms starting with <code>prefix</code> using a defined RewriteMethod
    */
   public PrefixQuery(Term prefix, RewriteMethod rewriteMethod) {
-    super(prefix, toAutomaton(prefix.bytes()), true, rewriteMethod);
+    super(prefix, toAutomaton(prefix.bytes()), Integer.MAX_VALUE, true, rewriteMethod);
   }
 
   /** Build an automaton accepting all terms with the specified prefix. */

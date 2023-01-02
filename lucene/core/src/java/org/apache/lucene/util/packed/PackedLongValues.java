@@ -41,9 +41,7 @@ public class PackedLongValues extends LongValues implements Accountable {
     return new PackedLongValues.Builder(pageSize, acceptableOverheadRatio);
   }
 
-  /**
-   * @see #packedBuilder(int, float)
-   */
+  /** @see #packedBuilder(int, float) */
   public static PackedLongValues.Builder packedBuilder(float acceptableOverheadRatio) {
     return packedBuilder(DEFAULT_PAGE_SIZE, acceptableOverheadRatio);
   }
@@ -57,9 +55,7 @@ public class PackedLongValues extends LongValues implements Accountable {
     return new DeltaPackedLongValues.Builder(pageSize, acceptableOverheadRatio);
   }
 
-  /**
-   * @see #deltaPackedBuilder(int, float)
-   */
+  /** @see #deltaPackedBuilder(int, float) */
   public static PackedLongValues.Builder deltaPackedBuilder(float acceptableOverheadRatio) {
     return deltaPackedBuilder(DEFAULT_PAGE_SIZE, acceptableOverheadRatio);
   }
@@ -73,9 +69,7 @@ public class PackedLongValues extends LongValues implements Accountable {
     return new MonotonicLongValues.Builder(pageSize, acceptableOverheadRatio);
   }
 
-  /**
-   * @see #monotonicBuilder(int, float)
-   */
+  /** @see #monotonicBuilder(int, float) */
   public static PackedLongValues.Builder monotonicBuilder(float acceptableOverheadRatio) {
     return monotonicBuilder(DEFAULT_PAGE_SIZE, acceptableOverheadRatio);
   }

@@ -82,9 +82,7 @@ public class FieldQueryNode extends QueryNodeImpl
         + "'/>";
   }
 
-  /**
-   * @return the term
-   */
+  /** @return the term */
   public String getTextAsString() {
     if (this.text == null) return null;
     else return this.text.toString();
@@ -144,9 +142,7 @@ public class FieldQueryNode extends QueryNodeImpl
     return this.text;
   }
 
-  /**
-   * @param text the text to set
-   */
+  /** @param text the text to set */
   @Override
   public void setText(CharSequence text) {
     this.text = text;

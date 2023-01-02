@@ -27,39 +27,22 @@ import org.apache.lucene.util.AttributeFactory;
  */
 public abstract class TokenizerFactory extends AbstractAnalysisFactory {
 
-  /**
-   * This static holder class prevents classloading deadlock by delaying init of factories until
-   * needed.
-   */
-  private static final class Holder {
-    private static final AnalysisSPILoader<TokenizerFactory> LOADER =
-        new AnalysisSPILoader<>(TokenizerFactory.class);
-
-    private Holder() {}
-
-    static AnalysisSPILoader<TokenizerFactory> getLoader() {
-      if (LOADER == null) {
-        throw new IllegalStateException(
-            "You tried to lookup a TokenizerFactory by name before all factories could be initialized. "
-                + "This likely happens if you call TokenizerFactory#forName from a TokenizerFactory ctor.");
-      }
-      return LOADER;
-    }
-  }
+  private static final AnalysisSPILoader<TokenizerFactory> loader =
+      new AnalysisSPILoader<>(TokenizerFactory.class);
 
   /** looks up a tokenizer by name from context classpath */
   public static TokenizerFactory forName(String name, Map<String, String> args) {
-    return Holder.getLoader().newInstance(name, args);
+    return loader.newInstance(name, args);
   }
 
   /** looks up a tokenizer class by name from context classpath */
   public static Class<? extends TokenizerFactory> lookupClass(String name) {
-    return Holder.getLoader().lookupClass(name);
+    return loader.lookupClass(name);
   }
 
   /** returns a list of all available tokenizer names from context classpath */
   public static Set<String> availableTokenizers() {
-    return Holder.getLoader().availableServices();
+    return loader.availableServices();
   }
 
   /** looks up a SPI name for the specified tokenizer factory */
@@ -82,7 +65,7 @@ public abstract class TokenizerFactory extends AbstractAnalysisFactory {
    * given classpath/classloader!</em>
    */
   public static void reloadTokenizers(ClassLoader classloader) {
-    Holder.getLoader().reload(classloader);
+    loader.reload(classloader);
   }
 
   /** Default ctor for compatibility with SPI */

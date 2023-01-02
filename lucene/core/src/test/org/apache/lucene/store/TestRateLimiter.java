@@ -17,7 +17,6 @@
 package org.apache.lucene.store;
 
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.store.RateLimiter.SimpleRateLimiter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -86,9 +85,7 @@ public final class TestRateLimiter extends LuceneTestCase {
       thread.join();
     }
     long endNS = System.nanoTime();
-    double actualMBPerSec =
-        (totBytes.get() / 1024. / 1024.)
-            / ((endNS - startNS) / (double) TimeUnit.SECONDS.toNanos(1));
+    double actualMBPerSec = (totBytes.get() / 1024 / 1024.) / ((endNS - startNS) / 1000000000.0);
 
     // TODO: this may false trip .... could be we can only assert that it never exceeds the max, so
     // slow jenkins doesn't trip:

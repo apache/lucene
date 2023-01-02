@@ -17,6 +17,7 @@
 package org.apache.lucene.spatial.composite;
 
 import java.io.IOException;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -46,12 +47,12 @@ public class CompositeVerifyQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final Query rewritten = indexQuery.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    final Query rewritten = indexQuery.rewrite(reader);
     if (rewritten != indexQuery) {
       return new CompositeVerifyQuery(rewritten, predicateValueSource);
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

@@ -222,9 +222,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
     return RAM_USAGE;
   }
 
-  /**
-   * @return The estimated RAM usage of the given {@link TermState}.
-   */
+  /** @return The estimated RAM usage of the given {@link TermState}. */
   public static long ramBytesUsed(TermState termState) {
     return termState instanceof IntBlockTermState
         ? INT_BLOCK_TERM_STATE_RAM_USAGE

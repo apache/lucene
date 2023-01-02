@@ -58,7 +58,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 import org.junit.After;
 import org.junit.Before;
 
@@ -1032,7 +1031,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     String[] snippets = highlighter.highlight("body", query, hits);
     assertEquals(numDocs, snippets.length);
     for (int hit = 0; hit < numDocs; hit++) {
-      Document doc = searcher.storedFields().document(hits.scoreDocs[hit].doc);
+      Document doc = searcher.doc(hits.scoreDocs[hit].doc);
       int id = Integer.parseInt(doc.get("id"));
       String expected = "the <b>answer</b> is " + id;
       if ((id & 1) == 0) {
@@ -1619,7 +1618,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
                   }
 
                   @Override
-                  public Query rewrite(IndexSearcher indexSearcher) {
+                  public Query rewrite(IndexReader reader) {
                     return this;
                   }
 
@@ -1657,34 +1656,6 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     String[] snippets = highlighter.highlight("body", query, topDocs);
     assertEquals(1, snippets.length);
     assertEquals("Test a <b>one</b> <b>sentence</b> document.", snippets[0]);
-
-    ir.close();
-  }
-
-  public void testQueryWithLongTerm() throws IOException {
-    IndexReader ir = indexSomeFields();
-    IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter highlighter =
-        randomUnifiedHighlighter(
-            searcher, indexAnalyzer, EnumSet.of(HighlightFlag.WEIGHT_MATCHES), true);
-
-    Query query =
-        new BooleanQuery.Builder()
-            .add(
-                new TermQuery(
-                    new Term("title", "a".repeat(DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH))),
-                BooleanClause.Occur.SHOULD)
-            .add(
-                new TermQuery(
-                    new Term("title", "a".repeat(DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH + 1))),
-                BooleanClause.Occur.SHOULD)
-            .add(new TermQuery(new Term("title", "title")), BooleanClause.Occur.SHOULD)
-            .build();
-
-    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-
-    String[] snippets = highlighter.highlight("title", query, topDocs);
-    assertArrayEquals(new String[] {"This is the <b>title</b> field."}, snippets);
 
     ir.close();
   }

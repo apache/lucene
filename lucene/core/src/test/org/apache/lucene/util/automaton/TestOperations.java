@@ -19,18 +19,11 @@ package org.apache.lucene.util.automaton;
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.UnicodeUtil;
+import org.apache.lucene.util.*;
 
 public class TestOperations extends LuceneTestCase {
   /** Test string union. */
@@ -122,6 +115,14 @@ public class TestOperations extends LuceneTestCase {
       }
     }
   }
+  /** tests against the original brics implementation. */
+  public void testIsFinite() {
+    int num = atLeast(200);
+    for (int i = 0; i < num; i++) {
+      Automaton a = AutomatonTestUtil.randomAutomaton(random());
+      assertEquals(AutomatonTestUtil.isFiniteSlow(a), Operations.isFinite(a));
+    }
+  }
 
   public void testIsFiniteEatsStack() {
     char[] chars = new char[50000];
@@ -132,7 +133,7 @@ public class TestOperations extends LuceneTestCase {
     Automaton a =
         Operations.union(Automata.makeString(bigString1), Automata.makeString(bigString2));
     IllegalArgumentException exc =
-        expectThrows(IllegalArgumentException.class, () -> AutomatonTestUtil.isFinite(a));
+        expectThrows(IllegalArgumentException.class, () -> Operations.isFinite(a));
     assertTrue(exc.getMessage().contains("input automaton is too large"));
   }
 

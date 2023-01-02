@@ -21,6 +21,7 @@ import java.util.Collection;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.PointInSetQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
@@ -311,12 +312,14 @@ public final class LongPoint extends Field {
    * {@code weight/2} when the document's value is distant of {@code pivotDistance} from {@code
    * origin}. In case of multi-valued fields, only the closest point to {@code origin} will be
    * considered. This query is typically useful to boost results based on recency by adding this
-   * query to a {@link Occur#SHOULD} clause of a {@link BooleanQuery}. @Deprecated Use {@link
-   * LongField#newDistanceFeatureQuery}
+   * query to a {@link Occur#SHOULD} clause of a {@link BooleanQuery}.
    */
-  @Deprecated
   public static Query newDistanceFeatureQuery(
       String field, float weight, long origin, long pivotDistance) {
-    return LongField.newDistanceFeatureQuery(field, weight, origin, pivotDistance);
+    Query query = new LongDistanceFeatureQuery(field, origin, pivotDistance);
+    if (weight != 1f) {
+      query = new BoostQuery(query, weight);
+    }
+    return query;
   }
 }

@@ -17,28 +17,11 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 
 public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return new SimpleTextCodec();
-  }
-
-  @Override
-  protected VectorEncoding randomVectorEncoding() {
-    // TODO: Should SimpleTextKnnVectorsFormat support all encodings?
-    return VectorEncoding.FLOAT32;
-  }
-
-  @Override
-  public void testRandomBytes() throws Exception {
-    // unimplemented
-  }
-
-  @Override
-  public void testSortedIndexBytes() throws Exception {
-    // unimplemented
   }
 }

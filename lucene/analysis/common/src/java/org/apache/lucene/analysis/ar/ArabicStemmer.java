@@ -30,20 +30,20 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *   <li>Stemming of common suffixes.
  * </ul>
  */
-class ArabicStemmer {
-  static final char ALEF = '\u0627';
-  static final char BEH = '\u0628';
-  static final char TEH_MARBUTA = '\u0629';
-  static final char TEH = '\u062A';
-  static final char FEH = '\u0641';
-  static final char KAF = '\u0643';
-  static final char LAM = '\u0644';
-  static final char NOON = '\u0646';
-  static final char HEH = '\u0647';
-  static final char WAW = '\u0648';
-  static final char YEH = '\u064A';
+public class ArabicStemmer {
+  public static final char ALEF = '\u0627';
+  public static final char BEH = '\u0628';
+  public static final char TEH_MARBUTA = '\u0629';
+  public static final char TEH = '\u062A';
+  public static final char FEH = '\u0641';
+  public static final char KAF = '\u0643';
+  public static final char LAM = '\u0644';
+  public static final char NOON = '\u0646';
+  public static final char HEH = '\u0647';
+  public static final char WAW = '\u0648';
+  public static final char YEH = '\u064A';
 
-  static final char[][] prefixes = {
+  public static final char[][] prefixes = {
     ("" + ALEF + LAM).toCharArray(),
     ("" + WAW + ALEF + LAM).toCharArray(),
     ("" + BEH + ALEF + LAM).toCharArray(),
@@ -53,7 +53,7 @@ class ArabicStemmer {
     ("" + WAW).toCharArray(),
   };
 
-  static final char[][] suffixes = {
+  public static final char[][] suffixes = {
     ("" + HEH + ALEF).toCharArray(),
     ("" + ALEF + NOON).toCharArray(),
     ("" + ALEF + TEH).toCharArray(),
@@ -73,7 +73,7 @@ class ArabicStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     len = stemPrefix(s, len);
     len = stemSuffix(s, len);
 
@@ -87,7 +87,7 @@ class ArabicStemmer {
    * @param len length of input buffer
    * @return new length of input buffer after stemming.
    */
-  int stemPrefix(char[] s, int len) {
+  public int stemPrefix(char[] s, int len) {
     for (int i = 0; i < prefixes.length; i++)
       if (startsWithCheckLength(s, len, prefixes[i])) return deleteN(s, 0, len, prefixes[i].length);
     return len;
@@ -100,7 +100,7 @@ class ArabicStemmer {
    * @param len length of input buffer
    * @return new length of input buffer after stemming
    */
-  int stemSuffix(char[] s, int len) {
+  public int stemSuffix(char[] s, int len) {
     for (int i = 0; i < suffixes.length; i++)
       if (endsWithCheckLength(s, len, suffixes[i]))
         len = deleteN(s, len - suffixes[i].length, len, suffixes[i].length);

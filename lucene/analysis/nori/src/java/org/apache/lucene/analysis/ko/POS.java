@@ -42,50 +42,14 @@ public class POS {
 
   /** Part of speech tag for Korean based on Sejong corpus classification. */
   public enum Tag {
-    /** Pre-final ending */
-    EP(100, "Pre-final ending"),
-
-    /** Sentence-closing ending */
-    EF(101, "Sentence-closing ending"),
-
-    /** Connective ending */
-    EC(102, "Connective ending"),
-
-    /** Nominal transformative ending */
-    ETN(103, "Nominal transformative ending"),
-
-    /** Adnominal form transformative ending */
-    ETM(104, "Adnominal form transformative ending"),
+    /** Verbal endings */
+    E(100, "Verbal endings"),
 
     /** Interjection */
     IC(110, "Interjection"),
 
-    /** Subject case marker */
-    JKS(120, "Subject case marker"),
-
-    /** Complement case marker */
-    JKC(121, "Complement case marker"),
-
-    /** Adnominal case marker */
-    JKG(122, "Adnominal case marker"),
-
-    /** Object case marker */
-    JKO(123, "Object case marker"),
-
-    /** Adverbial case marker */
-    JKB(124, "Adverbial case marker"),
-
-    /** Vocative case marker */
-    JKV(125, "Vocative case marker"),
-
-    /** Quotative case marker */
-    JKQ(126, "Quotative case marker"),
-
-    /** Auxiliary postpositional particle */
-    JX(127, "Auxiliary postpositional particle"),
-
-    /** Conjunctive postpositional particle */
-    JC(128, "Conjunctive postpositional particle"),
+    /** Ending Particle */
+    J(120, "Ending Particle"),
 
     /** General Adverb */
     MAG(130, "General Adverb"),
@@ -213,7 +177,14 @@ public class POS {
 
   /** Returns the {@link Tag} of the provided <code>name</code>. */
   public static Tag resolveTag(String name) {
-    return Tag.valueOf(name.toUpperCase(Locale.ENGLISH));
+    String tagUpper = name.toUpperCase(Locale.ENGLISH);
+    if (tagUpper.startsWith("J")) {
+      return Tag.J;
+    } else if (tagUpper.startsWith("E")) {
+      return Tag.E;
+    } else {
+      return Tag.valueOf(tagUpper);
+    }
   }
 
   /** Returns the {@link Tag} of the provided <code>tag</code>. */

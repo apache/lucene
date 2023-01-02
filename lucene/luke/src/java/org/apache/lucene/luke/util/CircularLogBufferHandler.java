@@ -105,9 +105,7 @@ public class CircularLogBufferHandler extends Handler {
     listeners.remove(listener);
   }
 
-  /**
-   * @return Return a clone of the buffered records so far.
-   */
+  /** @return Return a clone of the buffered records so far. */
   public List<ImmutableLogRecord> getLogRecords() {
     synchronized (buffer) {
       return List.copyOf(buffer);

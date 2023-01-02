@@ -24,7 +24,7 @@ configure(project(":lucene:benchmark")) {
   apply plugin: "de.undercouch.download"
 
   ext {
-    dataDir = file("work")
+    dataDir = file("data")
   }
 
   task getEnWiki(type: Download) {
@@ -120,9 +120,10 @@ configure(project(":lucene:benchmark")) {
   task getReuters(type: Download) {
     ext {
       name = "reuters21578"
-      src = "https://kdd.ics.uci.edu/databases/${name}/${name}.tar.gz"
+      // note: there is no HTTPS url and we don't care because this is merely test/perf data
+      src = "http://www.daviddlewis.com/resources/testcollections/reuters21578/${name}.tar.gz"
       intermediate = file("${dataDir}/${name}.tar.gz")
-      dst = file("${dataDir}/reuters-out")
+      dst = file("${dataDir}/${name}")
     }
 
     outputs.dir ext.dst

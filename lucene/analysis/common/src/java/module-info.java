@@ -60,7 +60,6 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.lv;
   exports org.apache.lucene.analysis.minhash;
   exports org.apache.lucene.analysis.miscellaneous;
-  exports org.apache.lucene.analysis.morph;
   exports org.apache.lucene.analysis.ne;
   exports org.apache.lucene.analysis.ngram;
   exports org.apache.lucene.analysis.nl;

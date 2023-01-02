@@ -85,7 +85,7 @@ public final class OfflinePointReader implements PointReader {
             == tempDir.fileLength(tempFileName) - CodecUtil.footerLength()) {
       // If we are going to read the entire file, e.g. because BKDWriter is now
       // partitioning it, we open with checksums:
-      in = tempDir.openChecksumInput(tempFileName);
+      in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE);
     } else {
       // Since we are going to seek somewhere in the middle of a possibly huge
       // file, and not read all bytes from there, don't use ChecksumIndexInput here.

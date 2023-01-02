@@ -95,18 +95,27 @@ public class TestAutomatonQuery extends LuceneTestCase {
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
-                newTerm("bogus"), automaton, false, MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
-    assertEquals(
-        expected,
-        automatonQueryNrHits(
-            new AutomatonQuery(
-                newTerm("bogus"), automaton, false, MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+                newTerm("bogus"),
+                automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                false,
+                MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
     assertEquals(
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
                 newTerm("bogus"),
                 automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                false,
+                MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"),
+                automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
                 false,
                 MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }
@@ -121,10 +130,7 @@ public class TestAutomatonQuery extends LuceneTestCase {
     assertAutomatonHits(1, Automata.makeChar('a'));
     assertAutomatonHits(2, Automata.makeCharRange('a', 'b'));
     assertAutomatonHits(2, Automata.makeDecimalInterval(1233, 2346, 0));
-    assertAutomatonHits(
-        1,
-        Operations.determinize(
-            Automata.makeDecimalInterval(0, 2000, 0), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+    assertAutomatonHits(1, Automata.makeDecimalInterval(0, 2000, 0));
     assertAutomatonHits(2, Operations.union(Automata.makeChar('a'), Automata.makeChar('b')));
     assertAutomatonHits(0, Operations.intersection(Automata.makeChar('a'), Automata.makeChar('b')));
     assertAutomatonHits(
@@ -133,6 +139,14 @@ public class TestAutomatonQuery extends LuceneTestCase {
             Automata.makeCharRange('a', 'b'),
             Automata.makeChar('a'),
             DEFAULT_DETERMINIZE_WORK_LIMIT));
+  }
+
+  /** Test that a nondeterministic automaton works correctly. (It should will be determinized) */
+  public void testNFA() throws IOException {
+    // accept this or three, the union is an NFA (two transitions for 't' from
+    // initial state)
+    Automaton nfa = Operations.union(Automata.makeString("this"), Automata.makeString("three"));
+    assertAutomatonHits(2, nfa);
   }
 
   public void testEquals() {
@@ -202,9 +216,8 @@ public class TestAutomatonQuery extends LuceneTestCase {
       queries[i] =
           new AutomatonQuery(
               new Term("bogus", "bogus"),
-              Operations.determinize(
-                  AutomatonTestUtil.randomAutomaton(random()),
-                  Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+              AutomatonTestUtil.randomAutomaton(random()),
+              Integer.MAX_VALUE);
     }
     final CountDownLatch startingGun = new CountDownLatch(1);
     int numThreads = TestUtil.nextInt(random(), 2, 5);
@@ -240,6 +253,6 @@ public class TestAutomatonQuery extends LuceneTestCase {
       terms.add(new BytesRef(TestUtil.randomUnicodeString(random())));
     }
     Collections.sort(terms);
-    new AutomatonQuery(new Term("foo", "bar"), Automata.makeStringUnion(terms));
+    new AutomatonQuery(new Term("foo", "bar"), Automata.makeStringUnion(terms), Integer.MAX_VALUE);
   }
 }

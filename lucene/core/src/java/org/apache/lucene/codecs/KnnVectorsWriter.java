@@ -24,45 +24,30 @@ import java.util.List;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.Accountable;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
-public abstract class KnnVectorsWriter implements Accountable, Closeable {
+public abstract class KnnVectorsWriter implements Closeable {
 
   /** Sole constructor */
   protected KnnVectorsWriter() {}
 
-  /** Add new field for indexing */
-  public abstract KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException;
-
-  /** Flush all buffered data on disk * */
-  public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
-
-  /** Write field for merging */
-  @SuppressWarnings("unchecked")
-  public <T> void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    KnnFieldVectorsWriter<T> writer = (KnnFieldVectorsWriter<T>) addField(fieldInfo);
-    VectorValues mergedValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
-    for (int doc = mergedValues.nextDoc();
-        doc != DocIdSetIterator.NO_MORE_DOCS;
-        doc = mergedValues.nextDoc()) {
-      writer.addValue(doc, mergedValues.vectorValue());
-    }
-  }
+  /** Write all values contained in the provided reader */
+  public abstract void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+      throws IOException;
 
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
 
   /**
    * Merges the segment vectors for all fields. This default implementation delegates to {@link
-   * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
+   * #writeField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
    * deleted documents.
    */
-  public final void merge(MergeState mergeState) throws IOException {
+  public void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
       KnnVectorsReader reader = mergeState.knnVectorsReaders[i];
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
@@ -77,7 +62,35 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        mergeOneField(fieldInfo, mergeState);
+        writeField(
+            fieldInfo,
+            new KnnVectorsReader() {
+              @Override
+              public long ramBytesUsed() {
+                return 0;
+              }
+
+              @Override
+              public void close() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public void checkIntegrity() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public VectorValues getVectorValues(String field) throws IOException {
+                return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+              }
+
+              @Override
+              public TopDocs search(
+                  String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+                throw new UnsupportedOperationException();
+              }
+            });
 
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
@@ -105,16 +118,17 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   }
 
   /** View over multiple VectorValues supporting iterator-style access via DocIdMerger. */
-  protected static class MergedVectorValues extends VectorValues {
+  private static class MergedVectorValues extends VectorValues {
     private final List<VectorValuesSub> subs;
     private final DocIDMerger<VectorValuesSub> docIdMerger;
+    private final int cost;
     private final int size;
 
     private int docId;
     private VectorValuesSub current;
 
     /** Returns a merged view over all the segment's {@link VectorValues}. */
-    public static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+    static MergedVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
 
@@ -135,10 +149,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         throws IOException {
       this.subs = subs;
       docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
-      int totalSize = 0;
+      int totalCost = 0, totalSize = 0;
       for (VectorValuesSub sub : subs) {
+        totalCost += sub.values.cost();
         totalSize += sub.values.size();
       }
+      cost = totalCost;
       size = totalSize;
       docId = -1;
     }
@@ -177,6 +193,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     @Override
     public int size() {
       return size;
+    }
+
+    @Override
+    public long cost() {
+      return cost;
     }
 
     @Override

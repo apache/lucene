@@ -16,16 +16,15 @@
  */
 package org.apache.lucene.benchmark.byTask.tasks;
 
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 
 /** Test Search task which counts number of searches. */
 public class CountingSearchTestTask extends SearchTask {
 
   public static int numSearches = 0;
-  public static long startNanos;
-  public static long lastNanos;
-  public static long prevLastNanos;
+  public static long startMillis;
+  public static long lastMillis;
+  public static long prevLastMillis;
 
   public CountingSearchTestTask(PerfRunData runData) {
     super(runData);
@@ -39,15 +38,15 @@ public class CountingSearchTestTask extends SearchTask {
   }
 
   private static synchronized void incrNumSearches() {
-    prevLastNanos = lastNanos;
-    lastNanos = System.nanoTime();
+    prevLastMillis = lastMillis;
+    lastMillis = System.currentTimeMillis();
     if (0 == numSearches) {
-      startNanos = prevLastNanos = lastNanos;
+      startMillis = prevLastMillis = lastMillis;
     }
     numSearches++;
   }
 
   public long getElapsedMillis() {
-    return TimeUnit.NANOSECONDS.toMillis(lastNanos - startNanos);
+    return lastMillis - startMillis;
   }
 }

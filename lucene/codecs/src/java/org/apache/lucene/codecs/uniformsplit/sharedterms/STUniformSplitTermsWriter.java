@@ -50,7 +50,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -333,7 +332,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
     TermIteratorQueue<SegmentTerms> segmentTermsQueue = createSegmentTermsQueue(segmentTermsList);
     List<TermIterator<SegmentTerms>> groupedSegmentTerms = new ArrayList<>(segmentTermsList.size());
     Map<String, List<SegmentPostings>> fieldPostingsMap =
-        CollectionUtil.newHashMap(mergeState.fieldInfos.length);
+        new HashMap<>(mergeState.fieldInfos.length);
     List<MergingFieldTerms> groupedFieldTerms = new ArrayList<>(mergeState.fieldInfos.length);
     List<FieldMetadataTermState> termStates = new ArrayList<>(mergeState.fieldInfos.length);
 
@@ -352,8 +351,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
 
   private Map<String, MergingFieldTerms> createMergingFieldTermsMap(
       List<FieldMetadata> fieldMetadataList, int numSegments) {
-    Map<String, MergingFieldTerms> fieldTermsMap =
-        CollectionUtil.newHashMap(fieldMetadataList.size());
+    Map<String, MergingFieldTerms> fieldTermsMap = new HashMap<>(fieldMetadataList.size() * 2);
     for (FieldMetadata fieldMetadata : fieldMetadataList) {
       FieldInfo fieldInfo = fieldMetadata.getFieldInfo();
       fieldTermsMap.put(
@@ -384,9 +382,11 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
       SegmentTerms segmentTerms = (SegmentTerms) segmentTermIterator;
       for (Map.Entry<String, BlockTermState> fieldTermState :
           segmentTerms.fieldTermStatesMap.entrySet()) {
-        List<SegmentPostings> segmentPostingsList =
-            fieldPostingsMap.computeIfAbsent(
-                fieldTermState.getKey(), k -> new ArrayList<>(groupedSegmentTerms.size()));
+        List<SegmentPostings> segmentPostingsList = fieldPostingsMap.get(fieldTermState.getKey());
+        if (segmentPostingsList == null) {
+          segmentPostingsList = new ArrayList<>(groupedSegmentTerms.size());
+          fieldPostingsMap.put(fieldTermState.getKey(), segmentPostingsList);
+        }
         segmentPostingsList.add(
             new SegmentPostings(
                 segmentTerms.segmentIndex,

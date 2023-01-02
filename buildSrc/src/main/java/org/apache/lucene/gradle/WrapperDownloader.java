@@ -17,11 +17,7 @@
 package org.apache.lucene.gradle;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
@@ -33,7 +29,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.EnumSet;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -47,22 +42,14 @@ public class WrapperDownloader {
   public static void main(String[] args) {
     if (args.length != 1) {
       System.err.println("Usage: java WrapperDownloader.java <destination>");
-      System.exit(2);
+      System.exit(1);
     }
 
     try {
-      checkVersion();
       new WrapperDownloader().run(Paths.get(args[0]));
     } catch (Exception e) {
       System.err.println("ERROR: " + e.getMessage());
-      System.exit(3);
-    }
-  }
-
-  public static void checkVersion() {
-    int major = Runtime.getRuntime().version().feature();
-    if (major < 17 || major > 19) {
-      throw new IllegalStateException("java version must be between 17 and 19, your version: " + major);
+      System.exit(1);
     }
   }
 
@@ -92,47 +79,21 @@ public class WrapperDownloader {
       }
     }
 
-    URL url = new URL("https://raw.githubusercontent.com/gradle/gradle/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar");
+    URL url = new URL("https://github.com/gradle/gradle/raw/v" + wrapperVersion + "/gradle/wrapper/gradle-wrapper.jar");
     System.err.println("Downloading gradle-wrapper.jar from " + url);
+
+    // As of v6.0.1 the wrapper is approximately 60K
+    // Can increase this if gradle wrapper ever goes beyond 500K, but keep a safety check
+    final int maxSize = 512 * 1024;
 
     // Zero-copy save the jar to a temp file
     Path temp = Files.createTempFile(destination.getParent(), ".gradle-wrapper", ".tmp");
     try {
-      int retries = 3;
-      int retryDelay = 30;
-      HttpURLConnection connection;
-      while (true) {
-        connection = (HttpURLConnection) url.openConnection();
-        try {
-          connection.connect();
-        } catch (IOException e) {
-          if (retries-- > 0) {
-            // Retry after a short delay
-            System.err.println("Error connecting to server: " + e + ", will retry in " + retryDelay + " seconds.");
-            Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
-            continue;
-          }
-        }
-
-        switch (connection.getResponseCode()) {
-          case HttpURLConnection.HTTP_INTERNAL_ERROR:
-          case HttpURLConnection.HTTP_UNAVAILABLE:
-          case HttpURLConnection.HTTP_BAD_GATEWAY:
-            if (retries-- > 0) {
-              // Retry after a short delay.
-              System.err.println("Server returned HTTP " + connection.getResponseCode() + ", will retry in " + retryDelay + " seconds.");
-              Thread.sleep(TimeUnit.SECONDS.toMillis(retryDelay));
-              continue;
-            }
-        }
-
-        // fall through, let getInputStream() throw IOException if there's a failure.
-        break;
-      }
-
-      try (InputStream is = connection.getInputStream();
-           OutputStream out = Files.newOutputStream(temp)){
-        is.transferTo(out);
+      try (ReadableByteChannel in = Channels.newChannel(url.openStream());
+           FileChannel out = FileChannel.open(temp, EnumSet.of(APPEND))) {
+        out.transferFrom(in, 0, maxSize);
+      } catch (IOException e) {
+        throw new IOException("Could not download gradle-wrapper.jar (" + e.getMessage() + ").");
       }
 
       String checksum = checksum(digest, temp);
@@ -145,9 +106,6 @@ public class WrapperDownloader {
 
       Files.move(temp, destination, REPLACE_EXISTING);
       temp = null;
-    } catch (IOException | InterruptedException e) {
-      throw new IOException("Could not download gradle-wrapper.jar (" +
-          e.getClass().getSimpleName() + ": " + e.getMessage() + ").");
     } finally {
       if (temp != null) {
         Files.deleteIfExists(temp);

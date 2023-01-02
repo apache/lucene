@@ -18,7 +18,6 @@ package org.apache.lucene.util;
 
 import java.util.Locale;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.BaseSortTestCase.Entry;
 import org.apache.lucene.util.BaseSortTestCase.Strategy;
 
@@ -65,10 +64,9 @@ public class SorterBenchmark {
 
   public static void main(String[] args) throws Exception {
     assert false : "Disable assertions to run the benchmark";
-    Random random = new Random(System.nanoTime());
+    Random random = new Random(System.currentTimeMillis());
     long seed = random.nextLong();
 
-    System.out.println("SEED: " + seed);
     System.out.println("WARMUP");
     benchmarkSorters(Strategy.RANDOM, random, seed);
     System.out.println();
@@ -99,8 +97,8 @@ public class SorterBenchmark {
         System.arraycopy(original, 0, clone, 0, original.length);
         sorter.sort(0, clone.length);
       }
-      System.out.printf(
-          Locale.ROOT, "%5d", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNs));
+      long timeMs = (System.nanoTime() - startTimeNs) / 1000000;
+      System.out.printf(Locale.ROOT, "%5d", timeMs);
     }
   }
 

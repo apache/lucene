@@ -19,11 +19,13 @@ package org.apache.lucene.codecs.perfield;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.TreeMap;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -31,11 +33,11 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -100,21 +102,34 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-      KnnVectorsWriter writer = getInstance(fieldInfo);
-      return writer.addField(fieldInfo);
+    public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
+        throws IOException {
+      getInstance(fieldInfo).writeField(fieldInfo, knnVectorsReader);
     }
 
     @Override
-    public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-      for (WriterAndSuffix was : formats.values()) {
-        was.writer.flush(maxDoc, sortMap);
+    public final void merge(MergeState mergeState) throws IOException {
+      Map<KnnVectorsWriter, Collection<String>> writersToFields = new IdentityHashMap<>();
+
+      // Group each writer by the fields it handles
+      for (FieldInfo fi : mergeState.mergeFieldInfos) {
+        if (fi.hasVectorValues() == false) {
+          continue;
+        }
+        KnnVectorsWriter writer = getInstance(fi);
+        Collection<String> fields = writersToFields.computeIfAbsent(writer, k -> new ArrayList<>());
+        fields.add(fi.name);
       }
-    }
 
-    @Override
-    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      getInstance(fieldInfo).mergeOneField(fieldInfo, mergeState);
+      // Delegate the merge to the appropriate writer
+      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
+      try {
+        for (Map.Entry<KnnVectorsWriter, Collection<String>> e : writersToFields.entrySet()) {
+          e.getKey().merge(pfMergeState.apply(e.getValue()));
+        }
+      } finally {
+        pfMergeState.reset();
+      }
     }
 
     @Override
@@ -165,17 +180,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         assert suffixes.containsKey(formatName);
         suffix = writerAndSuffix.suffix;
       }
+
       field.putAttribute(PER_FIELD_SUFFIX_KEY, Integer.toString(suffix));
       return writerAndSuffix.writer;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long total = 0;
-      for (WriterAndSuffix was : formats.values()) {
-        total += was.writer.ramBytesUsed();
-      }
-      return total;
     }
   }
 
@@ -258,13 +265,12 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
         throws IOException {
-      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
-    }
-
-    @Override
-    public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
-        throws IOException {
-      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
+      KnnVectorsReader knnVectorsReader = fields.get(field);
+      if (knnVectorsReader == null) {
+        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      } else {
+        return knnVectorsReader.search(field, target, k, acceptDocs, visitedLimit);
+      }
     }
 
     @Override

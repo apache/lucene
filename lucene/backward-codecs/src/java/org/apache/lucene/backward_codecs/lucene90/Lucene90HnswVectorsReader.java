@@ -31,6 +31,8 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -46,7 +48,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -55,12 +56,15 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
+  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final long checksumSeed;
 
   Lucene90HnswVectorsReader(SegmentReadState state) throws IOException {
+    this.fieldInfos = state.fieldInfos;
+
     int versionMeta = readMetadata(state);
     long[] checksumRef = new long[1];
     boolean success = false;
@@ -93,7 +97,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene90HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
       Throwable priorE = null;
       try {
         versionMeta =
@@ -273,12 +277,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
-  @Override
-  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
@@ -300,6 +298,20 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
         return fieldEntry.ordToDoc.length;
       }
     };
+  }
+
+  /** Get knn graph values; used for testing */
+  public HnswGraph getGraphValues(String field) throws IOException {
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    if (info == null) {
+      throw new IllegalArgumentException("No such field '" + field + "'");
+    }
+    FieldEntry entry = fields.get(field);
+    if (entry != null && entry.indexDataLength > 0) {
+      return getGraphValues(entry);
+    } else {
+      return HnswGraph.EMPTY;
+    }
   }
 
   private HnswGraph getGraphValues(FieldEntry entry) throws IOException {
@@ -352,7 +364,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
+  static class OffHeapVectorValues extends VectorValues
+      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
     final int dimension;
     final int[] ordToDoc;
@@ -433,7 +446,12 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues copy() {
+    public long cost() {
+      return ordToDoc.length;
+    }
+
+    @Override
+    public RandomAccessVectorValues randomAccess() {
       return new OffHeapVectorValues(dimension, ordToDoc, dataIn.clone());
     }
 

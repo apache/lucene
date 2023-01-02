@@ -33,15 +33,11 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 /**
@@ -101,7 +97,6 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             0,
             0,
-            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
@@ -172,26 +167,14 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
-    return null;
-  }
-
-  @Override
   public void checkIntegrity() throws IOException {}
 
   @Override
-  public TermVectors termVectors() throws IOException {
-    return new TermVectors() {
-      @Override
-      public Fields get(int docID) {
-        if (docID != 0) {
-          return null;
-        } else {
-          return fields;
-        }
-      }
-    };
+  public Fields getTermVectors(int docID) throws IOException {
+    if (docID != 0) {
+      return null;
+    }
+    return fields;
   }
 
   @Override
@@ -205,12 +188,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public StoredFields storedFields() throws IOException {
-    return new StoredFields() {
-      @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
-    };
-  }
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
 
   @Override
   public LeafMetaData getMetaData() {

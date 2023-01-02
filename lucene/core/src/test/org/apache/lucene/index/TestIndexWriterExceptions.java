@@ -170,8 +170,8 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       final Field idField = newField(r, "id", "", DocCopyIterator.custom2);
       doc.add(idField);
 
-      final int maxIterations = 250;
-      int iterations = 0;
+      final long stopTime = System.currentTimeMillis() + 500;
+
       do {
         if (VERBOSE) {
           System.out.println(Thread.currentThread().getName() + ": TEST: IndexerThread: cycle");
@@ -219,7 +219,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           failure = t;
           break;
         }
-      } while (++iterations < maxIterations);
+      } while (System.currentTimeMillis() < stopTime);
     }
   }
 
@@ -698,13 +698,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         int numDel = 0;
         final Bits liveDocs = MultiBits.getLiveDocs(reader);
         assertNotNull(liveDocs);
-        StoredFields storedFields = reader.storedFields();
-        TermVectors termVectors = reader.termVectors();
         for (int j = 0; j < reader.maxDoc(); j++) {
           if (!liveDocs.get(j)) numDel++;
           else {
-            storedFields.document(j);
-            termVectors.get(j);
+            reader.document(j);
+            reader.getTermVectors(j);
           }
         }
         assertEquals(1, numDel);
@@ -724,11 +722,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertEquals(expected, reader.maxDoc());
       int numDel = 0;
       assertNull(MultiBits.getLiveDocs(reader));
-      StoredFields storedFields = reader.storedFields();
-      TermVectors termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
-        storedFields.document(j);
-        termVectors.get(j);
+        reader.document(j);
+        reader.getTermVectors(j);
       }
       reader.close();
       assertEquals(0, numDel);
@@ -883,13 +879,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       int numDel = 0;
       final Bits liveDocs = MultiBits.getLiveDocs(reader);
       assertNotNull(liveDocs);
-      StoredFields storedFields = reader.storedFields();
-      TermVectors termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
         if (!liveDocs.get(j)) numDel++;
         else {
-          storedFields.document(j);
-          termVectors.get(j);
+          reader.document(j);
+          reader.getTermVectors(j);
         }
       }
       reader.close();
@@ -909,11 +903,9 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertEquals(expected, reader.docFreq(new Term("contents", "here")));
       assertEquals(expected, reader.maxDoc());
       assertNull(MultiBits.getLiveDocs(reader));
-      storedFields = reader.storedFields();
-      termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
-        storedFields.document(j);
-        termVectors.get(j);
+        reader.document(j);
+        reader.getTermVectors(j);
       }
       reader.close();
 

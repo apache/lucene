@@ -87,7 +87,7 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
     assertEquals(query.toString(), "key:one MatchNoDocsQuery(\"field not found\")");
     assertEquals(searcher.count(query), 1);
     hits = searcher.search(query, 1000).scoreDocs;
-    Query rewrite = query.rewrite(searcher);
+    Query rewrite = query.rewrite(ir);
     assertEquals(1, hits.length);
     assertEquals(rewrite.toString(), "key:one");
 

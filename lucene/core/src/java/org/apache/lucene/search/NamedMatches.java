@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -112,8 +113,8 @@ public class NamedMatches implements Matches {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-      Query rewritten = in.rewrite(indexSearcher);
+    public Query rewrite(IndexReader reader) throws IOException {
+      Query rewritten = in.rewrite(reader);
       if (rewritten != in) {
         return new NamedQuery(name, rewritten);
       }

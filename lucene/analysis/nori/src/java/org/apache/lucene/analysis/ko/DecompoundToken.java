@@ -16,8 +16,7 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.KoMorphData;
-import org.apache.lucene.analysis.morph.TokenType;
+import org.apache.lucene.analysis.ko.dict.Dictionary;
 
 /** A token that was generated from a compound. */
 public class DecompoundToken extends Token {
@@ -30,11 +29,9 @@ public class DecompoundToken extends Token {
    * @param surfaceForm The surface form of the token.
    * @param startOffset The start offset of the token in the analyzed text.
    * @param endOffset The end offset of the token in the analyzed text.
-   * @param type The type of this token.
    */
-  public DecompoundToken(
-      POS.Tag posTag, String surfaceForm, int startOffset, int endOffset, TokenType type) {
-    super(surfaceForm.toCharArray(), 0, surfaceForm.length(), startOffset, endOffset, type);
+  public DecompoundToken(POS.Tag posTag, String surfaceForm, int startOffset, int endOffset) {
+    super(surfaceForm.toCharArray(), 0, surfaceForm.length(), startOffset, endOffset);
     this.posTag = posTag;
   }
 
@@ -74,7 +71,7 @@ public class DecompoundToken extends Token {
   }
 
   @Override
-  public KoMorphData.Morpheme[] getMorphemes() {
+  public Dictionary.Morpheme[] getMorphemes() {
     return null;
   }
 }

@@ -141,7 +141,7 @@ public class OfflineSorter {
     /** number of partition merges */
     public int mergeRounds;
     /** number of lines of data read */
-    public long lineCount;
+    public int lineCount;
     /** time spent merging sorted partitions (in milliseconds) */
     public final AtomicLong mergeTimeMS = new AtomicLong();
     /** time spent sorting data (in milliseconds) */
@@ -283,7 +283,8 @@ public class OfflineSorter {
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
     boolean success = false;
-    try (ByteSequencesReader is = getReader(dir.openChecksumInput(inputFileName), inputFileName)) {
+    try (ByteSequencesReader is =
+        getReader(dir.openChecksumInput(inputFileName, IOContext.READONCE), inputFileName)) {
       while (true) {
         Partition part = readPartition(is);
         if (part.count == 0) {
@@ -366,7 +367,7 @@ public class OfflineSorter {
    */
   private void verifyChecksum(Throwable priorException, ByteSequencesReader reader)
       throws IOException {
-    try (ChecksumIndexInput in = dir.openChecksumInput(reader.name)) {
+    try (ChecksumIndexInput in = dir.openChecksumInput(reader.name, IOContext.READONCE)) {
       CodecUtil.checkFooter(in, priorException);
     }
   }
@@ -700,7 +701,9 @@ public class OfflineSorter {
         // Open streams and read the top for each file
         for (int i = 0; i < segmentsToMerge.size(); i++) {
           Partition segment = getPartition(segmentsToMerge.get(i));
-          streams[i] = getReader(dir.openChecksumInput(segment.fileName), segment.fileName);
+          streams[i] =
+              getReader(
+                  dir.openChecksumInput(segment.fileName, IOContext.READONCE), segment.fileName);
 
           BytesRef item = null;
           try {

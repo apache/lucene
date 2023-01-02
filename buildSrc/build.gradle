@@ -16,12 +16,14 @@
  */
 
 repositories {
-  mavenCentral()
+  maven {
+    url "https://jfrog.fkinternal.com/artifactory/maven_virtual"
+  }
 }
 
 ext {
   // Minimum Java version required to compile buildSrc.
-  minJavaVersion = JavaVersion.VERSION_17
+  minJavaVersion = JavaVersion.VERSION_11
 }
 
 

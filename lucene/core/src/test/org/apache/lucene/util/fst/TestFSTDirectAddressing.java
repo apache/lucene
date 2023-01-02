@@ -30,7 +30,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
@@ -268,27 +267,24 @@ public class TestFSTDirectAddressing extends LuceneTestCase {
         new InputStreamDataInput(newInputStream(Paths.get(fstFilePath)))) {
 
       System.out.println("Reading FST");
-      long startTimeMs = System.nanoTime();
+      long startTimeMs = System.currentTimeMillis();
       FST<CharsRef> originalFst = new FST<>(in, in, CharSequenceOutputs.getSingleton());
-      long endTimeMs = System.nanoTime();
-      System.out.println(
-          "time = " + TimeUnit.NANOSECONDS.toMillis(endTimeMs - startTimeMs) + " ms");
+      long endTimeMs = System.currentTimeMillis();
+      System.out.println("time = " + (endTimeMs - startTimeMs) + " ms");
 
       for (float oversizingFactor : List.of(0f, 0f, 0f, 1f, 1f, 1f)) {
         System.out.println("\nFST construction (oversizingFactor=" + oversizingFactor + ")");
-        startTimeMs = System.nanoTime();
+        startTimeMs = System.currentTimeMillis();
         FST<CharsRef> fst = recompile(originalFst, oversizingFactor);
-        endTimeMs = System.nanoTime();
-        System.out.println(
-            "time = " + TimeUnit.NANOSECONDS.toMillis(endTimeMs - startTimeMs) + " ms");
+        endTimeMs = System.currentTimeMillis();
+        System.out.println("time = " + (endTimeMs - startTimeMs) + " ms");
         System.out.println("FST RAM = " + fst.ramBytesUsed() + " B");
 
         System.out.println("FST enum");
-        startTimeMs = System.nanoTime();
+        startTimeMs = System.currentTimeMillis();
         walk(fst);
-        endTimeMs = System.nanoTime();
-        System.out.println(
-            "time = " + TimeUnit.NANOSECONDS.toMillis(endTimeMs - startTimeMs) + " ms");
+        endTimeMs = System.currentTimeMillis();
+        System.out.println("time = " + (endTimeMs - startTimeMs) + " ms");
       }
     }
   }

@@ -27,7 +27,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDReader;
@@ -60,7 +59,7 @@ public class Lucene90PointsReader extends PointsReader {
 
     boolean success = false;
     try {
-      indexIn = readState.directory.openInput(indexFileName, IOContext.LOAD);
+      indexIn = readState.directory.openInput(indexFileName, readState.context);
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene90PointsFormat.INDEX_CODEC_NAME,
@@ -81,7 +80,8 @@ public class Lucene90PointsReader extends PointsReader {
       CodecUtil.retrieveChecksum(dataIn);
 
       long indexLength = -1, dataLength = -1;
-      try (ChecksumIndexInput metaIn = readState.directory.openChecksumInput(metaFileName)) {
+      try (ChecksumIndexInput metaIn =
+          readState.directory.openChecksumInput(metaFileName, readState.context)) {
         Throwable priorE = null;
         try {
           CodecUtil.checkIndexHeader(

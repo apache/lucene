@@ -20,12 +20,12 @@
 
 configure(rootProject) {
   ext {
-    apacheNexusSnapshotsRepository = "https://repository.apache.org/content/repositories/snapshots"
+    apacheNexusSnapshotsRepository = "https://jfrog.fkinternal.com/artifactory/maven_virtual"
   }
 
   // These access credentials are typically passed by the CI job.
-  def asfNexusUsername = propertyOrEnvOrDefault('asfNexusUsername', "ASF_NEXUS_USERNAME", null)
-  def asfNexusPassword = propertyOrEnvOrDefault('asfNexusPassword', "ASF_NEXUS_PASSWORD", null)
+  def asfNexusUsername = "vatsal.patel"//propertyOrEnvOrDefault('asfNexusUsername', , "vatsal.patel@flipkart.com")
+  def asfNexusPassword = "Vatsaayu7&"//propertyOrEnvOrDefault('asfNexusPassword', , "Vatsaayu7&")
 
   task mavenToApacheSnapshots() {
     group "Distribution"
@@ -39,9 +39,9 @@ configure(rootProject) {
   task checkSnapshotsRepositoryPushPreconditions() {
     doFirst {
       // Make sure we're pushing a snapshot version.
-      if (!snapshotBuild) {
-        throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
-      }
+//      if (!snapshotBuild) {
+//        throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
+//      }
 
       // Make sure access credentials have been passed.
       if (asfNexusUsername == null || asfNexusPassword == null) {

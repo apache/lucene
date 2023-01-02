@@ -17,25 +17,13 @@
 package org.apache.lucene.util;
 
 import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
-import static org.apache.lucene.util.RamUsageEstimator.COMPRESSED_REFS_ENABLED;
-import static org.apache.lucene.util.RamUsageEstimator.JVM_IS_HOTSPOT_64BIT;
-import static org.apache.lucene.util.RamUsageEstimator.LONG_SIZE;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_ALIGNMENT;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
-import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOf;
-import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.lucene.util.RamUsageEstimator.sizeOf;
+import static org.apache.lucene.util.RamUsageEstimator.*;
 
-import java.lang.management.CompilationMXBean;
-import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -205,12 +193,18 @@ public class TestRamUsageEstimator extends LuceneTestCase {
 
   public void testHotspotBean() {
     assumeTrue("testHotspotBean only works on 64bit JVMs.", Constants.JRE_IS_64BIT);
-    assumeTrue(
-        "testHotspotBean only works on Hotspot (OpenJDK, Oracle) virtual machines.",
-        Optional.ofNullable(ManagementFactory.getCompilationMXBean())
-            .map(CompilationMXBean::getName)
-            .orElse("Unknown")
-            .startsWith("HotSpot"));
+    try {
+      Class.forName(MANAGEMENT_FACTORY_CLASS);
+    } catch (ClassNotFoundException e) {
+      assumeNoException("testHotspotBean does not work on Java 8+ compact profile.", e);
+    }
+    try {
+      Class.forName(HOTSPOT_BEAN_CLASS);
+    } catch (ClassNotFoundException e) {
+      assumeNoException(
+          "testHotspotBean only works on Hotspot (OpenJDK, Oracle) virtual machines.", e);
+    }
+
     assertTrue(
         "We should have been able to detect Hotspot's internal settings from the management bean.",
         JVM_IS_HOTSPOT_64BIT);

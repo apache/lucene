@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.function.DoubleToLongFunction;
 import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.comparators.DoubleComparator;
@@ -84,7 +85,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    *
    * <p>Queries that use DoubleValuesSource objects should call rewrite() during {@link
    * Query#createWeight(IndexSearcher, ScoreMode, float)} rather than during {@link
-   * Query#rewrite(IndexSearcher)} to avoid IndexReader reference leakage.
+   * Query#rewrite(IndexReader)} to avoid IndexReader reference leakage.
    *
    * <p>For the same reason, implementations that cache references to the IndexSearcher should
    * return a new object from this method.

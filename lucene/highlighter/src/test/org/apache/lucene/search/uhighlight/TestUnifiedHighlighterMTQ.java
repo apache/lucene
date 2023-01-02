@@ -1111,8 +1111,8 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-      Query newOriginalQuery = originalQuery.rewrite(indexSearcher);
+    public Query rewrite(IndexReader reader) throws IOException {
+      Query newOriginalQuery = originalQuery.rewrite(reader);
       if (newOriginalQuery != originalQuery) {
         return new MyWrapperSpanQuery((SpanQuery) newOriginalQuery);
       }

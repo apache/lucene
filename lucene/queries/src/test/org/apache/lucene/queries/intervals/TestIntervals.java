@@ -51,9 +51,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -1090,9 +1088,8 @@ public class TestIntervals extends LuceneTestCase {
 
   public void testMultiTerm() throws IOException {
     RegExp re = new RegExp("p.*e");
-    Automaton automaton =
-        Operations.determinize(re.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-    IntervalsSource source = Intervals.multiterm(new CompiledAutomaton(automaton), re.toString());
+    IntervalsSource source =
+        Intervals.multiterm(new CompiledAutomaton(re.toAutomaton()), re.toString());
 
     checkIntervals(
         source,
@@ -1112,7 +1109,7 @@ public class TestIntervals extends LuceneTestCase {
             IllegalStateException.class,
             () -> {
               IntervalsSource s =
-                  Intervals.multiterm(new CompiledAutomaton(automaton), 1, re.toString());
+                  Intervals.multiterm(new CompiledAutomaton(re.toAutomaton()), 1, re.toString());
               for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
                 s.intervals("field1", ctx);
               }

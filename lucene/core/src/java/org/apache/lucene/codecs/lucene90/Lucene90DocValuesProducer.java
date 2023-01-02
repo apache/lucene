@@ -82,7 +82,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     merging = false;
 
     // read in the entries from the metadata file.
-    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName)) {
+    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, state.context)) {
       Throwable priorE = null;
 
       try {
@@ -1453,19 +1453,23 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
           private int doc = -1;
-          private long curr;
+          private long start;
+          private long end;
           private int count;
 
           @Override
           public long nextOrd() throws IOException {
-            return values.get(curr++);
+            if (start == end) {
+              return NO_MORE_ORDS;
+            }
+            return values.get(start++);
           }
 
           @Override
           public boolean advanceExact(int target) throws IOException {
-            curr = addresses.get(target);
-            long end = addresses.get(target + 1L);
-            count = (int) (end - curr);
+            start = addresses.get(target);
+            end = addresses.get(target + 1L);
+            count = (int) (end - start);
             doc = target;
             return true;
           }
@@ -1490,9 +1494,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             if (target >= maxDoc) {
               return doc = NO_MORE_DOCS;
             }
-            curr = addresses.get(target);
-            long end = addresses.get(target + 1L);
-            count = (int) (end - curr);
+            start = addresses.get(target);
+            end = addresses.get(target + 1L);
+            count = (int) (end - start);
             return doc = target;
           }
 
@@ -1514,13 +1518,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         return new BaseSortedSetDocValues(entry, data) {
 
           boolean set;
-          long curr;
+          long start, end;
           int count;
 
           @Override
           public long nextOrd() throws IOException {
             set();
-            return values.get(curr++);
+            if (start == end) {
+              return NO_MORE_ORDS;
+            }
+            return values.get(start++);
           }
 
           @Override
@@ -1560,9 +1567,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           private void set() {
             if (set == false) {
               final int index = disi.index();
-              curr = addresses.get(index);
-              long end = addresses.get(index + 1L);
-              count = (int) (end - curr);
+              start = addresses.get(index);
+              end = addresses.get(index + 1L);
+              count = (int) (end - start);
               set = true;
             }
           }
@@ -1573,8 +1580,20 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final SortedNumericDocValues ords = getSortedNumeric(ordsEntry);
     return new BaseSortedSetDocValues(entry, data) {
 
+      int i = 0;
+      int count = 0;
+      boolean set = false;
+
       @Override
       public long nextOrd() throws IOException {
+        if (set == false) {
+          set = true;
+          i = 0;
+          count = ords.docValueCount();
+        }
+        if (i++ == count) {
+          return NO_MORE_ORDS;
+        }
         return ords.nextValue();
       }
 
@@ -1585,6 +1604,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
+        set = false;
         return ords.advanceExact(target);
       }
 
@@ -1595,11 +1615,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int nextDoc() throws IOException {
+        set = false;
         return ords.nextDoc();
       }
 
       @Override
       public int advance(int target) throws IOException {
+        set = false;
         return ords.advance(target);
       }
 

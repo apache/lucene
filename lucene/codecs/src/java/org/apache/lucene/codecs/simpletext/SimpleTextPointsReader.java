@@ -70,7 +70,8 @@ class SimpleTextPointsReader extends PointsReader {
             readState.segmentInfo.name,
             readState.segmentSuffix,
             SimpleTextPointsFormat.POINT_INDEX_EXTENSION);
-    try (ChecksumIndexInput in = readState.directory.openChecksumInput(indexFileName)) {
+    try (ChecksumIndexInput in =
+        readState.directory.openChecksumInput(indexFileName, IOContext.DEFAULT)) {
       readLine(in);
       int count = parseInt(FIELD_COUNT);
       for (int i = 0; i < count; i++) {

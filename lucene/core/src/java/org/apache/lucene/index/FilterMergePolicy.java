@@ -48,11 +48,6 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
   }
 
   @Override
-  public MergeSpecification findMerges(CodecReader... readers) throws IOException {
-    return in.findMerges(readers);
-  }
-
-  @Override
   public MergeSpecification findForcedMerges(
       SegmentInfos segmentInfos,
       int maxSegmentCount,

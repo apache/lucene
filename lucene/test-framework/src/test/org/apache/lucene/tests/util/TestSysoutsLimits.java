@@ -24,9 +24,7 @@ import org.junit.Test;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
-/**
- * @see TestRuleLimitSysouts
- */
+/** @see TestRuleLimitSysouts */
 public class TestSysoutsLimits extends WithNestedTests {
   public TestSysoutsLimits() {
     super(false);

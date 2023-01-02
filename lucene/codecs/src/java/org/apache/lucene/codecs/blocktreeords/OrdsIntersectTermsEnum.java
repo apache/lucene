@@ -27,9 +27,8 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.TransitionAccessor;
+import org.apache.lucene.util.automaton.RunAutomaton;
 import org.apache.lucene.util.fst.FST;
 
 // NOTE: cannot seek!
@@ -41,9 +40,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
   @SuppressWarnings({"rawtypes", "unchecked"})
   private FST.Arc<Output>[] arcs = new FST.Arc[5];
 
-  final ByteRunnable byteRunnable;
-  protected final TransitionAccessor transitionAccessor;
-  private final BytesRef commonSuffixRef;
+  final RunAutomaton runAutomaton;
+  final CompiledAutomaton compiledAutomaton;
 
   private OrdsIntersectTermsEnumFrame currentFrame;
 
@@ -64,9 +62,8 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     // brToString(compiled.commonSuffixRef));
     // }
     this.fr = fr;
-    this.byteRunnable = compiled.getByteRunnable();
-    this.transitionAccessor = compiled.getTransitionAccessor();
-    commonSuffixRef = compiled.commonSuffixRef;
+    runAutomaton = compiled.runAutomaton;
+    compiledAutomaton = compiled;
     in = fr.parent.in.clone();
     stack = new OrdsIntersectTermsEnumFrame[5];
     for (int idx = 0; idx < stack.length; idx++) {
@@ -223,7 +220,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
     int state = currentFrame.state;
     for (int idx = 0; idx < currentFrame.suffix; idx++) {
       state =
-          byteRunnable.step(
+          runAutomaton.step(
               state, currentFrame.suffixBytes[currentFrame.startBytePos + idx] & 0xff);
       assert state != -1;
     }
@@ -393,7 +390,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
             continue nextTerm;
           }
           currentFrame.transitionIndex++;
-          transitionAccessor.getNextTransition(currentFrame.transition);
+          compiledAutomaton.automaton.getNextTransition(currentFrame.transition);
           currentFrame.curTransitionMax = currentFrame.transition.max;
           // if (DEBUG) System.out.println("      next trans=" +
           // currentFrame.transitions[currentFrame.transitionIndex]);
@@ -401,9 +398,9 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       }
 
       // First test the common suffix, if set:
-      if (commonSuffixRef != null && !isSubBlock) {
+      if (compiledAutomaton.commonSuffixRef != null && !isSubBlock) {
         final int termLen = currentFrame.prefix + currentFrame.suffix;
-        if (termLen < commonSuffixRef.length) {
+        if (termLen < compiledAutomaton.commonSuffixRef.length) {
           // No match
           // if (DEBUG) {
           //   System.out.println("      skip: common suffix length");
@@ -412,10 +409,10 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
         }
 
         final byte[] suffixBytes = currentFrame.suffixBytes;
-        final byte[] commonSuffixBytes = commonSuffixRef.bytes;
+        final byte[] commonSuffixBytes = compiledAutomaton.commonSuffixRef.bytes;
 
-        final int lenInPrefix = commonSuffixRef.length - currentFrame.suffix;
-        assert commonSuffixRef.offset == 0;
+        final int lenInPrefix = compiledAutomaton.commonSuffixRef.length - currentFrame.suffix;
+        assert compiledAutomaton.commonSuffixRef.offset == 0;
         int suffixBytesPos;
         int commonSuffixBytesPos = 0;
 
@@ -437,11 +434,14 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
           }
           suffixBytesPos = currentFrame.startBytePos;
         } else {
-          suffixBytesPos = currentFrame.startBytePos + currentFrame.suffix - commonSuffixRef.length;
+          suffixBytesPos =
+              currentFrame.startBytePos
+                  + currentFrame.suffix
+                  - compiledAutomaton.commonSuffixRef.length;
         }
 
         // Test overlapping suffix part:
-        final int commonSuffixBytesPosEnd = commonSuffixRef.length;
+        final int commonSuffixBytesPosEnd = compiledAutomaton.commonSuffixRef.length;
         while (commonSuffixBytesPos < commonSuffixBytesPosEnd) {
           if (suffixBytes[suffixBytesPos++] != commonSuffixBytes[commonSuffixBytesPos++]) {
             // if (DEBUG) {
@@ -462,7 +462,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
       int state = currentFrame.state;
       for (int idx = 0; idx < currentFrame.suffix; idx++) {
         state =
-            byteRunnable.step(
+            runAutomaton.step(
                 state, currentFrame.suffixBytes[currentFrame.startBytePos + idx] & 0xff);
         if (state == -1) {
           // No match
@@ -485,7 +485,7 @@ final class OrdsIntersectTermsEnum extends BaseTermsEnum {
         // currentFrame.fp + " trans=" + (currentFrame.transitions.length == 0 ? "n/a" :
         // currentFrame.transitions[currentFrame.transitionIndex]) + " outputPrefix=" +
         // currentFrame.outputPrefix);
-      } else if (byteRunnable.isAccept(state)) {
+      } else if (runAutomaton.isAccept(state)) {
         copyTerm();
         // if (DEBUG) System.out.println("      term match to state=" + state + "; return term=" +
         // brToString(term));

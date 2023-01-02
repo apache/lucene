@@ -19,6 +19,7 @@ package org.apache.lucene.monitor;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.*;
 import org.apache.lucene.search.Matches;
@@ -33,10 +34,10 @@ class ForceNoBulkScoringQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    Query rewritten = inner.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    Query rewritten = inner.rewrite(reader);
     if (rewritten != inner) return new ForceNoBulkScoringQuery(rewritten);
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

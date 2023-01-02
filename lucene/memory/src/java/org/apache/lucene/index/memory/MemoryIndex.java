@@ -17,12 +17,10 @@
 package org.apache.lucene.index.memory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
@@ -236,8 +234,8 @@ public class MemoryIndex {
     final int maxBufferedByteBlocks = (int) ((maxReusedBytes / 2) / ByteBlockPool.BYTE_BLOCK_SIZE);
     final int maxBufferedIntBlocks =
         (int)
-            ((maxReusedBytes - (maxBufferedByteBlocks * (long) ByteBlockPool.BYTE_BLOCK_SIZE))
-                / (IntBlockPool.INT_BLOCK_SIZE * (long) Integer.BYTES));
+            ((maxReusedBytes - (maxBufferedByteBlocks * ByteBlockPool.BYTE_BLOCK_SIZE))
+                / (IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES));
     assert (maxBufferedByteBlocks * ByteBlockPool.BYTE_BLOCK_SIZE)
             + (maxBufferedIntBlocks * IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
@@ -418,10 +416,6 @@ public class MemoryIndex {
     if (field.fieldType().pointDimensionCount() > 0) {
       storePointValues(info, field.binaryValue());
     }
-
-    if (field.fieldType().stored()) {
-      storeValues(info, field);
-    }
   }
 
   /**
@@ -520,7 +514,6 @@ public class MemoryIndex {
         fieldType.pointIndexDimensionCount(),
         fieldType.pointNumBytes(),
         fieldType.vectorDimension(),
-        fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
         false);
   }
@@ -531,26 +524,6 @@ public class MemoryIndex {
     }
     info.pointValues = ArrayUtil.grow(info.pointValues, info.pointValuesCount + 1);
     info.pointValues[info.pointValuesCount++] = BytesRef.deepCopyOf(pointValue);
-  }
-
-  private void storeValues(Info info, IndexableField field) {
-    if (info.storedValues == null) {
-      info.storedValues = new ArrayList<>();
-    }
-    BytesRef binaryValue = field.binaryValue();
-    if (binaryValue != null) {
-      info.storedValues.add(binaryValue);
-      return;
-    }
-    Number numberValue = field.numericValue();
-    if (numberValue != null) {
-      info.storedValues.add(numberValue);
-      return;
-    }
-    String stringValue = field.stringValue();
-    if (stringValue != null) {
-      info.storedValues.add(stringValue);
-    }
   }
 
   private void storeDocValues(Info info, DocValuesType docValuesType, Object docValuesValue) {
@@ -573,7 +546,6 @@ public class MemoryIndex {
               info.fieldInfo.getPointIndexDimensionCount(),
               info.fieldInfo.getPointNumBytes(),
               info.fieldInfo.getVectorDimension(),
-              info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
               info.fieldInfo.isSoftDeletesField());
     } else if (existingDocValuesType != docValuesType) {
@@ -901,8 +873,6 @@ public class MemoryIndex {
 
     private boolean preparedDocValuesAndPointValues;
 
-    private List<Object> storedValues;
-
     private BytesRef[] pointValues;
 
     private byte[] minPackedValue;
@@ -1180,6 +1150,7 @@ public class MemoryIndex {
 
       @Override
       public long nextOrd() throws IOException {
+        if (ord >= values.size()) return NO_MORE_ORDS;
         return ord++;
       }
 
@@ -1398,12 +1369,6 @@ public class MemoryIndex {
     @Override
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-      return null;
-    }
-
-    @Override
-    public TopDocs searchNearestVectors(
-        String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
       return null;
     }
 
@@ -1810,17 +1775,12 @@ public class MemoryIndex {
     }
 
     @Override
-    public TermVectors termVectors() {
-      return new TermVectors() {
-        @Override
-        public Fields get(int docID) {
-          if (docID == 0) {
-            return memoryFields;
-          } else {
-            return null;
-          }
-        }
-      };
+    public Fields getTermVectors(int docID) {
+      if (docID == 0) {
+        return memoryFields;
+      } else {
+        return null;
+      }
     }
 
     @Override
@@ -1836,39 +1796,9 @@ public class MemoryIndex {
     }
 
     @Override
-    public StoredFields storedFields() {
-      return new StoredFields() {
-        @Override
-        public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-          if (DEBUG) System.err.println("MemoryIndexReader.document");
-          for (Info info : fields.values()) {
-            StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
-            if (status == StoredFieldVisitor.Status.STOP) {
-              return;
-            }
-            if (status == StoredFieldVisitor.Status.NO) {
-              continue;
-            }
-            if (info.storedValues != null) {
-              for (Object value : info.storedValues) {
-                if (value instanceof BytesRef bytes) {
-                  visitor.binaryField(info.fieldInfo, BytesRef.deepCopyOf(bytes).bytes);
-                } else if (value instanceof Double d) {
-                  visitor.doubleField(info.fieldInfo, d);
-                } else if (value instanceof Float f) {
-                  visitor.floatField(info.fieldInfo, f);
-                } else if (value instanceof Long l) {
-                  visitor.longField(info.fieldInfo, l);
-                } else if (value instanceof Integer i) {
-                  visitor.intField(info.fieldInfo, i);
-                } else if (value instanceof String s) {
-                  visitor.stringField(info.fieldInfo, s);
-                }
-              }
-            }
-          }
-        }
-      };
+    public void document(int docID, StoredFieldVisitor visitor) {
+      if (DEBUG) System.err.println("MemoryIndexReader.document");
+      // no-op: there are no stored fields
     }
 
     @Override

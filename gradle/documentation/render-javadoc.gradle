@@ -1,5 +1,7 @@
 import org.gradle.internal.jvm.Jvm
 
+import javax.annotation.Nullable
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -234,26 +236,8 @@ configure(subprojects) {
   }
 }
 
-class OfflineLink implements Serializable {
-  @Input
-  String url
-
-  @InputDirectory
-  @PathSensitive(PathSensitivity.RELATIVE)
-  @IgnoreEmptyDirectories
-  File location
-
-  OfflineLink(String url, File location) {
-    this.url = url
-    this.location = location
-  }
-}
-
-@CacheableTask
 class RenderJavadocTask extends DefaultTask {
   @InputFiles
-  @PathSensitive(PathSensitivity.RELATIVE)
-  @IgnoreEmptyDirectories
   @SkipWhenEmpty
   SourceDirectorySet srcDirSet;
   
@@ -275,14 +259,8 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   boolean relativeProjectLinks = false
 
-  @Internal
-  Map<String, File> offlineLinks = [:]
-
-  // Computes cacheable inputs from the map in offlineLinks.
-  @Nested
-  List<OfflineLink> getCacheableOfflineLinks() {
-    return offlineLinks.collect { url, location -> new OfflineLink(url, location) }
-  }
+  @Input
+  def offlineLinks = [:]
 
   @Input
   @Optional
@@ -309,10 +287,8 @@ class RenderJavadocTask extends DefaultTask {
   final Property<String> executable = project.objects.property(String).convention(
       project.provider { Jvm.current().javadocExecutable.toString() })
 
-  @InputDirectory
-  @PathSensitive(PathSensitivity.RELATIVE)
-  @IgnoreEmptyDirectories
-  File taskResources
+  @Input
+  def taskResources
 
   /** Utility method to recursively collect all tasks with same name like this one that we depend on */
   private Set findRenderTasksInDependencies() {
@@ -416,7 +392,7 @@ class RenderJavadocTask extends DefaultTask {
       opts << [ '-linkoffline', url, dir ]
     }
 
-    opts << [ '--release', 17 ]
+    opts << [ '--release', 11 ]
     opts << '-Xdoclint:all,-missing'
 
     // Increase Javadoc's heap.

@@ -67,7 +67,7 @@ from consolemenu.screen import Screen
 from scriptutil import BranchType, Version, download, run
 
 # Lucene-to-Java version mapping
-java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 17}
+java_versions = {6: 8, 7: 8, 8: 8, 9: 11}
 editor = None
 
 # Edit this to add other global jinja2 variables or filters
@@ -188,10 +188,6 @@ def check_prerequisites(todo=None):
         git_ver = run("git --version").splitlines()[0]
     except:
         sys.exit("You will need git installed")
-    try:
-        run("svn --version").splitlines()[0]
-    except:
-        sys.exit("You will need svn installed")
     if not 'EDITOR' in os.environ:
         print("WARNING: Environment variable $EDITOR not set, using %s" % get_editor())
 
@@ -414,6 +410,7 @@ class ReleaseState:
     def clear_rc(self):
         if ask_yes_no("Are you sure? This will clear and restart RC%s" % self.rc_number):
             maybe_remove_rc_from_svn()
+            dict = {}
             for g in list(filter(lambda x: x.in_rc_loop(), self.todo_groups)):
                 for t in g.get_todos():
                     t.clear()
@@ -421,7 +418,7 @@ class ReleaseState:
             try:
                 shutil.rmtree(self.get_rc_folder())
                 print("Cleared folder %s" % self.get_rc_folder())
-            except Exception:
+            except Exception as e:
                 print("WARN: Failed to clear %s, please do it manually with higher privileges" % self.get_rc_folder())
             self.save()
 
@@ -582,7 +579,6 @@ class ReleaseState:
             return "%s.%s.0" % (self.release_version_major, self.release_version_minor + 1)
         if self.release_type == 'bugfix':
             return "%s.%s.%s" % (self.release_version_major, self.release_version_minor, self.release_version_bugfix + 1)
-        return None
 
     def get_java_home(self):
         return self.get_java_home_for_version(self.release_version)
@@ -767,6 +763,7 @@ class Todo(SecretYamlObject):
     def display_and_confirm(self):
         try:
             if self.depends:
+                ret_str = ""
                 for dep in ensure_list(self.depends):
                     g = state.get_group_by_id(dep)
                     if not g:
@@ -1112,23 +1109,21 @@ def configure_pgp(gpg_todo):
     if keyid_linenum:
         keyid_line = lines[keyid_linenum]
         assert keyid_line.startswith('LDAP PGP key: ')
-        gpg_fingerprint = keyid_line[14:].replace(" ", "")
-        gpg_id = gpg_fingerprint[-8:]
+        gpg_id = keyid_line[14:].replace(" ", "")[-8:]
         print("Found gpg key id %s on file at Apache (%s)" % (gpg_id, key_url))
     else:
         print(textwrap.dedent("""\
             Could not find your GPG key from Apache servers.
             Please make sure you have registered your key ID in
             id.apache.org, see links for more info."""))
-        gpg_fingerprint = str(input("Enter your key fingerprint manually, all 40 characters (ENTER=skip): "))
-        if gpg_fingerprint.strip() == '':
+        gpg_id = str(input("Enter your key ID manually, 8 last characters (ENTER=skip): "))
+        if gpg_id.strip() == '':
             return False
-        elif len(gpg_fingerprint) != 40:
-            print("gpg fingerprint must be 40 characters long, do not just input the last 8")
-        gpg_fingerprint = gpg_fingerprint.upper()
-        gpg_id = gpg_fingerprint[-8:]
+        elif len(gpg_id) != 8:
+            print("gpg id must be the last 8 characters of your key id")
+        gpg_id = gpg_id.upper()
     try:
-        res = run("gpg --list-secret-keys %s" % gpg_fingerprint)
+        res = run("gpg --list-secret-keys %s" % gpg_id)
         print("Found key %s on your private gpg keychain" % gpg_id)
         # Check rsa and key length >= 4096
         match = re.search(r'^sec +((rsa|dsa)(\d{4})) ', res)
@@ -1155,7 +1150,7 @@ def configure_pgp(gpg_todo):
             return False
         if length < 4096:
             print("Your key length is < 4096, Please generate a stronger key.")
-            print("Alternatively, follow instructions in https://infra.apache.org/release-signing.html#note")
+            print("Alternatively, follow instructions in http://www.apache.org/dev/release-signing.html#note")
             if not ask_yes_no("Have you configured your gpg to avoid SHA-1?"):
                 print("Please either generate a strong key or reconfigure your client")
                 return False
@@ -1166,7 +1161,7 @@ def configure_pgp(gpg_todo):
             need to fix this, then try again"""))
         return False
     try:
-        lines = run("gpg --check-signatures %s" % gpg_fingerprint).splitlines()
+        lines = run("gpg --check-signatures %s" % gpg_id).splitlines()
         sigs = 0
         apache_sigs = 0
         for line in lines:
@@ -1178,7 +1173,7 @@ def configure_pgp(gpg_todo):
         if apache_sigs < 1:
             print(textwrap.dedent("""\
                 Your key is not signed by any other committer. 
-                Please review https://infra.apache.org/openpgp.html#apache-wot
+                Please review http://www.apache.org/dev/openpgp.html#apache-wot
                 and make sure to get your key signed until next time.
                 You may want to run 'gpg --refresh-keys' to refresh your keychain."""))
         uses_apacheid = is_code_signing_key = False
@@ -1188,9 +1183,9 @@ def configure_pgp(gpg_todo):
                 if 'CODE SIGNING KEY' in line.upper():
                     is_code_signing_key = True
         if not uses_apacheid:
-            print("WARNING: Your key should use your apache-id email address, see https://infra.apache.org/release-signing.html#user-id")
+            print("WARNING: Your key should use your apache-id email address, see http://www.apache.org/dev/release-signing.html#user-id")
         if not is_code_signing_key:
-            print("WARNING: You code signing key should be labeled 'CODE SIGNING KEY', see https://infra.apache.org/release-signing.html#key-comment")
+            print("WARNING: You code signing key should be labeled 'CODE SIGNING KEY', see http://www.apache.org/dev/release-signing.html#key-comment")
     except Exception as e:
         print("Could not check signatures of your key: %s" % e)
 
@@ -1208,23 +1203,6 @@ def configure_pgp(gpg_todo):
 
     gpg_state['apache_id'] = id
     gpg_state['gpg_key'] = gpg_id
-    gpg_state['gpg_fingerprint'] = gpg_fingerprint
-
-    print(textwrap.dedent("""\
-            You can choose between signing the release with the gpg program or with
-            the gradle signing plugin. Read about the difference by running
-            ./gradlew helpPublishing"""))
-
-    gpg_state['use_gradle'] = ask_yes_no("Do you want to sign the release with gradle plugin? No means gpg")
-
-    print(textwrap.dedent("""\
-            You need the passphrase to sign the release.
-            This script can prompt you securely for your passphrase (will not be stored) and pass it on to
-            buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance 
-            and avoid having to type it in the terminal. This can be done with either a gpg-agent (for gpg tool)
-            or in gradle.properties or an ENV.var (for gradle), See ./gradlew helpPublishing for details."""))
-    gpg_state['prompt_pass'] = ask_yes_no("Do you want this wizard to prompt you for your gpg password? ")
-
     return True
 
 
@@ -1269,8 +1247,9 @@ class UpdatableSubmenuItem(SubmenuItem):
         """
         :ivar ConsoleMenu self.submenu: The submenu to be opened when this item is selected
         """
-        super(UpdatableSubmenuItem, self).__init__(text=text, menu=menu, should_exit=should_exit, submenu=submenu)
+        super(SubmenuItem, self).__init__(text=text, menu=menu, should_exit=should_exit)
 
+        self.submenu = submenu
         if menu:
             self.get_submenu().parent = menu
 
@@ -1334,7 +1313,7 @@ class MyScreen(Screen):
 
 class CustomExitItem(ExitItem):
     def show(self, index):
-        return super(CustomExitItem, self).show(index)
+        return super(ExitItem, self).show(index)
 
     def get_return(self):
         return ""
@@ -1401,12 +1380,13 @@ def main():
     global lucene_news_file
     lucene_news_file = os.path.join(state.get_website_git_folder(), 'content', 'core', 'core_news',
       "%s-%s-available.md" % (state.get_release_date_iso(), state.release_version.replace(".", "-")))
+    website_folder = state.get_website_git_folder()
 
     main_menu = UpdatableConsoleMenu(title="Lucene ReleaseWizard",
                             subtitle=get_releasing_text,
                             prologue_text="Welcome to the release wizard. From here you can manage the process including creating new RCs. "
                                           "All changes are persisted, so you can exit any time and continue later. Make sure to read the Help section.",
-                            epilogue_text="® 2022 The Lucene project. Licensed under the Apache License 2.0\nScript version v%s)" % getScriptVersion(),
+                            epilogue_text="® 2021 The Lucene project. Licensed under the Apache License 2.0\nScript version v%s)" % getScriptVersion(),
                             screen=MyScreen())
 
     todo_menu = UpdatableConsoleMenu(title=get_releasing_text,
@@ -1553,7 +1533,7 @@ def run_follow(command, cwd=None, fh=sys.stdout, tee=False, live=False, shell=No
                         lines_written += 1
                         print_line_cr(line, lines_written, stdout=(fh == sys.stdout), tee=tee)
 
-            except Exception:
+            except Exception as ioe:
                 pass
         if not endstderr:
             try:
@@ -1574,7 +1554,7 @@ def run_follow(command, cwd=None, fh=sys.stdout, tee=False, live=False, shell=No
                         errlines.append("%s\n" % line.rstrip())
                         lines_written += 1
                         print_line_cr(line, lines_written, stdout=(fh == sys.stdout), tee=tee)
-            except Exception:
+            except Exception as e:
                 pass
 
         if not lines_written > lines_before:
@@ -1624,7 +1604,7 @@ class Commands(SecretYamlObject):
         fields = loader.construct_mapping(node, deep = True)
         return Commands(**fields)
 
-    def run(self): # pylint: disable=inconsistent-return-statements # TODO
+    def run(self):
         root = self.get_root_folder()
 
         if self.commands_text:
@@ -1643,15 +1623,15 @@ class Commands(SecretYamlObject):
             for line in cmd.display_cmd():
                 print("  %s" % line)
         print()
-        confirm_each = (not self.confirm_each_command is False) and len(commands) > 1
         if not self.enable_execute is False:
             if self.run_text:
                 print("\n%s\n" % self.get_run_text())
-            if confirm_each:
-                print("You will get prompted before running each individual command.")
-            else:
-                print(
-                    "You will not be prompted for each command but will see the output of each. If one command fails the execution will stop.")
+            if len(commands) > 1:
+                if not self.confirm_each_command is False:
+                    print("You will get prompted before running each individual command.")
+                else:
+                    print(
+                        "You will not be prompted for each command but will see the ouput of each. If one command fails the execution will stop.")
             success = True
             if ask_yes_no("Do you want me to run these commands now?"):
                 if self.remove_files:
@@ -1680,10 +1660,8 @@ class Commands(SecretYamlObject):
                     folder_prefix = ''
                     if cmd.cwd:
                         folder_prefix = cmd.cwd + "_"
-                    if confirm_each and cmd.comment:
-                        print("# %s\n" % cmd.get_comment())
-                    if not confirm_each or ask_yes_no("Shall I run '%s' in folder '%s'" % (cmd, cwd)):
-                        if not confirm_each:
+                    if self.confirm_each_command is False or len(commands) == 1 or ask_yes_no("Shall I run '%s' in folder '%s'" % (cmd, cwd)):
+                        if self.confirm_each_command is False:
                             print("------------\nRunning '%s' in folder '%s'" % (cmd, cwd))
                         logfilename = cmd.logfile
                         logfile = None
@@ -1789,8 +1767,6 @@ def abbreviate_homedir(line):
             return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1%HOME%", line)
         elif 'USERPROFILE' in os.environ:
             return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1%USERPROFILE%", line)
-        else:
-            return None
     else:
         return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1~", line)
 
@@ -1871,6 +1847,7 @@ class Command(SecretYamlObject):
 
     def display_cmd(self):
         lines = []
+        pre = post = ''
         if self.comment:
             if is_windows():
                 lines.append("REM %s" % self.get_comment())
@@ -1916,7 +1893,7 @@ class UserInput(SecretYamlObject):
             return result
 
 
-def create_ical(todo): # pylint: disable=unused-argument
+def create_ical(todo):
     if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
         c = Calendar()
         e = Event()
@@ -1935,8 +1912,8 @@ today = datetime.utcnow().date()
 sundays = {(today + timedelta(days=x)): 'Sunday' for x in range(10) if (today + timedelta(days=x)).weekday() == 6}
 y = datetime.utcnow().year
 years = [y, y+1]
-non_working = holidays.CA(years=years) + holidays.US(years=years) + holidays.UK(years=years) \
-              + holidays.DE(years=years) + holidays.NO(years=years) + holidays.IN(years=years) + holidays.RU(years=years)
+non_working = holidays.CA(years=years) + holidays.US(years=years) + holidays.England(years=years) \
+              + holidays.DE(years=years) + holidays.NO(years=years) + holidays.IND(years=years) + holidays.RU(years=years)
 
 
 def vote_close_72h_date():
@@ -1963,7 +1940,7 @@ def vote_close_72h_holidays():
     return holidays if len(holidays) > 0 else None
 
 
-def prepare_announce_lucene(todo): # pylint: disable=unused-argument
+def prepare_announce_lucene(todo):
     if not os.path.exists(lucene_news_file):
         lucene_text = expand_jinja("(( template=announce_lucene ))")
         with open(lucene_news_file, 'w') as fp:
@@ -1974,7 +1951,7 @@ def prepare_announce_lucene(todo): # pylint: disable=unused-argument
     return True
 
 
-def check_artifacts_available(todo): # pylint: disable=unused-argument
+def check_artifacts_available(todo):
   try:
     cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
     load(cdnUrl)
@@ -1984,7 +1961,7 @@ def check_artifacts_available(todo): # pylint: disable=unused-argument
     return False
 
   try:
-    mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.jar.asc")
+    mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.pom.asc")
     load(mavenUrl)
     print("Found %s" % mavenUrl)
   except Exception as e:

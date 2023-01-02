@@ -107,8 +107,7 @@ public class FieldExistsQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    IndexReader reader = indexSearcher.getIndexReader();
+  public Query rewrite(IndexReader reader) throws IOException {
     boolean allReadersRewritable = true;
 
     for (LeafReaderContext context : reader.leaves()) {
@@ -140,6 +139,10 @@ public class FieldExistsQuery extends Query {
         // rewritten to MatchAllDocsQuery for doc values field, when that same field also indexes
         // terms or point values which do have index statistics, and those statistics confirm that
         // all documents in this segment have values terms or point values.
+        if (hasStrictlyConsistentFieldInfos(context) == false) {
+          allReadersRewritable = false;
+          break;
+        }
 
         Terms terms = leaf.terms(field);
         PointValues pointValues = leaf.getPointValues(field);
@@ -149,14 +152,14 @@ public class FieldExistsQuery extends Query {
           allReadersRewritable = false;
           break;
         }
-      } else {
+      } else if (hasStrictlyConsistentFieldInfos(context)) {
         throw new IllegalStateException(buildErrorMsg(fieldInfo));
       }
     }
     if (allReadersRewritable) {
       return new MatchAllDocsQuery();
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override
@@ -198,7 +201,7 @@ public class FieldExistsQuery extends Query {
             default:
               throw new AssertionError();
           }
-        } else {
+        } else if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
 
@@ -231,17 +234,18 @@ public class FieldExistsQuery extends Query {
             != DocValuesType.NONE) { // the field indexes doc values
           if (reader.hasDeletions() == false) {
             if (fieldInfo.getPointDimensionCount() > 0) {
-              PointValues pointValues = reader.getPointValues(field);
-              return pointValues == null ? 0 : pointValues.getDocCount();
+              return reader.getPointValues(field).getDocCount();
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
-              Terms terms = reader.terms(field);
-              return terms == null ? 0 : terms.getDocCount();
+              return reader.terms(field).getDocCount();
             }
           }
 
           return super.count(context);
-        } else {
+        }
+        if (hasStrictlyConsistentFieldInfos(context)) {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
+        } else {
+          return super.count(context);
         }
       }
 
@@ -257,6 +261,11 @@ public class FieldExistsQuery extends Query {
         return true;
       }
     };
+  }
+
+  private boolean hasStrictlyConsistentFieldInfos(LeafReaderContext context) {
+    return context.reader().getMetaData() != null
+        && context.reader().getMetaData().getCreatedVersionMajor() >= 9;
   }
 
   private String buildErrorMsg(FieldInfo fieldInfo) {

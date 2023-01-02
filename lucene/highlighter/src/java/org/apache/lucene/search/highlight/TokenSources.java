@@ -22,7 +22,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 
 /**
@@ -45,8 +44,9 @@ public class TokenSources {
    * field values were concatenated.
    *
    * @param field The field to either get term vectors from or to analyze the text from.
-   * @param tvFields from {@link TermVectors#get(int)}. Possibly null. For performance, this
-   *     instance should be re-used for the same document (e.g. when highlighting multiple fields).
+   * @param tvFields from {@link IndexReader#getTermVectors(int)}. Possibly null. For performance,
+   *     this instance should be re-used for the same document (e.g. when highlighting multiple
+   *     fields).
    * @param text the text to analyze, failing term vector un-inversion
    * @param analyzer the analyzer to analyze {@code text} with, failing term vector un-inversion
    * @param maxStartOffset Terms with a startOffset greater than this aren't returned. Use -1 for no
@@ -73,8 +73,9 @@ public class TokenSources {
    * offsets. Positions are recommended on the term vector but it isn't strictly required.
    *
    * @param field The field to get term vectors from.
-   * @param tvFields from {@link TermVectors#get(int)}. Possibly null. For performance, this
-   *     instance should be re-used for the same document (e.g. when highlighting multiple fields).
+   * @param tvFields from {@link IndexReader#getTermVectors(int)}. Possibly null. For performance,
+   *     this instance should be re-used for the same document (e.g. when highlighting multiple
+   *     fields).
    * @param maxStartOffset Terms with a startOffset greater than this aren't returned. Use -1 for no
    *     limit. Suggest using {@link Highlighter#getMaxDocCharsToAnalyze()} - 1
    * @return a token stream from term vectors. Null if no term vectors with the right options.
@@ -113,7 +114,7 @@ public class TokenSources {
       throws IOException {
     TokenStream ts = null;
 
-    Fields vectors = reader.termVectors().get(docId);
+    Fields vectors = reader.getTermVectors(docId);
     if (vectors != null) {
       Terms vector = vectors.terms(field);
       if (vector != null) {
@@ -141,7 +142,7 @@ public class TokenSources {
       IndexReader reader, int docId, String field, Analyzer analyzer) throws IOException {
     TokenStream ts = null;
 
-    Fields vectors = reader.termVectors().get(docId);
+    Fields vectors = reader.getTermVectors(docId);
     if (vectors != null) {
       Terms vector = vectors.terms(field);
       if (vector != null) {
@@ -202,7 +203,7 @@ public class TokenSources {
   public static TokenStream getTokenStreamWithOffsets(IndexReader reader, int docId, String field)
       throws IOException {
 
-    Fields vectors = reader.termVectors().get(docId);
+    Fields vectors = reader.getTermVectors(docId);
     if (vectors == null) {
       return null;
     }
@@ -222,7 +223,7 @@ public class TokenSources {
   @Deprecated // maintenance reasons LUCENE-6445
   public static TokenStream getTokenStream(
       IndexReader reader, int docId, String field, Analyzer analyzer) throws IOException {
-    Document doc = reader.storedFields().document(docId);
+    Document doc = reader.document(docId);
     return getTokenStream(doc, field, analyzer);
   }
 

@@ -24,7 +24,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>Implements the algorithm described in: <i> Indexing and stemming approaches for the Czech
  * language </i> http://portal.acm.org/citation.cfm?id=1598600
  */
-class CzechStemmer {
+public class CzechStemmer {
 
   /**
    * Stem an input buffer of Czech text.
@@ -34,7 +34,7 @@ class CzechStemmer {
    * @return length of input buffer after normalization
    *     <p><b>NOTE</b>: Input is expected to be in lowercase, but with diacritical marks
    */
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     len = removeCase(s, len);
     len = removePossessives(s, len);
     if (len > 0) {

@@ -33,20 +33,58 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.util.PriorityQueue;
 
-/** Base class for all taxonomy-based facets that aggregate to a per-ords int[]. */
-abstract class IntTaxonomyFacets extends TaxonomyFacets {
+/**
+ * Base class for all taxonomy-based facets that aggregate to a per-ords int[].
+ *
+ * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
+ *     class is meant to host common code as an internal implementation detail to {@link
+ *     FastTaxonomyFacetCounts} and {@link TaxonomyFacetIntAssociations},and is not intended as an
+ *     extension point for user-created {@code Facets} implementations. If your code is relying on
+ *     this, please migrate necessary functionality down into your own class.
+ */
+@Deprecated
+public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /** Aggregation function used for combining values. */
-  final AssociationAggregationFunction aggregationFunction;
+  protected final AssociationAggregationFunction aggregationFunction;
 
-  /** Dense ordinal values. */
-  final int[] values;
+  /**
+   * Dense ordinal values.
+   *
+   * <p>We are making this and {@link #sparseValues} protected for some expert usage. e.g. It can be
+   * checked which is being used before a loop instead of calling {@link #increment} for each
+   * iteration.
+   */
+  protected final int[] values;
 
-  /** Sparse ordinal values. */
-  final IntIntHashMap sparseValues;
+  /**
+   * Sparse ordinal values.
+   *
+   * @see #values for why protected.
+   */
+  protected final IntIntHashMap sparseValues;
 
-  /** Sole constructor. */
-  IntTaxonomyFacets(
+  /**
+   * Constructor that defaults the aggregation function to {@link
+   * AssociationAggregationFunction#SUM}.
+   */
+  protected IntTaxonomyFacets(
+      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
+      throws IOException {
+    super(indexFieldName, taxoReader, config);
+    this.aggregationFunction = AssociationAggregationFunction.SUM;
+
+    if (useHashTable(fc, taxoReader)) {
+      sparseValues = new IntIntHashMap();
+      values = null;
+    } else {
+      sparseValues = null;
+      values = new int[taxoReader.getSize()];
+    }
+  }
+
+  /** Constructor that uses the provided aggregation function. */
+  protected IntTaxonomyFacets(
       String indexFieldName,
       TaxonomyReader taxoReader,
       FacetsConfig config,
@@ -65,6 +103,43 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
   }
 
+  /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
+  protected boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
+    if (taxoReader.getSize() < 1024) {
+      // small number of unique values: use an array
+      return false;
+    }
+
+    if (fc == null) {
+      // counting all docs: use an array
+      return false;
+    }
+
+    int maxDoc = 0;
+    int sumTotalHits = 0;
+    for (MatchingDocs docs : fc.getMatchingDocs()) {
+      sumTotalHits += docs.totalHits;
+      maxDoc += docs.context.reader().maxDoc();
+    }
+
+    // if our result set is < 10% of the index, we collect sparsely (use hash map):
+    return sumTotalHits < maxDoc / 10;
+  }
+
+  /** Increment the count for this ordinal by 1. */
+  protected void increment(int ordinal) {
+    increment(ordinal, 1);
+  }
+
+  /** Increment the count for this ordinal by {@code amount}.. */
+  protected void increment(int ordinal, int amount) {
+    if (sparseValues != null) {
+      sparseValues.addTo(ordinal, amount);
+    } else {
+      values[ordinal] += amount;
+    }
+  }
+
   /** Set the count for this ordinal to {@code newValue}. */
   void setValue(int ordinal, int newValue) {
     if (sparseValues != null) {
@@ -75,7 +150,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Get the count for this ordinal. */
-  int getValue(int ordinal) {
+  protected int getValue(int ordinal) {
     if (sparseValues != null) {
       return sparseValues.get(ordinal);
     } else {
@@ -84,7 +159,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
-  void rollup() throws IOException {
+  protected void rollup() throws IOException {
     // Rollup any necessary dims:
     int[] children = null;
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
@@ -119,29 +194,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       ord = siblings[ord];
     }
     return aggregatedValue;
-  }
-
-  /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
-  private boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
-    if (taxoReader.getSize() < 1024) {
-      // small number of unique values: use an array
-      return false;
-    }
-
-    if (fc == null) {
-      // counting all docs: use an array
-      return false;
-    }
-
-    int maxDoc = 0;
-    int sumTotalHits = 0;
-    for (MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
-    }
-
-    // if our result set is < 10% of the index, we collect sparsely (use hash map):
-    return sumTotalHits < maxDoc / 10;
   }
 
   @Override
@@ -251,7 +303,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
       throws IOException {
     TopOrdAndIntQueue q = new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
     int bottomValue = 0;
-    int bottomOrd = Integer.MAX_VALUE;
 
     int aggregatedValue = 0;
     int childCount = 0;
@@ -266,7 +317,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         if (parents[ord] == pathOrd && value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+          if (value > bottomValue) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -275,7 +326,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
-              bottomOrd = q.top().ord;
             }
           }
         }
@@ -289,7 +339,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
         if (value > 0) {
           aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
           childCount++;
-          if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+          if (value > bottomValue) {
             if (reuse == null) {
               reuse = new TopOrdAndIntQueue.OrdAndValue();
             }
@@ -298,7 +348,6 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
             reuse = q.insertWithOverflow(reuse);
             if (q.size() == topN) {
               bottomValue = q.top().value;
-              bottomOrd = q.top().ord;
             }
           }
         }
@@ -469,5 +518,15 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Intermediate result to store top children for a given path before resolving labels, etc. */
-  private record TopChildrenForPath(int pathValue, int childCount, TopOrdAndIntQueue childQueue) {}
+  private static class TopChildrenForPath {
+    private final int pathValue;
+    private final int childCount;
+    private final TopOrdAndIntQueue childQueue;
+
+    TopChildrenForPath(int pathValue, int childCount, TopOrdAndIntQueue childQueue) {
+      this.pathValue = pathValue;
+      this.childCount = childCount;
+      this.childQueue = childQueue;
+    }
+  }
 }

@@ -31,16 +31,12 @@ public class Hyphenation {
     hyphenPoints = points;
   }
 
-  /**
-   * @return the number of hyphenation points in the word
-   */
+  /** @return the number of hyphenation points in the word */
   public int length() {
     return hyphenPoints.length;
   }
 
-  /**
-   * @return the hyphenation points
-   */
+  /** @return the hyphenation points */
   public int[] getHyphenationPoints() {
     return hyphenPoints;
   }

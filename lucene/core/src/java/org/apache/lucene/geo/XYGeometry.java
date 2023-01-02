@@ -18,7 +18,10 @@
 package org.apache.lucene.geo;
 
 /** Cartesian Geometry object. */
-public abstract class XYGeometry extends Geometry {
+public abstract class XYGeometry {
+
+  /** get a Component2D from this object */
+  protected abstract Component2D toComponent2D();
 
   /** Creates a Component2D from the provided XYGeometries array */
   public static Component2D create(XYGeometry... xyGeometries) {

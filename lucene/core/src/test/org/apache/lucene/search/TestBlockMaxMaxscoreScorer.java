@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -298,7 +299,7 @@ public class TestBlockMaxMaxscoreScorer extends LuceneTestCase {
                           throw new AssertionError(e);
                         }
                       })
-                  .toList();
+                  .collect(Collectors.toList());
 
           return new BlockMaxMaxscoreScorer(weight, optionalScorers);
         }

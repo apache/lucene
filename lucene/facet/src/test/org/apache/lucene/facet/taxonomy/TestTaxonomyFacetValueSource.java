@@ -117,8 +117,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // Test SUM:
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, facetsConfig, c, AssociationAggregationFunction.SUM, valuesSource);
+        getFacets(
+            null,
+            taxoReader,
+            facetsConfig,
+            c,
+            AssociationAggregationFunction.SUM,
+            valuesSource,
+            null);
     // Retrieve & verify results:
     assertEquals(
         "dim=Author path=[] value=145.0 childCount=4\n  Lisa (50.0)\n  Frank (45.0)\n  Susan (40.0)\n  Bob (10.0)\n",
@@ -126,8 +132,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // Test MAX:
     facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, facetsConfig, c, AssociationAggregationFunction.MAX, valuesSource);
+        getFacets(
+            null,
+            taxoReader,
+            facetsConfig,
+            c,
+            AssociationAggregationFunction.MAX,
+            valuesSource,
+            null);
     assertEquals(
         "dim=Author path=[] value=45.0 childCount=4\n  Frank (45.0)\n  Susan (40.0)\n  Lisa (30.0)\n  Bob (10.0)\n",
         facets.getTopChildren(10, "Author").toString());
@@ -196,12 +208,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
+        getFacets(
+            null,
             taxoReader,
             new FacetsConfig(),
             c,
             AssociationAggregationFunction.SUM,
-            DoubleValuesSource.fromIntField("num"));
+            DoubleValuesSource.fromIntField("num"),
+            null);
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
@@ -283,12 +297,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
+        getFacets(
+            null,
             taxoReader,
             config,
             c,
             AssociationAggregationFunction.SUM,
-            DoubleValuesSource.fromIntField("num"));
+            DoubleValuesSource.fromIntField("num"),
+            null);
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
@@ -340,15 +356,27 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // Test SUM:
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, config, fc, AssociationAggregationFunction.SUM, DoubleValuesSource.SCORES);
+        getFacets(
+            null,
+            taxoReader,
+            config,
+            fc,
+            AssociationAggregationFunction.SUM,
+            DoubleValuesSource.SCORES,
+            null);
     int expected = (int) (csq.getBoost() * td.totalHits.value);
     assertEquals(expected, facets.getSpecificValue("dim", "a").intValue());
 
     // Test MAX:
     facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, config, fc, AssociationAggregationFunction.MAX, DoubleValuesSource.SCORES);
+        getFacets(
+            null,
+            taxoReader,
+            config,
+            fc,
+            AssociationAggregationFunction.MAX,
+            DoubleValuesSource.SCORES,
+            null);
     expected = (int) csq.getBoost();
     assertEquals(expected, facets.getSpecificValue("dim", "a").intValue());
 
@@ -378,24 +406,28 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // Test SUM:
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
+        getFacets(
+            null,
             taxoReader,
             config,
             sfc,
             AssociationAggregationFunction.SUM,
-            DoubleValuesSource.fromLongField("price"));
+            DoubleValuesSource.fromLongField("price"),
+            null);
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
 
     // Test MAX:
     facets =
-        new TaxonomyFacetFloatAssociations(
+        getFacets(
+            null,
             taxoReader,
             config,
             sfc,
             AssociationAggregationFunction.MAX,
-            DoubleValuesSource.fromLongField("price"));
+            DoubleValuesSource.fromLongField("price"),
+            null);
     assertEquals(
         "dim=a path=[] value=4.0 childCount=2\n  1 (4.0)\n  0 (3.0)\n",
         facets.getTopChildren(10, "a").toString());
@@ -435,16 +467,28 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // Test SUM:
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, config, fc, AssociationAggregationFunction.SUM, DoubleValuesSource.SCORES);
+        getFacets(
+            null,
+            taxoReader,
+            config,
+            fc,
+            AssociationAggregationFunction.SUM,
+            DoubleValuesSource.SCORES,
+            null);
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
 
     // Test MAX:
     facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, config, fc, AssociationAggregationFunction.MAX, DoubleValuesSource.SCORES);
+        getFacets(
+            null,
+            taxoReader,
+            config,
+            fc,
+            AssociationAggregationFunction.MAX,
+            DoubleValuesSource.SCORES,
+            null);
     assertEquals(
         "dim=a path=[] value=4.0 childCount=2\n  1 (4.0)\n  0 (3.0)\n",
         facets.getTopChildren(10, "a").toString());
@@ -478,24 +522,28 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     // Test SUM:
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
+        getFacets(
+            null,
             taxoReader,
             config,
             sfc,
             AssociationAggregationFunction.SUM,
-            DoubleValuesSource.fromLongField("price"));
+            DoubleValuesSource.fromLongField("price"),
+            null);
     assertEquals(
         "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
         facets.getTopChildren(10, "a").toString());
 
     // Test MAX:
     facets =
-        new TaxonomyFacetFloatAssociations(
+        getFacets(
+            null,
             taxoReader,
             config,
             sfc,
             AssociationAggregationFunction.MAX,
-            DoubleValuesSource.fromLongField("price"));
+            DoubleValuesSource.fromLongField("price"),
+            null);
     assertEquals(
         "dim=a path=[] value=4.0 childCount=2\n  1 (4.0)\n  0 (3.0)\n",
         facets.getTopChildren(10, "a").toString());
@@ -578,14 +626,28 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     FacetsCollector.search(newSearcher(r), new MatchAllDocsQuery(), 10, fc);
 
     Facets facets1 = getTaxonomyFacetCounts(taxoReader, config, fc);
-    Facets facets2 =
-        new TaxonomyFacetFloatAssociations(
-            "$b",
-            taxoReader,
-            config,
-            fc,
-            AssociationAggregationFunction.SUM,
-            DoubleValuesSource.SCORES);
+    Facets facets2;
+    if (random().nextBoolean()) {
+      facets2 =
+          getFacets(
+              null,
+              taxoReader,
+              config,
+              fc,
+              AssociationAggregationFunction.SUM,
+              DoubleValuesSource.SCORES,
+              new DocValuesOrdinalsReader("$b"));
+    } else {
+      facets2 =
+          getFacets(
+              "$b",
+              taxoReader,
+              config,
+              fc,
+              AssociationAggregationFunction.SUM,
+              DoubleValuesSource.SCORES,
+              null);
+    }
 
     assertEquals(r.maxDoc(), facets1.getTopChildren(10, "a").value.intValue());
     assertEquals(r.maxDoc(), facets2.getTopChildren(10, "b").value.doubleValue(), 1E-10);
@@ -713,8 +775,14 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     sortFacetResults(expected);
 
     Facets facets =
-        new TaxonomyFacetFloatAssociations(
-            taxoReader, facetsConfig, facetsCollector, aggregationFunction, valuesSource);
+        getFacets(
+            null,
+            taxoReader,
+            facetsConfig,
+            facetsCollector,
+            aggregationFunction,
+            valuesSource,
+            null);
 
     List<FacetResult> actual = facets.getAllDims(10);
 
@@ -733,5 +801,39 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     }
 
     assertFloatValuesEquals(expected, actual);
+  }
+
+  private Facets getFacets(
+      String fieldName,
+      TaxonomyReader taxoReader,
+      FacetsConfig facetsConfig,
+      FacetsCollector fc,
+      AssociationAggregationFunction aggregationFunction,
+      DoubleValuesSource values,
+      OrdinalsReader ordinalsReader)
+      throws IOException {
+    if (aggregationFunction != AssociationAggregationFunction.SUM || random().nextBoolean()) {
+      if (ordinalsReader != null) {
+        assert fieldName == null;
+        return new TaxonomyFacetFloatAssociations(
+            ordinalsReader, taxoReader, facetsConfig, fc, aggregationFunction, values);
+      } else if (fieldName == null) {
+        return new TaxonomyFacetFloatAssociations(
+            taxoReader, facetsConfig, fc, aggregationFunction, values);
+      } else {
+        return new TaxonomyFacetFloatAssociations(
+            fieldName, taxoReader, facetsConfig, fc, aggregationFunction, values);
+      }
+    } else {
+      if (ordinalsReader != null) {
+        assert fieldName == null;
+        return new TaxonomyFacetSumValueSource(
+            ordinalsReader, taxoReader, facetsConfig, fc, values);
+      } else if (fieldName == null) {
+        return new TaxonomyFacetSumValueSource(taxoReader, facetsConfig, fc, values);
+      } else {
+        return new TaxonomyFacetSumValueSource(fieldName, taxoReader, facetsConfig, fc, values);
+      }
+    }
   }
 }

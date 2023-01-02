@@ -81,7 +81,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
   public void testClosestEditDistanceMatchComesFirst() throws Throwable {
     FuzzyLikeThisQuery flt = new FuzzyLikeThisQuery(10, analyzer);
     flt.addTerms("smith", "name", 2, 1);
-    Query q = flt.rewrite(searcher);
+    Query q = flt.rewrite(searcher.getIndexReader());
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant smythe", queryTerms.contains(new Term("name", "smythe")));
@@ -90,7 +90,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.storedFields().document(sd[0].doc);
+    Document doc = searcher.doc(sd[0].doc);
     assertEquals("Should match most similar not most rare variant", "2", doc.get("id"));
   }
 
@@ -98,7 +98,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
   public void testMultiWord() throws Throwable {
     FuzzyLikeThisQuery flt = new FuzzyLikeThisQuery(10, analyzer);
     flt.addTerms("jonathin smoth", "name", 2, 1);
-    Query q = flt.rewrite(searcher);
+    Query q = flt.rewrite(searcher.getIndexReader());
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant jonathan", queryTerms.contains(new Term("name", "jonathan")));
@@ -106,7 +106,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.storedFields().document(sd[0].doc);
+    Document doc = searcher.doc(sd[0].doc);
     assertEquals("Should match most similar when using 2 words", "2", doc.get("id"));
   }
 
@@ -116,7 +116,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     flt.addTerms("jonathin smoth", "name", 2, 1);
     flt.addTerms("jonathin smoth", "this field does not exist", 2, 1);
     // don't fail here just because the field doesn't exits
-    Query q = flt.rewrite(searcher);
+    Query q = flt.rewrite(searcher.getIndexReader());
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant jonathan", queryTerms.contains(new Term("name", "jonathan")));
@@ -124,7 +124,7 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.storedFields().document(sd[0].doc);
+    Document doc = searcher.doc(sd[0].doc);
     assertEquals("Should match most similar when using 2 words", "2", doc.get("id"));
   }
 
@@ -132,14 +132,14 @@ public class TestFuzzyLikeThisQuery extends LuceneTestCase {
   public void testNoMatchFirstWordBug() throws Throwable {
     FuzzyLikeThisQuery flt = new FuzzyLikeThisQuery(10, analyzer);
     flt.addTerms("fernando smith", "name", 2, 1);
-    Query q = flt.rewrite(searcher);
+    Query q = flt.rewrite(searcher.getIndexReader());
     HashSet<Term> queryTerms = new HashSet<>();
     q.visit(QueryVisitor.termCollector(queryTerms));
     assertTrue("Should have variant smith", queryTerms.contains(new Term("name", "smith")));
     TopDocs topDocs = searcher.search(flt, 1);
     ScoreDoc[] sd = topDocs.scoreDocs;
     assertTrue("score docs must match 1 doc", (sd != null) && (sd.length > 0));
-    Document doc = searcher.storedFields().document(sd[0].doc);
+    Document doc = searcher.doc(sd[0].doc);
     assertEquals("Should match most similar when using 2 words", "2", doc.get("id"));
   }
 

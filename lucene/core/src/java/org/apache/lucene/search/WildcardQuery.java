@@ -47,7 +47,7 @@ public class WildcardQuery extends AutomatonQuery {
 
   /** Constructs a query for terms matching <code>term</code>. */
   public WildcardQuery(Term term) {
-    this(term, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    super(term, toAutomaton(term));
   }
 
   /**
@@ -72,7 +72,7 @@ public class WildcardQuery extends AutomatonQuery {
    * @param rewriteMethod the rewrite method to use when building the final query
    */
   public WildcardQuery(Term term, int determinizeWorkLimit, RewriteMethod rewriteMethod) {
-    super(term, toAutomaton(term, determinizeWorkLimit), false, rewriteMethod);
+    super(term, toAutomaton(term), determinizeWorkLimit, false, rewriteMethod);
   }
 
   /**
@@ -81,7 +81,7 @@ public class WildcardQuery extends AutomatonQuery {
    * @lucene.internal
    */
   @SuppressWarnings("fallthrough")
-  public static Automaton toAutomaton(Term wildcardquery, int determinizeWorkLimit) {
+  public static Automaton toAutomaton(Term wildcardquery) {
     List<Automaton> automata = new ArrayList<>();
 
     String wildcardText = wildcardquery.text();
@@ -110,7 +110,7 @@ public class WildcardQuery extends AutomatonQuery {
       i += length;
     }
 
-    return Operations.determinize(Operations.concatenate(automata), determinizeWorkLimit);
+    return Operations.concatenate(automata);
   }
 
   /** Returns the pattern term. */

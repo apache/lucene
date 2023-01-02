@@ -60,9 +60,7 @@ public class ExplainingMatch extends QueryMatch {
     this.explanation = explanation;
   }
 
-  /**
-   * @return the Explanation
-   */
+  /** @return the Explanation */
   public Explanation getExplanation() {
     return explanation;
   }

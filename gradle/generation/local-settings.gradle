@@ -65,9 +65,10 @@ configure(rootProject) {
 systemProp.file.encoding=UTF-8
 
 # Set up gradle JVM defaults.
+# The heap seems huge but gradle runs out of memory on lower values (don't know why).
 #
 # We also open up internal compiler modules for spotless/ google java format.
-org.gradle.jvmargs=-Xmx1g -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1 \\
+org.gradle.jvmargs=-Xmx3g \\
  --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
  --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
@@ -77,11 +78,6 @@ org.gradle.jvmargs=-Xmx1g -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveP
 # Run at normal priority, in parallel
 org.gradle.parallel=true
 org.gradle.priority=normal
-
-# This setting enables local task output caches. This will speed up
-# your local builds in most cases but will also consume disk space in your
-# gradle home. See LUCENE-10195 and/or SOLR-15603 for details.
-# org.gradle.caching=true
 
 # Silence gradle warnings. We'll deal with them when we upgrade the wrapper.
 org.gradle.warning.mode=none
@@ -97,12 +93,12 @@ org.gradle.workers.max=${maxWorkers}
 # Maximum number of test JVMs forked per test task.
 tests.jvms=${testsJvms}
 
-# Enable auto JVM provisioning.
-org.gradle.java.installations.auto-download=true
+# Disable auto JVM provisioning (we don't use toolchains yet but want no surprises).
+org.gradle.java.installations.auto-download=false
 
 # Set these to enable automatic JVM location discovery.
-org.gradle.java.installations.fromEnv=JAVA17_HOME,JAVA19_HOME,JAVA20_HOME,JAVA21_HOME,RUNTIME_JAVA_HOME
-#org.gradle.java.installations.paths=(custom paths)
+org.gradle.java.installations.fromEnv=JDK11,JDK12,JDK13,JDK14,JDK15,JDK16,JDK17
+org.gradle.java.installations.paths=(custom paths)
 
 """, "UTF-8")
 

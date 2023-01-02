@@ -268,9 +268,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
     return tempDirBase;
   }
 
-  /**
-   * @see LuceneTestCase#createTempDir()
-   */
+  /** @see LuceneTestCase#createTempDir() */
   public Path createTempDir(String prefix) {
     Path base = getPerTestClassTempDir();
 
@@ -297,9 +295,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
     return f;
   }
 
-  /**
-   * @see LuceneTestCase#createTempFile()
-   */
+  /** @see LuceneTestCase#createTempFile() */
   public Path createTempFile(String prefix, String suffix) throws IOException {
     Path base = getPerTestClassTempDir();
 

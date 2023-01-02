@@ -77,7 +77,6 @@ goto fail
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 "%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
-IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
 IF %ERRORLEVEL% NEQ 0 goto fail
 
 @rem Setup the command line
@@ -87,25 +86,17 @@ set CLASSPATH=%GRADLE_WRAPPER_JAR%
 SET GRADLE_DAEMON_CTRL=
 IF NOT EXIST "%DIRNAME%\gradle.properties" SET GRADLE_DAEMON_CTRL=--no-daemon
 
-@rem Prevent jgit from forking/searching git.exe
-SET GIT_CONFIG_NOSYSTEM=1
-
 @rem Execute Gradle
 "%JAVA_EXE%" %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %GRADLE_DAEMON_CTRL% %*
 
 :end
 @rem End local scope for the variables with windows NT shell
-if %ERRORLEVEL% EQU 0 goto mainEnd
-goto fail
-
-:failWithJvmMessage
-@rem https://github.com/apache/lucene/pull/819
-echo Error: Something went wrong. Make sure you're using Java version between 17 and 19.
+if "%ERRORLEVEL%"=="0" goto mainEnd
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
 rem the _cmd.exe /c_ return code!
-if not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
+if  not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
 exit /b 1
 
 :mainEnd

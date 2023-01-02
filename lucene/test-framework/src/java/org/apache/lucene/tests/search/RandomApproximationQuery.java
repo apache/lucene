@@ -19,6 +19,7 @@ package org.apache.lucene.tests.search;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Random;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterWeight;
@@ -42,12 +43,12 @@ public class RandomApproximationQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final Query rewritten = query.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    final Query rewritten = query.rewrite(reader);
     if (rewritten != query) {
       return new RandomApproximationQuery(rewritten, random);
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

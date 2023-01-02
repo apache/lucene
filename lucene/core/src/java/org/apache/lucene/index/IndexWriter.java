@@ -276,7 +276,6 @@ public class IndexWriter
   final DocumentsWriter docWriter;
   private final EventQueue eventQueue = new EventQueue(this);
   private final MergeScheduler.MergeSource mergeSource = new IndexWriterMergeSource(this);
-  private final AddIndexesMergeSource addIndexesMergeSource = new AddIndexesMergeSource(this);
 
   private final ReentrantLock writeDocValuesLock = new ReentrantLock();
 
@@ -696,7 +695,8 @@ public class IndexWriter
         maybeMerge(config.getMergePolicy(), MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
       }
       if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", "getReader took " + (System.currentTimeMillis() - tStart) + " ms");
+        infoStream.message(
+            "IW", "getReader took " + (System.currentTimeMillis() - tStart) + " msec");
       }
       success2 = true;
     } catch (VirtualMachineError tragedy) {
@@ -866,7 +866,7 @@ public class IndexWriter
                       count,
                       readerPool.ramBytesUsed() / 1024. / 1024.,
                       ramBufferSizeMB,
-                      ((System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1))));
+                      ((System.nanoTime() - startNS) / 1000000000.)));
             }
           }
         }
@@ -1255,7 +1255,8 @@ public class IndexWriter
    * If this {@link SegmentInfos} has no global field number map the returned instance is empty
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
-    final FieldNumbers map = new FieldNumbers(config.softDeletesField);
+    final FieldNumbers map =
+        new FieldNumbers(config.softDeletesField, segmentInfos.getIndexCreatedVersionMajor());
 
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
@@ -2335,10 +2336,6 @@ public class IndexWriter
         case COMMIT:
           spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
           break;
-        case ADD_INDEXES:
-          throw new IllegalStateException(
-              "Merges with ADD_INDEXES trigger should be "
-                  + "called from within the addIndexes() API flow");
         case EXPLICIT:
         case FULL_FLUSH:
         case MERGE_FINISHED:
@@ -2674,9 +2671,6 @@ public class IndexWriter
           mergeFinish(merge);
         });
     pendingMerges.clear();
-
-    // abort any merges pending from addIndexes(CodecReader...)
-    addIndexesMergeSource.abortPendingMerges();
 
     for (final MergePolicy.OneMerge merge : runningMerges) {
       if (infoStream.isEnabled("IW")) {
@@ -3122,10 +3116,13 @@ public class IndexWriter
    *
    * <p><b>NOTE:</b> empty segments are dropped by this method and not added to this index.
    *
-   * <p><b>NOTE:</b> provided {@link LeafReader}s are merged as specified by the {@link
-   * MergePolicy#findMerges(CodecReader...)} API. Default behavior is to merge all provided readers
-   * into a single segment. You can modify this by overriding the <code>findMerge</code> API in your
-   * custom merge policy.
+   * <p><b>NOTE:</b> this merges all given {@link LeafReader}s in one merge. If you intend to merge
+   * a large number of readers, it may be better to call this method multiple times, each time with
+   * a small set of readers. In principle, if you use a merge policy with a {@code mergeFactor} or
+   * {@code maxMergeAtOnce} parameter, you should pass that many readers in one call.
+   *
+   * <p><b>NOTE:</b> this method does not call or make use of the {@link MergeScheduler}, so any
+   * custom bandwidth throttling is at the moment ignored.
    *
    * @return The <a href="#sequence_number">sequence number</a> for this operation
    * @throws CorruptIndexException if the index is corrupt
@@ -3139,310 +3136,142 @@ public class IndexWriter
     // long so we can detect int overflow:
     long numDocs = 0;
     long seqNo;
-
     try {
-      // Best effort up front validations
-      for (CodecReader leaf : readers) {
-        validateMergeReader(leaf);
-        for (FieldInfo fi : leaf.getFieldInfos()) {
-          globalFieldNumberMap.verifyFieldInfo(fi);
-        }
-        numDocs += leaf.numDocs();
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "flush at addIndexes(CodecReader...)");
       }
+      flush(false, true);
+
+      String mergedName = newSegmentName();
+      int numSoftDeleted = 0;
+      for (CodecReader leaf : readers) {
+        numDocs += leaf.numDocs();
+        validateMergeReader(leaf);
+        if (softDeletesEnabled) {
+          Bits liveDocs = leaf.getLiveDocs();
+          numSoftDeleted +=
+              PendingSoftDeletes.countSoftDeletes(
+                  FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf),
+                  liveDocs);
+        }
+      }
+
+      // Best-effort up front check:
       testReserveDocs(numDocs);
 
-      synchronized (this) {
-        ensureOpen();
-        if (merges.areEnabled() == false) {
-          throw new AlreadyClosedException(
-              "this IndexWriter is closed. Cannot execute addIndexes(CodecReaders...) API");
-        }
-      }
+      final IOContext context =
+          new IOContext(
+              new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
 
-      MergePolicy mergePolicy = config.getMergePolicy();
-      MergePolicy.MergeSpecification spec = mergePolicy.findMerges(readers);
-      boolean mergeSuccess = false;
-      if (spec != null && spec.merges.size() > 0) {
-        try {
-          spec.merges.forEach(addIndexesMergeSource::registerMerge);
-          mergeScheduler.merge(addIndexesMergeSource, MergeTrigger.ADD_INDEXES);
-          spec.await();
-          mergeSuccess =
-              spec.merges.stream().allMatch(m -> m.hasCompletedSuccessfully().orElse(false));
-        } finally {
-          if (mergeSuccess == false) {
-            for (MergePolicy.OneMerge merge : spec.merges) {
-              if (merge.getMergeInfo() != null) {
-                deleteNewFiles(merge.getMergeInfo().files());
-              }
-            }
-          }
-        }
-      } else {
-        if (infoStream.isEnabled("IW")) {
-          if (spec == null) {
-            infoStream.message(
-                "addIndexes(CodecReaders...)",
-                "received null mergeSpecification from MergePolicy. No indexes to add, returning..");
-          } else {
-            infoStream.message(
-                "addIndexes(CodecReaders...)",
-                "received empty mergeSpecification from MergePolicy. No indexes to add, returning..");
-          }
-        }
+      // TODO: somehow we should fix this merge so it's
+      // abortable so that IW.close(false) is able to stop it
+      TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(directory);
+      Codec codec = config.getCodec();
+      // We set the min version to null for now, it will be set later by SegmentMerger
+      SegmentInfo info =
+          new SegmentInfo(
+              directoryOrig,
+              Version.LATEST,
+              null,
+              mergedName,
+              -1,
+              false,
+              codec,
+              Collections.emptyMap(),
+              StringHelper.randomId(),
+              Collections.emptyMap(),
+              config.getIndexSort());
+
+      SegmentMerger merger =
+          new SegmentMerger(
+              Arrays.asList(readers), info, infoStream, trackingDir, globalFieldNumberMap, context);
+
+      if (!merger.shouldMerge()) {
         return docWriter.getNextSequenceNumber();
       }
 
-      if (mergeSuccess) {
-        List<SegmentCommitInfo> infos = new ArrayList<>();
-        long totalDocs = 0;
-        for (MergePolicy.OneMerge merge : spec.merges) {
-          totalDocs += merge.totalMaxDoc;
-          if (merge.getMergeInfo() != null) {
-            infos.add(merge.getMergeInfo());
-          }
-        }
-
+      synchronized (this) {
+        ensureOpen();
+        assert merges.areEnabled();
+        runningAddIndexesMerges.add(merger);
+      }
+      try {
+        merger.merge(); // merge 'em
+      } finally {
         synchronized (this) {
-          if (infos.isEmpty() == false) {
-            boolean registerSegmentSuccess = false;
-            try {
-              ensureOpen();
-              // Reserve the docs, just before we update SIS:
-              reserveDocs(totalDocs);
-              registerSegmentSuccess = true;
-            } finally {
-              if (registerSegmentSuccess == false) {
-                for (SegmentCommitInfo sipc : infos) {
-                  // Safe: these files must exist
-                  deleteNewFiles(sipc.files());
-                }
-              }
-            }
-            segmentInfos.addAll(infos);
-            checkpoint();
-          }
-          seqNo = docWriter.getNextSequenceNumber();
+          runningAddIndexesMerges.remove(merger);
+          notifyAll();
         }
-      } else {
-        if (infoStream.isEnabled("IW")) {
-          infoStream.message(
-              "addIndexes(CodecReaders...)", "failed to successfully merge all provided readers.");
+      }
+      SegmentCommitInfo infoPerCommit =
+          new SegmentCommitInfo(info, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId());
+
+      info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
+      trackingDir.clearCreatedFiles();
+
+      setDiagnostics(info, SOURCE_ADDINDEXES_READERS);
+
+      final MergePolicy mergePolicy = config.getMergePolicy();
+      boolean useCompoundFile;
+      synchronized (this) { // Guard segmentInfos
+        if (merges.areEnabled() == false) {
+          // Safe: these files must exist
+          deleteNewFiles(infoPerCommit.files());
+
+          return docWriter.getNextSequenceNumber();
         }
-        for (MergePolicy.OneMerge merge : spec.merges) {
-          if (merge.isAborted()) {
-            throw new MergePolicy.MergeAbortedException("merge was aborted.");
-          }
-          Throwable t = merge.getException();
-          if (t != null) {
-            IOUtils.rethrowAlways(t);
-          }
+        ensureOpen();
+        useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, infoPerCommit, this);
+      }
+
+      // Now create the compound file if needed
+      if (useCompoundFile) {
+        Collection<String> filesToDelete = infoPerCommit.files();
+        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
+        // TODO: unlike merge, on exception we arent sniping any trash cfs files here?
+        // createCompoundFile tries to cleanup, but it might not always be able to...
+        try {
+          createCompoundFile(infoStream, trackingCFSDir, info, context, this::deleteNewFiles);
+        } finally {
+          // delete new non cfs files directly: they were never
+          // registered with IFD
+          deleteNewFiles(filesToDelete);
         }
-        // If no merge hit an exception, and merge was not aborted, but we still failed to add
-        // indexes, fail the API
-        throw new RuntimeException(
-            "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
+        info.setUseCompoundFile(true);
+      }
+
+      // Have codec write SegmentInfo.  Must do this after
+      // creating CFS so that 1) .si isn't slurped into CFS,
+      // and 2) .si reflects useCompoundFile=true change
+      // above:
+      codec.segmentInfoFormat().write(trackingDir, info, context);
+
+      info.addFiles(trackingDir.getCreatedFiles());
+
+      // Register the new segment
+      synchronized (this) {
+        if (merges.areEnabled() == false) {
+          // Safe: these files must exist
+          deleteNewFiles(infoPerCommit.files());
+
+          return docWriter.getNextSequenceNumber();
+        }
+        ensureOpen();
+
+        // Now reserve the docs, just before we update SIS:
+        reserveDocs(numDocs);
+
+        segmentInfos.add(infoPerCommit);
+        seqNo = docWriter.getNextSequenceNumber();
+        checkpoint();
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
       throw tragedy;
     }
-
     maybeMerge();
+
     return seqNo;
-  }
-
-  private class AddIndexesMergeSource implements MergeScheduler.MergeSource {
-
-    private final Queue<MergePolicy.OneMerge> pendingAddIndexesMerges = new ArrayDeque<>();
-    private final IndexWriter writer;
-
-    public AddIndexesMergeSource(IndexWriter writer) {
-      this.writer = writer;
-    }
-
-    public void registerMerge(MergePolicy.OneMerge merge) {
-      synchronized (IndexWriter.this) {
-        pendingAddIndexesMerges.add(merge);
-      }
-    }
-
-    @Override
-    public MergePolicy.OneMerge getNextMerge() {
-      synchronized (IndexWriter.this) {
-        if (hasPendingMerges() == false) {
-          return null;
-        }
-        MergePolicy.OneMerge merge = pendingAddIndexesMerges.remove();
-        runningMerges.add(merge);
-        return merge;
-      }
-    }
-
-    @Override
-    public void onMergeFinished(MergePolicy.OneMerge merge) {
-      synchronized (IndexWriter.this) {
-        runningMerges.remove(merge);
-      }
-    }
-
-    @Override
-    public boolean hasPendingMerges() {
-      return pendingAddIndexesMerges.size() > 0;
-    }
-
-    public void abortPendingMerges() throws IOException {
-      synchronized (IndexWriter.this) {
-        IOUtils.applyToAll(
-            pendingAddIndexesMerges,
-            merge -> {
-              if (infoStream.isEnabled("IW")) {
-                infoStream.message("IW", "now abort pending addIndexes merge");
-              }
-              merge.setAborted();
-              merge.close(false, false, mr -> {});
-              onMergeFinished(merge);
-            });
-        pendingAddIndexesMerges.clear();
-      }
-    }
-
-    @Override
-    public void merge(MergePolicy.OneMerge merge) throws IOException {
-      boolean success = false;
-      try {
-        writer.addIndexesReaderMerge(merge);
-        success = true;
-      } catch (Throwable t) {
-        handleMergeException(t, merge);
-      } finally {
-        synchronized (IndexWriter.this) {
-          merge.close(success, false, mr -> {});
-          onMergeFinished(merge);
-        }
-      }
-    }
-  }
-
-  /**
-   * Runs a single merge operation for {@link IndexWriter#addIndexes(CodecReader...)}.
-   *
-   * <p>Merges and creates a SegmentInfo, for the readers grouped together in provided OneMerge.
-   *
-   * @param merge OneMerge object initialized from readers.
-   * @throws IOException if there is a low-level IO error
-   */
-  public void addIndexesReaderMerge(MergePolicy.OneMerge merge) throws IOException {
-
-    merge.mergeInit();
-    merge.checkAborted();
-
-    // long so we can detect int overflow:
-    long numDocs = 0;
-    if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", "flush at addIndexes(CodecReader...)");
-    }
-    flush(false, true);
-
-    String mergedName = newSegmentName();
-    Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
-    int numSoftDeleted = 0;
-    for (MergePolicy.MergeReader reader : merge.getMergeReader()) {
-      CodecReader leaf = reader.codecReader;
-      numDocs += leaf.numDocs();
-      if (softDeletesEnabled) {
-        Bits liveDocs = reader.hardLiveDocs;
-        numSoftDeleted +=
-            PendingSoftDeletes.countSoftDeletes(
-                FieldExistsQuery.getDocValuesDocIdSetIterator(config.getSoftDeletesField(), leaf),
-                liveDocs);
-      }
-    }
-
-    // Best-effort up front check:
-    testReserveDocs(numDocs);
-
-    final IOContext context =
-        new IOContext(
-            new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
-
-    TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(mergeDirectory);
-    Codec codec = config.getCodec();
-    // We set the min version to null for now, it will be set later by SegmentMerger
-    SegmentInfo segInfo =
-        new SegmentInfo(
-            directoryOrig,
-            Version.LATEST,
-            null,
-            mergedName,
-            -1,
-            false,
-            codec,
-            Collections.emptyMap(),
-            StringHelper.randomId(),
-            Collections.emptyMap(),
-            config.getIndexSort());
-
-    List<CodecReader> readers =
-        merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
-    SegmentMerger merger =
-        new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
-
-    if (!merger.shouldMerge()) {
-      return;
-    }
-
-    merge.checkAborted();
-    synchronized (this) {
-      runningAddIndexesMerges.add(merger);
-    }
-    merge.mergeStartNS = System.nanoTime();
-    try {
-      merger.merge(); // merge 'em
-    } finally {
-      synchronized (this) {
-        runningAddIndexesMerges.remove(merger);
-        notifyAll();
-      }
-    }
-
-    merge.setMergeInfo(
-        new SegmentCommitInfo(segInfo, 0, numSoftDeleted, -1L, -1L, -1L, StringHelper.randomId()));
-    merge.getMergeInfo().info.setFiles(new HashSet<>(trackingDir.getCreatedFiles()));
-    trackingDir.clearCreatedFiles();
-
-    setDiagnostics(merge.getMergeInfo().info, SOURCE_ADDINDEXES_READERS);
-
-    final MergePolicy mergePolicy = config.getMergePolicy();
-    boolean useCompoundFile;
-    synchronized (this) {
-      merge.checkAborted();
-      useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, merge.getMergeInfo(), this);
-    }
-
-    // Now create the compound file if needed
-    if (useCompoundFile) {
-      Collection<String> filesToDelete = merge.getMergeInfo().files();
-      TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
-      // createCompoundFile tries to cleanup, but it might not always be able to...
-      createCompoundFile(
-          infoStream, trackingCFSDir, merge.getMergeInfo().info, context, this::deleteNewFiles);
-
-      // creating cfs resets the files tracked in SegmentInfo. if it succeeds, we
-      // delete the non cfs files directly as they are not tracked anymore.
-      deleteNewFiles(filesToDelete);
-      merge.getMergeInfo().info.setUseCompoundFile(true);
-    }
-
-    // Have codec write SegmentInfo.  Must do this after
-    // creating CFS so that 1) .si isn't slurped into CFS,
-    // and 2) .si reflects useCompoundFile=true change
-    // above:
-    codec.segmentInfoFormat().write(trackingDir, merge.getMergeInfo().info, context);
-    merge.getMergeInfo().info.addFiles(trackingDir.getCreatedFiles());
-    // Return without registering the segment files with IndexWriter.
-    // We do this together for all merges triggered by an addIndexes API,
-    // to keep the API transactional.
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */
@@ -4129,7 +3958,7 @@ public class IndexWriter
           String.format(
               Locale.ROOT,
               "commit: took %.1f msec",
-              (System.nanoTime() - startCommitTime) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
+              (System.nanoTime() - startCommitTime) / 1000000.0));
       infoStream.message("IW", "commit: done");
     }
   }
@@ -4717,7 +4546,7 @@ public class IndexWriter
             "IW",
             "merge time "
                 + (System.currentTimeMillis() - t0)
-                + " ms for "
+                + " msec for "
                 + merge.info.info.maxDoc()
                 + " docs");
       }
@@ -4990,21 +4819,19 @@ public class IndexWriter
           suppressExceptions == false,
           droppedSegment,
           mr -> {
-            if (merge.usesPooledReaders) {
-              final SegmentReader sr = mr.reader;
-              final ReadersAndUpdates rld = getPooledInstance(sr.getOriginalSegmentInfo(), false);
-              // We still hold a ref so it should not have been removed:
-              assert rld != null;
-              if (drop) {
-                rld.dropChanges();
-              } else {
-                rld.dropMergingUpdates();
-              }
-              rld.release(sr);
-              release(rld);
-              if (drop) {
-                readerPool.drop(rld.info);
-              }
+            final SegmentReader sr = mr.reader;
+            final ReadersAndUpdates rld = getPooledInstance(sr.getOriginalSegmentInfo(), false);
+            // We still hold a ref so it should not have been removed:
+            assert rld != null;
+            if (drop) {
+              rld.dropChanges();
+            } else {
+              rld.dropMergingUpdates();
+            }
+            rld.release(sr);
+            release(rld);
+            if (drop) {
+              readerPool.drop(rld.info);
             }
           });
     } else {
@@ -5153,7 +4980,7 @@ public class IndexWriter
                           String.format(
                               Locale.ROOT,
                               "%.1f sec %s",
-                              e.getValue() / (double) TimeUnit.SECONDS.toNanos(1),
+                              e.getValue() / 1000000000.,
                               e.getKey().name().toLowerCase(Locale.ROOT)))
                   .collect(Collectors.joining(", "));
           if (!pauseInfo.isEmpty()) {
@@ -5161,7 +4988,7 @@ public class IndexWriter
           }
 
           long t1 = System.nanoTime();
-          double sec = (t1 - merge.mergeStartNS) / (double) TimeUnit.SECONDS.toNanos(1);
+          double sec = (t1 - merge.mergeStartNS) / 1000000000.;
           double segmentMB = (merge.info.sizeInBytes() / 1024. / 1024.);
           infoStream.message(
               "IW",
@@ -5295,7 +5122,7 @@ public class IndexWriter
                 Locale.ROOT,
                 "merged segment size=%.3f MB vs estimate=%.3f MB",
                 merge.info.sizeInBytes() / 1024. / 1024.,
-                merge.estimatedMergeBytes / 1024. / 1024.));
+                merge.estimatedMergeBytes / 1024 / 1024.));
       }
 
       final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
@@ -6153,7 +5980,7 @@ public class IndexWriter
                   this,
                   segStates.length,
                   delCount,
-                  (System.nanoTime() - iterStartNS) / (double) TimeUnit.SECONDS.toNanos(1)));
+                  (System.nanoTime() - iterStartNS) / 1000000000.));
         }
         if (updates.privateSegment != null) {
           // No need to retry for a segment-private packet: the merge that folds in our private
@@ -6210,7 +6037,7 @@ public class IndexWriter
                 this,
                 totalSegmentCount,
                 totalDelCount,
-                (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1));
+                (System.nanoTime() - startNS) / 1000000000.);
         if (iter > 0) {
           message += "; " + (iter + 1) + " iters due to concurrent merges";
         }
@@ -6512,7 +6339,8 @@ public class IndexWriter
           public FieldInfosBuilder newFieldInfosBuilder(String softDeletesFieldName) {
             return new FieldInfosBuilder() {
               private FieldInfos.Builder builder =
-                  new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesFieldName));
+                  new FieldInfos.Builder(
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, Version.LATEST.major));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {

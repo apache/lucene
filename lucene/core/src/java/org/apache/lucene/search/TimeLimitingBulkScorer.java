@@ -18,7 +18,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
 
@@ -29,11 +28,10 @@ import org.apache.lucene.util.Bits;
  *
  * @see org.apache.lucene.index.ExitableDirectoryReader
  */
-final class TimeLimitingBulkScorer extends BulkScorer {
+public class TimeLimitingBulkScorer extends BulkScorer {
   // We score chunks of documents at a time so as to avoid the cost of checking the timeout for
   // every document we score.
   static final int INTERVAL = 100;
-
   /** Thrown when elapsed search time exceeds allowed search time. */
   @SuppressWarnings("serial")
   static class TimeExceededException extends RuntimeException {
@@ -43,9 +41,8 @@ final class TimeLimitingBulkScorer extends BulkScorer {
     }
   }
 
-  private final BulkScorer in;
-  private final QueryTimeout queryTimeout;
-
+  private BulkScorer in;
+  private QueryTimeout queryTimeout;
   /**
    * Create a TimeLimitingBulkScorer wrapper over another {@link BulkScorer} with a specified
    * timeout.
@@ -56,21 +53,14 @@ final class TimeLimitingBulkScorer extends BulkScorer {
    */
   public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeout queryTimeout) {
     this.in = bulkScorer;
-    this.queryTimeout = Objects.requireNonNull(queryTimeout);
+    this.queryTimeout = queryTimeout;
   }
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    int interval = INTERVAL;
     while (min < max) {
-      final int newMax = (int) Math.min((long) min + interval, max);
-      final int newInterval =
-          interval + (interval >> 1); // increase the interval by 50% on each iteration
-      // overflow check
-      if (interval < newInterval) {
-        interval = newInterval;
-      }
-      if (queryTimeout.shouldExit()) {
+      final int newMax = (int) Math.min((long) min + INTERVAL, max);
+      if (queryTimeout.shouldExit() == true) {
         throw new TimeLimitingBulkScorer.TimeExceededException();
       }
       min = in.score(collector, acceptDocs, min, newMax); // in is the wrapped bulk scorer

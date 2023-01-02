@@ -114,11 +114,6 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public VectorEncoding vectorEncoding() {
-            return VectorEncoding.FLOAT32;
-          }
-
-          @Override
           public VectorSimilarityFunction vectorSimilarityFunction() {
             return VectorSimilarityFunction.EUCLIDEAN;
           }
@@ -251,8 +246,6 @@ public class TestIndexableField extends LuceneTestCase {
     w.close();
 
     final IndexSearcher s = newSearcher(r);
-    StoredFields storedFields = s.storedFields();
-    TermVectors termVectors = r.termVectors();
     int counter = 0;
     for (int id = 0; id < NUM_DOCS; id++) {
       if (VERBOSE) {
@@ -263,7 +256,7 @@ public class TestIndexableField extends LuceneTestCase {
       final TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
       assertEquals(1, hits.totalHits.value);
       final int docID = hits.scoreDocs[0].doc;
-      final Document doc = storedFields.document(docID);
+      final Document doc = s.doc(docID);
       final int endCounter = counter + fieldsPerDoc[id];
       while (counter < endCounter) {
         final String name = "f" + counter;
@@ -301,7 +294,7 @@ public class TestIndexableField extends LuceneTestCase {
         if (indexed) {
           final boolean tv = counter % 2 == 1 && fieldID != 9;
           if (tv) {
-            final Terms tfv = termVectors.get(docID).terms(name);
+            final Terms tfv = r.getTermVectors(docID).terms(name);
             assertNotNull(tfv);
             TermsEnum termsEnum = tfv.iterator();
             assertEquals(newBytesRef("" + counter), termsEnum.next());
@@ -323,7 +316,7 @@ public class TestIndexableField extends LuceneTestCase {
             // TODO: offsets
 
           } else {
-            Fields vectors = termVectors.get(docID);
+            Fields vectors = r.getTermVectors(docID);
             assertTrue(vectors == null || vectors.terms(name) == null);
           }
 

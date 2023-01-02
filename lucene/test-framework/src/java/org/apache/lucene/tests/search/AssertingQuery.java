@@ -18,6 +18,7 @@ package org.apache.lucene.tests.search;
 
 import java.io.IOException;
 import java.util.Random;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -73,10 +74,10 @@ public final class AssertingQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final Query rewritten = in.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    final Query rewritten = in.rewrite(reader);
     if (rewritten == in) {
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     } else {
       return wrap(new Random(random.nextLong()), rewritten);
     }

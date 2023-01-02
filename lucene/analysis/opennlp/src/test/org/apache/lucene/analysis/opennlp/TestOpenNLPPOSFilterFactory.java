@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
-import org.apache.lucene.analysis.miscellaneous.KeywordRepeatFilterFactory;
 import org.apache.lucene.analysis.payloads.TypeAsPayloadTokenFilterFactory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
@@ -67,7 +66,6 @@ public class TestOpenNLPPOSFilterFactory extends BaseTokenStreamTestCase {
   private static final String[] NO_BREAK_terms = {"No", "period"};
   private static final int[] NO_BREAK_startOffsets = {0, 3};
   private static final int[] NO_BREAK_endOffsets = {2, 9};
-  private static final String[] NO_BREAK_KEYWORD_REPEAT_terms = {"No", "No", "period", "period"};
 
   private static final String sentenceModelFile = "en-test-sent.bin";
   private static final String tokenizerModelFile = "en-test-tokenizer.bin";
@@ -145,27 +143,5 @@ public class TestOpenNLPPOSFilterFactory extends BaseTokenStreamTestCase {
         null,
         null,
         true);
-  }
-
-  public void testNoBreakWithRepeatKeywordFilter() throws Exception {
-    CustomAnalyzer analyzer =
-        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
-            .withTokenizer(
-                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
-            .addTokenFilter(KeywordRepeatFilterFactory.class)
-            .addTokenFilter("opennlpPOS", "posTaggerModel", posTaggerModelFile)
-            .build();
-    assertAnalyzesTo(
-        analyzer, NO_BREAK, NO_BREAK_KEYWORD_REPEAT_terms, null, null, null, null, null, true);
-  }
-
-  public void testEmptyField() throws Exception {
-    CustomAnalyzer analyzer =
-        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
-            .withTokenizer(
-                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
-            .addTokenFilter("opennlpPOS", "posTaggerModel", posTaggerModelFile)
-            .build();
-    assertAnalyzesTo(analyzer, "", new String[0], null, null, null, null, null, true);
   }
 }

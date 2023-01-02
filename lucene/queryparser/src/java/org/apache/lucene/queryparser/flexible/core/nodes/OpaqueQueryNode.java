@@ -60,16 +60,12 @@ public class OpaqueQueryNode extends QueryNodeImpl {
     return clone;
   }
 
-  /**
-   * @return the schema
-   */
+  /** @return the schema */
   public CharSequence getSchema() {
     return this.schema;
   }
 
-  /**
-   * @return the value
-   */
+  /** @return the value */
   public CharSequence getValue() {
     return this.value;
   }

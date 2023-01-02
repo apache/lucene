@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.MultiReader;
@@ -111,8 +110,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
         if (VERBOSE) {
           System.out.println(
               "\nTEST: follow-on query age="
-                  + ((System.nanoTime() - prevSearchState.searchTimeNanos)
-                      / (double) TimeUnit.SECONDS.toNanos(1)));
+                  + ((System.nanoTime() - prevSearchState.searchTimeNanos) / 1000000000.0));
         }
 
         try {

@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Version;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Point;
 import org.locationtech.spatial4j.shape.Rectangle;
@@ -46,7 +47,12 @@ public class QuadPrefixTree extends LegacyPrefixTree {
 
     @Override
     protected SpatialPrefixTree newSPT() {
-      return new QuadPrefixTree(ctx, maxLevels != null ? maxLevels : MAX_LEVELS_POSSIBLE);
+      QuadPrefixTree tree =
+          new QuadPrefixTree(ctx, maxLevels != null ? maxLevels : MAX_LEVELS_POSSIBLE);
+      @SuppressWarnings("deprecation")
+      Version LUCENE_8_3_0 = Version.LUCENE_8_3_0;
+      tree.robust = getVersion().onOrAfter(LUCENE_8_3_0);
+      return tree;
     }
   }
 
@@ -65,6 +71,9 @@ public class QuadPrefixTree extends LegacyPrefixTree {
 
   final double[] levelW;
   final double[] levelH;
+
+  protected boolean robust =
+      true; // for backward compatibility, use the old method if user specified old version.
 
   public QuadPrefixTree(SpatialContext ctx, Rectangle bounds, int maxLevels) {
     super(ctx, maxLevels);
@@ -128,6 +137,21 @@ public class QuadPrefixTree extends LegacyPrefixTree {
 
   @Override
   public Cell getCell(Point p, int level) {
+    if (!robust) { // old method
+      List<Cell> cells = new ArrayList<>(1);
+      buildNotRobustly(
+          xmid,
+          ymid,
+          0,
+          cells,
+          new BytesRef(maxLevels + 1),
+          ctx.getShapeFactory().pointXY(p.getX(), p.getY()),
+          level);
+      if (!cells.isEmpty()) {
+        return cells.get(0); // note cells could be longer if p on edge
+      }
+    }
+
     double currentXmid = xmid;
     double currentYmid = ymid;
     double xp = p.getX();

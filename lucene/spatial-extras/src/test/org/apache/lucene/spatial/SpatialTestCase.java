@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.spatial;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomDouble;
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomGaussian;
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,7 +25,6 @@ import java.util.logging.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -107,11 +104,10 @@ public abstract class SpatialTestCase extends LuceneTestCase {
   protected SearchResults executeQuery(Query query, int numDocs) {
     try {
       TopDocs topDocs = indexSearcher.search(query, numDocs);
-      StoredFields storedFields = indexSearcher.storedFields();
 
       List<SearchResult> results = new ArrayList<>();
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-        results.add(new SearchResult(scoreDoc.score, storedFields.document(scoreDoc.doc)));
+        results.add(new SearchResult(scoreDoc.score, indexSearcher.doc(scoreDoc.doc)));
       }
       return new SearchResults(topDocs.totalHits.value, results);
     } catch (IOException ioe) {

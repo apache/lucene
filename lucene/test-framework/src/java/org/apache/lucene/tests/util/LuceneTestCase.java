@@ -138,14 +138,11 @@ import org.apache.lucene.index.ParallelCompositeReader;
 import org.apache.lucene.index.ParallelLeafReader;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SimpleMergedSegmentWarmer;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
@@ -195,9 +192,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
-import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -276,15 +271,12 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_WEEKLY = "tests.weekly";
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
+  public static final String SYSPROP_BADAPPLES = "tests.badapples";
 
-  /**
-   * @see #ignoreAfterMaxFailures
-   */
+  /** @see #ignoreAfterMaxFailures */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
 
-  /**
-   * @see #ignoreAfterMaxFailures
-   */
+  /** @see #ignoreAfterMaxFailures */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
 
   /** Annotation for tests that should only be run during nightly builds. */
@@ -316,6 +308,27 @@ public abstract class LuceneTestCase extends Assert {
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = false, sysProperty = SYSPROP_AWAITSFIX)
   public @interface AwaitsFix {
+    /** Point to JIRA entry. */
+    public String bugUrl();
+  }
+
+  /**
+   * Annotation for tests that fail frequently and are not executed in Jenkins builds to not spam
+   * mailing lists with false reports.
+   *
+   * <p>Tests are turned on for developers by default. If you want to disable them, set:
+   *
+   * <pre>
+   * -Dtests.badapples=false
+   * </pre>
+   *
+   * (or do this through {@code ~./lucene.build.properties}).
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @TestGroup(enabled = true, sysProperty = SYSPROP_BADAPPLES)
+  public @interface BadApple {
     /** Point to JIRA entry. */
     public String bugUrl();
   }
@@ -466,6 +479,11 @@ public abstract class LuceneTestCase extends Assert {
   public static final boolean TEST_AWAITSFIX =
       systemPropertyAsBoolean(
           SYSPROP_AWAITSFIX, AwaitsFix.class.getAnnotation(TestGroup.class).enabled());
+
+  /** Whether or not {@link BadApple} tests should run. */
+  public static final boolean TEST_BADAPPLES =
+      systemPropertyAsBoolean(
+          SYSPROP_BADAPPLES, BadApple.class.getAnnotation(TestGroup.class).enabled());
 
   /** Throttling, see {@link MockDirectoryWrapper#setThrottling(Throttling)}. */
   public static final Throttling TEST_THROTTLING =
@@ -2000,15 +2018,6 @@ public abstract class LuceneTestCase extends Assert {
       }
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
-      if (random().nextBoolean()) {
-        ret.setTimeout(
-            new QueryTimeout() {
-              @Override
-              public boolean shouldExit() {
-                return false;
-              }
-            });
-      }
       return ret;
     }
   }
@@ -2096,9 +2105,8 @@ public abstract class LuceneTestCase extends Assert {
       int numIntersections = atLeast(3);
       for (int i = 0; i < numIntersections; i++) {
         String re = AutomatonTestUtil.randomRegexp(random());
-        Automaton a = new RegExp(re, RegExp.NONE).toAutomaton();
-        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-        CompiledAutomaton automaton = new CompiledAutomaton(a);
+        CompiledAutomaton automaton =
+            new CompiledAutomaton(new RegExp(re, RegExp.NONE).toAutomaton());
         if (automaton.type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // TODO: test start term too
           TermsEnum leftIntersection = leftTerms.intersect(automaton, null);
@@ -2422,11 +2430,9 @@ public abstract class LuceneTestCase extends Assert {
   public void assertStoredFieldsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
-    StoredFields leftStoredFields = leftReader.storedFields();
-    StoredFields rightStoredFields = rightReader.storedFields();
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Document leftDoc = leftStoredFields.document(i);
-      Document rightDoc = rightStoredFields.document(i);
+      Document leftDoc = leftReader.document(i);
+      Document rightDoc = rightReader.document(i);
 
       // TODO: I think this is bogus because we don't document what the order should be
       // from these iterators, etc. I think the codec/IndexReader should be free to order this stuff
@@ -2469,11 +2475,9 @@ public abstract class LuceneTestCase extends Assert {
   public void assertTermVectorsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
-    TermVectors leftVectors = leftReader.termVectors();
-    TermVectors rightVectors = rightReader.termVectors();
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Fields leftFields = leftVectors.get(i);
-      Fields rightFields = rightVectors.get(i);
+      Fields leftFields = leftReader.getTermVectors(i);
+      Fields rightFields = rightReader.getTermVectors(i);
 
       // Fields could be null if there are no postings,
       // but then it must be null for both
@@ -3088,8 +3092,6 @@ public abstract class LuceneTestCase extends Assert {
    * execution. If enabled, it needs the following {@link SecurityPermission}: {@code
    * "createAccessControlContext"}
    */
-  @SuppressForbidden(reason = "security manager")
-  @SuppressWarnings("removal")
   public static <T> T runWithRestrictedPermissions(
       PrivilegedExceptionAction<T> action, Permission... permissions) throws Exception {
     assumeTrue(
@@ -3118,8 +3120,9 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /**
-   * Compares two strings with a collator, also looking to see if the strings are impacted by jdk
-   * bugs. may not avoid all jdk bugs in tests. see https://bugs.openjdk.java.net/browse/JDK-8071862
+   * Compares two strings with a collator, also looking to see if the the strings are impacted by
+   * jdk bugs. may not avoid all jdk bugs in tests. see
+   * https://bugs.openjdk.java.net/browse/JDK-8071862
    */
   @SuppressForbidden(reason = "dodges JDK-8071862")
   public static int collate(Collator collator, String s1, String s2) {

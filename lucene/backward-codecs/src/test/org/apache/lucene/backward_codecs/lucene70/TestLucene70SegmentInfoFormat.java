@@ -20,15 +20,14 @@ package org.apache.lucene.backward_codecs.lucene70;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.Version;
 
-@Nightly // N-2 formats are only tested on nightly runs
+@SuppressWarnings("deprecation")
 public class TestLucene70SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
   @Override
   protected Version[] getVersions() {
-    return new Version[] {Version.fromBits(8, 4, 0)};
+    return new Version[] {Version.LUCENE_8_4_0};
   }
 
   @Override

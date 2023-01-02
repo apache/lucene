@@ -65,7 +65,7 @@ public class ParseException extends Exception {
   /**
    * This is the last token that has been consumed successfully.  If
    * this object has been created due to a parse error, the token
-   * following this token will (therefore) be the first error token.
+   * followng this token will (therefore) be the first error token.
    */
   public Token currentToken;
 
@@ -122,9 +122,7 @@ public class ParseException extends Exception {
       retval += " \"";
       tok = tok.next;
     }
-    if (currentToken.next != null) {
-      retval += "\" at line " + currentToken.next.beginLine + ", column " + currentToken.next.beginColumn;
-    }
+    retval += "\" at line " + currentToken.next.beginLine + ", column " + currentToken.next.beginColumn;
     retval += "." + EOL;
     
     

@@ -24,12 +24,10 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.packed.PackedInts;
 
-@Nightly // N-2 formats are only tested on nightly runs
 public class TestLegacyDirectPacked extends LuceneTestCase {
 
   /** simple encode/decode */

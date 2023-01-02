@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -36,8 +37,6 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.BulkScorer;
@@ -54,7 +53,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 import org.junit.Assert;
 
@@ -236,12 +234,6 @@ public class QueryUtils {
       }
 
       @Override
-      public TopDocs searchNearestVectors(
-          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
-        return null;
-      }
-
-      @Override
       public FieldInfos getFieldInfos() {
         return FieldInfos.EMPTY;
       }
@@ -262,8 +254,8 @@ public class QueryUtils {
       public void checkIntegrity() throws IOException {}
 
       @Override
-      public TermVectors termVectors() {
-        return TermVectors.EMPTY;
+      public Fields getTermVectors(int docID) throws IOException {
+        return null;
       }
 
       @Override
@@ -277,12 +269,7 @@ public class QueryUtils {
       }
 
       @Override
-      public StoredFields storedFields() {
-        return new StoredFields() {
-          @Override
-          public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
-        };
-      }
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
 
       @Override
       protected void doClose() throws IOException {}
@@ -548,7 +535,7 @@ public class QueryUtils {
           public void collect(int doc) throws IOException {
             float score = scorer.score();
             try {
-              long startNS = System.nanoTime();
+              long startMS = System.currentTimeMillis();
               for (int i = lastDoc[0] + 1; i <= doc; i++) {
                 Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
                 Scorer scorer = w.scorer(context.get(leafPtr));
@@ -578,7 +565,7 @@ public class QueryUtils {
 
                 // Hurry things along if they are going slow (eg
                 // if you got SimpleText codec this will kick in):
-                if (i < doc && System.nanoTime() - startNS > 5_000_000) {
+                if (i < doc && System.currentTimeMillis() - startMS > 5) {
                   i = doc - 1;
                 }
               }

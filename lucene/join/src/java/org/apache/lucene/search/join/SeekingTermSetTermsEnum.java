@@ -74,7 +74,7 @@ public class SeekingTermSetTermsEnum extends FilteredTermsEnum {
     } else {
       if (upto == lastElement) {
         return AcceptStatus.NO;
-      } else { // Our current term doesn't match the given term.
+      } else { // Our current term doesn't match the the given term.
         int cmp;
         do { // We maybe are behind the given term by more than one step. Keep incrementing till
           // we're the same or higher.

@@ -42,7 +42,7 @@ templates:
 
     As you complete each step the tool will ask you if the task is complete, making
     it easy for you to know what is done and what is left to do. If you need to
-    re-spin a Release Candidate (RC) the Wizard will also help.
+    re-spin a Release Candidata (RC) the Wizard will also help.
 
     The Lucene project has automated much of the release process with various scripts,
     and this wizard is the glue that binds it all together.
@@ -108,7 +108,7 @@ templates:
 
     .Mail template
     ----
-    To: dev@lucene.apache.org, java-user@lucene.apache.org
+    To: dev@lucene.apache.org, general@lucene.apache.org, java-user@lucene.apache.org
     Subject: [ANNOUNCE] Apache Lucene {{ release_version }} released
 
     (( template=announce_lucene_mail_body ))
@@ -132,6 +132,10 @@ templates:
     {%- endfor %}
 
 
+    Note: The Apache Software Foundation uses an extensive mirroring network for
+    distributing releases. It is possible that the mirror you are using may not have
+    replicated the release yet. If that is the case, please try another mirror.
+    This also applies to Maven access.
 # TODOs belong to groups for easy navigation in menus. Todo objects may contain asciidoc
 # descriptions, a number of commands to execute, some links to display, user input to gather
 # etc. Here is the documentation of each type of object. For further details, please consult
@@ -152,7 +156,7 @@ templates:
 #         you should introduce the task in more detail. You can use {{ jinja_var }} to
 #         reference variables. See `releaseWizard.py` for list of global vars supported.
 #         You can reference state saved from earlier TODO items using syntax
-#           {{ todo_id.var_name }}
+#           {{ todi_id.var_name }}
 #         with `var_name` being either fetched from user_input or persist_vars
 #     depends:  # One or more dependencies which will bar execution
 #     - todo_id1
@@ -213,9 +217,10 @@ groups:
       voting rules, create a PGP/GPG key for use with signing and more. Please familiarise
       yourself with the resources listed below.
     links:
-    - https://infra.apache.org/release-publishing.html
+    - https://www.apache.org/dev/release-publishing.html
     - https://www.apache.org/legal/release-policy.html
     - https://infra.apache.org/release-signing.html
+    - https://cwiki.apache.org/confluence/display/LUCENE/ReleaseTodo
   - !Todo
     id: tools
     title: Necessary tools are installed
@@ -244,37 +249,37 @@ groups:
       The ID is the last 8 bytes of your key fingerprint, e.g. 0D8D0B93.
 
       * Make sure your gpg key is 4096 bits key or larger
-      * Upload your key to a key server: pgp.mit.edu or keys.openpgp.org
-      * Put your GPG key's fingerprint in the `OpenPGP Public Key Primary Fingerprint`
+      * Upload your key to the MIT key server, pgp.mit.edu
+      * Put you GPG key's fingerprint in the `OpenPGP Public Key Primary Fingerprint`
         field in your id.apache.org profile
       * The tests will complain if your GPG key has not been signed by another Lucene
         committer. This makes you a part of the GPG "web of trust" (WoT). Ask a committer
         that you know personally to sign your key for you, providing them with the
         fingerprint for the key.
-
-      You can choose between signing the release with the gpg program or with the
-      gradle signing plugin. Read about the difference in https://github.com/apache/lucene/blob/main/help/publishing.txt
-
-      This wizard can prompt you securely for your passphrase (will not be stored) and pass it on to
-      buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance
-      and avoid having to type it in the terminal. This can be done with either a gpg-agent (for gpg tool)
-      or in `gradle.properties` or an ENV.var (for gradle), See `./gradlew helpPublishing` for details.
     function: configure_pgp
     links:
-    - https://infra.apache.org/release-signing.html
-    - https://infra.apache.org/openpgp.html#apache-wot
+    - http://www.apache.org/dev/release-signing.html
+    - http://www.apache.org/dev/openpgp.html#apache-wot
     - https://id.apache.org
     - https://dist.apache.org/repos/dist/release/lucene/KEYS
-    - https://github.com/apache/lucene/blob/main/help/publishing.txt
+  - !Todo
+    id: jira_permissions
+    title: Obtain the neccessary permissions for Apache Jira
+    description: |-
+      If you are not a PMC member and this is your first time as RM, please ask to be granted extra permissions in Jira in order to complete all steps of the release.
+
+      If you are a PMC member, you will already have the necessary permissions.
+    links:
+      - https://issues.apache.org/jira/projects/LUCENE
 - !TodoGroup
   id: preparation
   title: Prepare for the release
   description: Work with the community to decide when the release will happen and what work must be completed before it can happen
   todos:
   - !Todo
-    id: decide_github_issues
-    title: Select issues to be included
-    description: Set the appropriate "Milestone" in Github for the issues that should be included in the release.
+    id: decide_jira_issues
+    title: Select JIRA issues to be included
+    description: Set the appropriate "Fix Version" in JIRA for the issues that should be included in the release.
   - !Todo
     id: fix_build_failures
     title: Look into common build failures
@@ -372,7 +377,7 @@ groups:
         cmd: git checkout -b {{ stable_branch }}
         tee: true
       - !Command
-        cmd: git push --set-upstream origin {{ stable_branch }}
+        cmd: git push origin {{ stable_branch }}
         tee: true
   - !Todo
     id: create_minor_branch
@@ -401,7 +406,7 @@ groups:
         cmd: git checkout -b {{ release_branch }}
         tee: true
       - !Command
-        cmd: git push --set-upstream origin {{ release_branch }}
+        cmd: git push origin {{ release_branch }}
         tee: true
   - !Todo
     id: add_version_major
@@ -419,7 +424,7 @@ groups:
         cmd: git checkout main
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && {{ gradle_cmd }} tidy
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
         tee: true
       - !Command
         comment: Make sure the edits done by `addVersion.py` are ok, then push
@@ -434,7 +439,7 @@ groups:
       There may be other steps needed as well
   - !Todo
     id: add_version_minor
-    title: Add a new minor version on stable and unstable branches
+    title: Add a new minor version on stable branch
     types:
     - major
     - minor
@@ -443,23 +448,10 @@ groups:
       next_version: "{{ release_version_major }}.{{ release_version_minor + 1 }}.0"
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
-      commands_text: Run these commands to add the new minor version {{ next_version }} to the stable and unstable branches
+      commands_text: Run these commands to add the new minor version {{ next_version }} to the stable branch
       commands:
       - !Command
         cmd: git checkout {{ stable_branch }}
-        tee: true
-      - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && {{ gradle_cmd }} tidy
-        tee: true
-      - !Command
-        comment: Make sure the edits done by `addVersion.py` are ok, then push
-        cmd: git add -u .  && git commit -m "Add next minor version {{ next_version }}"  && git push
-        logfile: commit-stable.log
-      - !Command
-        cmd: git checkout main
-        tee: true
-      - !Command
-        cmd: git pull --ff-only
         tee: true
       - !Command
         cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
@@ -511,8 +503,8 @@ groups:
       * No new features may be committed to the branch.
       * Documentation patches, build patches and serious bug fixes may be
         committed to the branch. However, you should submit all patches you
-        want to commit as pull requests first to give others the chance to review
-        and possibly vote against them. Keep in mind that it is our
+        want to commit to Jira first to give others the chance to review
+        and possibly vote against the patch. Keep in mind that it is our
         main intention to keep the branch as stable as possible.
       * All patches that are intended for the branch should first be committed
         to the unstable branch, merged into the stable branch, and then into
@@ -522,8 +514,8 @@ groups:
         while the branch feature freeze is in effect, think twice: can't the
         addition wait a couple more days? Merges of bug fixes into the branch
         may become more difficult.
-      * Only Github issues with Milestone {{ release_version_major }}.{{ release_version_minor }}
-        and priority "Blocker" will delay a release candidate build.
+      * Only Jira issues with Fix version {{ release_version_major }}.{{ release_version_minor }} and priority "Blocker" will delay
+        a release candidate build.
       ----
     types:
     - major
@@ -551,12 +543,12 @@ groups:
       * Before committing to the branch, reply to this thread and argue
         why the fix needs backporting and how long it will take.
       * All issues accepted for backporting should be marked with {{ release_version }}
-        in GitHub, and issues that should delay the release must be marked as Blocker
+        in JIRA, and issues that should delay the release must be marked as Blocker
       * All patches that are intended for the branch should first be committed
         to the unstable branch, merged into the stable branch, and then into
         the current release branch.
-      * Only GitHub issues or pull requests with milestone {{ release_version }} and
-        priority "Blocker" will delay a release candidate build.
+      * Only Jira issues with Fix version {{ release_version }} and priority "Blocker" will delay
+        a release candidate build.
       ----
     types:
     - bugfix
@@ -571,14 +563,14 @@ groups:
       Ask on dev@ for input. Ideally the timing of this request mostly coincides with the
       release branch creation. It's a good idea to remind the devs of this later in the release too.
 
-      NOTE: Do not add every single GitHub PR, but distill the Release note into important changes!
+      NOTE: Do not add every single JIRA issue, but distill the Release note into important changes!
     links:
     - https://cwiki.apache.org/confluence/display/LUCENE/Release+Notes
   - !Todo
-    id: new_github_versions
-    title: Add a new version in GitHub for the next release
+    id: new_jira_versions
+    title: Add a new version in JIRA for the next release
     description: |-
-      Go to the GitHub milestones and add the new version:
+      Go to the JIRA "Manage Versions" Administration pages and add the new version:
 
       {% if release_type == 'major' -%}
       . Change name of version `main ({{ release_version_major }}.0)` into `{{ release_version_major }}.0`
@@ -588,13 +580,13 @@ groups:
     - major
     - minor
     links:
-    - https://github.com/apache/lucene/milestones
+    - https://issues.apache.org/jira/plugins/servlet/project-config/LUCENE/versions
 - !TodoGroup
   id: artifacts
   title: Build the release artifacts
   description: |-
     If after the last day of the feature freeze phase no blocking issues are
-    in GitHub with milestone {{ release_version }}, then it's time to build the
+    in JIRA with "Fix Version" {{ release_version }}, then it's time to build the
     release artifacts, run the smoke tester and stage the RC in svn
   depends:
   - test
@@ -613,14 +605,6 @@ groups:
       - !Command
         cmd: git checkout {{ release_branch }}
         stdout: true
-      - !Command
-        cmd: git clean -df && git checkout -- .
-        comment: Make sure checkout is clean and up to date
-        logfile: git_clean.log
-        tee: true
-      - !Command
-        cmd: git pull --ff-only
-        tee: true
       - !Command
         cmd: "{{ gradle_cmd }} documentation"
     post_description: Check that the task passed. If it failed, commit fixes for the failures before proceeding.
@@ -649,11 +633,9 @@ groups:
     vars:
       logfile: '{{ [rc_folder, ''logs'', ''buildAndPushRelease.log''] | path_join }}'
       git_rev: '{{ current_git_rev }}' # Note, git_rev will be recorded in todo state AFTER completion of commands
-      git_rev_short: '{{ git_rev | truncate(7,true,"") }}'  # Note, git_rev_short will be recorded in todo state AFTER completion of commands
-      local_keys: '{% if keys_downloaded %} --local-keys "{{ [config_path, ''KEYS''] | path_join }}"{% endif %}'
+      local_keys: '{% if keys_downloaded %} --local-keys "{{ [config_path, ''KEYS''] | path_join }}"{% endif %}'      
     persist_vars:
     - git_rev
-    - git_rev_short
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       commands_text: |-
@@ -679,8 +661,8 @@ groups:
         cmd: git pull --ff-only
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/buildAndPushRelease.py {{ local_keys }}  --logfile {{ logfile }}  --push-local "{{ dist_file_path }}"  --rc-num {{ rc_number }}  --sign {{ gpg_key | default("<gpg_key_id>", True) }}{% if gpg.use_gradle %}  --sign-method-gradle{% endif %}{% if not gpg.prompt_pass %}  --gpg-pass-noprompt{% endif %}
-        comment: "Using {% if gpg.use_gradle %}gradle{% else %}gpg command{% endif %} for signing.{% if gpg.prompt_pass %} Remember to type your GPG pass-phrase at the prompt!{% endif %}"
+        cmd: python3 -u dev-tools/scripts/buildAndPushRelease.py {{ local_keys }}  --logfile {{ logfile }}  --push-local "{{ dist_file_path }}"  --rc-num {{ rc_number }}  --sign {{ gpg_key | default("<gpg_key_id>", True) }}
+        comment: "NOTE: Remember to type your GPG pass-phrase at the prompt!"
         logfile: build_rc.log
         tee: true
   - !Todo
@@ -710,7 +692,7 @@ groups:
     vars:
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
       dist_path: '{{ [dist_file_path, dist_folder] | path_join }}'
-      dist_url: '{{ dist_url_base }}/{{ dist_folder}}'
+      dist_url: https://dist.apache.org/repos/dist/dev/lucene/{{ dist_folder}}
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       commands_text: Have your Apache credentials handy, you'll be prompted for your password
@@ -728,7 +710,7 @@ groups:
     depends: import_svn
     vars:
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
-      dist_url: '{{ dist_url_base }}/{{ dist_folder}}'
+      dist_url: https://dist.apache.org/repos/dist/dev/lucene/{{ dist_folder}}
       tmp_dir: '{{ [rc_folder, ''smoketest_staged''] | path_join }}'
       local_keys: '{% if keys_downloaded %} --local-keys "{{ [config_path, ''KEYS''] | path_join }}"{% endif %}'
     commands: !Commands
@@ -761,12 +743,12 @@ groups:
       Please vote for release candidate {{ rc_number }} for Lucene {{ release_version }}
 
       The artifacts can be downloaded from:
-      {{ dist_url_base }}/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
+      https://dist.apache.org/repos/dist/dev/lucene/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
 
       You can run the smoke tester directly with this command:
 
       python3 -u dev-tools/scripts/smokeTestRelease.py \
-      {{ dist_url_base }}/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
+      https://dist.apache.org/repos/dist/dev/lucene/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
 
       The vote will be open for at least 72 hours i.e. until {{ vote_close }}.
 
@@ -889,7 +871,7 @@ groups:
     vars:
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
       dist_path: '{{ [dist_file_path, dist_folder] | path_join }}'
-      dist_stage_url: '{{ dist_url_base }}/{{ dist_folder}}'
+      dist_stage_url: https://dist.apache.org/repos/dist/dev/lucene/{{ dist_folder}}
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
       confirm_each_command: false
@@ -904,7 +886,7 @@ groups:
     title: Move release artifacts to release repo
     vars:
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
-      dist_stage_url: '{{ dist_url_base }}/{{ dist_folder}}'
+      dist_stage_url: https://dist.apache.org/repos/dist/dev/lucene/{{ dist_folder}}
       dist_release_url: https://dist.apache.org/repos/dist/release/lucene
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
@@ -916,7 +898,7 @@ groups:
         logfile: svn_mv_lucene.log
         tee: true
       - !Command
-        cmd: svn rm -m "Clean up the RC folder for {{ release_version }} RC{{ rc_number }}"  {{ dist_url_base }}/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
+        cmd: svn rm -m "Clean up the RC folder for {{ release_version }} RC{{ rc_number }}"  https://dist.apache.org/repos/dist/dev/lucene/lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
         logfile: svn_rm_containing.log
         comment: Clean up containing folder on the staging repo
         tee: true
@@ -925,7 +907,6 @@ groups:
     id: stage_maven
     title: Stage the maven artifacts for publishing
     vars:
-      git_sha: '{{ build_rc.git_rev_short | default("<git_sha>", True) }}'
       dist_folder: lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}
     commands: !Commands
       root_folder: '{{ git_checkout_folder }}'
@@ -933,28 +914,30 @@ groups:
       commands_text: In the source checkout do the following (note that this step will prompt you for your Apache LDAP credentials)
       commands:
         - !Command
-          cmd: java dev-tools/scripts/StageArtifacts.java --user {{ gpg.apache_id }} --description "{{ 'Apache Lucene ', release_version, ' (commit ', git_sha, ')' }}" "{{ [dist_file_path, dist_folder, 'solr', 'maven'] | path_join }}"
-          tee: true
+          cmd: ant clean stage-maven-artifacts  -Dmaven.dist.dir={{ [dist_file_path, dist_folder, 'lucene', 'maven'] | path_join }}  -Dm2.repository.id=apache.releases.https  -Dm2.repository.url={{ m2_repository_url }}
           logfile: publish_lucene_maven.log
     post_description: The artifacts are not published yet, please proceed with the next step to actually publish!
   - !Todo
     id: publish_maven
     depends: stage_maven
     title: Publish the staged maven artifacts
-    vars:
-      git_sha: '{{ build_rc.git_rev_short | default("<git_sha>", True) }}'
     description: |
       Once you have transferred all maven artifacts to repository.apache.org,
       you will need to do some manual steps to actually release them to Maven Central:
 
-      * Release the staging repository
+      * Close the staging repository
       . Log in to https://repository.apache.org/ with your ASF credentials
       . Select "Staging Repositories" under "Build Promotion" from the navigation bar on the left
-      . Select the staging repository named, "Apache Lucene {{ release_version }} (commit {{ git_sha }})"
+      . Select the staging repository containing the Lucene artifacts
+      . Click on the "Close" button above the repository list, then enter a description when prompted, e.g. "Lucene {{ release_version }} RC{{ rc_number }}"
+      * The system will now spend some time validating the artifacts. Grab a coke and come back.
+      * Release the Lucene artifacts
+      . Wait and keep clicking refresh until the "Release" button becomes available
       . Click on the "Release" button above the repository list, then enter a description when prompted, e.g. "Lucene {{ release_version }}".
 
       Maven central should show the release after a short while
     links:
+    - https://wiki.apache.org/lucene-java/PublishMavenArtifacts
     - https://repository.apache.org/index.html
   - !Todo
     id: check_distribution_directory
@@ -963,7 +946,7 @@ groups:
     function: check_artifacts_available
     description: |
       The task will attempt to fetch https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc
-      to validate ASF repo, and https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.jar.asc
+      to validate ASF repo, and https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.pom.asc
       to validate Maven repo.
 
       If the check fails, please re-run the task, until it succeeds.
@@ -1030,7 +1013,7 @@ groups:
       Fortunately the only thing you need to change is a few variables in `pelicanconf.py`.
       If you release a current latest release, change the `LUCENE_LATEST_RELEASE` and `LUCENE_LATEST_RELEASE_DATE`
       variables.
-      If you relese a bugfix release for previous version, then change the `LUCENE_PREVIOUS_MAJOR_RELEASE` variable.
+      If you relese a bugfix release for previos version, then change the `LUCENE_PREVIOUS_MAJOR_RELEASE` variable.
     commands: !Commands
       root_folder: '{{ git_website_folder }}'
       commands_text: Edit pelicanconf.py to update version numbers
@@ -1170,9 +1153,9 @@ groups:
       - http://lucene.apache.org/core/api/core/
   - !Todo
     id: update_doap
-    title: Update the DOAP file
+    title: Update the DOAP files
     description: |
-      Update the Lucene DOAP RDF file on the unstable, stable and release branches to
+      Update the DOAP RDF files on the unstable, stable and release branches to
       reflect the new versions (note that the website .htaccess file redirects from their 
       canonical URLs to their locations in the Lucene Git source repository - see
       dev-tools/doap/README.txt for more info)
@@ -1313,7 +1296,7 @@ groups:
         comment: Go to main branch
         logfile: checkout-main.log
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }} && {{ gradle_cmd }} tidy
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }}
         logfile: addversion-main.log
       - !Command
         cmd: git diff
@@ -1327,7 +1310,7 @@ groups:
         logfile: checkout-stable.log
         comment: Now the same for the stable branch
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }} && {{ gradle_cmd }} tidy
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ release_version }}
         logfile: addversion-stable.log
       - !Command
         cmd: git diff
@@ -1344,8 +1327,8 @@ groups:
       CHANGES.txt files, removing any duplicate entries, but only from sections for as-yet 
       unreleased versions; leave intact duplicate entries for already-released versions.
 
-      There is a script to generate a regex that will match issues fixed in a release: 
-      `releasedJirasRegex.py`. The following examples will print regexes matching all issues 
+      There is a script to generate a regex that will match JIRAs fixed in a release: 
+      `releasedJirasRegex.py`. The following examples will print regexes matching all JIRAs 
       fixed in {{ release_version }}, which can then be used to find duplicates in unreleased 
       version sections of the corresponding CHANGES.txt files.
     commands: !Commands
@@ -1398,7 +1381,7 @@ groups:
         cmd: git checkout {{ release_branch }}
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }} && {{ gradle_cmd }} tidy
+        cmd: python3 -u dev-tools/scripts/addVersion.py {{ next_version }}
         tee: true
       - !Command
         cmd: git diff
@@ -1517,32 +1500,55 @@ groups:
       because there was no released Lucene version to test against.
       {{ set_java_home(release_version) }}
   - !Todo
-    id: github_release
-    title: Mark version as released in GitHub
+    id: jira_release
+    title: Mark version as released in JIRA
     description: |-
-      Go to https://github.com/apache/lucene/milestones.
-      . Click "Close" on the version you just released.
-    links:
-    - https://github.com/apache/lucene/milestones
-  - !Todo
-    id: github_change_unresolved
-    title: Remove milestone for unresolved
-    description: |-
-      Go to GitHub to update all open issues assigned to milestone _{{ release_version }}_.
+      Go to the JIRA "Manage Versions" Administration pages.
 
-      . Open https://github.com/apache/lucene/milestones/{{ release_version }}
-      . Remove the milestone from all issues and pull requests that are still open.
+      . Next to version {{ release_version }}, click the gear pop-up menu icon and choose "Release"
+      . Fill in the release date ({{ release_date | formatdate }})
+      . It will give the option of transitioning issues marked fix-for the released version to the 
+        next version, but do not do this as it will send an email for each issue :)
     links:
-    - https://github.com/apache/lucene/milestones/{{ release_version }}
+    - https://issues.apache.org/jira/plugins/servlet/project-config/LUCENE/versions
   - !Todo
-    id: new_github_versions_bugfix
-    title: Add a new milestone in GitHub for the next release
+    id: jira_close_resolved
+    title: Close all issues resolved in the release
     description: |-
-      Go to GitHub milestones and add the new version {{ get_next_version }}`.
+      Go to JIRA search to find all issues that were fixed in the release
+      you just made, whose Status is Resolved.
+
+      . Go to https://issues.apache.org/jira/issues/?jql=project+in+(LUCENE)+AND+status=Resolved+AND+fixVersion={{ release_version }}
+      . Do a bulk change (Under Tools... menu) to close all of these issues. This is a workflow transition task
+      . In the 'Comment' box type `Closing after the {{ release_version }} release`
+      . *Uncheck* the box that says `Send mail for this update`
+    links:
+    - https://issues.apache.org/jira/issues/?jql=project+in+(LUCENE)+AND+status=Resolved+AND+fixVersion={{ release_version }}
+  - !Todo
+    id: jira_change_unresolved
+    title: Remove fixVersion for unresolved
+    description: |-
+      Do another JIRA search to find all issues with Resolution=_Unresolved_ and fixVersion=_{{ release_version }}_.
+
+      . Open https://issues.apache.org/jira/issues/?jql=project+=+LUCENE+AND+resolution=Unresolved+AND+fixVersion={{ release_version }}
+      . In the `Tools` menu, start a bulk change - operation="Edit issues"
+      . Identify issues that *are included* in the release, but are unresolved e.g. due to being REOPENED. These shall *not* be bulk changed!
+      . Check the box next to `Change Fix Version/s` and in the dropdown `Find and remove these`, selecting v {{ release_version }}
+      . On the bottom of the form, uncheck the box that says `Send mail for this update`
+      . Click `Next`, review the changes and click `Confirm`
+    links:
+    - https://issues.apache.org/jira/issues/?jql=project+=+LUCENE+AND+resolution=Unresolved+AND+fixVersion={{ release_version }}
+  - !Todo
+    id: new_jira_versions_bugfix
+    title: Add a new version in JIRA for the next release
+    description: |-
+      Go to the JIRA "Manage Versions" Administration pages and add the new version:
+
+      . Create a new (unreleased) version `{{ get_next_version }}`
     types:
     - bugfix
     links:
-    - https://github.com/apache/lucene/milestones
+    - https://issues.apache.org/jira/plugins/servlet/project-config/LUCENE/versions
   - !Todo
     id: stop_promoting_old
     title: Stop promoting old releases
@@ -1552,7 +1558,7 @@ groups:
       svnpubsub area `dist/releases/lucene/`. Older releases can be
       safely deleted, since they are already backed up in the archives.
 
-      Currently these versions exist in the distribution directory:
+      Currenlty these versions exist in the distribution directory:
 
       *{{ mirrored_versions|join(', ') }}*
 

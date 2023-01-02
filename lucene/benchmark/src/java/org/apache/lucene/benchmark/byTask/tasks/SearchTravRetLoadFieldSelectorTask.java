@@ -23,7 +23,7 @@ import java.util.StringTokenizer;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
-import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.IndexReader;
 
 /**
  * Search and Traverse and Retrieve docs task using a FieldVisitor loading only the requested
@@ -51,12 +51,12 @@ public class SearchTravRetLoadFieldSelectorTask extends SearchTravTask {
   }
 
   @Override
-  protected Document retrieveDoc(StoredFields storedFields, int id) throws IOException {
+  protected Document retrieveDoc(IndexReader ir, int id) throws IOException {
     if (fieldsToLoad == null) {
-      return storedFields.document(id);
+      return ir.document(id);
     } else {
       DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor(fieldsToLoad);
-      storedFields.document(id, visitor);
+      ir.document(id, visitor);
       return visitor.getDocument();
     }
   }

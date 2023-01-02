@@ -232,8 +232,7 @@ public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
     wrapper.setRewriteMethod(
         new SpanMultiTermQueryWrapper.SpanRewriteMethod() {
           @Override
-          public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
-              throws IOException {
+          public SpanQuery rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
             return null;
           }
         });

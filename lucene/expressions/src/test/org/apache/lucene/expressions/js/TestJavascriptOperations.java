@@ -17,10 +17,11 @@
 package org.apache.lucene.expressions.js;
 
 import org.apache.lucene.expressions.Expression;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestJavascriptOperations extends CompilerTestCase {
+public class TestJavascriptOperations extends LuceneTestCase {
   private void assertEvaluatesTo(String expression, long expected) throws Exception {
-    Expression evaluator = compile(expression);
+    Expression evaluator = JavascriptCompiler.compile(expression);
     long actual = (long) evaluator.evaluate(null);
     assertEquals(expected, actual);
   }

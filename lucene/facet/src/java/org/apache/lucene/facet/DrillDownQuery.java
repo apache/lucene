@@ -24,11 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -100,8 +100,8 @@ public final class DrillDownQuery extends Query {
 
   /**
    * Creates a new {@code DrillDownQuery} over the given base query. Can be {@code null}, in which
-   * case the result {@link Query} from {@link Query#rewrite(IndexSearcher)} will be a pure browsing
-   * query, filtering on the added categories only.
+   * case the result {@link Query} from {@link #rewrite(IndexReader)} will be a pure browsing query,
+   * filtering on the added categories only.
    */
   public DrillDownQuery(FacetsConfig config, Query baseQuery) {
     this.baseQuery = baseQuery;
@@ -156,7 +156,7 @@ public final class DrillDownQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+  public Query rewrite(IndexReader r) throws IOException {
     BooleanQuery rewritten = getBooleanQuery();
     if (rewritten.clauses().isEmpty()) {
       return new MatchAllDocsQuery();

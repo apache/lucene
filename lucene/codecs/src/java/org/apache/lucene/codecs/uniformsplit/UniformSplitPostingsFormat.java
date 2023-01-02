@@ -90,9 +90,7 @@ public class UniformSplitPostingsFormat extends PostingsFormat {
     this(NAME, targetNumBlockLines, deltaNumLines, blockEncoder, blockDecoder, dictionaryOnHeap);
   }
 
-  /**
-   * @see #UniformSplitPostingsFormat(int, int, BlockEncoder, BlockDecoder, boolean)
-   */
+  /** @see #UniformSplitPostingsFormat(int, int, BlockEncoder, BlockDecoder, boolean) */
   protected UniformSplitPostingsFormat(
       String name,
       int targetNumBlockLines,

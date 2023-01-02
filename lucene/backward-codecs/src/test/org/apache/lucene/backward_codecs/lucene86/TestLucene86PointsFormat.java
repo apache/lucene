@@ -39,11 +39,9 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BasePointsFormatTestCase;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 
-@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   private final Codec codec;
@@ -101,8 +99,6 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
     super.testMergeStability();
   }
 
-  // TODO: clean up the math/estimation here rather than suppress so many warnings
-  @SuppressWarnings({"NarrowCalculation", "LongDoubleConversion"})
   public void testEstimatePointCount() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
@@ -228,8 +224,6 @@ public class TestLucene86PointsFormat extends BasePointsFormatTestCase {
 
   // The tree is always balanced in the N dims case, and leaves are
   // not all full so things are a bit different
-  // TODO: clean up the math/estimation here rather than suppress so many warnings
-  @SuppressWarnings({"NarrowCalculation", "LongDoubleConversion"})
   public void testEstimatePointCount2Dims() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());

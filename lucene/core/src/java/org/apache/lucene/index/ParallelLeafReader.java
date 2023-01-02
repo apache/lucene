@@ -29,7 +29,6 @@ import java.util.TreeMap;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 /**
@@ -113,8 +112,16 @@ public class ParallelLeafReader extends LeafReader {
             .findAny()
             .orElse(null);
     // TODO: make this read-only in a cleaner way?
+    final int indexCreatedVersionMajor =
+        completeReaderSet.stream()
+            .map(LeafReader::getMetaData)
+            .filter(Objects::nonNull)
+            .mapToInt(LeafMetaData::getCreatedVersionMajor)
+            .min()
+            .orElse(Version.LATEST.major);
     FieldInfos.Builder builder =
-        new FieldInfos.Builder(new FieldInfos.FieldNumbers(softDeletesField));
+        new FieldInfos.Builder(
+            new FieldInfos.FieldNumbers(softDeletesField, indexCreatedVersionMajor));
 
     Sort indexSort = null;
     int createdVersionMajor = -1;
@@ -267,20 +274,11 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public StoredFields storedFields() throws IOException {
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
     ensureOpen();
-    StoredFields[] fields = new StoredFields[storedFieldsReaders.length];
-    for (int i = 0; i < fields.length; i++) {
-      fields[i] = storedFieldsReaders[i].storedFields();
+    for (final LeafReader reader : storedFieldsReaders) {
+      reader.document(docID, visitor);
     }
-    return new StoredFields() {
-      @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-        for (StoredFields reader : fields) {
-          reader.document(docID, visitor);
-        }
-      }
-    };
   }
 
   @Override
@@ -310,27 +308,21 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public TermVectors termVectors() throws IOException {
+  public Fields getTermVectors(int docID) throws IOException {
     ensureOpen();
-    // TODO: optimize
-    return new TermVectors() {
-      @Override
-      public Fields get(int docID) throws IOException {
-        ParallelFields fields = null;
-        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-          String fieldName = ent.getKey();
-          Terms vector = ent.getValue().termVectors().get(docID, fieldName);
-          if (vector != null) {
-            if (fields == null) {
-              fields = new ParallelFields();
-            }
-            fields.addField(fieldName, vector);
-          }
+    ParallelFields fields = null;
+    for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
+      String fieldName = ent.getKey();
+      Terms vector = ent.getValue().getTermVector(docID, fieldName);
+      if (vector != null) {
+        if (fields == null) {
+          fields = new ParallelFields();
         }
-
-        return fields;
+        fields.addField(fieldName, vector);
       }
-    };
+    }
+
+    return fields;
   }
 
   @Override
@@ -411,17 +403,6 @@ public class ParallelLeafReader extends LeafReader {
   @Override
   public TopDocs searchNearestVectors(
       String fieldName, float[] target, int k, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    ensureOpen();
-    LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null
-        ? null
-        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public TopDocs searchNearestVectors(
-      String fieldName, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);

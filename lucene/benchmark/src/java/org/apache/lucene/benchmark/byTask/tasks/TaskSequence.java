@@ -83,16 +83,12 @@ public class TaskSequence extends PerfTask {
     }
   }
 
-  /**
-   * @return Returns the parallel.
-   */
+  /** @return Returns the parallel. */
   public boolean isParallel() {
     return parallel;
   }
 
-  /**
-   * @return Returns the repetitions.
-   */
+  /** @return Returns the repetitions. */
   public int getRepetitions() {
     return repetitions;
   }
@@ -104,9 +100,7 @@ public class TaskSequence extends PerfTask {
     fixedTime = true;
   }
 
-  /**
-   * @param repetitions The repetitions to set.
-   */
+  /** @param repetitions The repetitions to set. */
   public void setRepetitions(int repetitions) throws Exception {
     fixedTime = false;
     this.repetitions = repetitions;
@@ -118,9 +112,7 @@ public class TaskSequence extends PerfTask {
     setSequenceName();
   }
 
-  /**
-   * @return Returns the parent.
-   */
+  /** @return Returns the parent. */
   public TaskSequence getParent() {
     return parent;
   }
@@ -492,9 +484,7 @@ public class TaskSequence extends PerfTask {
     return (perMin ? rate : 60 * rate);
   }
 
-  /**
-   * @param rate The rate to set.
-   */
+  /** @param rate The rate to set. */
   public void setRate(int rate, boolean perMin) {
     this.rate = rate;
     this.perMin = perMin;
@@ -521,9 +511,7 @@ public class TaskSequence extends PerfTask {
     return seqName; // override to include more info
   }
 
-  /**
-   * @return Returns the tasks.
-   */
+  /** @return Returns the tasks. */
   public ArrayList<PerfTask> getTasks() {
     return tasks;
   }

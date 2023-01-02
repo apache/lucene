@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * Information Retrieval in Bahasa Indonesia</i>, Fadillah Z Tala.
  * http://www.illc.uva.nl/Publications/ResearchReports/MoL-2003-02.text.pdf
  */
-class IndonesianStemmer {
+public class IndonesianStemmer {
   private int numSyllables;
   private int flags;
   private static final int REMOVED_KE = 1;
@@ -42,7 +42,7 @@ class IndonesianStemmer {
    * <p>Use <code>stemDerivational</code> to control whether full stemming or only light
    * inflectional stemming is done.
    */
-  int stem(char[] text, int length, boolean stemDerivational) {
+  public int stem(char[] text, int length, boolean stemDerivational) {
     flags = 0;
     numSyllables = 0;
     for (int i = 0; i < length; i++) if (isVowel(text[i])) numSyllables++;

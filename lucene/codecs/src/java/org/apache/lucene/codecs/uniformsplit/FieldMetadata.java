@@ -139,9 +139,7 @@ public class FieldMetadata {
     return isMutable ? docsSeen.cardinality() : docCount;
   }
 
-  /**
-   * @return The file pointer to the start of the first block of the field.
-   */
+  /** @return The file pointer to the start of the first block of the field. */
   public long getFirstBlockStartFP() {
     return firstBlockStartFP;
   }
@@ -152,9 +150,7 @@ public class FieldMetadata {
     this.firstBlockStartFP = firstBlockStartFP;
   }
 
-  /**
-   * @return The start file pointer for the last block of the field.
-   */
+  /** @return The start file pointer for the last block of the field. */
   public long getLastBlockStartFP() {
     return lastBlockStartFP;
   }
@@ -165,9 +161,7 @@ public class FieldMetadata {
     this.lastBlockStartFP = lastBlockStartFP;
   }
 
-  /**
-   * @return The file pointer to the start of the dictionary of the field.
-   */
+  /** @return The file pointer to the start of the dictionary of the field. */
   public long getDictionaryStartFP() {
     return dictionaryStartFP;
   }

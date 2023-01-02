@@ -60,14 +60,11 @@ import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -2596,28 +2593,8 @@ public final class CheckIndex implements Closeable {
             status.totalKnnVectorFields++;
 
             int docCount = 0;
-            int everyNdoc = Math.max(values.size() / 64, 1);
             while (values.nextDoc() != NO_MORE_DOCS) {
-              // search the first maxNumSearches vectors to exercise the graph
-              if (values.docID() % everyNdoc == 0) {
-                TopDocs docs =
-                    switch (fieldInfo.getVectorEncoding()) {
-                      case FLOAT32 -> reader
-                          .getVectorReader()
-                          .search(
-                              fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
-                      case BYTE -> reader
-                          .getVectorReader()
-                          .search(
-                              fieldInfo.name, values.binaryValue(), 10, null, Integer.MAX_VALUE);
-                    };
-                if (docs.scoreDocs.length == 0) {
-                  throw new CheckIndexException(
-                      "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
-                }
-              }
-              float[] vectorValue = values.vectorValue();
-              int valueLength = vectorValue.length;
+              int valueLength = values.vectorValue().length;
               if (valueLength != dimension) {
                 throw new CheckIndexException(
                     "Field \""
@@ -2687,7 +2664,6 @@ public final class CheckIndex implements Closeable {
     private final int numDataDims;
     private final int numIndexDims;
     private final int bytesPerDim;
-    private final ByteArrayComparator comparator;
     private final String fieldName;
 
     /** Sole constructor */
@@ -2697,7 +2673,6 @@ public final class CheckIndex implements Closeable {
       numDataDims = values.getNumDimensions();
       numIndexDims = values.getNumIndexDimensions();
       bytesPerDim = values.getBytesPerDimension();
-      comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       packedBytesCount = numDataDims * bytesPerDim;
       packedIndexBytesCount = numIndexDims * bytesPerDim;
       globalMinPackedValue = values.getMinPackedValue();
@@ -2789,7 +2764,14 @@ public final class CheckIndex implements Closeable {
         int offset = bytesPerDim * dim;
 
         // Compare to last cell:
-        if (comparator.compare(packedValue, offset, lastMinPackedValue, offset) < 0) {
+        if (Arrays.compareUnsigned(
+                packedValue,
+                offset,
+                offset + bytesPerDim,
+                lastMinPackedValue,
+                offset,
+                offset + bytesPerDim)
+            < 0) {
           // This doc's point, in this dimension, is lower than the minimum value of the last cell
           // checked:
           throw new CheckIndexException(
@@ -2807,7 +2789,14 @@ public final class CheckIndex implements Closeable {
                   + dim);
         }
 
-        if (comparator.compare(packedValue, offset, lastMaxPackedValue, offset) > 0) {
+        if (Arrays.compareUnsigned(
+                packedValue,
+                offset,
+                offset + bytesPerDim,
+                lastMaxPackedValue,
+                offset,
+                offset + bytesPerDim)
+            > 0) {
           // This doc's point, in this dimension, is greater than the maximum value of the last cell
           // checked:
           throw new CheckIndexException(
@@ -2832,7 +2821,8 @@ public final class CheckIndex implements Closeable {
       // for data dimension > 1, leaves are sorted by the dimension with the lowest cardinality to
       // improve block compression
       if (numDataDims == 1) {
-        int cmp = comparator.compare(lastPackedValue, 0, packedValue, 0);
+        int cmp =
+            Arrays.compareUnsigned(lastPackedValue, 0, bytesPerDim, packedValue, 0, bytesPerDim);
         if (cmp > 0) {
           throw new CheckIndexException(
               "packed points value "
@@ -2870,7 +2860,14 @@ public final class CheckIndex implements Closeable {
       for (int dim = 0; dim < numIndexDims; dim++) {
         int offset = bytesPerDim * dim;
 
-        if (comparator.compare(minPackedValue, offset, maxPackedValue, offset) > 0) {
+        if (Arrays.compareUnsigned(
+                minPackedValue,
+                offset,
+                offset + bytesPerDim,
+                maxPackedValue,
+                offset,
+                offset + bytesPerDim)
+            > 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2884,7 +2881,14 @@ public final class CheckIndex implements Closeable {
         }
 
         // Make sure this cell is not outside of the global min/max:
-        if (comparator.compare(minPackedValue, offset, globalMinPackedValue, offset) < 0) {
+        if (Arrays.compareUnsigned(
+                minPackedValue,
+                offset,
+                offset + bytesPerDim,
+                globalMinPackedValue,
+                offset,
+                offset + bytesPerDim)
+            < 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2897,7 +2901,14 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (comparator.compare(maxPackedValue, offset, globalMinPackedValue, offset) < 0) {
+        if (Arrays.compareUnsigned(
+                maxPackedValue,
+                offset,
+                offset + bytesPerDim,
+                globalMinPackedValue,
+                offset,
+                offset + bytesPerDim)
+            < 0) {
           throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
@@ -2910,7 +2921,14 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (comparator.compare(minPackedValue, offset, globalMaxPackedValue, offset) > 0) {
+        if (Arrays.compareUnsigned(
+                minPackedValue,
+                offset,
+                offset + bytesPerDim,
+                globalMaxPackedValue,
+                offset,
+                offset + bytesPerDim)
+            > 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2922,7 +2940,14 @@ public final class CheckIndex implements Closeable {
                   + fieldName
                   + "\"");
         }
-        if (comparator.compare(maxPackedValue, offset, globalMaxPackedValue, offset) > 0) {
+        if (Arrays.compareUnsigned(
+                maxPackedValue,
+                offset,
+                offset + bytesPerDim,
+                globalMaxPackedValue,
+                offset,
+                offset + bytesPerDim)
+            > 0) {
           throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
@@ -3008,7 +3033,7 @@ public final class CheckIndex implements Closeable {
         // Intentionally pull even deleted documents to
         // make sure they too are not corrupt:
         DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
-        storedFields.document(j, visitor);
+        storedFields.visitDocument(j, visitor);
         Document doc = visitor.getDocument();
         if (liveDocs == null || liveDocs.get(j)) {
           status.docCount++;
@@ -4165,7 +4190,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static double nsToSec(long ns) {
-    return ns / (double) TimeUnit.SECONDS.toNanos(1);
+    return ns / 1000000000.0;
   }
 
   /**

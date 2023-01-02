@@ -18,13 +18,7 @@ package org.apache.lucene.queryparser.flexible.core.processors;
 
 import java.util.List;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
-import org.apache.lucene.queryparser.flexible.core.nodes.BooleanQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.BoostQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.DeletedQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.MatchNoDocsQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.ModifierQueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
-import org.apache.lucene.queryparser.flexible.core.nodes.TokenizedPhraseQueryNode;
+import org.apache.lucene.queryparser.flexible.core.nodes.*;
 
 /**
  * A {@link NoChildOptimizationQueryNodeProcessor} removes every BooleanQueryNode, BoostQueryNode,

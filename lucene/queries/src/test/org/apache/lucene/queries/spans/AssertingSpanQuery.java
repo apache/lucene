@@ -18,6 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -49,10 +50,10 @@ public class AssertingSpanQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    Query q = in.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    Query q = in.rewrite(reader);
     if (q == in) {
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     } else if (q instanceof SpanQuery) {
       return new AssertingSpanQuery((SpanQuery) q);
     } else {

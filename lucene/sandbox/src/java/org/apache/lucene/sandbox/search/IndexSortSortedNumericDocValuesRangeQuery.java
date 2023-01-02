@@ -17,19 +17,13 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.Objects;
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.index.PointValues.PointTree;
-import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -49,8 +43,6 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -149,12 +141,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+  public Query rewrite(IndexReader reader) throws IOException {
     if (lowerValue == Long.MIN_VALUE && upperValue == Long.MAX_VALUE) {
       return new FieldExistsQuery(field);
     }
 
-    Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
+    Query rewrittenFallback = fallbackQuery.rewrite(reader);
     if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
       return new MatchAllDocsQuery();
     }
@@ -176,9 +168,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Weight weight = this;
-        IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
-        if (itAndCount != null) {
-          DocIdSetIterator disi = itAndCount.it;
+        DocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+        if (disi != null) {
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -213,9 +204,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         if (context.reader().hasDeletions() == false) {
-          IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
-          if (itAndCount != null && itAndCount.count != -1) {
-            return itAndCount.count;
+          BoundedDocIdSetIterator disi = getDocIdSetIteratorOrNull(context);
+          if (disi != null && disi.delegate == null) {
+            return disi.lastDoc - disi.firstDoc;
           }
         }
         return fallbackWeight.count(context);
@@ -223,308 +214,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     };
   }
 
-  private static class ValueAndDoc {
-    byte[] value;
-    int docID;
-    boolean done;
-  }
-
-  /**
-   * Move to the minimum leaf node that has at least one value that is greater than (or equal to if
-   * {@code allowEqual}) {@code value}, and return the next greater value on this block. Upon
-   * returning, the {@code pointTree} must be on the leaf node where the value was found.
-   */
-  private static ValueAndDoc findNextValue(
-      PointTree pointTree,
-      byte[] value,
-      boolean allowEqual,
-      ByteArrayComparator comparator,
-      boolean lastDoc)
+  private BoundedDocIdSetIterator getDocIdSetIteratorOrNull(LeafReaderContext context)
       throws IOException {
-    int cmp = comparator.compare(pointTree.getMaxPackedValue(), 0, value, 0);
-    if (cmp < 0 || (cmp == 0 && allowEqual == false)) {
-      return null;
-    }
-    if (pointTree.moveToChild() == false) {
-      ValueAndDoc vd = new ValueAndDoc();
-      pointTree.visitDocValues(
-          new IntersectVisitor() {
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              if (vd.value == null) {
-                int cmp = comparator.compare(packedValue, 0, value, 0);
-                if (cmp > 0 || (cmp == 0 && allowEqual)) {
-                  vd.value = packedValue.clone();
-                  vd.docID = docID;
-                }
-              } else if (lastDoc && vd.done == false) {
-                int cmp = comparator.compare(packedValue, 0, vd.value, 0);
-                assert cmp >= 0;
-                if (cmp > 0) {
-                  vd.done = true;
-                } else {
-                  vd.docID = docID;
-                }
-              }
-            }
-
-            @Override
-            public void visit(int docID) throws IOException {
-              throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return Relation.CELL_CROSSES_QUERY;
-            }
-          });
-      if (vd.value != null) {
-        return vd;
-      } else {
-        return null;
-      }
-    }
-
-    // Recurse
-    do {
-      ValueAndDoc vd = findNextValue(pointTree, value, allowEqual, comparator, lastDoc);
-      if (vd != null) {
-        return vd;
-      }
-    } while (pointTree.moveToSibling());
-
-    boolean moved = pointTree.moveToParent();
-    assert moved;
-    return null;
-  }
-
-  /**
-   * Find the next value that is greater than (or equal to if {@code allowEqual}) and return either
-   * its first doc ID or last doc ID depending on {@code lastDoc}. This method returns -1 if there
-   * is no greater value in the dataset.
-   */
-  private static int nextDoc(
-      PointTree pointTree,
-      byte[] value,
-      boolean allowEqual,
-      ByteArrayComparator comparator,
-      boolean lastDoc)
-      throws IOException {
-    ValueAndDoc vd = findNextValue(pointTree, value, allowEqual, comparator, lastDoc);
-    if (vd == null) {
-      return -1;
-    }
-    if (lastDoc == false || vd.done) {
-      return vd.docID;
-    }
-
-    // We found the next value, now we need the last doc ID.
-    int doc = lastDoc(pointTree, vd.value, comparator);
-    if (doc == -1) {
-      // vd.docID was actually the last doc ID
-      return vd.docID;
-    } else {
-      return doc;
-    }
-  }
-
-  /**
-   * Compute the last doc ID that matches the given value and is stored on a leaf node that compares
-   * greater than the current leaf node that the provided {@link PointTree} is positioned on. This
-   * returns -1 if no other leaf node contains the provided {@code value}.
-   */
-  private static int lastDoc(PointTree pointTree, byte[] value, ByteArrayComparator comparator)
-      throws IOException {
-    // Create a stack of nodes that may contain value that we'll use to search for the last leaf
-    // node that contains `value`.
-    // While the logic looks a bit complicated due to the fact that the PointTree API doesn't allow
-    // moving back to previous siblings, this effectively performs a binary search.
-    Deque<PointTree> stack = new ArrayDeque<>();
-
-    outer:
-    while (true) {
-
-      // Move to the next node
-      while (pointTree.moveToSibling() == false) {
-        if (pointTree.moveToParent() == false) {
-          // No next node
-          break outer;
-        }
-      }
-
-      int cmp = comparator.compare(pointTree.getMinPackedValue(), 0, value, 0);
-      if (cmp > 0) {
-        // This node doesn't have `value`, so next nodes can't either
-        break;
-      }
-
-      stack.push(pointTree.clone());
-    }
-
-    while (stack.isEmpty() == false) {
-      PointTree next = stack.pop();
-      if (next.moveToChild() == false) {
-        int[] lastDoc = {-1};
-        next.visitDocValues(
-            new IntersectVisitor() {
-
-              @Override
-              public void visit(int docID) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public void visit(int docID, byte[] packedValue) throws IOException {
-                int cmp = comparator.compare(value, 0, packedValue, 0);
-                if (cmp == 0) {
-                  lastDoc[0] = docID;
-                }
-              }
-
-              @Override
-              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                return Relation.CELL_CROSSES_QUERY;
-              }
-            });
-        if (lastDoc[0] != -1) {
-          return lastDoc[0];
-        }
-      } else {
-        do {
-          int cmp = comparator.compare(next.getMinPackedValue(), 0, value, 0);
-          if (cmp > 0) {
-            // This node doesn't have `value`, so next nodes can't either
-            break;
-          }
-          stack.push(next.clone());
-        } while (next.moveToSibling());
-      }
-    }
-
-    return -1;
-  }
-
-  private boolean matchNone(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint)
-      throws IOException {
-    assert points.getNumDimensions() == 1;
-    final ByteArrayComparator comparator =
-        ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-    return comparator.compare(points.getMinPackedValue(), 0, queryUpperPoint, 0) > 0
-        || comparator.compare(points.getMaxPackedValue(), 0, queryLowerPoint, 0) < 0;
-  }
-
-  private boolean matchAll(PointValues points, byte[] queryLowerPoint, byte[] queryUpperPoint)
-      throws IOException {
-    assert points.getNumDimensions() == 1;
-    final ByteArrayComparator comparator =
-        ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-    return comparator.compare(points.getMinPackedValue(), 0, queryLowerPoint, 0) >= 0
-        && comparator.compare(points.getMaxPackedValue(), 0, queryUpperPoint, 0) <= 0;
-  }
-
-  private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
-      LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
-    Sort indexSort = context.reader().getMetaData().getSort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
-      return null;
-    }
-
-    final boolean reverse = indexSort.getSort()[0].getReverse();
-
-    PointValues points = context.reader().getPointValues(field);
-    if (points == null) {
-      return null;
-    }
-
-    if (points.getNumDimensions() != 1) {
-      return null;
-    }
-
-    if (points.getBytesPerDimension() != Long.BYTES
-        && points.getBytesPerDimension() != Integer.BYTES) {
-      return null;
-    }
-
-    if (points.size() != points.getDocCount()) {
-      return null;
-    }
-
-    assert lowerValue <= upperValue;
-    byte[] queryLowerPoint;
-    byte[] queryUpperPoint;
-    if (points.getBytesPerDimension() == Integer.BYTES) {
-      queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
-      queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
-    } else {
-      queryLowerPoint = LongPoint.pack(lowerValue).bytes;
-      queryUpperPoint = LongPoint.pack(upperValue).bytes;
-    }
-    if (matchNone(points, queryLowerPoint, queryUpperPoint)) {
-      return IteratorAndCount.empty();
-    }
-    if (matchAll(points, queryLowerPoint, queryUpperPoint)) {
-      int maxDoc = context.reader().maxDoc();
-      if (points.getDocCount() == maxDoc) {
-        return IteratorAndCount.all(maxDoc);
-      } else {
-        return IteratorAndCount.sparseRange(0, maxDoc, delegate);
-      }
-    }
-
-    int minDocId, maxDocId;
-    final ByteArrayComparator comparator =
-        ArrayUtil.getUnsignedComparator(points.getBytesPerDimension());
-
-    if (reverse) {
-      minDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, true) + 1;
-    } else {
-      minDocId = nextDoc(points.getPointTree(), queryLowerPoint, true, comparator, false);
-      if (minDocId == -1) {
-        // No matches
-        return IteratorAndCount.empty();
-      }
-    }
-
-    if (reverse) {
-      maxDocId = nextDoc(points.getPointTree(), queryLowerPoint, true, comparator, true) + 1;
-      if (maxDocId == 0) {
-        // No matches
-        return IteratorAndCount.empty();
-      }
-    } else {
-      maxDocId = nextDoc(points.getPointTree(), queryUpperPoint, false, comparator, false);
-      if (maxDocId == -1) {
-        maxDocId = context.reader().maxDoc();
-      }
-    }
-
-    if (minDocId == maxDocId) {
-      return IteratorAndCount.empty();
-    }
-
-    if ((points.getDocCount() == context.reader().maxDoc())) {
-      return IteratorAndCount.denseRange(minDocId, maxDocId);
-    } else {
-      return IteratorAndCount.sparseRange(minDocId, maxDocId, delegate);
-    }
-  }
-
-  private IteratorAndCount getDocIdSetIteratorOrNull(LeafReaderContext context) throws IOException {
-    if (lowerValue > upperValue) {
-      return IteratorAndCount.empty();
-    }
-
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
-      IteratorAndCount itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
-      if (itAndCount != null) {
-        return itAndCount;
-      }
       Sort indexSort = context.reader().getMetaData().getSort();
       if (indexSort != null
           && indexSort.getSort().length > 0
@@ -553,7 +248,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    * {@link DocIdSetIterator} makes sure to wrap the original docvalues to skip over documents with
    * no value.
    */
-  private IteratorAndCount getDocIdSetIterator(
+  private BoundedDocIdSetIterator getDocIdSetIterator(
       SortField sortField,
       SortField.Type sortFieldType,
       LeafReaderContext context,
@@ -597,22 +292,19 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     int lastDocIdExclusive = high + 1;
-
-    if (firstDocIdInclusive == lastDocIdExclusive) {
-      return IteratorAndCount.empty();
-    }
-
     Object missingValue = sortField.getMissingValue();
+    BoundedDocIdSetIterator disi;
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
     final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
-      return IteratorAndCount.denseRange(firstDocIdInclusive, lastDocIdExclusive);
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, null);
     } else {
-      return IteratorAndCount.sparseRange(firstDocIdInclusive, lastDocIdExclusive, delegate);
+      disi = new BoundedDocIdSetIterator(firstDocIdInclusive, lastDocIdExclusive, delegate);
     }
+    return disi;
   }
 
   /** Compares the given document's value with a stored reference value. */
@@ -652,29 +344,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   /**
-   * Provides a {@code DocIdSetIterator} along with an accurate count of documents provided by the
-   * iterator (or {@code -1} if an accurate count is unknown).
-   */
-  private record IteratorAndCount(DocIdSetIterator it, int count) {
-
-    static IteratorAndCount empty() {
-      return new IteratorAndCount(DocIdSetIterator.empty(), 0);
-    }
-
-    static IteratorAndCount all(int maxDoc) {
-      return new IteratorAndCount(DocIdSetIterator.all(maxDoc), maxDoc);
-    }
-
-    static IteratorAndCount denseRange(int minDoc, int maxDoc) {
-      return new IteratorAndCount(DocIdSetIterator.range(minDoc, maxDoc), maxDoc - minDoc);
-    }
-
-    static IteratorAndCount sparseRange(int minDoc, int maxDoc, DocIdSetIterator delegate) {
-      return new IteratorAndCount(new BoundedDocIdSetIterator(minDoc, maxDoc, delegate), -1);
-    }
-  }
-
-  /**
    * A doc ID set iterator that wraps a delegate iterator and only returns doc IDs in the range
    * [firstDocInclusive, lastDoc).
    */
@@ -686,7 +355,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     private int docID = -1;
 
     BoundedDocIdSetIterator(int firstDoc, int lastDoc, DocIdSetIterator delegate) {
-      assert delegate != null;
       this.firstDoc = firstDoc;
       this.lastDoc = lastDoc;
       this.delegate = delegate;
@@ -708,7 +376,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         target = firstDoc;
       }
 
-      int result = delegate.advance(target);
+      int result;
+      if (delegate != null) {
+        result = delegate.advance(target);
+      } else {
+        result = target;
+      }
       if (result < lastDoc) {
         docID = result;
       } else {
@@ -719,7 +392,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
     @Override
     public long cost() {
-      return Math.min(delegate.cost(), lastDoc - firstDoc);
+      return lastDoc - firstDoc;
     }
   }
 }

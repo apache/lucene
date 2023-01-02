@@ -31,17 +31,13 @@ configure(project(':lucene:documentation')) {
   check.dependsOn checkBrokenLinks
 }
 
-@CacheableTask
 class CheckBrokenLinksTask extends DefaultTask {
   // wraps input directory location in DirectoryProperty so as to lazily evaluate 'docroot' property
   // (see gradle/documentation/documentation.gradle)
   @InputDirectory
-  @PathSensitive(PathSensitivity.RELATIVE)
-  @IgnoreEmptyDirectories
   final DirectoryProperty docsDir = project.objects.directoryProperty()
 
   @InputFile
-  @PathSensitive(PathSensitivity.RELATIVE)
   File validationScript
 
   @OutputFile

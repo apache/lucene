@@ -74,7 +74,7 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
   /** See {@link RegExp} for the accepted syntax. */
   public SimplePatternSplitTokenizer(
       AttributeFactory factory, String regexp, int determinizeWorkLimit) {
-    this(factory, Operations.determinize(new RegExp(regexp).toAutomaton(), determinizeWorkLimit));
+    this(factory, new RegExp(regexp).toAutomaton(determinizeWorkLimit));
   }
 
   /** Runs a pre-built automaton. */
@@ -88,7 +88,7 @@ public final class SimplePatternSplitTokenizer extends Tokenizer {
       throw new IllegalArgumentException("please determinize the incoming automaton first");
     }
 
-    runDFA = new CharacterRunAutomaton(dfa);
+    runDFA = new CharacterRunAutomaton(dfa, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   private void fillToken(int offsetStart) {

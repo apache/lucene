@@ -18,7 +18,10 @@
 package org.apache.lucene.geo;
 
 /** Lat/Lon Geometry object. */
-public abstract class LatLonGeometry extends Geometry {
+public abstract class LatLonGeometry {
+
+  /** get a {@link Component2D} from this geometry */
+  protected abstract Component2D toComponent2D();
 
   /** Creates a Component2D from the provided LatLonGeometry array */
   public static Component2D create(LatLonGeometry... latLonGeometries) {

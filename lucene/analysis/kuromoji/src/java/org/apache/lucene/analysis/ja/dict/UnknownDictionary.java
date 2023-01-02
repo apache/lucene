@@ -21,15 +21,28 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.analysis.morph.BinaryDictionary;
-import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 
 /** Dictionary for unknown-word handling. */
-public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> {
+public final class UnknownDictionary extends BinaryDictionary {
 
   private final CharacterDefinition characterDefinition = CharacterDefinition.getInstance();
-  private final UnknownMorphData morphAtts;
+
+  /**
+   * @param scheme scheme for loading resources (FILE or CLASSPATH).
+   * @param path where to load resources from; a path, including the file base name without
+   *     extension; this is used to match multiple files with the same base name.
+   * @deprecated replaced by {@link #UnknownDictionary(Path, Path, Path)} for files and {@link
+   *     #UnknownDictionary(URL, URL, URL)} for classpath/module resources
+   */
+  @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
+  public UnknownDictionary(ResourceScheme scheme, String path) throws IOException {
+    super(
+        () -> BinaryDictionary.getResource(scheme, path + TARGETMAP_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(scheme, path + POSDICT_FILENAME_SUFFIX),
+        () -> BinaryDictionary.getResource(scheme, path + DICT_FILENAME_SUFFIX));
+  }
 
   /**
    * Create a {@link UnknownDictionary} from an external resource path.
@@ -40,7 +53,7 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
    * @throws IOException if resource was not found or broken
    */
   public UnknownDictionary(Path targetMapFile, Path posDictFile, Path dictFile) throws IOException {
-    this(
+    super(
         () -> Files.newInputStream(targetMapFile),
         () -> Files.newInputStream(posDictFile),
         () -> Files.newInputStream(dictFile));
@@ -56,40 +69,21 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
    * @throws IOException if resource was not found or broken
    */
   public UnknownDictionary(URL targetMapUrl, URL posDictUrl, URL dictUrl) throws IOException {
-    this(
+    super(
         () -> targetMapUrl.openStream(), () -> posDictUrl.openStream(), () -> dictUrl.openStream());
   }
 
   private UnknownDictionary() throws IOException {
-    this(
+    super(
         () -> getClassResource(TARGETMAP_FILENAME_SUFFIX),
         () -> getClassResource(POSDICT_FILENAME_SUFFIX),
         () -> getClassResource(DICT_FILENAME_SUFFIX));
-  }
-
-  private UnknownDictionary(
-      IOSupplier<InputStream> targetMapResource,
-      IOSupplier<InputStream> posResource,
-      IOSupplier<InputStream> dictResource)
-      throws IOException {
-    super(
-        targetMapResource,
-        dictResource,
-        DictionaryConstants.TARGETMAP_HEADER,
-        DictionaryConstants.DICT_HEADER,
-        DictionaryConstants.VERSION);
-    this.morphAtts = new UnknownMorphData(buffer, posResource);
   }
 
   private static InputStream getClassResource(String suffix) throws IOException {
     final String resourcePath = UnknownDictionary.class.getSimpleName() + suffix;
     return IOUtils.requireResourceNonNull(
         UnknownDictionary.class.getResourceAsStream(resourcePath), resourcePath);
-  }
-
-  @Override
-  public UnknownMorphData getMorphAttributes() {
-    return morphAtts;
   }
 
   public int lookup(char[] text, int offset, int len) {
@@ -114,6 +108,21 @@ public final class UnknownDictionary extends BinaryDictionary<UnknownMorphData> 
 
   public CharacterDefinition getCharacterDefinition() {
     return characterDefinition;
+  }
+
+  @Override
+  public String getReading(int wordId, char[] surface, int off, int len) {
+    return null;
+  }
+
+  @Override
+  public String getInflectionType(int wordId) {
+    return null;
+  }
+
+  @Override
+  public String getInflectionForm(int wordId) {
+    return null;
   }
 
   public static UnknownDictionary getInstance() {

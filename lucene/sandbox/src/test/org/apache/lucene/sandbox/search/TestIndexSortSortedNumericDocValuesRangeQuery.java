@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.search;
 import static org.hamcrest.CoreMatchers.instanceOf;
 
 import java.io.IOException;
-import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.LongPoint;
@@ -372,7 +371,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexReader reader = writer.getReader();
 
     Query query = createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE);
-    Query rewrittenQuery = query.rewrite(newSearcher(reader));
+    Query rewrittenQuery = query.rewrite(reader);
     assertEquals(new FieldExistsQuery("field"), rewrittenQuery);
 
     writer.close();
@@ -390,7 +389,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Query fallbackQuery = new BooleanQuery.Builder().build();
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
 
-    Query rewrittenQuery = query.rewrite(newSearcher(reader));
+    Query rewrittenQuery = query.rewrite(reader);
     assertNotEquals(query, rewrittenQuery);
     assertThat(rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
 
@@ -594,9 +593,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
 
     writer.addDocument(
-        createSNDVAndPointDocument("field", random().nextLong(lowerValue, upperValue)));
+        createSNDVAndPointDocument("field", TestUtil.nextLong(random(), lowerValue, upperValue)));
     writer.addDocument(
-        createSNDVAndPointDocument("field", random().nextLong(lowerValue, upperValue)));
+        createSNDVAndPointDocument("field", TestUtil.nextLong(random(), lowerValue, upperValue)));
     // missingValue
     writer.addDocument(createMissingValueDocument());
 
@@ -641,186 +640,5 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue);
     return new IndexSortSortedNumericDocValuesRangeQuery(
         field, lowerValue, upperValue, fallbackQuery);
-  }
-
-  public void testCountWithBkdAsc() throws Exception {
-    doTestCountWithBkd(false);
-  }
-
-  public void testCountWithBkdDesc() throws Exception {
-    doTestCountWithBkd(true);
-  }
-
-  public void doTestCountWithBkd(boolean reverse) throws Exception {
-    String filedName = "field";
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    Sort indexSort = new Sort(new SortedNumericSortField(filedName, SortField.Type.LONG, reverse));
-    iwc.setIndexSort(indexSort);
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
-    addDocWithBkd(writer, filedName, 7, 500);
-    addDocWithBkd(writer, filedName, 5, 600);
-    addDocWithBkd(writer, filedName, 11, 700);
-    addDocWithBkd(writer, filedName, 13, 800);
-    addDocWithBkd(writer, filedName, 9, 900);
-    writer.flush();
-    writer.forceMerge(1);
-    IndexReader reader = writer.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-
-    // Both bounds exist in the dataset
-    Query fallbackQuery = LongPoint.newRangeQuery(filedName, 7, 9);
-    Query query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 7, 9, fallbackQuery);
-    Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1400, weight.count(context));
-    }
-
-    // Both bounds do not exist in the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 6, 10);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 6, 10, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1400, weight.count(context));
-    }
-
-    // Min bound exists in the dataset, not the max
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 7, 10);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 7, 10, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1400, weight.count(context));
-    }
-
-    // Min bound doesn't exist in the dataset, max does
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 6, 9);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 7, 10, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1400, weight.count(context));
-    }
-
-    // Min bound is the min value of the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 5, 8);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 4, 8, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1100, weight.count(context));
-    }
-
-    // Min bound is less than min value of the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 4, 8);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 4, 8, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1100, weight.count(context));
-    }
-
-    // Max bound is the max value of the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 10, 13);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 10, 13, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1500, weight.count(context));
-    }
-
-    // Max bound is greater than max value of the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 10, 14);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 10, 14, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(1500, weight.count(context));
-    }
-
-    // Everything matches
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 2, 14);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 14, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(3500, weight.count(context));
-    }
-
-    // Bounds equal to min/max values of the dataset, everything matches
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 2, 14);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 14, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(3500, weight.count(context));
-    }
-
-    // Bounds are less than the min value of the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 2, 3);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 2, 3, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(0, weight.count(context));
-    }
-
-    // Bounds are greater than the max value of the dataset
-    fallbackQuery = LongPoint.newRangeQuery(filedName, 14, 15);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 14, 15, fallbackQuery);
-    weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-    for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(0, weight.count(context));
-    }
-
-    writer.close();
-    reader.close();
-    dir.close();
-  }
-
-  public void testRandomCountWithBkdAsc() throws Exception {
-    doTestRandomCountWithBkd(false);
-  }
-
-  public void testRandomCountWithBkdDesc() throws Exception {
-    doTestRandomCountWithBkd(true);
-  }
-
-  private void doTestRandomCountWithBkd(boolean reverse) throws Exception {
-    String filedName = "field";
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    Sort indexSort = new Sort(new SortedNumericSortField(filedName, SortField.Type.LONG, reverse));
-    iwc.setIndexSort(indexSort);
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc);
-    Random random = random();
-    for (int i = 0; i < 100; i++) {
-      addDocWithBkd(writer, filedName, random.nextInt(1000), random.nextInt(1000));
-    }
-    writer.flush();
-    writer.forceMerge(1);
-    IndexReader reader = writer.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-
-    for (int i = 0; i < 100; i++) {
-      int random1 = random.nextInt(1100);
-      int random2 = random.nextInt(1100);
-      int low = Math.min(random1, random2);
-      int upper = Math.max(random1, random2);
-      Query rangeQuery = LongPoint.newRangeQuery(filedName, low, upper);
-      Query indexSortRangeQuery =
-          new IndexSortSortedNumericDocValuesRangeQuery(filedName, low, upper, rangeQuery);
-      Weight indexSortRangeQueryWeight =
-          indexSortRangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-      Weight rangeQueryWeight = rangeQuery.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
-      for (LeafReaderContext context : searcher.getLeafContexts()) {
-        assertEquals(rangeQueryWeight.count(context), indexSortRangeQueryWeight.count(context));
-      }
-    }
-
-    writer.close();
-    reader.close();
-    dir.close();
-  }
-
-  private void addDocWithBkd(RandomIndexWriter indexWriter, String field, long value, int repeat)
-      throws IOException {
-    for (int i = 0; i < repeat; i++) {
-      Document doc = new Document();
-      doc.add(new SortedNumericDocValuesField(field, value));
-      doc.add(new LongPoint(field, value));
-      indexWriter.addDocument(doc);
-    }
   }
 }

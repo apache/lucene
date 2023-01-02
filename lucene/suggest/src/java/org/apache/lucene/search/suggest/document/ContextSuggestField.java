@@ -17,8 +17,6 @@
 package org.apache.lucene.search.suggest.document;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -65,9 +63,10 @@ public class ContextSuggestField extends SuggestField {
   public ContextSuggestField(String name, String value, int weight, CharSequence... contexts) {
     super(name, value, weight);
     validate(value);
-    Collection<CharSequence> contextColl =
-        contexts != null ? Arrays.asList(contexts) : Collections.emptyList();
-    this.contexts = new HashSet<>(contextColl);
+    this.contexts = new HashSet<>((contexts != null) ? contexts.length : 0);
+    if (contexts != null) {
+      Collections.addAll(this.contexts, contexts);
+    }
   }
 
   /** Expert: Sub-classes can inject contexts at index-time */

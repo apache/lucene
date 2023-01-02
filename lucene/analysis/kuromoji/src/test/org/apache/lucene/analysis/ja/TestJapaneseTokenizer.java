@@ -26,16 +26,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
+import org.apache.lucene.analysis.ja.dict.BinaryDictionary.ResourceScheme;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ja.dict.JaMorphData;
+import org.apache.lucene.analysis.ja.dict.TokenInfoDictionary;
+import org.apache.lucene.analysis.ja.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
 import org.apache.lucene.analysis.ja.tokenattributes.*;
-import org.apache.lucene.analysis.morph.GraphvizFormatter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockGraphTokenFilter;
@@ -489,6 +489,32 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
         4);
   }
 
+  // Make sure loading custom dictionaries from classpath works:
+  @SuppressWarnings("removal")
+  public void testCustomDictionary() throws Exception {
+    Tokenizer tokenizer =
+        new JapaneseTokenizer(
+            newAttributeFactory(),
+            new TokenInfoDictionary(
+                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/TokenInfoDictionary"),
+            new UnknownDictionary(
+                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/UnknownDictionary"),
+            new ConnectionCosts(
+                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ja/dict/ConnectionCosts"),
+            readDict(),
+            true,
+            false,
+            Mode.SEARCH);
+    try (Analyzer a = makeAnalyzer(tokenizer)) {
+      assertTokenStreamContents(
+          a.tokenStream("foo", "abcd"),
+          new String[] {"a", "b", "cd"},
+          new int[] {0, 1, 2},
+          new int[] {1, 2, 4},
+          4);
+    }
+  }
+
   // HMM: fails (segments as a/b/cd/efghij)... because the
   // two paths have exactly equal paths (1 KNOWN + 1
   // UNKNOWN) and we don't seem to favor longer KNOWN /
@@ -520,8 +546,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   public void testLatticeToDot() throws Exception {
-    final GraphvizFormatter<JaMorphData> gv2 =
-        new GraphvizFormatter<>(ConnectionCosts.getInstance());
+    final GraphvizFormatter gv2 = new GraphvizFormatter(ConnectionCosts.getInstance());
     final Analyzer analyzer =
         new Analyzer() {
           @Override
@@ -712,7 +737,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
           nonCompoundCount++;
           if (nonCompoundCount % 1000000 == 0) {
             System.out.println(String.format("%.2f msec [pos=%d, %d, %d]",
-                                             (System.nanoTime() - startTimeNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+                                             (System.nanoTime()-startTimeNS)/1000000.0,
                                              netOffset + offsetAtt.startOffset(),
                                              nonCompoundCount,
                                              compoundCount));
@@ -754,7 +779,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     */
 
-    long totalStart = System.nanoTime();
+    long totalStart = System.currentTimeMillis();
     for (int i = 0; i < numIterations; i++) {
       try (TokenStream ts = analyzer.tokenStream("ignored", line)) {
         ts.reset();
@@ -765,12 +790,11 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
     }
     String[] sentences = line.split("、|。");
     if (VERBOSE) {
-      System.out.println(
-          "Total time : " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart) + " ms");
+      System.out.println("Total time : " + (System.currentTimeMillis() - totalStart));
       System.out.println(
           "Test for Bocchan with pre-splitting sentences (" + sentences.length + " sentences)");
     }
-    totalStart = System.nanoTime();
+    totalStart = System.currentTimeMillis();
     for (int i = 0; i < numIterations; i++) {
       for (String sentence : sentences) {
         try (TokenStream ts = analyzer.tokenStream("ignored", sentence)) {
@@ -782,8 +806,7 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
       }
     }
     if (VERBOSE) {
-      System.out.println(
-          "Total time : " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - totalStart) + " ms");
+      System.out.println("Total time : " + (System.currentTimeMillis() - totalStart));
     }
   }
 

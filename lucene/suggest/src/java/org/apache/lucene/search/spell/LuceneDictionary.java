@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search.spell;
 
-import java.io.IOException;
+import java.io.*;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Terms;

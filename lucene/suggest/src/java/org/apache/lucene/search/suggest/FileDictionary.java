@@ -16,10 +16,7 @@
  */
 package org.apache.lucene.search.suggest;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import org.apache.lucene.search.spell.Dictionary;

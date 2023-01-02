@@ -174,10 +174,6 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
 
   protected abstract boolean rectCrossesDateline(Object rect);
 
-  protected QueryRelation[] getSupportedQueryRelations() {
-    return QueryRelation.values();
-  }
-
   /**
    * return a semi-random line used for queries
    *
@@ -308,7 +304,7 @@ public abstract class BaseSpatialTestCase extends LuceneTestCase {
 
       // BBox
       Object rect = randomQueryBox();
-      QueryRelation queryRelation = RandomPicks.randomFrom(random(), getSupportedQueryRelations());
+      QueryRelation queryRelation = RandomPicks.randomFrom(random(), QueryRelation.values());
       Query query =
           newRectQuery(
               FIELD_NAME,

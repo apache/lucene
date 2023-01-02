@@ -22,13 +22,18 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Version;
 
 public class TestFieldInfos extends LuceneTestCase {
 
@@ -243,7 +248,8 @@ public class TestFieldInfos extends LuceneTestCase {
   }
 
   public void testFieldNumbersAutoIncrement() {
-    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes");
+    FieldInfos.FieldNumbers fieldNumbers =
+        new FieldInfos.FieldNumbers("softDeletes", Version.LATEST.major);
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
           new FieldInfo(
@@ -260,7 +266,6 @@ public class TestFieldInfos extends LuceneTestCase {
               0,
               0,
               0,
-              VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false));
     }
@@ -280,7 +285,6 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 0,
-                VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false));
     assertEquals("Field numbers 0 through 9 were allocated", 10, idx);
@@ -302,9 +306,56 @@ public class TestFieldInfos extends LuceneTestCase {
                 0,
                 0,
                 0,
-                VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
+  }
+
+  public void testRelaxConsistencyCheckForOldIndices() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config =
+          new IndexWriterConfig()
+              .setIndexCreatedVersionMajor(8)
+              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        // first segment with DV
+        Document d1 = new Document();
+        d1.add(new StringField("my_field", "first", Field.Store.NO));
+        d1.add(new BinaryDocValuesField("my_field", new BytesRef("first")));
+        writer.addDocument(d1);
+        writer.flush();
+        // second segment without DV
+        Document d2 = new Document();
+        d2.add(new StringField("my_field", "second", Field.Store.NO));
+        writer.addDocument(d2);
+        writer.flush();
+        writer.commit();
+      }
+      config = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        // third segment with DV only
+        Document d3 = new Document();
+        d3.add(new BinaryDocValuesField("my_field", new BytesRef("third")));
+        writer.addDocument(d3);
+        writer.flush();
+        writer.commit();
+        // fails due to inconsistent DV type
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              Document d = new Document();
+              d.add(new NumericDocValuesField("my_field", 3));
+              writer.addDocument(d);
+            });
+        // fails due to inconsistent index options
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              Document d = new Document();
+              d.add(new TextField("my_field", "more", Field.Store.NO));
+              writer.addDocument(d);
+            });
+      }
+    }
   }
 }

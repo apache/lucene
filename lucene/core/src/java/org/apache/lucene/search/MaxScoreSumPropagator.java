@@ -154,7 +154,7 @@ final class MaxScoreSumPropagator {
       if (iter > 2) {
         throw new IllegalStateException(
             "Could not compute a minimum score for minScore="
-                + minScore
+                + +minScore
                 + ", minScoreSum="
                 + minScoreSum
                 + ", sumOfOtherMaxScores="

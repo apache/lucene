@@ -69,7 +69,7 @@ import org.apache.lucene.analysis.util.OpenStringBuilder;
  */
 
 /** This class implements the Kstem algorithm */
-class KStemmer {
+public class KStemmer {
   private static final int MaxWordLen = 50;
 
   private static final String[] exceptionWords = {

@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.util.Version;
 
 public class TestConcatenateGraphFilterFactory extends BaseTokenStreamFactoryTestCase {
   public void test() throws Exception {
@@ -48,6 +49,21 @@ public class TestConcatenateGraphFilterFactory extends BaseTokenStreamFactoryTes
     TokenStream stream = tokenizer;
     stream = new StopFilter(stream, StopFilter.makeStopSet("B2"));
     stream = tokenFilterFactory("ConcatenateGraph", "tokenSeparator", "").create(stream);
+    assertTokenStreamContents(stream, new String[] {output});
+  }
+
+  public void testPreserveSep() throws Exception {
+    final String input = "A1 B2 A1 D4 C3";
+    final String output = "A1A1D4C3";
+    Reader reader = new StringReader(input);
+    MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    tokenizer.setReader(reader);
+    TokenStream stream = tokenizer;
+    stream = new StopFilter(stream, StopFilter.makeStopSet("B2"));
+    @SuppressWarnings("deprecation")
+    Version LUCENE_8_0_0 = Version.LUCENE_8_0_0;
+    stream =
+        tokenFilterFactory("ConcatenateGraph", LUCENE_8_0_0, "preserveSep", "false").create(stream);
     assertTokenStreamContents(stream, new String[] {output});
   }
 

@@ -113,9 +113,7 @@ public class MonitorConfiguration {
     return this;
   }
 
-  /**
-   * @return the QueryDecomposer used by the Monitor
-   */
+  /** @return the QueryDecomposer used by the Monitor */
   public QueryDecomposer getQueryDecomposer() {
     return queryDecomposer;
   }
@@ -133,16 +131,12 @@ public class MonitorConfiguration {
     return this;
   }
 
-  /**
-   * @return the value of Monitor's querycache garbage-collection frequency
-   */
+  /** @return the value of Monitor's querycache garbage-collection frequency */
   public long getPurgeFrequency() {
     return purgeFrequency;
   }
 
-  /**
-   * @return Get the units of the Monitor's querycache garbage-collection frequency
-   */
+  /** @return Get the units of the Monitor's querycache garbage-collection frequency */
   public TimeUnit getPurgeFrequencyUnits() {
     return purgeFrequencyUnits;
   }
@@ -159,9 +153,7 @@ public class MonitorConfiguration {
     return this;
   }
 
-  /**
-   * @return the size of the queryindex's in-memory buffer
-   */
+  /** @return the size of the queryindex's in-memory buffer */
   public int getQueryUpdateBufferSize() {
     return queryUpdateBufferSize;
   }

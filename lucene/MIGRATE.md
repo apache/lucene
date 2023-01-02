@@ -17,69 +17,6 @@
 
 # Apache Lucene Migration Guide
 
-## Migration from Lucene 9.x to Lucene 10.0
-
-### Removed deprecated IndexSearcher.doc, IndexReader.document, IndexReader.getTermVectors (GITHUB#11998)
-
-The deprecated Stored Fields and Term Vectors apis relied upon threadlocal storage and have been removed.
-
-Instead, call storedFields()/termVectors() to return an instance which can fetch data for multiple documents,
-and will be garbage-collected as usual.
-
-For example:
-```java
-TopDocs hits = searcher.search(query, 10);
-StoredFields storedFields = reader.storedFields();
-for (ScoreDoc hit : hits.scoreDocs) {
-  Document doc = storedFields.document(hit.doc);
-}
-```
-
-Note that these StoredFields and TermVectors instances should only be consumed in the thread where
-they were acquired. For instance, it is illegal to share them across threads.
-
-### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
-
-PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
-behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own. 
-
-### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
-
-These classes no longer take a `determinizeWorkLimit` and no longer determinize
-behind the scenes. It is the responsibility of the caller to to call
-`Operations.determinize()` for DFA execution.
-
-### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
-
-These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
-with the new one during object instantiation. 
-
-### Normalizer and stemmer classes are now package private (LUCENE-10561)
-
-Except for a few exceptions, almost all normalizer and stemmer classes are now package private. If your code depends on
-constants defined in them, copy the constant values and re-define them in your code.
-
-### LongRangeFacetCounts / DoubleRangeFacetCounts #getTopChildren behavior change (LUCENE-10614)
-
-The behavior of `LongRangeFacetCounts`/`DoubleRangeFacetCounts` `#getTopChildren` actually returns
-the top-n ranges ordered by count from 10.0 onwards (as described in the `Facets` API) instead
-of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in 
-9.x and earlier can be retained by migrating to the new `Facets#getAllChildren` API (LUCENE-10550).
-
-### SortedSetDocValues#NO_MORE_ORDS removed (LUCENE-10603)
-
-`SortedSetDocValues#nextOrd()` no longer returns `NO_MORE_ORDS` when ordinals are exhausted for the
-currently-positioned document. Callers should instead use `SortedSetDocValues#docValueCount()` to
-determine the number of valid ordinals for the currently-positioned document up-front. It is now
-illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
-for the currently-positioned document (doing so will result in undefined behavior).
-
-### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
-
-`Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
-`IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
-Callers should remove the parameter when calling this method.
-
 ## Migration from Lucene 9.0 to Lucene 9.1
 
 ### Test framework package migration and module (LUCENE-10301)
@@ -594,14 +531,11 @@ a new `Sort` instance with the new values.
 The side-car taxonomy index now uses doc values for ord-to-path lookup (LUCENE-9450) and parent
 lookup (LUCENE-10122) instead of stored fields and positions (respectively). Document ordinals
 are now encoded with `SortedNumericDocValues` instead of using a custom (v-int) binary format.
-Performance gains have been observed with these encoding changes. These changes were introduced
-in 9.0, and 9.x releases remain backwards-compatible with 8.x indexes, but starting with 10.0,
-only the newer formats are supported. Users will need to create a new index with all their
-documents using 9.0 or later to pick up the new format and remain compatible with 10.x releases.
-Just re-adding documents to an existing index is not enough to pick up the changes as the
-format will "stick" to whatever version was used to initially create the index.
+Performance gains have been observed with these encoding changes, but to benefit from them, users
+must create a new index using 9.x (it is not sufficient to reindex documents against an existing
+8.x index). In order to remain backwards-compatible with 8.x indexes, the older format is retained 
+until a full rebuild is done.
 
-Additionally, `OrdinalsReader` (and sub-classes) are fully removed starting with 10.0. These
-classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on the default
-taxonomy facet encodings where possible. If custom formats are needed, users will need
-to manage the indexed data on their own and create new `Facet` implementations to use it.
+Additionally, `OrdinalsReader` (and sub-classes) have been marked `@Deprecated` as custom binary
+encodings will not be supported for Document ordinals in 9.x onwards (`SortedNumericDocValues` are
+used out-of-the-box instead).

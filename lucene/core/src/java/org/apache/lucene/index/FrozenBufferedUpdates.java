@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -112,7 +111,7 @@ final class FrozenBufferedUpdates {
 
     bytesUsed =
         (int)
-            ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
+            ((deleteTerms.ramBytesUsed() + deleteQueries.length * BYTES_PER_DEL_QUERY)
                 + updates.fieldUpdatesBytesUsed.get());
 
     numTermDeletes = updates.numTermDeletes.get();
@@ -217,7 +216,7 @@ final class FrozenBufferedUpdates {
           String.format(
               Locale.ROOT,
               "applyDocValuesUpdates %.1f msec for %d segments, %d field updates; %d new updates",
-              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+              (System.nanoTime() - startNS) / 1000000.,
               segStates.length,
               fieldUpdatesCount,
               updateCount));
@@ -431,7 +430,7 @@ final class FrozenBufferedUpdates {
           String.format(
               Locale.ROOT,
               "applyQueryDeletes took %.2f msec for %d segments and %d queries; %d new deletions",
-              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+              (System.nanoTime() - startNS) / 1000000.,
               segStates.length,
               deleteQueries.length,
               delCount));
@@ -494,7 +493,7 @@ final class FrozenBufferedUpdates {
           String.format(
               Locale.ROOT,
               "applyTermDeletes took %.2f msec for %d segments and %d del terms; %d new deletions",
-              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+              (System.nanoTime() - startNS) / 1000000.,
               segStates.length,
               deleteTerms.size(),
               delCount));

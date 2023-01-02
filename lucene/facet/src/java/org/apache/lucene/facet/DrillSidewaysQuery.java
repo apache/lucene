@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.facet.DrillSidewaysScorer.DocsAndCost;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreScorer;
@@ -79,8 +80,8 @@ class DrillSidewaysQuery extends Query {
   }
 
   /**
-   * Needed for {@link Query#rewrite(IndexSearcher)}. Ensures the same "managed" lists get used
-   * since {@link DrillSideways} accesses references to these through the original {@code
+   * Needed for {@link #rewrite(IndexReader)}. Ensures the same "managed" lists get used since
+   * {@link DrillSideways} accesses references to these through the original {@code
    * DrillSidewaysQuery}.
    */
   private DrillSidewaysQuery(
@@ -106,17 +107,17 @@ class DrillSidewaysQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+  public Query rewrite(IndexReader reader) throws IOException {
     Query newQuery = baseQuery;
     while (true) {
-      Query rewrittenQuery = newQuery.rewrite(indexSearcher);
+      Query rewrittenQuery = newQuery.rewrite(reader);
       if (rewrittenQuery == newQuery) {
         break;
       }
       newQuery = rewrittenQuery;
     }
     if (newQuery == baseQuery) {
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     } else {
       return new DrillSidewaysQuery(
           newQuery,

@@ -16,15 +16,16 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
+import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.DICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 import static org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.FST_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.morph.BinaryDictionary.DICT_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.morph.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.morph.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 
 import java.io.BufferedWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.apache.lucene.analysis.ko.util.DictionaryBuilder;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Before;
 
@@ -124,6 +125,33 @@ public class TestExternalDictionary extends LuceneTestCase {
     String dictionaryPath = ConnectionCosts.class.getName().replace('.', '/');
     ConnectionCosts cc =
         new ConnectionCosts(loader.getResource(dictionaryPath + ConnectionCosts.FILENAME_SUFFIX));
+    assertEquals(0, cc.get(1, 1));
+  }
+
+  @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
+  public void testDeprecatedLoadExternalTokenInfoDictionary() throws Exception {
+    String dictionaryPath = TokenInfoDictionary.class.getName().replace('.', '/');
+    TokenInfoDictionary dict =
+        new TokenInfoDictionary(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
+    assertNotNull(dict.getFST());
+  }
+
+  @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
+  public void testDeprecatedLoadExternalUnknownDictionary() throws Exception {
+    String dictionaryPath = UnknownDictionary.class.getName().replace('.', '/');
+    UnknownDictionary dict =
+        new UnknownDictionary(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
+    assertNotNull(dict.getCharacterDefinition());
+  }
+
+  @Deprecated(forRemoval = true, since = "9.1")
+  @SuppressWarnings("removal")
+  public void testDeprecatedLoadExternalConnectionCosts() throws Exception {
+    String dictionaryPath = ConnectionCosts.class.getName().replace('.', '/');
+    ConnectionCosts cc =
+        new ConnectionCosts(BinaryDictionary.ResourceScheme.CLASSPATH, dictionaryPath);
     assertEquals(0, cc.get(1, 1));
   }
 }

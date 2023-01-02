@@ -125,12 +125,8 @@ allprojects {
 /**
  * An Apache RAT adapter that validates whether files contain acceptable licenses.
  */
-@CacheableTask
 class RatTask extends DefaultTask {
-
     @InputFiles
-    @PathSensitive(PathSensitivity.RELATIVE)
-    @IgnoreEmptyDirectories
     final ListProperty<ConfigurableFileTree> inputFileTrees = project.objects.listProperty(ConfigurableFileTree)
 
     @OutputFile

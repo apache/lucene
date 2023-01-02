@@ -18,6 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -92,13 +93,13 @@ public final class FieldMaskingSpanQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    SpanQuery rewritten = (SpanQuery) maskedQuery.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    SpanQuery rewritten = (SpanQuery) maskedQuery.rewrite(reader);
     if (rewritten != maskedQuery) {
       return new FieldMaskingSpanQuery(rewritten, field);
     }
 
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

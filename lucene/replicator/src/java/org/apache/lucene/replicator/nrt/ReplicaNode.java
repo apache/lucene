@@ -33,7 +33,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
@@ -299,7 +298,7 @@ public abstract class ReplicaNode extends Node {
                 Locale.ROOT,
                 "top: %d: start: done sync: took %.3fs for %s, opened NRT reader version=%d",
                 id,
-                (System.nanoTime() - initSyncStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+                (System.nanoTime() - initSyncStartNS) / 1000000000.0,
                 bytesToString(job.getTotalBytesCopied()),
                 job.getCopyState().version));
 
@@ -492,7 +491,7 @@ public abstract class ReplicaNode extends Node {
         String.format(
             Locale.ROOT,
             "top: done sync: took %.3fs for %s, opened NRT reader version=%d markerCount=%d",
-            (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1),
+            (System.nanoTime() - startNS) / 1000000000.0,
             bytesToString(job.getTotalBytesCopied()),
             copyState.version,
             markerCount));

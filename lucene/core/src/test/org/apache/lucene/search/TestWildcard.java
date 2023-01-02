@@ -389,25 +389,4 @@ public class TestWildcard extends LuceneTestCase {
     reader.close();
     dir.close();
   }
-
-  /** Tests large Wildcard queries */
-  public void testLarge() throws IOException {
-    // big string from a user
-    String big =
-        "{group-bm-http-server-02083.node.dm.reg,group-bm-http-server-02082.node.dm.reg,group-bm-http-server-02081.node.dm.reg,group-bm-http-server-02080.node.dm.reg,group-bm-http-server-02079.node.dm.reg,group-bm-http-server-02078.node.dm.reg,group-bm-http-server-02077.node.dm.reg,group-bm-http-server-02076.node.dm.reg,group-bm-http-server-02073.node.dm.reg,group-bm-http-server-02070.node.dm.reg,group-bm-http-server-02067.node.dm.reg,group-bm-http-server-02064.node.dm.reg,group-bm-http-server-02029.node.dm.reg,group-bm-http-server-02028.node.dm.reg,group-bm-http-server-02027.node.dm.reg,group-bm-http-server-02026.node.dm.reg,group-bm-http-server-02025.node.dm.reg,group-bm-http-server-02023.node.dm.reg,group-bm-http-server-02022.node.dm.reg,group-bm-http-server-02021.node.dm.reg,group-bm-http-server-02020.node.dm.reg,group-bm-http-server-02019.node.dm.reg,group-bm-http-server-02018.node.dm.reg,group-bm-http-server-02016.node.dm.reg,group-bm-http-server-02015.node.dm.reg,group-bm-http-server-02014.node.dm.reg,group-bm-http-server-02009.node.dm.reg,group-bm-http-server-02007.node.dm.reg,group-bm-http-server-02004.node.dm.reg,group-bm-http-server-02003.node.dm.reg,group-bm-http-server-02002.node.dm.reg,group-bm-http-server-01311.node.dm.reg,group-bm-http-server-01309.node.dm.reg,group-bm-http-server-01307.node.dm.reg}";
-    Directory dir = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
-    Document doc = new Document();
-    doc.add(newStringField("body", big, Field.Store.YES));
-    writer.addDocument(doc);
-    writer.close();
-
-    IndexReader reader = DirectoryReader.open(dir);
-    IndexSearcher searcher = newSearcher(reader);
-    Query query = new WildcardQuery(new Term("body", big + "*"));
-    assertMatches(searcher, query, 1);
-
-    reader.close();
-    dir.close();
-  }
 }

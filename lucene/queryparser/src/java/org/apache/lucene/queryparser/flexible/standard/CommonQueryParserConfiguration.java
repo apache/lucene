@@ -49,9 +49,7 @@ public interface CommonQueryParserConfiguration {
    */
   public void setEnablePositionIncrements(boolean enabled);
 
-  /**
-   * @see #setEnablePositionIncrements(boolean)
-   */
+  /** @see #setEnablePositionIncrements(boolean) */
   public boolean getEnablePositionIncrements();
 
   /**
@@ -64,9 +62,7 @@ public interface CommonQueryParserConfiguration {
    */
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method);
 
-  /**
-   * @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod)
-   */
+  /** @see #setMultiTermRewriteMethod(org.apache.lucene.search.MultiTermQuery.RewriteMethod) */
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod();
 
   /**
@@ -94,9 +90,7 @@ public interface CommonQueryParserConfiguration {
 
   public Analyzer getAnalyzer();
 
-  /**
-   * @see #setAllowLeadingWildcard(boolean)
-   */
+  /** @see #setAllowLeadingWildcard(boolean) */
   public boolean getAllowLeadingWildcard();
 
   /** Get the minimal similarity for fuzzy queries. */

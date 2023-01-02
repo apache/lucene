@@ -139,10 +139,10 @@ public class TestNeedsScores extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-      Query in2 = in.rewrite(indexSearcher);
+    public Query rewrite(IndexReader reader) throws IOException {
+      Query in2 = in.rewrite(reader);
       if (in2 == in) {
-        return super.rewrite(indexSearcher);
+        return super.rewrite(reader);
       } else {
         return new AssertNeedsScores(in2, value);
       }

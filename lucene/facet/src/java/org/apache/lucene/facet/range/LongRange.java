@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -140,14 +141,14 @@ public final class LongRange extends Range {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    public Query rewrite(IndexReader reader) throws IOException {
       if (fastMatchQuery != null) {
-        final Query fastMatchRewritten = fastMatchQuery.rewrite(indexSearcher);
+        final Query fastMatchRewritten = fastMatchQuery.rewrite(reader);
         if (fastMatchRewritten != fastMatchQuery) {
           return new ValueSourceQuery(range, fastMatchRewritten, valueSource);
         }
       }
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     }
 
     @Override
@@ -238,14 +239,14 @@ public final class LongRange extends Range {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    public Query rewrite(IndexReader reader) throws IOException {
       if (fastMatchQuery != null) {
-        final Query fastMatchRewritten = fastMatchQuery.rewrite(indexSearcher);
+        final Query fastMatchRewritten = fastMatchQuery.rewrite(reader);
         if (fastMatchRewritten != fastMatchQuery) {
           return new MultiValueSourceQuery(range, fastMatchRewritten, valuesSource);
         }
       }
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     }
 
     @Override

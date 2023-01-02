@@ -31,24 +31,24 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *   <li>Normalization of persian keheh to arabic kaf
  * </ul>
  */
-class PersianNormalizer {
-  static final char YEH = '\u064A';
+public class PersianNormalizer {
+  public static final char YEH = '\u064A';
 
-  static final char FARSI_YEH = '\u06CC';
+  public static final char FARSI_YEH = '\u06CC';
 
-  static final char YEH_BARREE = '\u06D2';
+  public static final char YEH_BARREE = '\u06D2';
 
-  static final char KEHEH = '\u06A9';
+  public static final char KEHEH = '\u06A9';
 
-  static final char KAF = '\u0643';
+  public static final char KAF = '\u0643';
 
-  static final char HAMZA_ABOVE = '\u0654';
+  public static final char HAMZA_ABOVE = '\u0654';
 
-  static final char HEH_YEH = '\u06C0';
+  public static final char HEH_YEH = '\u06C0';
 
-  static final char HEH_GOAL = '\u06C1';
+  public static final char HEH_GOAL = '\u06C1';
 
-  static final char HEH = '\u0647';
+  public static final char HEH = '\u0647';
 
   /**
    * Normalize an input buffer of Persian text
@@ -57,7 +57,7 @@ class PersianNormalizer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  int normalize(char[] s, int len) {
+  public int normalize(char[] s, int len) {
 
     for (int i = 0; i < len; i++) {
       switch (s[i]) {

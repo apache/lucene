@@ -21,7 +21,6 @@ import static org.apache.lucene.analysis.hunspell.AffixKind.SUFFIX;
 
 import java.util.regex.PatternSyntaxException;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -31,30 +30,8 @@ import org.apache.lucene.util.automaton.RegExp;
  */
 interface AffixCondition {
   String ALWAYS_TRUE_KEY = ".*";
-  AffixCondition ALWAYS_TRUE =
-      new AffixCondition() {
-        @Override
-        public boolean acceptsStem(String stem) {
-          return true;
-        }
-
-        @Override
-        public boolean acceptsStem(char[] word, int offset, int length) {
-          return true;
-        }
-      };
-  AffixCondition ALWAYS_FALSE =
-      new AffixCondition() {
-        @Override
-        public boolean acceptsStem(String stem) {
-          return false;
-        }
-
-        @Override
-        public boolean acceptsStem(char[] word, int offset, int length) {
-          return false;
-        }
-      };
+  AffixCondition ALWAYS_TRUE = (word, offset, length) -> true;
+  AffixCondition ALWAYS_FALSE = (word, offset, length) -> false;
 
   default boolean acceptsStem(String stem) {
     return acceptsStem(stem.toCharArray(), 0, stem.length());
@@ -176,10 +153,7 @@ interface AffixCondition {
   private static AffixCondition regexpCondition(AffixKind kind, String condition, int charCount) {
     boolean forSuffix = kind == AffixKind.SUFFIX;
     CharacterRunAutomaton automaton =
-        new CharacterRunAutomaton(
-            Operations.determinize(
-                new RegExp(escapeDash(condition), RegExp.NONE).toAutomaton(),
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+        new CharacterRunAutomaton(new RegExp(escapeDash(condition), RegExp.NONE).toAutomaton());
     return (word, offset, length) ->
         length >= charCount
             && automaton.run(word, forSuffix ? offset + length - charCount : offset, charCount);

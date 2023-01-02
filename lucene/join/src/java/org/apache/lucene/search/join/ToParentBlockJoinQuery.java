@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreQuery;
@@ -424,12 +425,12 @@ public class ToParentBlockJoinQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final Query childRewrite = childQuery.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    final Query childRewrite = childQuery.rewrite(reader);
     if (childRewrite != childQuery) {
       return new ToParentBlockJoinQuery(childRewrite, parentsFilter, scoreMode);
     } else {
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     }
   }
 

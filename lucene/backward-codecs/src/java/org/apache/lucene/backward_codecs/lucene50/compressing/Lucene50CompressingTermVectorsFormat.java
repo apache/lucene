@@ -17,12 +17,12 @@
 package org.apache.lucene.backward_codecs.lucene50.compressing;
 
 import java.io.IOException;
-import org.apache.lucene.backward_codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
+import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.Directory;

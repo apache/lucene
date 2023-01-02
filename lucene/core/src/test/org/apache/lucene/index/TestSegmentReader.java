@@ -62,7 +62,7 @@ public class TestSegmentReader extends LuceneTestCase {
   public void testDocument() throws IOException {
     assertTrue(reader.numDocs() == 1);
     assertTrue(reader.maxDoc() >= 1);
-    Document result = reader.storedFields().document(0);
+    Document result = reader.document(0);
     assertTrue(result != null);
     // There are 2 unstored fields on the document that are not preserved across writing
     assertTrue(
@@ -186,7 +186,7 @@ public class TestSegmentReader extends LuceneTestCase {
   }
 
   public void testTermVectors() throws IOException {
-    Terms result = reader.termVectors().get(0).terms(DocHelper.TEXT_FIELD_2_KEY);
+    Terms result = reader.getTermVectors(0).terms(DocHelper.TEXT_FIELD_2_KEY);
     assertNotNull(result);
     assertEquals(3, result.size());
     TermsEnum termsEnum = result.iterator();
@@ -197,7 +197,7 @@ public class TestSegmentReader extends LuceneTestCase {
       assertTrue(freq > 0);
     }
 
-    Fields results = reader.termVectors().get(0);
+    Fields results = reader.getTermVectors(0);
     assertTrue(results != null);
     assertEquals("We do not have 3 term freq vectors", 3, results.size());
   }
@@ -208,25 +208,25 @@ public class TestSegmentReader extends LuceneTestCase {
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.storedFields().document(-1);
+          reader.document(-1);
         });
 
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.termVectors().get(-1);
+          reader.getTermVectors(-1);
         });
 
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.storedFields().document(numDocs);
+          reader.document(numDocs);
         });
 
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.termVectors().get(numDocs);
+          reader.getTermVectors(numDocs);
         });
   }
 }

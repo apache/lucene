@@ -104,7 +104,8 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
   }
 
   private void runTest(Random random, Directory dir) throws Exception {
-    final int maxIterations = TEST_NIGHTLY ? 100 : 10;
+    // Run for ~1 seconds at night
+    final long stopTime = System.currentTimeMillis() + (TEST_NIGHTLY ? 1000 : 100);
 
     SnapshotDeletionPolicy dp = getDeletionPolicy();
     final IndexWriter writer =
@@ -127,7 +128,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
         new Thread() {
           @Override
           public void run() {
-            int iterations = 0;
             Document doc = new Document();
             FieldType customType = new FieldType(TextField.TYPE_STORED);
             customType.setStoreTermVectors(true);
@@ -155,7 +155,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
               } catch (InterruptedException ie) {
                 throw new ThreadInterruptedException(ie);
               }
-            } while (++iterations < maxIterations);
+            } while (System.currentTimeMillis() < stopTime);
           }
         };
 

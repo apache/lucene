@@ -57,8 +57,8 @@ package org.apache.lucene.analysis.fr;
  * <p>This stemmer implements the following algorithm: <i>A Stemming procedure and stopword list for
  * general French corpora.</i> Jacques Savoy.
  */
-class FrenchMinimalStemmer {
-  int stem(char[] s, int len) {
+public class FrenchMinimalStemmer {
+  public int stem(char[] s, int len) {
     if (len < 6) return len;
 
     if (s[len - 1] == 'x') {

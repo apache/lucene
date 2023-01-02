@@ -38,12 +38,9 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 
-@Nightly // N-2 formats are only tested on nightly runs
 public class TestDocValuesCompression extends LuceneTestCase {
   private final Codec bestSpeed =
       TestUtil.alwaysDocValuesFormat(
@@ -90,7 +87,7 @@ public class TestDocValuesCompression extends LuceneTestCase {
 
   public void testReseekAfterSkipDecompression() throws IOException {
     final int CARDINALITY = (Lucene80DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE << 1) + 11;
-    Set<String> valueSet = CollectionUtil.newHashSet(CARDINALITY);
+    Set<String> valueSet = new HashSet<>(CARDINALITY);
     for (int i = 0; i < CARDINALITY; i++) {
       valueSet.add(TestUtil.randomSimpleString(random(), 64));
     }

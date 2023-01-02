@@ -235,7 +235,7 @@ public class TestDoc extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             trackingDir,
-            new FieldInfos.FieldNumbers(null),
+            new FieldInfos.FieldNumbers(null, Version.LATEST.major),
             context);
 
     merger.merge();
@@ -258,10 +258,7 @@ public class TestDoc extends LuceneTestCase {
   private void printSegment(PrintWriter out, SegmentCommitInfo si) throws Exception {
     SegmentReader reader = new SegmentReader(si, Version.LATEST.major, newIOContext(random()));
 
-    StoredFields storedFields = reader.storedFields();
-    for (int i = 0; i < reader.numDocs(); i++) {
-      out.println(storedFields.document(i));
-    }
+    for (int i = 0; i < reader.numDocs(); i++) out.println(reader.document(i));
 
     for (FieldInfo fieldInfo : reader.getFieldInfos()) {
       if (fieldInfo.getIndexOptions() == IndexOptions.NONE) {

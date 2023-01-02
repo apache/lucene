@@ -30,7 +30,9 @@ import groovy.text.SimpleTemplateEngine;
 
 buildscript {
   repositories {
-    mavenCentral()
+    maven {
+      url "https://jfrog.fkinternal.com/artifactory/maven_virtual"
+    }
   }
 
   dependencies {

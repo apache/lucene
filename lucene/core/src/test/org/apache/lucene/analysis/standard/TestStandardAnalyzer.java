@@ -463,7 +463,8 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeWordBreaks() throws Exception {
-    WordBreakTestUnicode_12_1_0.test(a);
+    WordBreakTestUnicode_12_1_0 wordBreakTest = new WordBreakTestUnicode_12_1_0();
+    wordBreakTest.test(a);
   }
 
   public void testSupplementary() throws Exception {
@@ -636,7 +637,8 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
   }
 
   public void testUnicodeEmojiTests() throws Exception {
-    EmojiTokenizationTestUnicode_12_1.test(a);
+    EmojiTokenizationTestUnicode_12_1 emojiTest = new EmojiTokenizationTestUnicode_12_1();
+    emojiTest.test(a);
   }
 
   /** blast some random strings through the analyzer */

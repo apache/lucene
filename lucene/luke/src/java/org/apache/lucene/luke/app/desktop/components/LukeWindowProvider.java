@@ -17,21 +17,9 @@
 
 package org.apache.lucene.luke.app.desktop.components;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.io.IOException;
-import javax.swing.BorderFactory;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JMenuBar;
-import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
-import javax.swing.WindowConstants;
+import javax.swing.*;
 import org.apache.lucene.luke.app.DirectoryHandler;
 import org.apache.lucene.luke.app.DirectoryObserver;
 import org.apache.lucene.luke.app.IndexHandler;

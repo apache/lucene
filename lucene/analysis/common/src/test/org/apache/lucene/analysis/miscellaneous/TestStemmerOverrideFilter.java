@@ -102,7 +102,7 @@ public class TestStemmerOverrideFilter extends BaseTokenStreamTestCase {
           // TODO: can we simply use inputValue.toLowerCase(Locale.ROOT)???
           char[] buffer = inputValue.toCharArray();
           CharacterUtils.toLowerCase(buffer, 0, buffer.length);
-          seenInputValue = new String(buffer);
+          seenInputValue = buffer.toString();
         } else {
           seenInputValue = inputValue;
         }

@@ -72,7 +72,7 @@ public class CharSequenceUtils {
     return ch >= 0xff41 && ch <= 0xff5a;
   }
 
-  /** Convert all hiragana in a string into Katakana */
+  /** Convert all hiragana in a string into kanataka */
   public static String toKatakana(CharSequence s) {
     char[] chars = new char[s.length()];
     for (int i = 0; i < s.length(); i++) {

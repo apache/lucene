@@ -55,9 +55,7 @@ public abstract class GroupSelector<T> {
    */
   public abstract T currentValue() throws IOException;
 
-  /**
-   * @return a copy of the group value of the current document
-   */
+  /** @return a copy of the group value of the current document */
   public abstract T copyValue() throws IOException;
 
   /**

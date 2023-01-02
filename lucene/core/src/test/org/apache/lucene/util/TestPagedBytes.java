@@ -17,8 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Random;
+import java.util.*;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IOContext;

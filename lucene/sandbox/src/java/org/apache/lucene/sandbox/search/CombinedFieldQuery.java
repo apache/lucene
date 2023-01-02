@@ -253,7 +253,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+  public Query rewrite(IndexReader reader) throws IOException {
     if (terms.length == 0 || fieldAndWeights.isEmpty()) {
       return new BooleanQuery.Builder().build();
     }

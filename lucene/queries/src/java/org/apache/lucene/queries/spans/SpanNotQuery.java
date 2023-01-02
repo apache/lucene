@@ -19,6 +19,7 @@ package org.apache.lucene.queries.spans;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -223,13 +224,13 @@ public final class SpanNotQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    SpanQuery rewrittenInclude = (SpanQuery) include.rewrite(indexSearcher);
-    SpanQuery rewrittenExclude = (SpanQuery) exclude.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    SpanQuery rewrittenInclude = (SpanQuery) include.rewrite(reader);
+    SpanQuery rewrittenExclude = (SpanQuery) exclude.rewrite(reader);
     if (rewrittenInclude != include || rewrittenExclude != exclude) {
       return new SpanNotQuery(rewrittenInclude, rewrittenExclude, pre, post);
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

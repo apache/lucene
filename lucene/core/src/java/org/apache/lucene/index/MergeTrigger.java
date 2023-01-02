@@ -43,6 +43,4 @@ public enum MergeTrigger {
   COMMIT,
   /** Merge was triggered on opening NRT readers. */
   GET_READER,
-  /** Merge was triggered by an {@link IndexWriter#addIndexes(CodecReader...)} operation */
-  ADD_INDEXES,
 }

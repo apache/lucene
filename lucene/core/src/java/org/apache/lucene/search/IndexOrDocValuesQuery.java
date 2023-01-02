@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -100,9 +101,9 @@ public final class IndexOrDocValuesQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    Query indexRewrite = indexQuery.rewrite(indexSearcher);
-    Query dvRewrite = dvQuery.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    Query indexRewrite = indexQuery.rewrite(reader);
+    Query dvRewrite = dvQuery.rewrite(reader);
     if (indexRewrite.getClass() == MatchAllDocsQuery.class
         || dvRewrite.getClass() == MatchAllDocsQuery.class) {
       return new MatchAllDocsQuery();

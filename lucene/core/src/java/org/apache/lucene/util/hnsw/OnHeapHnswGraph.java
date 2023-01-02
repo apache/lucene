@@ -22,15 +22,13 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
  * construct the HNSW graph before it's written to the index.
  */
-public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
+public final class OnHeapHnswGraph extends HnswGraph {
 
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level
@@ -168,37 +166,5 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     } else {
       return new NodesIterator(nodesByLevel.get(level), graph.get(level).size());
     }
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    long neighborArrayBytes0 =
-        nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
-    long neighborArrayBytes =
-        nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
-    long total = 0;
-    for (int l = 0; l < numLevels; l++) {
-      int numNodesOnLevel = graph.get(l).size();
-      if (l == 0) {
-        total +=
-            numNodesOnLevel * neighborArrayBytes0
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
-      } else {
-        total +=
-            nodesByLevel.get(l).length * Integer.BYTES
-                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for nodesByLevel
-        total +=
-            numNodesOnLevel * neighborArrayBytes
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
-      }
-    }
-    return total;
   }
 }

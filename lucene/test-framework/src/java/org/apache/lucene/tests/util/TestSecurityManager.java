@@ -19,7 +19,6 @@ package org.apache.lucene.tests.util;
 import java.lang.StackWalker.StackFrame;
 import java.util.Locale;
 import java.util.function.Predicate;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * A {@link SecurityManager} that prevents tests calling {@link System#exit(int)}. Only the test
@@ -29,8 +28,6 @@ import org.apache.lucene.util.SuppressForbidden;
  * <p>Use this with {@code
  * -Djava.security.manager=org.apache.lucene.tests.util.TestSecurityManager}.
  */
-@SuppressForbidden(reason = "security manager")
-@SuppressWarnings("removal")
 public final class TestSecurityManager extends SecurityManager {
 
   private static final String JUNIT4_TEST_RUNNER_PACKAGE = "com.carrotsearch.ant.tasks.junit4.";

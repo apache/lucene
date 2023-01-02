@@ -95,27 +95,21 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
     for (int i = stop; i < end; i++) {
       blocks[i] = null;
     }
-    bytesUsed.addAndGet(-(end - stop) * (long) blockSize);
+    bytesUsed.addAndGet(-(end - stop) * blockSize);
     assert bytesUsed.get() >= 0;
   }
 
-  /**
-   * @return the number of currently buffered blocks
-   */
+  /** @return the number of currently buffered blocks */
   public int numBufferedBlocks() {
     return freeBlocks;
   }
 
-  /**
-   * @return the number of bytes currently allocated by this {@link Allocator}
-   */
+  /** @return the number of bytes currently allocated by this {@link Allocator} */
   public long bytesUsed() {
     return bytesUsed.get();
   }
 
-  /**
-   * @return the maximum number of buffered byte blocks
-   */
+  /** @return the maximum number of buffered byte blocks */
   public int maxBufferedBlocks() {
     return maxBufferedBlocks;
   }
@@ -140,7 +134,7 @@ public final class RecyclingByteBlockAllocator extends ByteBlockPool.Allocator {
     while (freeBlocks > stop) {
       freeByteBlocks[--freeBlocks] = null;
     }
-    bytesUsed.addAndGet(-count * (long) blockSize);
+    bytesUsed.addAndGet(-count * blockSize);
     assert bytesUsed.get() >= 0;
     return count;
   }

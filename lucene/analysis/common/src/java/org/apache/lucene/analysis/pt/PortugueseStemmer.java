@@ -24,7 +24,7 @@ import java.util.Map;
  *
  * @see RSLPStemmerBase
  */
-class PortugueseStemmer extends RSLPStemmerBase {
+public class PortugueseStemmer extends RSLPStemmerBase {
   private static final Step plural, feminine, adverb, augmentative, noun, verb, vowel;
 
   static {
@@ -43,7 +43,7 @@ class PortugueseStemmer extends RSLPStemmerBase {
    * @param len initial valid length of buffer
    * @return new valid length, stemmed
    */
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     assert s.length >= len + 1 : "this stemmer requires an oversized array of at least 1";
 
     len = plural.apply(s, len);

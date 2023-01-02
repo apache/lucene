@@ -758,12 +758,11 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
           BinaryDocValues values = leafReader.getBinaryDocValues("number");
           NumericDocValues sortValues = leafReader.getNumericDocValues("sort");
           Bits liveDocs = leafReader.getLiveDocs();
-          StoredFields storedFields = leafReader.storedFields();
 
           long lastSortValue = Long.MIN_VALUE;
           for (int i = 0; i < leafReader.maxDoc(); i++) {
 
-            Document doc = storedFields.document(i);
+            Document doc = leafReader.document(i);
             OneSortDoc sortDoc = docs.get(Integer.parseInt(doc.get("id")));
 
             assertEquals(i, values.nextDoc());

@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 
 /**
  * A {@link Query} wrapper that allows to give a boost to the wrapped query. Boost values that are
@@ -72,8 +73,8 @@ public final class BoostQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final Query rewritten = query.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    final Query rewritten = query.rewrite(reader);
 
     if (boost == 1f) {
       return rewritten;
@@ -98,7 +99,7 @@ public final class BoostQuery extends Query {
       return new BoostQuery(rewritten, boost);
     }
 
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

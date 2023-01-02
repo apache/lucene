@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.store;
 
-import java.io.IOException;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -110,24 +109,55 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public int readVInt() {
-    try {
-      return super.readVInt();
-    } catch (
-        @SuppressWarnings("unused")
-        IOException e) {
-      throw new AssertionError("ByteArrayDataInput#readByte should not throw IOException");
-    }
+    byte b = bytes[pos++];
+    if (b >= 0) return b;
+    int i = b & 0x7F;
+    b = bytes[pos++];
+    i |= (b & 0x7F) << 7;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7F) << 14;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7F) << 21;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
+    i |= (b & 0x0F) << 28;
+    if ((b & 0xF0) == 0) return i;
+    throw new RuntimeException("Invalid vInt detected (too many bits)");
   }
 
   @Override
   public long readVLong() {
-    try {
-      return super.readVLong();
-    } catch (
-        @SuppressWarnings("unused")
-        IOException e) {
-      throw new AssertionError("ByteArrayDataInput#readByte should not throw IOException");
-    }
+    byte b = bytes[pos++];
+    if (b >= 0) return b;
+    long i = b & 0x7FL;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 7;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 14;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 21;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 28;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 35;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 42;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 49;
+    if (b >= 0) return i;
+    b = bytes[pos++];
+    i |= (b & 0x7FL) << 56;
+    if (b >= 0) return i;
+    throw new RuntimeException("Invalid vLong detected (negative values disallowed)");
   }
 
   // NOTE: AIOOBE not EOF if you read too much

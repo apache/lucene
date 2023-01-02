@@ -27,11 +27,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -87,14 +92,19 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   private final Directory dir;
   private final IndexWriter indexWriter;
+  private final boolean useOlderFormat;
   private final TaxonomyWriterCache cache;
   private final AtomicInteger cacheMisses = new AtomicInteger(0);
-  private final AtomicInteger nextID = new AtomicInteger(0);
-  private final Field fullPathField;
 
   // Records the taxonomy index epoch, updated on replaceTaxonomy as well.
   private long indexEpoch;
 
+  // TODO: remove following 2 fields in Lucene 10
+  private SinglePositionTokenStream parentStream =
+      new SinglePositionTokenStream(Consts.PAYLOAD_PARENT);
+  private Field parentStreamField;
+
+  private Field fullPathField;
   private int cacheMissesUntilFill = 11;
   private boolean shouldFillCache = true;
 
@@ -109,13 +119,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * When the cache is <B>not</B> complete, and we can't find a category in the cache, we still need
    * to look for it in the on-disk index; Therefore when the cache is not complete, we need to open
    * a "reader" to the taxonomy index. The cache becomes incomplete if it was never filled with the
-   * existing categories, or if a put() to the cache ever returned true (meaning that some cached
-   * data was cleared).
+   * existing categories, or if a put() to the cache ever returned true (meaning that some of the
+   * cached data was cleared).
    */
   private volatile boolean cacheIsComplete;
 
   private volatile boolean isClosed = false;
   private volatile TaxonomyIndexArrays taxoArrays;
+  private volatile int nextID;
 
   /**
    * Construct a Taxonomy writer.
@@ -151,9 +162,15 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     openMode = config.getOpenMode();
     if (DirectoryReader.indexExists(directory) == false) {
       indexEpoch = 1;
+      // no commit exists so we can safely use the newer formats:
+      useOlderFormat = false;
     } else {
       String epochStr = null;
+
       SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      /* a previous commit exists, so check the version of the last commit */
+      useOlderFormat = infos.getIndexCreatedVersionMajor() <= 8;
+
       Map<String, String> commitData = infos.getUserData();
       if (commitData != null) {
         epochStr = commitData.get(INDEX_EPOCH);
@@ -167,16 +184,28 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       ++indexEpoch;
     }
 
-    fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
+    if (useOlderFormat) {
+      // parent ordinal field
+      FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+      ft.setOmitNorms(true);
+      parentStreamField = new Field(Consts.FIELD_PAYLOADS, parentStream, ft);
 
-    nextID.set(indexWriter.getDocStats().maxDoc);
+      // full path field
+      fullPathField = new StringField(Consts.FULL, "", Field.Store.YES);
+    } else {
+      parentStreamField = null;
+
+      fullPathField = new StringField(Consts.FULL, "", Field.Store.NO);
+    }
+
+    nextID = indexWriter.getDocStats().maxDoc;
 
     if (cache == null) {
       cache = defaultTaxonomyWriterCache();
     }
     this.cache = cache;
 
-    if (nextID.get() == 0) {
+    if (nextID == 0) {
       cacheIsComplete = true;
       // Make sure that the taxonomy always contain the root category
       // with category id 0.
@@ -424,7 +453,9 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     } else {
       parent = TaxonomyReader.INVALID_ORDINAL;
     }
-    return addCategoryDocument(cp, parent);
+    int id = addCategoryDocument(cp, parent);
+
+    return id;
   }
 
   /**
@@ -437,24 +468,43 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
 
   /**
-   * Note that the methods calling addCategoryDocument() are synchronized, so this method is
+   * Note that the methods calling addCategoryDocument() are synchornized, so this method is
    * effectively synchronized as well.
    */
   private int addCategoryDocument(FacetLabel categoryPath, int parent) throws IOException {
     Document d = new Document();
-    /* Lucene 9 switches to NumericDocValuesField for storing parent ordinals */
-    d.add(new NumericDocValuesField(Consts.FIELD_PARENT_ORDINAL_NDV, parent));
+    if (useOlderFormat) {
+      // Before Lucene 2.9, position increments >=0 were supported, so we
+      // added 1 to parent to allow the parent -1 (the parent of the root).
+      // Unfortunately, starting with Lucene 2.9, after LUCENE-1542, this is
+      // no longer enough, since 0 is not encoded consistently either (see
+      // comment in SinglePositionTokenStream). But because we must be
+      // backward-compatible with existing indexes, we can't just fix what
+      // we write here (e.g., to write parent+2), and need to do a workaround
+      // in the reader (which knows that anyway only category 0 has a parent
+      // -1).
+      assert parentStreamField != null;
+      parentStream.set(Math.max(parent + 1, 1));
+      d.add(parentStreamField);
+    } else {
+      d.add(new NumericDocValuesField(Consts.FIELD_PARENT_ORDINAL_NDV, parent));
+    }
 
     String fieldPath = FacetsConfig.pathToString(categoryPath.components, categoryPath.length);
     fullPathField.setStringValue(fieldPath);
 
-    /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
-    d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
+    if (useOlderFormat == false) {
+      /* Lucene 9 switches to BinaryDocValuesField for storing taxonomy categories */
+      d.add(new BinaryDocValuesField(Consts.FULL, new BytesRef(fieldPath)));
+    }
 
     d.add(fullPathField);
 
+    // Note that we do no pass an Analyzer here because the fields that are
+    // added to the Document are untokenized or contains their own TokenStream.
+    // Therefore the IndexWriter's Analyzer has no effect.
     indexWriter.addDocument(d);
-    int id = nextID.getAndIncrement();
+    int id = nextID++;
 
     // added a category document, mark that ReaderManager is not up-to-date
     shouldRefreshReaderManager = true;
@@ -467,6 +517,51 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     addToCache(categoryPath, id);
 
     return id;
+  }
+
+  // TODO: remove this class in Lucene 10
+  private static class SinglePositionTokenStream extends TokenStream {
+    private CharTermAttribute termAtt;
+    private PositionIncrementAttribute posIncrAtt;
+    private boolean returned;
+    private int val;
+    private final String word;
+
+    public SinglePositionTokenStream(String word) {
+      termAtt = addAttribute(CharTermAttribute.class);
+      posIncrAtt = addAttribute(PositionIncrementAttribute.class);
+      this.word = word;
+      returned = true;
+    }
+
+    /**
+     * Set the value we want to keep, as the position increment. Note that when
+     * TermPositions.nextPosition() is later used to retrieve this value, val-1 will be returned,
+     * not val.
+     *
+     * <p>IMPORTANT NOTE: Before Lucene 2.9, val&gt;=0 were safe (for val==0, the retrieved position
+     * would be -1). But starting with Lucene 2.9, this unfortunately changed, and only val&gt;0 are
+     * safe. val=0 can still be used, but don't count on the value you retrieve later (it could be 0
+     * or -1, depending on circumstances or versions). This change is described in Lucene's JIRA:
+     * LUCENE-1542.
+     */
+    public void set(int val) {
+      this.val = val;
+      returned = false;
+    }
+
+    @Override
+    public boolean incrementToken() throws IOException {
+      if (returned) {
+        return false;
+      }
+      clearAttributes();
+      posIncrAtt.setPositionIncrement(val);
+      termAtt.setEmpty();
+      termAtt.append(word);
+      returned = true;
+      return true;
+    }
   }
 
   private void addToCache(FacetLabel categoryPath, int id) throws IOException {
@@ -486,7 +581,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     // addCategoryDocument -- when this method returns, we must know that the
     // reader manager's state is current. also, it sets shouldRefresh to false,
     // and this cannot overlap with addCatDoc too.
-    // NOTE: since this method is synced, it can call maybeRefresh, instead of
+    // NOTE: since this method is sync'ed, it can call maybeRefresh, instead of
     // maybeRefreshBlocking. If ever this is changed, make sure to change the
     // call too.
     if (shouldRefreshReaderManager && initializedReaderManager) {
@@ -562,7 +657,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   @Override
   public int getSize() {
     ensureOpen();
-    return nextID.get();
+    return nextID;
   }
 
   /**
@@ -651,33 +746,33 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
 
   private TaxonomyIndexArrays getTaxoArrays() throws IOException {
-    // By copying to a local variable we only perform a volatile read once (if it's not null)
-    TaxonomyIndexArrays arrays = taxoArrays;
-    if (arrays == null) {
+    if (taxoArrays == null) {
       synchronized (this) {
-        arrays = taxoArrays;
-        if (arrays == null) {
+        if (taxoArrays == null) {
           initReaderManager();
           DirectoryReader reader = readerManager.acquire();
           try {
-            arrays = new TaxonomyIndexArrays(reader);
+            // according to Java Concurrency, this might perform better on some
+            // JVMs, since the object initialization doesn't happen on the
+            // volatile member.
+            TaxonomyIndexArrays tmpArrays = new TaxonomyIndexArrays(reader);
+            taxoArrays = tmpArrays;
           } finally {
             readerManager.release(reader);
           }
-          taxoArrays = arrays;
         }
       }
     }
-    return arrays;
+    return taxoArrays;
   }
 
   @Override
   public int getParent(int ordinal) throws IOException {
     ensureOpen();
     // Note: the following if() just enforces that a user can never ask
-    // for the parent of a nonexistent category - even if the parent array
+    // for the parent of a nonexistant category - even if the parent array
     // was allocated bigger than it really needs to be.
-    Objects.checkIndex(ordinal, nextID.get());
+    Objects.checkIndex(ordinal, nextID);
 
     int[] parents = getTaxoArrays().parents();
     assert ordinal < parents.length
@@ -692,9 +787,11 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public void addTaxonomy(Directory taxoDir, OrdinalMap map) throws IOException {
     ensureOpen();
-    try (DirectoryReader r = DirectoryReader.open(taxoDir)) {
+    DirectoryReader r = DirectoryReader.open(taxoDir);
+    try {
       final int size = r.numDocs();
-      map.setSize(size);
+      final OrdinalMap ordinalMap = map;
+      ordinalMap.setSize(size);
       int base = 0;
       PostingsEnum docs = null;
       for (final LeafReaderContext ctx : r.leaves()) {
@@ -706,11 +803,13 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
           FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(te.term().utf8ToString()));
           final int ordinal = addCategory(cp);
           docs = te.postings(docs, PostingsEnum.NONE);
-          map.addMapping(docs.nextDoc() + base, ordinal);
+          ordinalMap.addMapping(docs.nextDoc() + base, ordinal);
         }
         base += ar.maxDoc(); // no deletions, so we're ok
       }
-      map.addDone();
+      ordinalMap.addDone();
+    } finally {
+      r.close();
     }
   }
 
@@ -727,22 +826,22 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * the same time, it is recommended to put the first taxonomy's map in memory, and all the rest on
    * disk (later to be automatically read into memory one by one, when needed).
    */
-  public interface OrdinalMap {
+  public static interface OrdinalMap {
     /**
      * Set the size of the map. This MUST be called before addMapping(). It is assumed (but not
      * verified) that addMapping() will then be called exactly 'size' times, with different
      * origOrdinals between 0 and size-1.
      */
-    void setSize(int size) throws IOException;
+    public void setSize(int size) throws IOException;
 
     /** Record a mapping. */
-    void addMapping(int origOrdinal, int newOrdinal) throws IOException;
+    public void addMapping(int origOrdinal, int newOrdinal) throws IOException;
 
     /**
      * Call addDone() to say that all addMapping() have been done. In some implementations this
      * might free some resources.
      */
-    void addDone() throws IOException;
+    public void addDone() throws IOException;
 
     /**
      * Return the map from the taxonomy's original (consecutive) ordinals to the new taxonomy's
@@ -751,7 +850,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
      * needed. Calling it will also free all resources that the map might be holding (such as
      * temporary disk space), other than the returned int[].
      */
-    int[] getMap() throws IOException;
+    public int[] getMap() throws IOException;
   }
 
   /** {@link OrdinalMap} maintained in memory */
@@ -784,15 +883,13 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   /** {@link OrdinalMap} maintained on file system */
   public static final class DiskOrdinalMap implements OrdinalMap {
-    private final Path mapFile;
-
-    private int[] map = null;
-    private DataOutputStream out;
+    Path tmpfile;
+    DataOutputStream out;
 
     /** Sole constructor. */
-    public DiskOrdinalMap(Path mapFile) throws IOException {
-      this.mapFile = mapFile;
-      out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(mapFile)));
+    public DiskOrdinalMap(Path tmpfile) throws IOException {
+      this.tmpfile = tmpfile;
+      out = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(tmpfile)));
     }
 
     @Override
@@ -814,6 +911,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       }
     }
 
+    int[] map = null;
+
     @Override
     public int[] getMap() throws IOException {
       if (map != null) {
@@ -821,20 +920,20 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       }
       addDone(); // in case this wasn't previously called
       try (DataInputStream in =
-          new DataInputStream(new BufferedInputStream(Files.newInputStream(mapFile)))) {
+          new DataInputStream(new BufferedInputStream(Files.newInputStream(tmpfile)))) {
         map = new int[in.readInt()];
-        // NOTE: The current code assumes that the map is complete,
-        // i.e. that every ordinal gets exactly one value. Otherwise,
-        // we may run into an EOF here, or not read everything.
+        // NOTE: The current code assumes here that the map is complete,
+        // i.e., every ordinal gets one and exactly one value. Otherwise,
+        // we may run into an EOF here, or vice versa, not read everything.
         for (int i = 0; i < map.length; i++) {
-          int origOrdinal = in.readInt();
-          int newOrdinal = in.readInt();
-          map[origOrdinal] = newOrdinal;
+          int origordinal = in.readInt();
+          int newordinal = in.readInt();
+          map[origordinal] = newordinal;
         }
       }
 
       // Delete the temporary file, which is no longer needed.
-      Files.delete(mapFile);
+      Files.delete(tmpfile);
 
       return map;
     }
@@ -854,8 +953,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
   /**
    * Replaces the current taxonomy with the given one. This method should generally be called in
-   * conjunction with {@link IndexWriter#addIndexes(Directory...)} to replace both the taxonomy and
-   * the search index content.
+   * conjunction with {@link IndexWriter#addIndexes(Directory...)} to replace both the taxonomy as
+   * well as the search index content.
    */
   public synchronized void replaceTaxonomy(Directory taxoDir) throws IOException {
     // replace the taxonomy by doing IW optimized operations
@@ -864,7 +963,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     shouldRefreshReaderManager = true;
     initReaderManager(); // ensure that it's initialized
     refreshReaderManager();
-    nextID.set(indexWriter.getDocStats().maxDoc);
+    nextID = indexWriter.getDocStats().maxDoc;
     taxoArrays = null; // must nullify so that it's re-computed next time it's needed
 
     // need to clear the cache, so that addCategory won't accidentally return
@@ -901,5 +1000,10 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    */
   public final long getTaxonomyEpoch() {
     return indexEpoch;
+  }
+
+  @Override
+  public boolean useNumericDocValuesForOrdinals() {
+    return useOlderFormat == false;
   }
 }

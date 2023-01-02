@@ -23,9 +23,10 @@
 # document to let you more accurately measure time spent analyzing and
 # indexing your documents vs time spent creating the documents.
 #
-# To use this, you must first run the createLineFile.alg, then run:
+# To use this, you must first run the createLineFile.alg, then cd to
+# benchmark and then run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/indexLineFile.alg
+#   ant run-task -Dtask.alg=conf/indexLineFile.alg
 #
 
 analyzer=org.apache.lucene.analysis.core.SimpleAnalyzer

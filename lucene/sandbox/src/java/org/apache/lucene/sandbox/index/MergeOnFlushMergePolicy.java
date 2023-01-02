@@ -20,11 +20,7 @@ package org.apache.lucene.sandbox.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FilterMergePolicy;
-import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.MergeTrigger;
-import org.apache.lucene.index.SegmentCommitInfo;
-import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.*;
 
 /**
  * A simple extension to wrap {@link MergePolicy} to merge all tiny segments (or at least segments
