@@ -20,11 +20,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * MessageBundles classes extend this class, to implement a bundle.
@@ -41,7 +41,7 @@ import org.apache.lucene.util.CollectionUtil;
  */
 public class NLS {
 
-  private static final Map<String, Class<? extends NLS>> bundles = new HashMap<>(0);
+  private static Map<String, Class<? extends NLS>> bundles = new HashMap<>(0);
 
   protected NLS() {
     // Do not instantiate
@@ -83,7 +83,7 @@ public class NLS {
   protected static void initializeMessages(String bundleName, Class<? extends NLS> clazz) {
     try {
       load(clazz);
-      bundles.putIfAbsent(bundleName, clazz);
+      if (!bundles.containsKey(bundleName)) bundles.put(bundleName, clazz);
     } catch (
         @SuppressWarnings("unused")
         Throwable e) {
@@ -96,7 +96,8 @@ public class NLS {
 
     // slow resource checking
     // need to loop thru all registered resource bundles
-    for (Class<? extends NLS> clazz : bundles.values()) {
+    for (Iterator<String> it = bundles.keySet().iterator(); it.hasNext(); ) {
+      Class<? extends NLS> clazz = bundles.get(it.next());
       ResourceBundle resourceBundle = ResourceBundle.getBundle(clazz.getName(), locale);
       if (resourceBundle != null) {
         try {
@@ -118,10 +119,10 @@ public class NLS {
 
     // build a map of field names to Field objects
     final int len = fieldArray.length;
-    Map<String, Field> fields = CollectionUtil.newHashMap(len);
-    for (Field field : fieldArray) {
-      fields.put(field.getName(), field);
-      loadfieldValue(field, clazz);
+    Map<String, Field> fields = new HashMap<>(len * 2);
+    for (int i = 0; i < len; i++) {
+      fields.put(fieldArray[i].getName(), fieldArray[i]);
+      loadfieldValue(fieldArray[i], clazz);
     }
   }
 
@@ -139,9 +140,7 @@ public class NLS {
     }
   }
 
-  /**
-   * @param key - Message Key
-   */
+  /** @param key - Message Key */
   private static void validateMessage(String key, Class<? extends NLS> clazz) {
     // Test if the message is present in the resource bundle
     try {

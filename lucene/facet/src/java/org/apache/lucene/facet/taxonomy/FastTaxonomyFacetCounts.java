@@ -19,6 +19,7 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
@@ -72,7 +73,7 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
       SortedNumericDocValues multiValued =
-          hits.context.reader().getSortedNumericDocValues(indexFieldName);
+          FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
       if (multiValued == null) {
         continue;
       }
@@ -117,14 +118,14 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
       SortedNumericDocValues multiValued =
-          context.reader().getSortedNumericDocValues(indexFieldName);
+          FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
       if (multiValued == null) {
         continue;
       }
 
       Bits liveDocs = context.reader().getLiveDocs();
-
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
+
       if (singleValued != null) {
         if (liveDocs == null) {
           for (int doc = singleValued.nextDoc();

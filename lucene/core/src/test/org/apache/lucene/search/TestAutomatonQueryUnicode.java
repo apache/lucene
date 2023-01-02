@@ -25,6 +25,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -101,18 +102,27 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
-                newTerm("bogus"), automaton, false, MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
-    assertEquals(
-        expected,
-        automatonQueryNrHits(
-            new AutomatonQuery(
-                newTerm("bogus"), automaton, false, MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+                newTerm("bogus"),
+                automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                false,
+                MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
     assertEquals(
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
                 newTerm("bogus"),
                 automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                false,
+                MultiTermQuery.CONSTANT_SCORE_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"),
+                automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
                 false,
                 MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }

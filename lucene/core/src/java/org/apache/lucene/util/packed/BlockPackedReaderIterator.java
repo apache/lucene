@@ -40,15 +40,33 @@ public final class BlockPackedReaderIterator {
 
   // same as DataInput.readVLong but supports negative values
   static long readVLong(DataInput in) throws IOException {
-    long l = 0L;
-    for (int shift = 0; shift < 56; shift += 7) {
-      byte b = in.readByte();
-      l |= (b & 0x7FL) << shift;
-      if (b >= 0) {
-        return l;
-      }
-    }
-    return l | ((in.readByte() & 0xFFL) << 56);
+    byte b = in.readByte();
+    if (b >= 0) return b;
+    long i = b & 0x7FL;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 7;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 14;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 21;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 28;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 35;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 42;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0x7FL) << 49;
+    if (b >= 0) return i;
+    b = in.readByte();
+    i |= (b & 0xFFL) << 56;
+    return i;
   }
 
   DataInput in;

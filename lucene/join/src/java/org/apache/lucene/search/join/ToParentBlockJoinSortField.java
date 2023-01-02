@@ -33,7 +33,6 @@ import org.apache.lucene.search.comparators.DoubleComparator;
 import org.apache.lucene.search.comparators.FloatComparator;
 import org.apache.lucene.search.comparators.IntComparator;
 import org.apache.lucene.search.comparators.LongComparator;
-import org.apache.lucene.search.comparators.TermOrdValComparator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.NumericUtils;
 
@@ -135,8 +134,9 @@ public class ToParentBlockJoinSortField extends SortField {
   }
 
   private FieldComparator<?> getStringComparator(int numHits) {
-    return new TermOrdValComparator(
-        numHits, getField(), missingValue == STRING_LAST, getReverse(), false) {
+    return new FieldComparator.TermOrdValComparator(
+        numHits, getField(), missingValue == STRING_LAST) {
+
       @Override
       protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field)
           throws IOException {

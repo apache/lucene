@@ -20,13 +20,13 @@
 
 configure(rootProject) {
   ext {
-    apacheNexusReleasesRepository = "https://repository.apache.org/service/local/staging/deploy/maven2"
+    apacheNexusReleasesRepository = "https://jfrog.fkinternal.com/artifactory/maven_virtual"
   }
 
   // These access credentials must be passed by the release manager
   // (either on command-line, via the environment or via ~/.gradle.properties).
-  def asfNexusUsername = propertyOrEnvOrDefault('asfNexusUsername', "ASF_NEXUS_USERNAME", null)
-  def asfNexusPassword = propertyOrEnvOrDefault('asfNexusPassword', "ASF_NEXUS_PASSWORD", null)
+  def asfNexusUsername = "vatsal.patel"//propertyOrEnvOrDefault('asfNexusUsername', "vatsal.patel", null)
+  def asfNexusPassword = "Vatsaayu7&"//propertyOrEnvOrDefault('asfNexusPassword', "Vatsaayu7&", null)
 
   task mavenToApacheReleases() {
     group "Distribution"
@@ -41,9 +41,9 @@ configure(rootProject) {
     doFirst {
       // Make sure we're pushing a release version. The release repository
       // does not accept snapshots and returns cryptic errors upon trying.
-      if (snapshotBuild) {
-        throw new GradleException("ASF releases repository will not accept a snapshot version: ${rootProject.version}")
-      }
+//      if (snapshotBuild) {
+//        throw new GradleException("ASF releases repository will not accept a snapshot version: ${rootProject.version}")
+//      }
 
       // Make sure access credentials have been passed.
       if (asfNexusUsername == null || asfNexusPassword == null) {
@@ -65,7 +65,7 @@ configure(rootProject) {
         repositories {
           maven {
             name = "ApacheReleases"
-            url = apacheNexusReleasesRepository
+            url = "https://jfrog.fkinternal.com/artifactory/maven_virtual"
 
             credentials {
               username asfNexusUsername

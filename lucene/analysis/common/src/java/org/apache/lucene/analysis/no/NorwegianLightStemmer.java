@@ -60,11 +60,11 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * one has a pre-defined rule set and a corresponding corpus to validate against whereas the
  * Norwegian one is hand crafted.
  */
-class NorwegianLightStemmer {
+public class NorwegianLightStemmer {
   /** Constant to remove Bokmål-specific endings */
-  static final int BOKMAAL = 1;
+  public static final int BOKMAAL = 1;
   /** Constant to remove Nynorsk-specific endings */
-  static final int NYNORSK = 2;
+  public static final int NYNORSK = 2;
 
   final boolean useBokmaal;
   final boolean useNynorsk;
@@ -74,7 +74,7 @@ class NorwegianLightStemmer {
    *
    * @param flags set to {@link #BOKMAAL}, {@link #NYNORSK}, or both.
    */
-  NorwegianLightStemmer(int flags) {
+  public NorwegianLightStemmer(int flags) {
     if (flags <= 0 || flags > BOKMAAL + NYNORSK) {
       throw new IllegalArgumentException("invalid flags");
     }
@@ -82,7 +82,7 @@ class NorwegianLightStemmer {
     useNynorsk = (flags & NYNORSK) != 0;
   }
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     // Remove posessive -s (bilens -> bilen) and continue checking
     if (len > 4 && s[len - 1] == 's') len--;
 

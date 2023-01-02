@@ -781,8 +781,8 @@ public class TestValueSources extends LuceneTestCase {
       }
 
       @Override
-      public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-        var rewrite = in.rewrite(indexSearcher);
+      public Query rewrite(IndexReader reader) throws IOException {
+        var rewrite = in.rewrite(reader);
         return rewrite == in ? this : new AssertScoreComputedOnceQuery(rewrite);
       }
 
@@ -972,12 +972,8 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
-  /**
-   * @see ExistsValueSource
-   */
+  /** @see ExistsValueSource */
   private static final ValueSource ALL_EXIST_VS = new ExistsValueSource(true);
-  /**
-   * @see ExistsValueSource
-   */
+  /** @see ExistsValueSource */
   private static final ValueSource NONE_EXIST_VS = new ExistsValueSource(false);
 }

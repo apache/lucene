@@ -36,8 +36,6 @@ import org.apache.lucene.index.LeafReaderContext;
  */
 public interface SegmentCacheable {
 
-  /**
-   * @return {@code true} if the object can be cached against a given leaf
-   */
+  /** @return {@code true} if the object can be cached against a given leaf */
   boolean isCacheable(LeafReaderContext ctx);
 }

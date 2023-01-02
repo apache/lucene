@@ -32,61 +32,205 @@ import java.util.jar.Manifest;
 public final class Version {
 
   /**
-   * Match settings and bugs in Lucene's 9.0.0 release.
+   * Match settings and bugs in Lucene's 8.0.0 release.
    *
-   * @deprecated (9.1.0) Use latest
+   * @deprecated (9.0.0) Use latest
    */
+  @Deprecated public static final Version LUCENE_8_0_0 = new Version(8, 0, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.1.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_1_0 = new Version(8, 1, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.1.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_1_1 = new Version(8, 1, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.2.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_2_0 = new Version(8, 2, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.3.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_3_0 = new Version(8, 3, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.3.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_3_1 = new Version(8, 3, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.4.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_4_0 = new Version(8, 4, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.4.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_4_1 = new Version(8, 4, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.5.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_5_0 = new Version(8, 5, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.5.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_5_1 = new Version(8, 5, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.5.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_5_2 = new Version(8, 5, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 8.6.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_6_0 = new Version(8, 6, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.6.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_6_1 = new Version(8, 6, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.6.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_6_2 = new Version(8, 6, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 8.6.3 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_6_3 = new Version(8, 6, 3);
+
+  /**
+   * Match settings and bugs in Lucene's 8.7.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_7_0 = new Version(8, 7, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.8.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_8_0 = new Version(8, 8, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.8.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_8_1 = new Version(8, 8, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.8.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_8_2 = new Version(8, 8, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 8.9.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_9_0 = new Version(8, 9, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.10.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_10_0 = new Version(8, 10, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.10.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_10_1 = new Version(8, 10, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.11.0 release.
+   *
+   * @deprecated (8.11.1) Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_11_0 = new Version(8, 11, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 8.11.1 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_11_1 = new Version(8, 11, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 8.11.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_11_2 = new Version(8, 11, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 8.12.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_8_12_0 = new Version(8, 12, 0);
+
+  /** @deprecated (9.1.0) Use latest */
   @Deprecated public static final Version LUCENE_9_0_0 = new Version(9, 0, 0);
 
-  /**
-   * Match settings and bugs in Lucene's 9.1.0 release.
-   *
-   * @deprecated (9.2.0) Use latest
-   */
+  /** @deprecated (9.2.0) Use latest */
   @Deprecated public static final Version LUCENE_9_1_0 = new Version(9, 1, 0);
 
-  /**
-   * Match settings and bugs in Lucene's 9.2.0 release.
-   *
-   * @deprecated (9.3.0) Use latest
-   */
+  /** @deprecated (9.3.0) Use latest */
   @Deprecated public static final Version LUCENE_9_2_0 = new Version(9, 2, 0);
 
-  /**
-   * Match settings and bugs in Lucene's 9.3.0 release.
-   *
-   * @deprecated (9.4.0) Use latest
-   */
+  /** @deprecated (9.3.1) Use latest */
   @Deprecated public static final Version LUCENE_9_3_0 = new Version(9, 3, 0);
 
   /**
-   * Match settings and bugs in Lucene's 9.4.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_9_4_0 = new Version(9, 4, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 9.4.1 release.
-   *
-   * @deprecated Use latest
-   * @deprecated (9.4.2) Use latest
-   */
-  @Deprecated public static final Version LUCENE_9_4_1 = new Version(9, 4, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 9.4.2 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_9_4_2 = new Version(9, 4, 2);
-
-  /**
-   * Match settings and bugs in Lucene's 10.0.0 release.
+   * Match settings and bugs in Lucene's 9.3.1 release.
    *
    * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.
    */
-  public static final Version LUCENE_10_0_0 = new Version(10, 0, 0);
+  public static final Version LUCENE_9_3_1 = new Version(9, 3, 1);
 
   // To add a new version:
   //  * Only add above this comment
@@ -102,7 +246,7 @@ public final class Version {
    * <b>re-test your entire application</b> to ensure it behaves as expected, as some defaults may
    * have changed and may break functionality in your application.
    */
-  public static final Version LATEST = LUCENE_10_0_0;
+  public static final Version LATEST = LUCENE_9_3_1;
 
   /**
    * Constant for backwards compatibility.
@@ -117,9 +261,7 @@ public final class Version {
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
 
-  /**
-   * @see #getPackageImplementationVersion()
-   */
+  /** @see #getPackageImplementationVersion() */
   private static String implementationVersion;
 
   /**

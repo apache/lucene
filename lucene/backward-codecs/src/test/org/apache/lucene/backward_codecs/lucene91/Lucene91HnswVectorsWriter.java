@@ -21,12 +21,13 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
@@ -36,17 +37,17 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Writes vector values and knn graphs to index segments.
  *
  * @lucene.experimental
  */
-public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
+public final class Lucene91HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
+  private final int maxDoc;
 
   private final int maxConn;
   private final int beamWidth;
@@ -57,6 +58,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
     this.maxConn = maxConn;
     this.beamWidth = beamWidth;
 
+    assert state.fieldInfos.hasVectorValues();
     segmentWriteState = state;
 
     String metaFileName =
@@ -99,6 +101,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
           Lucene91HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
+      maxDoc = state.segmentInfo.maxDoc();
       success = true;
     } finally {
       if (success == false) {
@@ -108,7 +111,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
+  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
@@ -146,7 +149,6 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
-          maxDoc,
           vectorDataOffset,
           vectorDataLength,
           vectorIndexOffset,
@@ -184,7 +186,6 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeMeta(
       FieldInfo field,
-      int maxDoc,
       long vectorDataOffset,
       long vectorDataLength,
       long vectorIndexOffset,
@@ -233,7 +234,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private Lucene91OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues vectorValues, VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValuesProducer vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph
@@ -245,7 +246,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
             beamWidth,
             Lucene91HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    Lucene91OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
+    Lucene91OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.randomAccess());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();

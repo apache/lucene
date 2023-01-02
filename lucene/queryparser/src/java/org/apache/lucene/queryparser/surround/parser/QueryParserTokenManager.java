@@ -19,8 +19,7 @@ package org.apache.lucene.queryparser.surround.parser;
 
 
 /** Token Manager. */
-@SuppressWarnings ("unused")
-public class QueryParserTokenManager implements QueryParserConstants {
+@SuppressWarnings("unused") public class QueryParserTokenManager implements QueryParserConstants {
 
   /** Debug output. */
   // (debugStream omitted).
@@ -514,7 +513,9 @@ protected Token jjFillToken()
    beginColumn = input_stream.getBeginColumn();
    endLine = input_stream.getEndLine();
    endColumn = input_stream.getEndColumn();
-   t = Token.newToken(jjmatchedKind, curTokenImage);
+   t = Token.newToken(jjmatchedKind);
+   t.kind = jjmatchedKind;
+   t.image = curTokenImage;
 
    t.beginLine = beginLine;
    t.endLine = endLine;

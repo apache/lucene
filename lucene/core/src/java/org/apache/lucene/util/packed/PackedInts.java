@@ -393,9 +393,7 @@ public class PackedInts {
       return gets;
     }
 
-    /**
-     * @return the number of values.
-     */
+    /** @return the number of values. */
     public abstract int size();
   }
 

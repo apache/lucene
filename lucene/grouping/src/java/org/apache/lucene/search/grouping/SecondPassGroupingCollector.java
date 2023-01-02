@@ -66,9 +66,7 @@ public class SecondPassGroupingCollector<T> extends SimpleCollector {
     reducer.setGroups(groups);
   }
 
-  /**
-   * @return the GroupSelector used in this collector
-   */
+  /** @return the GroupSelector used in this collector */
   public GroupSelector<T> getGroupSelector() {
     return groupSelector;
   }

@@ -44,14 +44,10 @@ public final class SessionToken {
    */
   public final String id;
 
-  /**
-   * @see Revision#getVersion()
-   */
+  /** @see Revision#getVersion() */
   public final String version;
 
-  /**
-   * @see Revision#getSourceFiles()
-   */
+  /** @see Revision#getSourceFiles() */
   public final Map<String, List<RevisionFile>> sourceFiles;
 
   /** Constructor which deserializes from the given {@link DataInput}. */

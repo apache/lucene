@@ -166,8 +166,7 @@ public class TestLineDocSource extends BenchmarkTestCase {
       if (storedField == null) {
         storedField = DocMaker.BODY_FIELD; // added to all docs and satisfies field-name == value
       }
-      assertEquals(
-          "Wrong field value", storedField, searcher.storedFields().document(0).get(storedField));
+      assertEquals("Wrong field value", storedField, searcher.doc(0).get(storedField));
     } finally {
       IOUtils.close(reader, runData);
     }

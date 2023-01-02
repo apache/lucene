@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.document.FeatureField.FeatureFunction;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
@@ -49,12 +50,12 @@ final class FeatureQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    FeatureFunction rewritten = function.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    FeatureFunction rewritten = function.rewrite(reader);
     if (function != rewritten) {
       return new FeatureQuery(fieldName, featureName, rewritten);
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

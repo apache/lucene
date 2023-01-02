@@ -118,15 +118,9 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         "dim=field path=[] value=2 childCount=2\n  bar (1)\n  foo (1)",
         facets.getTopChildren(10, "field").toString().trim());
 
-    assertFacetResult(
-        facets.getAllChildren("field"),
-        "field",
-        new String[0],
-        2,
-        2,
-        new LabelAndValue[] {
-          new LabelAndValue("bar", 1), new LabelAndValue("foo", 1),
-        });
+    assertEquals(
+        "dim=field path=[] value=2 childCount=2\n  bar (1)\n  foo (1)",
+        facets.getAllChildren("field").toString().trim());
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -508,7 +502,8 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     assertEquals(expectedTotalDocsWithValue, facetResult.value);
 
     // since we have no insight into the ordinals assigned to the values, we sort labels by value
-    // and count in ascending order in order to compare with expected results
+    // and count in
+    // ascending order in order to compare with expected results
     Arrays.sort(
         facetResult.labelValues,
         Comparator.comparing((LabelAndValue a) -> a.label)

@@ -1,8 +1,8 @@
-# mapping rules of katakana (a unit of keystroke) to list of acceptable romanizations.
+# mapping rules of katakana (an unit of keystroke) to list of acceptable romanizations.
 # longest-match is used to find entries in this list.
 # covers romanization systems: modified Hepburn-shiki, Kunrei-shiki (Nihon-shiki), and Wāpuro shiki.
 # note: this does not strictly comply with the romanization systems listed above,
-# but tries to cover possible keystroke supported by various Input Methods.
+# but tries to cover possible keystoroke supported by various Input Methods.
 
 ア,a
 イ,i

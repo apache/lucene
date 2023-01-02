@@ -18,21 +18,20 @@ package org.apache.lucene.codecs.lucene90;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec.Mode;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec;
+import org.apache.lucene.codecs.lucene92.Lucene92Codec.Mode;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
 public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene95Codec(Mode.BEST_COMPRESSION);
+    return new Lucene92Codec(Mode.BEST_COMPRESSION);
   }
 
   /**
@@ -42,8 +41,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     Directory dir = newDirectory();
     for (int i = 0; i < 10; i++) {
       IndexWriterConfig iwc = newIndexWriterConfig();
-      iwc.setCodec(
-          new Lucene95Codec(RandomPicks.randomFrom(random(), Lucene95Codec.Mode.values())));
+      iwc.setCodec(new Lucene92Codec(RandomPicks.randomFrom(random(), Mode.values())));
       IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig());
       Document doc = new Document();
       doc.add(new StoredField("field1", "value1"));
@@ -58,9 +56,8 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
 
     DirectoryReader ir = DirectoryReader.open(dir);
     assertEquals(10, ir.numDocs());
-    StoredFields storedFields = ir.storedFields();
     for (int i = 0; i < 10; i++) {
-      Document doc = storedFields.document(i);
+      Document doc = ir.document(i);
       assertEquals("value1", doc.get("field1"));
       assertEquals("value2", doc.get("field2"));
     }
@@ -73,7 +70,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     expectThrows(
         NullPointerException.class,
         () -> {
-          new Lucene95Codec(null);
+          new Lucene92Codec(null);
         });
 
     expectThrows(
@@ -81,5 +78,9 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
         () -> {
           new Lucene90StoredFieldsFormat(null);
         });
+  }
+
+  public void testShowJDKBugStatus() {
+    System.err.println("JDK is buggy (JDK-8252739): " + BugfixDeflater_JDK8252739.IS_BUGGY_JDK);
   }
 }

@@ -1341,8 +1341,6 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     w.addDocument(doc);
     w.addDocument(doc);
     w.addDocument(doc);
-    w.addDocument(doc);
-    w.addDocument(doc);
     doc.add(new StringField("id", "1", Field.Store.YES));
     w.addDocument(doc);
     w.close();

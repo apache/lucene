@@ -37,19 +37,6 @@ public class TestCustomFacetSetExample extends LuceneTestCase {
   }
 
   @Test
-  public void testExactMatchingWithFastMatchQuery() throws Exception {
-    FacetResult result = new CustomFacetSetExample().runExactMatchingWithFastMatchQuery();
-
-    assertEquals("temperature", result.dim);
-    assertEquals(0, result.path.length);
-    assertEquals(2, result.value);
-    assertEquals(2, result.childCount);
-
-    assertEquals(new LabelAndValue("May 2022 (100f)", 1), result.labelValues[0]);
-    assertEquals(new LabelAndValue("July 2022 (120f)", 2), result.labelValues[1]);
-  }
-
-  @Test
   public void testRangeMatching() throws Exception {
     FacetResult result = new CustomFacetSetExample().runRangeMatching();
 

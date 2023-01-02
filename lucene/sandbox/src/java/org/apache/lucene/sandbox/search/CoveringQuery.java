@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -124,7 +125,7 @@ public final class CoveringQuery extends Query implements Accountable {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+  public Query rewrite(IndexReader reader) throws IOException {
     if (minimumNumberMatch instanceof LongValuesSource.ConstantLongValuesSource) {
       final long constantMin =
           ((LongValuesSource.ConstantLongValuesSource) minimumNumberMatch).getValue();
@@ -135,7 +136,7 @@ public final class CoveringQuery extends Query implements Accountable {
       BooleanQuery.Builder builder =
           new BooleanQuery.Builder().setMinimumNumberShouldMatch((int) Math.max(constantMin, 1));
       for (Query query : queries) {
-        Query r = query.rewrite(indexSearcher);
+        Query r = query.rewrite(reader);
         builder.add(r, BooleanClause.Occur.SHOULD);
       }
       return builder.build();
@@ -143,14 +144,14 @@ public final class CoveringQuery extends Query implements Accountable {
     Multiset<Query> rewritten = new Multiset<>();
     boolean actuallyRewritten = false;
     for (Query query : queries) {
-      Query r = query.rewrite(indexSearcher);
+      Query r = query.rewrite(reader);
       rewritten.add(r);
       actuallyRewritten |= query != r;
     }
     if (actuallyRewritten) {
       return new CoveringQuery(rewritten, minimumNumberMatch);
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

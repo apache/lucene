@@ -24,7 +24,6 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 
@@ -45,7 +44,6 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private Map<String, String> attributes;
 
@@ -64,7 +62,6 @@ public class FieldType implements IndexableFieldType {
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
-    this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
@@ -347,8 +344,10 @@ public class FieldType implements IndexableFieldType {
           "when dimensionCount is > 0, indexDimensionCount must be > 0; got "
               + indexDimensionCount);
     } else if (dimensionNumBytes == 0) {
-      throw new IllegalArgumentException(
-          "when dimensionNumBytes is 0, dimensionCount must be 0; got " + dimensionCount);
+      if (dimensionCount != 0) {
+        throw new IllegalArgumentException(
+            "when dimensionNumBytes is 0, dimensionCount must be 0; got " + dimensionCount);
+      }
     }
 
     this.dimensionCount = dimensionCount;
@@ -372,8 +371,8 @@ public class FieldType implements IndexableFieldType {
   }
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
-  public void setVectorAttributes(
-      int numDimensions, VectorEncoding encoding, VectorSimilarityFunction similarity) {
+  public void setVectorDimensionsAndSimilarityFunction(
+      int numDimensions, VectorSimilarityFunction distFunc) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -386,18 +385,12 @@ public class FieldType implements IndexableFieldType {
               + numDimensions);
     }
     this.vectorDimension = numDimensions;
-    this.vectorSimilarityFunction = Objects.requireNonNull(similarity);
-    this.vectorEncoding = Objects.requireNonNull(encoding);
+    this.vectorSimilarityFunction = Objects.requireNonNull(distFunc);
   }
 
   @Override
   public int vectorDimension() {
     return vectorDimension;
-  }
-
-  @Override
-  public VectorEncoding vectorEncoding() {
-    return vectorEncoding;
   }
 
   @Override

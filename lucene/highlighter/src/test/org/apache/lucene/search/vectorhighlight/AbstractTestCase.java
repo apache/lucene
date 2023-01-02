@@ -21,9 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -39,7 +37,6 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
@@ -59,7 +56,6 @@ public abstract class AbstractTestCase extends LuceneTestCase {
   protected Analyzer analyzerB;
   protected Analyzer analyzerK;
   protected IndexReader reader;
-  protected IndexSearcher searcher;
 
   protected static final String[] shortMVValues = {
     "", "", "a b c", "", // empty data in multi valued field
@@ -347,7 +343,6 @@ public abstract class AbstractTestCase extends LuceneTestCase {
     writer.close();
     if (reader != null) reader.close();
     reader = DirectoryReader.open(dir);
-    searcher = newSearcher(reader);
   }
 
   // make 1 doc with multi valued & not analyzed field
@@ -368,7 +363,6 @@ public abstract class AbstractTestCase extends LuceneTestCase {
     writer.close();
     if (reader != null) reader.close();
     reader = DirectoryReader.open(dir);
-    searcher = newSearcher(reader);
   }
 
   protected void makeIndexShortMV() throws Exception {

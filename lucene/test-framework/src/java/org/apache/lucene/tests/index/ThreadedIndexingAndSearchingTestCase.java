@@ -39,7 +39,6 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.SegmentReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -104,7 +103,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
   protected void releaseSearcher(IndexSearcher s) throws Exception {}
 
   // Called once to run searching
-  protected abstract void doSearching(ExecutorService es, int maxIterations) throws Exception;
+  protected abstract void doSearching(ExecutorService es, long stopTime) throws Exception;
 
   protected Directory getDirectory(Directory in) {
     return in;
@@ -138,7 +137,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
   private Thread[] launchIndexingThreads(
       final LineFileDocs docs,
       int numThreads,
-      final int maxIterations,
+      final long stopTime,
       final Set<String> delIDs,
       final Set<String> delPackIDs,
       final List<SubDocs> allSubDocs) {
@@ -152,8 +151,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               // deleting anothers added docs works:
               final List<String> toDeleteIDs = new ArrayList<>();
               final List<SubDocs> toDeleteSubDocs = new ArrayList<>();
-              int iterations = 0;
-              while (++iterations < maxIterations && !failed.get()) {
+              while (System.currentTimeMillis() < stopTime && !failed.get()) {
                 try {
 
                   // Occasional longish pause if running
@@ -374,7 +372,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     return threads;
   }
 
-  protected void runSearchThreads(final int maxIterations) throws Exception {
+  protected void runSearchThreads(final long stopTimeMS) throws Exception {
     final int numThreads = TEST_NIGHTLY ? TestUtil.nextInt(random(), 1, 5) : 2;
     final Thread[] searchThreads = new Thread[numThreads];
     final AtomicLong totHits = new AtomicLong();
@@ -391,8 +389,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               if (VERBOSE) {
                 System.out.println(Thread.currentThread().getName() + ": launch search thread");
               }
-              int iterations = 0;
-              while (++iterations < maxIterations && !failed.get()) {
+              while (System.currentTimeMillis() < stopTimeMS && !failed.get()) {
                 try {
                   final IndexSearcher s = getCurrentSearcher();
                   try {
@@ -437,8 +434,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                         trigger = totTermCount.get() / 30;
                         shift = random().nextInt(trigger);
                       }
-                      int iters = 0;
-                      while (++iters < maxIterations) {
+                      while (System.currentTimeMillis() < stopTimeMS) {
                         BytesRef term = termsEnum.next();
                         if (term == null) {
                           totTermCount.set(seenTermCount);
@@ -499,7 +495,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     delCount.set(0);
     packCount.set(0);
 
-    final long t0 = System.nanoTime();
+    final long t0 = System.currentTimeMillis();
 
     Random random = new Random(random().nextLong());
     final LineFileDocs docs = new LineFileDocs(random);
@@ -530,10 +526,9 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           final Bits liveDocs = reader.getLiveDocs();
           int sum = 0;
           final int inc = Math.max(1, maxDoc / 50);
-          StoredFields storedFields = reader.storedFields();
           for (int docID = 0; docID < maxDoc; docID += inc) {
             if (liveDocs == null || liveDocs.get(docID)) {
-              final Document doc = storedFields.document(docID);
+              final Document doc = reader.document(docID);
               sum += doc.getFields().size();
             }
           }
@@ -570,35 +565,33 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
 
     final int NUM_INDEX_THREADS = TestUtil.nextInt(random(), 2, 4);
 
-    final int MAX_ITERATIONS = LuceneTestCase.TEST_NIGHTLY ? 200 : 10 * RANDOM_MULTIPLIER;
+    final int RUN_TIME_MSEC = LuceneTestCase.TEST_NIGHTLY ? 300000 : 100 * RANDOM_MULTIPLIER;
 
     final Set<String> delIDs = Collections.synchronizedSet(new HashSet<String>());
     final Set<String> delPackIDs = Collections.synchronizedSet(new HashSet<String>());
     final List<SubDocs> allSubDocs = Collections.synchronizedList(new ArrayList<SubDocs>());
 
+    final long stopTime = System.currentTimeMillis() + RUN_TIME_MSEC;
+
     final Thread[] indexThreads =
-        launchIndexingThreads(
-            docs, NUM_INDEX_THREADS, MAX_ITERATIONS, delIDs, delPackIDs, allSubDocs);
+        launchIndexingThreads(docs, NUM_INDEX_THREADS, stopTime, delIDs, delPackIDs, allSubDocs);
 
     if (VERBOSE) {
       System.out.println(
           "TEST: DONE start "
               + NUM_INDEX_THREADS
               + " indexing threads ["
-              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + (System.currentTimeMillis() - t0)
               + " ms]");
     }
 
     // Let index build up a bit
     Thread.sleep(100);
 
-    doSearching(es, MAX_ITERATIONS);
+    doSearching(es, stopTime);
 
     if (VERBOSE) {
-      System.out.println(
-          "TEST: all searching done ["
-              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
-              + " ms]");
+      System.out.println("TEST: all searching done [" + (System.currentTimeMillis() - t0) + " ms]");
     }
 
     for (Thread thread : indexThreads) {
@@ -608,7 +601,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     if (VERBOSE) {
       System.out.println(
           "TEST: done join indexing threads ["
-              + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + (System.currentTimeMillis() - t0)
               + " ms]; addCount="
               + addCount
               + " delCount="
@@ -656,7 +649,6 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     // Verify: make sure each group of sub-docs are still in docID order:
     for (SubDocs subDocs : allSubDocs) {
       TopDocs hits = s.search(new TermQuery(new Term("packID", subDocs.packID)), 20);
-      StoredFields storedFields = s.storedFields();
       if (!subDocs.deleted) {
         // We sort by relevance but the scores should be identical so sort falls back to by docID:
         if (hits.totalHits.value != subDocs.subIDs.size()) {
@@ -679,7 +671,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               startDocID = docID;
             }
             lastDocID = docID;
-            final Document doc = storedFields.document(docID);
+            final Document doc = s.doc(docID);
             assertEquals(subDocs.packID, doc.get("packID"));
           }
 
@@ -770,8 +762,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     dir.close();
 
     if (VERBOSE) {
-      System.out.println(
-          "TEST: done [" + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms]");
+      System.out.println("TEST: done [" + (System.currentTimeMillis() - t0) + " ms]");
     }
   }
 

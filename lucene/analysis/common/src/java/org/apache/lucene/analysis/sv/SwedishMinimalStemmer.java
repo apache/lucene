@@ -60,9 +60,9 @@ import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
  *
  * @since 9.0.0
  */
-class SwedishMinimalStemmer {
+public class SwedishMinimalStemmer {
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     if (len > 4 && s[len - 1] == 's') len--;
 
     if (len > 6

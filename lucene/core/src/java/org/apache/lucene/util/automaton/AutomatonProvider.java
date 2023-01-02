@@ -32,7 +32,7 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 
 /**
- * Automaton provider for <code>RegExp.</code> {@link RegExp#toAutomaton(AutomatonProvider)}
+ * Automaton provider for <code>RegExp.</code> {@link RegExp#toAutomaton(AutomatonProvider,int)}
  *
  * @lucene.experimental
  */

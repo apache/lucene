@@ -29,7 +29,7 @@ import org.apache.lucene.analysis.CharArraySet;
  *
  * @lucene.experimental
  */
-class GreekStemmer {
+public class GreekStemmer {
 
   /**
    * Stems a word contained in a leading portion of a char[] array. The word is passed through a
@@ -39,7 +39,7 @@ class GreekStemmer {
    * @param len The length of the char[] array.
    * @return The new length of the stemmed word.
    */
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     if (len < 4) // too short
     return len;
 

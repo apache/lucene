@@ -23,7 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.Accountable;
@@ -85,7 +84,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     this.perThreadPool = documentsWriter.perThreadPool;
     this.flushPolicy = config.getFlushPolicy();
     this.config = config;
-    this.hardMaxBytesPerDWPT = config.getRAMPerThreadHardLimitMB() * 1024L * 1024L;
+    this.hardMaxBytesPerDWPT = config.getRAMPerThreadHardLimitMB() * 1024 * 1024;
     this.documentsWriter = documentsWriter;
   }
 
@@ -312,7 +311,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
               String.format(
                   Locale.ROOT,
                   "done stalling flushes for %.1f msec: netBytes: %.1f MB flushBytes: %.1f MB fullFlush: %b",
-                  (System.nanoTime() - stallStartNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+                  (System.nanoTime() - stallStartNS) / 1000000.,
                   netBytes() / 1024. / 1024.,
                   getFlushingBytes() / 1024. / 1024.,
                   fullFlush));

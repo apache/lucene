@@ -42,9 +42,7 @@ class SegTokenPair {
     this.weight = weight;
   }
 
-  /**
-   * @see java.lang.Object#hashCode()
-   */
+  /** @see java.lang.Object#hashCode() */
   @Override
   public int hashCode() {
     final int prime = 31;
@@ -60,9 +58,7 @@ class SegTokenPair {
     return result;
   }
 
-  /**
-   * @see java.lang.Object#equals(java.lang.Object)
-   */
+  /** @see java.lang.Object#equals(java.lang.Object) */
   @Override
   public boolean equals(Object obj) {
     if (this == obj) return true;

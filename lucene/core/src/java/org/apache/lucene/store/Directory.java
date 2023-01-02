@@ -40,10 +40,6 @@ import org.apache.lucene.util.IOUtils;
  *       java.nio.file.FileAlreadyExistsException}.
  * </ul>
  *
- * <p><b>NOTE:</b> If your application requires external synchronization, you should <b>not</b>
- * synchronize on the <code>Directory</code> implementation instance as this may cause deadlock; use
- * your own (non-Lucene) objects instead.
- *
  * @see FSDirectory
  * @see ByteBuffersDirectory
  * @see FilterDirectory
@@ -152,8 +148,8 @@ public abstract class Directory implements Closeable {
    * @param name the name of an existing file.
    * @throws IOException in case of I/O error
    */
-  public ChecksumIndexInput openChecksumInput(String name) throws IOException {
-    return new BufferedChecksumIndexInput(openInput(name, IOContext.READONCE));
+  public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
+    return new BufferedChecksumIndexInput(openInput(name, context));
   }
 
   /**

@@ -40,7 +40,7 @@ public final class RawDirectoryWrapper extends BaseDirectoryWrapper {
   }
 
   @Override
-  public ChecksumIndexInput openChecksumInput(String name) throws IOException {
-    return in.openChecksumInput(name);
+  public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
+    return in.openChecksumInput(name, context);
   }
 }

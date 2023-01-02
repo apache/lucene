@@ -31,21 +31,6 @@ public class TestRangeFacetsExample extends LuceneTestCase {
     assertEquals(
         "dim=timestamp path=[] value=87 childCount=3\n  Past hour (4)\n  Past six hours (22)\n  Past day (87)\n",
         result.toString());
-
-    result = example.searchTopChildren();
-    assertEquals(
-        "dim=error timestamp path=[] value=2758 childCount=163\n"
-            + "  Hour 104-105 (34)\n"
-            + "  Hour 139-140 (34)\n"
-            + "  Hour 34-35 (34)\n"
-            + "  Hour 69-70 (34)\n"
-            + "  Hour 103-104 (33)\n"
-            + "  Hour 138-139 (33)\n"
-            + "  Hour 33-34 (33)\n"
-            + "  Hour 68-69 (33)\n"
-            + "  Hour 102-103 (32)\n"
-            + "  Hour 137-138 (32)\n",
-        result.toString());
     example.close();
   }
 

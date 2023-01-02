@@ -29,9 +29,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
-/**
- * @lucene.experimental
- */
+/** @lucene.experimental */
 public class TestOmitPositions extends LuceneTestCase {
 
   public void testBasic() throws Exception {

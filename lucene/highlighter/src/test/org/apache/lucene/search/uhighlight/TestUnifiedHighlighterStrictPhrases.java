@@ -658,8 +658,8 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-      Query newWrapped = wrapped.rewrite(indexSearcher);
+    public Query rewrite(IndexReader reader) throws IOException {
+      Query newWrapped = wrapped.rewrite(reader);
       if (newWrapped != wrapped) {
         return new MyQuery(newWrapped);
       }

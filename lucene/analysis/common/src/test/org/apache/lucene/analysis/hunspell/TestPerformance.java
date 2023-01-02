@@ -66,7 +66,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void en_suggest() throws Exception {
-    checkSuggestionPerformance("en", 3_500);
+    checkSuggestionPerformance("en", 3_000);
   }
 
   @Test
@@ -86,7 +86,7 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void de_suggest() throws Exception {
-    checkSuggestionPerformance("de", 250);
+    checkSuggestionPerformance("de", 60);
   }
 
   @Test
@@ -96,15 +96,13 @@ public class TestPerformance extends LuceneTestCase {
 
   @Test
   public void fr_suggest() throws Exception {
-    checkSuggestionPerformance("fr", 1_000);
+    checkSuggestionPerformance("fr", 120);
   }
 
   private Dictionary loadDictionary(String code) throws IOException, ParseException {
-    long start = System.nanoTime();
     Path aff = findAffFile(code);
     Dictionary dictionary = TestAllDictionaries.loadDictionary(aff);
-    System.out.println(
-        "Loaded " + aff + " in " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) + "ms");
+    System.out.println("Loaded " + aff);
     return dictionary;
   }
 
@@ -121,11 +119,10 @@ public class TestPerformance extends LuceneTestCase {
         Executors.newFixedThreadPool(cpus, new NamedThreadFactory("hunspellStemming-"));
 
     try {
-      measure("Stemming " + code, words.size(), blackHole -> stemWords(words, stemmer, blackHole));
+      measure("Stemming " + code, blackHole -> stemWords(words, stemmer, blackHole));
 
       measure(
           "Multi-threaded stemming " + code,
-          words.size(),
           blackHole -> {
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < cpus; i++) {
@@ -143,7 +140,6 @@ public class TestPerformance extends LuceneTestCase {
 
       measure(
           "Spellchecking " + code,
-          words.size(),
           blackHole -> {
             for (String word : words) {
               blackHole.accept(speller.spell(word));
@@ -165,66 +161,42 @@ public class TestPerformance extends LuceneTestCase {
 
   private void checkSuggestionPerformance(String code, int wordCount) throws Exception {
     Dictionary dictionary = loadDictionary(code);
-    Runnable checkCanceled = () -> {};
-    Suggester base = new Suggester(dictionary);
-    Suggester optimized =
-        base.withSuggestibleEntryCache().withFragmentChecker(fragmentChecker(dictionary, code));
-    Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, checkCanceled);
+    Hunspell speller = new Hunspell(dictionary, TimeoutPolicy.THROW_EXCEPTION, () -> {});
     List<String> words =
         loadWords(code, wordCount, dictionary).stream()
             .distinct()
-            .filter(w -> hasQuickSuggestions(speller, base, optimized, w))
+            .filter(w -> hasQuickSuggestions(speller, w))
             .collect(Collectors.toList());
     System.out.println("Checking " + words.size() + " misspelled words");
 
     measure(
         "Suggestions for " + code,
-        words.size(),
         blackHole -> {
           for (String word : words) {
-            blackHole.accept(optimized.suggestNoTimeout(word, checkCanceled));
+            blackHole.accept(speller.suggest(word));
           }
         });
     System.out.println();
   }
 
-  private static FragmentChecker fragmentChecker(Dictionary dictionary, String langCode) {
-    long started = System.nanoTime();
-    var trigram = NGramFragmentChecker.fromAllSimpleWords(3, dictionary, () -> {});
-    long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
-    System.out.println("Populated " + trigram.hashCount() + " trigram hashes in " + elapsed + "ms");
-    if ("de".equals(langCode)) {
-      return (word, start, end) ->
-          word.charAt(0) != '-'
-              && word.charAt(word.length() - 1) != '-'
-              && trigram.hasImpossibleFragmentAround(word, start, end);
-    }
-    return trigram;
-  }
-
-  private boolean hasQuickSuggestions(
-      Hunspell speller, Suggester base, Suggester optimized, String word) {
+  private boolean hasQuickSuggestions(Hunspell speller, String word) {
     if (speller.spell(word)) {
       return false;
     }
 
-    List<String> fromOptimized;
+    long start = System.nanoTime();
     try {
-      fromOptimized = optimized.suggestWithTimeout(word, Hunspell.SUGGEST_TIME_LIMIT, () -> {});
+      speller.suggest(word);
     } catch (
         @SuppressWarnings("unused")
         SuggestionTimeoutException e) {
       System.out.println("Timeout happened for " + word + ", skipping");
       return false;
     }
-
-    List<String> fromBase = base.suggestNoTimeout(word, () -> {});
-    if (!fromBase.equals(fromOptimized)) {
-      fail(
-          "Optimization breaks suggestions: "
-              + ("for '" + word + "', base=" + fromBase + ", optimized=" + fromOptimized));
+    long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+    if (elapsed > Hunspell.SUGGEST_TIME_LIMIT * 4 / 5) {
+      System.out.println(elapsed + "ms for " + word + ", too close to time limit, skipping");
     }
-
     return true;
   }
 
@@ -270,7 +242,7 @@ public class TestPerformance extends LuceneTestCase {
     return words;
   }
 
-  private void measure(String what, int wordCount, Iteration iteration) {
+  private void measure(String what, Iteration iteration) {
     Consumer<Object> consumer =
         o -> {
           if (o == null) {
@@ -285,16 +257,16 @@ public class TestPerformance extends LuceneTestCase {
 
     List<Long> times = new ArrayList<>();
     for (int i = 0; i < 7; i++) {
-      long start = System.nanoTime();
+      long start = System.currentTimeMillis();
       iteration.run(consumer);
-      times.add(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+      times.add(System.currentTimeMillis() - start);
     }
-    double average = times.stream().mapToLong(Long::longValue).average().orElseThrow();
     System.out.println(
         what
-            + (": average " + average)
-            + (" (" + (average / wordCount) + " per word)")
-            + (", all times = " + times));
+            + ": average "
+            + times.stream().mapToLong(Long::longValue).average().orElseThrow()
+            + ", all times = "
+            + times);
   }
 
   private interface Iteration {

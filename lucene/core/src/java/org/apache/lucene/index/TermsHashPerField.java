@@ -287,8 +287,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       if (perField.postingsArray == null) {
         perField.postingsArray = perField.createPostingsArray(2);
         perField.newPostingsArray();
-        bytesUsed.addAndGet(
-            perField.postingsArray.size * (long) perField.postingsArray.bytesPerPosting());
+        bytesUsed.addAndGet(perField.postingsArray.size * perField.postingsArray.bytesPerPosting());
       }
       return perField.postingsArray.textStarts;
     }
@@ -299,7 +298,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       final int oldSize = perField.postingsArray.size;
       postingsArray = perField.postingsArray = postingsArray.grow();
       perField.newPostingsArray();
-      bytesUsed.addAndGet(postingsArray.bytesPerPosting() * (long) (postingsArray.size - oldSize));
+      bytesUsed.addAndGet((postingsArray.bytesPerPosting() * (postingsArray.size - oldSize)));
       return postingsArray.textStarts;
     }
 

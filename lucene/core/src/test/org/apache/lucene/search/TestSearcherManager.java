@@ -106,7 +106,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
   }
 
   @Override
-  protected void doSearching(ExecutorService es, final int maxIterations) throws Exception {
+  protected void doSearching(ExecutorService es, final long stopTime) throws Exception {
 
     Thread reopenThread =
         new Thread() {
@@ -118,8 +118,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
                     "[" + Thread.currentThread().getName() + "]: launch reopen thread");
               }
 
-              int iterations = 0;
-              while (++iterations < maxIterations) {
+              while (System.currentTimeMillis() < stopTime) {
                 Thread.sleep(TestUtil.nextInt(random(), 1, 100));
                 writer.commit();
                 Thread.sleep(TestUtil.nextInt(random(), 1, 5));
@@ -144,7 +143,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     reopenThread.setDaemon(true);
     reopenThread.start();
 
-    runSearchThreads(maxIterations);
+    runSearchThreads(stopTime);
 
     reopenThread.join();
   }

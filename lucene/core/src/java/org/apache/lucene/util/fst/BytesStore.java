@@ -49,6 +49,30 @@ class BytesStore extends DataOutput implements Accountable {
     nextWrite = blockSize;
   }
 
+  /** Pulls bytes from the provided IndexInput. */
+  public BytesStore(DataInput in, long numBytes, int maxBlockSize) throws IOException {
+    int blockSize = 2;
+    int blockBits = 1;
+    while (blockSize < numBytes && blockSize < maxBlockSize) {
+      blockSize *= 2;
+      blockBits++;
+    }
+    this.blockBits = blockBits;
+    this.blockSize = blockSize;
+    this.blockMask = blockSize - 1;
+    long left = numBytes;
+    while (left > 0) {
+      final int chunk = (int) Math.min(blockSize, left);
+      byte[] block = new byte[chunk];
+      in.readBytes(block, 0, block.length);
+      blocks.add(block);
+      left -= chunk;
+    }
+
+    // So .getPosition still works
+    nextWrite = blocks.get(blocks.size() - 1).length;
+  }
+
   /** Absolute write byte; you must ensure dest is &lt; max position written so far. */
   public void writeByte(long dest, byte b) {
     int blockIndex = (int) (dest >> blockBits);
@@ -151,27 +175,6 @@ class BytesStore extends DataOutput implements Accountable {
         blockIndex--;
         block = blocks.get(blockIndex);
         downTo = blockSize;
-      }
-    }
-  }
-
-  @Override
-  public void copyBytes(DataInput input, long numBytes) throws IOException {
-    assert numBytes >= 0 : "numBytes=" + numBytes;
-    assert input != null;
-    long len = numBytes;
-    while (len > 0) {
-      int chunk = blockSize - nextWrite;
-      int l = (int) Math.min(chunk, len);
-      if (l > 0) {
-        assert current != null;
-        input.readBytes(current, nextWrite, l);
-        nextWrite += l;
-        len -= l;
-      } else {
-        current = new byte[blockSize];
-        blocks.add(current);
-        nextWrite = 0;
       }
     }
   }

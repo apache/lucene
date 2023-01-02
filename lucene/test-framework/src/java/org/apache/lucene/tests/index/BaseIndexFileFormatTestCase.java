@@ -360,7 +360,6 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             proto.getPointIndexDimensionCount(),
             proto.getPointNumBytes(),
             proto.getVectorDimension(),
-            proto.getVectorEncoding(),
             proto.getVectorSimilarityFunction(),
             proto.isSoftDeletesField());
 
@@ -866,8 +865,8 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
 
     @Override
-    public ChecksumIndexInput openChecksumInput(String name) throws IOException {
-      ChecksumIndexInput in = super.openChecksumInput(name);
+    public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
+      ChecksumIndexInput in = super.openChecksumInput(name, context);
       final FixedBitSet set =
           readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {

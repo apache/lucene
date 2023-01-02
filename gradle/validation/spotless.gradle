@@ -37,7 +37,7 @@ configure(project(":lucene").subprojects) { prj ->
 
         lineEndings 'UNIX'
         endWithNewline()
-        googleJavaFormat('1.15.0')
+        googleJavaFormat('1.11.0')
 
         // Apply to all Java sources
         target "src/**/*.java"
@@ -92,16 +92,6 @@ configure(project(":lucene").subprojects) { prj ->
         project.mkdir("${buildDir}/spotless/spotlessJava")
       }
     }
-
-    // Schedule the core formatting task to run after Java compilation (GH-12012)
-    spotlessJava {
-      mustRunAfter tasks.withType(JavaCompile)
-    }
-  }
-
-  // Emit a custom message about how to fix formatting errors.
-  tasks.matching { task -> task.name == "spotlessJavaCheck" }.configureEach {
-    runToFixMessage.set("\nIMPORTANT: run the top-level './gradlew tidy' to format code automatically (see help/formatting.txt for more info).")
   }
 
   // Add an alias to 'spotlessApply' simply called 'tidy' and wire up

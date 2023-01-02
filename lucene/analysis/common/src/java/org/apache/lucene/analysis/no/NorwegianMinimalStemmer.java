@@ -60,7 +60,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  *
  * <p>Stems known plural forms for Norwegian nouns only, together with genitiv -s
  */
-class NorwegianMinimalStemmer {
+public class NorwegianMinimalStemmer {
   final boolean useBokmaal;
   final boolean useNynorsk;
 
@@ -70,7 +70,7 @@ class NorwegianMinimalStemmer {
    * @param flags set to {@link NorwegianLightStemmer#BOKMAAL}, {@link
    *     NorwegianLightStemmer#NYNORSK}, or both.
    */
-  NorwegianMinimalStemmer(int flags) {
+  public NorwegianMinimalStemmer(int flags) {
     if (flags <= 0 || flags > BOKMAAL + NYNORSK) {
       throw new IllegalArgumentException("invalid flags");
     }
@@ -78,7 +78,7 @@ class NorwegianMinimalStemmer {
     useNynorsk = (flags & NYNORSK) != 0;
   }
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     // Remove genitiv s
     if (len > 4 && s[len - 1] == 's') len--;
 

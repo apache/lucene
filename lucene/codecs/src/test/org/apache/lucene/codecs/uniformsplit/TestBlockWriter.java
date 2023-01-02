@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
@@ -117,7 +116,6 @@ public class TestBlockWriter extends LuceneTestCase {
         0,
         0,
         0,
-        VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         true);
   }

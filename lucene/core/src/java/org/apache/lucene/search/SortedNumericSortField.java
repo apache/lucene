@@ -333,7 +333,7 @@ public class SortedNumericSortField extends SortField {
       default:
         throw new AssertionError();
     }
-    if (getOptimizeSortWithIndexedData() == false) {
+    if (getOptimizeSortWithPoints() == false) {
       fieldComparator.disableSkipping();
     }
     return fieldComparator;

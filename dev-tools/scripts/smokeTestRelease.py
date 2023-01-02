@@ -144,10 +144,10 @@ def checkJARMetaData(desc, jarFile, gitRevision, version):
       'Implementation-Vendor: The Apache Software Foundation',
       'Specification-Title: Lucene Search Engine:',
       'Implementation-Title: org.apache.lucene',
-      'X-Compile-Source-JDK: 17',
-      'X-Compile-Target-JDK: 17',
+      'X-Compile-Source-JDK: 11',
+      'X-Compile-Target-JDK: 11',
       'Specification-Version: %s' % version,
-      'X-Build-JDK: 17.',
+      'X-Build-JDK: 11.',
       'Extension-Name: org.apache.lucene'):
       if type(verify) is not tuple:
         verify = (verify,)
@@ -580,7 +580,7 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
                       'luke', 'memory', 'misc', 'monitor', 'queries', 'queryparser', 'replicator',
                       'sandbox', 'spatial-extras', 'spatial-test-fixtures', 'spatial3d', 'suggest', 'test-framework', 'licenses']
   if isSrc:
-    expected_src_root_files = ['build.gradle', 'buildSrc', 'CONTRIBUTING.md', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
+    expected_src_root_files = ['build.gradle', 'buildSrc', 'dev-docs', 'dev-tools', 'gradle', 'gradlew',
                                'gradlew.bat', 'help', 'lucene', 'settings.gradle', 'versions.lock', 'versions.props']
     expected_src_lucene_files = ['build.gradle', 'documentation', 'distribution', 'dev-docs']
     is_in_list(in_root_folder, expected_src_root_files)
@@ -609,25 +609,22 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
         print('      %s' % line.strip())
       raise RuntimeError('source release has WARs...')
 
-    print('    initialize local settings for Gradle...')
-    java.run_java17('./gradlew --no-daemon localSettings', '%s/localsettings.log' % unpackPath)
-
     validateCmd = './gradlew --no-daemon check -p lucene/documentation'
     print('    run "%s"' % validateCmd)
-    java.run_java17(validateCmd, '%s/validate.log' % unpackPath)
+    java.run_java11(validateCmd, '%s/validate.log' % unpackPath)
 
-    print("    run tests w/ Java 17 and testArgs='%s'..." % testArgs)
-    java.run_java17('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-    print("    compile jars w/ Java 17")
-    java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-    testDemo(java.run_java17, isSrc, version, '17')
+    print("    run tests w/ Java 11 and testArgs='%s'..." % testArgs)
+    java.run_java11('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+    print("    compile jars w/ Java 11")
+    java.run_java11('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+    testDemo(java.run_java11, isSrc, version, '11')
 
-    if java.run_java19:
-      print("    run tests w/ Java 19 and testArgs='%s'..." % testArgs)
-      java.run_java19('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
-      print("    compile jars w/ Java 19")
-      java.run_java19('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
-      testDemo(java.run_java19, isSrc, version, '19')
+    if java.run_java17:
+      print("    run tests w/ Java 17 and testArgs='%s'..." % testArgs)
+      java.run_java17('./gradlew --no-daemon test %s' % testArgs, '%s/test.log' % unpackPath)
+      print("    compile jars w/ Java 17")
+      java.run_java17('./gradlew --no-daemon jar -Dversion.release=%s' % version, '%s/compile.log' % unpackPath)
+      testDemo(java.run_java17, isSrc, version, '17')
 
     print('  confirm all releases have coverage in TestBackwardsCompatibility')
     confirmAllReleasesAreTestedForBackCompat(version, unpackPath)
@@ -636,9 +633,9 @@ def verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs):
 
     checkAllJARs(os.getcwd(), gitRevision, version)
 
-    testDemo(java.run_java17, isSrc, version, '17')
-    if java.run_java19:
-      testDemo(java.run_java19, isSrc, version, '19')
+    testDemo(java.run_java11, isSrc, version, '11')
+    if java.run_java17:
+      testDemo(java.run_java17, isSrc, version, '17')
 
   testChangesText('.', version)
 
@@ -914,7 +911,7 @@ def crawl(downloadedFiles, urlString, targetDir, exclusions=set()):
         sys.stdout.write('.')
 
 
-def make_java_config(parser, java19_home):
+def make_java_config(parser, java17_home):
   def _make_runner(java_home, version):
     print('Java %s JAVA_HOME=%s' % (version, java_home))
     if cygwin:
@@ -928,16 +925,16 @@ def make_java_config(parser, java19_home):
     def run_java(cmd, logfile):
       run('%s; %s' % (cmd_prefix, cmd), logfile)
     return run_java
-  java17_home =  os.environ.get('JAVA_HOME')
-  if java17_home is None:
+  java11_home =  os.environ.get('JAVA_HOME')
+  if java11_home is None:
     parser.error('JAVA_HOME must be set')
-  run_java17 = _make_runner(java17_home, '17')
-  run_java19 = None
-  if java19_home is not None:
-    run_java19 = _make_runner(java19_home, '19')
+  run_java11 = _make_runner(java11_home, '11')
+  run_java17 = None
+  if java17_home is not None:
+    run_java17 = _make_runner(java17_home, '17')
 
-  jc = namedtuple('JavaConfig', 'run_java17 java17_home run_java19 java19_home')
-  return jc(run_java17, java17_home, run_java19, java19_home)
+  jc = namedtuple('JavaConfig', 'run_java11 java11_home run_java17 java17_home')
+  return jc(run_java11, java11_home, run_java17, java17_home)
 
 version_re = re.compile(r'(\d+\.\d+\.\d+(-ALPHA|-BETA)?)')
 revision_re = re.compile(r'rev-([a-f\d]+)')
@@ -959,8 +956,8 @@ def parse_config():
                       help='GIT revision number that release was built with, defaults to that in URL')
   parser.add_argument('--version', metavar='X.Y.Z(-ALPHA|-BETA)?',
                       help='Version of the release, defaults to that in URL')
-  parser.add_argument('--test-java19', metavar='java19_home',
-                      help='Path to Java home directory, to run tests with if specified')
+  parser.add_argument('--test-java17', metavar='java17_home',
+                      help='Path to Java17 home directory, to run tests with if specified')
   parser.add_argument('--download-only', action='store_true', default=False,
                       help='Only perform download and sha hash check steps')
   parser.add_argument('url', help='Url pointing to release to test')
@@ -987,7 +984,7 @@ def parse_config():
   if c.local_keys is not None and not os.path.exists(c.local_keys):
     parser.error('Local KEYS file "%s" not found' % c.local_keys)
 
-  c.java = make_java_config(parser, c.test_java19)
+  c.java = make_java_config(parser, c.test_java17)
 
   if c.tmp_dir:
     c.tmp_dir = os.path.abspath(c.tmp_dir)
@@ -1114,6 +1111,9 @@ def main():
 
 def smokeTest(java, baseURL, gitRevision, version, tmpDir, isSigned, local_keys, testArgs, downloadOnly=False):
   startTime = datetime.datetime.now()
+
+  # disable flakey tests for smoke-tester runs:
+  testArgs = '-Dtests.badapples=false %s' % testArgs
 
   # Tests annotated @Nightly are more resource-intensive but often cover
   # important code paths. They're disabled by default to preserve a good

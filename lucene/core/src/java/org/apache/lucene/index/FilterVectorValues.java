@@ -49,6 +49,11 @@ public abstract class FilterVectorValues extends VectorValues {
   }
 
   @Override
+  public long cost() {
+    return in.cost();
+  }
+
+  @Override
   public int dimension() {
     return in.dimension();
   }

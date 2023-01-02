@@ -769,7 +769,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       final Plane p, final GeoPoint[] notablePoints, final Membership... bounds) {
     // Create the intersector
     final EdgeIterator intersector = new IntersectorEdgeIterator(p, notablePoints, bounds);
-    // First, compute the bounds for the plane
+    // First, compute the bounds for the the plane
     final XYZBounds xyzBounds = new XYZBounds();
     p.recordBounds(planetModel, xyzBounds, bounds);
     for (final GeoPoint point : notablePoints) {
@@ -806,7 +806,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
   public boolean intersects(GeoShape geoShape) {
     // Create the intersector
     final EdgeIterator intersector = new IntersectorShapeIterator(geoShape);
-    // First, compute the bounds for the plane
+    // First, compute the bounds for the the plane
     final XYZBounds xyzBounds = new XYZBounds();
     geoShape.getBounds(xyzBounds);
 
@@ -1134,14 +1134,10 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * will cause this object to be called.
    */
   private static interface CountingEdgeIterator extends EdgeIterator {
-    /**
-     * @return the number of edges that were crossed.
-     */
+    /** @return the number of edges that were crossed. */
     public int getCrossingCount();
 
-    /**
-     * @return true if the endpoint was on an edge.
-     */
+    /** @return true if the endpoint was on an edge. */
     public boolean isOnEdge();
   }
 

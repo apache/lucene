@@ -27,39 +27,22 @@ import java.util.Set;
  */
 public abstract class CharFilterFactory extends AbstractAnalysisFactory {
 
-  /**
-   * This static holder class prevents classloading deadlock by delaying init of factories until
-   * needed.
-   */
-  private static final class Holder {
-    private static final AnalysisSPILoader<CharFilterFactory> LOADER =
-        new AnalysisSPILoader<>(CharFilterFactory.class);
-
-    private Holder() {}
-
-    static AnalysisSPILoader<CharFilterFactory> getLoader() {
-      if (LOADER == null) {
-        throw new IllegalStateException(
-            "You tried to lookup a CharFilterFactory by name before all factories could be initialized. "
-                + "This likely happens if you call CharFilterFactory#forName from a CharFilterFactory's ctor.");
-      }
-      return LOADER;
-    }
-  }
+  private static final AnalysisSPILoader<CharFilterFactory> loader =
+      new AnalysisSPILoader<>(CharFilterFactory.class);
 
   /** looks up a charfilter by name from context classpath */
   public static CharFilterFactory forName(String name, Map<String, String> args) {
-    return Holder.getLoader().newInstance(name, args);
+    return loader.newInstance(name, args);
   }
 
   /** looks up a charfilter class by name from context classpath */
   public static Class<? extends CharFilterFactory> lookupClass(String name) {
-    return Holder.getLoader().lookupClass(name);
+    return loader.lookupClass(name);
   }
 
   /** returns a list of all available charfilter names */
   public static Set<String> availableCharFilters() {
-    return Holder.getLoader().availableServices();
+    return loader.availableServices();
   }
 
   /** looks up a SPI name for the specified char filter factory */
@@ -82,7 +65,7 @@ public abstract class CharFilterFactory extends AbstractAnalysisFactory {
    * given classpath/classloader!</em>
    */
   public static void reloadCharFilters(ClassLoader classloader) {
-    Holder.getLoader().reload(classloader);
+    loader.reload(classloader);
   }
 
   /** Default ctor for compatibility with SPI */

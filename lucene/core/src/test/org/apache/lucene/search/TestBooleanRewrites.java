@@ -82,7 +82,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     query1.add(new TermQuery(new Term("field", "a")), Occur.FILTER);
 
     // Single clauses rewrite to a term query
-    final Query rewritten1 = query1.build().rewrite(searcher);
+    final Query rewritten1 = query1.build().rewrite(reader);
     assertTrue(rewritten1 instanceof BoostQuery);
     assertEquals(0f, ((BoostQuery) rewritten1).getBoost(), 0f);
 

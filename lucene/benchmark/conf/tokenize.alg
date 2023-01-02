@@ -20,9 +20,9 @@
 # This alg reads all tokens out of a document but does not index them.
 # This is useful for benchmarking tokenizers.
 #
-# To use this run:
+# To use this, cd to benchmark and then run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/tokenize.alg
+#   ant run-task -Dtask.alg=conf/tokenize.alg
 #
 
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource

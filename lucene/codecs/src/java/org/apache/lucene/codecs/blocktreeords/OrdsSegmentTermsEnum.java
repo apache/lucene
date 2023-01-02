@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs.blocktreeords;
 
+// import java.io.*;
+// import java.nio.charset.StandardCharsets;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import org.apache.lucene.codecs.BlockTermState;
@@ -1241,7 +1244,7 @@ public final class OrdsSegmentTermsEnum extends BaseTermsEnum {
           while (low <= high) {
             mid = (low + high) >>> 1;
             fstReader.setPosition(arc.posArcsStart());
-            fstReader.skipBytes(arc.bytesPerArc() * (long) mid);
+            fstReader.skipBytes(arc.bytesPerArc() * mid);
             final byte flags = fstReader.readByte();
             fr.index.readLabel(fstReader);
             final Output minArcOutput;

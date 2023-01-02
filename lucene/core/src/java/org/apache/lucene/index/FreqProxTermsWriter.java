@@ -34,8 +34,6 @@ import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.TimSorter;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -230,12 +228,12 @@ final class FreqProxTermsWriter extends TermsHash {
 
       private int[] docs;
       private int[] freqs;
-      private int[] tmpDocs;
+      private final int[] tmpDocs;
       private int[] tmpFreqs;
 
       DocFreqSorter(int maxDoc) {
-        super(maxDoc / 8);
-        this.tmpDocs = IntsRef.EMPTY_INTS;
+        super(maxDoc / 64);
+        this.tmpDocs = new int[maxDoc / 64];
       }
 
       public void reset(int[] docs, int[] freqs) {
@@ -274,12 +272,6 @@ final class FreqProxTermsWriter extends TermsHash {
 
       @Override
       protected void save(int i, int len) {
-        if (tmpDocs.length < len) {
-          tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
-          if (freqs != null) {
-            tmpFreqs = new int[tmpDocs.length];
-          }
-        }
         System.arraycopy(docs, i, tmpDocs, 0, len);
         if (freqs != null) {
           System.arraycopy(freqs, i, tmpFreqs, 0, len);
@@ -431,13 +423,13 @@ final class FreqProxTermsWriter extends TermsHash {
 
       private int[] docs;
       private long[] offsets;
-      private int[] tmpDocs;
-      private long[] tmpOffsets;
+      private final int[] tmpDocs;
+      private final long[] tmpOffsets;
 
       public DocOffsetSorter(int maxDoc) {
-        super(maxDoc / 8);
-        this.tmpDocs = IntsRef.EMPTY_INTS;
-        this.tmpOffsets = LongsRef.EMPTY_LONGS;
+        super(maxDoc / 64);
+        this.tmpDocs = new int[maxDoc / 64];
+        this.tmpOffsets = new long[maxDoc / 64];
       }
 
       public void reset(int[] docs, long[] offsets) {
@@ -469,10 +461,6 @@ final class FreqProxTermsWriter extends TermsHash {
 
       @Override
       protected void save(int i, int len) {
-        if (tmpDocs.length < len) {
-          tmpDocs = new int[ArrayUtil.oversize(len, Integer.BYTES)];
-          tmpOffsets = new long[tmpDocs.length];
-        }
         System.arraycopy(docs, i, tmpDocs, 0, len);
         System.arraycopy(offsets, i, tmpOffsets, 0, len);
       }

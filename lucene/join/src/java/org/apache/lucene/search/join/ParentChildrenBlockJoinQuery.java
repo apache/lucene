@@ -18,6 +18,7 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -87,12 +88,12 @@ public class ParentChildrenBlockJoinQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    final Query childRewrite = childQuery.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    final Query childRewrite = childQuery.rewrite(reader);
     if (childRewrite != childQuery) {
       return new ParentChildrenBlockJoinQuery(parentFilter, childRewrite, parentDocId);
     } else {
-      return super.rewrite(indexSearcher);
+      return super.rewrite(reader);
     }
   }
 

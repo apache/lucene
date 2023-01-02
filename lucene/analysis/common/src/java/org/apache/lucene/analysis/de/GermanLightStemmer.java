@@ -57,9 +57,9 @@ package org.apache.lucene.analysis.de;
  * <p>This stemmer implements the "UniNE" algorithm in: <i>Light Stemming Approaches for the French,
  * Portuguese, German and Hungarian Languages</i> Jacques Savoy
  */
-class GermanLightStemmer {
+public class GermanLightStemmer {
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     for (int i = 0; i < len; i++)
       switch (s[i]) {
         case 'ä':

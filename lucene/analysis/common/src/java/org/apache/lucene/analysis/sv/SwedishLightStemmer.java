@@ -59,9 +59,9 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>This stemmer implements the algorithm described in: <i>Report on CLEF-2003 Monolingual
  * Tracks</i> Jacques Savoy
  */
-class SwedishLightStemmer {
+public class SwedishLightStemmer {
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     if (len > 4 && s[len - 1] == 's') len--;
 
     if (len > 7 && (endsWith(s, len, "elser") || endsWith(s, len, "heten"))) return len - 5;

@@ -217,9 +217,8 @@ public class LevenshteinAutomata {
     }
 
     a.finishState();
-    Automaton automaton = Operations.removeDeadStates(a);
-    assert automaton.isDeterministic();
-    return automaton;
+    assert a.isDeterministic();
+    return a;
   }
 
   /**
@@ -358,7 +357,7 @@ public class LevenshteinAutomata {
         };
 
     protected int unpack(long[] data, int index, int bitsPerValue) {
-      final long bitLoc = bitsPerValue * (long) index;
+      final long bitLoc = bitsPerValue * index;
       final int dataLoc = (int) (bitLoc >> 6);
       final int bitStart = (int) (bitLoc & 63);
       // System.out.println("index=" + index + " dataLoc=" + dataLoc + " bitStart=" + bitStart + "

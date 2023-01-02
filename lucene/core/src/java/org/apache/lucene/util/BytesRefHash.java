@@ -85,7 +85,7 @@ public final class BytesRefHash implements Accountable {
     bytesStart = bytesStartArray.init();
     bytesUsed =
         bytesStartArray.bytesUsed() == null ? Counter.newCounter() : bytesStartArray.bytesUsed();
-    bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
+    bytesUsed.addAndGet(hashSize * Integer.BYTES);
   }
 
   /**
@@ -195,7 +195,7 @@ public final class BytesRefHash implements Accountable {
       newSize /= 2;
     }
     if (newSize != hashSize) {
-      bytesUsed.addAndGet(Integer.BYTES * (long) -(hashSize - newSize));
+      bytesUsed.addAndGet(Integer.BYTES * -(hashSize - newSize));
       hashSize = newSize;
       ids = new int[hashSize];
       Arrays.fill(ids, -1);
@@ -230,7 +230,7 @@ public final class BytesRefHash implements Accountable {
   public void close() {
     clear(true);
     ids = null;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -hashSize);
+    bytesUsed.addAndGet(Integer.BYTES * -hashSize);
   }
 
   /**
@@ -373,7 +373,7 @@ public final class BytesRefHash implements Accountable {
    */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
-    bytesUsed.addAndGet(Integer.BYTES * (long) newSize);
+    bytesUsed.addAndGet(Integer.BYTES * (newSize));
     final int[] newHash = new int[newSize];
     Arrays.fill(newHash, -1);
     for (int i = 0; i < hashSize; i++) {
@@ -414,7 +414,7 @@ public final class BytesRefHash implements Accountable {
     }
 
     hashMask = newMask;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -ids.length);
+    bytesUsed.addAndGet(Integer.BYTES * (-ids.length));
     ids = newHash;
     hashSize = newSize;
     hashHalfSize = newSize / 2;
@@ -436,7 +436,7 @@ public final class BytesRefHash implements Accountable {
 
     if (ids == null) {
       ids = new int[hashSize];
-      bytesUsed.addAndGet(Integer.BYTES * (long) hashSize);
+      bytesUsed.addAndGet(Integer.BYTES * hashSize);
     }
   }
 

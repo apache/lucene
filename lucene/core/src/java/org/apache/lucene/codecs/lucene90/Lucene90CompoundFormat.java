@@ -110,7 +110,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
       // align file start offset
       long startOffset = data.alignFilePointer(Long.BYTES);
       // write bytes for file
-      try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
+      try (ChecksumIndexInput in = dir.openChecksumInput(file, IOContext.READONCE)) {
 
         // just copies the index header, verifying that its id matches what we expect
         CodecUtil.verifyAndCopyIndexHeader(in, data, si.getId());

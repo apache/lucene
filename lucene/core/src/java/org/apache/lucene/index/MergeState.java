@@ -21,7 +21,6 @@ import static org.apache.lucene.index.IndexWriter.isCongruentSort;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -216,9 +215,7 @@ public class MergeState {
         infoStream.message(
             "SM",
             String.format(
-                Locale.ROOT,
-                "%.2f msec to build merge sorted DocMaps",
-                (t1 - t0) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
+                Locale.ROOT, "%.2f msec to build merge sorted DocMaps", (t1 - t0) / 1000000.0));
       }
       return result;
     }

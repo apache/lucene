@@ -18,11 +18,9 @@ package org.apache.lucene.analysis.hunspell;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 /** A class that modifies the given misspelled word in various ways to get correct suggestions */
 class ModifyingSuggester {
@@ -30,27 +28,19 @@ class ModifyingSuggester {
   private final LinkedHashSet<Suggestion> result;
   private final String misspelled;
   private final WordCase wordCase;
-  private final FragmentChecker fragmentChecker;
   private final char[] tryChars;
   private final Hunspell speller;
 
   ModifyingSuggester(
-      Hunspell speller,
-      LinkedHashSet<Suggestion> result,
-      String misspelled,
-      WordCase wordCase,
-      FragmentChecker checker) {
+      Hunspell speller, LinkedHashSet<Suggestion> result, String misspelled, WordCase wordCase) {
     this.speller = speller;
     tryChars = speller.dictionary.tryChars.toCharArray();
     this.result = result;
     this.misspelled = misspelled;
     this.wordCase = wordCase;
-    fragmentChecker = checker;
   }
 
-  /**
-   * @return whether any of the added suggestions are considered "good"
-   */
+  /** @return whether any of the added suggestions are considered "good" */
   boolean suggest() {
     String low =
         wordCase != WordCase.LOWER ? speller.dictionary.toLowerCase(misspelled) : misspelled;
@@ -179,28 +169,19 @@ class ModifyingSuggester {
       return;
     }
 
-    int length = accumulated.length();
-
     for (List<String> entries : speller.dictionary.mapTable) {
       for (String entry : entries) {
         if (word.regionMatches(offset, entry, 0, entry.length())) {
           for (String replacement : entries) {
             if (!entry.equals(replacement)) {
-              String next = accumulated + replacement;
-              int end = length + replacement.length();
-              if (!fragmentChecker.hasImpossibleFragmentAround(next, length, end)) {
-                enumerateMapReplacements(word, next, offset + entry.length());
-              }
+              enumerateMapReplacements(word, accumulated + replacement, offset + entry.length());
             }
           }
         }
       }
     }
 
-    String next = accumulated + word.charAt(offset);
-    if (!fragmentChecker.hasImpossibleFragmentAround(next, length, length + 1)) {
-      enumerateMapReplacements(word, next, offset + 1);
-    }
+    enumerateMapReplacements(word, accumulated + word.charAt(offset), offset + 1);
   }
 
   private boolean checkSimpleWord(String part) {
@@ -250,18 +231,11 @@ class ModifyingSuggester {
         if (group.indexOf(c) >= 0) {
           for (int j = 0; j < group.length(); j++) {
             if (group.charAt(j) != c) {
-              tryModifiedSuggestions(
-                  i, word.substring(0, i) + group.charAt(j) + word.substring(i + 1));
+              trySuggestion(word.substring(0, i) + group.charAt(j) + word.substring(i + 1));
             }
           }
         }
       }
-    }
-  }
-
-  private void tryModifiedSuggestions(int modOffset, String candidate) {
-    if (!fragmentChecker.hasImpossibleFragmentAround(candidate, modOffset, modOffset + 1)) {
-      trySuggestion(candidate);
     }
   }
 
@@ -290,7 +264,7 @@ class ModifyingSuggester {
       String prefix = word.substring(0, i);
       String suffix = word.substring(i);
       for (char toInsert : tryChars) {
-        tryModifiedSuggestions(prefix.length(), prefix + toInsert + suffix);
+        trySuggestion(prefix + toInsert + suffix);
       }
     }
   }
@@ -314,7 +288,7 @@ class ModifyingSuggester {
       String suffix = word.substring(i + 1);
       for (char toInsert : tryChars) {
         if (toInsert != word.charAt(i)) {
-          tryModifiedSuggestions(prefix.length(), prefix + toInsert + suffix);
+          trySuggestion(prefix + toInsert + suffix);
         }
       }
     }
@@ -373,11 +347,7 @@ class ModifyingSuggester {
     return speller.dictionary.tryChars.contains("-") || speller.dictionary.tryChars.contains("a");
   }
 
-  private final Set<String> tried = new HashSet<>();
-
   private boolean trySuggestion(String candidate) {
-    return tried.add(candidate)
-        && speller.checkWord(candidate)
-        && result.add(createSuggestion(candidate));
+    return speller.checkWord(candidate) && result.add(createSuggestion(candidate));
   }
 }

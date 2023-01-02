@@ -28,7 +28,7 @@ import org.apache.lucene.util.packed.PackedLongValues;
  *
  * @lucene.experimental
  */
-public final class Sorter {
+final class Sorter {
   final Sort sort;
 
   /** Creates a new Sorter to sort the index with {@code sort} */
@@ -44,23 +44,20 @@ public final class Sorter {
    * A permutation of doc IDs. For every document ID between <code>0</code> and {@link
    * IndexReader#maxDoc()}, <code>oldToNew(newToOld(docID))</code> must return <code>docID</code>.
    */
-  public abstract static class DocMap {
-
-    /** Sole constructor. */
-    protected DocMap() {}
+  abstract static class DocMap {
 
     /** Given a doc ID from the original index, return its ordinal in the sorted index. */
-    public abstract int oldToNew(int docID);
+    abstract int oldToNew(int docID);
 
     /** Given the ordinal of a doc ID, return its doc ID in the original index. */
-    public abstract int newToOld(int docID);
+    abstract int newToOld(int docID);
 
     /**
      * Return the number of documents in this map. This must be equal to the {@link
      * org.apache.lucene.index.LeafReader#maxDoc() number of documents} of the {@link
      * org.apache.lucene.index.LeafReader} which is sorted.
      */
-    public abstract int size();
+    abstract int size();
   }
 
   /** Check consistency of a {@link DocMap}, useful for assertions. */

@@ -200,7 +200,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
       fileName =
           RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(10))
               + reservedCharacters[r.nextInt(reservedCharacters.length)]
-              + RandomStrings.randomAsciiLettersOfLength(r, r.nextInt(1, 10));
+              + RandomStrings.randomAsciiLettersOfLength(r, 1 + r.nextInt(9));
     } else {
       fileName = reservedNames[r.nextInt(reservedNames.length)];
     }

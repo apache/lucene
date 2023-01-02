@@ -30,7 +30,6 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
@@ -215,7 +214,6 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 pointIndexDimensionCount,
                 pointNumBytes,
                 0,
-                VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 isSoftDeletesField);
       } catch (IllegalStateException e) {

@@ -227,7 +227,7 @@ public class DistanceFacetsExample implements Closeable {
             FIVE_KM,
             TEN_KM);
 
-    return facets.getAllChildren("field");
+    return facets.getTopChildren(10, "field");
   }
 
   /** User drills down on the specified range. */

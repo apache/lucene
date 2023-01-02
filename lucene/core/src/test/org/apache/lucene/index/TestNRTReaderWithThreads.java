@@ -105,7 +105,7 @@ public class TestNRTReaderWithThreads extends LuceneTestCase {
         }
       } catch (Throwable ex) {
         ex.printStackTrace(System.out);
-        this.failure = ex;
+        this.failure = failure;
         throw new RuntimeException(ex);
       }
     }

@@ -34,12 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.DiagnosticErrorListener;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
@@ -125,22 +120,21 @@ public final class JavascriptCompiler {
 
   final String sourceText;
   final Map<String, Method> functions;
-  final boolean picky;
 
   /**
-   * Compiles the given expression using default compiler settings.
+   * Compiles the given expression.
    *
    * @param sourceText The expression to compile
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
   public static Expression compile(String sourceText) throws ParseException {
-    return compile(sourceText, DEFAULT_FUNCTIONS, JavascriptCompiler.class.getClassLoader());
+    return new JavascriptCompiler(sourceText)
+        .compileExpression(JavascriptCompiler.class.getClassLoader());
   }
 
   /**
-   * Compiles the given expression with the supplied custom functions using default compiler
-   * settings.
+   * Compiles the given expression with the supplied custom functions.
    *
    * <p>Functions must be {@code public static}, return {@code double} and can take from zero to 256
    * {@code double} parameters.
@@ -154,27 +148,6 @@ public final class JavascriptCompiler {
    */
   public static Expression compile(
       String sourceText, Map<String, Method> functions, ClassLoader parent) throws ParseException {
-    return compile(sourceText, functions, parent, false);
-  }
-
-  /**
-   * Compiles the given expression with the supplied custom functions.
-   *
-   * <p>Functions must be {@code public static}, return {@code double} and can take from zero to 256
-   * {@code double} parameters.
-   *
-   * @param sourceText The expression to compile
-   * @param functions map of String names to functions
-   * @param parent a {@code ClassLoader} that should be used as the parent of the loaded class. It
-   *     must contain all classes referred to by the given {@code functions}.
-   * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
-   *     option makes things slower too, it is only for debugging).
-   * @return A new compiled expression
-   * @throws ParseException on failure to compile
-   */
-  static Expression compile(
-      String sourceText, Map<String, Method> functions, ClassLoader parent, boolean picky)
-      throws ParseException {
     if (parent == null) {
       throw new NullPointerException("A parent ClassLoader must be given.");
     }
@@ -182,7 +155,7 @@ public final class JavascriptCompiler {
       checkFunctionClassLoader(m, parent);
       checkFunction(m);
     }
-    return new JavascriptCompiler(sourceText, functions, picky).compileExpression(parent);
+    return new JavascriptCompiler(sourceText, functions).compileExpression(parent);
   }
 
   /**
@@ -197,17 +170,25 @@ public final class JavascriptCompiler {
   }
 
   /**
+   * Constructs a compiler for expressions.
+   *
+   * @param sourceText The expression to compile
+   */
+  private JavascriptCompiler(String sourceText) {
+    this(sourceText, DEFAULT_FUNCTIONS);
+  }
+
+  /**
    * Constructs a compiler for expressions with specific set of functions
    *
    * @param sourceText The expression to compile
    */
-  private JavascriptCompiler(String sourceText, Map<String, Method> functions, boolean picky) {
+  private JavascriptCompiler(String sourceText, Map<String, Method> functions) {
     if (sourceText == null) {
       throw new NullPointerException();
     }
     this.sourceText = sourceText;
     this.functions = functions;
-    this.picky = picky;
   }
 
   /**
@@ -257,45 +238,8 @@ public final class JavascriptCompiler {
     final JavascriptParser javascriptParser =
         new JavascriptParser(new CommonTokenStream(javascriptLexer));
     javascriptParser.removeErrorListeners();
-    if (picky) {
-      setupPicky(javascriptParser);
-    }
     javascriptParser.setErrorHandler(new JavascriptParserErrorStrategy());
     return javascriptParser.compile();
-  }
-
-  private void setupPicky(JavascriptParser parser) {
-    // Diagnostic listener invokes syntaxError on other listeners for ambiguity issues
-    parser.addErrorListener(new DiagnosticErrorListener(true));
-    // a second listener to fail the test when the above happens.
-    parser.addErrorListener(
-        new BaseErrorListener() {
-          @Override
-          public void syntaxError(
-              final Recognizer<?, ?> recognizer,
-              final Object offendingSymbol,
-              final int line,
-              final int charPositionInLine,
-              final String msg,
-              final RecognitionException e) {
-            throw new RuntimeException(
-                new ParseException(
-                    "line ("
-                        + line
-                        + "), offset ("
-                        + charPositionInLine
-                        + "), symbol ("
-                        + offendingSymbol
-                        + ") "
-                        + msg,
-                    charPositionInLine));
-          }
-        });
-
-    // Enable exact ambiguity detection (costly). we enable exact since its the default for
-    // DiagnosticErrorListener, life is too short to think about what 'inexact ambiguity' might
-    // mean.
-    parser.getInterpreter().setPredictionMode(PredictionMode.LL_EXACT_AMBIG_DETECTION);
   }
 
   /** Sends the bytecode of class file to {@link ClassWriter}. */

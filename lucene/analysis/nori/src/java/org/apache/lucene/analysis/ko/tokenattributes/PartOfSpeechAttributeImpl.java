@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ko.tokenattributes;
 import org.apache.lucene.analysis.ko.POS.Tag;
 import org.apache.lucene.analysis.ko.POS.Type;
 import org.apache.lucene.analysis.ko.Token;
-import org.apache.lucene.analysis.ko.dict.KoMorphData;
+import org.apache.lucene.analysis.ko.dict.Dictionary.Morpheme;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
@@ -47,7 +47,7 @@ public class PartOfSpeechAttributeImpl extends AttributeImpl implements PartOfSp
   }
 
   @Override
-  public KoMorphData.Morpheme[] getMorphemes() {
+  public Morpheme[] getMorphemes() {
     return token == null ? null : token.getMorphemes();
   }
 
@@ -76,12 +76,12 @@ public class PartOfSpeechAttributeImpl extends AttributeImpl implements PartOfSp
     reflector.reflect(PartOfSpeechAttribute.class, "morphemes", displayMorphemes(getMorphemes()));
   }
 
-  private String displayMorphemes(KoMorphData.Morpheme[] morphemes) {
+  private String displayMorphemes(Morpheme[] morphemes) {
     if (morphemes == null) {
       return null;
     }
     StringBuilder builder = new StringBuilder();
-    for (KoMorphData.Morpheme morpheme : morphemes) {
+    for (Morpheme morpheme : morphemes) {
       if (builder.length() > 0) {
         builder.append("+");
       }

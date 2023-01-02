@@ -24,11 +24,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -56,7 +57,7 @@ public class TestCollectorManager extends LuceneTestCase {
 
     for (int iter = 0; iter < 100; iter++) {
       int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
-      Collection<Integer> expected = generateDocIds(docs, random());
+      List<Integer> expected = generateDocIds(docs, random());
       IntStream expectedEven = expected.stream().filter(evenPredicate).mapToInt(i -> i);
       IntStream expectedOdd = expected.stream().filter(oddPredicate).mapToInt(i -> i);
 
@@ -90,7 +91,7 @@ public class TestCollectorManager extends LuceneTestCase {
   }
 
   private static <C extends Collector> Object collectAll(
-      LeafReaderContext ctx, Collection<Integer> values, CollectorManager<C, ?> collectorManager)
+      LeafReaderContext ctx, List<Integer> values, CollectorManager<C, ?> collectorManager)
       throws IOException {
     List<C> collectors = new ArrayList<>();
     C collector = collectorManager.newCollector();
@@ -108,17 +109,18 @@ public class TestCollectorManager extends LuceneTestCase {
   }
 
   /**
-   * Generate test doc ids. This will de-dupe and create a sorted collection to be more realistic
-   * with real-world use-cases. Note that it's possible this will generate fewer than 'count'
-   * entries because of de-duping, but that should be quite rare and probably isn't worth worrying
-   * about for these testing purposes.
+   * Generate test doc ids. This will de-dupe and create a sorted list to be more realistic with
+   * real-world use-cases. Note that it's possible this will generate fewer than 'count' entries
+   * because of de-duping, but that should be quite rare and probably isn't worth worrying about for
+   * these testing purposes.
    */
-  private static SortedSet<Integer> generateDocIds(int count, Random random) {
-    SortedSet<Integer> generated = new TreeSet<>();
+  private List<Integer> generateDocIds(int count, Random random) {
+    Set<Integer> generated = new HashSet<>(count);
     for (int i = 0; i < count; i++) {
       generated.add(random.nextInt());
     }
-    return generated;
+
+    return generated.stream().sorted().collect(Collectors.toList());
   }
 
   private static final class CompositeCollectorManager

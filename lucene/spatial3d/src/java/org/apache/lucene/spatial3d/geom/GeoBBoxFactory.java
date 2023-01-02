@@ -146,7 +146,7 @@ public class GeoBBoxFactory {
     // it is not enough with using the MINIMUM_ANGULAR_RESOLUTION, check as well the sin values
     // just in case they describe the same plane
     return Math.abs(lat1 - lat2) < Vector.MINIMUM_ANGULAR_RESOLUTION
-        || Math.abs(Math.sin(lat1) - Math.sin(lat2)) < Vector.MINIMUM_RESOLUTION;
+        || Math.sin(lat1) == Math.sin(lat2);
   }
 
   private static boolean longitudesEquals(double lon1, double lon2) {

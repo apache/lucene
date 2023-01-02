@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /** LeafReader implemented by codec APIs. */
 public abstract class CodecReader extends LeafReader {
@@ -36,14 +35,14 @@ public abstract class CodecReader extends LeafReader {
   protected CodecReader() {}
 
   /**
-   * Expert: retrieve underlying StoredFieldsReader
+   * Expert: retrieve thread-private StoredFieldsReader
    *
    * @lucene.internal
    */
   public abstract StoredFieldsReader getFieldsReader();
 
   /**
-   * Expert: retrieve underlying TermVectorsReader
+   * Expert: retrieve thread-private TermVectorsReader
    *
    * @lucene.internal
    */
@@ -85,26 +84,23 @@ public abstract class CodecReader extends LeafReader {
   public abstract KnnVectorsReader getVectorReader();
 
   @Override
-  public final StoredFields storedFields() throws IOException {
-    final StoredFields reader = getFieldsReader();
-    return new StoredFields() {
-      @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-        // Don't trust the codec to do proper checks
-        Objects.checkIndex(docID, maxDoc());
-        reader.document(docID, visitor);
-      }
-    };
+  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
+    checkBounds(docID);
+    getFieldsReader().visitDocument(docID, visitor);
   }
 
   @Override
-  public final TermVectors termVectors() throws IOException {
-    TermVectorsReader reader = getTermVectorsReader();
-    if (reader == null) {
-      return TermVectors.EMPTY;
-    } else {
-      return reader;
+  public final Fields getTermVectors(int docID) throws IOException {
+    TermVectorsReader termVectorsReader = getTermVectorsReader();
+    if (termVectorsReader == null) {
+      return null;
     }
+    checkBounds(docID);
+    return termVectorsReader.get(docID);
+  }
+
+  private void checkBounds(int docID) {
+    Objects.checkIndex(docID, maxDoc());
   }
 
   @Override
@@ -229,19 +225,6 @@ public abstract class CodecReader extends LeafReader {
   @Override
   public final TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    ensureOpen();
-    FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // Field does not exist or does not index vectors
-      return null;
-    }
-
-    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public final TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {

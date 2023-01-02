@@ -21,11 +21,11 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.concurrent.TimeUnit;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link Lucene90OnHeapHnswGraph} for a gloss on the algorithm and the
@@ -57,7 +57,7 @@ public final class Lucene90HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private final RandomAccessVectorValues buildVectors;
+  private RandomAccessVectorValues buildVectors;
 
   /**
    * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
@@ -72,14 +72,14 @@ public final class Lucene90HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene90HnswGraphBuilder(
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValuesProducer vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
       long seed)
       throws IOException {
-    vectorValues = vectors.copy();
-    buildVectors = vectors.copy();
+    vectorValues = vectors.randomAccess();
+    buildVectors = vectors.randomAccess();
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (maxConn <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -124,8 +124,8 @@ public final class Lucene90HnswGraphBuilder {
                   Locale.ROOT,
                   "built %d in %d/%d ms",
                   node,
-                  TimeUnit.NANOSECONDS.toMillis(now - t),
-                  TimeUnit.NANOSECONDS.toMillis(now - start)));
+                  ((now - t) / 1_000_000),
+                  ((now - start) / 1_000_000)));
           t = now;
         }
       }

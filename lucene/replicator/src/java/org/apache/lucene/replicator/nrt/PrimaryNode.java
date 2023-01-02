@@ -61,7 +61,6 @@ public abstract class PrimaryNode extends Node {
   private CopyState copyState;
 
   protected final long primaryGen;
-  private int remoteCloseTimeoutMs = -1;
 
   /**
    * Contains merged segments that have been copied to all running replicas (as of when that merge
@@ -197,24 +196,6 @@ public abstract class PrimaryNode extends Node {
     throw new AssertionError("missing VERSION_KEY");
   }
 
-  /**
-   * @return the number of milliseconds to wait during shutdown for remote replicas to close
-   */
-  public int getRemoteCloseTimeoutMs() {
-    return remoteCloseTimeoutMs;
-  }
-
-  /**
-   * Set the number of milliseconds to wait during shutdown for remote replicas to close. {@code -1}
-   * (the default) means forever, and {@code 0} means don't wait at all.
-   */
-  public void setRemoteCloseTimeoutMs(int remoteCloseTimeoutMs) {
-    if (remoteCloseTimeoutMs < -1) {
-      throw new IllegalArgumentException("bad timeout + + remoteCloseTimeoutMs");
-    }
-    this.remoteCloseTimeoutMs = remoteCloseTimeoutMs;
-  }
-
   @Override
   public void commit() throws IOException {
     Map<String, String> commitData = new HashMap<>();
@@ -337,13 +318,9 @@ public abstract class PrimaryNode extends Node {
   }
 
   private synchronized void waitForAllRemotesToClose() throws IOException {
-    if (remoteCloseTimeoutMs == 0) {
-      return;
-    }
-    long waitStartNs = System.nanoTime();
-    // Wait for replicas to finish or crash or timeout:
-    while (remoteCloseTimeoutMs < 0
-        || (System.nanoTime() - waitStartNs) / 1_000_000 < remoteCloseTimeoutMs) {
+
+    // Wait for replicas to finish or crash:
+    while (true) {
       int count = copyingCount.get();
       if (count == 0) {
         return;

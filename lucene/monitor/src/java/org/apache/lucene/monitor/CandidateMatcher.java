@@ -99,9 +99,7 @@ public abstract class CandidateMatcher<T extends QueryMatch> {
     this.errors.put(queryId, e);
   }
 
-  /**
-   * @return the matches from this matcher
-   */
+  /** @return the matches from this matcher */
   final MultiMatchingQueries<T> finish(long buildTime, int queryCount) {
     doFinish();
     this.searchTime =

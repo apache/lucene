@@ -60,7 +60,7 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
     int version = -1;
 
     // read in the entries from the metadata file.
-    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName)) {
+    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, state.context)) {
       Throwable priorE = null;
       try {
         version =

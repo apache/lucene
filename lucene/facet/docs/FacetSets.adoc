@@ -118,14 +118,7 @@ off-the-shelf `Int/FloatFacetSet` can use `FacetSetDecoder::decodeInts` and `Lon
 
 A `Facets` implementation which counts how many documents are matched by each of a list of `FacetSetMatcher`, in
 addition to counting the total number of documents that were matched. It uses the `FacetSetDecoder` to decode the
-dimension values. When there are many possible facet set combinations, you can improve the counting efficiency by
-passing a `fastMatchQuery` which will skip over documents which cannot be matched by any of the facet set matchers,
-e.g. because the target dimension values were not indexed for a document at all. For instance, in the <<movie-actors>>
-example there are many possible combinations of indexed `genre` and `year` facet sets. If one only wants to count the
-combinations of "Thriller + 2010", "Drama + 2010" and "Comedy + 2010", one can pass a `fastMatchQuery` which will match
-documents whose `genre` field contains one of the genres and their `releaseYear` field contains the value "2010". That
-way documents which match none of the "genre" values or the desired "releaseYear", will not even be evaluated by the
-facet set matchers.
+dimension values.
 
 == FacetSets Under the Hood
 

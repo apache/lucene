@@ -29,7 +29,6 @@ import org.apache.lucene.classification.utils.NearestFuzzyQuery;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -160,9 +159,8 @@ public class KNearestFuzzyClassifier implements Classifier<BytesRef> {
     Map<BytesRef, Double> classBoosts =
         new HashMap<>(); // this is a boost based on class ranking positions in topDocs
     float maxScore = topDocs.totalHits.value == 0 ? Float.NaN : topDocs.scoreDocs[0].score;
-    StoredFields storedFields = indexSearcher.storedFields();
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-      IndexableField storableField = storedFields.document(scoreDoc.doc).getField(classFieldName);
+      IndexableField storableField = indexSearcher.doc(scoreDoc.doc).getField(classFieldName);
       if (storableField != null) {
         BytesRef cl = new BytesRef(storableField.stringValue());
         // update count

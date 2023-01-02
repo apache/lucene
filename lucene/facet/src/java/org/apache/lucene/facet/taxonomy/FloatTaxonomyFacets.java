@@ -30,19 +30,39 @@ import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
 import org.apache.lucene.util.PriorityQueue;
 
-/** Base class for all taxonomy-based facets that aggregate to a per-ords float[]. */
-abstract class FloatTaxonomyFacets extends TaxonomyFacets {
+/**
+ * Base class for all taxonomy-based facets that aggregate to a per-ords float[].
+ *
+ * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
+ *     class is meant to host common code as an internal implementation detail to taxonomy
+ *     faceting,and is not intended as an extension point for user-created {@code Facets}
+ *     implementations. If your code is relying on this, please migrate necessary functionality down
+ *     into your own class.
+ */
+@Deprecated
+public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   // TODO: also use native hash map for sparse collection, like IntTaxonomyFacets
 
   /** Aggregation function used for combining values. */
-  final AssociationAggregationFunction aggregationFunction;
+  protected final AssociationAggregationFunction aggregationFunction;
 
   /** Per-ordinal value. */
-  final float[] values;
+  protected final float[] values;
 
-  /** Sole constructor. */
-  FloatTaxonomyFacets(
+  /**
+   * Constructor that defaults the aggregation function to {@link
+   * AssociationAggregationFunction#SUM}.
+   */
+  protected FloatTaxonomyFacets(
+      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config) throws IOException {
+    super(indexFieldName, taxoReader, config);
+    this.aggregationFunction = AssociationAggregationFunction.SUM;
+    values = new float[taxoReader.getSize()];
+  }
+
+  /** Constructor that uses the provided aggregation function. */
+  protected FloatTaxonomyFacets(
       String indexFieldName,
       TaxonomyReader taxoReader,
       AssociationAggregationFunction aggregationFunction,
@@ -54,7 +74,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
-  void rollup() throws IOException {
+  protected void rollup() throws IOException {
     // Rollup any necessary dims:
     int[] children = getChildren();
     for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
@@ -179,7 +199,6 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
     float bottomValue = 0;
-    int bottomOrd = Integer.MAX_VALUE;
 
     int[] children = getChildren();
     int[] siblings = getSiblings();
@@ -190,20 +209,18 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue.OrdAndValue reuse = null;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float value = values[ord];
-      if (value > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+      if (values[ord] > 0) {
+        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
         childCount++;
-        if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
+        if (values[ord] > bottomValue) {
           if (reuse == null) {
             reuse = new TopOrdAndFloatQueue.OrdAndValue();
           }
           reuse.ord = ord;
-          reuse.value = value;
+          reuse.value = values[ord];
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomValue = q.top().value;
-            bottomOrd = q.top().ord;
           }
         }
       }
@@ -372,6 +389,15 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
   }
 
   /** Intermediate result to store top children for a given path before resolving labels, etc. */
-  private record TopChildrenForPath(
-      float pathValue, int childCount, TopOrdAndFloatQueue childQueue) {}
+  private static class TopChildrenForPath {
+    private final float pathValue;
+    private final int childCount;
+    private final TopOrdAndFloatQueue childQueue;
+
+    TopChildrenForPath(float pathValue, int childCount, TopOrdAndFloatQueue childQueue) {
+      this.pathValue = pathValue;
+      this.childCount = childCount;
+      this.childQueue = childQueue;
+    }
+  }
 }

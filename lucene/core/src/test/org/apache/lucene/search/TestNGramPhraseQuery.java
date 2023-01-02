@@ -29,7 +29,6 @@ public class TestNGramPhraseQuery extends LuceneTestCase {
 
   private static IndexReader reader;
   private static Directory directory;
-  private static IndexSearcher searcher;
 
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -37,7 +36,6 @@ public class TestNGramPhraseQuery extends LuceneTestCase {
     RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
     writer.close();
     reader = DirectoryReader.open(directory);
-    searcher = new IndexSearcher(reader);
   }
 
   @AfterClass
@@ -52,8 +50,8 @@ public class TestNGramPhraseQuery extends LuceneTestCase {
     // bi-gram test ABC => AB/BC => AB/BC
     NGramPhraseQuery pq1 = new NGramPhraseQuery(2, new PhraseQuery("f", "AB", "BC"));
 
-    Query q = pq1.rewrite(searcher);
-    assertSame(q.rewrite(searcher), q);
+    Query q = pq1.rewrite(reader);
+    assertSame(q.rewrite(reader), q);
     PhraseQuery rewritten1 = (PhraseQuery) q;
     assertArrayEquals(new Term[] {new Term("f", "AB"), new Term("f", "BC")}, rewritten1.getTerms());
     assertArrayEquals(new int[] {0, 1}, rewritten1.getPositions());
@@ -61,7 +59,7 @@ public class TestNGramPhraseQuery extends LuceneTestCase {
     // bi-gram test ABCD => AB/BC/CD => AB//CD
     NGramPhraseQuery pq2 = new NGramPhraseQuery(2, new PhraseQuery("f", "AB", "BC", "CD"));
 
-    q = pq2.rewrite(searcher);
+    q = pq2.rewrite(reader);
     assertTrue(q instanceof PhraseQuery);
     assertNotSame(pq2, q);
     PhraseQuery rewritten2 = (PhraseQuery) q;
@@ -72,7 +70,7 @@ public class TestNGramPhraseQuery extends LuceneTestCase {
     NGramPhraseQuery pq3 =
         new NGramPhraseQuery(3, new PhraseQuery("f", "ABC", "BCD", "CDE", "DEF", "EFG", "FGH"));
 
-    q = pq3.rewrite(searcher);
+    q = pq3.rewrite(reader);
     assertTrue(q instanceof PhraseQuery);
     assertNotSame(pq3, q);
     PhraseQuery rewritten3 = (PhraseQuery) q;

@@ -17,13 +17,12 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.index.StoredFields;
 
 /**
  * A {@link StoredFieldVisitor} that creates a {@link Document} from stored fields.
@@ -31,7 +30,7 @@ import org.apache.lucene.index.StoredFields;
  * <p>This visitor supports loading all stored fields, or only specific requested fields provided
  * from a {@link Set}.
  *
- * <p>This is used by {@link StoredFields#document(int)} to load a document.
+ * <p>This is used by {@link IndexReader#document(int)} to load a document.
  *
  * @lucene.experimental
  */
@@ -50,7 +49,10 @@ public class DocumentStoredFieldVisitor extends StoredFieldVisitor {
 
   /** Load only fields named in the provided fields. */
   public DocumentStoredFieldVisitor(String... fields) {
-    fieldsToAdd = new HashSet<>(Arrays.asList(fields));
+    fieldsToAdd = new HashSet<>(fields.length);
+    for (String field : fields) {
+      fieldsToAdd.add(field);
+    }
   }
 
   /** Load all stored fields. */

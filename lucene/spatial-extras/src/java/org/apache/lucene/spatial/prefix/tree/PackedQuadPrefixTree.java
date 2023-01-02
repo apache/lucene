@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Version;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Point;
 import org.locationtech.spatial4j.shape.Rectangle;
@@ -58,7 +59,12 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
   public static class Factory extends QuadPrefixTree.Factory {
     @Override
     protected SpatialPrefixTree newSPT() {
-      return new PackedQuadPrefixTree(ctx, maxLevels != null ? maxLevels : MAX_LEVELS_POSSIBLE);
+      PackedQuadPrefixTree tree =
+          new PackedQuadPrefixTree(ctx, maxLevels != null ? maxLevels : MAX_LEVELS_POSSIBLE);
+      @SuppressWarnings("deprecation")
+      Version lucene830 = Version.LUCENE_8_3_0;
+      tree.robust = getVersion().onOrAfter(lucene830);
+      return tree;
     }
   }
 
@@ -89,6 +95,15 @@ public class PackedQuadPrefixTree extends QuadPrefixTree {
 
   @Override
   public Cell getCell(Point p, int level) {
+    if (!robust) { // old method
+      List<Cell> cells = new ArrayList<>(1);
+      buildNotRobustly(
+          xmid, ymid, 0, cells, 0x0L, ctx.getShapeFactory().pointXY(p.getX(), p.getY()), level);
+      if (!cells.isEmpty()) {
+        return cells.get(0); // note cells could be longer if p on edge
+      }
+    }
+
     double currentXmid = xmid;
     double currentYmid = ymid;
     double xp = p.getX();

@@ -305,9 +305,7 @@ public class UniformSplitTermsWriter extends FieldsConsumer {
     encodedBytes.writeTo(blockOutput);
   }
 
-  /**
-   * @return 1 if the field was written; 0 otherwise.
-   */
+  /** @return 1 if the field was written; 0 otherwise. */
   protected int writeFieldTerms(
       BlockWriter blockWriter,
       DataOutput fieldsOutput,

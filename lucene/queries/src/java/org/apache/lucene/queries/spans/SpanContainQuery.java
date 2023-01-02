@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -108,9 +109,9 @@ abstract class SpanContainQuery extends SpanQuery implements Cloneable {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    SpanQuery rewrittenBig = (SpanQuery) big.rewrite(indexSearcher);
-    SpanQuery rewrittenLittle = (SpanQuery) little.rewrite(indexSearcher);
+  public Query rewrite(IndexReader reader) throws IOException {
+    SpanQuery rewrittenBig = (SpanQuery) big.rewrite(reader);
+    SpanQuery rewrittenLittle = (SpanQuery) little.rewrite(reader);
     if (big != rewrittenBig || little != rewrittenLittle) {
       try {
         SpanContainQuery clone = (SpanContainQuery) super.clone();
@@ -121,7 +122,7 @@ abstract class SpanContainQuery extends SpanQuery implements Cloneable {
         throw new AssertionError(e);
       }
     }
-    return super.rewrite(indexSearcher);
+    return super.rewrite(reader);
   }
 
   @Override

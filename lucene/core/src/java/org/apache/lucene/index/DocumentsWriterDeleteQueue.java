@@ -579,12 +579,12 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   /**
-   * Advances the queue to the next queue on flush. This carries over the generation to the next
+   * Advances the queue to the next queue on flush. This carries over the the generation to the next
    * queue and set the {@link #getMaxSeqNo()} based on the given maxNumPendingOps. This method can
    * only be called once, subsequently the returned queue should be used.
    *
    * @param maxNumPendingOps the max number of possible concurrent operations that will execute on
-   *     this queue after it was advanced. This corresponds to the number of DWPTs that own the
+   *     this queue after it was advanced. This corresponds the the number of DWPTs that own the
    *     current queue at the moment when this queue is advanced since each these DWPTs can
    *     increment the seqId after we advanced it.
    * @return a new queue as a successor of this queue.

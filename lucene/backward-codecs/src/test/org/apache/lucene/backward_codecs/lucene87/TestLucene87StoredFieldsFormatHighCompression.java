@@ -23,12 +23,9 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 
-@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene87StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {
   @Override
   protected Codec getCodec() {
@@ -58,9 +55,8 @@ public class TestLucene87StoredFieldsFormatHighCompression extends BaseStoredFie
 
     DirectoryReader ir = DirectoryReader.open(dir);
     assertEquals(10, ir.numDocs());
-    StoredFields storedFields = ir.storedFields();
     for (int i = 0; i < 10; i++) {
-      Document doc = storedFields.document(i);
+      Document doc = ir.document(i);
       assertEquals("value1", doc.get("field1"));
       assertEquals("value2", doc.get("field2"));
     }
@@ -81,5 +77,9 @@ public class TestLucene87StoredFieldsFormatHighCompression extends BaseStoredFie
         () -> {
           new Lucene87StoredFieldsFormat(null);
         });
+  }
+
+  public void testShowJDKBugStatus() {
+    System.err.println("JDK is buggy (JDK-8252739): " + BugfixDeflater_JDK8252739.IS_BUGGY_JDK);
   }
 }

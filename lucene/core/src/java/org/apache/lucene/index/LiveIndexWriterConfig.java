@@ -343,9 +343,7 @@ public class LiveIndexWriterConfig {
     return perThreadHardLimitMB;
   }
 
-  /**
-   * @see IndexWriterConfig#setFlushPolicy(FlushPolicy)
-   */
+  /** @see IndexWriterConfig#setFlushPolicy(FlushPolicy) */
   FlushPolicy getFlushPolicy() {
     return flushPolicy;
   }

@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -33,6 +34,8 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -60,8 +63,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue(
-        (new FieldExistsQuery("f")).rewrite(newSearcher(reader)) instanceof MatchAllDocsQuery);
+    assertTrue((new FieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -80,8 +82,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final IndexReader reader = iw.getReader();
     iw.close();
 
-    assertTrue(
-        new FieldExistsQuery("dim").rewrite(newSearcher(reader)) instanceof MatchAllDocsQuery);
+    assertTrue(new FieldExistsQuery("dim").rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -105,10 +106,9 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.commit();
     final IndexReader reader = iw.getReader();
     iw.close();
-    final IndexSearcher searcher = newSearcher(reader);
 
-    assertFalse((new FieldExistsQuery("dim")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("f")).rewrite(searcher) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dim")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("f")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -127,11 +127,10 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     iw.commit();
     final IndexReader reader = iw.getReader();
     iw.close();
-    final IndexSearcher searcher = newSearcher(reader);
 
-    assertFalse((new FieldExistsQuery("dv1")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("dv2")).rewrite(searcher) instanceof MatchAllDocsQuery);
-    assertFalse((new FieldExistsQuery("dv3")).rewrite(searcher) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dv1")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dv2")).rewrite(reader) instanceof MatchAllDocsQuery);
+    assertFalse((new FieldExistsQuery("dv3")).rewrite(reader) instanceof MatchAllDocsQuery);
     reader.close();
     dir.close();
   }
@@ -697,6 +696,32 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
   }
 
+  public void testOldIndices() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config =
+          new IndexWriterConfig()
+              .setIndexCreatedVersionMajor(8)
+              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        Document d1 = new Document();
+        d1.add(new StringField("my_field", "text", Store.YES));
+        d1.add(new BinaryDocValuesField("my_field", new BytesRef("first")));
+        writer.addDocument(d1);
+        writer.flush();
+
+        Document d2 = new Document();
+        d2.add(new StringField("my_field", "text", Store.YES));
+        writer.addDocument(d2);
+        writer.flush();
+
+        try (IndexReader reader = DirectoryReader.open(writer)) {
+          IndexSearcher searcher = new IndexSearcher(reader);
+          assertEquals(1, searcher.count(new FieldExistsQuery("my_field")));
+        }
+      }
+    }
+  }
+
   private float[] randomVector(int dim) {
     float[] v = new float[dim];
     for (int i = 0; i < dim; i++) {
@@ -704,64 +729,6 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
     VectorUtil.l2normalize(v);
     return v;
-  }
-
-  public void testDeleteAllPointDocs() throws Exception {
-    try (Directory dir = newDirectory();
-        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
-
-      Document doc = new Document();
-      doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(new LongPoint("long", 17));
-      doc.add(new NumericDocValuesField("long", 17));
-      iw.addDocument(doc);
-      // add another document before the flush, otherwise the segment only has the document that
-      // we are going to delete and the merge simply ignores the segment without carrying over its
-      // field infos
-      iw.addDocument(new Document());
-      // make sure there are two segments or force merge will be a no-op
-      iw.flush();
-      iw.addDocument(new Document());
-      iw.commit();
-
-      iw.deleteDocuments(new Term("id", "0"));
-      iw.forceMerge(1);
-
-      try (IndexReader reader = iw.getReader()) {
-        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
-        IndexSearcher searcher = newSearcher(reader);
-        assertEquals(0, searcher.count(new FieldExistsQuery("long")));
-      }
-    }
-  }
-
-  public void testDeleteAllTermDocs() throws Exception {
-    try (Directory dir = newDirectory();
-        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
-
-      Document doc = new Document();
-      doc.add(new StringField("id", "0", Field.Store.NO));
-      doc.add(new StringField("str", "foo", Store.NO));
-      doc.add(new SortedDocValuesField("str", new BytesRef("foo")));
-      iw.addDocument(doc);
-      // add another document before the flush, otherwise the segment only has the document that
-      // we are going to delete and the merge simply ignores the segment without carrying over its
-      // field infos
-      iw.addDocument(new Document());
-      // make sure there are two segments or force merge will be a no-op
-      iw.flush();
-      iw.addDocument(new Document());
-      iw.commit();
-
-      iw.deleteDocuments(new Term("id", "0"));
-      iw.forceMerge(1);
-
-      try (IndexReader reader = iw.getReader()) {
-        assertTrue(reader.leaves().size() == 1 && reader.hasDeletions() == false);
-        IndexSearcher searcher = newSearcher(reader);
-        assertEquals(0, searcher.count(new FieldExistsQuery("str")));
-      }
-    }
   }
 
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)

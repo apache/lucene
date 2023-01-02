@@ -59,9 +59,9 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>This stemmer implements the algorithm described in: <i>Report on CLEF-2003 Monolingual
  * Tracks</i> Jacques Savoy
  */
-class FinnishLightStemmer {
+public class FinnishLightStemmer {
 
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     if (len < 4) return len;
 
     for (int i = 0; i < len; i++)

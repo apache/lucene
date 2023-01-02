@@ -26,7 +26,10 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
@@ -78,7 +81,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
     }
   }
 
-  private synchronized void initChildrenSiblings(TaxonomyIndexArrays copyFrom) {
+  private final synchronized void initChildrenSiblings(TaxonomyIndexArrays copyFrom) {
     if (!initializedChildren) { // must do this check !
       children = new int[parents.length];
       siblings = new int[parents.length];
@@ -122,6 +125,11 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
       return;
     }
 
+    if (getMajorVersion(reader) <= 8) {
+      loadParentUsingTermPosition(reader, first);
+      return;
+    }
+
     for (LeafReaderContext leafContext : reader.leaves()) {
       int leafDocNum = leafContext.reader().maxDoc();
       if (leafContext.docBase + leafDocNum <= first) {
@@ -141,7 +149,56 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
           throw new CorruptIndexException(
               "Missing parent data for category " + (doc + leafContext.docBase), reader.toString());
         }
+        // we're putting an int and converting it back so it should be safe
         parents[doc + leafContext.docBase] = Math.toIntExact(parentValues.longValue());
+      }
+    }
+  }
+
+  private static int getMajorVersion(IndexReader reader) {
+    assert reader.leaves().size() > 0;
+    return reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
+  }
+
+  /**
+   * Try loading the old way of storing parent ordinal first, return true if the parent array is
+   * loaded Or false if not, and we will try loading using NumericDocValues
+   */
+  // TODO: Remove in Lucene 10, this is only for back-compatibility
+  private void loadParentUsingTermPosition(IndexReader reader, int first) throws IOException {
+    // it's ok to use MultiTerms because we only iterate on one posting list.
+    // breaking it to loop over the leaves() only complicates code for no
+    // apparent gain.
+    PostingsEnum positions =
+        MultiTerms.getTermPostingsEnum(
+            reader, Consts.FIELD_PAYLOADS, Consts.PAYLOAD_PARENT_BYTES_REF, PostingsEnum.PAYLOADS);
+
+    // shouldn't really happen, if it does, something's wrong
+    if (positions == null || positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
+      throw new CorruptIndexException(
+          "[Lucene 8] Missing parent data for category " + first, reader.toString());
+    }
+
+    int num = reader.maxDoc();
+    for (int i = first; i < num; i++) {
+      if (positions.docID() == i) {
+        if (positions.freq() == 0) { // shouldn't happen
+          throw new CorruptIndexException(
+              "[Lucene 8] Missing parent data for category " + i, reader.toString());
+        }
+
+        parents[i] = positions.nextPosition();
+
+        if (positions.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
+          if (i + 1 < num) {
+            throw new CorruptIndexException(
+                "[Lucene 8] Missing parent data for category " + (i + 1), reader.toString());
+          }
+          break;
+        }
+      } else { // this shouldn't happen
+        throw new CorruptIndexException(
+            "[Lucene 8] Missing parent data for category " + i, reader.toString());
       }
     }
   }
@@ -203,7 +260,7 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   @Override
   public synchronized long ramBytesUsed() {
     long ramBytesUsed =
-        RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + 1;
+        RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + 3 * RamUsageEstimator.NUM_BYTES_OBJECT_REF + 1;
     ramBytesUsed += RamUsageEstimator.shallowSizeOf(parents);
     if (children != null) {
       ramBytesUsed += RamUsageEstimator.shallowSizeOf(children);

@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -30,7 +29,6 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Wraps arbitrary readers for merging. Note that this can cause slow and memory-intensive merges.
@@ -175,12 +173,6 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
-          throws IOException {
-        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
-      }
-
-      @Override
       public void checkIntegrity() {
         // We already checkIntegrity the entire reader up front
       }
@@ -252,16 +244,10 @@ public final class SlowCodecReaderWrapper {
   }
 
   private static StoredFieldsReader readerToStoredFieldsReader(final LeafReader reader) {
-    final StoredFields storedFields;
-    try {
-      storedFields = reader.storedFields();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
     return new StoredFieldsReader() {
       @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-        storedFields.document(docID, visitor);
+      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
+        reader.document(docID, visitor);
       }
 
       @Override
@@ -280,16 +266,10 @@ public final class SlowCodecReaderWrapper {
   }
 
   private static TermVectorsReader readerToTermVectorsReader(final LeafReader reader) {
-    final TermVectors termVectors;
-    try {
-      termVectors = reader.termVectors();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
     return new TermVectorsReader() {
       @Override
       public Fields get(int docID) throws IOException {
-        return termVectors.get(docID);
+        return reader.getTermVectors(docID);
       }
 
       @Override

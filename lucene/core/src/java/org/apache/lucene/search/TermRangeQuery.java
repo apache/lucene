@@ -88,6 +88,7 @@ public class TermRangeQuery extends AutomatonQuery {
     super(
         new Term(field, lowerTerm),
         toAutomaton(lowerTerm, upperTerm, includeLower, includeUpper),
+        Integer.MAX_VALUE,
         true,
         rewriteMethod);
     this.lowerTerm = lowerTerm;

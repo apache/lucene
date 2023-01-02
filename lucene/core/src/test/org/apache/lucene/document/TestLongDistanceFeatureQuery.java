@@ -36,20 +36,20 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestLongDistanceFeatureQuery extends LuceneTestCase {
 
   public void testEqualsAndHashcode() {
-    Query q1 = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
-    Query q2 = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
+    Query q1 = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
+    Query q2 = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
     QueryUtils.checkEqual(q1, q2);
 
-    Query q3 = LongField.newDistanceFeatureQuery("bar", 3, 10, 5);
+    Query q3 = LongPoint.newDistanceFeatureQuery("bar", 3, 10, 5);
     QueryUtils.checkUnequal(q1, q3);
 
-    Query q4 = LongField.newDistanceFeatureQuery("foo", 4, 10, 5);
+    Query q4 = LongPoint.newDistanceFeatureQuery("foo", 4, 10, 5);
     QueryUtils.checkUnequal(q1, q4);
 
-    Query q5 = LongField.newDistanceFeatureQuery("foo", 3, 9, 5);
+    Query q5 = LongPoint.newDistanceFeatureQuery("foo", 3, 9, 5);
     QueryUtils.checkUnequal(q1, q5);
 
-    Query q6 = LongField.newDistanceFeatureQuery("foo", 3, 10, 6);
+    Query q6 = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 6);
     QueryUtils.checkUnequal(q1, q6);
   }
 
@@ -61,28 +61,35 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
-    doc.add(field);
+    LongPoint point = new LongPoint("foo", 0L);
+    doc.add(point);
+    NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
+    doc.add(docValue);
 
-    field.setLongValue(3);
+    point.setLongValue(3);
+    docValue.setLongValue(3);
     w.addDocument(doc);
 
-    field.setLongValue(12);
+    point.setLongValue(12);
+    docValue.setLongValue(12);
     w.addDocument(doc);
 
-    field.setLongValue(8);
+    point.setLongValue(8);
+    docValue.setLongValue(8);
     w.addDocument(doc);
 
-    field.setLongValue(-1);
+    point.setLongValue(-1);
+    docValue.setLongValue(-1);
     w.addDocument(doc);
 
-    field.setLongValue(7);
+    point.setLongValue(7);
+    docValue.setLongValue(7);
     w.addDocument(doc);
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    Query q = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
+    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         TopScoreDocCollector.createSharedManager(2, null, 1);
     TopDocs topHits = searcher.search(q, manager);
@@ -96,7 +103,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         },
         topHits.scoreDocs);
 
-    q = LongField.newDistanceFeatureQuery("foo", 3, 7, 5);
+    q = LongPoint.newDistanceFeatureQuery("foo", 3, 7, 5);
     manager = TopScoreDocCollector.createSharedManager(2, null, 1);
     topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
@@ -123,28 +130,35 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
-    doc.add(field);
+    LongPoint point = new LongPoint("foo", 0L);
+    doc.add(point);
+    NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
+    doc.add(docValue);
 
-    field.setLongValue(3);
+    point.setLongValue(3);
+    docValue.setLongValue(3);
     w.addDocument(doc);
 
-    field.setLongValue(12);
+    point.setLongValue(12);
+    docValue.setLongValue(12);
     w.addDocument(doc);
 
-    field.setLongValue(-10);
+    point.setLongValue(-10);
+    docValue.setLongValue(-10);
     w.addDocument(doc);
 
-    field.setLongValue(Long.MAX_VALUE);
+    point.setLongValue(Long.MAX_VALUE);
+    docValue.setLongValue(Long.MAX_VALUE);
     w.addDocument(doc);
 
-    field.setLongValue(Long.MIN_VALUE);
+    point.setLongValue(Long.MIN_VALUE);
+    docValue.setLongValue(Long.MIN_VALUE);
     w.addDocument(doc);
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    Query q = LongField.newDistanceFeatureQuery("foo", 3, Long.MAX_VALUE - 1, 100);
+    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, Long.MAX_VALUE - 1, 100);
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         TopScoreDocCollector.createSharedManager(2, null, 1);
     TopDocs topHits = searcher.search(q, manager);
@@ -166,7 +180,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         },
         topHits.scoreDocs);
 
-    q = LongField.newDistanceFeatureQuery("foo", 3, Long.MIN_VALUE + 1, 100);
+    q = LongPoint.newDistanceFeatureQuery("foo", 3, Long.MIN_VALUE + 1, 100);
     topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);
@@ -196,7 +210,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
     IndexReader reader = new MultiReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    Query q = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
+    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
     TopDocs topHits = searcher.search(q, 2);
     assertEquals(0, topHits.totalHits.value);
   }
@@ -209,21 +223,25 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
-    doc.add(field);
+    LongPoint point = new LongPoint("foo", 0L);
+    doc.add(point);
+    NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
+    doc.add(docValue);
 
-    field.setLongValue(3);
+    point.setLongValue(3);
+    docValue.setLongValue(3);
     w.addDocument(doc);
 
     w.addDocument(new Document());
 
-    field.setLongValue(7);
+    point.setLongValue(7);
+    docValue.setLongValue(7);
     w.addDocument(doc);
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    Query q = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
+    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         TopScoreDocCollector.createSharedManager(3, null, 1);
     TopDocs topHits = searcher.search(q, manager);
@@ -254,38 +272,43 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
 
     Document doc = new Document();
     for (long v : new long[] {3, 1000, Long.MAX_VALUE}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongPoint("foo", v));
+      doc.add(new SortedNumericDocValuesField("foo", v));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {-100, 12, 999}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongPoint("foo", v));
+      doc.add(new SortedNumericDocValuesField("foo", v));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {Long.MIN_VALUE, -1000, 8}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongPoint("foo", v));
+      doc.add(new SortedNumericDocValuesField("foo", v));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {-1}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongPoint("foo", v));
+      doc.add(new SortedNumericDocValuesField("foo", v));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {Long.MIN_VALUE, 7}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongPoint("foo", v));
+      doc.add(new SortedNumericDocValuesField("foo", v));
     }
     w.addDocument(doc);
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
-    Query q = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
+    Query q = LongPoint.newDistanceFeatureQuery("foo", 3, 10, 5);
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
         TopScoreDocCollector.createSharedManager(2, null, 1);
     TopDocs topHits = searcher.search(q, manager);
@@ -299,7 +322,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         },
         topHits.scoreDocs);
 
-    q = LongField.newDistanceFeatureQuery("foo", 3, 7, 5);
+    q = LongPoint.newDistanceFeatureQuery("foo", 3, 7, 5);
     manager = TopScoreDocCollector.createSharedManager(2, null, 1);
     topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
@@ -324,13 +347,16 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         new IndexWriter(
             dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
-    doc.add(field);
+    LongPoint point = new LongPoint("foo", 0L);
+    doc.add(point);
+    NumericDocValuesField docValue = new NumericDocValuesField("foo", 0L);
+    doc.add(docValue);
 
     int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       long v = random().nextLong();
-      field.setLongValue(v);
+      point.setLongValue(v);
+      docValue.setLongValue(v);
       w.addDocument(doc);
     }
 
@@ -344,7 +370,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         pivotDistance = random().nextLong();
       } while (pivotDistance <= 0);
       float boost = (1 + random().nextInt(10)) / 3f;
-      Query q = LongField.newDistanceFeatureQuery("foo", boost, origin, pivotDistance);
+      Query q = LongPoint.newDistanceFeatureQuery("foo", boost, origin, pivotDistance);
 
       CheckHits.checkTopScores(random(), q, searcher);
     }

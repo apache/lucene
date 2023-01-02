@@ -75,8 +75,8 @@ public class SimpleMergedSegmentWarmer implements IndexReaderWarmer {
       }
     }
 
-    reader.storedFields().document(0);
-    reader.termVectors().get(0);
+    reader.document(0);
+    reader.getTermVectors(0);
 
     if (infoStream.isEnabled("SMSW")) {
       infoStream.message(

@@ -20,7 +20,6 @@ package org.apache.lucene.replicator.nrt;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
@@ -135,7 +134,7 @@ public class CopyOneFile implements Closeable {
                   "file %s: done copying [%s, %.3fms]",
                   name,
                   Node.bytesToString(metaData.length),
-                  (System.nanoTime() - copyStartNS) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
+                  (System.nanoTime() - copyStartNS) / 1000000.0));
         }
 
         return true;

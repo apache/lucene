@@ -16,25 +16,26 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import org.apache.lucene.analysis.ko.dict.KoMorphData;
-import org.apache.lucene.analysis.morph.TokenType;
+import org.apache.lucene.analysis.ko.dict.Dictionary;
 
-/** A token stored in a {@link KoMorphData}. */
+/** A token stored in a {@link Dictionary}. */
 public class DictionaryToken extends Token {
   private final int wordId;
-  private final KoMorphData morphAtts;
+  private final KoreanTokenizer.Type type;
+  private final Dictionary dictionary;
 
   public DictionaryToken(
-      TokenType type,
-      KoMorphData morphAtts,
+      KoreanTokenizer.Type type,
+      Dictionary dictionary,
       int wordId,
       char[] surfaceForm,
       int offset,
       int length,
       int startOffset,
       int endOffset) {
-    super(surfaceForm, offset, length, startOffset, endOffset, type);
-    this.morphAtts = morphAtts;
+    super(surfaceForm, offset, length, startOffset, endOffset);
+    this.type = type;
+    this.dictionary = dictionary;
     this.wordId = wordId;
   }
 
@@ -53,8 +54,17 @@ public class DictionaryToken extends Token {
         + " wordId="
         + wordId
         + " leftID="
-        + morphAtts.getLeftId(wordId)
+        + dictionary.getLeftId(wordId)
         + ")";
+  }
+
+  /**
+   * Returns the type of this token
+   *
+   * @return token type, not null
+   */
+  public KoreanTokenizer.Type getType() {
+    return type;
   }
 
   /**
@@ -63,7 +73,7 @@ public class DictionaryToken extends Token {
    * @return true if this token is in standard dictionary. false if not.
    */
   public boolean isKnown() {
-    return type == TokenType.KNOWN;
+    return type == KoreanTokenizer.Type.KNOWN;
   }
 
   /**
@@ -72,7 +82,7 @@ public class DictionaryToken extends Token {
    * @return true if this token is unknown word. false if not.
    */
   public boolean isUnknown() {
-    return type == TokenType.UNKNOWN;
+    return type == KoreanTokenizer.Type.UNKNOWN;
   }
 
   /**
@@ -81,31 +91,31 @@ public class DictionaryToken extends Token {
    * @return true if this token is in user dictionary. false if not.
    */
   public boolean isUser() {
-    return type == TokenType.USER;
+    return type == KoreanTokenizer.Type.USER;
   }
 
   @Override
   public POS.Type getPOSType() {
-    return morphAtts.getPOSType(wordId);
+    return dictionary.getPOSType(wordId);
   }
 
   @Override
   public POS.Tag getLeftPOS() {
-    return morphAtts.getLeftPOS(wordId);
+    return dictionary.getLeftPOS(wordId);
   }
 
   @Override
   public POS.Tag getRightPOS() {
-    return morphAtts.getRightPOS(wordId);
+    return dictionary.getRightPOS(wordId);
   }
 
   @Override
   public String getReading() {
-    return morphAtts.getReading(wordId);
+    return dictionary.getReading(wordId);
   }
 
   @Override
-  public KoMorphData.Morpheme[] getMorphemes() {
-    return morphAtts.getMorphemes(wordId, getSurfaceForm(), getOffset(), getLength());
+  public Dictionary.Morpheme[] getMorphemes() {
+    return dictionary.getMorphemes(wordId, getSurfaceForm(), getOffset(), getLength());
   }
 }

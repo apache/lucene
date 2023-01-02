@@ -20,31 +20,25 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
  * search algorithm, see {@link HnswGraph}.
- *
- * @param <T> the type of query vector
  */
-public class HnswGraphSearcher<T> {
+public final class HnswGraphSearcher {
   private final VectorSimilarityFunction similarityFunction;
-  private final VectorEncoding vectorEncoding;
-
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
    */
   private final NeighborQueue candidates;
 
-  private BitSet visited;
+  private final BitSet visited;
 
   /**
    * Creates a new graph searcher.
@@ -54,11 +48,7 @@ public class HnswGraphSearcher<T> {
    * @param visited bit set that will track nodes that have already been visited
    */
   public HnswGraphSearcher(
-      VectorEncoding vectorEncoding,
-      VectorSimilarityFunction similarityFunction,
-      NeighborQueue candidates,
-      BitSet visited) {
-    this.vectorEncoding = vectorEncoding;
+      VectorSimilarityFunction similarityFunction, NeighborQueue candidates, BitSet visited) {
     this.similarityFunction = similarityFunction;
     this.candidates = candidates;
     this.visited = visited;
@@ -82,78 +72,13 @@ public class HnswGraphSearcher<T> {
       float[] query,
       int topK,
       RandomAccessVectorValues vectors,
-      VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    if (query.length != vectors.dimension()) {
-      throw new IllegalArgumentException(
-          "vector query dimension: "
-              + query.length
-              + " differs from field dimension: "
-              + vectors.dimension());
-    }
-    HnswGraphSearcher<float[]> graphSearcher =
-        new HnswGraphSearcher<>(
-            vectorEncoding,
-            similarityFunction,
-            new NeighborQueue(topK, true),
-            new SparseFixedBitSet(vectors.size()));
-    NeighborQueue results;
-    int[] eps = new int[] {graph.entryNode()};
-    int numVisited = 0;
-    for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-      numVisited += results.visitedCount();
-      visitedLimit -= results.visitedCount();
-      if (results.incomplete()) {
-        results.setVisitedCount(numVisited);
-        return results;
-      }
-      eps[0] = results.pop();
-    }
-    results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
-    results.setVisitedCount(results.visitedCount() + numVisited);
-    return results;
-  }
-
-  /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
-   *
-   * @param query search query vector
-   * @param topK the number of nodes to be returned
-   * @param vectors the vector values
-   * @param similarityFunction the similarity function to compare vectors
-   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
-   *     graph.
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return a priority queue holding the closest neighbors found
-   */
-  public static NeighborQueue search(
-      BytesRef query,
-      int topK,
-      RandomAccessVectorValues vectors,
-      VectorEncoding vectorEncoding,
-      VectorSimilarityFunction similarityFunction,
-      HnswGraph graph,
-      Bits acceptOrds,
-      int visitedLimit)
-      throws IOException {
-    if (query.length != vectors.dimension()) {
-      throw new IllegalArgumentException(
-          "vector query dimension: "
-              + query.length
-              + " differs from field dimension: "
-              + vectors.dimension());
-    }
-    HnswGraphSearcher<BytesRef> graphSearcher =
-        new HnswGraphSearcher<>(
-            vectorEncoding,
+    HnswGraphSearcher graphSearcher =
+        new HnswGraphSearcher(
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
@@ -193,8 +118,7 @@ public class HnswGraphSearcher<T> {
    * @return a priority queue holding the closest neighbors found
    */
   public NeighborQueue searchLevel(
-      // Note: this is only public because Lucene91HnswGraphBuilder needs it
-      T query,
+      float[] query,
       int topK,
       int level,
       final int[] eps,
@@ -205,7 +129,7 @@ public class HnswGraphSearcher<T> {
   }
 
   private NeighborQueue searchLevel(
-      T query,
+      float[] query,
       int topK,
       int level,
       final int[] eps,
@@ -216,7 +140,7 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
-    prepareScratchState(vectors.size());
+    clearScratchState();
 
     int numVisited = 0;
     for (int ep : eps) {
@@ -225,7 +149,7 @@ public class HnswGraphSearcher<T> {
           results.markIncomplete();
           break;
         }
-        float score = compare(query, vectors, ep);
+        float score = similarityFunction.compare(query, vectors.vectorValue(ep));
         numVisited++;
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
@@ -260,7 +184,7 @@ public class HnswGraphSearcher<T> {
           results.markIncomplete();
           break;
         }
-        float friendSimilarity = compare(query, vectors, friendOrd);
+        float friendSimilarity = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
         numVisited++;
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
@@ -279,19 +203,8 @@ public class HnswGraphSearcher<T> {
     return results;
   }
 
-  private float compare(T query, RandomAccessVectorValues vectors, int ord) throws IOException {
-    if (vectorEncoding == VectorEncoding.BYTE) {
-      return similarityFunction.compare((BytesRef) query, vectors.binaryValue(ord));
-    } else {
-      return similarityFunction.compare((float[]) query, vectors.vectorValue(ord));
-    }
-  }
-
-  private void prepareScratchState(int capacity) {
+  private void clearScratchState() {
     candidates.clear();
-    if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
-    }
     visited.clear(0, visited.length());
   }
 }

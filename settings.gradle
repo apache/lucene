@@ -17,7 +17,9 @@
 
 pluginManagement {
     repositories {
-        mavenCentral()
+        maven {
+            url "https://jfrog.fkinternal.com/artifactory/maven_virtual"
+        }
         gradlePluginPortal()
     }
 }
@@ -55,6 +57,7 @@ include "lucene:join"
 include "lucene:luke"
 include "lucene:memory"
 include "lucene:misc"
+include "lucene:misc:native"
 include "lucene:monitor"
 include "lucene:queries"
 include "lucene:queryparser"

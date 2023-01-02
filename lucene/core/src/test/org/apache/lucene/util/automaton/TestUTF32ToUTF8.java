@@ -183,7 +183,6 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     RegExp re = new RegExp(".+\u0775");
     String input = "\ufadc\ufffd\ub80b\uda5a\udc68\uf234\u0056\uda5b\udcc1\ufffd\ufffd\u0775";
     Automaton automaton = re.toAutomaton();
-    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
 
@@ -198,7 +197,6 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     String input =
         "\u5cfd\ufffd\ub2f7\u0033\ue304\u51d7\u3692\udb50\udfb3\u0576\udae2\udc62\u0053\u0449\u04d4";
     Automaton automaton = re.toAutomaton();
-    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
 
@@ -211,10 +209,8 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
   public void testRandomRegexes() throws Exception {
     int num = atLeast(50);
     for (int i = 0; i < num; i++) {
-      Automaton automaton =
-          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
-      automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-      assertAutomaton(automaton);
+      assertAutomaton(
+          new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton());
     }
   }
 

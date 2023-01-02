@@ -57,9 +57,7 @@ public class QueryMatch {
     this.queryId = Objects.requireNonNull(queryId);
   }
 
-  /**
-   * @return the queryid of this match
-   */
+  /** @return the queryid of this match */
   public String getQueryId() {
     return queryId;
   }

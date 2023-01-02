@@ -31,8 +31,9 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.RandomAccessVectorValues;
+import org.apache.lucene.index.RandomAccessVectorValuesProducer;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
@@ -48,7 +49,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -57,11 +57,13 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
+  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
   Lucene91HnswVectorsReader(SegmentReadState state) throws IOException {
+    this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -90,7 +92,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene91HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
       Throwable priorE = null;
       try {
         versionMeta =
@@ -242,7 +244,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             target,
             k,
             vectorValues,
-            VectorEncoding.FLOAT32,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry),
@@ -262,12 +263,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
-  }
-
-  @Override
-  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    throw new UnsupportedOperationException();
   }
 
   private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
@@ -295,6 +290,20 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         return fieldEntry.size;
       }
     };
+  }
+
+  /** Get knn graph values; used for testing */
+  public HnswGraph getGraph(String field) throws IOException {
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    if (info == null) {
+      throw new IllegalArgumentException("No such field '" + field + "'");
+    }
+    FieldEntry entry = fields.get(field);
+    if (entry != null && entry.vectorIndexLength > 0) {
+      return getGraph(entry);
+    } else {
+      return HnswGraph.EMPTY;
+    }
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
@@ -373,17 +382,13 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       // calculate for each level the start offsets in vectorIndex file from where to read
       // neighbours
       graphOffsetsByLevel = new long[numLevels];
-      final long connectionsAndSizeBytes =
-          Math.multiplyExact(Math.addExact(1L, maxConn), Integer.BYTES);
       for (int level = 0; level < numLevels; level++) {
         if (level == 0) {
           graphOffsetsByLevel[level] = 0;
         } else {
           int numNodesOnPrevLevel = level == 1 ? size : nodesByLevel[level - 1].length;
           graphOffsetsByLevel[level] =
-              Math.addExact(
-                  graphOffsetsByLevel[level - 1],
-                  Math.multiplyExact(connectionsAndSizeBytes, numNodesOnPrevLevel));
+              graphOffsetsByLevel[level - 1] + (1 + maxConn) * Integer.BYTES * numNodesOnPrevLevel;
         }
       }
     }
@@ -398,7 +403,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
+  static class OffHeapVectorValues extends VectorValues
+      implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
 
     private final int dimension;
     private final int size;
@@ -486,7 +492,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues copy() {
+    public long cost() {
+      return size;
+    }
+
+    @Override
+    public RandomAccessVectorValues randomAccess() {
       return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 
@@ -531,7 +542,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
-      this.bytesForConns = Math.multiplyExact(Math.addExact(entry.maxConn, 1L), Integer.BYTES);
+      this.bytesForConns = ((long) entry.maxConn + 1) * Integer.BYTES;
     }
 
     @Override
@@ -565,12 +576,12 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int numLevels() {
+    public int numLevels() throws IOException {
       return numLevels;
     }
 
     @Override
-    public int entryNode() {
+    public int entryNode() throws IOException {
       return entryNode;
     }
 

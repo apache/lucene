@@ -28,7 +28,7 @@ import java.util.IdentityHashMap;
  * <p>Follows guidelines from Unicode 5.2, chapter 6, South Asian Scripts I and graphical
  * decompositions from http://ldc.upenn.edu/myl/IndianScriptsUnicode.html
  */
-class IndicNormalizer {
+public class IndicNormalizer {
 
   private static class ScriptData {
     final int flag;
@@ -243,7 +243,7 @@ class IndicNormalizer {
    * @param len valid length
    * @return normalized length
    */
-  int normalize(char[] text, int len) {
+  public int normalize(char[] text, int len) {
     for (int i = 0; i < len; i++) {
       final Character.UnicodeBlock block = Character.UnicodeBlock.of(text[i]);
       final ScriptData sd = scripts.get(block);

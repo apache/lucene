@@ -88,9 +88,7 @@ public final class ClassicTokenizer extends Tokenizer {
     this.maxTokenLength = length;
   }
 
-  /**
-   * @see #setMaxTokenLength
-   */
+  /** @see #setMaxTokenLength */
   public int getMaxTokenLength() {
     return maxTokenLength;
   }

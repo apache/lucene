@@ -120,7 +120,8 @@ public final class FieldsIndexWriter implements Closeable {
       metaOut.writeInt(totalChunks + 1);
       metaOut.writeLong(dataOut.getFilePointer());
 
-      try (ChecksumIndexInput docsIn = dir.openChecksumInput(docsOut.getName())) {
+      try (ChecksumIndexInput docsIn =
+          dir.openChecksumInput(docsOut.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(docsIn, codecName + "Docs", VERSION_CURRENT, VERSION_CURRENT);
         Throwable priorE = null;
         try {
@@ -146,7 +147,8 @@ public final class FieldsIndexWriter implements Closeable {
       docsOut = null;
 
       metaOut.writeLong(dataOut.getFilePointer());
-      try (ChecksumIndexInput filePointersIn = dir.openChecksumInput(filePointersOut.getName())) {
+      try (ChecksumIndexInput filePointersIn =
+          dir.openChecksumInput(filePointersOut.getName(), IOContext.READONCE)) {
         CodecUtil.checkHeader(
             filePointersIn, codecName + "FilePointers", VERSION_CURRENT, VERSION_CURRENT);
         Throwable priorE = null;

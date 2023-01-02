@@ -143,8 +143,7 @@
  * // access indexed fields for an index segment
  * Fields fields = reader.fields();
  * // access term vector fields for a specified document
- * TermVectors vectors = reader.termVectors();
- * Fields fields = vectors.get(docid);
+ * Fields fields = reader.getTermVectors(docid);
  * </pre>
  *
  * Fields implements Java's Iterable interface, so it's easy to enumerate the list of fields:

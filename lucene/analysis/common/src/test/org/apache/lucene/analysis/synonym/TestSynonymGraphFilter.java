@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -1402,7 +1401,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
         for (int j = 0; j < synCount; j++) {
           OneSyn syn2 = syns.get(i);
           keepOrig |= syn2.keepOrig;
-          if (Arrays.equals(syn1.in, syn2.in)) {
+          if (syn1.in.equals(syn2.in)) {
             count += syn2.out.length;
           }
         }

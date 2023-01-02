@@ -21,9 +21,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
@@ -167,7 +167,7 @@ public class TestHighlightCustomQuery extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    public Query rewrite(IndexReader reader) throws IOException {
       return new TermQuery(term);
     }
 

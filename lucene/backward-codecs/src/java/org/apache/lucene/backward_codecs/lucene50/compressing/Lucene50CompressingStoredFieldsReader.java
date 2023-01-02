@@ -19,11 +19,11 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.backward_codecs.compressing.CompressionMode;
-import org.apache.lucene.backward_codecs.compressing.Decompressor;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
+import org.apache.lucene.codecs.compressing.CompressionMode;
+import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -262,9 +262,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  /**
-   * @throws AlreadyClosedException if this FieldsReader is closed
-   */
+  /** @throws AlreadyClosedException if this FieldsReader is closed */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");
@@ -537,7 +535,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
         if (bitsPerLength == 0) {
           final int length = fieldsStream.readVInt();
           for (int i = 0; i < chunkDocs; ++i) {
-            offsets[1 + i] = (1 + i) * (long) length;
+            offsets[1 + i] = (1 + i) * length;
           }
         } else if (bitsPerStoredFields > 31) {
           throw new CorruptIndexException("bitsPerLength=" + bitsPerLength, fieldsStream);
@@ -692,7 +690,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  SerializedDocument serializedDocument(int docID) throws IOException {
+  SerializedDocument document(int docID) throws IOException {
     if (state.contains(docID) == false) {
       fieldsStream.seek(indexReader.getStartPointer(docID));
       state.reset(docID);
@@ -702,9 +700,9 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
 
-    final SerializedDocument doc = serializedDocument(docID);
+    final SerializedDocument doc = document(docID);
 
     for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
       final long infoAndBits = doc.in.readVLong();

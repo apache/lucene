@@ -80,8 +80,7 @@ public class TestCoveringQuery extends LuceneTestCase {
     LongValuesSource vs = LongValuesSource.fromIntField("field");
     assertEquals(
         new CoveringQuery(Collections.singleton(tq), vs),
-        new CoveringQuery(Collections.singleton(pq), vs)
-            .rewrite(new IndexSearcher(new MultiReader())));
+        new CoveringQuery(Collections.singleton(pq), vs).rewrite(new MultiReader()));
   }
 
   public void testToString() {

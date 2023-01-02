@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.IndexReader;
 
 /**
  * The abstract base class for queries.
@@ -76,12 +77,9 @@ public abstract class Query {
    * <p>Callers are expected to call <code>rewrite</code> multiple times if necessary, until the
    * rewritten query is the same as the original query.
    *
-   * <p>The rewrite process may be able to make use of IndexSearcher's executor and be executed in
-   * parallel if the executor is provided.
-   *
    * @see IndexSearcher#rewrite(Query)
    */
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+  public Query rewrite(IndexReader reader) throws IOException {
     return this;
   }
 

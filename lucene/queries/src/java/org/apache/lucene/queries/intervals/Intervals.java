@@ -170,7 +170,12 @@ public final class Intervals {
    */
   public static IntervalsSource prefix(BytesRef prefix, int maxExpansions) {
     CompiledAutomaton ca =
-        new CompiledAutomaton(PrefixQuery.toAutomaton(prefix), false, true, true);
+        new CompiledAutomaton(
+            PrefixQuery.toAutomaton(prefix),
+            null,
+            true,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            true);
     return new MultiTermIntervalsSource(ca, maxExpansions, prefix.utf8ToString() + "*");
   }
 
@@ -199,10 +204,7 @@ public final class Intervals {
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard, int maxExpansions) {
-    CompiledAutomaton ca =
-        new CompiledAutomaton(
-            WildcardQuery.toAutomaton(
-                new Term("", wildcard), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
+    CompiledAutomaton ca = new CompiledAutomaton(WildcardQuery.toAutomaton(new Term("", wildcard)));
     return new MultiTermIntervalsSource(ca, maxExpansions, wildcard.utf8ToString());
   }
 

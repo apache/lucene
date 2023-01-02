@@ -21,9 +21,9 @@ package org.apache.lucene.analysis.en;
  *
  * <p>This stemmer implements the "S-Stemmer" from <i>How Effective Is Suffixing?</i> Donna Harman.
  */
-class EnglishMinimalStemmer {
+public class EnglishMinimalStemmer {
   @SuppressWarnings("fallthrough")
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     if (len < 3 || s[len - 1] != 's') return len;
 
     switch (s[len - 2]) {

@@ -56,7 +56,6 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
-  private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
@@ -81,7 +80,6 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
-      VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
     this.name = Objects.requireNonNull(name);
@@ -107,7 +105,6 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
-    this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.checkConsistency();
@@ -213,14 +210,15 @@ public final class FieldInfo {
    * @param o – other FieldInfo whose schema is verified against this FieldInfo's schema
    * @throws IllegalArgumentException if the field schemas are not the same
    */
-  void verifySameSchema(FieldInfo o) {
+  void verifySameSchema(FieldInfo o, boolean strictlyConsistent) {
     String fieldName = this.name;
-    verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions());
+    verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions(), strictlyConsistent);
     if (this.indexOptions != IndexOptions.NONE) {
-      verifySameOmitNorms(fieldName, this.omitNorms, o.omitNorms);
-      verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
+      verifySameOmitNorms(fieldName, this.omitNorms, o.omitNorms, strictlyConsistent);
+      verifySameStoreTermVectors(
+          fieldName, this.storeTermVector, o.storeTermVector, strictlyConsistent);
     }
-    verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
+    verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType, strictlyConsistent);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -228,14 +226,13 @@ public final class FieldInfo {
         this.pointNumBytes,
         o.pointDimensionCount,
         o.pointIndexDimensionCount,
-        o.pointNumBytes);
+        o.pointNumBytes,
+        strictlyConsistent);
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
-        this.vectorEncoding,
         this.vectorSimilarityFunction,
         o.vectorDimension,
-        o.vectorEncoding,
         o.vectorSimilarityFunction);
   }
 
@@ -245,7 +242,14 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameIndexOptions(
-      String fieldName, IndexOptions indexOptions1, IndexOptions indexOptions2) {
+      String fieldName,
+      IndexOptions indexOptions1,
+      IndexOptions indexOptions2,
+      boolean strictlyConsistent) {
+    if (strictlyConsistent == false
+        && (indexOptions1 == IndexOptions.NONE || indexOptions2 == IndexOptions.NONE)) {
+      return;
+    }
     if (indexOptions1 != indexOptions2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -263,7 +267,14 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameDocValuesType(
-      String fieldName, DocValuesType docValuesType1, DocValuesType docValuesType2) {
+      String fieldName,
+      DocValuesType docValuesType1,
+      DocValuesType docValuesType2,
+      boolean strictlyConsistent) {
+    if (strictlyConsistent == false
+        && (docValuesType1 == DocValuesType.NONE || docValuesType2 == DocValuesType.NONE)) {
+      return;
+    }
     if (docValuesType1 != docValuesType2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -281,8 +292,11 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameStoreTermVectors(
-      String fieldName, boolean storeTermVector1, boolean storeTermVector2) {
-    if (storeTermVector1 != storeTermVector2) {
+      String fieldName,
+      boolean storeTermVector1,
+      boolean storeTermVector2,
+      boolean strictlyConsistent) {
+    if (strictlyConsistent && storeTermVector1 != storeTermVector2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -298,8 +312,9 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  static void verifySameOmitNorms(String fieldName, boolean omitNorms1, boolean omitNorms2) {
-    if (omitNorms1 != omitNorms2) {
+  static void verifySameOmitNorms(
+      String fieldName, boolean omitNorms1, boolean omitNorms2, boolean strictlyConsistent) {
+    if (strictlyConsistent && omitNorms1 != omitNorms2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -322,7 +337,11 @@ public final class FieldInfo {
       int numBytes1,
       int pointDimensionCount2,
       int indexDimensionCount2,
-      int numBytes2) {
+      int numBytes2,
+      boolean strictlyConsistent) {
+    if (strictlyConsistent == false && (pointDimensionCount1 == 0 || pointDimensionCount2 == 0)) {
+      return;
+    }
     if (pointDimensionCount1 != pointDimensionCount2
         || indexDimensionCount1 != indexDimensionCount2
         || numBytes1 != numBytes2) {
@@ -352,25 +371,19 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
-      VectorEncoding ve1,
       VectorSimilarityFunction vsf1,
       int vd2,
-      VectorEncoding ve2,
       VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
+    if (vd1 != vd2 || vsf1 != vsf2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
               + "\" from vector dimension="
               + vd1
-              + ", vector encoding="
-              + ve1
               + ", vector similarity function="
               + vsf1
               + " to inconsistent vector dimension="
               + vd2
-              + ", vector encoding="
-              + ve2
               + ", vector similarity function="
               + vsf2);
     }
@@ -479,11 +492,6 @@ public final class FieldInfo {
   /** Returns the number of dimensions of the vector value */
   public int getVectorDimension() {
     return vectorDimension;
-  }
-
-  /** Returns the number of dimensions of the vector value */
-  public VectorEncoding getVectorEncoding() {
-    return vectorEncoding;
   }
 
   /** Returns {@link VectorSimilarityFunction} for the field */

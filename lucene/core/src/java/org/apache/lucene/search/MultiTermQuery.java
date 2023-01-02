@@ -18,8 +18,9 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.FilteredTermsEnum;
-import org.apache.lucene.index.SingleTermsEnum;
+import org.apache.lucene.index.FilteredTermsEnum; // javadocs
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.SingleTermsEnum; // javadocs
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
@@ -51,12 +52,11 @@ import org.apache.lucene.util.AttributeSource;
  */
 public abstract class MultiTermQuery extends Query {
   protected final String field;
-  protected final RewriteMethod rewriteMethod;
+  protected RewriteMethod rewriteMethod; // TODO make this final
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {
-    public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
-        throws IOException;
+    public abstract Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException;
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
      *
@@ -81,7 +81,7 @@ public abstract class MultiTermQuery extends Query {
   public static final RewriteMethod CONSTANT_SCORE_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
+        public Query rewrite(IndexReader reader, MultiTermQuery query) {
           return new MultiTermQueryConstantScoreWrapper<>(query);
         }
       };
@@ -279,22 +279,34 @@ public abstract class MultiTermQuery extends Query {
    * AttributeSource)}. For example, to rewrite to a single term, return a {@link SingleTermsEnum}
    */
   @Override
-  public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    return rewriteMethod.rewrite(indexSearcher, this);
+  public final Query rewrite(IndexReader reader) throws IOException {
+    return rewriteMethod.rewrite(reader, this);
+  }
+
+  public RewriteMethod getRewriteMethod() {
+    return rewriteMethod;
   }
 
   /**
-   * @return the rewrite method used to build the final query
+   * Sets the rewrite method to be used when executing the query. You can use one of the four core
+   * methods, or implement your own subclass of {@link RewriteMethod}.
+   *
+   * @deprecated set this using a constructor instead
    */
-  public RewriteMethod getRewriteMethod() {
-    return rewriteMethod;
+  @Deprecated
+  public void setRewriteMethod(RewriteMethod method) {
+    rewriteMethod = method;
   }
 
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = classHash();
-    result = prime * result + rewriteMethod.hashCode();
+    // rewriteMethod is mutable in 9x so we exclude it from hashcode
+    // calculates to ensure that the hash is stable; otherwise we
+    // can get assertion errors from wrapper queries like BQ that
+    // store their subqueries in Sets
+    // result = prime * result + rewriteMethod.hashCode();
     result = prime * result + field.hashCode();
     return result;
   }

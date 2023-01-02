@@ -23,29 +23,14 @@ def withCoverage = gradle.startParameter.taskNames.contains("coverage") ||
     Boolean.parseBoolean(propertyOrDefault("tests.coverage", "false"))
 
 if (withCoverage) {
-  configure(rootProject) {
-    plugins.apply("org.barfuin.gradle.jacocolog")
-
-    // Synthetic task to enable test coverage (and aggregated reports).
-    task coverage() {
-      dependsOn jacocoAggregatedReport
-    }
-
-    configure(jacocoAggregatedReport) {
-      doLast {
-        logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
-      }
-    }
-  }
-
   allprojects {
     plugins.withType(JavaPlugin) {
       // Apply jacoco once we know the project has a Java plugin too.
-      project.plugins.apply("org.barfuin.gradle.jacocolog")
+      project.plugins.apply("jacoco")
 
       // Synthetic task to enable test coverage (and reports).
       task coverage() {
-        dependsOn test, jacocoTestReport
+        dependsOn jacocoTestReport
       }
 
       tasks.withType(Test) { Task testTask ->
@@ -56,8 +41,8 @@ if (withCoverage) {
           destinationFile = file("${testTask.workingDir}/jacoco.exec")
         }
 
-        // Test reports run after the test task, if it's run at all.
-        testTask.finalizedBy jacocoTestReport
+        // Test reports, if any, must be preceded by test execution.
+        jacocoTestReport.dependsOn testTask
       }
 
       configure(jacocoTestReport) {

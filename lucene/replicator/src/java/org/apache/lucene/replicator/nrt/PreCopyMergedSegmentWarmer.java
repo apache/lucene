@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.IndexWriter.IndexReaderWarmer;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SegmentCommitInfo;
@@ -61,8 +60,8 @@ class PreCopyMergedSegmentWarmer implements IndexReaderWarmer {
         String.format(
             Locale.ROOT,
             "top: done warm merge " + info + ": took %.3f sec, %.1f MB",
-            (System.nanoTime() - startNS) / (double) TimeUnit.SECONDS.toNanos(1),
-            info.sizeInBytes() / 1024. / 1024.));
+            (System.nanoTime() - startNS) / 1000000000.,
+            info.sizeInBytes() / 1024 / 1024.));
     primary.finishedMergedFiles.addAll(filesMetaData.keySet());
   }
 }

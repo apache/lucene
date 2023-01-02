@@ -33,6 +33,7 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -396,8 +397,8 @@ public class BKDWriter implements Closeable {
     int numLeaves();
     /**
      * pointer to the leaf node previously written. Leaves are order from left to right, so leaf at
-     * {@code index} 0 is the leftmost leaf and the leaf at {@code numleaves()} -1 is the rightmost
-     * leaf
+     * {@code index} 0 is the leftmost leaf and the the leaf at {@code numleaves()} -1 is the
+     * rightmost leaf
      */
     long getLeafLP(int index);
     /**
@@ -514,7 +515,7 @@ public class BKDWriter implements Closeable {
 
     checkMaxLeafNodeCount(numLeaves);
 
-    final byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
+    final byte[] splitPackedValues = new byte[numSplits * config.bytesPerDim];
     final byte[] splitDimensionValues = new byte[numSplits];
     final long[] leafBlockFPs = new long[numLeaves];
 
@@ -945,7 +946,7 @@ public class BKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
+    byte[] splitPackedValues = new byte[Math.toIntExact(numSplits * config.bytesPerDim)];
     byte[] splitDimensionValues = new byte[numSplits];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
@@ -987,8 +988,8 @@ public class BKDWriter implements Closeable {
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
-      // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
-      //   TimeUnit.SECONDS.toNanos(1)) + " ms");
+      // long t2 = System.nanoTime();
+      // System.out.println("write time: " + ((t2-t1)/1000000.0) + " msec");
 
       success = true;
     } finally {
@@ -1531,7 +1532,7 @@ public class BKDWriter implements Closeable {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
       if (tempDir.getCreatedFiles().contains(tempFileName)) {
-        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
+        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
           CodecUtil.checkFooter(in, priorException);
         }
       }

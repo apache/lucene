@@ -18,8 +18,15 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
+import org.apache.lucene.facet.taxonomy.BackCompatSortedNumericDocValues;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Utility class with a single method for getting a DocIdSetIterator that skips deleted docs
@@ -80,5 +87,48 @@ public final class FacetUtils {
         return it.cost();
       }
     };
+  }
+
+  /**
+   * Loads ordinal values as {@link SortedNumericDocValues}. If the index still uses the older
+   * binary format, it will wrap that with the SNDV API. Newer format indexes will just load the
+   * SNDV directly.
+   *
+   * <p>This is really only needed/useful to maintain back-compat with the binary format. Once
+   * back-compat is no longer needed, the SNDV field should just be loaded directly.
+   *
+   * @deprecated Please do not rely on this method. It is added as a temporary measure for providing
+   *     index backwards-compatibility with Lucene 8 and earlier indexes, and will be removed in
+   *     Lucene 10.
+   */
+  @Deprecated
+  public static SortedNumericDocValues loadOrdinalValues(LeafReader reader, String fieldName)
+      throws IOException {
+    return loadOrdinalValues(reader, fieldName, null);
+  }
+
+  /**
+   * Loads ordinal values as {@link SortedNumericDocValues}. If the index still uses the older
+   * binary format, it will wrap that with the SNDV API. Newer format indexes will just load the
+   * SNDV directly. The provided {@code binaryValueDecoder} allows custom decoding logic for older
+   * binary format fields to be provided.
+   *
+   * <p>This is really only needed/useful to maintain back-compat with the binary format. Once
+   * back-compat is no longer needed, the SNDV field should just be loaded directly.
+   *
+   * @deprecated Please do not rely on this method. It is added as a temporary measure for providing
+   *     index backwards-compatibility with Lucene 8 and earlier indexes, and will be removed in
+   *     Lucene 10.
+   */
+  @Deprecated
+  public static SortedNumericDocValues loadOrdinalValues(
+      LeafReader reader, String fieldName, BiConsumer<BytesRef, IntsRef> binaryValueDecoder)
+      throws IOException {
+    if (reader.getMetaData().getCreatedVersionMajor() <= 8) {
+      BinaryDocValues oldStyleDocValues = reader.getBinaryDocValues(fieldName);
+      return BackCompatSortedNumericDocValues.wrap(oldStyleDocValues, binaryValueDecoder);
+    } else {
+      return reader.getSortedNumericDocValues(fieldName);
+    }
   }
 }

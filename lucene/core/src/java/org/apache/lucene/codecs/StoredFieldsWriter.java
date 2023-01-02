@@ -132,7 +132,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
       }
       assert sub.mappedDocID == docCount;
       startDocument();
-      sub.reader.document(sub.docID, sub.visitor);
+      sub.reader.visitDocument(sub.docID, sub.visitor);
       finishDocument();
       docCount++;
     }
@@ -149,7 +149,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
    * MergeVisitor visitor = new MergeVisitor(mergeState, readerIndex);
    * for (...) {
    *   startDocument();
-   *   storedFieldsReader.document(docID, visitor);
+   *   storedFieldsReader.visitDocument(docID, visitor);
    *   finishDocument();
    * }
    * </pre>

@@ -184,11 +184,7 @@ public final class FieldReader extends Terms {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
     return new IntersectTermsEnum(
-        this,
-        compiled.getTransitionAccessor(),
-        compiled.getByteRunnable(),
-        compiled.commonSuffixRef,
-        startTerm);
+        this, compiled.automaton, compiled.runAutomaton, compiled.commonSuffixRef, startTerm);
   }
 
   @Override

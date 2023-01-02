@@ -162,7 +162,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
   }
 
   private void duellReaders(CompositeReader other, LeafReader memIndexReader) throws IOException {
-    Fields memFields = memIndexReader.termVectors().get(0);
+    Fields memFields = memIndexReader.getTermVectors(0);
     for (String field : FieldInfos.getIndexedFields(other)) {
       Terms memTerms = memFields.terms(field);
       Terms iwTerms = memIndexReader.terms(field);
@@ -540,6 +540,8 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
           controlSortedSetDocValues.lookupOrd(controlOrd),
           sortedSetDocValues.lookupOrd(controlOrd));
     }
+    assertEquals(SortedSetDocValues.NO_MORE_ORDS, controlSortedSetDocValues.nextOrd());
+    assertEquals(SortedSetDocValues.NO_MORE_ORDS, sortedSetDocValues.nextOrd());
 
     indexReader.close();
     controlIndexReader.close();
@@ -704,10 +706,10 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     memIndex.addField(field_name, "foo bar foo bar foo", mockAnalyzer);
 
     // compare term vectors
-    Terms ramTv = reader.termVectors().get(0, field_name);
+    Terms ramTv = reader.getTermVector(0, field_name);
     IndexReader memIndexReader = memIndex.createSearcher().getIndexReader();
     TestUtil.checkReader(memIndexReader);
-    Terms memTv = memIndexReader.termVectors().get(0, field_name);
+    Terms memTv = memIndexReader.getTermVector(0, field_name);
 
     compareTermVectors(ramTv, memTv, field_name);
     memIndexReader.close();

@@ -20,9 +20,9 @@
 # This alg will process the Wikipedia documents feed to produce a
 # single file that contains all documents, one per line.
 #
-# To use this run:
+# To use this, first cd to benchmark and then run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/extractWikipedia.alg
+#   ant run-task -Dtask.alg=conf/extractWikipedia.alg
 #
 # Then, to index the documents in the line file, see
 # indexLineFile.alg.

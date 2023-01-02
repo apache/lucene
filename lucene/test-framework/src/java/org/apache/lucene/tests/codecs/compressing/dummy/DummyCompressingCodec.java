@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
-import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.tests.codecs.compressing.CompressingCodec;
@@ -77,8 +76,8 @@ public class DummyCompressingCodec extends CompressingCodec {
       new Compressor() {
 
         @Override
-        public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-          out.copyBytes(buffersInput, buffersInput.size());
+        public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
+          out.writeBytes(bytes, off, len);
         }
 
         @Override

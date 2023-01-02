@@ -41,7 +41,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automata;
-import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
@@ -227,11 +226,8 @@ public class TestMockAnalyzer extends BaseTokenStreamTestCase {
   public void testRandomRegexps() throws Exception {
     int iters = TEST_NIGHTLY ? atLeast(30) : atLeast(1);
     for (int i = 0; i < iters; i++) {
-      Automaton automaton =
-          Operations.determinize(
-              AutomatonTestUtil.randomAutomaton(random()),
-              Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-      final CharacterRunAutomaton dfa = new CharacterRunAutomaton(automaton);
+      final CharacterRunAutomaton dfa =
+          new CharacterRunAutomaton(AutomatonTestUtil.randomAutomaton(random()), Integer.MAX_VALUE);
       final boolean lowercase = random().nextBoolean();
       final int limit = TestUtil.nextInt(random(), 0, 500);
       Analyzer a =
@@ -319,7 +315,7 @@ public class TestMockAnalyzer extends BaseTokenStreamTestCase {
     doc.add(new Field("f", "a", ft));
     writer.addDocument(doc);
     final LeafReader reader = getOnlyLeafReader(writer.getReader());
-    final Fields fields = reader.termVectors().get(0);
+    final Fields fields = reader.getTermVectors(0);
     final Terms terms = fields.terms("f");
     final TermsEnum te = terms.iterator();
     assertEquals(new BytesRef("a"), te.next());

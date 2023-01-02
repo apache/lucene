@@ -408,8 +408,8 @@ public class SegmentCommitInfo {
 
   /**
    * Returns and Id that uniquely identifies this segment commit or <code>null</code> if there is no
-   * ID assigned. This ID changes each time the segment changes due to a delete, doc-value or field
-   * update.
+   * ID assigned. This ID changes each time the the segment changes due to a delete, doc-value or
+   * field update.
    */
   public byte[] getId() {
     return id == null ? null : id.clone();

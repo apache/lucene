@@ -156,7 +156,7 @@ public class MatchHighlighter {
   public static class QueryOffsetRange extends OffsetRange {
     public final Query query;
 
-    public QueryOffsetRange(Query query, int from, int to) {
+    QueryOffsetRange(Query query, int from, int to) {
       super(from, to);
       this.query = query;
     }
@@ -200,7 +200,7 @@ public class MatchHighlighter {
             }
           };
 
-      leafReader.storedFields().document(leafDocId, visitor);
+      leafReader.document(leafDocId, visitor);
       return visitor.getDocument();
     }
   }

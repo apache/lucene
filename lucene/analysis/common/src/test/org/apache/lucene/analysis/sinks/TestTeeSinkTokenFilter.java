@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.sinks;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.FilteringTokenFilter;
@@ -95,7 +94,7 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    Terms vector = r.termVectors().get(0).terms("field");
+    Terms vector = r.getTermVectors(0).terms("field");
     assertEquals(1, vector.size());
     TermsEnum termsEnum = vector.iterator();
     termsEnum.next();
@@ -184,7 +183,7 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
       // simulate two fields, each being analyzed once, for 20 documents
       for (int j = 0; j < modCounts.length; j++) {
         int tfPos = 0;
-        long start = System.nanoTime();
+        long start = System.currentTimeMillis();
         for (int i = 0; i < 20; i++) {
           stream = standardTokenizer(buffer);
           PositionIncrementAttribute posIncrAtt =
@@ -198,13 +197,12 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
             tfPos += posIncrAtt.getPositionIncrement();
           }
         }
-        long finish = System.nanoTime();
+        long finish = System.currentTimeMillis();
         System.out.println(
-            ("ModCount: " + modCounts[j])
-                + (" Two fields took " + TimeUnit.NANOSECONDS.toMillis(finish - start) + " ms"));
+            "ModCount: " + modCounts[j] + " Two fields took " + (finish - start) + " ms");
         int sinkPos = 0;
         // simulate one field with one sink
-        start = System.nanoTime();
+        start = System.currentTimeMillis();
         for (int i = 0; i < 20; i++) {
           teeStream = new TeeSinkTokenFilter(standardTokenizer(buffer));
           sink = new ModuloTokenFilter(teeStream.newSinkTokenStream(), modCounts[j]);
@@ -219,10 +217,9 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
             sinkPos += posIncrAtt.getPositionIncrement();
           }
         }
-        finish = System.nanoTime();
+        finish = System.currentTimeMillis();
         System.out.println(
-            ("ModCount: " + modCounts[j])
-                + (" Tee fields took " + TimeUnit.NANOSECONDS.toMillis(finish - start) + " ms"));
+            "ModCount: " + modCounts[j] + " Tee fields took " + (finish - start) + " ms");
         assertTrue(sinkPos + " does not equal: " + tfPos, sinkPos == tfPos);
       }
       System.out.println("- End Tokens: " + tokCount[k] + "-----");

@@ -41,29 +41,7 @@ import java.util.stream.StreamSupport;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.CheckIndex;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexCommit;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.KeepOnlyLastCommitDeletionPolicy;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.MultiBits;
-import org.apache.lucene.index.MultiDocValues;
-import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.NoDeletionPolicy;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -346,8 +324,12 @@ public final class IndexUtils {
           if (CodecUtil.CODEC_MAGIC == CodecUtil.readBEInt(in)) {
             int actualVersion =
                 CodecUtil.checkHeaderNoMagic(
-                    in, "segments", SegmentInfos.VERSION_74, Integer.MAX_VALUE);
-            if (actualVersion == SegmentInfos.VERSION_74) {
+                    in, "segments", SegmentInfos.VERSION_70, Integer.MAX_VALUE);
+            if (actualVersion == SegmentInfos.VERSION_70) {
+              format = "Lucene 7.0 or later";
+            } else if (actualVersion == SegmentInfos.VERSION_72) {
+              format = "Lucene 7.2 or later";
+            } else if (actualVersion == SegmentInfos.VERSION_74) {
               format = "Lucene 7.4 or later";
             } else if (actualVersion == SegmentInfos.VERSION_86) {
               format = "Lucene 8.6 or later";

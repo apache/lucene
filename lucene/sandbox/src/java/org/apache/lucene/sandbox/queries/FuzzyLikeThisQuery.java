@@ -38,7 +38,6 @@ import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.FuzzyTermsEnum;
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
@@ -283,8 +282,7 @@ public class FuzzyLikeThisQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    IndexReader reader = indexSearcher.getIndexReader();
+  public Query rewrite(IndexReader reader) throws IOException {
     ScoreTermQueue q = new ScoreTermQueue(maxNumTerms);
     // load up the list of possible terms
     for (FieldVals f : fieldVals) {

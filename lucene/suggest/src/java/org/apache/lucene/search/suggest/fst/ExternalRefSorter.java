@@ -91,7 +91,8 @@ public class ExternalRefSorter implements BytesRefSorter, Closeable {
 
     return new ByteSequenceIterator(
         new OfflineSorter.ByteSequencesReader(
-            sorter.getDirectory().openChecksumInput(sortedOutput), sortedOutput));
+            sorter.getDirectory().openChecksumInput(sortedOutput, IOContext.READONCE),
+            sortedOutput));
   }
 
   /** Close the writer but leave any sorted output for iteration. */

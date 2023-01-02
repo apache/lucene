@@ -24,12 +24,14 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
@@ -37,7 +39,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -83,11 +85,7 @@ public class IndexSearcher {
   private static QueryCache DEFAULT_QUERY_CACHE;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
   private QueryTimeout queryTimeout = null;
-  // partialResult may be set on one of the threads of the executor. It may be correct to not make
-  // this variable volatile since joining these threads should ensure a happens-before relationship
-  // that guarantees that writes become visible on the main thread, but making the variable volatile
-  // shouldn't hurt either.
-  private volatile boolean partialResult = false;
+  private boolean partialResult = false;
 
   static {
     final int maxCachedQueries = 1000;
@@ -377,28 +375,30 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns a {@link StoredFields} reader for the stored fields of this index.
+   * Sugar for <code>.getIndexReader().document(docID)</code>
    *
-   * <p>Sugar for <code>.getIndexReader().storedFields()</code>
-   *
-   * <p>This call never returns {@code null}, even if no stored fields were indexed. The returned
-   * instance should only be used by a single thread.
-   *
-   * <p>Example:
-   *
-   * <pre class="prettyprint">
-   * TopDocs hits = searcher.search(query, 10);
-   * StoredFields storedFields = searcher.storedFields();
-   * for (ScoreDoc hit : hits.scoreDocs) {
-   *   Document doc = storedFields.document(hit.doc);
-   * }
-   * </pre>
-   *
-   * @throws IOException If there is a low-level IO error
-   * @see IndexReader#storedFields()
+   * @see IndexReader#document(int)
    */
-  public StoredFields storedFields() throws IOException {
-    return reader.storedFields();
+  public Document doc(int docID) throws IOException {
+    return reader.document(docID);
+  }
+
+  /**
+   * Sugar for <code>.getIndexReader().document(docID, fieldVisitor)</code>
+   *
+   * @see IndexReader#document(int, StoredFieldVisitor)
+   */
+  public void doc(int docID, StoredFieldVisitor fieldVisitor) throws IOException {
+    reader.document(docID, fieldVisitor);
+  }
+
+  /**
+   * Sugar for <code>.getIndexReader().document(docID, fieldsToLoad)</code>
+   *
+   * @see IndexReader#document(int, Set)
+   */
+  public Document doc(int docID, Set<String> fieldsToLoad) throws IOException {
+    return reader.document(docID, fieldsToLoad);
   }
 
   /** Expert: Set the Similarity implementation used by this IndexSearcher. */
@@ -487,8 +487,7 @@ public class IndexSearcher {
     return search(query, manager);
   }
 
-  /** Set a {@link QueryTimeout} for all searches that run through this {@link IndexSearcher}. */
-  public void setTimeout(QueryTimeout queryTimeout) {
+  public void setTimeout(QueryTimeout queryTimeout) throws IOException {
     this.queryTimeout = queryTimeout;
   }
 
@@ -515,11 +514,9 @@ public class IndexSearcher {
     search(leafContexts, createWeight(query, results.scoreMode(), 1), results);
   }
 
-  /** Returns true if any search hit the {@link #setTimeout(QueryTimeout) timeout}. */
   public boolean timedOut() {
     return partialResult;
   }
-
   /**
    * Search implementation with arbitrary sorting, plus control over whether hit scores and max
    * score should be computed. Finds the top <code>n</code> hits for <code>query</code>, and sorting
@@ -734,24 +731,28 @@ public class IndexSearcher {
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
         if (queryTimeout != null) {
-          scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
-        }
-        try {
-          scorer.score(leafCollector, ctx.reader().getLiveDocs());
-        } catch (
-            @SuppressWarnings("unused")
-            CollectionTerminatedException e) {
-          // collection was terminated prematurely
-          // continue with the following leaf
-        } catch (
-            @SuppressWarnings("unused")
-            TimeLimitingBulkScorer.TimeExceededException e) {
-          partialResult = true;
+          TimeLimitingBulkScorer timeLimitingBulkScorer =
+              new TimeLimitingBulkScorer(scorer, queryTimeout);
+          try {
+            timeLimitingBulkScorer.score(leafCollector, ctx.reader().getLiveDocs());
+          } catch (
+              @SuppressWarnings("unused")
+              TimeLimitingBulkScorer.TimeExceededException e) {
+            partialResult = true;
+          }
+        } else {
+          try {
+            scorer.score(leafCollector, ctx.reader().getLiveDocs());
+          } catch (
+              @SuppressWarnings("unused")
+              CollectionTerminatedException e) {
+            // collection was terminated prematurely
+            // continue with the following leaf
+          }
         }
       }
     }
   }
-
   /**
    * Expert: called to re-write queries into primitive queries.
    *
@@ -760,9 +761,9 @@ public class IndexSearcher {
    */
   public Query rewrite(Query original) throws IOException {
     Query query = original;
-    for (Query rewrittenQuery = query.rewrite(this);
+    for (Query rewrittenQuery = query.rewrite(reader);
         rewrittenQuery != query;
-        rewrittenQuery = query.rewrite(this)) {
+        rewrittenQuery = query.rewrite(reader)) {
       query = rewrittenQuery;
     }
     query.visit(getNumClausesCheckVisitor());

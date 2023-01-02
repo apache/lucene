@@ -2160,24 +2160,24 @@ public class TestPointQueries extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
-    int numPoints = random().nextInt(1, 10);
+    int numPoints = 1 + random().nextInt(9);
     int[] points = new int[numPoints];
 
-    int numQueries = random().nextInt(1, 10);
+    int numQueries = 1 + random().nextInt(9);
     int[] lowerBound = new int[numQueries];
     int[] upperBound = new int[numQueries];
     int[] expectedCount = new int[numQueries];
 
     for (int i = 0; i < numQueries; i++) {
       // generate random queries
-      lowerBound[i] = random().nextInt(1, 10);
+      lowerBound[i] = 1 + random().nextInt(9);
       // allow malformed ranges where upperBound could be less than lowerBound
-      upperBound[i] = random().nextInt(1, 10);
+      upperBound[i] = 1 + random().nextInt(9);
     }
 
     for (int i = 0; i < numPoints; i++) {
       // generate random 1D points
-      points[i] = random().nextInt(1, 10);
+      points[i] = 1 + random().nextInt(9);
       if (random().nextBoolean()) {
         // the doc may have at-most 1 point
         Document doc = new Document();

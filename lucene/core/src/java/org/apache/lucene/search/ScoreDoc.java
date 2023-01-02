@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import org.apache.lucene.index.StoredFields;
-
 /** Holds one hit in {@link TopDocs}. */
 public class ScoreDoc {
 
@@ -27,9 +25,12 @@ public class ScoreDoc {
   /**
    * A hit document's number.
    *
-   * @see StoredFields#document(int)
+   * @see IndexSearcher#doc(int)
    */
   public int doc;
+
+  /** an object than can be carried for this scoreDoc and represents it in some form */
+  public Object meta;
 
   /** Only set by {@link TopDocs#merge} */
   public int shardIndex;

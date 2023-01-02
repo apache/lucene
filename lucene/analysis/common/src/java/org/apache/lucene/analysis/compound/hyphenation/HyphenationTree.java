@@ -313,17 +313,17 @@ public class HyphenationTree extends TernaryTree implements PatternConsumer {
 
     // check exception list first
     String sw = new String(word, 1, len);
-    ArrayList<Object> hw;
-    if ((hw = stoplist.get(sw)) != null) {
+    if (stoplist.containsKey(sw)) {
       // assume only simple hyphens (Hyphen.pre="-", Hyphen.post = Hyphen.no =
       // null)
+      ArrayList<Object> hw = stoplist.get(sw);
       int j = 0;
       for (i = 0; i < hw.size(); i++) {
         Object o = hw.get(i);
         // j = index(sw) = letterindex(word)?
         // result[k] = corresponding index(w)
-        if (o instanceof String s) {
-          j += s.length();
+        if (o instanceof String) {
+          j += ((String) o).length();
           if (j >= remainCharCount && j < (len - pushCharCount)) {
             result[k++] = j + iIgnoreAtBeginning;
           }

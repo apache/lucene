@@ -31,16 +31,12 @@ public class MapOfSets<K, V> {
 
   private final Map<K, Set<V>> theMap;
 
-  /**
-   * @param m the backing store for this object
-   */
+  /** @param m the backing store for this object */
   public MapOfSets(Map<K, Set<V>> m) {
     theMap = m;
   }
 
-  /**
-   * @return direct access to the map backing this object.
-   */
+  /** @return direct access to the map backing this object. */
   public Map<K, Set<V>> getMap() {
     return theMap;
   }
@@ -52,7 +48,13 @@ public class MapOfSets<K, V> {
    * @return the size of the Set associated with key once val is added to it.
    */
   public int put(K key, V val) {
-    final Set<V> theSet = theMap.computeIfAbsent(key, k -> new HashSet<>(23));
+    final Set<V> theSet;
+    if (theMap.containsKey(key)) {
+      theSet = theMap.get(key);
+    } else {
+      theSet = new HashSet<>(23);
+      theMap.put(key, theSet);
+    }
     theSet.add(val);
     return theSet.size();
   }
@@ -63,7 +65,13 @@ public class MapOfSets<K, V> {
    * @return the size of the Set associated with key once val is added to it.
    */
   public int putAll(K key, Collection<? extends V> vals) {
-    final Set<V> theSet = theMap.computeIfAbsent(key, k -> new HashSet<>(23));
+    final Set<V> theSet;
+    if (theMap.containsKey(key)) {
+      theSet = theMap.get(key);
+    } else {
+      theSet = new HashSet<>(23);
+      theMap.put(key, theSet);
+    }
     theSet.addAll(vals);
     return theSet.size();
   }

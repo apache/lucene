@@ -27,39 +27,22 @@ import java.util.Set;
  */
 public abstract class TokenFilterFactory extends AbstractAnalysisFactory {
 
-  /**
-   * This static holder class prevents classloading deadlock by delaying init of factories until
-   * needed.
-   */
-  private static final class Holder {
-    private static final AnalysisSPILoader<TokenFilterFactory> LOADER =
-        new AnalysisSPILoader<>(TokenFilterFactory.class);
-
-    private Holder() {}
-
-    static AnalysisSPILoader<TokenFilterFactory> getLoader() {
-      if (LOADER == null) {
-        throw new IllegalStateException(
-            "You tried to lookup a TokenFilterFactory by name before all factories could be initialized. "
-                + "This likely happens if you call TokenFilterFactory#forName from a TokenFilterFactory's ctor.");
-      }
-      return LOADER;
-    }
-  }
+  private static final AnalysisSPILoader<TokenFilterFactory> loader =
+      new AnalysisSPILoader<>(TokenFilterFactory.class);
 
   /** looks up a tokenfilter by name from context classpath */
   public static TokenFilterFactory forName(String name, Map<String, String> args) {
-    return Holder.getLoader().newInstance(name, args);
+    return loader.newInstance(name, args);
   }
 
   /** looks up a tokenfilter class by name from context classpath */
   public static Class<? extends TokenFilterFactory> lookupClass(String name) {
-    return Holder.getLoader().lookupClass(name);
+    return loader.lookupClass(name);
   }
 
   /** returns a list of all available tokenfilter names from context classpath */
   public static Set<String> availableTokenFilters() {
-    return Holder.getLoader().availableServices();
+    return loader.availableServices();
   }
 
   /** looks up a SPI name for the specified token filter factory */
@@ -82,7 +65,7 @@ public abstract class TokenFilterFactory extends AbstractAnalysisFactory {
    * given classpath/classloader!</em>
    */
   public static void reloadTokenFilters(ClassLoader classloader) {
-    Holder.getLoader().reload(classloader);
+    loader.reload(classloader);
   }
 
   /** Default ctor for compatibility with SPI */

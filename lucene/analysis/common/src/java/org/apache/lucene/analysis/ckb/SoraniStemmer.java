@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ckb;
 import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /** Light stemmer for Sorani */
-class SoraniStemmer {
+public class SoraniStemmer {
 
   /**
    * Stem an input buffer of Sorani text.
@@ -28,7 +28,7 @@ class SoraniStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  int stem(char[] s, int len) {
+  public int stem(char[] s, int len) {
     // postposition
     if (len > 5 && endsWith(s, len, "دا")) {
       len -= 2;

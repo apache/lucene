@@ -1115,8 +1115,9 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
   // full checks. we randomly exercise "raw" directories anyway. We ensure default impls are used:
 
   @Override
-  public final ChecksumIndexInput openChecksumInput(String name) throws IOException {
-    return super.openChecksumInput(name);
+  public final ChecksumIndexInput openChecksumInput(String name, IOContext context)
+      throws IOException {
+    return super.openChecksumInput(name, context);
   }
 
   @Override

@@ -36,10 +36,11 @@ import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests long value facets. */
-public class TestLongValueFacetCounts extends FacetTestCase {
+public class TestLongValueFacetCounts extends LuceneTestCase {
 
   public void testBasic() throws Exception {
     Directory d = newDirectory();
@@ -74,20 +75,11 @@ public class TestLongValueFacetCounts extends FacetTestCase {
         "dim=field path=[] value=101 childCount=6\n  0 (20)\n  1 (20)\n",
         topChildrenResult.toString());
 
-    assertFacetResult(
-        facets.getAllChildren("field"),
-        "field",
-        new String[0],
-        6,
-        101,
-        new LabelAndValue[] {
-          new LabelAndValue("0", 20),
-          new LabelAndValue("1", 20),
-          new LabelAndValue("2", 20),
-          new LabelAndValue("3", 20),
-          new LabelAndValue("4", 20),
-          new LabelAndValue("9223372036854775807", 1)
-        });
+    FacetResult allChildrenResult = facets.getAllChildren("field");
+    assertEquals(
+        "dim=field path=[] value=101 childCount=6\n  0 (20)\n  1 (20)\n  2 (20)\n  3 (20)\n  "
+            + "4 (20)\n  9223372036854775807 (1)\n",
+        allChildrenResult.toString());
 
     r.close();
     d.close();
@@ -116,16 +108,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     assertEquals("dim=field path=[] value=9 childCount=2\n  0 (4)\n  1 (5)\n", result.toString());
     result = facets.getTopChildren(10, "field");
     assertEquals("dim=field path=[] value=9 childCount=2\n  1 (5)\n  0 (4)\n", result.toString());
-
-    assertFacetResult(
-        facets.getAllChildren("field"),
-        "field",
-        new String[0],
-        2,
-        9,
-        new LabelAndValue[] {
-          new LabelAndValue("0", 4), new LabelAndValue("1", 5),
-        });
+    result = facets.getAllChildren("field");
+    assertEquals("dim=field path=[] value=9 childCount=2\n  0 (4)\n  1 (5)\n", result.toString());
 
     r.close();
     d.close();
@@ -149,18 +133,13 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     LongValueFacetCounts facets = new LongValueFacetCounts("field", fc);
 
     FacetResult result = facets.getAllChildrenSortByValue();
+    assertEquals(
+        "dim=field path=[] value=3 childCount=3\n  9223372036854775805 (1)\n  "
+            + "9223372036854775806 (1)\n  9223372036854775807 (1)\n",
+        result.toString());
 
-    assertFacetResult(
-        facets.getAllChildren("field"),
-        "field",
-        new String[0],
-        3,
-        3,
-        new LabelAndValue[] {
-          new LabelAndValue("9223372036854775805", 1),
-          new LabelAndValue("9223372036854775806", 1),
-          new LabelAndValue("9223372036854775807", 1)
-        });
+    // test getAllChildren
+    result = facets.getAllChildren("field");
 
     // since we have no insight into the value order in the hashMap, we sort labels by value and
     // count in
@@ -826,16 +805,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     for (LabelAndValue labelAndValue : fr.labelValues) {
       assert labelAndValue.value.equals(1);
     }
-
-    assertFacetResult(
-        facetCounts.getAllChildren("field"),
-        "field",
-        new String[0],
-        2,
-        2,
-        new LabelAndValue[] {
-          new LabelAndValue("42", 1), new LabelAndValue("43", 1),
-        });
+    FacetResult result = facetCounts.getAllChildren("field");
+    assertEquals("dim=field path=[] value=2 childCount=2\n  42 (1)\n  43 (1)\n", result.toString());
 
     r.close();
     dir.close();

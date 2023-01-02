@@ -20,8 +20,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -37,7 +35,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.packed.PackedInts;
@@ -215,88 +212,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
-  private static class SortingVectorValues extends VectorValues {
-    final int size;
-    final int dimension;
-    final FixedBitSet docsWithField;
-    final float[][] vectors;
-    final ByteBuffer vectorAsBytes;
-    final BytesRef[] binaryVectors;
-
-    private int docId = -1;
-
-    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap, VectorEncoding encoding)
-        throws IOException {
-      this.size = delegate.size();
-      this.dimension = delegate.dimension();
-      docsWithField = new FixedBitSet(sortMap.size());
-      if (encoding == VectorEncoding.BYTE) {
-        vectors = null;
-        binaryVectors = new BytesRef[sortMap.size()];
-        vectorAsBytes = null;
-      } else {
-        vectors = new float[sortMap.size()][];
-        binaryVectors = null;
-        vectorAsBytes =
-            ByteBuffer.allocate(delegate.dimension() * encoding.byteSize)
-                .order(ByteOrder.LITTLE_ENDIAN);
-      }
-      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
-        int newDocID = sortMap.oldToNew(doc);
-        docsWithField.set(newDocID);
-        if (encoding == VectorEncoding.BYTE) {
-          binaryVectors[newDocID] = BytesRef.deepCopyOf(delegate.binaryValue());
-        } else {
-          vectors[newDocID] = delegate.vectorValue().clone();
-        }
-      }
-    }
-
-    @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docId + 1);
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      if (binaryVectors != null) {
-        return binaryVectors[docId];
-      } else {
-        vectorAsBytes.asFloatBuffer().put(vectors[docId]);
-        return new BytesRef(vectorAsBytes.array());
-      }
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return vectors[docId];
-    }
-
-    @Override
-    public int dimension() {
-      return dimension;
-    }
-
-    @Override
-    public int size() {
-      return size;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= docsWithField.length()) {
-        return NO_MORE_DOCS;
-      }
-      return docId = docsWithField.nextSetBit(target);
-    }
-  }
-
   /**
    * Return a sorted view of <code>reader</code> according to the order defined by <code>sort</code>
    * . If the reader is already sorted, this method might return the reader as-is.
@@ -402,8 +317,8 @@ public final class SortingCodecReader extends FilterCodecReader {
   private StoredFieldsReader newStoredFieldsReader(StoredFieldsReader delegate) {
     return new StoredFieldsReader() {
       @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-        delegate.document(docMap.newToOld(docID), visitor);
+      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
+        delegate.visitDocument(docMap.newToOld(docID), visitor);
       }
 
       @Override
@@ -465,20 +380,12 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
-        FieldInfo fi = in.getFieldInfos().fieldInfo(field);
-        return new SortingVectorValues(
-            delegate.getVectorValues(field), docMap, fi.getVectorEncoding());
+        return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
       }
 
       @Override
       public TopDocs search(
           String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public TopDocs search(
-          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
         throw new UnsupportedOperationException();
       }
 

@@ -28,14 +28,10 @@ import org.junit.runners.model.Statement;
  * checked upon successful execution of each test case.
  */
 class TestRuleSetupTeardownChained implements TestRule {
-  /**
-   * @see TestRuleSetupTeardownChained
-   */
+  /** @see TestRuleSetupTeardownChained */
   public boolean setupCalled;
 
-  /**
-   * @see TestRuleSetupTeardownChained
-   */
+  /** @see TestRuleSetupTeardownChained */
   public boolean teardownCalled;
 
   @Override

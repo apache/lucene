@@ -43,7 +43,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
@@ -113,7 +112,14 @@ import org.apache.lucene.util.Version;
  */
 public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo> {
 
-  /** The version at the time when 8.0 was released. */
+  /**
+   * The version that added information about the Lucene version at the time when the index has been
+   * created.
+   */
+  public static final int VERSION_70 = 7;
+  /** The version that updated segment name counter to be long instead of int. */
+  public static final int VERSION_72 = 8;
+  /** The version that recorded softDelCount */
   public static final int VERSION_74 = 9;
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
@@ -288,7 +294,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     long generation = generationFromSegmentsFileName(segmentFileName);
     // System.out.println(Thread.currentThread() + ": SegmentInfos.readCommit " + segmentFileName);
-    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName, IOContext.READ)) {
       try {
         return readCommit(directory, input, generation, minSupportedMajorVersion);
       } catch (EOFException | NoSuchFileException | FileNotFoundException e) {
@@ -318,7 +324,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         throw new IndexFormatTooOldException(
             input, magic, CodecUtil.CODEC_MAGIC, CodecUtil.CODEC_MAGIC);
       }
-      format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_74, VERSION_CURRENT);
+      format = CodecUtil.checkHeaderNoMagic(input, "segments", VERSION_70, VERSION_CURRENT);
       byte[] id = new byte[StringHelper.ID_LENGTH];
       input.readBytes(id, 0, id.length);
       CodecUtil.checkIndexHeaderSuffix(input, Long.toString(generation, Character.MAX_RADIX));
@@ -360,7 +366,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     } catch (Throwable t) {
       priorE = t;
     } finally {
-      if (format >= VERSION_74) { // oldest supported version
+      if (format >= VERSION_70) { // oldest supported version
         CodecUtil.checkFooter(input, priorE);
       } else {
         throw IOUtils.rethrowAlways(priorE);
@@ -373,7 +379,11 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       Directory directory, DataInput input, SegmentInfos infos, int format) throws IOException {
     infos.version = CodecUtil.readBELong(input);
     // System.out.println("READ sis version=" + infos.version);
-    infos.counter = input.readVLong();
+    if (format > VERSION_70) {
+      infos.counter = input.readVLong();
+    } else {
+      infos.counter = CodecUtil.readBEInt(input);
+    }
     int numSegments = CodecUtil.readBEInt(input);
     if (numSegments < 0) {
       throw new CorruptIndexException("invalid segment count: " + numSegments, input);
@@ -404,7 +414,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       }
       long fieldInfosGen = CodecUtil.readBELong(input);
       long dvGen = CodecUtil.readBELong(input);
-      int softDelCount = CodecUtil.readBEInt(input);
+      int softDelCount = format > VERSION_72 ? CodecUtil.readBEInt(input) : 0;
       if (softDelCount < 0 || softDelCount > info.maxDoc()) {
         throw new CorruptIndexException(
             "invalid deletion count: " + softDelCount + " vs maxDoc=" + info.maxDoc(), input);
@@ -440,7 +450,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (numDVFields == 0) {
         dvUpdateFiles = Collections.emptyMap();
       } else {
-        Map<Integer, Set<String>> map = CollectionUtil.newHashMap(numDVFields);
+        Map<Integer, Set<String>> map = new HashMap<>(numDVFields);
         for (int i = 0; i < numDVFields; i++) {
           map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
         }

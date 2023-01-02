@@ -42,13 +42,13 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
   }
 
   @Override
-  protected void doSearching(ExecutorService es, int maxIterations) throws Exception {
+  protected void doSearching(ExecutorService es, long stopTime) throws Exception {
 
     boolean anyOpenDelFiles = false;
 
     DirectoryReader r = DirectoryReader.open(writer);
-    int iterations = 0;
-    while (++iterations < maxIterations && !failed.get()) {
+
+    while (System.currentTimeMillis() < stopTime && !failed.get()) {
       if (random().nextBoolean()) {
         if (VERBOSE) {
           System.out.println("TEST: now reopen r=" + r);
@@ -84,7 +84,7 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
       if (r.numDocs() > 0) {
         fixedSearcher = new IndexSearcher(r, es);
         smokeTestSearcher(fixedSearcher);
-        runSearchThreads(100);
+        runSearchThreads(System.currentTimeMillis() + 100);
       }
     }
     r.close();

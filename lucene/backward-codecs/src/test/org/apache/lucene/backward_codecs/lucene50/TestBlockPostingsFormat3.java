@@ -46,17 +46,13 @@ import org.apache.lucene.tests.analysis.MockVariableLengthPayloadFilter;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.English;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /** Tests partial enumeration (only pulling a subset of the indexed data) */
-@Nightly // N-2 formats are only tested on nightly runs
 public class TestBlockPostingsFormat3 extends LuceneTestCase {
   private final int MAXDOC =
       TEST_NIGHTLY ? Lucene50PostingsFormat.BLOCK_SIZE * 20 : Lucene50PostingsFormat.BLOCK_SIZE * 3;
@@ -198,9 +194,8 @@ public class TestBlockPostingsFormat3 extends LuceneTestCase {
       int numIntersections = atLeast(3);
       for (int i = 0; i < numIntersections; i++) {
         String re = AutomatonTestUtil.randomRegexp(random());
-        Automaton a = new RegExp(re, RegExp.NONE).toAutomaton();
-        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-        CompiledAutomaton automaton = new CompiledAutomaton(a);
+        CompiledAutomaton automaton =
+            new CompiledAutomaton(new RegExp(re, RegExp.NONE).toAutomaton());
         if (automaton.type == CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // TODO: test start term too
           TermsEnum leftIntersection = leftTerms.intersect(automaton, null);

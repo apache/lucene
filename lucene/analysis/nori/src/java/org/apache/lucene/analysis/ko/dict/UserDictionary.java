@@ -22,7 +22,7 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import org.apache.lucene.analysis.morph.Dictionary;
+import org.apache.lucene.analysis.ko.POS;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
@@ -32,9 +32,14 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
  * Class for building a User Dictionary. This class allows for adding custom nouns (세종) or compounds
  * (세종시 세종 시).
  */
-public final class UserDictionary implements Dictionary<UserMorphData> {
+public final class UserDictionary implements Dictionary {
   // text -> wordID
   private final TokenInfoFST fst;
+
+  private static final int WORD_COST = -100000;
+
+  // NNG left
+  private static final short LEFT_ID = 1781;
 
   // NNG right
   private static final short RIGHT_ID = 3533;
@@ -43,7 +48,9 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
   // NNG right with hangul and no coda on the last char
   private static final short RIGHT_ID_F = 3534;
 
-  private UserMorphData morphAtts;
+  // length, length... indexed by compound ID or null for simple noun
+  private final int[][] segmentations;
+  private final short[] rightIds;
 
   public static UserDictionary open(Reader reader) throws IOException {
 
@@ -79,8 +86,8 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     IntsRefBuilder scratch = new IntsRefBuilder();
 
     String lastToken = null;
-    List<int[]> _segmentations = new ArrayList<>(entries.size());
-    List<Short> _rightIds = new ArrayList<>(entries.size());
+    List<int[]> segmentations = new ArrayList<>(entries.size());
+    List<Short> rightIds = new ArrayList<>(entries.size());
     long ord = 0;
     for (String entry : entries) {
       String[] splits = entry.split("\\s+");
@@ -91,16 +98,16 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       char lastChar = entry.charAt(entry.length() - 1);
       if (charDef.isHangul(lastChar)) {
         if (charDef.hasCoda(lastChar)) {
-          _rightIds.add(RIGHT_ID_T);
+          rightIds.add(RIGHT_ID_T);
         } else {
-          _rightIds.add(RIGHT_ID_F);
+          rightIds.add(RIGHT_ID_F);
         }
       } else {
-        _rightIds.add(RIGHT_ID);
+        rightIds.add(RIGHT_ID);
       }
 
       if (splits.length == 1) {
-        _segmentations.add(null);
+        segmentations.add(null);
       } else {
         int[] length = new int[splits.length - 1];
         int offset = 0;
@@ -116,7 +123,7 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
                   + token
                   + ")");
         }
-        _segmentations.add(length);
+        segmentations.add(length);
       }
 
       // add mapping to FST
@@ -130,12 +137,11 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
       ord++;
     }
     this.fst = new TokenInfoFST(fstCompiler.compile());
-    int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
-    short[] rightIds = new short[_rightIds.size()];
-    for (int i = 0; i < _rightIds.size(); i++) {
-      rightIds[i] = _rightIds.get(i);
+    this.segmentations = segmentations.toArray(new int[segmentations.size()][]);
+    this.rightIds = new short[rightIds.size()];
+    for (int i = 0; i < rightIds.size(); i++) {
+      this.rightIds[i] = rightIds.get(i);
     }
-    this.morphAtts = new UserMorphData(segmentations, rightIds);
   }
 
   public TokenInfoFST getFST() {
@@ -143,8 +149,57 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
   }
 
   @Override
-  public UserMorphData getMorphAttributes() {
-    return morphAtts;
+  public int getLeftId(int wordId) {
+    return LEFT_ID;
+  }
+
+  @Override
+  public int getRightId(int wordId) {
+    return rightIds[wordId];
+  }
+
+  @Override
+  public int getWordCost(int wordId) {
+    return WORD_COST;
+  }
+
+  @Override
+  public POS.Type getPOSType(int wordId) {
+    if (segmentations[wordId] == null) {
+      return POS.Type.MORPHEME;
+    } else {
+      return POS.Type.COMPOUND;
+    }
+  }
+
+  @Override
+  public POS.Tag getLeftPOS(int wordId) {
+    return POS.Tag.NNG;
+  }
+
+  @Override
+  public POS.Tag getRightPOS(int wordId) {
+    return POS.Tag.NNG;
+  }
+
+  @Override
+  public String getReading(int wordId) {
+    return null;
+  }
+
+  @Override
+  public Morpheme[] getMorphemes(int wordId, char[] surfaceForm, int off, int len) {
+    int[] segs = segmentations[wordId];
+    if (segs == null) {
+      return null;
+    }
+    int offset = 0;
+    Morpheme[] morphemes = new Morpheme[segs.length];
+    for (int i = 0; i < segs.length; i++) {
+      morphemes[i] = new Morpheme(POS.Tag.NNG, new String(surfaceForm, off + offset, segs[i]));
+      offset += segs[i];
+    }
+    return morphemes;
   }
 
   /**

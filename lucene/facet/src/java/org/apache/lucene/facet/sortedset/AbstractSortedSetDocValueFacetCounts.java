@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PrimitiveIterator;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
@@ -61,7 +62,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   AbstractSortedSetDocValueFacetCounts(SortedSetDocValuesReaderState state) throws IOException {
     this.state = state;
     this.field = state.getField();
-    this.stateConfig = state.getFacetsConfig();
+    this.stateConfig = Objects.requireNonNullElse(state.getFacetsConfig(), new FacetsConfig());
     this.dv = state.getDocValues();
   }
 
@@ -303,7 +304,6 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       PrimitiveIterator.OfInt childOrds, int topN, DimConfig dimConfig, int pathOrd) {
     TopOrdAndIntQueue q = null;
     int bottomCount = 0;
-    int bottomOrd = Integer.MAX_VALUE;
     int pathCount = 0;
     int childCount = 0;
 
@@ -314,7 +314,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       if (count > 0) {
         pathCount += count;
         childCount++;
-        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
+        if (count > bottomCount) {
           if (reuse == null) {
             reuse = new TopOrdAndIntQueue.OrdAndValue();
           }
@@ -328,7 +328,6 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
           reuse = q.insertWithOverflow(reuse);
           if (q.size() == topN) {
             bottomCount = q.top().value;
-            bottomOrd = q.top().value;
           }
         }
       }
@@ -388,7 +387,17 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   }
 
   /** Intermediate result to store top children for a given path before resolving labels, etc. */
-  record TopChildrenForPath(int pathCount, int childCount, TopOrdAndIntQueue q) {}
+  private static class TopChildrenForPath {
+    private final int pathCount;
+    private final int childCount;
+    private final TopOrdAndIntQueue q;
+
+    TopChildrenForPath(int pathCount, int childCount, TopOrdAndIntQueue q) {
+      this.pathCount = pathCount;
+      this.childCount = childCount;
+      this.q = q;
+    }
+  }
 
   static final class DimValue {
     String dim;

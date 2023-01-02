@@ -17,25 +17,16 @@
 package org.apache.lucene.facet.facetset;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.*;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BytesRef;
 
 public class TestExactFacetSetMatcher extends FacetTestCase {
 
@@ -338,94 +329,5 @@ public class TestExactFacetSetMatcher extends FacetTestCase {
 
     r.close();
     d.close();
-  }
-
-  public void testLongFacetSetMatchingWithFastMatchQuery() throws Exception {
-    Directory d = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), d);
-
-    List<LongFacetSet> allSets = new ArrayList<>();
-    for (int manufacturerOrd : MANUFACTURER_ORDS) {
-      for (int year : YEARS) {
-        allSets.add(new LongFacetSet(manufacturerOrd, year));
-      }
-    }
-
-    int numFord2010 = 0;
-    int numChevy2011 = 0;
-    int numMatchingDocs = 0;
-    for (int i = 0; i < 100; i++) {
-      Document doc = new Document();
-      int numSets = TestUtil.nextInt(random(), 1, 4);
-      Collections.shuffle(allSets, random());
-      LongFacetSet[] facetSets = allSets.subList(0, numSets).toArray(LongFacetSet[]::new);
-      boolean matchingDoc = false;
-      for (LongFacetSet facetSet : facetSets) {
-        if (FORD_ORD == facetSet.values[0] && facetSet.values[1] == 2010) {
-          ++numFord2010;
-          matchingDoc = true;
-        } else if (CHEVY_ORD == facetSet.values[0] && facetSet.values[1] == 2011) {
-          ++numChevy2011;
-          matchingDoc = true;
-        }
-      }
-      numMatchingDocs += matchingDoc ? 1 : 0;
-      doc.add(FacetSetsField.create("field", facetSets)); // field for aggregation
-      // add fields for drill-down + fast matching
-      addFastMatchField("manufacturer", doc, facetSets, 0);
-      addFastMatchField("year", doc, facetSets, 1);
-      w.addDocument(doc);
-    }
-
-    IndexReader r = w.getReader();
-    w.close();
-
-    IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-
-    Query fastMatchQuery =
-        new BooleanQuery.Builder()
-            .add(
-                createFastMatchQuery("manufacturer", FORD_ORD, CHEVY_ORD), BooleanClause.Occur.MUST)
-            .add(createFastMatchQuery("year", 2010, 2011), BooleanClause.Occur.MUST)
-            .build();
-    Facets facets =
-        new MatchingFacetSetsCounts(
-            "field",
-            fc,
-            FacetSetDecoder::decodeLongs,
-            fastMatchQuery,
-            new ExactFacetSetMatcher("Ford 2010", new LongFacetSet(FORD_ORD, 2010)),
-            new ExactFacetSetMatcher("Chevy 2011", new LongFacetSet(CHEVY_ORD, 2011)));
-
-    FacetResult result = facets.getAllChildren("field");
-
-    assertEquals("field", result.dim);
-    assertEquals(0, result.path.length);
-    assertEquals(numMatchingDocs, result.value);
-    assertEquals(2, result.childCount);
-
-    assertEquals(new LabelAndValue("Ford 2010", numFord2010), result.labelValues[0]);
-    assertEquals(new LabelAndValue("Chevy 2011", numChevy2011), result.labelValues[1]);
-
-    r.close();
-    d.close();
-  }
-
-  private static Query createFastMatchQuery(String field, int... values) {
-    return new TermInSetQuery(
-        field,
-        Arrays.stream(values)
-            .mapToObj(String::valueOf)
-            .map(BytesRef::new)
-            .collect(Collectors.toList()));
-  }
-
-  private static void addFastMatchField(
-      String field, Document doc, LongFacetSet[] facetSets, int index) {
-    Arrays.stream(facetSets)
-        .map(facetSet -> facetSet.values[index])
-        .distinct()
-        .forEach(value -> doc.add(new StringField(field, String.valueOf(value), Field.Store.NO)));
   }
 }
