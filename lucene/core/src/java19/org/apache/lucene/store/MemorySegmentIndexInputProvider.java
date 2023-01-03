@@ -35,8 +35,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public IndexInput openInput(
-      Path path, IOContext context, int chunkSizePower, boolean preload, boolean useUnmapHack)
+  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 

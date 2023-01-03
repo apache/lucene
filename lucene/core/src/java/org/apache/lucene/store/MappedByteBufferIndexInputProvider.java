@@ -33,6 +33,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.store.ByteBufferGuard.BufferCleaner;
 import org.apache.lucene.util.Constants;
@@ -46,7 +47,12 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
   private final String unmapNotSupportedReason;
 
   public MappedByteBufferIndexInputProvider() {
-    final Object hack = doPrivileged(MappedByteBufferIndexInputProvider::unmapHackImpl);
+    final Object hack =
+        checkUnmapHackSysprop()
+            ? doPrivileged(MappedByteBufferIndexInputProvider::unmapHackImpl)
+            : ("Unmapping was disabled by system property "
+                + MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP
+                + "=false");
     if (hack instanceof BufferCleaner) {
       cleaner = (BufferCleaner) hack;
       unmapSupported = true;
@@ -60,8 +66,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
   }
 
   @Override
-  public IndexInput openInput(
-      Path path, IOContext context, int chunkSizePower, boolean preload, boolean useUnmapHack)
+  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
       throws IOException {
     if (chunkSizePower > 30) {
       throw new IllegalArgumentException(
@@ -77,7 +82,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
           map(resourceDescription, fc, chunkSizePower, preload, fileSize),
           fileSize,
           chunkSizePower,
-          new ByteBufferGuard(resourceDescription, useUnmapHack ? cleaner : null));
+          new ByteBufferGuard(resourceDescription, cleaner));
     }
   }
 
@@ -130,6 +135,18 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     }
 
     return buffers;
+  }
+
+  private static boolean checkUnmapHackSysprop() {
+    try {
+      return Optional.ofNullable(System.getProperty(MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP))
+          .map(Boolean::valueOf)
+          .orElse(Boolean.TRUE);
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
+      return true;
+    }
   }
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
