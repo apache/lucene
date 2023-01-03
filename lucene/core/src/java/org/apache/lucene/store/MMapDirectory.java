@@ -117,10 +117,8 @@ public class MMapDirectory extends FSDirectory {
   /**
    * This sysprop allows to control if {@code MemorySegment} API should be used on supported Java
    * versions. By default it is enabled; set to {@code false} to use legacy {@code ByteBuffer}
-   * implementation.
-   *
-   * <p>To disable use of {@code MemorySegment} usage, pass {@code
-   * -Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false} on command line.
+   * implementation. On command line pass {@code
+   * -Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false} to disable.
    *
    * @lucene.internal
    */
@@ -365,7 +363,7 @@ public class MMapDirectory extends FSDirectory {
     try {
       return Optional.ofNullable(System.getProperty(ENABLE_MEMORY_SEGMENTS_SYSPROP))
           .map(Boolean::valueOf)
-          .orElse(true);
+          .orElse(Boolean.TRUE);
     } catch (
         @SuppressWarnings("unused")
         SecurityException ignored) {
