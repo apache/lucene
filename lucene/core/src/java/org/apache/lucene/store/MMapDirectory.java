@@ -22,6 +22,7 @@ import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.logging.Logger;
@@ -112,6 +113,17 @@ public class MMapDirectory extends FSDirectory {
    * </ul>
    */
   public static final long DEFAULT_MAX_CHUNK_SIZE;
+
+  /**
+   * This sysprop allows to control if {@code MemorySegment} API should be used on supported Java
+   * versions. By default it is enabled; set to {@code false} to use legacy {@code ByteBuffer}
+   * implementation. On command line pass {@code
+   * -Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false} to disable.
+   *
+   * @lucene.internal
+   */
+  public static final String ENABLE_MEMORY_SEGMENTS_SYSPROP =
+      "org.apache.lucene.store.MMapDirectory.enableMemorySegments";
 
   final int chunkSizePower;
 
@@ -369,7 +381,22 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
+  private static boolean checkMemorySegmentsSysprop() {
+    try {
+      return Optional.ofNullable(System.getProperty(ENABLE_MEMORY_SEGMENTS_SYSPROP))
+          .map(Boolean::valueOf)
+          .orElse(Boolean.TRUE);
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException ignored) {
+      return true;
+    }
+  }
+
   private static MMapIndexInputProvider lookupProvider() {
+    if (checkMemorySegmentsSysprop() == false) {
+      return new MappedByteBufferIndexInputProvider();
+    }
     final var lookup = MethodHandles.lookup();
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion == 19) {
