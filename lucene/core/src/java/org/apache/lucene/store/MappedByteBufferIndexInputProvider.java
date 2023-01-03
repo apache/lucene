@@ -47,12 +47,7 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
   private final String unmapNotSupportedReason;
 
   public MappedByteBufferIndexInputProvider() {
-    final Object hack =
-        checkUnmapHackSysprop()
-            ? doPrivileged(MappedByteBufferIndexInputProvider::unmapHackImpl)
-            : ("Unmapping was disabled by system property "
-                + MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP
-                + "=false");
+    final Object hack = doPrivileged(MappedByteBufferIndexInputProvider::unmapHackImpl);
     if (hack instanceof BufferCleaner) {
       cleaner = (BufferCleaner) hack;
       unmapSupported = true;
@@ -137,6 +132,13 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     return buffers;
   }
 
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
+
   private static boolean checkUnmapHackSysprop() {
     try {
       return Optional.ofNullable(System.getProperty(MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP))
@@ -149,15 +151,13 @@ final class MappedByteBufferIndexInputProvider implements MMapDirectory.MMapInde
     }
   }
 
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
-  }
-
   @SuppressForbidden(reason = "Needs access to sun.misc.Unsafe to enable hack")
   private static Object unmapHackImpl() {
+    if (checkUnmapHackSysprop() == false) {
+      return "Unmapping was disabled by system property "
+          + MMapDirectory.ENABLE_UNMAP_HACK_SYSPROP
+          + "=false";
+    }
     final Lookup lookup = lookup();
     try {
       // *** sun.misc.Unsafe unmapping (Java 9+) ***
