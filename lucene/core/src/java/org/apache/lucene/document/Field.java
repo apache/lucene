@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.BytesTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
@@ -212,9 +213,10 @@ public class Field implements IndexableField {
     }
     if (type.indexOptions() == IndexOptions.NONE
         && type.pointDimensionCount() == 0
+        && type.docValuesType() == DocValuesType.NONE
         && type.stored() == false) {
       throw new IllegalArgumentException(
-          "it doesn't make sense to have a field that is neither indexed nor stored");
+          "it doesn't make sense to have a field that is neither indexed, nor doc-valued, nor stored");
     }
     this.name = name;
     this.fieldsData = bytes;
