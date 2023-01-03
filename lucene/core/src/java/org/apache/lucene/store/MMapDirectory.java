@@ -129,10 +129,9 @@ public class MMapDirectory extends FSDirectory {
   public static final long DEFAULT_MAX_CHUNK_SIZE;
 
   /**
-   * This sysprop enables the workaround for unmapping the buffers from address space after closing
-   * {@link IndexInput}. It forcefully unmaps the buffer on close by using an undocumented internal
-   * cleanup functionality. By default it is enabled, disable it by setting this sysprop to {@code
-   * false}. On command line pass {@code
+   * This sysprop allows to control the workaround/hack for unmapping the buffers from address space
+   * after closing {@link IndexInput}. By default it is enabled; set to {@code false} to disable the
+   * unmap hack globally. On command line pass {@code
    * -Dorg.apache.lucene.store.MMapDirectory.enableUnmapHack=false} to disable.
    *
    * @lucene.internal
@@ -241,7 +240,7 @@ public class MMapDirectory extends FSDirectory {
    * @see #setUseUnmap
    * @deprecated use {@link #UNMAP_SUPPORTED}
    */
-  @Deprecated(forRemoval = true)
+  @Deprecated
   public boolean getUseUnmap() {
     return UNMAP_SUPPORTED;
   }
