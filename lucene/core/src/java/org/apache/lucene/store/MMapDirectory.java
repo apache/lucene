@@ -21,12 +21,15 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -362,6 +365,13 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
+
   private static boolean checkMemorySegmentsSysprop() {
     try {
       return Optional.ofNullable(System.getProperty(ENABLE_MEMORY_SEGMENTS_SYSPROP))
@@ -375,7 +385,7 @@ public class MMapDirectory extends FSDirectory {
   }
 
   private static MMapIndexInputProvider lookupProvider() {
-    if (checkMemorySegmentsSysprop() == false) {
+    if (doPrivileged(MMapDirectory::checkMemorySegmentsSysprop) == false) {
       return new MappedByteBufferIndexInputProvider();
     }
     final var lookup = MethodHandles.lookup();
