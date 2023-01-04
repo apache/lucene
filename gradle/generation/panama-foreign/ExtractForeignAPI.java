@@ -52,7 +52,7 @@ public final class ExtractForeignAPI {
         try (var in = Files.newInputStream(javaBaseModule.resolve(relative))) {
           final var reader = new ClassReader(in);
           final var cw = new ClassWriter(0);
-          reader.accept(new Handler(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
+          reader.accept(new Handler(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
           out.putNextEntry(new ZipEntry(reader.getClassName().concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
           out.write(cw.toByteArray());
           out.closeEntry();
