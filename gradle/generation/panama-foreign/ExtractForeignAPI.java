@@ -16,18 +16,15 @@
  */
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -48,25 +45,19 @@ public final class ExtractForeignAPI {
     var outputPath = Paths.get(args[0]);
     var javaBaseModule = Paths.get(URI.create("jrt:/")).resolve("java.base").toRealPath();
     var fileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel}.class");
-    try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
-      Files.walkFileTree(javaBaseModule, new SimpleFileVisitor<Path>() {
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-          var relative = javaBaseModule.relativize(file);
-          if (fileMatcher.matches(relative)) {
-            System.out.println("Processing class file: " + relative);
-            try (var in = Files.newInputStream(file)) {
-              final var reader = new ClassReader(in);
-              final var cw = new ClassWriter(0);
-              reader.accept(new Handler(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
-              out.putNextEntry(new ZipEntry(reader.getClassName().concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
-              out.write(cw.toByteArray());
-              out.closeEntry();
-            }
-          }
-          return FileVisitResult.CONTINUE;
+    try (var out = new ZipOutputStream(Files.newOutputStream(outputPath)); var stream = Files.walk(javaBaseModule)) {
+      var filesToExtract = stream.map(javaBaseModule::relativize).filter(fileMatcher::matches).sorted().collect(Collectors.toList());
+      for (Path relative : filesToExtract) {
+        System.out.println("Processing class file: " + relative);
+        try (var in = Files.newInputStream(javaBaseModule.resolve(relative))) {
+          final var reader = new ClassReader(in);
+          final var cw = new ClassWriter(0);
+          reader.accept(new Handler(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG);
+          out.putNextEntry(new ZipEntry(reader.getClassName().concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
+          out.write(cw.toByteArray());
+          out.closeEntry();
         }
-     });
+      }
     }
   }
   
