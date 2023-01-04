@@ -145,6 +145,11 @@ API Changes
   provide best performance for filtering and sorting.
   (Francisco Fernández Castaño, Adrien Grand)
 
+* GITHUB#12066: Retire/deprecate instance method MMapDirectory#setUseUnmap().
+  Like the new setting for MemorySegments, this feature is enabled by default and
+  can only be disabled globally by passing the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableUnmapHack=false" (Uwe Schindler)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
@@ -162,7 +167,9 @@ New Features
 * GITHUB#12033: Support for Java 19 foreign memory support is now enabled by default,
   no need to pass "--enable-preview" on the command line. If exactly Java 19 is used,
   MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and
-  indexes closed while queries are running can no longer crash the JVM.  (Uwe Schindler)
+  indexes closed while queries are running can no longer crash the JVM.
+  To disable this feature, pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
 
 * GITHUB#11869: RangeOnRangeFacetCounts added, supporting numeric range "relationship" faceting over docvalue-stored
   ranges. (Marc D'Mello)
@@ -219,6 +226,8 @@ Bug Fixes
 
 * GITHUB#12058: Fix detection of Hotspot in TestRamUsageEstimator so it works with OpenJ9.
   (Uwe Schindler)
+
+* GITHUB#12046: Out of boundary in CombinedFieldQuery#addTerm. (Lu Xugang)
 
 Optimizations
 ---------------------
