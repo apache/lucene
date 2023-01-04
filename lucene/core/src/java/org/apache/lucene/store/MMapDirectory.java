@@ -96,6 +96,8 @@ import org.apache.lucene.util.SuppressForbidden;
  */
 public class MMapDirectory extends FSDirectory {
 
+  private static final Logger LOG = Logger.getLogger(MMapDirectory.class.getName());
+
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
    * opening them.
@@ -379,12 +381,16 @@ public class MMapDirectory extends FSDirectory {
     } catch (
         @SuppressWarnings("unused")
         SecurityException ignored) {
+      LOG.warning(
+          "Cannot read sysprop "
+              + ENABLE_MEMORY_SEGMENTS_SYSPROP
+              + ", so MemorySegments will be enabled by default, if possible.");
       return true;
     }
   }
 
   private static MMapIndexInputProvider lookupProvider() {
-    if (doPrivileged(MMapDirectory::checkMemorySegmentsSysprop) == false) {
+    if (checkMemorySegmentsSysprop() == false) {
       return new MappedByteBufferIndexInputProvider();
     }
     final var lookup = MethodHandles.lookup();
@@ -410,15 +416,14 @@ public class MMapDirectory extends FSDirectory {
             "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
     } else if (runtimeVersion >= 20) {
-      var log = Logger.getLogger(lookup.lookupClass().getName());
-      log.warning(
+      LOG.warning(
           "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
     }
     return new MappedByteBufferIndexInputProvider();
   }
 
   static {
-    PROVIDER = lookupProvider();
+    PROVIDER = doPrivileged(MMapDirectory::lookupProvider);
     DEFAULT_MAX_CHUNK_SIZE = PROVIDER.getDefaultMaxChunkSize();
     UNMAP_SUPPORTED = PROVIDER.isUnmapSupported();
     UNMAP_NOT_SUPPORTED_REASON = PROVIDER.getUnmapNotSupportedReason();

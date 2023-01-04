@@ -31,7 +31,11 @@ import org.apache.lucene.util.Unwrappable;
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
   public MemorySegmentIndexInputProvider() {
-    Logger.getLogger(getClass().getName()).info("Using MemorySegmentIndexInput with Java 19");
+    var log = Logger.getLogger(getClass().getName());
+    log.info(
+        "Using MemorySegmentIndexInput with Java 19; to disable start with -D"
+            + MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP
+            + "=false");
   }
 
   @Override
