@@ -559,8 +559,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       return ((Lucene95HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
     }
 
+    // We should not reach here because knnVectorsReader's type is checked in
+    // selectGraphForInitialization
     throw new IllegalArgumentException(
-        "Invalid KnnVectorsReader. Must be of type PerFieldKnnVectorsFormat.FieldsReader or Lucene94HnswVectorsReader");
+        "Invalid KnnVectorsReader type for field: "
+            + fieldName
+            + ". Must be Lucene95HnswVectorsReader or newer");
   }
 
   private Map<Integer, Integer> getOldToNewOrdinalMap(
@@ -571,6 +575,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
 
     Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
     int oldOrd = 0;
+    int maxNewDocID = -1;
     for (int oldId = initializerVectorValues.nextDoc();
         oldId != NO_MORE_DOCS;
         oldId = initializerVectorValues.nextDoc()) {
@@ -578,15 +583,18 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         continue;
       }
       int newId = initializerDocMap.get(oldId);
+      maxNewDocID = Math.max(newId, maxNewDocID);
       newIdToOldOrdinal.put(newId, oldOrd);
       oldOrd++;
     }
 
-    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
-    int newOrd = 0;
-    int maxNewDocID = Collections.max(newIdToOldOrdinal.keySet());
-    VectorValues vectorValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    if (maxNewDocID == -1) {
+      return Collections.emptyMap();
+    }
 
+    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
+    VectorValues vectorValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    int newOrd = 0;
     for (int newDocId = vectorValues.nextDoc();
         newDocId <= maxNewDocID;
         newDocId = vectorValues.nextDoc()) {
