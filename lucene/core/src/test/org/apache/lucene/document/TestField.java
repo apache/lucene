@@ -776,4 +776,12 @@ public class TestField extends LuceneTestCase {
     ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
   }
+
+  public void testTermVectorsOffsetsBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(false);
+    ft.setStoreTermVectors(true);
+    ft.setStoreTermVectorOffsets(true);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
+  }
 }

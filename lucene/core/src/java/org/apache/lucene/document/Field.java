@@ -205,7 +205,7 @@ public class Field implements IndexableField {
     if (type == null) {
       throw new IllegalArgumentException("type must not be null");
     }
-    if (type.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0) {
+    if (type.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0 || type.storeTermVectorOffsets()) {
       throw new IllegalArgumentException("It doesn't make sense to index offsets on binary fields");
     }
     if (type.indexOptions() != IndexOptions.NONE && type.tokenized()) {
