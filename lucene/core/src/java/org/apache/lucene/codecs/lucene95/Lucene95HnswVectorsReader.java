@@ -239,12 +239,30 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   @Override
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
+    }
     return OffHeapVectorValues.load(fieldEntry, vectorData);
   }
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
+    }
     return OffHeapByteVectorValues.load(fieldEntry, vectorData);
   }
 

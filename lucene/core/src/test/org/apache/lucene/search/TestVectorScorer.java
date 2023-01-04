@@ -46,7 +46,7 @@ public class TestVectorScorer extends LuceneTestCase {
       assert reader.leaves().size() == 1;
       LeafReaderContext context = reader.leaves().get(0);
       FieldInfo fieldInfo = context.reader().getFieldInfos().fieldInfo("field");
-      final VectorScorer<?> vectorScorer;
+      final VectorScorer vectorScorer;
       switch (encoding) {
         case BYTE:
           vectorScorer = VectorScorer.create(context, fieldInfo, new BytesRef(new byte[] {1, 2}));

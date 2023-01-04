@@ -81,8 +81,7 @@ public class KnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  VectorScorer<float[]> createVectorScorer(LeafReaderContext context, FieldInfo fi)
-      throws IOException {
+  VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
     if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       return null;
     }

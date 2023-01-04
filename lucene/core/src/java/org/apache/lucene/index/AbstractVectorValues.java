@@ -27,9 +27,6 @@ import org.apache.lucene.util.BytesRef;
  */
 public abstract class AbstractVectorValues<T> extends DocIdSetIterator {
 
-  /** The maximum length of a vector */
-  public static final int MAX_DIMENSIONS = 1024;
-
   /** Sole constructor */
   protected AbstractVectorValues() {}
 

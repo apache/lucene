@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.AbstractVectorValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
@@ -30,8 +29,7 @@ import org.apache.lucene.util.BytesRef;
  * is primarily used by {@link org.apache.lucene.search.KnnVectorQuery} to run an exact, exhaustive
  * search over the vectors.
  */
-abstract class VectorScorer<T> {
-  protected final AbstractVectorValues<T> values;
+abstract class VectorScorer {
   protected final VectorSimilarityFunction similarity;
 
   /**
@@ -55,33 +53,37 @@ abstract class VectorScorer<T> {
     return new ByteVectorScorer(values, query, similarity);
   }
 
-  VectorScorer(AbstractVectorValues<T> values, VectorSimilarityFunction similarity) {
-    this.values = values;
+  VectorScorer(VectorSimilarityFunction similarity) {
     this.similarity = similarity;
-  }
-
-  /**
-   * Advance the instance to the given document ID and return true if there is a value for that
-   * document.
-   */
-  public boolean advanceExact(int doc) throws IOException {
-    int vectorDoc = values.docID();
-    if (vectorDoc < doc) {
-      vectorDoc = values.advance(doc);
-    }
-    return vectorDoc == doc;
   }
 
   /** Compute the similarity score for the current document. */
   abstract float score() throws IOException;
 
-  private static class ByteVectorScorer extends VectorScorer<BytesRef> {
+  abstract boolean advanceExact(int doc) throws IOException;
+
+  private static class ByteVectorScorer extends VectorScorer {
     private final BytesRef query;
+    private final ByteVectorValues values;
 
     protected ByteVectorScorer(
         ByteVectorValues values, BytesRef query, VectorSimilarityFunction similarity) {
-      super(values, similarity);
+      super(similarity);
+      this.values = values;
       this.query = query;
+    }
+
+    /**
+     * Advance the instance to the given document ID and return true if there is a value for that
+     * document.
+     */
+    @Override
+    public boolean advanceExact(int doc) throws IOException {
+      int vectorDoc = values.docID();
+      if (vectorDoc < doc) {
+        vectorDoc = values.advance(doc);
+      }
+      return vectorDoc == doc;
     }
 
     @Override
@@ -90,13 +92,28 @@ abstract class VectorScorer<T> {
     }
   }
 
-  private static class FloatVectorScorer extends VectorScorer<float[]> {
+  private static class FloatVectorScorer extends VectorScorer {
     private final float[] query;
+    private final VectorValues values;
 
     protected FloatVectorScorer(
         VectorValues values, float[] query, VectorSimilarityFunction similarity) {
-      super(values, similarity);
+      super(similarity);
       this.query = query;
+      this.values = values;
+    }
+
+    /**
+     * Advance the instance to the given document ID and return true if there is a value for that
+     * document.
+     */
+    @Override
+    public boolean advanceExact(int doc) throws IOException {
+      int vectorDoc = values.docID();
+      if (vectorDoc < doc) {
+        vectorDoc = values.advance(doc);
+      }
+      return vectorDoc == doc;
     }
 
     @Override

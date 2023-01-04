@@ -235,7 +235,13 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
     }
     return OffHeapVectorValues.load(fieldEntry, vectorData);
   }
@@ -244,7 +250,13 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return null;
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT32);
     }
     return OffHeapByteVectorValues.load(fieldEntry, vectorData);
   }
