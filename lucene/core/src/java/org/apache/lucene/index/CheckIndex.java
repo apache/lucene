@@ -4258,9 +4258,4 @@ public final class CheckIndex implements Closeable {
       super(message, cause);
     }
   }
-
-  @FunctionalInterface
-  private interface CheckedFunction<T, R, E extends Exception> {
-    R apply(T value) throws E;
-  }
 }
