@@ -31,12 +31,15 @@ import org.apache.lucene.util.Unwrappable;
 final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
 
   public MemorySegmentIndexInputProvider() {
-    Logger.getLogger(getClass().getName()).info("Using MemorySegmentIndexInput with Java 20");
+    var log = Logger.getLogger(getClass().getName());
+    log.info(
+        "Using MemorySegmentIndexInput with Java 20; to disable start with -D"
+            + MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP
+            + "=false");
   }
 
   @Override
-  public IndexInput openInput(
-      Path path, IOContext context, int chunkSizePower, boolean preload, boolean useUnmapHack)
+  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
