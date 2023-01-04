@@ -21,12 +21,15 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -44,10 +47,10 @@ import org.apache.lucene.util.Constants;
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
  * {@link #setPreload(BiPredicate)} for more details.
  *
- * <p>Due to <a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038">this bug</a> in
- * Sun's JRE, MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file
- * handle. Only when GC finally collects the underlying objects, which could be quite some time
- * later, will the file handle be closed.
+ * <p>Due to <a href="https://bugs.openjdk.org/browse/JDK-4724038">this bug</a> in OpenJDK,
+ * MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file handle. Only
+ * when GC finally collects the underlying objects, which could be quite some time later, will the
+ * file handle be closed.
  *
  * <p>This will consume additional transient disk usage: on Windows, attempts to delete or overwrite
  * the files will result in an exception; on other platforms, which typically have a &quot;delete on
@@ -56,14 +59,26 @@ import org.apache.lucene.util.Constants;
  * disk space, and you don't rely on overwriting files on Windows) but it's still an important
  * limitation to be aware of.
  *
- * <p>This class supplies the workaround mentioned in the bug report (see {@link #setUseUnmap}),
- * which may fail on non-Oracle/OpenJDK JVMs. It forcefully unmaps the buffer on close by using an
- * undocumented internal cleanup functionality. If {@link #UNMAP_SUPPORTED} is <code>true</code>,
- * the workaround will be automatically enabled (with no guarantees; if you discover any problems,
- * you can disable it).
+ * <p>This class supplies the workaround mentioned in the bug report, which may fail on
+ * non-Oracle/OpenJDK JVMs. It forcefully unmaps the buffer on close by using an undocumented
+ * internal cleanup functionality. If {@link #UNMAP_SUPPORTED} is <code>true</code>, the workaround
+ * will be automatically enabled (with no guarantees; if you discover any problems, you can disable
+ * it by using system property {@link #ENABLE_UNMAP_HACK_SYSPROP}).
+ *
+ * <p>For the hack to work correct, the following requirements need to be fulfilled: The used JVM
+ * must be at least Oracle Java / OpenJDK. In addition, the following permissions need to be granted
+ * to {@code lucene-core.jar} in your <a
+ * href="http://docs.oracle.com/javase/8/docs/technotes/guides/security/PolicyFiles.html">policy
+ * file</a>:
+ *
+ * <ul>
+ *   <li>{@code permission java.lang.reflect.ReflectPermission "suppressAccessChecks";}
+ *   <li>{@code permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";}
+ * </ul>
  *
  * <p>On exactly <b>Java 19</b> this class will use the modern {@code MemorySegment} API which
- * allows to safely unmap.
+ * allows to safely unmap (if you discover any problems with this preview API, you can disable it by
+ * using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
  *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
@@ -80,6 +95,8 @@ import org.apache.lucene.util.Constants;
  *     about MMapDirectory</a>
  */
 public class MMapDirectory extends FSDirectory {
+
+  private static final Logger LOG = Logger.getLogger(MMapDirectory.class.getName());
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
@@ -100,7 +117,6 @@ public class MMapDirectory extends FSDirectory {
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
       (filename, context) -> context.load;
 
-  private boolean useUnmapHack = UNMAP_SUPPORTED;
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
@@ -113,6 +129,17 @@ public class MMapDirectory extends FSDirectory {
    * </ul>
    */
   public static final long DEFAULT_MAX_CHUNK_SIZE;
+
+  /**
+   * This sysprop allows to control the workaround/hack for unmapping the buffers from address space
+   * after closing {@link IndexInput}. By default it is enabled; set to {@code false} to disable the
+   * unmap hack globally. On command line pass {@code
+   * -Dorg.apache.lucene.store.MMapDirectory.enableUnmapHack=false} to disable.
+   *
+   * @lucene.internal
+   */
+  public static final String ENABLE_UNMAP_HACK_SYSPROP =
+      "org.apache.lucene.store.MMapDirectory.enableUnmapHack";
 
   /**
    * This sysprop allows to control if {@code MemorySegment} API should be used on supported Java
@@ -195,47 +222,29 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * This method enables the workaround for unmapping the buffers from address space after closing
-   * {@link IndexInput}, that is mentioned in the bug report. This hack may fail on
-   * non-Oracle/OpenJDK JVMs. It forcefully unmaps the buffer on close by using an undocumented
-   * internal cleanup functionality.
+   * This method is retired, see deprecation notice!
    *
-   * <p>On exactly Java 19 this class will use the modern {@code MemorySegment} API which allows to
-   * safely unmap. <em>The following warnings no longer apply in that case!</em>
-   *
-   * <p><b>NOTE:</b> Enabling this is completely unsupported by Java and may lead to JVM crashes if
-   * <code>IndexInput</code> is closed while another thread is still accessing it (SIGSEGV).
-   *
-   * <p>To enable the hack, the following requirements need to be fulfilled: The used JVM must be
-   * Oracle Java / OpenJDK 8 <em>(preliminary support for Java 9 EA build 150+ was added with Lucene
-   * 6.4)</em>. In addition, the following permissions need to be granted to {@code lucene-core.jar}
-   * in your <a
-   * href="http://docs.oracle.com/javase/8/docs/technotes/guides/security/PolicyFiles.html">policy
-   * file</a>:
-   *
-   * <ul>
-   *   <li>{@code permission java.lang.reflect.ReflectPermission "suppressAccessChecks";}
-   *   <li>{@code permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";}
-   * </ul>
-   *
-   * @throws IllegalArgumentException if {@link #UNMAP_SUPPORTED} is <code>false</code> and the
-   *     workaround cannot be enabled. The exception message also contains an explanation why the
-   *     hack cannot be enabled (e.g., missing permissions).
+   * @throws UnsupportedOperationException as setting cannot be changed
+   * @deprecated Please use new system property {@link #ENABLE_UNMAP_HACK_SYSPROP} instead
    */
+  @Deprecated(forRemoval = true)
   public void setUseUnmap(final boolean useUnmapHack) {
-    if (useUnmapHack && !UNMAP_SUPPORTED) {
-      throw new IllegalArgumentException(UNMAP_NOT_SUPPORTED_REASON);
+    if (useUnmapHack != UNMAP_SUPPORTED) {
+      throw new UnsupportedOperationException(
+          "It is no longer possible configure unmap hack for directory instances. Please use the global system property: "
+              + ENABLE_UNMAP_HACK_SYSPROP);
     }
-    this.useUnmapHack = useUnmapHack;
   }
 
   /**
    * Returns <code>true</code>, if the unmap workaround is enabled.
    *
    * @see #setUseUnmap
+   * @deprecated use {@link #UNMAP_SUPPORTED}
    */
+  @Deprecated
   public boolean getUseUnmap() {
-    return useUnmapHack;
+    return UNMAP_SUPPORTED;
   }
 
   /**
@@ -289,8 +298,7 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(
-        path, context, chunkSizePower, preload.test(name, context), useUnmapHack);
+    return PROVIDER.openInput(path, context, chunkSizePower, preload.test(name, context));
   }
 
   // visible for tests:
@@ -306,8 +314,7 @@ public class MMapDirectory extends FSDirectory {
   public static final String UNMAP_NOT_SUPPORTED_REASON;
 
   static interface MMapIndexInputProvider {
-    IndexInput openInput(
-        Path path, IOContext context, int chunkSizePower, boolean preload, boolean useUnmapHack)
+    IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
         throws IOException;
 
     long getDefaultMaxChunkSize();
@@ -359,6 +366,13 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
+
   private static boolean checkMemorySegmentsSysprop() {
     try {
       return Optional.ofNullable(System.getProperty(ENABLE_MEMORY_SEGMENTS_SYSPROP))
@@ -367,6 +381,10 @@ public class MMapDirectory extends FSDirectory {
     } catch (
         @SuppressWarnings("unused")
         SecurityException ignored) {
+      LOG.warning(
+          "Cannot read sysprop "
+              + ENABLE_MEMORY_SEGMENTS_SYSPROP
+              + ", so MemorySegments will be enabled by default, if possible.");
       return true;
     }
   }
@@ -398,15 +416,14 @@ public class MMapDirectory extends FSDirectory {
             "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
     } else if (runtimeVersion >= 20) {
-      var log = Logger.getLogger(lookup.lookupClass().getName());
-      log.warning(
+      LOG.warning(
           "You are running with Java 20 or later. To make full use of MMapDirectory, please update Apache Lucene.");
     }
     return new MappedByteBufferIndexInputProvider();
   }
 
   static {
-    PROVIDER = lookupProvider();
+    PROVIDER = doPrivileged(MMapDirectory::lookupProvider);
     DEFAULT_MAX_CHUNK_SIZE = PROVIDER.getDefaultMaxChunkSize();
     UNMAP_SUPPORTED = PROVIDER.isUnmapSupported();
     UNMAP_NOT_SUPPORTED_REASON = PROVIDER.getUnmapNotSupportedReason();
