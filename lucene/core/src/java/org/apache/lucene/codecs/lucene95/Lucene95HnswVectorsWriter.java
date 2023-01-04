@@ -700,15 +700,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public void addValue(int docID, Object value) throws IOException {
+    public void addValue(int docID, T vectorValue) throws IOException {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
                 + fieldInfo.name
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
-      T vectorValue = (T) value;
       assert docID > lastDocID;
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
