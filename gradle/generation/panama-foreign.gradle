@@ -23,7 +23,7 @@ configure(project(":lucene:core")) {
   }
 
   dependencies {
-    asm "org.ow2.asm:asm-commons:${scriptDepVersions['asm']}"
+    asm "org.ow2.asm:asm:${scriptDepVersions['asm']}"
   }
 
   for (jdkVersion : [ 19, 20 ]) {
