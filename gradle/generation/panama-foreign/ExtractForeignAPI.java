@@ -21,18 +21,19 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.commons.ClassRemapper;
-import org.objectweb.asm.commons.SimpleRemapper;
+import org.objectweb.asm.Type;
 
 public final class ExtractForeignAPI {
   
@@ -52,8 +53,8 @@ public final class ExtractForeignAPI {
         try (var in = Files.newInputStream(javaBaseModule.resolve(relative))) {
           final var reader = new ClassReader(in);
           final var cw = new ClassWriter(0);
-          reader.accept(new Handler(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-          out.putNextEntry(new ZipEntry(reader.getClassName().concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
+          reader.accept(new Cleaner(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+          out.putNextEntry(new ZipEntry(relative.toString()).setLastModifiedTime(FIXED_FILEDATE));
           out.write(cw.toByteArray());
           out.closeEntry();
         }
@@ -61,10 +62,12 @@ public final class ExtractForeignAPI {
     }
   }
   
-  static class Handler extends ClassVisitor {
+  static class Cleaner extends ClassVisitor {
+    private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
+    private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
     
-    Handler(ClassWriter out) {
-      super(Opcodes.ASM9, new ClassRemapper(out, new SimpleRemapper("jdk/internal/javac/PreviewFeature", "jdk/internal/javac/NoPreviewFeature")));
+    Cleaner(ClassWriter out) {
+      super(Opcodes.ASM9, out);
     }
     
     private static boolean isHidden(int access) {
@@ -77,11 +80,21 @@ public final class ExtractForeignAPI {
     }
 
     @Override
+    public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+      return Objects.equals(descriptor, PREVIEW_ANN_DESCR) ? null : super.visitAnnotation(descriptor, visible);
+    }
+
+    @Override
     public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
       if (isHidden(access)) {
         return null;
       }
-      return super.visitField(access, name, descriptor, signature, value);
+      return new FieldVisitor(Opcodes.ASM9, super.visitField(access, name, descriptor, signature, value)) {
+        @Override
+        public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+          return Objects.equals(descriptor, PREVIEW_ANN_DESCR) ? null : super.visitAnnotation(descriptor, visible);
+        }
+      };
     }
 
     @Override
@@ -89,17 +102,19 @@ public final class ExtractForeignAPI {
       if (isHidden(access)) {
         return null;
       }
-      return super.visitMethod(access, name, descriptor, signature, exceptions);
+      return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
+        @Override
+        public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+          return Objects.equals(descriptor, PREVIEW_ANN_DESCR) ? null : super.visitAnnotation(descriptor, visible);
+        }
+      };
     }
 
     @Override
-    public void visitPermittedSubclass(String permittedSubclass) {
-      // not compatible with old compilers
-    }
-
-    @Override
-    public void visitSource(String source, String debug) {
-      // info not needed
+    public void visitInnerClass(String name, String outerName, String innerName, int access) {
+      if (!Objects.equals(outerName, PREVIEW_ANN)) {
+        super.visitInnerClass(name, outerName, innerName, access);
+      }
     }
 
   }

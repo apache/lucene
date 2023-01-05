@@ -49,9 +49,12 @@ configure(project(":lucene:core")) {
         def apijar = file("lib/panama-foreign-jdk${jdkVersion}.apijar")
         
         inputs.file(apijar)
-        options.compilerArgs = [
-          "-Xlint:none",
-          "-proc:none",
+        
+        int releaseIndex = options.compilerArgs.indexOf("--release")
+        options.compilerArgs.removeAt(releaseIndex)
+        options.compilerArgs.removeAt(releaseIndex)
+        options.compilerArgs += [
+          "-Xlint:-options",
           "--patch-module", "java.base=${apijar}",
           "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
         ]
