@@ -222,32 +222,6 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * This method is retired, see deprecation notice!
-   *
-   * @throws UnsupportedOperationException as setting cannot be changed
-   * @deprecated Please use new system property {@link #ENABLE_UNMAP_HACK_SYSPROP} instead
-   */
-  @Deprecated(forRemoval = true)
-  public void setUseUnmap(final boolean useUnmapHack) {
-    if (useUnmapHack != UNMAP_SUPPORTED) {
-      throw new UnsupportedOperationException(
-          "It is no longer possible configure unmap hack for directory instances. Please use the global system property: "
-              + ENABLE_UNMAP_HACK_SYSPROP);
-    }
-  }
-
-  /**
-   * Returns <code>true</code>, if the unmap workaround is enabled.
-   *
-   * @see #setUseUnmap
-   * @deprecated use {@link #UNMAP_SUPPORTED}
-   */
-  @Deprecated
-  public boolean getUseUnmap() {
-    return UNMAP_SUPPORTED;
-  }
-
-  /**
    * Configure which files to preload in physical memory upon opening. The default implementation
    * does not preload anything. The behavior is best effort and operating system-dependent.
    *
@@ -258,29 +232,6 @@ public class MMapDirectory extends FSDirectory {
    */
   public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
-  }
-
-  /**
-   * Configure whether to preload files on this {@link MMapDirectory} into physical memory upon
-   * opening. The behavior is best effort and operating system-dependent.
-   *
-   * @deprecated Use {@link #setPreload(BiPredicate)} instead which provides more granular control.
-   */
-  @Deprecated
-  public void setPreload(boolean preload) {
-    this.preload = preload ? ALL_FILES : NO_FILES;
-  }
-
-  /**
-   * Return whether files are loaded into physical memory upon opening.
-   *
-   * @deprecated This information is no longer reliable now that preloading is more granularly
-   *     configured via a predicate.
-   * @see #setPreload(BiPredicate)
-   */
-  @Deprecated
-  public boolean getPreload() {
-    return preload == ALL_FILES;
   }
 
   /**
