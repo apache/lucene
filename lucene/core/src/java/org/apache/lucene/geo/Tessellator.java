@@ -20,7 +20,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 import static org.apache.lucene.geo.GeoUtils.lineCrossesLine;
 import static org.apache.lucene.geo.GeoUtils.lineOverlapLine;
-import static org.apache.lucene.geo.GeoUtils.orient;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -674,24 +673,24 @@ public final class Tessellator {
   /** Check if there are other points inside the potential ear **/
   private static boolean pointsInsideEar(Node nodeToCheck, Node ear) {
     return nodeToCheck.idx != ear.previous.idx
-            && nodeToCheck.idx != ear.next.idx
-            && pointInEar(
-                nodeToCheck.getX(),
-                nodeToCheck.getY(),
-                ear.previous.getX(),
-                ear.previous.getY(),
-                ear.getX(),
-                ear.getY(),
-                ear.next.getX(),
-                ear.next.getY())
-            && area(
+        && nodeToCheck.idx != ear.next.idx
+        && pointInEar(
+            nodeToCheck.getX(),
+            nodeToCheck.getY(),
+            ear.previous.getX(),
+            ear.previous.getY(),
+            ear.getX(),
+            ear.getY(),
+            ear.next.getX(),
+            ear.next.getY())
+        && area(
                 nodeToCheck.previous.getX(),
                 nodeToCheck.previous.getY(),
                 nodeToCheck.getX(),
                 nodeToCheck.getY(),
                 nodeToCheck.next.getX(),
                 nodeToCheck.next.getY())
-               >= 0;
+            >= 0;
   }
 
   /** Iterate through all polygon nodes and remove small local self-intersections * */
