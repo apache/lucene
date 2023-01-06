@@ -64,7 +64,8 @@ public abstract class IndexReaderContext {
 
   /**
    * Returns the context's leaves if this context is a top-level context. For convenience, if this
-   * is an {@link LeafReaderContext} this returns itself as the only leaf.
+   * is an {@link LeafReaderContext} this returns itself as the only leaf, and it will never return
+   * a null value.
    *
    * <p>Note: this is convenience method since leaves can always be obtained by walking the context
    * tree using {@link #children()}.
