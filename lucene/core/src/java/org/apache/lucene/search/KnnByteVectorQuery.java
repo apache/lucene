@@ -55,7 +55,21 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnByteVectorQuery(String field, byte[] target, int k) {
-    this(field, target, k, null);
+    this(field, target, k, Float.NEGATIVE_INFINITY, null);
+  }
+
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find (the upper bound)
+   * @param similarityThreshold the minimum acceptable value of similarity
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
+  public KnnByteVectorQuery(String field, byte[] target, int k, float similarityThreshold) {
+    this(field, target, k, similarityThreshold, null);
   }
 
   /**
@@ -69,7 +83,23 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
-    super(field, k, filter);
+    this(field, target, k, Float.NEGATIVE_INFINITY, filter);
+  }
+
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find (the upper bound)
+   * @param similarityThreshold the minimum acceptable value of similarity
+   * @param filter a filter applied before the vector search
+   * @throws IllegalArgumentException if <code>k</code> is less than 1
+   */
+  public KnnByteVectorQuery(
+      String field, byte[] target, int k, float similarityThreshold, Query filter) {
+    super(field, k, similarityThreshold, filter);
     this.target = new BytesRef(target);
   }
 
