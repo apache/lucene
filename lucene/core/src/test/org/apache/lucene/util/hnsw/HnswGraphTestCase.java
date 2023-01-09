@@ -250,7 +250,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
-  private void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
+  void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
     assertEquals("the number of nodes in the graphs are different!", g.size(), h.size());
 
@@ -870,7 +870,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return neighbors;
   }
 
-  private void assertVectorsEqual(AbstractMockVectorValues<T> u, AbstractMockVectorValues<T> v)
+  void assertVectorsEqual(AbstractMockVectorValues<T> u, AbstractMockVectorValues<T> v)
       throws IOException {
     int uDoc, vDoc;
     while (true) {

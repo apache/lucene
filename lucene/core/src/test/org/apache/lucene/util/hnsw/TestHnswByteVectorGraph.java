@@ -29,6 +29,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.junit.Before;
 
@@ -89,10 +90,13 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<BytesRef> {
   AbstractMockVectorValues<BytesRef> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
     ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);
-    byte[][] vectors = new byte[vectorValues.size()][];
-    int i = 0;
+    byte[][] vectors = new byte[reader.maxDoc()][];
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-      vectors[i] = vectorValues.vectorValue().bytes;
+      vectors[vectorValues.docID()] =
+          ArrayUtil.copyOfSubArray(
+              vectorValues.vectorValue().bytes,
+              vectorValues.vectorValue().offset,
+              vectorValues.vectorValue().offset + vectorValues.vectorValue().length);
     }
     return MockByteVectorValues.fromValues(vectors);
   }

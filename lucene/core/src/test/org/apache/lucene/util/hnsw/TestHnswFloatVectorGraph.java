@@ -29,6 +29,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 
@@ -69,10 +70,11 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
     VectorValues vectorValues = reader.getVectorValues(fieldName);
-    float[][] vectors = new float[vectorValues.size()][];
-    int i = 0;
+    float[][] vectors = new float[reader.maxDoc()][];
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-      vectors[i] = vectorValues.vectorValue();
+      vectors[vectorValues.docID()] =
+          ArrayUtil.copyOfSubArray(
+              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
     }
     return MockVectorValues.fromValues(vectors);
   }

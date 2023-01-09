@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 class MockByteVectorValues extends AbstractMockVectorValues<BytesRef> {
@@ -46,7 +47,11 @@ class MockByteVectorValues extends AbstractMockVectorValues<BytesRef> {
 
   @Override
   public MockByteVectorValues copy() {
-    return new MockByteVectorValues(values, dimension, denseValues, numVectors);
+    return new MockByteVectorValues(
+        ArrayUtil.copyOfSubArray(values, 0, values.length),
+        dimension,
+        ArrayUtil.copyOfSubArray(denseValues, 0, denseValues.length),
+        numVectors);
   }
 
   @Override

@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 
 class MockVectorValues extends AbstractMockVectorValues<float[]> {
   private final float[] scratch;
@@ -42,7 +43,11 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
 
   @Override
   public MockVectorValues copy() {
-    return new MockVectorValues(values, dimension, denseValues, numVectors);
+    return new MockVectorValues(
+        ArrayUtil.copyOfSubArray(values, 0, values.length),
+        dimension,
+        ArrayUtil.copyOfSubArray(denseValues, 0, denseValues.length),
+        numVectors);
   }
 
   @Override
