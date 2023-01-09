@@ -391,18 +391,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    final DocIdSetIterator vectors;
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE:
-        vectors = MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-        break;
-      case FLOAT32:
-        vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
-        break;
-      default:
-        throw new IllegalStateException("unknown vector encoding=" + fieldInfo.getVectorEncoding());
-    }
-
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
@@ -410,7 +398,14 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors, fieldInfo);
+      // write the vector data to a temporary file
+      DocsWithFieldSet docsWithField =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE -> writeByteVectorData(
+                tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+            case FLOAT32 -> writeVectorData(
+                tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
+          };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -641,34 +636,38 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
+   * Writes the byte vector values to the output and returns a set of documents that contains
+   * vectors.
+   */
+  private static DocsWithFieldSet writeByteVectorData(
+      IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    for (int docV = byteVectorValues.nextDoc();
+        docV != NO_MORE_DOCS;
+        docV = byteVectorValues.nextDoc()) {
+      // write vector
+      BytesRef binaryValue = byteVectorValues.binaryValue();
+      assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
+      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      docsWithField.add(docV);
+    }
+    return docsWithField;
+  }
+
+  /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeVectorData(
-      IndexOutput output, DocIdSetIterator vectors, FieldInfo fieldInfo) throws IOException {
+      IndexOutput output, VectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE:
-        ByteVectorValues byteVectorValues = (ByteVectorValues) vectors;
-        for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-          // write vector
-          BytesRef binaryValue = byteVectorValues.binaryValue();
-          assert binaryValue.length
-              == byteVectorValues.dimension() * fieldInfo.getVectorEncoding().byteSize;
-          output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-          docsWithField.add(docV);
-        }
-        break;
-      case FLOAT32:
-        VectorValues floatVectorValues = (VectorValues) vectors;
-        for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-          // write vector
-          BytesRef binaryValue = floatVectorValues.binaryValue();
-          assert binaryValue.length
-              == floatVectorValues.dimension() * fieldInfo.getVectorEncoding().byteSize;
-          output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-          docsWithField.add(docV);
-        }
-        break;
+    for (int docV = floatVectorValues.nextDoc();
+        docV != NO_MORE_DOCS;
+        docV = floatVectorValues.nextDoc()) {
+      // write vector
+      BytesRef binaryValue = floatVectorValues.binaryValue();
+      assert binaryValue.length == floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize;
+      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      docsWithField.add(docV);
     }
     return docsWithField;
   }
