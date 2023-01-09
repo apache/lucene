@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -320,6 +321,45 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .build();
 
     assertEquals(new MatchNoDocsQuery(), searcher.rewrite(bq2));
+  }
+
+  public void testDeeplyNestedBooleanRewrite() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    Directory dir = newDirectory();
+    (new RandomIndexWriter(random(), dir)).close();
+    IndexReader r = DirectoryReader.open(dir);
+    Function<Integer, TermQuery> termQueryFunction =
+        (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
+    int depth = TestUtil.nextInt(random(), 10, 30);
+    TermQuery tq = termQueryFunction.apply(depth);
+    Query expectedQuery = new BooleanQuery.Builder().add(tq, Occur.FILTER).build();
+    Query deepBuilder = new BooleanQuery.Builder().add(tq, Occur.MUST).build();
+    for (int i = depth; i > 0; i--) {
+      tq = termQueryFunction.apply(i);
+      // Do this to accurately set setMinimumNumberShouldMatch to the number of should clauses.
+      // This makes setting expectation for rewrite much easier.
+      boolean useShoulds = random().nextBoolean();
+      BooleanQuery.Builder bq =
+          new BooleanQuery.Builder()
+              .setMinimumNumberShouldMatch(useShoulds ? 2 : 0)
+              .add(tq, useShoulds ? Occur.SHOULD : Occur.MUST)
+              .add(deepBuilder, useShoulds ? Occur.SHOULD : Occur.MUST);
+      deepBuilder = bq.build();
+      BooleanQuery.Builder expectedBq = new BooleanQuery.Builder().add(tq, Occur.FILTER);
+      if (i == depth - 1) {
+        expectedBq.add(termQueryFunction.apply(depth), Occur.FILTER);
+      } else {
+        expectedBq.add(expectedQuery, Occur.FILTER);
+      }
+      expectedQuery = expectedBq.build();
+    }
+    BooleanQuery bq = new BooleanQuery.Builder().add(deepBuilder, Occur.FILTER).build();
+    expectedQuery = new BoostQuery(new ConstantScoreQuery(expectedQuery), 0.0f);
+    Query rewritten = searcher.rewrite(bq);
+    r.close();
+    dir.close();
+    assertEquals(expectedQuery, rewritten);
   }
 
   public void testRemoveMatchAllFilter() throws IOException {
