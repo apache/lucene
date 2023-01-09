@@ -30,13 +30,14 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.AbstractVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -379,7 +380,17 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    AbstractVectorValues<?> vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+    final DocIdSetIterator vectors;
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE:
+        vectors = MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+        break;
+      case FLOAT32:
+        vectors = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+        break;
+      default:
+        throw new IllegalStateException("unknown vector encoding=" + fieldInfo.getVectorEncoding());
+    }
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -388,8 +399,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
-          writeVectorData(tempVectorData, vectors, fieldInfo.getVectorEncoding().byteSize);
+      DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors, fieldInfo);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -405,7 +415,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       // we use Lucene94HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
-      int byteSize = vectors.dimension() * fieldInfo.getVectorEncoding().byteSize;
+      int byteSize = fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
       OnHeapHnswGraph graph = null;
       if (docsWithField.cardinality() != 0) {
         // build graph
@@ -414,7 +424,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
               case BYTE -> {
                 OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                        vectors.dimension(),
+                        fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
@@ -432,7 +442,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
               case FLOAT32 -> {
                 OffHeapVectorValues.DenseOffHeapVectorValues vectorValues =
                     new OffHeapVectorValues.DenseOffHeapVectorValues(
-                        vectors.dimension(),
+                        fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
@@ -584,14 +594,31 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeVectorData(
-      IndexOutput output, AbstractVectorValues<?> vectors, int scalarSize) throws IOException {
+      IndexOutput output, DocIdSetIterator vectors, FieldInfo fieldInfo) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-      // write vector
-      BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * scalarSize;
-      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-      docsWithField.add(docV);
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE:
+        ByteVectorValues byteVectorValues = (ByteVectorValues) vectors;
+        for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+          // write vector
+          BytesRef binaryValue = byteVectorValues.binaryValue();
+          assert binaryValue.length
+              == byteVectorValues.dimension() * fieldInfo.getVectorEncoding().byteSize;
+          output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+          docsWithField.add(docV);
+        }
+        break;
+      case FLOAT32:
+        VectorValues floatVectorValues = (VectorValues) vectors;
+        for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
+          // write vector
+          BytesRef binaryValue = floatVectorValues.binaryValue();
+          assert binaryValue.length
+              == floatVectorValues.dimension() * fieldInfo.getVectorEncoding().byteSize;
+          output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+          docsWithField.add(docV);
+        }
+        break;
     }
     return docsWithField;
   }

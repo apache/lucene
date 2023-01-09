@@ -17,14 +17,16 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.index.AbstractVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.KnnVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.FixedBitSet;
@@ -64,9 +66,15 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  AbstractVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
+  AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
-    return reader.getVectorValues(fieldName);
+    VectorValues vectorValues = reader.getVectorValues(fieldName);
+    float[][] vectors = new float[vectorValues.size()][];
+    int i = 0;
+    while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+      vectors[i] = vectorValues.vectorValue();
+    }
+    return MockVectorValues.fromValues(vectors);
   }
 
   @Override

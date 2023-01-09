@@ -33,7 +33,6 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.AbstractVectorValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CodecReader;
@@ -654,20 +653,27 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           int docCount = 0;
           double checksum = 0;
           String fieldName = "int" + field;
-          for (LeafReaderContext ctx : r.leaves()) {
-            AbstractVectorValues<?> vectors =
-                switch (fieldVectorEncodings[field]) {
-                  case BYTE -> ctx.reader().getByteVectorValues(fieldName);
-                  case FLOAT32 -> ctx.reader().getVectorValues(fieldName);
-                };
-            if (vectors != null) {
-              docCount += vectors.size();
-              while (vectors.nextDoc() != NO_MORE_DOCS) {
-                checksum +=
-                    switch (fieldVectorEncodings[field]) {
-                      case BYTE -> ((BytesRef) vectors.vectorValue()).bytes[0];
-                      case FLOAT32 -> ((float[]) vectors.vectorValue())[0];
-                    };
+          switch (fieldVectorEncodings[field]) {
+            case BYTE -> {
+              for (LeafReaderContext ctx : r.leaves()) {
+                ByteVectorValues byteVectorValues = ctx.reader().getByteVectorValues(fieldName);
+                if (byteVectorValues != null) {
+                  docCount += byteVectorValues.size();
+                  while (byteVectorValues.nextDoc() != NO_MORE_DOCS) {
+                    checksum += byteVectorValues.vectorValue().bytes[0];
+                  }
+                }
+              }
+            }
+            case FLOAT32 -> {
+              for (LeafReaderContext ctx : r.leaves()) {
+                VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+                if (vectorValues != null) {
+                  docCount += vectorValues.size();
+                  while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+                    checksum += vectorValues.vectorValue()[0];
+                  }
+                }
               }
             }
           }
@@ -1335,24 +1341,33 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         double checksum = 0;
         int docCount = 0;
         long sumDocIds = 0;
-        for (LeafReaderContext ctx : r.leaves()) {
-          AbstractVectorValues<?> vectors =
-              switch (vectorEncoding) {
-                case FLOAT32 -> ctx.reader().getVectorValues("knn_vector");
-                case BYTE -> ctx.reader().getByteVectorValues("knn_vector");
-              };
-
-          if (vectors != null) {
-            StoredFields storedFields = ctx.reader().storedFields();
-            docCount += vectors.size();
-            while (vectors.nextDoc() != NO_MORE_DOCS) {
-              checksum +=
-                  switch (vectorEncoding) {
-                    case FLOAT32 -> ((float[]) vectors.vectorValue())[0];
-                    case BYTE -> ((BytesRef) vectors.vectorValue()).bytes[0];
-                  };
-              Document doc = storedFields.document(vectors.docID(), Set.of("id"));
-              sumDocIds += Integer.parseInt(doc.get("id"));
+        switch (vectorEncoding) {
+          case BYTE -> {
+            for (LeafReaderContext ctx : r.leaves()) {
+              ByteVectorValues byteVectorValues = ctx.reader().getByteVectorValues("knn_vector");
+              if (byteVectorValues != null) {
+                docCount += byteVectorValues.size();
+                StoredFields storedFields = ctx.reader().storedFields();
+                while (byteVectorValues.nextDoc() != NO_MORE_DOCS) {
+                  checksum += byteVectorValues.vectorValue().bytes[0];
+                  Document doc = storedFields.document(byteVectorValues.docID(), Set.of("id"));
+                  sumDocIds += Integer.parseInt(doc.get("id"));
+                }
+              }
+            }
+          }
+          case FLOAT32 -> {
+            for (LeafReaderContext ctx : r.leaves()) {
+              VectorValues vectorValues = ctx.reader().getVectorValues("knn_vector");
+              if (vectorValues != null) {
+                docCount += vectorValues.size();
+                StoredFields storedFields = ctx.reader().storedFields();
+                while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+                  checksum += vectorValues.vectorValue()[0];
+                  Document doc = storedFields.document(vectorValues.docID(), Set.of("id"));
+                  sumDocIds += Integer.parseInt(doc.get("id"));
+                }
+              }
             }
           }
         }

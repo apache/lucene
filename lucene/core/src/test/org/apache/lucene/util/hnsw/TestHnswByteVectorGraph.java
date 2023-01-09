@@ -17,11 +17,13 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.index.AbstractVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -84,9 +86,15 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<BytesRef> {
   }
 
   @Override
-  AbstractVectorValues<BytesRef> vectorValues(LeafReader reader, String fieldName)
+  AbstractMockVectorValues<BytesRef> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
-    return reader.getByteVectorValues(fieldName);
+    ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);
+    byte[][] vectors = new byte[vectorValues.size()][];
+    int i = 0;
+    while (vectorValues.nextDoc() != NO_MORE_DOCS) {
+      vectors[i] = vectorValues.vectorValue().bytes;
+    }
+    return MockByteVectorValues.fromValues(vectors);
   }
 
   @Override

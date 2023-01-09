@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -26,13 +27,37 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public abstract class ByteVectorValues extends AbstractVectorValues<BytesRef> {
+public abstract class ByteVectorValues extends DocIdSetIterator {
 
   /** The maximum length of a vector */
   public static final int MAX_DIMENSIONS = 1024;
 
   /** Sole constructor */
   protected ByteVectorValues() {}
+
+  /** Return the dimension of the vectors */
+  public abstract int dimension();
+
+  /**
+   * Return the number of vectors for this field.
+   *
+   * @return the number of vectors returned by this iterator
+   */
+  public abstract int size();
+
+  @Override
+  public final long cost() {
+    return size();
+  }
+
+  /**
+   * Return the vector value for the current document ID. It is illegal to call this method when the
+   * iterator is not positioned: before advancing, or after failing to advance. The returned array
+   * may be shared across calls, re-used, and modified as the iterator advances.
+   *
+   * @return the vector value
+   */
+  public abstract BytesRef vectorValue() throws IOException;
 
   /**
    * Return the binary encoded vector value for the current document ID. These are the bytes
@@ -42,7 +67,6 @@ public abstract class ByteVectorValues extends AbstractVectorValues<BytesRef> {
    *
    * @return the binary value
    */
-  @Override
   public final BytesRef binaryValue() throws IOException {
     return vectorValue();
   }

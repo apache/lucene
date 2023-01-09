@@ -205,7 +205,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
           @Override
           public VectorValues getVectorValues(String field) throws IOException {
-            return (VectorValues) MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+            return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
           }
 
           @Override

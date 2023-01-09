@@ -17,12 +17,12 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
-import org.apache.lucene.index.AbstractVectorValues;
 import org.apache.lucene.util.BytesRef;
 
-abstract class AbstractMockVectorValues<T> extends AbstractVectorValues<T>
-    implements RandomAccessVectorValues<T> {
+abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues<T> {
 
   protected final int dimension;
   protected final T[] denseValues;
@@ -60,6 +60,8 @@ abstract class AbstractMockVectorValues<T> extends AbstractVectorValues<T>
   @Override
   public abstract AbstractMockVectorValues<T> copy();
 
+  public abstract T vectorValue() throws IOException;
+
   private boolean seek(int target) {
     if (target >= 0 && target < values.length && values[target] != null) {
       pos = target;
@@ -69,17 +71,14 @@ abstract class AbstractMockVectorValues<T> extends AbstractVectorValues<T>
     }
   }
 
-  @Override
   public int docID() {
     return pos;
   }
 
-  @Override
   public int nextDoc() {
     return advance(pos + 1);
   }
 
-  @Override
   public int advance(int target) {
     while (++pos < values.length) {
       if (seek(pos)) {
@@ -87,10 +86,5 @@ abstract class AbstractMockVectorValues<T> extends AbstractVectorValues<T>
       }
     }
     return NO_MORE_DOCS;
-  }
-
-  @Override
-  public BytesRef binaryValue() throws IOException {
-    throw new IllegalArgumentException();
   }
 }

@@ -21,7 +21,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.AbstractVectorValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
@@ -47,14 +46,29 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
   /** Write field for merging */
   @SuppressWarnings("unchecked")
-  public <T> void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    KnnFieldVectorsWriter<T> writer = (KnnFieldVectorsWriter<T>) addField(fieldInfo);
-    AbstractVectorValues<T> mergedValues =
-        (AbstractVectorValues<T>) MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
-    for (int doc = mergedValues.nextDoc();
-        doc != DocIdSetIterator.NO_MORE_DOCS;
-        doc = mergedValues.nextDoc()) {
-      writer.addValue(doc, mergedValues.vectorValue());
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE:
+        KnnFieldVectorsWriter<BytesRef> byteWriter =
+            (KnnFieldVectorsWriter<BytesRef>) addField(fieldInfo);
+        ByteVectorValues mergedBytes =
+            MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+        for (int doc = mergedBytes.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = mergedBytes.nextDoc()) {
+          byteWriter.addValue(doc, mergedBytes.vectorValue());
+        }
+        break;
+      case FLOAT32:
+        KnnFieldVectorsWriter<float[]> floatWriter =
+            (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
+        VectorValues mergedFloats = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+        for (int doc = mergedFloats.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = mergedFloats.nextDoc()) {
+          floatWriter.addValue(doc, mergedFloats.vectorValue());
+        }
+        break;
     }
   }
 
@@ -92,11 +106,27 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   }
 
   /** Tracks state of one sub-reader that we are merging */
-  private static class VectorValuesSub<T> extends DocIDMerger.Sub {
+  private static class VectorValuesSub extends DocIDMerger.Sub {
 
-    final AbstractVectorValues<T> values;
+    final VectorValues values;
 
-    VectorValuesSub(MergeState.DocMap docMap, AbstractVectorValues<T> values) {
+    VectorValuesSub(MergeState.DocMap docMap, VectorValues values) {
+      super(docMap);
+      this.values = values;
+      assert values.docID() == -1;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return values.nextDoc();
+    }
+  }
+
+  private static class ByteVectorValuesSub extends DocIDMerger.Sub {
+
+    final ByteVectorValues values;
+
+    ByteVectorValuesSub(MergeState.DocMap docMap, ByteVectorValues values) {
       super(docMap);
       this.values = values;
       assert values.docID() == -1;
@@ -112,69 +142,62 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   protected static final class MergedVectorValues {
     private MergedVectorValues() {}
 
-    static MergedFloat32VectorValues mergedFloat32VectorValues(
-        FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    /** Returns a merged view over all the segment's {@link VectorValues}. */
+    public static VectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+        throws IOException {
+      assert fieldInfo != null && fieldInfo.hasVectorValues();
       if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
         throw new UnsupportedOperationException(
             "Cannot merge vectors encoded as [" + fieldInfo.getVectorEncoding() + "] as FLOAT32");
       }
-      List<VectorValuesSub<float[]>> subs = new ArrayList<>();
+      List<VectorValuesSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
         if (knnVectorsReader != null) {
-          AbstractVectorValues<float[]> values = knnVectorsReader.getVectorValues(fieldInfo.name);
+          VectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
           if (values != null) {
-            subs.add(new VectorValuesSub<>(mergeState.docMaps[i], values));
+            subs.add(new VectorValuesSub(mergeState.docMaps[i], values));
           }
         }
       }
       return new MergedFloat32VectorValues(subs, mergeState);
     }
 
-    private static MergedByteVectorValues mergedByteVectorValues(
-        FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    /** Returns a merged view over all the segment's {@link ByteVectorValues}. */
+    public static ByteVectorValues mergeByteVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+        throws IOException {
+      assert fieldInfo != null && fieldInfo.hasVectorValues();
       if (fieldInfo.getVectorEncoding() != VectorEncoding.BYTE) {
         throw new UnsupportedOperationException(
             "Cannot merge vectors encoded as [" + fieldInfo.getVectorEncoding() + "] as BYTE");
       }
-      List<VectorValuesSub<BytesRef>> subs = new ArrayList<>();
+      List<ByteVectorValuesSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
         if (knnVectorsReader != null) {
-          AbstractVectorValues<BytesRef> values =
-              knnVectorsReader.getByteVectorValues(fieldInfo.name);
+          ByteVectorValues values = knnVectorsReader.getByteVectorValues(fieldInfo.name);
           if (values != null) {
-            subs.add(new VectorValuesSub<>(mergeState.docMaps[i], values));
+            subs.add(new ByteVectorValuesSub(mergeState.docMaps[i], values));
           }
         }
       }
       return new MergedByteVectorValues(subs, mergeState);
     }
 
-    /** Returns a merged view over all the segment's {@link AbstractVectorValues}. */
-    public static AbstractVectorValues<?> mergeVectorValues(
-        FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      assert fieldInfo != null && fieldInfo.hasVectorValues();
-      return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> mergedByteVectorValues(fieldInfo, mergeState);
-        case FLOAT32 -> mergedFloat32VectorValues(fieldInfo, mergeState);
-      };
-    }
-
     static class MergedFloat32VectorValues extends VectorValues {
-      private final List<VectorValuesSub<float[]>> subs;
-      private final DocIDMerger<VectorValuesSub<float[]>> docIdMerger;
+      private final List<VectorValuesSub> subs;
+      private final DocIDMerger<VectorValuesSub> docIdMerger;
       private final int size;
 
       private int docId;
-      VectorValuesSub<float[]> current;
+      VectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<VectorValuesSub<float[]>> subs, MergeState mergeState)
+      private MergedFloat32VectorValues(List<VectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
-        for (VectorValuesSub<float[]> sub : subs) {
+        for (VectorValuesSub sub : subs) {
           totalSize += sub.values.size();
         }
         size = totalSize;
@@ -224,19 +247,19 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
 
     static class MergedByteVectorValues extends ByteVectorValues {
-      private final List<VectorValuesSub<BytesRef>> subs;
-      private final DocIDMerger<VectorValuesSub<BytesRef>> docIdMerger;
+      private final List<ByteVectorValuesSub> subs;
+      private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
       private final int size;
 
       private int docId;
-      VectorValuesSub<BytesRef> current;
+      ByteVectorValuesSub current;
 
-      private MergedByteVectorValues(List<VectorValuesSub<BytesRef>> subs, MergeState mergeState)
+      private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
         int totalSize = 0;
-        for (VectorValuesSub<BytesRef> sub : subs) {
+        for (ByteVectorValuesSub sub : subs) {
           totalSize += sub.values.size();
         }
         size = totalSize;

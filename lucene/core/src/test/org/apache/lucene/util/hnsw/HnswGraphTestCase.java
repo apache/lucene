@@ -38,7 +38,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.index.AbstractVectorValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -83,7 +82,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   abstract AbstractMockVectorValues<T> vectorValues(float[][] values);
 
-  abstract AbstractVectorValues<T> vectorValues(LeafReader reader, String fieldName)
+  abstract AbstractMockVectorValues<T> vectorValues(LeafReader reader, String fieldName)
       throws IOException;
 
   abstract Field knnVectorField(String name, T vector, VectorSimilarityFunction similarityFunction);
@@ -138,7 +137,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          AbstractVectorValues<T> values = vectorValues(ctx.reader(), "field");
+          AbstractMockVectorValues<T> values = vectorValues(ctx.reader(), "field");
           assertEquals(dim, values.dimension());
           assertEquals(nVec, values.size());
           assertEquals(indexedDoc, ctx.reader().maxDoc());
@@ -871,7 +870,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return neighbors;
   }
 
-  private void assertVectorsEqual(AbstractVectorValues<T> u, AbstractVectorValues<T> v)
+  private void assertVectorsEqual(AbstractMockVectorValues<T> u, AbstractMockVectorValues<T> v)
       throws IOException {
     int uDoc, vDoc;
     while (true) {
