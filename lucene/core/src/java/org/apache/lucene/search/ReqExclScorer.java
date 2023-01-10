@@ -139,12 +139,26 @@ class ReqExclScorer extends Scorer {
 
   @Override
   public TwoPhaseIterator twoPhaseIterator() {
+
+    if (exclTwoPhaseIterator == null) {
+      return new TwoPhaseIterator(approximation(reqApproximation, exclApproximation)) {
+        @Override
+        public boolean matches() throws IOException {
+          return matchesOrNull(reqTwoPhaseIterator);
+        }
+
+        @Override
+        public float matchCost() {
+          return reqTwoPhaseIterator == null ? 0 : reqTwoPhaseIterator.matchCost();
+        }
+      };
+    }
+
     final float matchCost =
         matchCost(reqApproximation, reqTwoPhaseIterator, exclApproximation, exclTwoPhaseIterator);
 
     if (reqTwoPhaseIterator == null
-        || (exclTwoPhaseIterator != null
-            && reqTwoPhaseIterator.matchCost() <= exclTwoPhaseIterator.matchCost())) {
+        || (reqTwoPhaseIterator.matchCost() <= exclTwoPhaseIterator.matchCost())) {
       // reqTwoPhaseIterator is LESS costly than exclTwoPhaseIterator, check it first
       return new TwoPhaseIterator(reqApproximation) {
 
@@ -159,7 +173,7 @@ class ReqExclScorer extends Scorer {
           if (exclDoc != doc) {
             return matchesOrNull(reqTwoPhaseIterator);
           }
-          return matchesOrNull(reqTwoPhaseIterator) && !matchesOrNull(exclTwoPhaseIterator);
+          return matchesOrNull(reqTwoPhaseIterator) && exclTwoPhaseIterator.matches() == false;
         }
 
         @Override
@@ -182,7 +196,7 @@ class ReqExclScorer extends Scorer {
           if (exclDoc != doc) {
             return matchesOrNull(reqTwoPhaseIterator);
           }
-          return !matchesOrNull(exclTwoPhaseIterator) && matchesOrNull(reqTwoPhaseIterator);
+          return exclTwoPhaseIterator.matches() == false && matchesOrNull(reqTwoPhaseIterator);
         }
 
         @Override
@@ -191,5 +205,62 @@ class ReqExclScorer extends Scorer {
         }
       };
     }
+  }
+
+  /**
+   * Creates an approximation DISI representing the required and excluded DISIs. Note that this is
+   * invalid to use if {@code excl} has an associated two-phase iterator.
+   */
+  private static DocIdSetIterator approximation(DocIdSetIterator req, DocIdSetIterator excl) {
+    return new DocIdSetIterator() {
+
+      @Override
+      public int docID() {
+        return req.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        int target = req.nextDoc();
+        if (target == DocIdSetIterator.NO_MORE_DOCS) {
+          return DocIdSetIterator.NO_MORE_DOCS;
+        }
+        return doNext(target);
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        target = req.advance(target);
+        if (target == DocIdSetIterator.NO_MORE_DOCS) {
+          return DocIdSetIterator.NO_MORE_DOCS;
+        }
+        return doNext(target);
+      }
+
+      private int doNext(int target) throws IOException {
+        int exclDocID;
+        if (excl.docID() < target) {
+          exclDocID = excl.advance(target);
+        } else {
+          exclDocID = excl.docID();
+        }
+
+        while (exclDocID == target) {
+          target = req.nextDoc();
+          if (target == DocIdSetIterator.NO_MORE_DOCS) {
+            break;
+          }
+          exclDocID = excl.advance(target);
+        }
+
+        assert target == req.docID();
+        return target;
+      }
+
+      @Override
+      public long cost() {
+        return req.cost();
+      }
+    };
   }
 }
