@@ -199,6 +199,9 @@ Improvements
 
 * GITHUB#12034: Remove null check in IndexReaderContext#leaves() usages (Erik Pellizzon)
 
+* GITHUB#12070: Compound file creation is no longer subject to merge throttling.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#11726: Indexing term vectors on large documents could fail due to
