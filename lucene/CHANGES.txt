@@ -263,6 +263,9 @@ Optimizations
 
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
 
+* GITHUB#12073: Move ReqExclScorer exclusion checking into first-phase when the exclusion Scorer has no
+  second-phase check. (Greg Miller)
+
 
 Other
 ---------------------
