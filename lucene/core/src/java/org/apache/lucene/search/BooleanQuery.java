@@ -203,17 +203,18 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
     for (BooleanClause clause : clauses) {
       Query query = clause.getQuery();
-      Query rewritten;
-      // If the clause query is a boolean query, we shouldn't call ConstantScoreQuery#rewrite as
-      // this causes
-      // exponential growth of runtime.
-      if (query instanceof BooleanQuery booleanQuery) {
-        rewritten = booleanQuery.rewriteNoScoring(indexSearcher);
-      } else {
-        rewritten = new ConstantScoreQuery(query).rewrite(indexSearcher);
-        if (rewritten instanceof ConstantScoreQuery constantScoreQuery) {
-          rewritten = constantScoreQuery.getQuery();
-        }
+      // NOTE: rewritingNoScoring() should not call rewrite(), otherwise this
+      // method could run in exponential time with the depth of the query as
+      // every new level would rewrite 2x more than its parent level.
+      Query rewritten = query;
+      if (query instanceof BoostQuery) {
+        rewritten = ((BoostQuery) query).getQuery();
+      }
+      if (query instanceof ConstantScoreQuery) {
+        rewritten = ((ConstantScoreQuery) query).getQuery();
+      }
+      if (query instanceof BooleanQuery) {
+        rewritten = ((BooleanQuery) query).rewriteNoScoring(indexSearcher);
       }
       BooleanClause.Occur occur = clause.getOccur();
       if (occur == Occur.SHOULD && keepShould == false) {
