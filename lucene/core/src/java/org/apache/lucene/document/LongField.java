@@ -22,6 +22,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -108,8 +109,9 @@ public final class LongField extends Field {
    */
   public static Query newRangeQuery(String field, long lowerValue, long upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
+    Query fallbackQuery = LongPoint.newRangeQuery(field, lowerValue, upperValue);
     return new IndexOrDocValuesQuery(
-        LongPoint.newRangeQuery(field, lowerValue, upperValue),
+        new IndexSortSortedNumericDocValuesRangeQuery(field, lowerValue, upperValue, fallbackQuery),
         SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
   }
 
