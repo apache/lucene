@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.SplittableRandom;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -233,6 +234,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public ByteVectorValues getByteVectorValues(String field) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
@@ -352,7 +358,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
+  static class OffHeapVectorValues extends VectorValues
+      implements RandomAccessVectorValues<float[]> {
 
     final int dimension;
     final int[] ordToDoc;
@@ -433,7 +440,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues copy() {
+    public RandomAccessVectorValues<float[]> copy() {
       return new OffHeapVectorValues(dimension, ordToDoc, dataIn.clone());
     }
 
@@ -442,17 +449,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) targetOrd * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
-    }
-
-    @Override
-    public BytesRef binaryValue(int targetOrd) throws IOException {
-      readValue(targetOrd);
-      return binaryValue;
-    }
-
-    private void readValue(int targetOrd) throws IOException {
-      dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }
   }
 

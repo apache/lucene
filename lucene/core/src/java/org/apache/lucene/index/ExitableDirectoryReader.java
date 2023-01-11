@@ -324,6 +324,15 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      final ByteVectorValues vectorValues = in.getByteVectorValues(field);
+      if (vectorValues == null) {
+        return null;
+      }
+      return new ExitableByteVectorValues(vectorValues);
+    }
+
+    @Override
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
 
@@ -387,17 +396,18 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
     }
 
-    private class ExitableVectorValues extends FilterVectorValues {
+    private class ExitableVectorValues extends VectorValues {
       private int docToCheck;
+      private final VectorValues vectorValues;
 
       public ExitableVectorValues(VectorValues vectorValues) {
-        super(vectorValues);
+        this.vectorValues = vectorValues;
         docToCheck = 0;
       }
 
       @Override
       public int advance(int target) throws IOException {
-        final int advance = super.advance(target);
+        final int advance = vectorValues.advance(target);
         if (advance >= docToCheck) {
           checkAndThrow();
           docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
@@ -406,8 +416,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public int docID() {
+        return vectorValues.docID();
+      }
+
+      @Override
       public int nextDoc() throws IOException {
-        final int nextDoc = super.nextDoc();
+        final int nextDoc = vectorValues.nextDoc();
         if (nextDoc >= docToCheck) {
           checkAndThrow();
           docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
@@ -416,13 +431,90 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public int dimension() {
+        return vectorValues.dimension();
+      }
+
+      @Override
       public float[] vectorValue() throws IOException {
-        return in.vectorValue();
+        return vectorValues.vectorValue();
+      }
+
+      @Override
+      public int size() {
+        return vectorValues.size();
       }
 
       @Override
       public BytesRef binaryValue() throws IOException {
-        return in.binaryValue();
+        return vectorValues.binaryValue();
+      }
+
+      /**
+       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
+       * if {@link Thread#interrupted()} returns true.
+       */
+      private void checkAndThrow() {
+        if (queryTimeout.shouldExit()) {
+          throw new ExitingReaderException(
+              "The request took too long to iterate over vector values. Timeout: "
+                  + queryTimeout.toString()
+                  + ", VectorValues="
+                  + in);
+        } else if (Thread.interrupted()) {
+          throw new ExitingReaderException(
+              "Interrupted while iterating over vector values. VectorValues=" + in);
+        }
+      }
+    }
+
+    private class ExitableByteVectorValues extends ByteVectorValues {
+      private int docToCheck;
+      private final ByteVectorValues vectorValues;
+
+      public ExitableByteVectorValues(ByteVectorValues vectorValues) {
+        this.vectorValues = vectorValues;
+        docToCheck = 0;
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        final int advance = vectorValues.advance(target);
+        if (advance >= docToCheck) {
+          checkAndThrow();
+          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return advance;
+      }
+
+      @Override
+      public int docID() {
+        return vectorValues.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        final int nextDoc = vectorValues.nextDoc();
+        if (nextDoc >= docToCheck) {
+          checkAndThrow();
+          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return nextDoc;
+      }
+
+      @Override
+      public int dimension() {
+        return vectorValues.dimension();
+      }
+
+      @Override
+      public int size() {
+        return vectorValues.size();
+      }
+
+      @Override
+      public BytesRef vectorValue() throws IOException {
+        return vectorValues.vectorValue();
       }
 
       /**
