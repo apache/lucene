@@ -327,7 +327,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(new MultiReader());
     Function<Integer, TermQuery> termQueryFunction =
         (i) -> new TermQuery(new Term("layer[" + i + "]", "foo"));
-    int depth = 4; // TestUtil.nextInt(random(), 10, 30);
+    int depth = TestUtil.nextInt(random(), 10, 30);
     TestRewriteQuery rewriteQueryExpected = new TestRewriteQuery();
     TestRewriteQuery rewriteQuery = new TestRewriteQuery();
     Query expectedQuery =
@@ -359,7 +359,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     assertEquals(expectedQuery, rewritten);
     // the SHOULD clauses cause more rewrites because they incrementally change to `MUST` and then
     // `FILTER`
-    assertEquals(depth + 1, rewriteQuery.numRewrites);
+    assertEquals("Depth=" + depth, depth + 1, rewriteQuery.numRewrites);
   }
 
   public void testDeeplyNestedBooleanRewrite() throws IOException {
@@ -389,7 +389,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     expectedQuery = new BoostQuery(new ConstantScoreQuery(expectedQuery), 0.0f);
     Query rewritten = searcher.rewrite(bq);
     assertEquals(expectedQuery, rewritten);
-    assertEquals(1, rewriteQuery.numRewrites);
+    assertEquals("Depth=" + depth, 1, rewriteQuery.numRewrites);
   }
 
   public void testRemoveMatchAllFilter() throws IOException {
