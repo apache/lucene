@@ -402,7 +402,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // Only mark a few vectors as accepted
     BitSet acceptOrds = new FixedBitSet(nDoc);
-    for (int i = 0; i < nDoc; i += random().nextInt(15, 20)) {
+    for (int i = 0; i < nDoc; i += 15 + random().nextInt(5)) {
       acceptOrds.set(i);
     }
 

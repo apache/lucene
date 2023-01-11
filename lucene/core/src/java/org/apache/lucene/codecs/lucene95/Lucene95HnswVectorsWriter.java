@@ -411,13 +411,23 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     try {
       // write the vector data to a temporary file
       // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> writeByteVectorData(
-                tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-            case FLOAT32 -> writeVectorData(
-                tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
-          };
+      final DocsWithFieldSet docsWithField;
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE:
+          docsWithField =
+              writeByteVectorData(
+                  tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+          break;
+        case FLOAT32:
+          docsWithField =
+              writeVectorData(
+                  tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "unknown vector encoding=" + fieldInfo.getVectorEncoding());
+      }
+      ;
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -438,45 +448,47 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
         // build graph
-        graph =
-            switch (fieldInfo.getVectorEncoding()) {
-              case BYTE -> {
-                OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
-                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        vectorDataInput,
-                        byteSize);
-                HnswGraphBuilder<BytesRef> hnswGraphBuilder =
-                    HnswGraphBuilder.create(
-                        vectorValues,
-                        fieldInfo.getVectorEncoding(),
-                        fieldInfo.getVectorSimilarityFunction(),
-                        M,
-                        beamWidth,
-                        HnswGraphBuilder.randSeed);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
-              }
-              case FLOAT32 -> {
-                OffHeapVectorValues.DenseOffHeapVectorValues vectorValues =
-                    new OffHeapVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        vectorDataInput,
-                        byteSize);
-                HnswGraphBuilder<float[]> hnswGraphBuilder =
-                    HnswGraphBuilder.create(
-                        vectorValues,
-                        fieldInfo.getVectorEncoding(),
-                        fieldInfo.getVectorSimilarityFunction(),
-                        M,
-                        beamWidth,
-                        HnswGraphBuilder.randSeed);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
-              }
-            };
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE:
+            OffHeapByteVectorValues.DenseOffHeapVectorValues byteVectorValues =
+                new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                    fieldInfo.getVectorDimension(),
+                    docsWithField.cardinality(),
+                    vectorDataInput,
+                    byteSize);
+            HnswGraphBuilder<BytesRef> bytesRefHnswGraphBuilder =
+                HnswGraphBuilder.create(
+                    byteVectorValues,
+                    fieldInfo.getVectorEncoding(),
+                    fieldInfo.getVectorSimilarityFunction(),
+                    M,
+                    beamWidth,
+                    HnswGraphBuilder.randSeed);
+            bytesRefHnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+            graph = bytesRefHnswGraphBuilder.build(byteVectorValues.copy());
+            break;
+          case FLOAT32:
+            OffHeapVectorValues.DenseOffHeapVectorValues vectorValues =
+                new OffHeapVectorValues.DenseOffHeapVectorValues(
+                    fieldInfo.getVectorDimension(),
+                    docsWithField.cardinality(),
+                    vectorDataInput,
+                    byteSize);
+            HnswGraphBuilder<float[]> hnswGraphBuilder =
+                HnswGraphBuilder.create(
+                    vectorValues,
+                    fieldInfo.getVectorEncoding(),
+                    fieldInfo.getVectorSimilarityFunction(),
+                    M,
+                    beamWidth,
+                    HnswGraphBuilder.randSeed);
+            hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+            graph = hnswGraphBuilder.build(vectorValues.copy());
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "unknown vector encoding=" + fieldInfo.getVectorEncoding());
+        }
         vectorIndexNodeOffsets = writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;

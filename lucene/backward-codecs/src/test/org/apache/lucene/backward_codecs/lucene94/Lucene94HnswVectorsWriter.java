@@ -414,7 +414,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           throw new IllegalArgumentException(
               "unknown vector encoding=" + fieldInfo.getVectorEncoding());
       }
-      ;
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
