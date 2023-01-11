@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -611,25 +612,22 @@ public class TestField extends LuceneTestCase {
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       BytesRef br = newBytesRef(new byte[5]);
-      Field field = new KnnVectorField("binary", br, VectorSimilarityFunction.EUCLIDEAN);
+      Field field = new KnnByteVectorField("binary", br, VectorSimilarityFunction.EUCLIDEAN);
       expectThrows(
           IllegalArgumentException.class,
           () -> new KnnVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
       float[] vector = new float[] {1, 2};
       Field field2 = new KnnVectorField("float", vector);
-      expectThrows(
-          IllegalArgumentException.class,
-          () -> new KnnVectorField("bogus", br, (FieldType) field2.fieldType()));
       assertEquals(br, field.binaryValue());
       doc.add(field);
       doc.add(field2);
       w.addDocument(doc);
       try (IndexReader r = DirectoryReader.open(w)) {
-        VectorValues binary = r.leaves().get(0).reader().getVectorValues("binary");
+        ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
         assertEquals(1, binary.size());
         assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
-        assertEquals(br, binary.binaryValue());
         assertNotNull(binary.vectorValue());
+        assertEquals(br, binary.vectorValue());
         assertEquals(NO_MORE_DOCS, binary.nextDoc());
 
         VectorValues floatValues = r.leaves().get(0).reader().getVectorValues("float");

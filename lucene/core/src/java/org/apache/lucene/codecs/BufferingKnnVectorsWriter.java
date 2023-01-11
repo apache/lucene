@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
@@ -83,6 +84,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
               return sortMap != null
                   ? new SortingVectorValues(vectorValues, sortMap)
                   : vectorValues;
+            }
+
+            @Override
+            public ByteVectorValues getByteVectorValues(String field) throws IOException {
+              throw new UnsupportedOperationException();
             }
 
             @Override
@@ -203,6 +209,11 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           }
 
           @Override
+          public ByteVectorValues getByteVectorValues(String field) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
           public void checkIntegrity() {}
         };
     writeField(fieldInfo, knnVectorsReader, mergeState.segmentInfo.maxDoc());
@@ -228,7 +239,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public void addValue(int docID, Object value) {
+    public void addValue(int docID, float[] value) {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
@@ -236,29 +247,9 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       assert docID > lastDocID;
-      float[] vectorValue;
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE:
-          vectorValue = bytesToFloats((BytesRef) value);
-          break;
-        default:
-        case FLOAT32:
-          vectorValue = (float[]) value;
-          break;
-      }
-      ;
       docsWithField.add(docID);
-      vectors.add(copyValue(vectorValue));
+      vectors.add(copyValue(value));
       lastDocID = docID;
-    }
-
-    private float[] bytesToFloats(BytesRef b) {
-      // This is used only by SimpleTextKnnVectorsWriter
-      float[] floats = new float[dim];
-      for (int i = 0; i < dim; i++) {
-        floats[i] = b.bytes[i + b.offset];
-      }
-      return floats;
     }
 
     @Override

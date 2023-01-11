@@ -19,31 +19,35 @@ package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 
-class MockVectorValues extends AbstractMockVectorValues<float[]> {
-  private final float[] scratch;
+class MockByteVectorValues extends AbstractMockVectorValues<BytesRef> {
+  private final byte[] scratch;
 
-  static MockVectorValues fromValues(float[][] values) {
-    int dimension = values[0].length;
-    int maxDoc = values.length;
-    float[][] denseValues = new float[maxDoc][];
+  static MockByteVectorValues fromValues(byte[][] byteValues) {
+    int dimension = byteValues[0].length;
+    BytesRef[] values = new BytesRef[byteValues.length];
+    for (int i = 0; i < byteValues.length; i++) {
+      values[i] = byteValues[i] == null ? null : new BytesRef(byteValues[i]);
+    }
+    BytesRef[] denseValues = new BytesRef[values.length];
     int count = 0;
-    for (int i = 0; i < maxDoc; i++) {
+    for (int i = 0; i < byteValues.length; i++) {
       if (values[i] != null) {
         denseValues[count++] = values[i];
       }
     }
-    return new MockVectorValues(values, dimension, denseValues, count);
+    return new MockByteVectorValues(values, dimension, denseValues, count);
   }
 
-  MockVectorValues(float[][] values, int dimension, float[][] denseValues, int numVectors) {
+  MockByteVectorValues(BytesRef[] values, int dimension, BytesRef[] denseValues, int numVectors) {
     super(values, dimension, denseValues, numVectors);
-    this.scratch = new float[dimension];
+    scratch = new byte[dimension];
   }
 
   @Override
-  public MockVectorValues copy() {
-    return new MockVectorValues(
+  public MockByteVectorValues copy() {
+    return new MockByteVectorValues(
         ArrayUtil.copyOfSubArray(values, 0, values.length),
         dimension,
         ArrayUtil.copyOfSubArray(denseValues, 0, denseValues.length),
@@ -51,21 +55,16 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
   }
 
   @Override
-  public float[] vectorValue() {
+  public BytesRef vectorValue() {
     if (LuceneTestCase.random().nextBoolean()) {
       return values[pos];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
-      // This should help us catch cases of aliasing where the same VectorValues source is used
+      // This should help us catch cases of aliasing where the same ByteVectorValues source is used
       // twice in a
       // single computation.
-      System.arraycopy(values[pos], 0, scratch, 0, dimension);
-      return scratch;
+      System.arraycopy(values[pos].bytes, values[pos].offset, scratch, 0, dimension);
+      return new BytesRef(scratch);
     }
-  }
-
-  @Override
-  public float[] vectorValue(int targetOrd) {
-    return denseValues[targetOrd];
   }
 }

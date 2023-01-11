@@ -45,6 +45,7 @@ import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
@@ -707,7 +708,17 @@ public class KnnGraphTester {
     iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType = KnnVectorField.createFieldType(dim, vectorEncoding, similarityFunction);
+    final FieldType fieldType;
+    switch (vectorEncoding) {
+      case BYTE:
+        fieldType = KnnByteVectorField.createFieldType(dim, similarityFunction);
+        break;
+      default:
+      case FLOAT32:
+        fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
+        break;
+    }
+    ;
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -722,7 +733,7 @@ public class KnnGraphTester {
           switch (vectorEncoding) {
             case BYTE:
               doc.add(
-                  new KnnVectorField(
+                  new KnnByteVectorField(
                       KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
               break;
             default:

@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Provides random access to vectors by dense ordinal. This interface is used by HNSW-based
@@ -26,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public interface RandomAccessVectorValues {
+public interface RandomAccessVectorValues<T> {
 
   /** Return the number of vector values */
   int size();
@@ -35,26 +34,16 @@ public interface RandomAccessVectorValues {
   int dimension();
 
   /**
-   * Return the vector value indexed at the given ordinal. The provided floating point array may be
-   * shared and overwritten by subsequent calls to this method and {@link #binaryValue(int)}.
+   * Return the vector value indexed at the given ordinal.
    *
    * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
    */
-  float[] vectorValue(int targetOrd) throws IOException;
-
-  /**
-   * Return the vector indexed at the given ordinal value as an array of bytes in a BytesRef; these
-   * are the bytes corresponding to the float array. The provided bytes may be shared and
-   * overwritten by subsequent calls to this method and {@link #vectorValue(int)}.
-   *
-   * @param targetOrd a valid ordinal, &ge; 0 and &lt; {@link #size()}.
-   */
-  BytesRef binaryValue(int targetOrd) throws IOException;
+  T vectorValue(int targetOrd) throws IOException;
 
   /**
    * Creates a new copy of this {@link RandomAccessVectorValues}. This is helpful when you need to
    * access different values at once, to avoid overwriting the underlying float vector returned by
    * {@link RandomAccessVectorValues#vectorValue}.
    */
-  RandomAccessVectorValues copy() throws IOException;
+  RandomAccessVectorValues<T> copy() throws IOException;
 }

@@ -53,7 +53,7 @@ public final class HnswGraphBuilder<T> {
 
   private final VectorSimilarityFunction similarityFunction;
   private final VectorEncoding vectorEncoding;
-  private final RandomAccessVectorValues vectors;
+  private final RandomAccessVectorValues<T> vectors;
   private final SplittableRandom random;
   private final HnswGraphSearcher<T> graphSearcher;
 
@@ -63,10 +63,10 @@ public final class HnswGraphBuilder<T> {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private final RandomAccessVectorValues vectorsCopy;
+  private final RandomAccessVectorValues<T> vectorsCopy;
 
-  public static HnswGraphBuilder<?> create(
-      RandomAccessVectorValues vectors,
+  public static <T> HnswGraphBuilder<T> create(
+      RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
@@ -89,7 +89,7 @@ public final class HnswGraphBuilder<T> {
    *     to ensure repeatable construction.
    */
   private HnswGraphBuilder(
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
@@ -131,7 +131,7 @@ public final class HnswGraphBuilder<T> {
    * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
    *     independent accessor for the vectors
    */
-  public OnHeapHnswGraph build(RandomAccessVectorValues vectorsToAdd) throws IOException {
+  public OnHeapHnswGraph build(RandomAccessVectorValues<T> vectorsToAdd) throws IOException {
     if (vectorsToAdd == this.vectors) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -143,7 +143,7 @@ public final class HnswGraphBuilder<T> {
     return hnsw;
   }
 
-  private void addVectors(RandomAccessVectorValues vectorsToAdd) throws IOException {
+  private void addVectors(RandomAccessVectorValues<T> vectorsToAdd) throws IOException {
     long start = System.nanoTime(), t = start;
     // start at node 1! node 0 is added implicitly, in the constructor
     for (int node = 1; node < vectorsToAdd.size(); node++) {
@@ -189,19 +189,8 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
-  public void addGraphNode(int node, RandomAccessVectorValues values) throws IOException {
-    addGraphNode(node, getValue(node, values));
-  }
-
-  @SuppressWarnings("unchecked")
-  private T getValue(int node, RandomAccessVectorValues values) throws IOException {
-    switch (vectorEncoding) {
-      case BYTE:
-        return (T) values.binaryValue(node);
-      default:
-      case FLOAT32:
-        return (T) values.vectorValue(node);
-    }
+  public void addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
+    addGraphNode(node, values.vectorValue(node));
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {
@@ -285,10 +274,10 @@ public final class HnswGraphBuilder<T> {
       throws IOException {
     switch (vectorEncoding) {
       case BYTE:
-        return isDiverse(vectors.binaryValue(candidate), neighbors, score);
+        return isDiverse((BytesRef) vectors.vectorValue(candidate), neighbors, score);
       default:
       case FLOAT32:
-        return isDiverse(vectors.vectorValue(candidate), neighbors, score);
+        return isDiverse((float[]) vectors.vectorValue(candidate), neighbors, score);
     }
   }
 
@@ -296,7 +285,8 @@ public final class HnswGraphBuilder<T> {
       throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorsCopy.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(
+              candidate, (float[]) vectorsCopy.vectorValue(neighbors.node[i]));
       if (neighborSimilarity >= score) {
         return false;
       }
@@ -308,7 +298,8 @@ public final class HnswGraphBuilder<T> {
       throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
-          similarityFunction.compare(candidate, vectorsCopy.binaryValue(neighbors.node[i]));
+          similarityFunction.compare(
+              candidate, (BytesRef) vectorsCopy.vectorValue(neighbors.node[i]));
       if (neighborSimilarity >= score) {
         return false;
       }
@@ -334,10 +325,12 @@ public final class HnswGraphBuilder<T> {
     int candidateNode = neighbors.node[candidateIndex];
     switch (vectorEncoding) {
       case BYTE:
-        return isWorstNonDiverse(candidateIndex, vectors.binaryValue(candidateNode), neighbors);
+        return isWorstNonDiverse(
+            candidateIndex, (BytesRef) vectors.vectorValue(candidateNode), neighbors);
       default:
       case FLOAT32:
-        return isWorstNonDiverse(candidateIndex, vectors.vectorValue(candidateNode), neighbors);
+        return isWorstNonDiverse(
+            candidateIndex, (float[]) vectors.vectorValue(candidateNode), neighbors);
     }
   }
 
@@ -346,7 +339,8 @@ public final class HnswGraphBuilder<T> {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
     for (int i = candidateIndex - 1; i >= 0; i--) {
       float neighborSimilarity =
-          similarityFunction.compare(candidateVector, vectorsCopy.vectorValue(neighbors.node[i]));
+          similarityFunction.compare(
+              candidateVector, (float[]) vectorsCopy.vectorValue(neighbors.node[i]));
       // candidate node is too similar to node i given its score relative to the base node
       if (neighborSimilarity >= minAcceptedSimilarity) {
         return true;
@@ -360,7 +354,8 @@ public final class HnswGraphBuilder<T> {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
     for (int i = candidateIndex - 1; i >= 0; i--) {
       float neighborSimilarity =
-          similarityFunction.compare(candidateVector, vectorsCopy.binaryValue(neighbors.node[i]));
+          similarityFunction.compare(
+              candidateVector, (BytesRef) vectorsCopy.vectorValue(neighbors.node[i]));
       // candidate node is too similar to node i given its score relative to the base node
       if (neighborSimilarity >= minAcceptedSimilarity) {
         return true;

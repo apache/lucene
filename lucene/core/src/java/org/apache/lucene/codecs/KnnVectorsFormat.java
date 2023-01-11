@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorValues;
@@ -95,6 +96,11 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public VectorValues getVectorValues(String field) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteVectorValues getByteVectorValues(String field) {
               throw new UnsupportedOperationException();
             }
 
