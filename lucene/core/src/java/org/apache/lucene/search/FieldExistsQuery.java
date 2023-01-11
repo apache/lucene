@@ -31,7 +31,8 @@ import org.apache.lucene.index.Terms;
 
 /**
  * A {@link Query} that matches documents that contain either a {@link
- * org.apache.lucene.document.KnnVectorField}, or a field that indexes norms or doc values.
+ * org.apache.lucene.document.KnnVectorField}, {@link org.apache.lucene.document.KnnByteVectorField}
+ * or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
   private String field;
@@ -126,7 +127,12 @@ public class FieldExistsQuery extends Query {
           break;
         }
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-        if (leaf.getVectorValues(field).size() != leaf.maxDoc()) {
+        int numVectors =
+            switch (fieldInfo.getVectorEncoding()) {
+              case FLOAT32 -> leaf.getVectorValues(field).size();
+              case BYTE -> leaf.getByteVectorValues(field).size();
+            };
+        if (numVectors != leaf.maxDoc()) {
           allReadersRewritable = false;
           break;
         }
@@ -178,7 +184,11 @@ public class FieldExistsQuery extends Query {
         if (fieldInfo.hasNorms()) { // the field indexes norms
           iterator = context.reader().getNormValues(field);
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
-          iterator = context.reader().getVectorValues(field);
+          iterator =
+              switch (fieldInfo.getVectorEncoding()) {
+                case FLOAT32 -> context.reader().getVectorValues(field);
+                case BYTE -> context.reader().getByteVectorValues(field);
+              };
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
           switch (fieldInfo.getDocValuesType()) {

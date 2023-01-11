@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -217,6 +218,11 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   public VectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     return OffHeapVectorValues.load(fieldEntry, vectorData);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
