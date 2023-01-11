@@ -192,7 +192,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   // Utility method for rewriting BooleanQuery when scores are not needed.
   // This is called from ConstantScoreQuery#rewrite
-  BooleanQuery rewriteNoScoring(IndexSearcher indexSearcher) throws IOException {
+  BooleanQuery rewriteNoScoring() {
     boolean actuallyRewritten = false;
     BooleanQuery.Builder newQuery =
         new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
@@ -207,14 +207,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       // method could run in exponential time with the depth of the query as
       // every new level would rewrite 2x more than its parent level.
       Query rewritten = query;
-      if (query instanceof BoostQuery) {
-        rewritten = ((BoostQuery) query).getQuery();
+      if (rewritten instanceof BoostQuery) {
+        rewritten = ((BoostQuery) rewritten).getQuery();
       }
-      if (query instanceof ConstantScoreQuery) {
-        rewritten = ((ConstantScoreQuery) query).getQuery();
+      if (rewritten instanceof ConstantScoreQuery) {
+        rewritten = ((ConstantScoreQuery) rewritten).getQuery();
       }
-      if (query instanceof BooleanQuery) {
-        rewritten = ((BooleanQuery) query).rewriteNoScoring(indexSearcher);
+      if (rewritten instanceof BooleanQuery) {
+        rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
       }
       BooleanClause.Occur occur = clause.getOccur();
       if (occur == Occur.SHOULD && keepShould == false) {
