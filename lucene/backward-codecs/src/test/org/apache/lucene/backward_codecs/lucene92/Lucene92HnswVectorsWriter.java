@@ -268,13 +268,13 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues vectorValues,
+      RandomAccessVectorValues<float[]> vectorValues,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph
-    HnswGraphBuilder<?> hnswGraphBuilder =
+    HnswGraphBuilder<float[]> hnswGraphBuilder =
         HnswGraphBuilder.create(
             vectorValues,
             vectorEncoding,

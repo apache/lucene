@@ -218,12 +218,28 @@ public abstract class CodecReader extends LeafReader {
   public final VectorValues getVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
       return null;
     }
 
     return getVectorReader().getVectorValues(field);
+  }
+
+  @Override
+  public final ByteVectorValues getByteVectorValues(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
+      // Field does not exist or does not index vectors
+      return null;
+    }
+
+    return getVectorReader().getByteVectorValues(field);
   }
 
   @Override

@@ -1396,6 +1396,11 @@ public class MemoryIndex {
     }
 
     @Override
+    public ByteVectorValues getByteVectorValues(String fieldName) {
+      return null;
+    }
+
+    @Override
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
       return null;

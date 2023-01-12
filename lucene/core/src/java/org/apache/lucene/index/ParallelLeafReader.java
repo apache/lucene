@@ -409,6 +409,13 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
+  public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.getByteVectorValues(fieldName);
+  }
+
+  @Override
   public TopDocs searchNearestVectors(
       String fieldName, float[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {

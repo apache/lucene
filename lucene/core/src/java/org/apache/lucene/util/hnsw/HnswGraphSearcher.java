@@ -81,7 +81,7 @@ public class HnswGraphSearcher<T> {
   public static NeighborQueue search(
       float[] query,
       int topK,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
@@ -137,7 +137,7 @@ public class HnswGraphSearcher<T> {
   public static NeighborQueue search(
       BytesRef query,
       int topK,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<BytesRef> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
@@ -198,7 +198,7 @@ public class HnswGraphSearcher<T> {
       int topK,
       int level,
       final int[] eps,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
     return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
@@ -209,7 +209,7 @@ public class HnswGraphSearcher<T> {
       int topK,
       int level,
       final int[] eps,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<T> vectors,
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit)
@@ -279,11 +279,11 @@ public class HnswGraphSearcher<T> {
     return results;
   }
 
-  private float compare(T query, RandomAccessVectorValues vectors, int ord) throws IOException {
+  private float compare(T query, RandomAccessVectorValues<T> vectors, int ord) throws IOException {
     if (vectorEncoding == VectorEncoding.BYTE) {
-      return similarityFunction.compare((BytesRef) query, vectors.binaryValue(ord));
+      return similarityFunction.compare((BytesRef) query, (BytesRef) vectors.vectorValue(ord));
     } else {
-      return similarityFunction.compare((float[]) query, vectors.vectorValue(ord));
+      return similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(ord));
     }
   }
 
