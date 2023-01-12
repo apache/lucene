@@ -137,6 +137,7 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
     private final List<T> subs;
     private T current;
     private final PriorityQueue<T> queue;
+    private int queueMinDocID;
 
     private SortedDocIDMerger(List<T> subs, int maxCount) throws IOException {
       if (maxCount <= 1) {
@@ -152,6 +153,14 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
             }
           };
       reset();
+    }
+
+    private void setQueueMinDocID() {
+      if (queue.size() > 0) {
+        queueMinDocID = queue.top().mappedDocID;
+      } else {
+        queueMinDocID = DocIdSetIterator.NO_MORE_DOCS;
+      }
     }
 
     @Override
@@ -171,23 +180,33 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
           queue.add(sub);
         } // else all docs in this sub were deleted; do not add it to the queue!
       }
+      setQueueMinDocID();
     }
 
     @Override
     public T next() throws IOException {
       int nextDoc = current.nextMappedDoc();
+      if (nextDoc < queueMinDocID) {
+        // This should be the common case when index sorting is either disabled, or enabled on a
+        // low-cardinality field, or enabled on a field that correlates with index order.
+        return current;
+      }
+
       if (nextDoc == NO_MORE_DOCS) {
         if (queue.size() == 0) {
           current = null;
         } else {
           current = queue.pop();
         }
-      } else if (queue.size() > 0 && nextDoc > queue.top().mappedDocID) {
+      } else if (queue.size() > 0) {
+        assert queueMinDocID == queue.top().mappedDocID;
+        assert nextDoc > queueMinDocID;
         T newCurrent = queue.top();
         queue.updateTop(current);
         current = newCurrent;
       }
 
+      setQueueMinDocID();
       return current;
     }
   }
