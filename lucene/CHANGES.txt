@@ -234,6 +234,9 @@ Bug Fixes
 
 * GITHUB#12046: Out of boundary in CombinedFieldQuery#addTerm. (Lu Xugang)
 
+* GITHUB#12072: Fix exponential runtime for nested BooleanQuery#rewrite when a
+  BooleanClause is non-scoring. (Ben Trent)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
