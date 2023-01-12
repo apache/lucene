@@ -880,21 +880,17 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
-    FieldType ft = new FieldType(StringField.TYPE_NOT_STORED);
+    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
     ft.setDocValuesType(DocValuesType.SORTED);
     ft.freeze();
-    Field field =
-        new Field("test", new BytesRef("value"), ft) {
+    Field field = new Field("test", "value", ft);
+    field.setTokenStream(
+        new TokenStream() {
           @Override
-          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-            return new TokenStream() {
-              @Override
-              public boolean incrementToken() throws IOException {
-                throw new RuntimeException();
-              }
-            };
+          public boolean incrementToken() {
+            throw new RuntimeException("no");
           }
-        };
+        });
     doc.add(field);
     expectThrows(
         RuntimeException.class,

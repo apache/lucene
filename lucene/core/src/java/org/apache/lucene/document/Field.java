@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.BytesTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
@@ -70,8 +69,13 @@ public class Field implements IndexableField {
   protected Object fieldsData;
 
   /**
-   * Expert: creates a field with no initial value. This is intended to be used by custom {@link
-   * Field} sub-classes with pre-configured {@link IndexableFieldType}s.
+   * Pre-analyzed tokenStream for indexed fields; this is separate from fieldsData because you are
+   * allowed to have both; eg maybe field has a String value but you customize how it's tokenized
+   */
+  protected TokenStream tokenStream;
+
+  /**
+   * Expert: creates a field with no initial value. Intended only for custom Field subclasses.
    *
    * @param name field name
    * @param type field type
@@ -145,7 +149,8 @@ public class Field implements IndexableField {
     }
 
     this.name = name;
-    this.fieldsData = tokenStream;
+    this.fieldsData = null;
+    this.tokenStream = tokenStream;
     this.type = type;
   }
 
@@ -205,20 +210,6 @@ public class Field implements IndexableField {
     if (type == null) {
       throw new IllegalArgumentException("type must not be null");
     }
-    if (type.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0
-        || type.storeTermVectorOffsets()) {
-      throw new IllegalArgumentException("It doesn't make sense to index offsets on binary fields");
-    }
-    if (type.indexOptions() != IndexOptions.NONE && type.tokenized()) {
-      throw new IllegalArgumentException("cannot set a BytesRef value on a tokenized field");
-    }
-    if (type.indexOptions() == IndexOptions.NONE
-        && type.pointDimensionCount() == 0
-        && type.docValuesType() == DocValuesType.NONE
-        && type.stored() == false) {
-      throw new IllegalArgumentException(
-          "it doesn't make sense to have a field that is neither indexed, nor doc-valued, nor stored");
-    }
     this.name = name;
     this.fieldsData = bytes;
     this.type = type;
@@ -246,9 +237,9 @@ public class Field implements IndexableField {
     if (type == null) {
       throw new IllegalArgumentException("type must not be null");
     }
-    if (type.stored() == false && type.indexOptions() == IndexOptions.NONE) {
+    if (!type.stored() && type.indexOptions() == IndexOptions.NONE) {
       throw new IllegalArgumentException(
-          "it doesn't make sense to have a field that is neither indexed nor stored");
+          "it doesn't make sense to have a field that " + "is neither indexed nor stored");
     }
     this.name = name;
     this.fieldsData = value;
@@ -287,7 +278,7 @@ public class Field implements IndexableField {
    * String value is analyzed to produce the indexed tokens.
    */
   public TokenStream tokenStreamValue() {
-    return fieldsData instanceof TokenStream ? (TokenStream) fieldsData : null;
+    return tokenStream;
   }
 
   /**
@@ -337,6 +328,9 @@ public class Field implements IndexableField {
           "cannot change value type from "
               + fieldsData.getClass().getSimpleName()
               + " to BytesRef");
+    }
+    if (type.indexOptions() != IndexOptions.NONE) {
+      throw new IllegalArgumentException("cannot set a BytesRef value on an indexed field");
     }
     if (value == null) {
       throw new IllegalArgumentException("value must not be null");
@@ -398,15 +392,15 @@ public class Field implements IndexableField {
     fieldsData = Double.valueOf(value);
   }
 
-  /** Expert: sets the token stream to be used for indexing. */
+  /**
+   * Expert: sets the token stream to be used for indexing and causes isIndexed() and isTokenized()
+   * to return true. May be combined with stored values from stringValue() or binaryValue()
+   */
   public void setTokenStream(TokenStream tokenStream) {
-    if (!(fieldsData instanceof TokenStream)) {
-      throw new IllegalArgumentException(
-          "cannot change value type from "
-              + fieldsData.getClass().getSimpleName()
-              + " to TokenStream");
+    if (type.indexOptions() == IndexOptions.NONE || !type.tokenized()) {
+      throw new IllegalArgumentException("TokenStream fields must be indexed and tokenized");
     }
-    this.fieldsData = tokenStream;
+    this.tokenStream = tokenStream;
   }
 
   @Override
@@ -484,8 +478,8 @@ public class Field implements IndexableField {
       }
     }
 
-    if (tokenStreamValue() != null) {
-      return tokenStreamValue();
+    if (tokenStream != null) {
+      return tokenStream;
     } else if (readerValue() != null) {
       return analyzer.tokenStream(name(), readerValue());
     } else if (stringValue() != null) {

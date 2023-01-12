@@ -47,9 +47,10 @@ public class TestPayloadsOnVectors extends LuceneTestCase {
     customType.setStoreTermVectorPositions(true);
     customType.setStoreTermVectorPayloads(true);
     customType.setStoreTermVectorOffsets(random().nextBoolean());
+    Field field = new Field("field", "", customType);
     TokenStream ts = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     ((Tokenizer) ts).setReader(new StringReader("here we go"));
-    Field field = new Field("field", ts, customType);
+    field.setTokenStream(ts);
     doc.add(field);
     writer.addDocument(doc);
 
@@ -89,19 +90,22 @@ public class TestPayloadsOnVectors extends LuceneTestCase {
     customType.setStoreTermVectorPositions(true);
     customType.setStoreTermVectorPayloads(true);
     customType.setStoreTermVectorOffsets(random().nextBoolean());
+    Field field = new Field("field", "", customType);
     TokenStream ts = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     ((Tokenizer) ts).setReader(new StringReader("here we go"));
-    Field field = new Field("field", ts, customType);
+    field.setTokenStream(ts);
     doc.add(field);
+    Field field2 = new Field("field", "", customType);
     Token withPayload = new Token("withPayload", 0, 11);
     withPayload.setPayload(new BytesRef("test"));
     ts = new CannedTokenStream(withPayload);
     assertTrue(ts.hasAttribute(PayloadAttribute.class));
-    Field field2 = new Field("field", ts, customType);
+    field2.setTokenStream(ts);
     doc.add(field2);
+    Field field3 = new Field("field", "", customType);
     ts = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     ((Tokenizer) ts).setReader(new StringReader("nopayload"));
-    Field field3 = new Field("field", ts, customType);
+    field3.setTokenStream(ts);
     doc.add(field3);
     writer.addDocument(doc);
     DirectoryReader reader = writer.getReader();

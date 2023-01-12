@@ -1497,13 +1497,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       doc.add(newStringField("id", docCount + "", Field.Store.NO));
       doc.add(newTextField("content", "silly content " + docCount, Field.Store.NO));
       if (docCount == 4) {
+        Field f = newTextField("crash", "", Field.Store.NO);
+        doc.add(f);
         MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
         tokenizer.setReader(new StringReader("crash me on the 4th token"));
         tokenizer.setEnableChecks(
             false); // disable workflow checking as we forcefully close() in exceptional cases.
-        Field f =
-            new Field("crash", new CrashingFilter("crash", tokenizer), TextField.TYPE_NOT_STORED);
-        doc.add(f);
+        f.setTokenStream(new CrashingFilter("crash", tokenizer));
       }
     }
 
@@ -1573,13 +1573,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       doc.add(newStringField("id", docCount + "", Field.Store.NO));
       doc.add(newTextField("content", "silly content " + docCount, Field.Store.NO));
       if (docCount == crashAt) {
+        Field f = newTextField("crash", "", Field.Store.NO);
+        doc.add(f);
         MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
         tokenizer.setReader(new StringReader("crash me on the 4th token"));
         tokenizer.setEnableChecks(
             false); // disable workflow checking as we forcefully close() in exceptional cases.
-        Field f =
-            new Field("crash", new CrashingFilter("crash", tokenizer), TextField.TYPE_NOT_STORED);
-        doc.add(f);
+        f.setTokenStream(new CrashingFilter("crash", tokenizer));
       }
     }
 

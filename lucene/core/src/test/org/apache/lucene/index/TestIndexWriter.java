@@ -1166,44 +1166,41 @@ public class TestIndexWriter extends LuceneTestCase {
     FieldType customType = new FieldType(StoredField.TYPE);
     customType.setTokenized(true);
 
-    final MockTokenizer field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    Field f =
-        new Field("binary", b, 10, 17, customType) {
-          @Override
-          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-            return field1;
-          }
-        };
+    Field f = new Field("binary", b, 10, 17, customType);
     // TODO: this is evil, changing the type after creating the field:
     customType.setIndexOptions(IndexOptions.DOCS);
-    field1.setReader(new StringReader("doc1field1"));
+    final MockTokenizer doc1field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    doc1field1.setReader(new StringReader("doc1field1"));
+    f.setTokenStream(doc1field1);
 
     FieldType customType2 = new FieldType(TextField.TYPE_STORED);
 
-    final MockTokenizer field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    Field f2 =
-        new Field("string", "value", customType2) {
-          @Override
-          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-            return field2;
-          }
-        };
-
-    field2.setReader(new StringReader("doc1field2"));
+    Field f2 = newField("string", "value", customType2);
+    final MockTokenizer doc1field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    doc1field2.setReader(new StringReader("doc1field2"));
+    f2.setTokenStream(doc1field2);
     doc.add(f);
     doc.add(f2);
     w.addDocument(doc);
 
     // add 2 docs to test in-memory merging
-    field1.setReader(new StringReader("doc2field1"));
-    field2.setReader(new StringReader("doc2field2"));
+    final MockTokenizer doc2field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    doc2field1.setReader(new StringReader("doc2field1"));
+    f.setTokenStream(doc2field1);
+    final MockTokenizer doc2field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    doc2field2.setReader(new StringReader("doc2field2"));
+    f2.setTokenStream(doc2field2);
     w.addDocument(doc);
 
     // force segment flush so we can force a segment merge with doc3 later.
     w.commit();
 
-    field1.setReader(new StringReader("doc3field1"));
-    field2.setReader(new StringReader("doc3field2"));
+    final MockTokenizer doc3field1 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    doc3field1.setReader(new StringReader("doc3field1"));
+    f.setTokenStream(doc3field1);
+    final MockTokenizer doc3field2 = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    doc3field2.setReader(new StringReader("doc3field2"));
+    f2.setTokenStream(doc3field2);
 
     w.addDocument(doc);
     w.commit();
