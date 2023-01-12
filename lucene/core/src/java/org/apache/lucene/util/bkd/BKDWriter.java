@@ -366,19 +366,19 @@ public class BKDWriter implements Closeable {
   }
 
   private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final int bytesPerDim;
+    private final ArrayUtil.ByteArrayComparator comparator;
 
     public BKDMergeQueue(int bytesPerDim, int maxSize) {
       super(maxSize);
-      this.bytesPerDim = bytesPerDim;
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
     @Override
     public boolean lessThan(MergeReader a, MergeReader b) {
       assert a != b;
 
-      int cmp =
-          Arrays.compareUnsigned(a.packedValue, 0, bytesPerDim, b.packedValue, 0, bytesPerDim);
+      int cmp = comparator.compare(a.packedValue, 0, b.packedValue, 0);
+
       if (cmp < 0) {
         return true;
       } else if (cmp > 0) {
