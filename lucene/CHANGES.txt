@@ -275,6 +275,8 @@ Optimizations
 
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
 
+* GITHUB#12081: Small merging speedup on sorted indexes. (Adrien Grand)
+
 
 Other
 ---------------------
