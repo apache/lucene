@@ -234,6 +234,9 @@ Bug Fixes
 
 * GITHUB#12046: Out of boundary in CombinedFieldQuery#addTerm. (Lu Xugang)
 
+* GITHUB#12072: Fix exponential runtime for nested BooleanQuery#rewrite when a
+  BooleanClause is non-scoring. (Ben Trent)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
@@ -274,6 +277,8 @@ Optimizations
   sort is configured. (Adrien Grand)
 
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
+* GITHUB#12079: Faster merging of 1D points. (Adrien Grand)
 
 * GITHUB#12081: Small merging speedup on sorted indexes. (Adrien Grand)
 
