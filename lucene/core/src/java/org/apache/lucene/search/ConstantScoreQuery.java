@@ -50,7 +50,7 @@ public final class ConstantScoreQuery extends Query {
     } else if (rewritten instanceof ConstantScoreQuery) {
       rewritten = ((ConstantScoreQuery) rewritten).getQuery();
     } else if (rewritten instanceof BooleanQuery) {
-      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring(reader);
+      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
     }
 
     if (rewritten.getClass() == MatchNoDocsQuery.class) {
