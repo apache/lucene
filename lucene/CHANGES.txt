@@ -278,6 +278,8 @@ Optimizations
 
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
 
+* GITHUB#12079: Faster merging of 1D points. (Adrien Grand)
+
 
 Other
 ---------------------
