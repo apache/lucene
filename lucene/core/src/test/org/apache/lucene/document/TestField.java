@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
@@ -425,6 +426,31 @@ public class TestField extends LuceneTestCase {
     }
   }
 
+  public void testBinaryStringField() throws Exception {
+    Field[] fields =
+        new Field[] {
+          new StringField("foo", new BytesRef("bar"), Field.Store.NO),
+          new StringField("foo", new BytesRef("bar"), Field.Store.YES)
+        };
+
+    for (Field field : fields) {
+      trySetByteValue(field);
+      field.setBytesValue("baz".getBytes(StandardCharsets.UTF_8));
+      assertEquals(new BytesRef("baz"), field.binaryValue());
+      field.setBytesValue(new BytesRef("baz"));
+      trySetDoubleValue(field);
+      trySetIntValue(field);
+      trySetFloatValue(field);
+      trySetLongValue(field);
+      trySetReaderValue(field);
+      trySetShortValue(field);
+      trySetStringValue(field);
+      trySetTokenStreamValue(field);
+
+      assertEquals(new BytesRef("baz"), field.binaryValue());
+    }
+  }
+
   public void testTextFieldString() throws Exception {
     Field[] fields =
         new Field[] {
@@ -442,7 +468,7 @@ public class TestField extends LuceneTestCase {
       trySetReaderValue(field);
       trySetShortValue(field);
       field.setStringValue("baz");
-      field.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
+      trySetTokenStreamValue(field);
 
       assertEquals("baz", field.stringValue());
     }
@@ -461,7 +487,7 @@ public class TestField extends LuceneTestCase {
     field.setReaderValue(new StringReader("foobar"));
     trySetShortValue(field);
     trySetStringValue(field);
-    field.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
+    trySetTokenStreamValue(field);
 
     assertNotNull(field.readerValue());
   }
@@ -727,5 +753,33 @@ public class TestField extends LuceneTestCase {
         () -> {
           f.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
         });
+  }
+
+  public void testDisabledField() {
+    // neither indexed nor stored
+    FieldType ft = new FieldType();
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", "", ft));
+  }
+
+  public void testTokenizedBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(true);
+    ft.setIndexOptions(IndexOptions.DOCS);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
+  }
+
+  public void testOffsetsBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(false);
+    ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
+  }
+
+  public void testTermVectorsOffsetsBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(false);
+    ft.setStoreTermVectors(true);
+    ft.setStoreTermVectorOffsets(true);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
   }
 }
