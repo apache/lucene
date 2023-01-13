@@ -282,6 +282,7 @@ Optimizations
 
 * GITHUB#12081: Small merging speedup on sorted indexes. (Adrien Grand)
 
+* GITHUB#12078: Enhance XXXField#newRangeQuery. (Lu Xugang)
 
 Other
 ---------------------
