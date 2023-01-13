@@ -109,10 +109,12 @@ public final class LongField extends Field {
    */
   public static Query newRangeQuery(String field, long lowerValue, long upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    Query fallbackQuery = LongPoint.newRangeQuery(field, lowerValue, upperValue);
-    return new IndexOrDocValuesQuery(
-        new IndexSortSortedNumericDocValuesRangeQuery(field, lowerValue, upperValue, fallbackQuery),
-        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+    Query fallbackQuery =
+        new IndexOrDocValuesQuery(
+            LongPoint.newRangeQuery(field, lowerValue, upperValue),
+            SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   /**

@@ -106,10 +106,12 @@ public final class IntField extends Field {
    */
   public static Query newRangeQuery(String field, int lowerValue, int upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    Query fallbackQuery = IntPoint.newRangeQuery(field, lowerValue, upperValue);
-    return new IndexOrDocValuesQuery(
-        new IndexSortSortedNumericDocValuesRangeQuery(field, lowerValue, upperValue, fallbackQuery),
-        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+    Query fallbackQuery =
+        new IndexOrDocValuesQuery(
+            IntPoint.newRangeQuery(field, lowerValue, upperValue),
+            SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
   }
 
   /**
