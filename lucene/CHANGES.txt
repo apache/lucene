@@ -115,7 +115,7 @@ API Changes
 * GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
 
-* GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
+* GITHUB#11822: Configure replicator PrimaryNode replica shutdown timeout. (Steven Schlansker)
 
 * GITHUB#11930: Added IOContext#LOAD for files that are a small fraction of the
   total index size and heavily accessed with a random access pattern. Some
