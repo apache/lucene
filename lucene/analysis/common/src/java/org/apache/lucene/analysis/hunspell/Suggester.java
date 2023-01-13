@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 
 /**
@@ -219,7 +220,10 @@ public class Suggester {
   }
 
   private List<String> postprocess(Collection<Suggestion> suggestions) {
-    return suggestions.stream().flatMap(s -> Arrays.stream(s.result)).distinct().toList();
+    return suggestions.stream()
+        .flatMap(s -> Arrays.stream(s.result))
+        .distinct()
+        .collect(Collectors.toList());
   }
 
   private List<String> modifyChunksBetweenDashes(

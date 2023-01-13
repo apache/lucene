@@ -319,7 +319,7 @@ public class TestSpellChecking extends LuceneTestCase {
     Set<String> everythingGenerated = new HashSet<>();
     boolean generatedEverything = true;
     try (Stream<String> lines = Files.lines(dic, speller.dictionary.decoder.charset())) {
-      for (String line : lines.skip(1).toList()) {
+      for (String line : lines.skip(1).collect(Collectors.toList())) {
         int len = (int) line.chars().takeWhile(c -> !Character.isWhitespace(c) && c != '/').count();
         String word = line.substring(0, len).trim();
         if (word.isEmpty() || word.contains("\\")) {
@@ -371,7 +371,8 @@ public class TestSpellChecking extends LuceneTestCase {
 
     if (expanded.stream().anyMatch(e -> e.getWord().equals(stem))) {
       EntrySuggestion suggestion =
-          hunspell.compress(expanded.stream().map(AffixedWord::getWord).toList());
+          hunspell.compress(
+              expanded.stream().map(AffixedWord::getWord).collect(Collectors.toList()));
       if (suggestion != null) {
         String message =
             ("Compression suggests a different stem from the original " + stem)

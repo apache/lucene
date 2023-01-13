@@ -1380,7 +1380,9 @@ public class Dictionary {
      */
     abstract String printFlag(char flag);
 
-    /** @return a presentable sorted concatenation of {@link #printFlag} results */
+    /**
+     * @return a presentable sorted concatenation of {@link #printFlag} results
+     */
     String printFlags(char[] encodedFlags) {
       List<String> printed = new ArrayList<>();
       for (char c : encodedFlags) {

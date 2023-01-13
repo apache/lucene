@@ -36,22 +36,30 @@ public final class AffixedWord {
     this.suffixes = Collections.unmodifiableList(suffixes);
   }
 
-  /** @return the word being analyzed */
+  /**
+   * @return the word being analyzed
+   */
   public String getWord() {
     return word;
   }
 
-  /** @return the dictionary entry for the stem in this analysis */
+  /**
+   * @return the dictionary entry for the stem in this analysis
+   */
   public DictEntry getDictEntry() {
     return entry;
   }
 
-  /** @return the list of prefixes applied to the stem, at most two, outermost first */
+  /**
+   * @return the list of prefixes applied to the stem, at most two, outermost first
+   */
   public List<Affix> getPrefixes() {
     return prefixes;
   }
 
-  /** @return the list of suffixes applied to the stem, at most two, outermost first */
+  /**
+   * @return the list of suffixes applied to the stem, at most two, outermost first
+   */
   public List<Affix> getSuffixes() {
     return suffixes;
   }
@@ -59,7 +67,8 @@ public final class AffixedWord {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof AffixedWord that)) return false;
+    if (!(o instanceof AffixedWord)) return false;
+    AffixedWord that = (AffixedWord) o;
     return word.equals(that.word)
         && entry.equals(that.entry)
         && prefixes.equals(that.prefixes)
@@ -103,7 +112,7 @@ public final class AffixedWord {
 
     @Override
     public boolean equals(Object o) {
-      return this == o || o instanceof Affix a && affixId == a.affixId;
+      return this == o || o instanceof Affix && affixId == ((Affix) o).affixId;
     }
 
     @Override

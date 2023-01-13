@@ -158,8 +158,12 @@ public class TestHunspell extends LuceneTestCase {
   private void checkAffixedWord(
       AffixedWord word, String stem, List<String> prefixFlags, List<String> suffixFlags) {
     assertEquals(stem, word.getDictEntry().getStem());
-    assertEquals(prefixFlags, word.getPrefixes().stream().map(AffixedWord.Affix::getFlag).toList());
-    assertEquals(suffixFlags, word.getSuffixes().stream().map(AffixedWord.Affix::getFlag).toList());
+    assertEquals(
+        prefixFlags,
+        word.getPrefixes().stream().map(AffixedWord.Affix::getFlag).collect(Collectors.toList()));
+    assertEquals(
+        suffixFlags,
+        word.getSuffixes().stream().map(AffixedWord.Affix::getFlag).collect(Collectors.toList()));
   }
 
   private Hunspell loadNoTimeout(String name) throws Exception {
@@ -178,12 +182,12 @@ public class TestHunspell extends LuceneTestCase {
                 Stream.of(createFormsBase).flatMap(s -> Stream.of(s, "pro" + s, "re" + s)),
                 Stream.of("creative"))
             .sorted()
-            .toList();
+            .collect(Collectors.toList());
 
     Map<String, AffixedWord> expanded =
         TestSpellChecking.checkExpansionGeneratesCorrectWords(h, "create", "base").stream()
             .collect(Collectors.toMap(w -> w.getWord(), w -> w));
-    assertEquals(expected, expanded.keySet().stream().sorted().toList());
+    assertEquals(expected, expanded.keySet().stream().sorted().collect(Collectors.toList()));
 
     checkAffixedWord(expanded.get("created"), "create", List.of(), List.of("D"));
     checkAffixedWord(expanded.get("recreated"), "create", List.of("A"), List.of("D"));

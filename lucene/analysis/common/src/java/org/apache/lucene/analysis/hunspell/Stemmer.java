@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.hunspell;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.util.ArrayUtil;
@@ -216,7 +217,7 @@ final class Stemmer {
     if (result == null) return true;
 
     String src = new String(word, 0, length);
-    for (String s : result.toList()) {
+    for (String s : result.collect(Collectors.toList())) {
       if (!s.equals(src) && !processor.process(s.toCharArray(), s.length(), null)) {
         return false;
       }

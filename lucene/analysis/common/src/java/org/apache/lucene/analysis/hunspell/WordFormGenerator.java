@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -341,8 +342,41 @@ public class WordFormGenerator {
     return new WordCompressor(words, forbidden, checkCanceled).compress();
   }
 
-  private record AffixEntry(
-      int id, char flag, AffixKind kind, String affix, String strip, AffixCondition condition) {
+  private static class AffixEntry {
+    final int id;
+    final char flag;
+    final AffixKind kind;
+    final String affix;
+    final String strip;
+    final AffixCondition condition;
+
+    AffixEntry(
+        int id, char flag, AffixKind kind, String affix, String strip, AffixCondition condition) {
+      this.id = id;
+      this.flag = flag;
+      this.kind = kind;
+      this.affix = affix;
+      this.strip = strip;
+      this.condition = condition;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof AffixEntry)) return false;
+      AffixEntry that = (AffixEntry) o;
+      return id == that.id
+          && flag == that.flag
+          && kind == that.kind
+          && affix.equals(that.affix)
+          && strip.equals(that.strip)
+          && condition.equals(that.condition);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(id, flag, kind, affix, strip, condition);
+    }
 
     AffixedWord apply(AffixedWord stem, Dictionary dictionary) {
       String word = stem.getWord();
@@ -438,7 +472,8 @@ public class WordFormGenerator {
           Comparator.comparing((String s) -> existingStems.contains(s))
               .thenComparing(stemCounts::get)
               .reversed();
-      List<String> sortedStems = stemCounts.keySet().stream().sorted(stemSorter).toList();
+      List<String> sortedStems =
+          stemCounts.keySet().stream().sorted(stemSorter).collect(Collectors.toList());
       PriorityQueue<State> queue = new PriorityQueue<>(solutionFitness);
       queue.offer(new State(Map.of(), wordSet.size(), 0, 0));
       State result = null;
@@ -475,7 +510,8 @@ public class WordFormGenerator {
       }
 
       List<String> extraGenerated = new ArrayList<>();
-      for (String extra : allGenerated(state.stemToFlags).distinct().sorted().toList()) {
+      for (String extra :
+          allGenerated(state.stemToFlags).distinct().sorted().collect(Collectors.toList())) {
         if (wordSet.contains(extra)) continue;
 
         if (forbidden.contains(extra) && dictionary.forbiddenword != FLAG_UNSET) {
@@ -519,11 +555,35 @@ public class WordFormGenerator {
 
     private final Map<StemWithFlags, List<String>> expansionCache = new HashMap<>();
 
-    private record StemWithFlags(String stem, Set<FlagSet> flags) {}
+    private class StemWithFlags {
+      final String stem;
+      final Set<FlagSet> flags;
+
+      StemWithFlags(String stem, Set<FlagSet> flags) {
+        this.stem = stem;
+        this.flags = flags;
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof StemWithFlags)) return false;
+        StemWithFlags that = (StemWithFlags) o;
+        return stem.equals(that.stem) && flags.equals(that.flags);
+      }
+
+      @Override
+      public int hashCode() {
+        return Objects.hash(stem, flags);
+      }
+    }
 
     private Stream<String> allGenerated(Map<String, Set<FlagSet>> stemToFlags) {
       Function<StemWithFlags, List<String>> expandToWords =
-          e -> expand(e.stem, FlagSet.flatten(e.flags)).stream().map(w -> w.getWord()).toList();
+          e ->
+              expand(e.stem, FlagSet.flatten(e.flags)).stream()
+                  .map(w -> w.getWord())
+                  .collect(Collectors.toList());
       return stemToFlags.entrySet().stream()
           .map(e -> new StemWithFlags(e.getKey(), e.getValue()))
           .flatMap(swc -> expansionCache.computeIfAbsent(swc, expandToWords).stream());
@@ -538,7 +598,28 @@ public class WordFormGenerator {
     }
   }
 
-  private record FlagSet(Set<Character> flags, Dictionary dictionary) {
+  private static class FlagSet {
+    final Set<Character> flags;
+    final Dictionary dictionary;
+
+    FlagSet(Set<Character> flags, Dictionary dictionary) {
+      this.flags = flags;
+      this.dictionary = dictionary;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (!(o instanceof FlagSet)) return false;
+      FlagSet flagSet = (FlagSet) o;
+      return flags.equals(flagSet.flags) && dictionary.equals(flagSet.dictionary);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(flags, dictionary);
+    }
+
     static Set<Character> flatten(Set<FlagSet> flagSets) {
       return flagSets.stream().flatMap(f -> f.flags.stream()).collect(Collectors.toSet());
     }
@@ -549,9 +630,21 @@ public class WordFormGenerator {
     }
   }
 
-  private record State(
-      Map<String, Set<FlagSet>> stemToFlags,
-      int underGenerated,
-      int overGenerated,
-      int forbidden) {}
+  private static class State {
+    final Map<String, Set<FlagSet>> stemToFlags;
+    final int underGenerated;
+    final int overGenerated;
+    final int forbidden;
+
+    State(
+        Map<String, Set<FlagSet>> stemToFlags,
+        int underGenerated,
+        int overGenerated,
+        int forbidden) {
+      this.stemToFlags = stemToFlags;
+      this.underGenerated = underGenerated;
+      this.overGenerated = overGenerated;
+      this.forbidden = forbidden;
+    }
+  }
 }
