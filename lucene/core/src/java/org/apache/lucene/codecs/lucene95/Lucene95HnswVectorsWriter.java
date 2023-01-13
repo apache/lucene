@@ -362,7 +362,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new NodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
         }
       }
     };
@@ -533,12 +533,24 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         continue;
       }
 
-      VectorValues vectorValues = candidateReader.getVectorValues(fieldInfo.name);
-      if (vectorValues == null) {
-        continue;
+      int candidateVectorCount = 0;
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE -> {
+          ByteVectorValues byteVectorValues = candidateReader.getByteVectorValues(fieldInfo.name);
+          if (byteVectorValues == null) {
+            continue;
+          }
+          candidateVectorCount = byteVectorValues.size();
+        }
+        case FLOAT32 -> {
+          FloatVectorValues vectorValues = candidateReader.getFloatVectorValues(fieldInfo.name);
+          if (vectorValues == null) {
+            continue;
+          }
+          candidateVectorCount = vectorValues.size();
+        }
       }
 
-      int candidateVectorCount = vectorValues.size();
       if (candidateVectorCount > maxCandidateVectorCount) {
         maxCandidateVectorCount = candidateVectorCount;
         initializerIndex = i;
@@ -569,17 +581,25 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
 
   private Map<Integer, Integer> getOldToNewOrdinalMap(
       MergeState mergeState, FieldInfo fieldInfo, int initializerIndex) throws IOException {
-    VectorValues initializerVectorValues =
-        mergeState.knnVectorsReaders[initializerIndex].getVectorValues(fieldInfo.name);
+
+    DocIdSetIterator initializerIterator = null;
+
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> initializerIterator =
+          mergeState.knnVectorsReaders[initializerIndex].getByteVectorValues(fieldInfo.name);
+      case FLOAT32 -> initializerIterator =
+          mergeState.knnVectorsReaders[initializerIndex].getFloatVectorValues(fieldInfo.name);
+    }
+
     MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
 
     Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
     int oldOrd = 0;
     int maxNewDocID = -1;
-    for (int oldId = initializerVectorValues.nextDoc();
+    for (int oldId = initializerIterator.nextDoc();
         oldId != NO_MORE_DOCS;
-        oldId = initializerVectorValues.nextDoc()) {
-      if (initializerVectorValues.vectorValue() == null) {
+        oldId = initializerIterator.nextDoc()) {
+      if (isCurrentVectorNull(initializerIterator)) {
         continue;
       }
       int newId = initializerDocMap.get(oldId);
@@ -593,12 +613,19 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
-    VectorValues vectorValues = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+
+    DocIdSetIterator vectorIterator = null;
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> vectorIterator = MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+      case FLOAT32 -> vectorIterator =
+          MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+    }
+
     int newOrd = 0;
-    for (int newDocId = vectorValues.nextDoc();
+    for (int newDocId = vectorIterator.nextDoc();
         newDocId <= maxNewDocID;
-        newDocId = vectorValues.nextDoc()) {
-      if (vectorValues.vectorValue() == null) {
+        newDocId = vectorIterator.nextDoc()) {
+      if (isCurrentVectorNull(vectorIterator)) {
         continue;
       }
 
@@ -609,6 +636,18 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     return oldToNewOrdinalMap;
+  }
+
+  private boolean isCurrentVectorNull(DocIdSetIterator docIdSetIterator) throws IOException {
+    if (docIdSetIterator instanceof FloatVectorValues) {
+      return ((FloatVectorValues) docIdSetIterator).vectorValue() == null;
+    }
+
+    if (docIdSetIterator instanceof ByteVectorValues) {
+      return ((ByteVectorValues) docIdSetIterator).vectorValue() == null;
+    }
+
+    return true;
   }
 
   private boolean allMatch(Bits bits) {

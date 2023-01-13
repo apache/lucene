@@ -457,9 +457,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new NodesIterator(size());
+        return new ArrayNodesIterator(size());
       } else {
-        return new NodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
       }
     }
   }
