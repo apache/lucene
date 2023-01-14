@@ -98,6 +98,27 @@ public class NumericDocValuesField extends Field {
   }
 
   /**
+   * Create a query matching any of the specified values.
+   *
+   * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them
+   * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
+   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on points, such as
+   * {@link LongPoint#newSetQuery}.
+   */
+  public static Query newSlowSetQuery(String field, long... values) {
+    return new SortedNumericDocValuesSetQuery(field, values.clone()) {
+      @Override
+      SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
+        NumericDocValues values = reader.getNumericDocValues(field);
+        if (values == null) {
+          return null;
+        }
+        return DocValues.singleton(values);
+      }
+    };
+  }
+
+  /**
    * Create a query for matching an exact long value.
    *
    * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them

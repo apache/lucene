@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.document;
 
 import java.util.AbstractSet;
 import java.util.Arrays;
@@ -36,7 +36,7 @@ final class LongHashSet extends AbstractSet<Long> implements Accountable {
   final int size;
   final int hashCode;
 
-  LongHashSet(long... values) {
+  LongHashSet(long[] values) {
     int tableSize = Math.toIntExact(values.length * 3L / 2);
     tableSize = 1 << PackedInts.bitsRequired(tableSize); // make it a power of 2
     assert tableSize >= values.length * 3L / 2;
