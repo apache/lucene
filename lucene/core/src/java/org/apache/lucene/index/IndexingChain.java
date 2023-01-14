@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
@@ -721,11 +722,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      switch (fieldType.vectorEncoding()) {
-        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
-        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
-            docID, ((KnnVectorField) field).vectorValue());
-      }
+      indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
     return indexedField;
   }
@@ -956,6 +953,18 @@ final class IndexingChain implements Accountable {
       case NONE:
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void indexVectorValue(
+      int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
+      throws IOException {
+    switch (vectorEncoding) {
+      case BYTE -> ((KnnFieldVectorsWriter<BytesRef>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnVectorField) field).vectorValue());
     }
   }
 

@@ -224,7 +224,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValues vectorValues,
+      RandomAccessVectorValues<float[]> vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,

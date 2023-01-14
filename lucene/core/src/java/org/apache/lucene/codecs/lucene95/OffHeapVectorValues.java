@@ -20,6 +20,7 @@ package org.apache.lucene.codecs.lucene95;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -29,7 +30,8 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
+abstract class OffHeapVectorValues extends VectorValues
+    implements RandomAccessVectorValues<float[]> {
 
   protected final int dimension;
   protected final int size;
@@ -66,31 +68,17 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     return value;
   }
 
-  @Override
-  public BytesRef binaryValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
-    return binaryValue;
-  }
-
-  private void readValue(int targetOrd) throws IOException {
-    slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
-  }
-
   public abstract int ordToDoc(int ord);
 
   static OffHeapVectorValues load(
       Lucene95HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2) {
+    if (fieldEntry.docsWithFieldOffset == -2
+        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize =
-        switch (fieldEntry.vectorEncoding) {
-          case BYTE -> fieldEntry.dimension;
-          case FLOAT32 -> fieldEntry.dimension * Float.BYTES;
-        };
+    int byteSize = fieldEntry.dimension * Float.BYTES;
     if (fieldEntry.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
@@ -143,7 +131,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues copy() throws IOException {
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
@@ -219,7 +207,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues copy() throws IOException {
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
     }
 
@@ -291,17 +279,12 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues copy() throws IOException {
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public float[] vectorValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BytesRef binaryValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
     }
 

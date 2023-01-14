@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
@@ -50,6 +51,13 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * never {@code null}.
    */
   public abstract VectorValues getVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
+  public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for

@@ -61,8 +61,8 @@ public abstract class VectorValues extends DocIdSetIterator {
 
   /**
    * Return the binary encoded vector value for the current document ID. These are the bytes
-   * corresponding to the float array return by {@link #vectorValue}. It is illegal to call this
-   * method when the iterator is not positioned: before advancing, or after failing to advance. The
+   * corresponding to the array return by {@link #vectorValue}. It is illegal to call this method
+   * when the iterator is not positioned: before advancing, or after failing to advance. The
    * returned storage may be shared across calls, re-used and modified as the iterator advances.
    *
    * @return the binary value

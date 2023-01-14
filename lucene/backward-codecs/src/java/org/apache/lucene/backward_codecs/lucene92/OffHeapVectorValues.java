@@ -29,7 +29,8 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
+abstract class OffHeapVectorValues extends VectorValues
+    implements RandomAccessVectorValues<float[]> {
 
   protected final int dimension;
   protected final int size;
@@ -64,17 +65,6 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     slice.seek((long) targetOrd * byteSize);
     slice.readFloats(value, 0, value.length);
     return value;
-  }
-
-  @Override
-  public BytesRef binaryValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
-    return binaryValue;
-  }
-
-  private void readValue(int targetOrd) throws IOException {
-    slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
 
   public abstract int ordToDoc(int ord);
@@ -137,7 +127,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues copy() throws IOException {
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone());
     }
 
@@ -210,7 +200,7 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues copy() throws IOException {
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
     }
 
@@ -282,17 +272,12 @@ abstract class OffHeapVectorValues extends VectorValues implements RandomAccessV
     }
 
     @Override
-    public RandomAccessVectorValues copy() throws IOException {
+    public RandomAccessVectorValues<float[]> copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public float[] vectorValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BytesRef binaryValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
     }
 

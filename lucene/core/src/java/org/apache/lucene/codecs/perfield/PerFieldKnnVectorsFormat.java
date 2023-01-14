@@ -27,6 +27,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
@@ -252,6 +253,16 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         return null;
       } else {
         return knnVectorsReader.getVectorValues(field);
+      }
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      KnnVectorsReader knnVectorsReader = fields.get(field);
+      if (knnVectorsReader == null) {
+        return null;
+      } else {
+        return knnVectorsReader.getByteVectorValues(field);
       }
     }
 
