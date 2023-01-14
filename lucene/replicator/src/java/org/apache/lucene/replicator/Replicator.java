@@ -33,7 +33,9 @@ import java.io.InputStream;
  * cllient will next check for update, it will receive <em>r3</em>.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public interface Replicator extends Closeable {
 
   /**

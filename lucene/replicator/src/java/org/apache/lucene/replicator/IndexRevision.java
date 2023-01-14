@@ -43,7 +43,9 @@ import org.apache.lucene.store.IOContext;
  * they are no longer needed).
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class IndexRevision implements Revision {
 
   private static final int RADIX = 16;

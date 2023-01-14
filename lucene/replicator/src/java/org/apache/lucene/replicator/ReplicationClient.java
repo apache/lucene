@@ -49,7 +49,9 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * Directory} specified by {@link PerSessionDirectoryFactory} and a handler is notified.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class ReplicationClient implements Closeable {
 
   private class ReplicationThread extends Thread {

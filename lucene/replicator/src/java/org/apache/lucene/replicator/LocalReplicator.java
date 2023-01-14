@@ -36,7 +36,9 @@ import org.apache.lucene.store.AlreadyClosedException;
  * and the threshold can be configured through {@link #setExpirationThreshold(long)}.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class LocalReplicator implements Replicator {
 
   private static class RefCountedRevision {

@@ -24,7 +24,9 @@ import java.io.IOException;
  * @see LocalReplicator#DEFAULT_SESSION_EXPIRATION_THRESHOLD
  * @see LocalReplicator#setExpirationThreshold(long)
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class SessionExpiredException extends IOException {
 
   /**

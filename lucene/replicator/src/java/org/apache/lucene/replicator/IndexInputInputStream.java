@@ -24,7 +24,9 @@ import org.apache.lucene.store.IndexInput;
  * An {@link InputStream} which wraps an {@link IndexInput}.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public final class IndexInputInputStream extends InputStream {
 
   private final IndexInput in;

@@ -15,5 +15,9 @@
  * limitations under the License.
  */
 
-/** HTTP replication implementation */
+/**
+ * HTTP replication implementation
+ *
+ * @deprecated use org.apache.lucene.replicator.nrt instead
+ */
 package org.apache.lucene.replicator.http;

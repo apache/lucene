@@ -42,7 +42,9 @@ import org.apache.lucene.util.SuppressForbidden;
  * Base class for Http clients.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public abstract class HttpClientBase implements Closeable {
 
   /** Default connection timeout for this client, in milliseconds. */

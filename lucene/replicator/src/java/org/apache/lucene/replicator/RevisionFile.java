@@ -21,7 +21,9 @@ package org.apache.lucene.replicator;
  * contain files from multiple sources (e.g. multiple indexes).
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class RevisionFile {
 
   /** The name of the file. */

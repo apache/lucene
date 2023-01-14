@@ -29,7 +29,9 @@ import org.apache.lucene.util.IOUtils;
  * directory. When a session is over, the entire directory is deleted.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class PerSessionDirectoryFactory implements SourceDirectoryFactory {
 
   private final Path workDir;

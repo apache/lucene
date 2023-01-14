@@ -33,7 +33,9 @@ import java.util.Map.Entry;
  * @see Replicator#release(String)
  * @see LocalReplicator#DEFAULT_SESSION_EXPIRATION_THRESHOLD
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public final class SessionToken {
 
   /**

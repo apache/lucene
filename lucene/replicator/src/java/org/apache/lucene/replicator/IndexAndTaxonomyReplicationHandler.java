@@ -41,7 +41,9 @@ import org.apache.lucene.util.InfoStream;
  *
  * @see IndexReplicationHandler
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class IndexAndTaxonomyReplicationHandler implements ReplicationHandler {
 
   /**

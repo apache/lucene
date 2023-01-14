@@ -52,7 +52,9 @@ import org.apache.lucene.util.SuppressForbidden;
  * embed in your application's servlet.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class ReplicationService {
 
   /** Actions supported by the {@link ReplicationService}. */

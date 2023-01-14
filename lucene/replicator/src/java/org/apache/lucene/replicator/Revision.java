@@ -32,7 +32,9 @@ import org.apache.lucene.store.IndexInput;
  * indexes together, to guarantee that they match at the client side.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public interface Revision extends Comparable<Revision> {
 
   /**

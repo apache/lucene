@@ -51,7 +51,9 @@ import org.apache.lucene.util.InfoStream;
  * commit was made available for it.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class IndexReplicationHandler implements ReplicationHandler {
 
   /**

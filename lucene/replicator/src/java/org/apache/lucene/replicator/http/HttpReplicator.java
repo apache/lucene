@@ -32,7 +32,9 @@ import org.apache.lucene.replicator.http.ReplicationService.ReplicationAction;
  * ReplicationService}.
  *
  * @lucene.experimental
+ * @deprecated use org.apache.lucene.replicator.nrt instead
  */
+@Deprecated
 public class HttpReplicator extends HttpClientBase implements Replicator {
 
   /** Construct with specified connection manager. */
