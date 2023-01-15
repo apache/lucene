@@ -38,6 +38,7 @@ import org.apache.lucene.util.NumericUtils;
  * <ul>
  *   <li>{@link #newExactQuery(String, double)} for matching an exact 1D point.
  *   <li>{@link #newRangeQuery(String, double, double)} for matching a 1D range.
+ *   <li>{@link #newSetQuery(String, double...)} for matching a 1D set.
  * </ul>
  *
  * @see PointValues
