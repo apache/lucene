@@ -128,6 +128,27 @@ public final class DoubleField extends Field {
   }
 
   /**
+   * Create a query matching values in a supplied set
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values double values
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this set.
+   */
+  public static Query newSetQuery(String field, double... values) {
+    if (field == null) {
+      throw new IllegalArgumentException("field cannot be null");
+    }
+    long points[] = new long[values.length];
+    for (int i = 0; i < values.length; i++) {
+      points[i] = NumericUtils.doubleToSortableLong(values[i]);
+    }
+    return new IndexOrDocValuesQuery(
+        DoublePoint.newSetQuery(field, values.clone()),
+        SortedNumericDocValuesField.newSlowSetQuery(field, points));
+  }
+
+  /**
    * Create a new {@link SortField} for double values.
    *
    * @param field field name. must not be {@code null}.
