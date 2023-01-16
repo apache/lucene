@@ -149,6 +149,8 @@ Bug Fixes
 
 * GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
 
+* GITHUB#12088: WeightedSpanTermExtractor should not throw UnsupportedOperationException
+  when it encounters a FieldExistsQuery. (Alan Woodward)
 
 Optimizations
 ---------------------
