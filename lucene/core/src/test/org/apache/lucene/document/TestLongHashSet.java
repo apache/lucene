@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.document;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -53,27 +53,27 @@ public class TestLongHashSet extends LuceneTestCase {
 
   public void testEmpty() {
     Set<Long> set1 = new HashSet<>();
-    LongHashSet set2 = new LongHashSet();
+    LongHashSet set2 = new LongHashSet(new long[] {});
     assertEquals(set1, set2);
   }
 
   public void testOneValue() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L));
-    LongHashSet set2 = new LongHashSet(42);
+    LongHashSet set2 = new LongHashSet(new long[] {42L});
     assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE));
-    set2 = new LongHashSet(Long.MIN_VALUE);
+    set2 = new LongHashSet(new long[] {Long.MIN_VALUE});
     assertEquals(set1, set2);
   }
 
   public void testTwoValues() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L, Long.MAX_VALUE));
-    LongHashSet set2 = new LongHashSet(42, Long.MAX_VALUE);
+    LongHashSet set2 = new LongHashSet(new long[] {42L, Long.MAX_VALUE});
     assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE, 42L));
-    set2 = new LongHashSet(Long.MIN_VALUE, 42L);
+    set2 = new LongHashSet(new long[] {Long.MIN_VALUE, 42L});
     assertEquals(set1, set2);
   }
 

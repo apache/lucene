@@ -153,6 +153,10 @@ API Changes
 * GITHUB#12038: Deprecate non-NRT replication support.
   Please migrate to org.apache.lucene.replicator.nrt instead. (Robert Muir)
 
+* GITHUB#12087: Move DocValuesNumbersQuery from sandbox to NumericDocValuesField#newSlowSetQuery
+  and SortedNumericDocValuesField#newSlowSetQuery. IntField, LongField, FloatField, and DoubleField
+  implement newSetQuery with best-practice use of IndexOrDocValuesQuery. (Robert Muir)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
