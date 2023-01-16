@@ -42,6 +42,7 @@ import org.apache.lucene.util.NumericUtils;
  * <ul>
  *   <li>{@link #newExactQuery(String, long)} for matching an exact 1D point.
  *   <li>{@link #newRangeQuery(String, long, long)} for matching a 1D range.
+ *   <li>{@link #newSetQuery(String, long...)} for matching a 1D set.
  * </ul>
  *
  * @see PointValues
@@ -115,6 +116,24 @@ public final class LongField extends Field {
             SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
     return new IndexSortSortedNumericDocValuesRangeQuery(
         field, lowerValue, upperValue, fallbackQuery);
+  }
+
+  /**
+   * Create a query matching values in a supplied set
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values long values
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this set.
+   */
+  public static Query newSetQuery(String field, long... values) {
+    if (field == null) {
+      throw new IllegalArgumentException("field cannot be null");
+    }
+    long points[] = values.clone();
+    return new IndexOrDocValuesQuery(
+        LongPoint.newSetQuery(field, points),
+        SortedNumericDocValuesField.newSlowSetQuery(field, points));
   }
 
   /**
