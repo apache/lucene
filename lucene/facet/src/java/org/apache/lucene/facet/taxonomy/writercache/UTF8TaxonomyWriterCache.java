@@ -28,7 +28,8 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.UnicodeUtil;
 
-/** A "cache" that never frees memory, and stores labels in a BytesRefHash (utf-8 encoding).
+/**
+ * A "cache" that never frees memory, and stores labels in a BytesRefHash (utf-8 encoding).
  *
  * @deprecated Use {@link LruTaxonomyWriterCache} instead.
  */
