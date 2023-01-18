@@ -679,7 +679,7 @@ groups:
         cmd: git pull --ff-only
         tee: true
       - !Command
-        cmd: python3 -u dev-tools/scripts/buildAndPushRelease.py {{ local_keys }}  --logfile {{ logfile }}  --push-local "{{ dist_file_path }}"  --rc-num {{ rc_number }}  --sign {{ gpg_key | default("<gpg_key_id>", True) }}{% if gpg.use_gradle %}  --sign-method-gradle{% endif %}{% if not gpg.prompt_pass %}  --gpg-pass-noprompt{% endif %}
+        cmd: python3 -u dev-tools/scripts/buildAndPushRelease.py {{ local_keys }}  --logfile {{ logfile }}  --push-local "{{ dist_file_path }}"  --rc-num {{ rc_number }} --mf-username {{ gpg.apache_id }} --sign {{ gpg_key | default("<gpg_key_id>", True) }}{% if gpg.use_gradle %}  --sign-method-gradle{% endif %}{% if not gpg.prompt_pass %}  --gpg-pass-noprompt{% endif %}
         comment: "Using {% if gpg.use_gradle %}gradle{% else %}gpg command{% endif %} for signing.{% if gpg.prompt_pass %} Remember to type your GPG pass-phrase at the prompt!{% endif %}"
         logfile: build_rc.log
         tee: true

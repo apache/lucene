@@ -91,7 +91,7 @@ def getGitRev():
   return os.popen('git rev-parse HEAD').read().strip()
 
 
-def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False):
+def prepare(root, version, mf_username, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False):
   print()
   print('Prepare release...')
   if os.path.exists(LOG):
@@ -120,6 +120,8 @@ def prepare(root, version, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=
   print('  prepare-release')
   cmd = './gradlew --no-daemon assembleRelease' \
         ' -Dversion.release=%s' % version
+  if mf_username is not None:
+    cmd += ' -Dmanifest.username=%s' % mf_username
   if dev_mode:
     cmd += ' -Pvalidation.git.failOnModified=false'
   if gpg_key_id is not None:
@@ -247,6 +249,8 @@ def parse_config():
                       help='Uses local KEYS file to validate presence of RM\'s gpg key')
   parser.add_argument('--push-local', metavar='PATH',
                       help='Push the release to the local path')
+  parser.add_argument('--mf-username', metavar='ID',
+                      help='Use the specified username in the Implementation-Version for jar MANIFEST.MF files (e.g., Apache ID).')
   parser.add_argument('--sign', metavar='KEYID',
                       help='Sign the release with the given gpg key')
   parser.add_argument('--sign-method-gradle', dest='sign_method_gradle', default=False, action='store_true',
@@ -389,7 +393,7 @@ def main():
     c.key_password = None
 
   if c.prepare:
-    prepare(c.root, c.version, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
+    prepare(c.root, c.version, c.mf_username, c.key_id, c.key_password, gpg_home=gpg_home, sign_gradle=c.sign_method_gradle)
   else:
     os.chdir(c.root)
 
