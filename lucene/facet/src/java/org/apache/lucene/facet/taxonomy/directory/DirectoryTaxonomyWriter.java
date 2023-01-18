@@ -83,6 +83,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * by this taxonomy writer.
    */
   public static final String INDEX_EPOCH = "index.epoch";
+
   private static final int DEFAULT_CACHE_SIZE = 4000;
 
   private final Directory dir;
@@ -128,8 +129,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    *     APPEND_OR_CREATE</code> appends to an existing index if there is one, otherwise it creates
    *     a new index.
    * @param cache A {@link TaxonomyWriterCache} implementation which determines the in-memory
-   *     caching policy. See for example {@link LruTaxonomyWriterCache}.
-   *     If null or missing, {@link #defaultTaxonomyWriterCache()} is used.
+   *     caching policy. See for example {@link LruTaxonomyWriterCache}. If null or missing, {@link
+   *     #defaultTaxonomyWriterCache()} is used.
    * @throws CorruptIndexException if the taxonomy is corrupted.
    * @throws LockObtainFailedException if the taxonomy is locked by another writer.
    * @throws IOException if another error occurred.

@@ -505,8 +505,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     Directory indexDir = newDirectory(), taxoDir = newDirectory();
     IndexWriter indexWriter =
         new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
-    DirectoryTaxonomyWriter taxoWriter =
-        new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE);
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE);
     FacetsConfig config = new FacetsConfig();
 
     // Add one huge label:
