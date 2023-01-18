@@ -7,8 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#12093: Deprecate support for UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
-  instead. (Vigya Sharma)
+* GITHUB#12093: Deprecate support for UTF8TaxonomyWriterCache and changed default to LruTaxonomyWriterCache.
+  Please use LruTaxonomyWriterCache instead. (Vigya Sharma)
 
 * GITHUB#11998: Add new stored fields and termvectors interfaces: IndexReader.storedFields()
   and IndexReader.termVectors(). Deprecate IndexReader.document() and IndexReader.getTermVector().
