@@ -682,7 +682,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     // Min bound doesn't exist in the dataset, max does
     fallbackQuery = LongPoint.newRangeQuery(filedName, 6, 9);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 7, 10, fallbackQuery);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 6, 9, fallbackQuery);
     weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
       assertEquals(1400, weight.count(context));
@@ -690,7 +690,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     // Min bound is the min value of the dataset
     fallbackQuery = LongPoint.newRangeQuery(filedName, 5, 8);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 4, 8, fallbackQuery);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 5, 8, fallbackQuery);
     weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
       assertEquals(1100, weight.count(context));

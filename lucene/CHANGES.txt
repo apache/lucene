@@ -159,6 +159,8 @@ Bug Fixes
 * GITHUB#12088: WeightedSpanTermExtractor should not throw UnsupportedOperationException
   when it encounters a FieldExistsQuery. (Alan Woodward)
 
+* GITHUB#12084: Same bound with fallbackQuery. (Lu Xugang)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
