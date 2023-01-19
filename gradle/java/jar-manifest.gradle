@@ -46,8 +46,7 @@ subprojects {
             if (snapshotBuild) {
               return "${project.version} ${gitRev} [snapshot build, details omitted]"
             } else {
-              def sysProps = System.properties
-              def manifestUsername = sysProps.getOrDefault('manifest.username', sysProps['user.name'])
+              def manifestUsername = propertyOrDefault('manifest.username', System.properties['user.name'])
               return "${project.version} ${gitRev} - ${manifestUsername} - ${buildDate} ${buildTime}"
             }
           }

@@ -119,9 +119,9 @@ def prepare(root, version, mf_username, gpg_key_id, gpg_password, gpg_home=None,
 
   print('  prepare-release')
   cmd = './gradlew --no-daemon assembleRelease' \
-        ' -Dversion.release=%s' % version
+        ' -Pversion.release=%s' % version
   if mf_username is not None:
-    cmd += ' -Dmanifest.username=%s' % mf_username
+    cmd += ' -Pmanifest.username=%s' % mf_username
   if dev_mode:
     cmd += ' -Pvalidation.git.failOnModified=false'
   if gpg_key_id is not None:
