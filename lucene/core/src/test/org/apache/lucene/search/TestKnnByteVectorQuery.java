@@ -76,7 +76,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   public void testGetTarget() {
     byte[] queryVectorBytes = floatToBytes(new float[] {0, 1});
     BytesRef targetQueryVector = new BytesRef(queryVectorBytes);
-    KnnByteVectorQuery q1 = new KnnByteVectorQuery("f1", queryVectorBytes, 10);
+    KnnByteVectorQuery q1 = new KnnByteVectorQuery("f1", targetQueryVector, 10);
 
     assertEquals(targetQueryVector, q1.getTargetCopy());
     assertFalse(targetQueryVector == q1.getTargetCopy());
