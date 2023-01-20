@@ -33,7 +33,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.junit.Assert;
 
 public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
@@ -71,7 +70,7 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
     float[] queryVector = new float[] {0, 1};
     KnnVectorQuery q1 = new KnnVectorQuery("f1", queryVector, 10);
 
-    Assert.assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
+    assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
     assertNotEquals(queryVector, q1.getTargetCopy());
   }
 
