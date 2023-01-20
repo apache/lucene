@@ -596,9 +596,11 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         new IndexSortSortedNumericDocValuesRangeQuery(
             "field", lowerValue, upperValue, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    int count = 0;
     for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(2, weight.count(context));
+      count += weight.count(context);
     }
+    assertEquals(2, count);
 
     writer.close();
     reader.close();
