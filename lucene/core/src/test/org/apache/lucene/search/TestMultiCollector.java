@@ -594,6 +594,23 @@ public class TestMultiCollector extends LuceneTestCase {
     dir.close();
   }
 
+  public void testMergeScoreModes() {
+    for (ScoreMode sm1 : ScoreMode.values()) {
+      for (ScoreMode sm2 : ScoreMode.values()) {
+        Collector c1 = new TerminatingDummyCollector(0, sm1);
+        Collector c2 = new TerminatingDummyCollector(0, sm2);
+        Collector c = MultiCollector.wrap(c1, c2);
+        if (sm1 == sm2) {
+          assertEquals(sm1, c.scoreMode());
+        } else if (sm1.needsScores() || sm2.needsScores()) {
+          assertEquals(ScoreMode.COMPLETE, c.scoreMode());
+        } else {
+          assertEquals(ScoreMode.COMPLETE_NO_SCORES, c.scoreMode());
+        }
+      }
+    }
+  }
+
   private static class TerminatingDummyCollector extends DummyCollector {
 
     private final int terminateOnDoc;

@@ -39,9 +39,9 @@ import org.apache.lucene.util.IgnoreRandomChains;
  * <p>Notice that this analyzer uses a token composition scheme and relies on punctuation tokens
  * being found in the token stream. Please make sure your {@link JapaneseTokenizer} has {@code
  * discardPunctuation} set to false. In case punctuation characters, such as ． (U+FF0E FULLWIDTH
- * FULL STOP), is removed from the token stream, this filter would find input tokens tokens ３ and ２千
- * and give outputs 3 and 2000 instead of 3200, which is likely not the intended result. If you want
- * to remove punctuation characters from your index that are not part of normalized numbers, add a
+ * FULL STOP), is removed from the token stream, this filter would find input tokens ３ and ２千 and
+ * give outputs 3 and 2000 instead of 3200, which is likely not the intended result. If you want to
+ * remove punctuation characters from your index that are not part of normalized numbers, add a
  * {@link org.apache.lucene.analysis.StopFilter} with the punctuation you wish to remove after
  * {@link JapaneseNumberFilter} in your analyzer chain.
  *
@@ -59,8 +59,8 @@ import org.apache.lucene.util.IgnoreRandomChains;
  *   <li>15,7 becomes 157 (be aware of this weakness)
  * </ul>
  *
- * <p>Tokens preceded by a token with {@link PositionIncrementAttribute} of zero are left left
- * untouched and emitted as-is.
+ * <p>Tokens preceded by a token with {@link PositionIncrementAttribute} of zero are left untouched
+ * and emitted as-is.
  *
  * <p>This filter does not use any part-of-speech information for its normalization and the
  * motivation for this is to also support n-grammed token streams in the future.

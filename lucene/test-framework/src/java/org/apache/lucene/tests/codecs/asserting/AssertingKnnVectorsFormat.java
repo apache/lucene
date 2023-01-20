@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.MergeState;
@@ -113,8 +114,24 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public VectorValues getVectorValues(String field) throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
-      assert fi != null && fi.getVectorDimension() > 0;
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
       VectorValues values = delegate.getVectorValues(field);
+      assert values != null;
+      assert values.docID() == -1;
+      assert values.size() >= 0;
+      assert values.dimension() > 0;
+      return values;
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.BYTE;
+      ByteVectorValues values = delegate.getByteVectorValues(field);
       assert values != null;
       assert values.docID() == -1;
       assert values.size() >= 0;

@@ -35,7 +35,7 @@ import org.apache.lucene.util.fst.Util;
  *
  * <h2>Implementation details</h2>
  *
- * <p>The construction step in {@link #finalize()} works as follows:
+ * <p>The construction step in {@link #build()} works as follows:
  *
  * <ul>
  *   <li>A set of input terms and their buckets is given.

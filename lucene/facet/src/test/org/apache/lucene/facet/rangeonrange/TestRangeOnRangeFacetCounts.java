@@ -1001,7 +1001,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
     int numDocs = atLeast(1000);
-    int dims = atLeast(2);
+    int dims = random().nextInt(2, 5);
     if (VERBOSE) {
       System.out.println("TEST: numDocs=" + numDocs);
     }
@@ -1318,7 +1318,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
     int numDocs = atLeast(1000);
-    int dims = atLeast(2);
+    int dims = random().nextInt(2, 5);
     if (VERBOSE) {
       System.out.println("TEST: numDocs=" + numDocs);
     }

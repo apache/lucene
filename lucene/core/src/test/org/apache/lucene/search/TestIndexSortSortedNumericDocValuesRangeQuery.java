@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.search;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 
@@ -30,18 +30,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.FieldExistsQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortedNumericSortField;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -608,9 +596,11 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
         new IndexSortSortedNumericDocValuesRangeQuery(
             "field", lowerValue, upperValue, fallbackQuery);
     Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
+    int count = 0;
     for (LeafReaderContext context : searcher.getLeafContexts()) {
-      assertEquals(2, weight.count(context));
+      count += weight.count(context);
     }
+    assertEquals(2, count);
 
     writer.close();
     reader.close();
@@ -694,7 +684,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     // Min bound doesn't exist in the dataset, max does
     fallbackQuery = LongPoint.newRangeQuery(filedName, 6, 9);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 7, 10, fallbackQuery);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 6, 9, fallbackQuery);
     weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
       assertEquals(1400, weight.count(context));
@@ -702,7 +692,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     // Min bound is the min value of the dataset
     fallbackQuery = LongPoint.newRangeQuery(filedName, 5, 8);
-    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 4, 8, fallbackQuery);
+    query = new IndexSortSortedNumericDocValuesRangeQuery(filedName, 5, 8, fallbackQuery);
     weight = query.createWeight(searcher, ScoreMode.COMPLETE, 1.0f);
     for (LeafReaderContext context : searcher.getLeafContexts()) {
       assertEquals(1100, weight.count(context));

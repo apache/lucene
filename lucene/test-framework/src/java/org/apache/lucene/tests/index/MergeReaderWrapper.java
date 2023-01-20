@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -220,6 +221,11 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public VectorValues getVectorValues(String fieldName) throws IOException {
     return in.getVectorValues(fieldName);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
+    return in.getByteVectorValues(fieldName);
   }
 
   @Override

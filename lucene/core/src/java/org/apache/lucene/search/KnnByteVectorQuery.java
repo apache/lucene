@@ -54,7 +54,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnByteVectorQuery(String field, byte[] target, int k) {
+  public KnnByteVectorQuery(String field, BytesRef target, int k) {
     this(field, target, k, null);
   }
 
@@ -68,9 +68,9 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @param filter a filter applied before the vector search
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
+  public KnnByteVectorQuery(String field, BytesRef target, int k, Query filter) {
     super(field, k, filter);
-    this.target = new BytesRef(target);
+    this.target = target;
   }
 
   @Override

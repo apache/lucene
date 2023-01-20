@@ -5210,7 +5210,10 @@ public class IndexWriter
         success = false;
 
         Collection<String> filesToRemove = merge.info.files();
-        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
+        // NOTE: Creation of the CFS file must be performed with the original
+        // directory rather than with the merging directory, so that it is not
+        // subject to merge throttling.
+        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
         try {
           createCompoundFile(
               infoStream, trackingCFSDir, merge.info.info, context, this::deleteNewFiles);

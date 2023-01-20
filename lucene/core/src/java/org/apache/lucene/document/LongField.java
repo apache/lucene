@@ -22,6 +22,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -41,6 +42,7 @@ import org.apache.lucene.util.NumericUtils;
  * <ul>
  *   <li>{@link #newExactQuery(String, long)} for matching an exact 1D point.
  *   <li>{@link #newRangeQuery(String, long, long)} for matching a 1D range.
+ *   <li>{@link #newSetQuery(String, long...)} for matching a 1D set.
  * </ul>
  *
  * @see PointValues
@@ -108,9 +110,30 @@ public final class LongField extends Field {
    */
   public static Query newRangeQuery(String field, long lowerValue, long upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
+    Query fallbackQuery =
+        new IndexOrDocValuesQuery(
+            LongPoint.newRangeQuery(field, lowerValue, upperValue),
+            SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
+  }
+
+  /**
+   * Create a query matching values in a supplied set
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values long values
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this set.
+   */
+  public static Query newSetQuery(String field, long... values) {
+    if (field == null) {
+      throw new IllegalArgumentException("field cannot be null");
+    }
+    long points[] = values.clone();
     return new IndexOrDocValuesQuery(
-        LongPoint.newRangeQuery(field, lowerValue, upperValue),
-        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+        LongPoint.newSetQuery(field, points),
+        SortedNumericDocValuesField.newSlowSetQuery(field, points));
   }
 
   /**

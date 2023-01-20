@@ -17,7 +17,7 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -27,12 +27,12 @@ import org.apache.lucene.util.TestVectorUtil;
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
+    return new KnnByteVectorQuery(field, new BytesRef(floatToBytes(query)), k, queryFilter);
   }
 
   @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
+    return new ThrowingKnnVectorQuery(field, new BytesRef(floatToBytes(vec)), k, query);
   }
 
   @Override
@@ -49,12 +49,12 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnVectorField(name, new BytesRef(floatToBytes(vector)), similarityFunction);
+    return new KnnByteVectorField(name, new BytesRef(floatToBytes(vector)), similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnVectorField(
+    return new KnnByteVectorField(
         name, new BytesRef(floatToBytes(vector)), VectorSimilarityFunction.EUCLIDEAN);
   }
 
@@ -90,7 +90,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
+    public ThrowingKnnVectorQuery(String field, BytesRef target, int k, Query filter) {
       super(field, target, k, filter);
     }
 

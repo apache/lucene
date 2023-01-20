@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
@@ -226,6 +227,11 @@ public class QueryUtils {
 
       @Override
       public VectorValues getVectorValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return null;
       }
 

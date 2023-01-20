@@ -22,20 +22,6 @@ description = 'Lucene index files replication utility'
 dependencies {
   moduleApi project(':lucene:core')
 
-  moduleImplementation project(':lucene:facet')
-
-  moduleImplementation('org.apache.httpcomponents:httpclient', {
-    exclude group: "commons-codec", module: "commons-codec"
-  })
-
-  moduleImplementation 'javax.servlet:javax.servlet-api'
-
   moduleTestImplementation project(':lucene:test-framework')
-
-  moduleTestImplementation 'org.eclipse.jetty:jetty-server'
-  moduleTestImplementation('org.eclipse.jetty:jetty-servlet', {
-    exclude group: "org.eclipse.jetty", module: "jetty-security"
-  })
-  moduleTestImplementation 'org.eclipse.jetty:jetty-continuation'
 }
 

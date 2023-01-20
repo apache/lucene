@@ -54,6 +54,11 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
+  public final ByteVectorValues getByteVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     throw new UnsupportedOperationException();
