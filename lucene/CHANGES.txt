@@ -319,6 +319,8 @@ Other
 
 * LUCENE-10546: Update Faceting user guide. (Egor Potemkin)
 
+* GITHUB#12099: Introduce support in KnnVectorQuery for getters. (Alessandro Benedetti)
+
 Build
 ---------------------
 
