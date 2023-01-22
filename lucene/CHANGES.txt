@@ -252,6 +252,8 @@ Bug Fixes
 
 * GITHUB#12084: Same bound with fallbackQuery. (Lu Xugang)
 
+* GITHUB#12077: WordBreakSpellChecker now correctly respects maxEvaluations (hossman)
+
 Optimizations
 ---------------------
 * GITHUB#11738: Optimize MultiTermQueryConstantScoreWrapper when a term is present that matches all
