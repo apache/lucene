@@ -21,7 +21,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
@@ -40,7 +40,7 @@ abstract class VectorScorer {
    */
   static FloatVectorScorer create(LeafReaderContext context, FieldInfo fi, float[] query)
       throws IOException {
-    VectorValues values = context.reader().getVectorValues(fi.name);
+    FloatVectorValues values = context.reader().getVectorValues(fi.name);
     final VectorSimilarityFunction similarity = fi.getVectorSimilarityFunction();
     return new FloatVectorScorer(values, query, similarity);
   }
@@ -93,10 +93,10 @@ abstract class VectorScorer {
 
   private static class FloatVectorScorer extends VectorScorer {
     private final float[] query;
-    private final VectorValues values;
+    private final FloatVectorValues values;
 
     protected FloatVectorScorer(
-        VectorValues values, float[] query, VectorSimilarityFunction similarity) {
+            FloatVectorValues values, float[] query, VectorSimilarityFunction similarity) {
       super(similarity);
       this.query = query;
       this.values = values;

@@ -34,7 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -218,7 +218,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public FloatVectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     return getOffHeapVectorValues(fieldEntry);
   }
@@ -239,7 +239,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+    OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
 
     NeighborQueue results =
         HnswGraphSearcher.search(
@@ -274,10 +274,10 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     throw new UnsupportedOperationException();
   }
 
-  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
+  private OffHeapFloatVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(
+    return new OffHeapFloatVectorValues(
         fieldEntry.dimension, fieldEntry.size(), fieldEntry.ordToDoc, bytesSlice);
   }
 
@@ -402,7 +402,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues
+  static class OffHeapFloatVectorValues extends FloatVectorValues
       implements RandomAccessVectorValues<float[]> {
 
     private final int dimension;
@@ -416,7 +416,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     private int ord = -1;
     private int doc = -1;
 
-    OffHeapVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
+    OffHeapFloatVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
       this.dimension = dimension;
       this.size = size;
       this.ordToDoc = ordToDoc;
@@ -481,7 +481,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public RandomAccessVectorValues<float[]> copy() {
-      return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
+      return new OffHeapFloatVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 
     @Override

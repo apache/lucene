@@ -26,7 +26,7 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
@@ -69,7 +69,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
-    VectorValues vectorValues = reader.getVectorValues(fieldName);
+    FloatVectorValues vectorValues = reader.getVectorValues(fieldName);
     float[][] vectors = new float[reader.maxDoc()][];
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
       vectors[vectorValues.docID()] =
@@ -86,7 +86,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   RandomAccessVectorValues<float[]> circularVectorValues(int nDoc) {
-    return new CircularVectorValues(nDoc);
+    return new CircularFloatVectorValues(nDoc);
   }
 
   @Override

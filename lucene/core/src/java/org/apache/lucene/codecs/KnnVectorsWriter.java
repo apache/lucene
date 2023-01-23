@@ -27,7 +27,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 
@@ -61,7 +61,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       case FLOAT32:
         KnnFieldVectorsWriter<float[]> floatWriter =
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
-        VectorValues mergedFloats = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+        FloatVectorValues mergedFloats = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
         for (int doc = mergedFloats.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = mergedFloats.nextDoc()) {
@@ -107,9 +107,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   /** Tracks state of one sub-reader that we are merging */
   private static class VectorValuesSub extends DocIDMerger.Sub {
 
-    final VectorValues values;
+    final FloatVectorValues values;
 
-    VectorValuesSub(MergeState.DocMap docMap, VectorValues values) {
+    VectorValuesSub(MergeState.DocMap docMap, FloatVectorValues values) {
       super(docMap);
       this.values = values;
       assert values.docID() == -1;
@@ -141,8 +141,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   protected static final class MergedVectorValues {
     private MergedVectorValues() {}
 
-    /** Returns a merged view over all the segment's {@link VectorValues}. */
-    public static VectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
+    /** Returns a merged view over all the segment's {@link FloatVectorValues}. */
+    public static FloatVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
         throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
       if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
@@ -153,7 +153,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
         if (knnVectorsReader != null) {
-          VectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
+          FloatVectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
           if (values != null) {
             subs.add(new VectorValuesSub(mergeState.docMaps[i], values));
           }
@@ -183,7 +183,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       return new MergedByteVectorValues(subs, mergeState);
     }
 
-    static class MergedFloat32VectorValues extends VectorValues {
+    static class MergedFloat32VectorValues extends FloatVectorValues {
       private final List<VectorValuesSub> subs;
       private final DocIDMerger<VectorValuesSub> docIdMerger;
       private final int size;

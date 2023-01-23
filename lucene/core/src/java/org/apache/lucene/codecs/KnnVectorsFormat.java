@@ -21,7 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
@@ -94,7 +94,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             public void checkIntegrity() {}
 
             @Override
-            public VectorValues getVectorValues(String field) {
+            public FloatVectorValues getVectorValues(String field) {
               throw new UnsupportedOperationException();
             }
 

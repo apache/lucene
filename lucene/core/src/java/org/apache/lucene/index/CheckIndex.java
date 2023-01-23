@@ -2644,7 +2644,7 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkFloatVectorValues(
-      VectorValues values,
+      FloatVectorValues values,
       FieldInfo fieldInfo,
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)

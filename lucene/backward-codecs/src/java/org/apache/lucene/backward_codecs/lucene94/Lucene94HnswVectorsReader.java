@@ -33,7 +33,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -231,7 +231,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public FloatVectorValues getVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
@@ -242,7 +242,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapVectorValues.load(fieldEntry, vectorData);
+    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
   }
 
   @Override
@@ -271,7 +271,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-    OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
+    OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
 
     NeighborQueue results =
         HnswGraphSearcher.search(

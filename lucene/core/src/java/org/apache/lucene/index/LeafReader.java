@@ -200,12 +200,12 @@ public abstract class LeafReader extends IndexReader {
   public abstract NumericDocValues getNormValues(String field) throws IOException;
 
   /**
-   * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
+   * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were indexed.
    * The returned instance should only be used by a single thread.
    *
    * @lucene.experimental
    */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  public abstract FloatVectorValues getVectorValues(String field) throws IOException;
 
   /**
    * Returns {@link ByteVectorValues} for this field, or null if no {@link ByteVectorValues} were

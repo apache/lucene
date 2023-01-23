@@ -40,7 +40,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -225,7 +225,7 @@ public class QueryUtils {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
+      public FloatVectorValues getVectorValues(String field) throws IOException {
         return null;
       }
 

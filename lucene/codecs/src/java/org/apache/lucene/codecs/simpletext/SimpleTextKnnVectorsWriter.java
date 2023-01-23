@@ -28,7 +28,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -75,7 +75,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
-    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+    FloatVectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;
@@ -87,7 +87,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeVectorValue(VectorValues vectors) throws IOException {
+  private void writeVectorValue(FloatVectorValues vectors) throws IOException {
     // write vector value
     float[] value = vectors.vectorValue();
     assert value.length == vectors.dimension();

@@ -46,7 +46,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -103,11 +103,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     expectThrows(IllegalArgumentException.class, () -> new KnnFloatVectorField("f", new float[0]));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new KnnFloatVectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1]));
+        () -> new KnnFloatVectorField("f", new float[FloatVectorValues.MAX_DIMENSIONS + 1]));
     expectThrows(
         IllegalArgumentException.class,
         () ->
-            new KnnFloatVectorField("f", new float[VectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
+            new KnnFloatVectorField("f", new float[FloatVectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
   }
 
   public void testFieldSetValue() {
@@ -250,7 +250,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         w2.forceMerge(1);
         try (IndexReader reader = DirectoryReader.open(w2)) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
+          FloatVectorValues vectorValues = r.getVectorValues(fieldName);
           assertEquals(0, vectorValues.nextDoc());
           assertEquals(0, vectorValues.vectorValue()[0], 0);
           assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
@@ -274,7 +274,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         w2.forceMerge(1);
         try (IndexReader reader = DirectoryReader.open(w2)) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
+          FloatVectorValues vectorValues = r.getVectorValues(fieldName);
           assertNotEquals(NO_MORE_DOCS, vectorValues.nextDoc());
           assertEquals(0, vectorValues.vectorValue()[0], 0);
           assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
@@ -300,7 +300,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         w2.forceMerge(1);
         try (IndexReader reader = DirectoryReader.open(w2)) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
+          FloatVectorValues vectorValues = r.getVectorValues(fieldName);
           assertEquals(0, vectorValues.nextDoc());
           // The merge order is randomized, we might get 0 first, or 1
           float value = vectorValues.vectorValue()[0];
@@ -482,7 +482,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               doc.add(
                   new KnnFloatVectorField(
                       "f",
-                      new float[VectorValues.MAX_DIMENSIONS + 1],
+                      new float[FloatVectorValues.MAX_DIMENSIONS + 1],
                       VectorSimilarityFunction.DOT_PRODUCT)));
 
       Document doc2 = new Document();
@@ -569,7 +569,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       w.commit();
 
       try (DirectoryReader r = DirectoryReader.open(w)) {
-        VectorValues values = getOnlyLeafReader(r).getVectorValues("v");
+        FloatVectorValues values = getOnlyLeafReader(r).getVectorValues("v");
         assertNotNull(values);
         assertEquals(1, values.size());
       }
@@ -577,7 +577,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       w.forceMerge(1);
       try (DirectoryReader r = DirectoryReader.open(w)) {
         LeafReader leafReader = getOnlyLeafReader(r);
-        VectorValues values = leafReader.getVectorValues("v");
+        FloatVectorValues values = leafReader.getVectorValues("v");
         assertNotNull(values);
         assertEquals(0, values.size());
 
@@ -664,7 +664,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             }
             case FLOAT32 -> {
               for (LeafReaderContext ctx : r.leaves()) {
-                VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+                FloatVectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
                 if (vectorValues != null) {
                   docCount += vectorValues.size();
                   while (vectorValues.nextDoc() != NO_MORE_DOCS) {
@@ -717,7 +717,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       iw.forceMerge(1);
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader r = getOnlyLeafReader(reader);
-        VectorValues vectorValues = r.getVectorValues(fieldName);
+        FloatVectorValues vectorValues = r.getVectorValues(fieldName);
         vectorValues.nextDoc();
         assertEquals(1, vectorValues.vectorValue()[0], 0);
         vectorValues.nextDoc();
@@ -743,7 +743,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         LeafReader leaf = getOnlyLeafReader(reader);
 
         StoredFields storedFields = leaf.storedFields();
-        VectorValues vectorValues = leaf.getVectorValues(fieldName);
+        FloatVectorValues vectorValues = leaf.getVectorValues(fieldName);
         assertEquals(2, vectorValues.dimension());
         assertEquals(3, vectorValues.size());
         assertEquals("1", storedFields.document(vectorValues.nextDoc()).get("id"));
@@ -806,7 +806,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         LeafReader leaf = reader.leaves().get(0).reader();
 
-        VectorValues vectorValues = leaf.getVectorValues("field1");
+        FloatVectorValues vectorValues = leaf.getVectorValues("field1");
         assertEquals(1, vectorValues.dimension());
         assertEquals(2, vectorValues.size());
         vectorValues.nextDoc();
@@ -815,7 +815,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(2f, vectorValues.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
 
-        VectorValues vectorValues2 = leaf.getVectorValues("field2");
+        FloatVectorValues vectorValues2 = leaf.getVectorValues("field2");
         assertEquals(3, vectorValues2.dimension());
         assertEquals(2, vectorValues2.size());
         vectorValues2.nextDoc();
@@ -824,7 +824,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(2f, vectorValues2.vectorValue()[1], 0);
         assertEquals(NO_MORE_DOCS, vectorValues2.nextDoc());
 
-        VectorValues vectorValues3 = leaf.getVectorValues("field3");
+        FloatVectorValues vectorValues3 = leaf.getVectorValues("field3");
         assertEquals(3, vectorValues3.dimension());
         assertEquals(1, vectorValues3.size());
         vectorValues3.nextDoc();
@@ -883,7 +883,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         int valueCount = 0, totalSize = 0;
         for (LeafReaderContext ctx : reader.leaves()) {
-          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+          FloatVectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
           if (vectorValues == null) {
             continue;
           }
@@ -1020,7 +1020,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           Bits liveDocs = ctx.reader().getLiveDocs();
-          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+          FloatVectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
           if (vectorValues == null) {
             continue;
           }
@@ -1077,7 +1077,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       try (IndexReader reader = DirectoryReader.open(iw)) {
         for (LeafReaderContext ctx : reader.leaves()) {
           Bits liveDocs = ctx.reader().getLiveDocs();
-          VectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
+          FloatVectorValues vectorValues = ctx.reader().getVectorValues(fieldName);
           if (vectorValues == null) {
             continue;
           }
@@ -1268,7 +1268,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         w.forceMerge(1);
         try (IndexReader reader = DirectoryReader.open(w)) {
           LeafReader r = getOnlyLeafReader(reader);
-          VectorValues vectorValues = r.getVectorValues(fieldName);
+          FloatVectorValues vectorValues = r.getVectorValues(fieldName);
           int[] vectorDocs = new int[vectorValues.size() + 1];
           int cur = -1;
           while (++cur < vectorValues.size() + 1) {
@@ -1355,7 +1355,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
           case FLOAT32 -> {
             for (LeafReaderContext ctx : r.leaves()) {
-              VectorValues vectorValues = ctx.reader().getVectorValues("knn_vector");
+              FloatVectorValues vectorValues = ctx.reader().getVectorValues("knn_vector");
               if (vectorValues != null) {
                 docCount += vectorValues.size();
                 StoredFields storedFields = ctx.reader().storedFields();
