@@ -25,18 +25,17 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements RandomAccessVectorValues<BytesRef> {
+    implements RandomAccessVectorValues<byte[]> {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
-  protected final BytesRef binaryValue;
+  protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
 
@@ -46,7 +45,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     this.slice = slice;
     this.byteSize = byteSize;
     byteBuffer = ByteBuffer.allocate(byteSize);
-    binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+    binaryValue = byteBuffer.array();
   }
 
   @Override
@@ -60,7 +59,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
   }
 
   @Override
-  public BytesRef vectorValue(int targetOrd) throws IOException {
+  public byte[] vectorValue(int targetOrd) throws IOException {
     readValue(targetOrd);
     return binaryValue;
   }
@@ -99,7 +98,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public BytesRef vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       slice.seek((long) doc * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
       return binaryValue;
@@ -125,7 +124,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<BytesRef> copy() throws IOException {
+    public RandomAccessVectorValues<byte[]> copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
@@ -171,7 +170,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public BytesRef vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       slice.seek((long) (disi.index()) * byteSize);
       slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
       return binaryValue;
@@ -194,7 +193,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<BytesRef> copy() throws IOException {
+    public RandomAccessVectorValues<byte[]> copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
     }
 
@@ -241,7 +240,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public BytesRef vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -261,12 +260,12 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<BytesRef> copy() throws IOException {
+    public RandomAccessVectorValues<byte[]> copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public BytesRef vectorValue(int targetOrd) throws IOException {
+    public byte[] vectorValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
     }
 

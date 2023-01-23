@@ -28,7 +28,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
@@ -72,11 +71,6 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
 
     assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
     assertNotEquals(queryVector, q1.getTargetCopy());
-  }
-
-  @Override
-  VectorEncoding vectorEncoding() {
-    return VectorEncoding.FLOAT32;
   }
 
   public void testScoreNegativeDotProduct() throws IOException {

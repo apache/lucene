@@ -26,7 +26,6 @@ import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
@@ -273,7 +272,7 @@ public final class HnswGraphBuilder<T> {
   private boolean isDiverse(int candidate, NeighborArray neighbors, float score)
       throws IOException {
     return switch (vectorEncoding) {
-      case BYTE -> isDiverse((BytesRef) vectors.vectorValue(candidate), neighbors, score);
+      case BYTE -> isDiverse((byte[]) vectors.vectorValue(candidate), neighbors, score);
       case FLOAT32 -> isDiverse((float[]) vectors.vectorValue(candidate), neighbors, score);
     };
   }
@@ -291,12 +290,12 @@ public final class HnswGraphBuilder<T> {
     return true;
   }
 
-  private boolean isDiverse(BytesRef candidate, NeighborArray neighbors, float score)
+  private boolean isDiverse(byte[] candidate, NeighborArray neighbors, float score)
       throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
           similarityFunction.compare(
-              candidate, (BytesRef) vectorsCopy.vectorValue(neighbors.node[i]));
+              candidate, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
       if (neighborSimilarity >= score) {
         return false;
       }
@@ -322,7 +321,7 @@ public final class HnswGraphBuilder<T> {
     int candidateNode = neighbors.node[candidateIndex];
     return switch (vectorEncoding) {
       case BYTE -> isWorstNonDiverse(
-          candidateIndex, (BytesRef) vectors.vectorValue(candidateNode), neighbors);
+          candidateIndex, (byte[]) vectors.vectorValue(candidateNode), neighbors);
       case FLOAT32 -> isWorstNonDiverse(
           candidateIndex, (float[]) vectors.vectorValue(candidateNode), neighbors);
     };
@@ -344,12 +343,12 @@ public final class HnswGraphBuilder<T> {
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, BytesRef candidateVector, NeighborArray neighbors) throws IOException {
+      int candidateIndex, byte[] candidateVector, NeighborArray neighbors) throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
     for (int i = candidateIndex - 1; i >= 0; i--) {
       float neighborSimilarity =
           similarityFunction.compare(
-              candidateVector, (BytesRef) vectorsCopy.vectorValue(neighbors.node[i]));
+              candidateVector, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
       // candidate node is too similar to node i given its score relative to the base node
       if (neighborSimilarity >= minAcceptedSimilarity) {
         return true;
