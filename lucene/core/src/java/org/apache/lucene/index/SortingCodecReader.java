@@ -34,9 +34,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.packed.PackedInts;
@@ -273,7 +271,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     final int size;
     final int dimension;
     final FixedBitSet docsWithField;
-    final BytesRef[] binaryVectors;
+    final byte[][] vectors;
 
     private int docId = -1;
 
@@ -281,13 +279,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       this.size = delegate.size();
       this.dimension = delegate.dimension();
       docsWithField = new FixedBitSet(sortMap.size());
-      binaryVectors = new BytesRef[sortMap.size()];
+      vectors = new byte[sortMap.size()][];
       for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
         int newDocID = sortMap.oldToNew(doc);
         docsWithField.set(newDocID);
-        binaryVectors[newDocID] =
-            new BytesRef(
-                ArrayUtil.copyOfSubArray(delegate.vectorValue(), 0, delegate.vectorValue().length));
+        vectors[newDocID] = delegate.vectorValue().clone();
       }
     }
 
@@ -303,7 +299,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     @Override
     public byte[] vectorValue() throws IOException {
-      return binaryVectors[docId].bytes;
+      return vectors[docId];
     }
 
     @Override
