@@ -401,10 +401,10 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public FloatVectorValues getVectorValues(String fieldName) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String fieldName) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null ? null : reader.getVectorValues(fieldName);
+    return reader == null ? null : reader.getFloatVectorValues(fieldName);
   }
 
   @Override

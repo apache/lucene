@@ -482,7 +482,7 @@ public class TestKnnGraph extends LuceneTestCase {
           continue;
         }
         HnswGraph graphValues = vectorReader.getGraph(vectorField);
-        FloatVectorValues vectorValues = reader.getVectorValues(vectorField);
+        FloatVectorValues vectorValues = reader.getFloatVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;
           continue;

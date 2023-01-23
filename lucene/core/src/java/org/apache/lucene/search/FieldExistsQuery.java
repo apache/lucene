@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
@@ -32,9 +31,8 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Terms;
 
 /**
- * A {@link Query} that matches documents that contain either a {@link
- * KnnFloatVectorField}, {@link org.apache.lucene.document.KnnByteVectorField}
- * or a field that indexes norms or doc values.
+ * A {@link Query} that matches documents that contain either a {@link KnnFloatVectorField}, {@link
+ * org.apache.lucene.document.KnnByteVectorField} or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
   private String field;
@@ -132,7 +130,7 @@ public class FieldExistsQuery extends Query {
       } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
         int numVectors =
             switch (fieldInfo.getVectorEncoding()) {
-              case FLOAT32 -> leaf.getVectorValues(field).size();
+              case FLOAT32 -> leaf.getFloatVectorValues(field).size();
               case BYTE -> leaf.getByteVectorValues(field).size();
             };
         if (numVectors != leaf.maxDoc()) {
@@ -185,7 +183,7 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
-                case FLOAT32 -> context.reader().getVectorValues(field);
+                case FLOAT32 -> context.reader().getFloatVectorValues(field);
                 case BYTE -> context.reader().getByteVectorValues(field);
               };
         } else if (fieldInfo.getDocValuesType()

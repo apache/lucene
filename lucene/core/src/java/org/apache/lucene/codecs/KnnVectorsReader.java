@@ -21,7 +21,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FilterVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -45,11 +47,23 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
   public abstract void checkIntegrity() throws IOException;
 
   /**
-   * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if the
+   * Returns the {@link VectorValues} for the given {@code field}. The behavior is undefined if the
    * given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
    * never {@code null}.
+   *
+   * @deprecated use {@link #getFloatVectorValues(String)} instead
    */
-  public abstract FloatVectorValues getVectorValues(String field) throws IOException;
+  @Deprecated
+  public VectorValues getVectorValues(String field) throws IOException {
+    return new FilterVectorValues(getFloatVectorValues(field)) {};
+  }
+
+  /**
+   * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
+  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
 
   /**
    * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if

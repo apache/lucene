@@ -23,12 +23,12 @@ import java.nio.charset.StandardCharsets;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -659,7 +659,7 @@ public class TestField extends LuceneTestCase {
         assertArrayEquals(b, binary.vectorValue());
         assertEquals(NO_MORE_DOCS, binary.nextDoc());
 
-        FloatVectorValues floatValues = r.leaves().get(0).reader().getVectorValues("float");
+        FloatVectorValues floatValues = r.leaves().get(0).reader().getFloatVectorValues("float");
         assertEquals(1, floatValues.size());
         assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
         assertEquals(vector.length, floatValues.vectorValue().length);

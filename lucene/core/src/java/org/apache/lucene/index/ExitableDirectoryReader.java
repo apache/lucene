@@ -315,8 +315,8 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public FloatVectorValues getVectorValues(String field) throws IOException {
-      final FloatVectorValues vectorValues = in.getVectorValues(field);
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      final FloatVectorValues vectorValues = in.getFloatVectorValues(field);
       if (vectorValues == null) {
         return null;
       }

@@ -23,9 +23,9 @@ import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
@@ -72,7 +72,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
             }
 
             @Override
-            public FloatVectorValues getVectorValues(String field) throws IOException {
+            public FloatVectorValues getFloatVectorValues(String field) throws IOException {
               BufferedVectorValues vectorValues =
                   new BufferedVectorValues(
                       fieldData.docsWithField,
@@ -196,7 +196,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
           }
 
           @Override
-          public FloatVectorValues getVectorValues(String field) throws IOException {
+          public FloatVectorValues getFloatVectorValues(String field) throws IOException {
             return MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
           }
 

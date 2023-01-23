@@ -30,10 +30,10 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -226,7 +226,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public FloatVectorValues getVectorValues(String field) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     return getOffHeapVectorValues(fieldEntry);
   }
@@ -283,7 +283,8 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     throw new UnsupportedOperationException();
   }
 
-  private OffHeapFloatVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
+  private OffHeapFloatVectorValues getOffHeapVectorValues(FieldEntry fieldEntry)
+      throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     return new OffHeapFloatVectorValues(fieldEntry.dimension, fieldEntry.ordToDoc, bytesSlice);

@@ -17,9 +17,9 @@
 
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.VectorUtil;
@@ -28,11 +28,11 @@ import org.apache.lucene.util.VectorUtil;
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
- * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to compare vectors at
- * query time (for example as part of result ranking). A KnnVectorField may be associated with a
- * search similarity function defining the metric used for nearest-neighbor search among vectors of
- * that field.
+ * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers
+ * random-access by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to
+ * compare vectors at query time (for example as part of result ranking). A KnnVectorField may be
+ * associated with a search similarity function defining the metric used for nearest-neighbor search
+ * among vectors of that field.
  *
  * @lucene.experimental
  */
@@ -98,7 +98,8 @@ public class KnnFloatVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  public KnnFloatVectorField(
+      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }

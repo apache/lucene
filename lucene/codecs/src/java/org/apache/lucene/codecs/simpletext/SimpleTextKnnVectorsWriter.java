@@ -26,9 +26,9 @@ import java.util.List;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -75,7 +75,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
-    FloatVectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+    FloatVectorValues vectors = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
     int docV;

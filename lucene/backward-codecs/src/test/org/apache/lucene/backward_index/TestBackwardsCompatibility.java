@@ -65,6 +65,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexFormatTooOldException;
 import org.apache.lucene.index.IndexOptions;
@@ -97,7 +98,6 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
@@ -1327,7 +1327,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       // test vector values
       int cnt = 0;
       for (LeafReaderContext ctx : reader.leaves()) {
-        FloatVectorValues values = ctx.reader().getVectorValues(KNN_VECTOR_FIELD);
+        FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {

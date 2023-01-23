@@ -19,8 +19,8 @@ package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;

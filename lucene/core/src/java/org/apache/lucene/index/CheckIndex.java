@@ -2589,7 +2589,7 @@ public final class CheckIndex implements Closeable {
                       + "\" has vector values but dimension is "
                       + dimension);
             }
-            if (reader.getVectorValues(fieldInfo.name) == null
+            if (reader.getFloatVectorValues(fieldInfo.name) == null
                 && reader.getByteVectorValues(fieldInfo.name) == null) {
               continue;
             }
@@ -2605,7 +2605,7 @@ public final class CheckIndex implements Closeable {
                 break;
               case FLOAT32:
                 checkFloatVectorValues(
-                    Objects.requireNonNull(reader.getVectorValues(fieldInfo.name)),
+                    Objects.requireNonNull(reader.getFloatVectorValues(fieldInfo.name)),
                     fieldInfo,
                     status,
                     reader);

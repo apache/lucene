@@ -721,7 +721,8 @@ public class KnnGraphTester {
             case BYTE -> doc.add(
                 new KnnByteVectorField(
                     KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
-            case FLOAT32 -> doc.add(new KnnFloatVectorField(KNN_FIELD, vectorReader.next(), fieldType));
+            case FLOAT32 -> doc.add(
+                new KnnFloatVectorField(KNN_FIELD, vectorReader.next(), fieldType));
           }
           doc.add(new StoredField(ID_FIELD, i));
           iw.addDocument(doc);

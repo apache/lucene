@@ -24,10 +24,10 @@ import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 
@@ -61,7 +61,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       case FLOAT32:
         KnnFieldVectorsWriter<float[]> floatWriter =
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
-        FloatVectorValues mergedFloats = MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+        FloatVectorValues mergedFloats =
+            MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
         for (int doc = mergedFloats.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = mergedFloats.nextDoc()) {
@@ -153,7 +154,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         KnnVectorsReader knnVectorsReader = mergeState.knnVectorsReaders[i];
         if (knnVectorsReader != null) {
-          FloatVectorValues values = knnVectorsReader.getVectorValues(fieldInfo.name);
+          FloatVectorValues values = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
           if (values != null) {
             subs.add(new VectorValuesSub(mergeState.docMaps[i], values));
           }

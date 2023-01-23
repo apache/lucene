@@ -238,7 +238,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 leaf.getSortedNumericDocValues("sorted_numeric_dv");
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
-            FloatVectorValues vectorValues = leaf.getVectorValues("vector");
+            FloatVectorValues vectorValues = leaf.getFloatVectorValues("vector");
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;
@@ -253,7 +253,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
                 sorted_numeric_dv = leaf.getSortedNumericDocValues("sorted_numeric_dv");
                 sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
                 binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
-                vectorValues = leaf.getVectorValues("vector");
+                vectorValues = leaf.getFloatVectorValues("vector");
                 prevValue = -1;
               }
               assertTrue(prevValue + " < " + ids.longValue(), prevValue < ids.longValue());

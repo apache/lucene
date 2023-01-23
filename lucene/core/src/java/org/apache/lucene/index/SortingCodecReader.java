@@ -488,8 +488,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public FloatVectorValues getVectorValues(String field) throws IOException {
-        return new SortingFloatVectorValues(delegate.getVectorValues(field), docMap);
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+        return new SortingFloatVectorValues(delegate.getFloatVectorValues(field), docMap);
       }
 
       @Override

@@ -29,6 +29,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
@@ -39,7 +40,6 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -218,8 +218,8 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public FloatVectorValues getVectorValues(String fieldName) throws IOException {
-    return in.getVectorValues(fieldName);
+  public FloatVectorValues getFloatVectorValues(String fieldName) throws IOException {
+    return in.getFloatVectorValues(fieldName);
   }
 
   @Override
