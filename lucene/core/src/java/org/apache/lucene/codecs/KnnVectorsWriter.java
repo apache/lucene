@@ -226,11 +226,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public BytesRef binaryValue() throws IOException {
-        return current.values.binaryValue();
-      }
-
-      @Override
       public int advance(int target) {
         throw new UnsupportedOperationException();
       }

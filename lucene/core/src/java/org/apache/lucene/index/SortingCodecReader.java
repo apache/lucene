@@ -20,8 +20,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -221,7 +219,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     final int dimension;
     final FixedBitSet docsWithField;
     final float[][] vectors;
-    final ByteBuffer vectorAsBytes;
 
     private int docId = -1;
 
@@ -230,9 +227,6 @@ public final class SortingCodecReader extends FilterCodecReader {
       this.dimension = delegate.dimension();
       docsWithField = new FixedBitSet(sortMap.size());
       vectors = new float[sortMap.size()][];
-      vectorAsBytes =
-          ByteBuffer.allocate(delegate.dimension() * VectorEncoding.FLOAT32.byteSize)
-              .order(ByteOrder.LITTLE_ENDIAN);
       for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
         int newDocID = sortMap.oldToNew(doc);
         docsWithField.set(newDocID);
@@ -248,12 +242,6 @@ public final class SortingCodecReader extends FilterCodecReader {
     @Override
     public int nextDoc() throws IOException {
       return advance(docId + 1);
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      vectorAsBytes.asFloatBuffer().put(vectors[docId]);
-      return new BytesRef(vectorAsBytes.array());
     }
 
     @Override

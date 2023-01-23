@@ -445,11 +445,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
         return vectorValues.size();
       }
 
-      @Override
-      public BytesRef binaryValue() throws IOException {
-        return vectorValues.binaryValue();
-      }
-
       /**
        * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
        * if {@link Thread#interrupted()} returns true.

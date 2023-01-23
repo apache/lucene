@@ -17,10 +17,14 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.FIELD_NAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.FIELD_NUMBER;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.SIZE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VECTOR_DATA_LENGTH;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VECTOR_DATA_OFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VECTOR_DIMENSION;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,7 +34,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -141,7 +144,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     IndexInput bytesSlice =
         dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new SimpleTextVectorValues(fieldEntry, bytesSlice, info.getVectorEncoding());
+    return new SimpleTextVectorValues(fieldEntry, bytesSlice);
   }
 
   @Override
@@ -340,21 +343,15 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
     private final IndexInput in;
-    private final BytesRef binaryValue;
     private final float[][] values;
-    private final VectorEncoding vectorEncoding;
 
     int curOrd;
 
-    SimpleTextVectorValues(FieldEntry entry, IndexInput in, VectorEncoding vectorEncoding)
-        throws IOException {
+    SimpleTextVectorValues(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
-      binaryValue = new BytesRef(entry.dimension * vectorEncoding.byteSize);
-      binaryValue.length = binaryValue.bytes.length;
       curOrd = -1;
-      this.vectorEncoding = vectorEncoding;
       readAllVectors();
     }
 
@@ -371,22 +368,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public float[] vectorValue() {
       return values[curOrd];
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      switch (vectorEncoding) {
-          // we know that the floats are really just byte values
-        case BYTE:
-          for (int i = 0; i < values[curOrd].length; i++) {
-            binaryValue.bytes[i + binaryValue.offset] = (byte) values[curOrd][i];
-          }
-          break;
-        case FLOAT32:
-          ByteBuffer.wrap(binaryValue.bytes).asFloatBuffer().get(values[curOrd]);
-          break;
-      }
-      return binaryValue;
     }
 
     @Override

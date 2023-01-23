@@ -18,8 +18,6 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
@@ -141,11 +139,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
       }
       docId = NO_MORE_DOCS;
       return docId;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      return randomAccess.binaryValue(docIdOffsets[docId] - 1);
     }
 
     @Override
@@ -277,11 +270,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     final List<float[]> vectors;
     final int dimension;
 
-    final ByteBuffer buffer;
-    final BytesRef binaryValue;
-    final ByteBuffer raBuffer;
-    final BytesRef raBinaryValue;
-
     DocIdSetIterator docsWithFieldIter;
     int ord = -1;
 
@@ -289,10 +277,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
       this.docsWithField = docsWithField;
       this.vectors = vectors;
       this.dimension = dimension;
-      buffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-      binaryValue = new BytesRef(buffer.array());
-      raBuffer = ByteBuffer.allocate(dimension * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-      raBinaryValue = new BytesRef(raBuffer.array());
       docsWithFieldIter = docsWithField.iterator();
     }
 
@@ -308,17 +292,6 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     @Override
     public int size() {
       return vectors.size();
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      buffer.asFloatBuffer().put(vectorValue());
-      return binaryValue;
-    }
-
-    public BytesRef binaryValue(int targetOrd) {
-      raBuffer.asFloatBuffer().put(vectors.get(targetOrd));
-      return raBinaryValue;
     }
 
     @Override

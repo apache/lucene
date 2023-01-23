@@ -659,7 +659,6 @@ public class TestField extends LuceneTestCase {
         VectorValues floatValues = r.leaves().get(0).reader().getVectorValues("float");
         assertEquals(1, floatValues.size());
         assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
-        assertNotNull(floatValues.binaryValue());
         assertEquals(vector.length, floatValues.vectorValue().length);
         assertEquals(vector[0], floatValues.vectorValue()[0], 0);
         assertEquals(NO_MORE_DOCS, floatValues.nextDoc());
