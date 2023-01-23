@@ -60,7 +60,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
@@ -540,7 +540,7 @@ public class KnnGraphTester {
   private static TopDocs doKnnVectorQuery(
       IndexSearcher searcher, String field, float[] vector, int k, int fanout, Query filter)
       throws IOException {
-    return searcher.search(new KnnVectorQuery(field, vector, k + fanout, filter), k);
+    return searcher.search(new KnnFloatVectorQuery(field, vector, k + fanout, filter), k);
   }
 
   private float checkResults(TopDocs[] results, int[][] nn) {

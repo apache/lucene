@@ -102,7 +102,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -1360,7 +1360,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       String expectedFirstDocId)
       throws IOException {
     ScoreDoc[] hits =
-        searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
+        searcher.search(new KnnFloatVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
     assertEquals("wrong number of hits", expectedHitsCount, hits.length);
     Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", expectedFirstDocId, d.get("id"));

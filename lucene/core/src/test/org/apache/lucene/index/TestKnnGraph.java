@@ -41,7 +41,7 @@ import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
@@ -395,7 +395,8 @@ public class TestKnnGraph extends LuceneTestCase {
                   latch.await();
                   IndexSearcher searcher = manager.acquire();
                   try {
-                    KnnVectorQuery query = new KnnVectorQuery("vector", new float[] {0f, 0.1f}, 5);
+                    KnnFloatVectorQuery query =
+                        new KnnFloatVectorQuery("vector", new float[] {0f, 0.1f}, 5);
                     TopDocs results = searcher.search(query, 5);
                     StoredFields storedFields = searcher.storedFields();
                     for (ScoreDoc doc : results.scoreDocs) {

@@ -20,7 +20,7 @@ package org.apache.lucene.document;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.VectorUtil;
 
@@ -83,7 +83,7 @@ public class KnnVectorField extends Field {
    * @return A new vector query
    */
   public static Query newVectorQuery(String field, float[] queryVector, int k) {
-    return new KnnVectorQuery(field, queryVector, k);
+    return new KnnFloatVectorQuery(field, queryVector, k);
   }
 
   /**

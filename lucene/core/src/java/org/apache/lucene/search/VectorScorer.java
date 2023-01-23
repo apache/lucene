@@ -25,8 +25,8 @@ import org.apache.lucene.index.VectorValues;
 
 /**
  * Computes the similarity score between a given query vector and different document vectors. This
- * is primarily used by {@link org.apache.lucene.search.KnnVectorQuery} to run an exact, exhaustive
- * search over the vectors.
+ * is primarily used by {@link KnnFloatVectorQuery} to run an exact, exhaustive search over the
+ * vectors.
  */
 abstract class VectorScorer {
   protected final VectorSimilarityFunction similarity;

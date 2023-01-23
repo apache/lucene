@@ -33,10 +33,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
-public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
+public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  KnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnVectorQuery(field, query, k, queryFilter);
+  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return new KnnFloatVectorQuery(field, query, k, queryFilter);
   }
 
   @Override
@@ -67,7 +67,7 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
 
   public void testGetTarget() {
     float[] queryVector = new float[] {0, 1};
-    KnnVectorQuery q1 = new KnnVectorQuery("f1", queryVector, 10);
+    KnnFloatVectorQuery q1 = new KnnFloatVectorQuery("f1", queryVector, 10);
 
     assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
     assertNotEquals(queryVector, q1.getTargetCopy());
@@ -159,7 +159,7 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnVectorQuery {
+  private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
       super(field, target, k, filter);

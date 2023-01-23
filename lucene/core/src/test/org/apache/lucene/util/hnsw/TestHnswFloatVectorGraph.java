@@ -27,7 +27,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
@@ -48,7 +48,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   Query knnQuery(String field, float[] vector, int k) {
-    return new KnnVectorQuery(field, vector, k);
+    return new KnnFloatVectorQuery(field, vector, k);
   }
 
   @Override
