@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
@@ -284,7 +285,9 @@ public final class SortingCodecReader extends FilterCodecReader {
       for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
         int newDocID = sortMap.oldToNew(doc);
         docsWithField.set(newDocID);
-        binaryVectors[newDocID] = BytesRef.deepCopyOf(delegate.vectorValue());
+        binaryVectors[newDocID] =
+            new BytesRef(
+                ArrayUtil.copyOfSubArray(delegate.vectorValue(), 0, delegate.vectorValue().length));
       }
     }
 
@@ -299,8 +302,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public BytesRef vectorValue() throws IOException {
-      return binaryVectors[docId];
+    public byte[] vectorValue() throws IOException {
+      return binaryVectors[docId].bytes;
     }
 
     @Override
@@ -505,8 +508,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TopDocs search(
-          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
         throw new UnsupportedOperationException();
       }
 

@@ -71,9 +71,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -516,12 +514,10 @@ public class KnnGraphTester {
 
   private static class VectorReaderByte extends VectorReader {
     private final byte[] scratch;
-    private final BytesRef bytesRef;
 
     VectorReaderByte(FileChannel input, int dim, int bufferSize) {
       super(input, dim, bufferSize);
       scratch = new byte[dim];
-      bytesRef = new BytesRef(scratch);
     }
 
     @Override
@@ -534,10 +530,10 @@ public class KnnGraphTester {
       return target;
     }
 
-    BytesRef nextBytes() throws IOException {
+    byte[] nextBytes() throws IOException {
       readNext();
       bytes.get(scratch);
-      return bytesRef;
+      return scratch;
     }
   }
 
@@ -750,40 +746,7 @@ public class KnnGraphTester {
     System.exit(1);
   }
 
-  static class NeighborArraySorter extends IntroSorter {
-    private final int[] node;
-    private final float[] score;
-
-    NeighborArraySorter(NeighborArray neighbors) {
-      node = neighbors.node;
-      score = neighbors.score;
-    }
-
-    int pivot;
-
-    @Override
-    protected void swap(int i, int j) {
-      int tmpNode = node[i];
-      float tmpScore = score[i];
-      node[i] = node[j];
-      score[i] = score[j];
-      node[j] = tmpNode;
-      score[j] = tmpScore;
-    }
-
-    @Override
-    protected void setPivot(int i) {
-      pivot = i;
-    }
-
-    @Override
-    protected int comparePivot(int j) {
-      return Float.compare(score[pivot], score[j]);
-    }
-  }
-
   private static class BitSetQuery extends Query {
-
     private final FixedBitSet docs;
     private final int cardinality;
 

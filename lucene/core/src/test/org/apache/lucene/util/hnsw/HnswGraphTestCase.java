@@ -61,7 +61,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -293,9 +292,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     NeighborQueue nn =
         switch (getVectorEncoding()) {
           case BYTE -> HnswGraphSearcher.search(
-              (BytesRef) getTargetVector(),
+              (byte[]) getTargetVector(),
               10,
-              (RandomAccessVectorValues<BytesRef>) vectors.copy(),
+              (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
               hnsw,
@@ -346,9 +345,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     NeighborQueue nn =
         switch (getVectorEncoding()) {
           case BYTE -> HnswGraphSearcher.search(
-              (BytesRef) getTargetVector(),
+              (byte[]) getTargetVector(),
               10,
-              (RandomAccessVectorValues<BytesRef>) vectors.copy(),
+              (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
               hnsw,
@@ -405,9 +404,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               acceptOrds,
               Integer.MAX_VALUE);
           case BYTE -> HnswGraphSearcher.search(
-              (BytesRef) getTargetVector(),
+              (byte[]) getTargetVector(),
               numAccepted,
-              (RandomAccessVectorValues<BytesRef>) vectors.copy(),
+              (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
               hnsw,
@@ -446,9 +445,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               createRandomAcceptOrds(0, nDoc),
               visitedLimit);
           case BYTE -> HnswGraphSearcher.search(
-              (BytesRef) getTargetVector(),
+              (byte[]) getTargetVector(),
               topK,
-              (RandomAccessVectorValues<BytesRef>) vectors.copy(),
+              (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
               hnsw,
@@ -663,9 +662,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       actual =
           switch (getVectorEncoding()) {
             case BYTE -> HnswGraphSearcher.search(
-                (BytesRef) query,
+                (byte[]) query,
                 100,
-                (RandomAccessVectorValues<BytesRef>) vectors,
+                (RandomAccessVectorValues<byte[]>) vectors,
                 getVectorEncoding(),
                 similarityFunction,
                 hnsw,
@@ -689,9 +688,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
           if (getVectorEncoding() == VectorEncoding.BYTE) {
-            assert query instanceof BytesRef;
+            assert query instanceof byte[];
             expected.add(
-                j, similarityFunction.compare((BytesRef) query, (BytesRef) vectors.vectorValue(j)));
+                j, similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(j)));
           } else {
             assert query instanceof float[];
             expected.add(
@@ -789,17 +788,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
   static class CircularByteVectorValues extends ByteVectorValues
-      implements RandomAccessVectorValues<BytesRef> {
+      implements RandomAccessVectorValues<byte[]> {
     private final int size;
     private final float[] value;
-    private final BytesRef bValue;
+    private final byte[] bValue;
 
     int doc = -1;
 
     CircularByteVectorValues(int size) {
       this.size = size;
       value = new float[2];
-      bValue = new BytesRef(new byte[2]);
+      bValue = new byte[2];
     }
 
     @Override
@@ -818,7 +817,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public BytesRef vectorValue() {
+    public byte[] vectorValue() {
       return vectorValue(doc);
     }
 
@@ -843,10 +842,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public BytesRef vectorValue(int ord) {
+    public byte[] vectorValue(int ord) {
       unitVector2d(ord / (double) size, value);
       for (int i = 0; i < value.length; i++) {
-        bValue.bytes[i] = (byte) (value[i] * 127);
+        bValue[i] = (byte) (value[i] * 127);
       }
       return bValue;
     }
@@ -881,21 +880,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         break;
       }
       switch (getVectorEncoding()) {
-        case BYTE:
-          assertArrayEquals(
-              "vectors do not match for doc=" + uDoc,
-              ((BytesRef) u.vectorValue()).bytes,
-              ((BytesRef) v.vectorValue()).bytes);
-          break;
-        case FLOAT32:
-          assertArrayEquals(
-              "vectors do not match for doc=" + uDoc,
-              (float[]) u.vectorValue(),
-              (float[]) v.vectorValue(),
-              1e-4f);
-          break;
-        default:
-          throw new IllegalArgumentException("unknown vector encoding: " + getVectorEncoding());
+        case BYTE -> assertArrayEquals(
+            "vectors do not match for doc=" + uDoc,
+            (byte[]) u.vectorValue(),
+            (byte[]) v.vectorValue());
+        case FLOAT32 -> assertArrayEquals(
+            "vectors do not match for doc=" + uDoc,
+            (float[]) u.vectorValue(),
+            (float[]) v.vectorValue(),
+            1e-4f);
+        default -> throw new IllegalArgumentException(
+            "unknown vector encoding: " + getVectorEncoding());
       }
     }
   }

@@ -30,7 +30,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -97,7 +96,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
             @Override
             public TopDocs search(
-                String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
               throw new UnsupportedOperationException();
             }
           };
@@ -192,7 +191,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
 
           @Override
           public TopDocs search(
-              String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+              String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
             throw new UnsupportedOperationException();
           }
 
