@@ -637,8 +637,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               case BYTE:
                 {
                   byte[] b = randomVector8(fieldDims[field]);
-                  doc.add(
-                      new KnnByteVectorField(fieldName, b, fieldSimilarityFunctions[field]));
+                  doc.add(new KnnByteVectorField(fieldName, b, fieldSimilarityFunctions[field]));
                   fieldTotals[field] += b[0];
                   break;
                 }
