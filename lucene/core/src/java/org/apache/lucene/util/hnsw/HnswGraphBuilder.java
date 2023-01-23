@@ -26,7 +26,6 @@ import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
@@ -274,7 +273,7 @@ public final class HnswGraphBuilder<T> {
       throws IOException {
     switch (vectorEncoding) {
       case BYTE:
-        return isDiverse((BytesRef) vectors.vectorValue(candidate), neighbors, score);
+        return isDiverse((byte[]) vectors.vectorValue(candidate), neighbors, score);
       default:
       case FLOAT32:
         return isDiverse((float[]) vectors.vectorValue(candidate), neighbors, score);
@@ -294,12 +293,12 @@ public final class HnswGraphBuilder<T> {
     return true;
   }
 
-  private boolean isDiverse(BytesRef candidate, NeighborArray neighbors, float score)
+  private boolean isDiverse(byte[] candidate, NeighborArray neighbors, float score)
       throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity =
           similarityFunction.compare(
-              candidate, (BytesRef) vectorsCopy.vectorValue(neighbors.node[i]));
+              candidate, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
       if (neighborSimilarity >= score) {
         return false;
       }
@@ -326,7 +325,7 @@ public final class HnswGraphBuilder<T> {
     switch (vectorEncoding) {
       case BYTE:
         return isWorstNonDiverse(
-            candidateIndex, (BytesRef) vectors.vectorValue(candidateNode), neighbors);
+            candidateIndex, (byte[]) vectors.vectorValue(candidateNode), neighbors);
       default:
       case FLOAT32:
         return isWorstNonDiverse(
@@ -350,12 +349,12 @@ public final class HnswGraphBuilder<T> {
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, BytesRef candidateVector, NeighborArray neighbors) throws IOException {
+      int candidateIndex, byte[] candidateVector, NeighborArray neighbors) throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
     for (int i = candidateIndex - 1; i >= 0; i--) {
       float neighborSimilarity =
           similarityFunction.compare(
-              candidateVector, (BytesRef) vectorsCopy.vectorValue(neighbors.node[i]));
+              candidateVector, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
       // candidate node is too similar to node i given its score relative to the base node
       if (neighborSimilarity >= minAcceptedSimilarity) {
         return true;

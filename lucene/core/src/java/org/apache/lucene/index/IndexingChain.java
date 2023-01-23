@@ -962,7 +962,7 @@ final class IndexingChain implements Accountable {
       throws IOException {
     switch (vectorEncoding) {
       case BYTE:
-        ((KnnFieldVectorsWriter<BytesRef>) pf.knnFieldVectorsWriter)
+        ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
             .addValue(docID, ((KnnByteVectorField) field).vectorValue());
         break;
       case FLOAT32:

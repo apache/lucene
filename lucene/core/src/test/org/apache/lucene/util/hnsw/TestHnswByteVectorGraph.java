@@ -30,11 +30,10 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.junit.Before;
 
 /** Tests HNSW KNN graphs */
-public class TestHnswByteVectorGraph extends HnswGraphTestCase<BytesRef> {
+public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
 
   @Before
   public void setup() {
@@ -47,17 +46,17 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<BytesRef> {
   }
 
   @Override
-  Query knnQuery(String field, BytesRef vector, int k) {
+  Query knnQuery(String field, byte[] vector, int k) {
     return new KnnByteVectorQuery(field, vector, k);
   }
 
   @Override
-  BytesRef randomVector(int dim) {
-    return new BytesRef(randomVector8(random(), dim));
+  byte[] randomVector(int dim) {
+    return randomVector8(random(), dim);
   }
 
   @Override
-  AbstractMockVectorValues<BytesRef> vectorValues(int size, int dimension) {
+  AbstractMockVectorValues<byte[]> vectorValues(int size, int dimension) {
     return MockByteVectorValues.fromValues(createRandomByteVectors(size, dimension, random()));
   }
 
@@ -66,7 +65,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<BytesRef> {
   }
 
   @Override
-  AbstractMockVectorValues<BytesRef> vectorValues(float[][] values) {
+  AbstractMockVectorValues<byte[]> vectorValues(float[][] values) {
     byte[][] bValues = new byte[values.length][];
     // The case when all floats fit within a byte already.
     boolean scaleSimple = fitsInByte(values[0][0]);
@@ -87,32 +86,30 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<BytesRef> {
   }
 
   @Override
-  AbstractMockVectorValues<BytesRef> vectorValues(LeafReader reader, String fieldName)
+  AbstractMockVectorValues<byte[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
     ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);
     byte[][] vectors = new byte[reader.maxDoc()][];
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
       vectors[vectorValues.docID()] =
           ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue().bytes,
-              vectorValues.vectorValue().offset,
-              vectorValues.vectorValue().offset + vectorValues.vectorValue().length);
+              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
     }
     return MockByteVectorValues.fromValues(vectors);
   }
 
   @Override
-  Field knnVectorField(String name, BytesRef vector, VectorSimilarityFunction similarityFunction) {
+  Field knnVectorField(String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
     return new KnnByteVectorField(name, vector, similarityFunction);
   }
 
   @Override
-  RandomAccessVectorValues<BytesRef> circularVectorValues(int nDoc) {
+  RandomAccessVectorValues<byte[]> circularVectorValues(int nDoc) {
     return new CircularByteVectorValues(nDoc);
   }
 
   @Override
-  BytesRef getTargetVector() {
-    return new BytesRef(new byte[] {1, 0});
+  byte[] getTargetVector() {
+    return new byte[] {1, 0};
   }
 }

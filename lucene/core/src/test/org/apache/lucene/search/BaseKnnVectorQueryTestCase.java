@@ -38,7 +38,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -63,8 +62,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   abstract float[] randomVector(int dim);
-
-  abstract VectorEncoding vectorEncoding();
 
   abstract Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction);

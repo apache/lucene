@@ -42,7 +42,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 /**
@@ -179,7 +178,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
     return null;
   }
 

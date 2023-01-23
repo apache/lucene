@@ -21,7 +21,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * {@code LeafReader} is an abstract class, providing an interface for accessing an index. Search of
@@ -270,7 +269,7 @@ public abstract class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

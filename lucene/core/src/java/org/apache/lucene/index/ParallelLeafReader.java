@@ -29,7 +29,6 @@ import java.util.TreeMap;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 /**
@@ -462,7 +461,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String fieldName, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      String fieldName, byte[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);

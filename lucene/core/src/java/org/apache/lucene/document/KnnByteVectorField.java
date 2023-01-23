@@ -22,7 +22,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * A field that contains a single byte numeric vector (or none) for each document. Vectors are dense
@@ -38,7 +37,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public class KnnByteVectorField extends Field {
 
-  private static FieldType createType(BytesRef v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(byte[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -67,7 +66,7 @@ public class KnnByteVectorField extends Field {
    * @param k The number of nearest neighbors to gather
    * @return A new vector query
    */
-  public static Query newVectorQuery(String field, BytesRef queryVector, int k) {
+  public static Query newVectorQuery(String field, byte[] queryVector, int k) {
     return new KnnByteVectorQuery(field, queryVector, k);
   }
 
@@ -99,7 +98,7 @@ public class KnnByteVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteVectorField(
-      String name, BytesRef vector, VectorSimilarityFunction similarityFunction) {
+      String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
     fieldsData = vector;
   }
@@ -114,7 +113,7 @@ public class KnnByteVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnByteVectorField(String name, BytesRef vector) {
+  public KnnByteVectorField(String name, byte[] vector) {
     this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
@@ -128,7 +127,7 @@ public class KnnByteVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnByteVectorField(String name, BytesRef vector, FieldType fieldType) {
+  public KnnByteVectorField(String name, byte[] vector, FieldType fieldType) {
     super(name, fieldType);
     if (fieldType.vectorEncoding() != VectorEncoding.BYTE) {
       throw new IllegalArgumentException(
@@ -141,8 +140,8 @@ public class KnnByteVectorField extends Field {
   }
 
   /** Return the vector value of this field */
-  public BytesRef vectorValue() {
-    return (BytesRef) fieldsData;
+  public byte[] vectorValue() {
+    return (byte[]) fieldsData;
   }
 
   /**
@@ -150,7 +149,7 @@ public class KnnByteVectorField extends Field {
    *
    * @param value the value to set; must not be null, and length must match the field type
    */
-  public void setVectorValue(BytesRef value) {
+  public void setVectorValue(byte[] value) {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null");
     }
