@@ -18,13 +18,11 @@
 package org.apache.lucene.backward_codecs.lucene94;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
@@ -35,8 +33,6 @@ abstract class OffHeapVectorValues extends VectorValues
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
-  protected final BytesRef binaryValue;
-  protected final ByteBuffer byteBuffer;
   protected final int byteSize;
   protected final float[] value;
 
@@ -45,9 +41,7 @@ abstract class OffHeapVectorValues extends VectorValues
     this.size = size;
     this.slice = slice;
     this.byteSize = byteSize;
-    byteBuffer = ByteBuffer.allocate(byteSize);
     value = new float[dimension];
-    binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
 
   @Override
@@ -100,13 +94,6 @@ abstract class OffHeapVectorValues extends VectorValues
       slice.seek((long) doc * byteSize);
       slice.readFloats(value, 0, value.length);
       return value;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
     }
 
     @Override
@@ -182,13 +169,6 @@ abstract class OffHeapVectorValues extends VectorValues
     }
 
     @Override
-    public BytesRef binaryValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
-    }
-
-    @Override
     public int docID() {
       return disi.docID();
     }
@@ -253,11 +233,6 @@ abstract class OffHeapVectorValues extends VectorValues
 
     @Override
     public float[] vectorValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 

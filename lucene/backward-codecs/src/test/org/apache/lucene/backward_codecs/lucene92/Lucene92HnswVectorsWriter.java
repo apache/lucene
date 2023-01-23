@@ -21,6 +21,8 @@ import static org.apache.lucene.backward_codecs.lucene92.Lucene92RWHnswVectorsFo
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
@@ -36,7 +38,6 @@ import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
@@ -180,11 +181,13 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   private static DocsWithFieldSet writeVectorData(IndexOutput output, VectorValues vectors)
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    ByteBuffer binaryVector =
+        ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
       // write vector
-      BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
-      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      float[] vectorValue = vectors.vectorValue();
+      binaryVector.asFloatBuffer().put(vectorValue);
+      output.writeBytes(binaryVector.array(), 0, binaryVector.limit());
       docsWithField.add(docV);
     }
     return docsWithField;

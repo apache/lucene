@@ -20,7 +20,6 @@ package org.apache.lucene.backward_codecs.lucene90;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -365,8 +364,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final int[] ordToDoc;
     final IndexInput dataIn;
 
-    final BytesRef binaryValue;
-    final ByteBuffer byteBuffer;
     final int byteSize;
     final float[] value;
 
@@ -379,9 +376,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       this.dataIn = dataIn;
 
       byteSize = Float.BYTES * dimension;
-      byteBuffer = ByteBuffer.allocate(byteSize);
       value = new float[dimension];
-      binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }
 
     @Override
@@ -399,13 +394,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) ord * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
     }
 
     @Override
