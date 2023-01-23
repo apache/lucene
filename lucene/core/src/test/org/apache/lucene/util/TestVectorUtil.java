@@ -169,6 +169,7 @@ public class TestVectorUtil extends LuceneTestCase {
         v.bytes[i] = -127;
       }
     }
+    assert v.offset == 0;
     return v.bytes;
   }
 

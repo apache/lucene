@@ -127,11 +127,10 @@ public final class VectorUtil {
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
-    int aOffset = 0, bOffset = 0;
 
     for (int i = 0; i < a.length; i++) {
-      byte elem1 = a[aOffset++];
-      byte elem2 = b[bOffset++];
+      byte elem1 = a[i];
+      byte elem2 = b[i];
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -185,9 +184,8 @@ public final class VectorUtil {
   public static float squareDistance(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int squareSum = 0;
-    int aOffset = 0, bOffset = 0;
     for (int i = 0; i < a.length; i++) {
-      int diff = a[aOffset++] - b[bOffset++];
+      int diff = a[i] - b[i];
       squareSum += diff * diff;
     }
     return squareSum;
@@ -254,9 +252,8 @@ public final class VectorUtil {
   public static float dotProduct(byte[] a, byte[] b) {
     assert a.length == b.length;
     int total = 0;
-    int aOffset = 0, bOffset = 0;
     for (int i = 0; i < a.length; i++) {
-      total += a[aOffset++] * b[bOffset++];
+      total += a[i] * b[i];
     }
     return total;
   }
