@@ -66,6 +66,14 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
     assertEquals("KnnVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
   }
 
+  public void testGetTarget() {
+    float[] queryVector = new float[] {0, 1};
+    KnnVectorQuery q1 = new KnnVectorQuery("f1", queryVector, 10);
+
+    assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
+    assertNotEquals(queryVector, q1.getTargetCopy());
+  }
+
   @Override
   VectorEncoding vectorEncoding() {
     return VectorEncoding.FLOAT32;
