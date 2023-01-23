@@ -160,6 +160,10 @@ API Changes
   and SortedNumericDocValuesField#newSlowSetQuery. IntField, LongField, FloatField, and DoubleField
   implement newSetQuery with best-practice use of IndexOrDocValuesQuery. (Robert Muir)
 
+* GITHUB#12064: Create new KnnByteVectorField, ByteVectorValues and KnnVectorsReader#getByteVectorValues(String)
+  that are specialized for byte-sized vectors, and clarify the public API by making a clear distinction
+  between classes that produce and read float vectors and those that produce and read byte vectors. (Ben Trent)
+
 * GITHUB#12101: Remove VectorValues#binaryValue(). Vectors should only be
   accessed through their high-level representation, via
   VectorValues#vectorValue(). (Adrien Grand)
