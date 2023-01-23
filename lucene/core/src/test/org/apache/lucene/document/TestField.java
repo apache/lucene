@@ -611,14 +611,17 @@ public class TestField extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      BytesRef br = newBytesRef(new byte[5]);
-      Field field = new KnnByteVectorField("binary", br, VectorSimilarityFunction.EUCLIDEAN);
+      byte[] b = new byte[5];
+      KnnByteVectorField field =
+          new KnnByteVectorField("binary", b, VectorSimilarityFunction.EUCLIDEAN);
+      assertNull(field.binaryValue());
+      assertArrayEquals(b, field.vectorValue());
       expectThrows(
           IllegalArgumentException.class,
           () -> new KnnVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
       float[] vector = new float[] {1, 2};
       Field field2 = new KnnVectorField("float", vector);
-      assertEquals(br, field.binaryValue());
+      assertNull(field2.binaryValue());
       doc.add(field);
       doc.add(field2);
       w.addDocument(doc);
@@ -627,7 +630,7 @@ public class TestField extends LuceneTestCase {
         assertEquals(1, binary.size());
         assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
         assertNotNull(binary.vectorValue());
-        assertEquals(br, binary.vectorValue());
+        assertArrayEquals(b, binary.vectorValue());
         assertEquals(NO_MORE_DOCS, binary.nextDoc());
 
         VectorValues floatValues = r.leaves().get(0).reader().getVectorValues("float");

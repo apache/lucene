@@ -27,7 +27,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -117,7 +116,7 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public abstract TopDocs search(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
    * that called {@link #getMergeInstance()}.

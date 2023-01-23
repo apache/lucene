@@ -30,7 +30,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.BytesRef;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -49,8 +48,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE:
-        KnnFieldVectorsWriter<BytesRef> byteWriter =
-            (KnnFieldVectorsWriter<BytesRef>) addField(fieldInfo);
+        KnnFieldVectorsWriter<byte[]> byteWriter =
+            (KnnFieldVectorsWriter<byte[]>) addField(fieldInfo);
         ByteVectorValues mergedBytes =
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
         for (int doc = mergedBytes.nextDoc();
@@ -262,7 +261,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public BytesRef vectorValue() throws IOException {
+      public byte[] vectorValue() throws IOException {
         return current.values.vectorValue();
       }
 

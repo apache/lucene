@@ -223,7 +223,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     ByteVectorValues values = getByteVectorValues(field);
     if (target.length != values.dimension()) {
@@ -251,7 +251,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
 
-      BytesRef vector = values.vectorValue();
+      byte[] vector = values.vectorValue();
       float score = vectorSimilarity.compare(vector, target);
       topK.insertWithOverflow(new ScoreDoc(doc, score));
       numVisited++;
@@ -459,9 +459,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public BytesRef vectorValue() {
+    public byte[] vectorValue() {
       binaryValue.bytes = values[curOrd];
-      return binaryValue;
+      return binaryValue.bytes;
     }
 
     @Override

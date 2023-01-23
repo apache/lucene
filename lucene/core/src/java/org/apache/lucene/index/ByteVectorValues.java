@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -57,5 +56,5 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
    *
    * @return the vector value
    */
-  public abstract BytesRef vectorValue() throws IOException;
+  public abstract byte[] vectorValue() throws IOException;
 }

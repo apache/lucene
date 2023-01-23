@@ -364,7 +364,7 @@ public abstract class FilterLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
   }
 

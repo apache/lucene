@@ -24,7 +24,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
@@ -135,9 +134,9 @@ public class HnswGraphSearcher<T> {
    * @return a priority queue holding the closest neighbors found
    */
   public static NeighborQueue search(
-      BytesRef query,
+      byte[] query,
       int topK,
-      RandomAccessVectorValues<BytesRef> vectors,
+      RandomAccessVectorValues<byte[]> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
@@ -151,7 +150,7 @@ public class HnswGraphSearcher<T> {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    HnswGraphSearcher<BytesRef> graphSearcher =
+    HnswGraphSearcher<byte[]> graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
@@ -281,7 +280,7 @@ public class HnswGraphSearcher<T> {
 
   private float compare(T query, RandomAccessVectorValues<T> vectors, int ord) throws IOException {
     if (vectorEncoding == VectorEncoding.BYTE) {
-      return similarityFunction.compare((BytesRef) query, (BytesRef) vectors.vectorValue(ord));
+      return similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(ord));
     } else {
       return similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(ord));
     }

@@ -508,7 +508,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public BytesRef vectorValue() throws IOException {
+      public byte[] vectorValue() throws IOException {
         return vectorValues.vectorValue();
       }
 

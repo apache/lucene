@@ -33,7 +33,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.BytesRef;
 
 public class TestVectorScorer extends LuceneTestCase {
 
@@ -49,7 +48,7 @@ public class TestVectorScorer extends LuceneTestCase {
       final VectorScorer vectorScorer;
       switch (encoding) {
         case BYTE:
-          vectorScorer = VectorScorer.create(context, fieldInfo, new BytesRef(new byte[] {1, 2}));
+          vectorScorer = VectorScorer.create(context, fieldInfo, new byte[] {1, 2});
           break;
         case FLOAT32:
           vectorScorer = VectorScorer.create(context, fieldInfo, new float[] {1, 2});
@@ -76,9 +75,9 @@ public class TestVectorScorer extends LuceneTestCase {
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
       if (encoding == VectorEncoding.BYTE) {
-        BytesRef v = new BytesRef(new byte[contents[i].length]);
+        byte[] v = new byte[contents[i].length];
         for (int j = 0; j < v.length; j++) {
-          v.bytes[j] = (byte) contents[i][j];
+          v[j] = (byte) contents[i][j];
         }
         doc.add(new KnnByteVectorField(field, v, EUCLIDEAN));
       } else {
