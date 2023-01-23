@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -58,16 +57,4 @@ public abstract class VectorValues extends DocIdSetIterator {
    * @return the vector value
    */
   public abstract float[] vectorValue() throws IOException;
-
-  /**
-   * Return the binary encoded vector value for the current document ID. These are the bytes
-   * corresponding to the array return by {@link #vectorValue}. It is illegal to call this method
-   * when the iterator is not positioned: before advancing, or after failing to advance. The
-   * returned storage may be shared across calls, re-used and modified as the iterator advances.
-   *
-   * @return the binary value
-   */
-  public BytesRef binaryValue() throws IOException {
-    throw new UnsupportedOperationException();
-  }
 }

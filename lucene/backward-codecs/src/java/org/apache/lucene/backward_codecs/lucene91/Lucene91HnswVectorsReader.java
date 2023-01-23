@@ -20,7 +20,6 @@ package org.apache.lucene.backward_codecs.lucene91;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -412,8 +411,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     private final int[] ordToDoc;
     private final IntUnaryOperator ordToDocOperator;
     private final IndexInput dataIn;
-    private final BytesRef binaryValue;
-    private final ByteBuffer byteBuffer;
     private final int byteSize;
     private final float[] value;
 
@@ -427,9 +424,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
       this.dataIn = dataIn;
       byteSize = Float.BYTES * dimension;
-      byteBuffer = ByteBuffer.allocate(byteSize);
       value = new float[dimension];
-      binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }
 
     @Override
@@ -447,13 +442,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) ord * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
     }
 
     @Override

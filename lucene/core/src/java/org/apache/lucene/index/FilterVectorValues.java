@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.util.BytesRef;
 
 /** Delegates all methods to a wrapped {@link VectorValues}. */
 public abstract class FilterVectorValues extends VectorValues {
@@ -61,10 +60,5 @@ public abstract class FilterVectorValues extends VectorValues {
   @Override
   public float[] vectorValue() throws IOException {
     return in.vectorValue();
-  }
-
-  @Override
-  public BytesRef binaryValue() throws IOException {
-    return in.binaryValue();
   }
 }
