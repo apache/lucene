@@ -95,6 +95,33 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0}, 10));
   }
 
+  public void testGetField() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 10, filter1);
+
+    assertEquals("f1", q1.getField());
+    assertEquals("f2", q2.getField());
+  }
+
+  public void testGetK() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 6);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 7, filter1);
+
+    assertEquals(6, q1.getK());
+    assertEquals(7, q2.getK());
+  }
+
+  public void testGetFilter() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 6);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 7, filter1);
+
+    assertNull(q1.getFilter());
+    assertEquals(filter1, q2.getFilter());
+  }
+
   /**
    * Tests if a AbstractKnnVectorQuery is rewritten to a MatchNoDocsQuery when there are no
    * documents to match.

@@ -113,4 +113,11 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   public int hashCode() {
     return Objects.hash(super.hashCode(), target);
   }
+
+  /**
+   * @return the target query vector of the search. Each vector element is a byte.
+   */
+  public BytesRef getTargetCopy() {
+    return BytesRef.deepCopyOf(target);
+  }
 }
