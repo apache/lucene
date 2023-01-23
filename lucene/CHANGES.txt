@@ -160,6 +160,10 @@ API Changes
   and SortedNumericDocValuesField#newSlowSetQuery. IntField, LongField, FloatField, and DoubleField
   implement newSetQuery with best-practice use of IndexOrDocValuesQuery. (Robert Muir)
 
+* GITHUB#12101: Remove VectorValues#binaryValue(). Vectors should only be
+  accessed through their high-level representation, via
+  VectorValues#vectorValue(). (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
