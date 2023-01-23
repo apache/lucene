@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -81,7 +81,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnVectorField(name, vector, similarityFunction);
+    return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
   @Override

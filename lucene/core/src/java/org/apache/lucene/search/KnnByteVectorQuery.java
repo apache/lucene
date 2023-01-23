@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
@@ -50,7 +50,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
@@ -63,7 +63,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @param filter a filter applied before the vector search

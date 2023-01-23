@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -52,12 +52,12 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnVectorField(name, vector, similarityFunction);
+    return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnVectorField(name, vector);
+    return new KnnFloatVectorField(name, vector);
   }
 
   public void testToString() {

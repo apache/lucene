@@ -25,7 +25,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -420,8 +420,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         value[j] = random().nextFloat();
       }
       FieldType fieldType =
-          KnnVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
-      doc.add(new KnnVectorField("vector", value, fieldType));
+          KnnFloatVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
+      doc.add(new KnnFloatVectorField("vector", value, fieldType));
 
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
       writer.addDocument(doc);

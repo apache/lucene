@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -31,7 +33,7 @@ import org.apache.lucene.index.Terms;
 
 /**
  * A {@link Query} that matches documents that contain either a {@link
- * org.apache.lucene.document.KnnVectorField}, {@link org.apache.lucene.document.KnnByteVectorField}
+ * KnnFloatVectorField}, {@link org.apache.lucene.document.KnnByteVectorField}
  * or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {

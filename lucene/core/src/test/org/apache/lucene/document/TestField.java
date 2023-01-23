@@ -644,9 +644,9 @@ public class TestField extends LuceneTestCase {
       assertArrayEquals(b, field.vectorValue());
       expectThrows(
           IllegalArgumentException.class,
-          () -> new KnnVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
+          () -> new KnnFloatVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
       float[] vector = new float[] {1, 2};
-      Field field2 = new KnnVectorField("float", vector);
+      Field field2 = new KnnFloatVectorField("float", vector);
       assertNull(field2.binaryValue());
       doc.add(field);
       doc.add(field2);

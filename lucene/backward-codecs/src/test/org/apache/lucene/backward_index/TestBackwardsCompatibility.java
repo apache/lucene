@@ -53,7 +53,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -167,7 +167,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-      KnnVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public void testCreateCFS() throws IOException {
@@ -1598,7 +1598,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doc.add(new Field("content6", "here is more content with aaa aaa aaa", customType4));
 
     float[] vector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * id};
-    doc.add(new KnnVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
+    doc.add(new KnnFloatVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
 
     // TODO:
     //   index different norms types via similarity (we use a random one currently?!)

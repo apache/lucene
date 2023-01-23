@@ -39,7 +39,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -964,7 +964,7 @@ final class IndexingChain implements Accountable {
       case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
           .addValue(docID, ((KnnByteVectorField) field).vectorValue());
       case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
-          .addValue(docID, ((KnnVectorField) field).vectorValue());
+          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 
