@@ -92,14 +92,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName()
-        + ":"
-        + this.field
-        + "["
-        + target[0]
-        + ",...]["
-        + k
-        + "]";
+    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
   }
 
   @Override

@@ -71,9 +71,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -720,7 +718,9 @@ public class KnnGraphTester {
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           switch (vectorEncoding) {
-            case BYTE -> doc.add(new KnnByteVectorField(KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
+            case BYTE -> doc.add(
+                new KnnByteVectorField(
+                    KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
             case FLOAT32 -> doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
           }
           doc.add(new StoredField(ID_FIELD, i));
