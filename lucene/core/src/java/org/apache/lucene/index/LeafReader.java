@@ -200,8 +200,8 @@ public abstract class LeafReader extends IndexReader {
   public abstract NumericDocValues getNormValues(String field) throws IOException;
 
   /**
-   * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were
-   * indexed. The returned instance should only be used by a single thread.
+   * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
+   * The returned instance should only be used by a single thread.
    *
    * @deprecated use {@link #getFloatVectorValues(String)} instead
    */
