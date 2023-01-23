@@ -62,7 +62,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   public void testToString() {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
-    assertEquals("KnnVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
+    assertEquals("KnnFloatVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
   }
 
   public void testGetTarget() {
