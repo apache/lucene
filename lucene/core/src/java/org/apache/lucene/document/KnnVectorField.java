@@ -14,77 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.document;
 
-import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.KnnVectorQuery;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.util.VectorUtil;
 
 /**
  * A field that contains a single floating-point numeric vector (or none) for each document. Vectors
  * are dense - that is, every dimension of a vector contains an explicit value, stored packed into
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
- * {@link VectorValues}, which is a forward-only docID-based iterator and also offers random-access
- * by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to compare vectors at
- * query time (for example as part of result ranking). A KnnVectorField may be associated with a
- * search similarity function defining the metric used for nearest-neighbor search among vectors of
- * that field.
+ * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers
+ * random-access by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to
+ * compare vectors at query time (for example as part of result ranking). A KnnVectorField may be
+ * associated with a search similarity function defining the metric used for nearest-neighbor search
+ * among vectors of that field.
  *
- * @lucene.experimental
+ * @deprecated use {@link KnnFloatVectorField} instead
  */
-public class KnnVectorField extends Field {
-
-  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
-    if (v == null) {
-      throw new IllegalArgumentException("vector value must not be null");
-    }
-    int dimension = v.length;
-    if (dimension == 0) {
-      throw new IllegalArgumentException("cannot index an empty vector");
-    }
-    if (dimension > VectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + VectorValues.MAX_DIMENSIONS);
-    }
-    if (similarityFunction == null) {
-      throw new IllegalArgumentException("similarity function must not be null");
-    }
-    FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
-    type.freeze();
-    return type;
-  }
-
-  /**
-   * A convenience method for creating a vector field type.
-   *
-   * @param dimension dimension of vectors
-   * @param similarityFunction a function defining vector proximity.
-   * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
-   */
-  public static FieldType createFieldType(
-      int dimension, VectorSimilarityFunction similarityFunction) {
-    FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
-    type.freeze();
-    return type;
-  }
-
-  /**
-   * Create a new vector query for the provided field targeting the float vector
-   *
-   * @param field The field to query
-   * @param queryVector The float vector target
-   * @param k The number of nearest neighbors to gather
-   * @return A new vector query
-   */
-  public static Query newVectorQuery(String field, float[] queryVector, int k) {
-    return new KnnVectorQuery(field, queryVector, k);
-  }
+@Deprecated
+public class KnnVectorField extends KnnFloatVectorField {
 
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
@@ -99,8 +48,7 @@ public class KnnVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction));
-    fieldsData = vector;
+    super(name, vector, similarityFunction);
   }
 
   /**
@@ -114,7 +62,7 @@ public class KnnVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnVectorField(String name, float[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    super(name, vector);
   }
 
   /**
@@ -128,35 +76,6 @@ public class KnnVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnVectorField(String name, float[] vector, FieldType fieldType) {
-    super(name, fieldType);
-    if (fieldType.vectorEncoding() != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException(
-          "Attempt to create a vector for field "
-              + name
-              + " using float[] but the field encoding is "
-              + fieldType.vectorEncoding());
-    }
-    fieldsData = vector;
-  }
-
-  /** Return the vector value of this field */
-  public float[] vectorValue() {
-    return (float[]) fieldsData;
-  }
-
-  /**
-   * Set the vector value of this field
-   *
-   * @param value the value to set; must not be null, and length must match the field type
-   */
-  public void setVectorValue(float[] value) {
-    if (value == null) {
-      throw new IllegalArgumentException("value must not be null");
-    }
-    if (value.length != type.vectorDimension()) {
-      throw new IllegalArgumentException(
-          "value length " + value.length + " must match field dimension " + type.vectorDimension());
-    }
-    fieldsData = value;
+    super(name, vector, fieldType);
   }
 }

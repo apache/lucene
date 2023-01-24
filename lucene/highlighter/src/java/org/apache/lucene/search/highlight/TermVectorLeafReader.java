@@ -25,6 +25,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -39,7 +40,6 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -161,7 +161,7 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) {
+  public FloatVectorValues getFloatVectorValues(String fieldName) {
     return null;
   }
 

@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -33,10 +33,10 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
-public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
+public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  KnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnVectorQuery(field, query, k, queryFilter);
+  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return new KnnFloatVectorQuery(field, query, k, queryFilter);
   }
 
   @Override
@@ -52,22 +52,22 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnVectorField(name, vector, similarityFunction);
+    return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnVectorField(name, vector);
+    return new KnnFloatVectorField(name, vector);
   }
 
   public void testToString() {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
-    assertEquals("KnnVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
+    assertEquals("KnnFloatVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
   }
 
   public void testGetTarget() {
     float[] queryVector = new float[] {0, 1};
-    KnnVectorQuery q1 = new KnnVectorQuery("f1", queryVector, 10);
+    KnnFloatVectorQuery q1 = new KnnFloatVectorQuery("f1", queryVector, 10);
 
     assertArrayEquals(queryVector, q1.getTargetCopy(), 0);
     assertNotEquals(queryVector, q1.getTargetCopy());
@@ -159,7 +159,7 @@ public class TestKnnVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnVectorQuery {
+  private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
       super(field, target, k, filter);

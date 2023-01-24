@@ -445,8 +445,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
               case FLOAT32 -> {
-                OffHeapVectorValues.DenseOffHeapVectorValues vectorValues =
-                    new OffHeapVectorValues.DenseOffHeapVectorValues(
+                OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
+                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
@@ -656,7 +656,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeVectorData(
-      IndexOutput output, VectorValues floatVectorValues) throws IOException {
+      IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     ByteBuffer buffer =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)

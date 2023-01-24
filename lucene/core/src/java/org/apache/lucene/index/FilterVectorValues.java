@@ -20,14 +20,14 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Objects;
 
-/** Delegates all methods to a wrapped {@link VectorValues}. */
+/** Delegates all methods to a wrapped {@link FloatVectorValues}. */
 public abstract class FilterVectorValues extends VectorValues {
 
   /** Wrapped values */
-  protected final VectorValues in;
+  protected final FloatVectorValues in;
 
   /** Sole constructor */
-  protected FilterVectorValues(VectorValues in) {
+  protected FilterVectorValues(FloatVectorValues in) {
     Objects.requireNonNull(in);
     this.in = in;
   }

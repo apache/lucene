@@ -30,11 +30,11 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -118,7 +118,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
+    FloatVectorValues vectors = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -144,8 +144,8 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       // we use Lucene92HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
-      OffHeapVectorValues offHeapVectors =
-          new OffHeapVectorValues.DenseOffHeapVectorValues(
+      OffHeapFloatVectorValues offHeapVectors =
+          new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
               vectors.dimension(), docsWithField.cardinality(), vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
@@ -178,7 +178,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
-  private static DocsWithFieldSet writeVectorData(IndexOutput output, VectorValues vectors)
+  private static DocsWithFieldSet writeVectorData(IndexOutput output, FloatVectorValues vectors)
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     ByteBuffer binaryVector =

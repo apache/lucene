@@ -41,6 +41,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -49,7 +50,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -728,21 +728,21 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   /** Returns vectors evenly distributed around the upper unit semicircle. */
-  static class CircularVectorValues extends VectorValues
+  static class CircularFloatVectorValues extends FloatVectorValues
       implements RandomAccessVectorValues<float[]> {
     private final int size;
     private final float[] value;
 
     int doc = -1;
 
-    CircularVectorValues(int size) {
+    CircularFloatVectorValues(int size) {
       this.size = size;
       value = new float[2];
     }
 
     @Override
-    public CircularVectorValues copy() {
-      return new CircularVectorValues(size);
+    public CircularFloatVectorValues copy() {
+      return new CircularFloatVectorValues(size);
     }
 
     @Override
