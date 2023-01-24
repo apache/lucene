@@ -27,10 +27,6 @@ import org.apache.lucene.document.KnnFloatVectorField;
 @Deprecated
 public abstract class VectorValues extends FloatVectorValues {
 
-    /**
-     * Creates an instance to hold floating point vector values for a single document
-     */
-    VectorValues() {
-
-    }
+  /** Creates an instance to hold floating point vector values for a single document */
+  VectorValues() {}
 }
