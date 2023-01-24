@@ -138,7 +138,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
-  /** View over multiple VectorValues supporting iterator-style access via DocIdMerger. */
+  /** View over multiple vector values supporting iterator-style access via DocIdMerger. */
   protected static final class MergedVectorValues {
     private MergedVectorValues() {}
 

@@ -56,9 +56,8 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
       return values[pos];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
-      // This should help us catch cases of aliasing where the same VectorValues source is used
-      // twice in a
-      // single computation.
+      // This should help us catch cases of aliasing where the same vector values source is used
+      // twice in a single computation.
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
       return scratch;
     }

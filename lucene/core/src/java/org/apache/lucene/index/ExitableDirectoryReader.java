@@ -454,11 +454,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           throw new ExitingReaderException(
               "The request took too long to iterate over vector values. Timeout: "
                   + queryTimeout.toString()
-                  + ", VectorValues="
+                  + ", FloatVectorValues="
                   + in);
         } else if (Thread.interrupted()) {
           throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. VectorValues=" + in);
+              "Interrupted while iterating over vector values. FloatVectorValues=" + in);
         }
       }
     }
@@ -521,11 +521,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           throw new ExitingReaderException(
               "The request took too long to iterate over vector values. Timeout: "
                   + queryTimeout.toString()
-                  + ", VectorValues="
+                  + ", ByteVectorValues="
                   + in);
         } else if (Thread.interrupted()) {
           throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. VectorValues=" + in);
+              "Interrupted while iterating over vector values. ByteVectorValues=" + in);
         }
       }
     }
