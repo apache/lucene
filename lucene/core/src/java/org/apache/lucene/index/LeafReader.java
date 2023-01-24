@@ -206,7 +206,7 @@ public abstract class LeafReader extends IndexReader {
    * @deprecated use {@link #getFloatVectorValues(String)} instead
    */
   @Deprecated
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public VectorValues getVectorValues(String field) throws IOException {
     return new FilterVectorValues(getFloatVectorValues(field)) {};
   }
 
