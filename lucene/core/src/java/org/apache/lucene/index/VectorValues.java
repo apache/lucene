@@ -25,4 +25,12 @@ import org.apache.lucene.document.KnnFloatVectorField;
  * @deprecated use {@link FloatVectorValues} instead
  */
 @Deprecated
-public abstract class VectorValues extends FloatVectorValues {}
+public abstract class VectorValues extends FloatVectorValues {
+
+    /**
+     * Creates an instance to hold floating point vector values for a single document
+     */
+    VectorValues() {
+
+    }
+}
