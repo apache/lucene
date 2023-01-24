@@ -39,6 +39,7 @@ import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -813,11 +814,13 @@ public class TestMemoryIndex extends LuceneTestCase {
     Field multiField =
         new Field("multi_field", multiFt) {
           {
-            fieldsData = 35;
+            fieldsData = 42;
           }
         };
 
-    MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, multiField), null);
+    Field intField = new IntField("int_field", 50);
+
+    MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, multiField, intField), null);
     IndexSearcher searcher = index.createSearcher();
 
     NumericDocValues ndv =
@@ -829,6 +832,12 @@ public class TestMemoryIndex extends LuceneTestCase {
         searcher.getIndexReader().leaves().get(0).reader().getSortedNumericDocValues("multi_field");
     assertTrue(sndv.advanceExact(0));
     assertEquals(1, sndv.docValueCount());
-    assertEquals(35, sndv.nextValue());
+    assertEquals(42, sndv.nextValue());
+
+    sndv =
+        searcher.getIndexReader().leaves().get(0).reader().getSortedNumericDocValues("int_field");
+    assertTrue(sndv.advanceExact(0));
+    assertEquals(1, sndv.docValueCount());
+    assertEquals(50, sndv.nextValue());
   }
 }
