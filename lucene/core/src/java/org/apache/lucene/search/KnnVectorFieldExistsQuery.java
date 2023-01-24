@@ -18,8 +18,7 @@
 package org.apache.lucene.search;
 
 /**
- * A {@link Query} that matches documents that contain a {@link
- * org.apache.lucene.document.KnnVectorField}.
+ * A {@link Query} that matches documents that contain a vector field.
  *
  * @deprecated Use {@link org.apache.lucene.search.FieldExistsQuery} instead.
  */

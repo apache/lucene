@@ -377,7 +377,7 @@ public final class CheckIndex implements Closeable {
       public Throwable error;
     }
 
-    /** Status from testing VectorValues */
+    /** Status from testing vector values */
     public static final class VectorValuesStatus {
 
       VectorValuesStatus() {}
@@ -1015,7 +1015,7 @@ public final class CheckIndex implements Closeable {
         // Test PointValues
         segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
 
-        // Test VectorValues
+        // Test FloatVectorValues and ByteVectorValues
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
         // Test Index Sort
