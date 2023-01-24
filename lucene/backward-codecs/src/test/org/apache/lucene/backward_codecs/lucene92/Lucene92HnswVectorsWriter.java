@@ -26,8 +26,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -115,10 +115,9 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
+  public void writeField(FieldInfo fieldInfo, FloatVectorValues floatVectorValues, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    FloatVectorValues vectors = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -127,7 +126,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, vectors);
+      DocsWithFieldSet docsWithField = writeVectorData(tempVectorData, floatVectorValues);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -146,12 +145,11 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       // TODO: separate random access vector values from DocIdSetIterator?
       OffHeapFloatVectorValues offHeapVectors =
           new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-              vectors.dimension(), docsWithField.cardinality(), vectorDataInput);
+              floatVectorValues.dimension(), docsWithField.cardinality(), vectorDataInput);
       OnHeapHnswGraph graph =
           offHeapVectors.size() == 0
               ? null
-              : writeGraph(
-                  offHeapVectors, VectorEncoding.FLOAT32, fieldInfo.getVectorSimilarityFunction());
+              : writeGraph(offHeapVectors, fieldInfo.getVectorSimilarityFunction());
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
@@ -173,6 +171,11 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+  }
+
+  @Override
+  protected void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc) {
+    throw new UnsupportedOperationException("byte vectors not supported in this version");
   }
 
   /**
@@ -271,16 +274,14 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   private OnHeapHnswGraph writeGraph(
-      RandomAccessVectorValues<float[]> vectorValues,
-      VectorEncoding vectorEncoding,
-      VectorSimilarityFunction similarityFunction)
+      RandomAccessVectorValues<float[]> vectorValues, VectorSimilarityFunction similarityFunction)
       throws IOException {
 
     // build graph
     HnswGraphBuilder<float[]> hnswGraphBuilder =
         HnswGraphBuilder.create(
             vectorValues,
-            vectorEncoding,
+            VectorEncoding.FLOAT32,
             similarityFunction,
             M,
             beamWidth,

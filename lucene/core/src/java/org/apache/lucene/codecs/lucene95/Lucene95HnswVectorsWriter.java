@@ -402,7 +402,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             case BYTE -> writeByteVectorData(
                 tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
             case FLOAT32 -> writeVectorData(
-                tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
+                tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
