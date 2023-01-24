@@ -44,6 +44,9 @@ API Changes
 
 * GITHUB#11814: Support deletions in IndexRearranger. (Stefan Vodita)
 
+* GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
+  LeafReader#getVectorValues. (Luca Cavanna)
+
 New Features
 ---------------------
 
