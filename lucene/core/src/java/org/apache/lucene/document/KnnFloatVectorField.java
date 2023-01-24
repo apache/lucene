@@ -30,9 +30,9 @@ import org.apache.lucene.util.VectorUtil;
  * an array (of type float[]) whose length is the vector dimension. Values can be retrieved using
  * {@link FloatVectorValues}, which is a forward-only docID-based iterator and also offers
  * random-access by dense ordinal (not docId). {@link VectorSimilarityFunction} may be used to
- * compare vectors at query time (for example as part of result ranking). A KnnVectorField may be
- * associated with a search similarity function defining the metric used for nearest-neighbor search
- * among vectors of that field.
+ * compare vectors at query time (for example as part of result ranking). A {@link
+ * KnnFloatVectorField} may be associated with a search similarity function defining the metric used
+ * for nearest-neighbor search among vectors of that field.
  *
  * @lucene.experimental
  */

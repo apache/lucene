@@ -239,7 +239,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /**
-   * @return the KnnVectorField where the KnnVector search happens.
+   * @return the knn vector field where the knn vector search happens.
    */
   public String getField() {
     return field;

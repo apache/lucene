@@ -342,7 +342,7 @@ public class TestKnnGraph extends LuceneTestCase {
          * approximate KNN search algorithm
          */
         assertGraphSearch(new int[] {0, 15, 3, 18, 5}, new float[] {0f, 0.1f}, dr);
-        // Tiebreaking by docid must be done after VectorValues.search.
+        // Tiebreaking by docid must be done after search.
         // assertGraphSearch(new int[]{11, 1, 8, 14, 21}, new float[]{2, 2}, dr);
         assertGraphSearch(new int[] {15, 18, 0, 3, 5}, new float[] {0.3f, 0.8f}, dr);
       }

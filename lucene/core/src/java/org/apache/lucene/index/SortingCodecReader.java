@@ -212,7 +212,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
-  /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
+  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
   private static class SortingFloatVectorValues extends FloatVectorValues {
     final int size;
     final int dimension;
