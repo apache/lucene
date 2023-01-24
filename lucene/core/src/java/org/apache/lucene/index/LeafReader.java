@@ -203,9 +203,20 @@ public abstract class LeafReader extends IndexReader {
    * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
    * The returned instance should only be used by a single thread.
    *
+   * @deprecated use {@link #getFloatVectorValues(String)} instead
+   */
+  @Deprecated
+  public VectorValues getVectorValues(String field) throws IOException {
+    return new FilterVectorValues(getFloatVectorValues(field)) {};
+  }
+
+  /**
+   * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were
+   * indexed. The returned instance should only be used by a single thread.
+   *
    * @lucene.experimental
    */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
 
   /**
    * Returns {@link ByteVectorValues} for this field, or null if no {@link ByteVectorValues} were

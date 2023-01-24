@@ -315,12 +315,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
-      final VectorValues vectorValues = in.getVectorValues(field);
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      final FloatVectorValues vectorValues = in.getFloatVectorValues(field);
       if (vectorValues == null) {
         return null;
       }
-      return new ExitableVectorValues(vectorValues);
+      return new ExitableFloatVectorValues(vectorValues);
     }
 
     @Override
@@ -396,11 +396,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
     }
 
-    private class ExitableVectorValues extends VectorValues {
+    private class ExitableFloatVectorValues extends FloatVectorValues {
       private int docToCheck;
-      private final VectorValues vectorValues;
+      private final FloatVectorValues vectorValues;
 
-      public ExitableVectorValues(VectorValues vectorValues) {
+      public ExitableFloatVectorValues(FloatVectorValues vectorValues) {
         this.vectorValues = vectorValues;
         docToCheck = 0;
       }

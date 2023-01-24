@@ -23,7 +23,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -55,7 +55,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
       int numVectors = 2088992;
       float[] vector = new float[1];
       Document doc = new Document();
-      doc.add(new KnnVectorField(fieldName, vector, similarityFunction));
+      doc.add(new KnnFloatVectorField(fieldName, vector, similarityFunction));
       for (int i = 0; i < numVectors; i++) {
         vector[0] = (i % 256);
         iw.addDocument(doc);
@@ -65,7 +65,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
       iw.forceMerge(1);
       iw.commit();
       IndexSearcher searcher = new IndexSearcher(DirectoryReader.open(dir));
-      TopDocs docs = searcher.search(new KnnVectorQuery("field", new float[] {120}, 10), 5);
+      TopDocs docs = searcher.search(new KnnFloatVectorQuery("field", new float[] {120}, 10), 5);
       assertEquals(5, docs.scoreDocs.length);
     }
   }

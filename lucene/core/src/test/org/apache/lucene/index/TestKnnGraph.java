@@ -37,11 +37,11 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
@@ -204,7 +204,7 @@ public class TestKnnGraph extends LuceneTestCase {
     for (int field = 0; field < numVectorFields; field++) {
       dims[field] = atLeast(3);
       values[field] = randomVectors(numDoc, dims[field]);
-      fieldTypes[field] = KnnVectorField.createFieldType(dims[field], similarityFunction);
+      fieldTypes[field] = KnnFloatVectorField.createFieldType(dims[field], similarityFunction);
     }
 
     try (Directory dir = newDirectory();
@@ -214,7 +214,7 @@ public class TestKnnGraph extends LuceneTestCase {
         for (int field = 0; field < numVectorFields; field++) {
           float[] vector = values[field][docID];
           if (vector != null) {
-            doc.add(new KnnVectorField(KNN_GRAPH_FIELD + field, vector, fieldTypes[field]));
+            doc.add(new KnnFloatVectorField(KNN_GRAPH_FIELD + field, vector, fieldTypes[field]));
           }
         }
         String idString = Integer.toString(docID);
@@ -395,7 +395,8 @@ public class TestKnnGraph extends LuceneTestCase {
                   latch.await();
                   IndexSearcher searcher = manager.acquire();
                   try {
-                    KnnVectorQuery query = new KnnVectorQuery("vector", new float[] {0f, 0.1f}, 5);
+                    KnnFloatVectorQuery query =
+                        new KnnFloatVectorQuery("vector", new float[] {0f, 0.1f}, 5);
                     TopDocs results = searcher.search(query, 5);
                     StoredFields storedFields = searcher.storedFields();
                     for (ScoreDoc doc : results.scoreDocs) {
@@ -481,7 +482,7 @@ public class TestKnnGraph extends LuceneTestCase {
           continue;
         }
         HnswGraph graphValues = vectorReader.getGraph(vectorField);
-        VectorValues vectorValues = reader.getVectorValues(vectorField);
+        FloatVectorValues vectorValues = reader.getFloatVectorValues(vectorField);
         if (vectorValues == null) {
           assert graphValues == null;
           continue;
@@ -632,8 +633,8 @@ public class TestKnnGraph extends LuceneTestCase {
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      FieldType fieldType = KnnVectorField.createFieldType(vector.length, similarityFunction);
-      doc.add(new KnnVectorField(KNN_GRAPH_FIELD, vector, fieldType));
+      FieldType fieldType = KnnFloatVectorField.createFieldType(vector.length, similarityFunction);
+      doc.add(new KnnFloatVectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));

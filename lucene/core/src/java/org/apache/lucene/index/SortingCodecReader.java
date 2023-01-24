@@ -213,7 +213,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   /** Sorting VectorValues that iterate over documents in the order of the provided sortMap */
-  private static class SortingVectorValues extends VectorValues {
+  private static class SortingFloatVectorValues extends FloatVectorValues {
     final int size;
     final int dimension;
     final FixedBitSet docsWithField;
@@ -221,7 +221,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     private int docId = -1;
 
-    SortingVectorValues(VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+    SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.size = delegate.size();
       this.dimension = delegate.dimension();
       docsWithField = new FixedBitSet(sortMap.size());
@@ -488,8 +488,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
-        return new SortingVectorValues(delegate.getVectorValues(field), docMap);
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+        return new SortingFloatVectorValues(delegate.getFloatVectorValues(field), docMap);
       }
 
       @Override

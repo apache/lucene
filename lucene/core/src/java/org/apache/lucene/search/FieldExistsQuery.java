@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -30,9 +31,8 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.Terms;
 
 /**
- * A {@link Query} that matches documents that contain either a {@link
- * org.apache.lucene.document.KnnVectorField}, {@link org.apache.lucene.document.KnnByteVectorField}
- * or a field that indexes norms or doc values.
+ * A {@link Query} that matches documents that contain either a {@link KnnFloatVectorField}, {@link
+ * org.apache.lucene.document.KnnByteVectorField} or a field that indexes norms or doc values.
  */
 public class FieldExistsQuery extends Query {
   private String field;
@@ -130,7 +130,7 @@ public class FieldExistsQuery extends Query {
         final int numVectors;
         switch (fieldInfo.getVectorEncoding()) {
           case FLOAT32:
-            numVectors = leaf.getVectorValues(field).size();
+            numVectors = leaf.getFloatVectorValues(field).size();
             break;
           case BYTE:
             numVectors = leaf.getByteVectorValues(field).size();
@@ -193,7 +193,7 @@ public class FieldExistsQuery extends Query {
         } else if (fieldInfo.getVectorDimension() != 0) { // the field indexes vectors
           switch (fieldInfo.getVectorEncoding()) {
             case FLOAT32:
-              iterator = context.reader().getVectorValues(field);
+              iterator = context.reader().getFloatVectorValues(field);
               break;
             case BYTE:
               iterator = context.reader().getByteVectorValues(field);
@@ -202,7 +202,6 @@ public class FieldExistsQuery extends Query {
               throw new IllegalArgumentException(
                   "unknown vector encoding=" + fieldInfo.getVectorEncoding());
           }
-          ;
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
           switch (fieldInfo.getDocValuesType()) {

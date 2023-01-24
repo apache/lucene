@@ -46,7 +46,7 @@ import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -60,7 +60,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
@@ -543,7 +543,7 @@ public class KnnGraphTester {
   private static TopDocs doKnnVectorQuery(
       IndexSearcher searcher, String field, float[] vector, int k, int fanout, Query filter)
       throws IOException {
-    return searcher.search(new KnnVectorQuery(field, vector, k + fanout, filter), k);
+    return searcher.search(new KnnFloatVectorQuery(field, vector, k + fanout, filter), k);
   }
 
   private float checkResults(TopDocs[] results, int[][] nn) {
@@ -711,10 +711,9 @@ public class KnnGraphTester {
         break;
       default:
       case FLOAT32:
-        fieldType = KnnVectorField.createFieldType(dim, similarityFunction);
+        fieldType = KnnFloatVectorField.createFieldType(dim, similarityFunction);
         break;
     }
-    ;
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -734,7 +733,7 @@ public class KnnGraphTester {
               break;
             default:
             case FLOAT32:
-              doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
+              doc.add(new KnnFloatVectorField(KNN_FIELD, vectorReader.next(), fieldType));
               break;
           }
           doc.add(new StoredField(ID_FIELD, i));

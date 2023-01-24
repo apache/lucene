@@ -229,7 +229,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
@@ -239,7 +239,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().getVectorValues(field);
+    return getVectorReader().getFloatVectorValues(field);
   }
 
   @Override

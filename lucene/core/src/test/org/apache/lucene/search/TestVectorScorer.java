@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
@@ -81,7 +81,7 @@ public class TestVectorScorer extends LuceneTestCase {
         }
         doc.add(new KnnByteVectorField(field, v, EUCLIDEAN));
       } else {
-        doc.add(new KnnVectorField(field, contents[i]));
+        doc.add(new KnnFloatVectorField(field, contents[i]));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);

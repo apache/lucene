@@ -16,17 +16,45 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
  * KnnFloatVectorField}.
  *
- * @deprecated use {@link FloatVectorValues} instead
+ * @lucene.experimental
  */
-@Deprecated
-public abstract class VectorValues extends FloatVectorValues {
+public abstract class FloatVectorValues extends DocIdSetIterator {
 
-  /** Creates an instance to hold floating point vector values for a single document */
-  VectorValues() {}
+  /** The maximum length of a vector */
+  public static final int MAX_DIMENSIONS = 1024;
+
+  /** Sole constructor */
+  protected FloatVectorValues() {}
+
+  /** Return the dimension of the vectors */
+  public abstract int dimension();
+
+  /**
+   * Return the number of vectors for this field.
+   *
+   * @return the number of vectors returned by this iterator
+   */
+  public abstract int size();
+
+  @Override
+  public final long cost() {
+    return size();
+  }
+
+  /**
+   * Return the vector value for the current document ID. It is illegal to call this method when the
+   * iterator is not positioned: before advancing, or after failing to advance. The returned array
+   * may be shared across calls, re-used, and modified as the iterator advances.
+   *
+   * @return the vector value
+   */
+  public abstract float[] vectorValue() throws IOException;
 }

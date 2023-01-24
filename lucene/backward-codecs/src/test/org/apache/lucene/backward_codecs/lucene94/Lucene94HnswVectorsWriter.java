@@ -33,12 +33,12 @@ import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -450,8 +450,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
             graph = bytesRefHnswGraphBuilder.build(byteVectorValues.copy());
             break;
           case FLOAT32:
-            OffHeapVectorValues.DenseOffHeapVectorValues vectorValues =
-                new OffHeapVectorValues.DenseOffHeapVectorValues(
+            OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
+                new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                     fieldInfo.getVectorDimension(),
                     docsWithField.cardinality(),
                     vectorDataInput,
@@ -626,7 +626,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeVectorData(
-      IndexOutput output, VectorValues floatVectorValues) throws IOException {
+      IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     ByteBuffer binaryVector =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)

@@ -22,12 +22,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
@@ -48,7 +48,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   Query knnQuery(String field, float[] vector, int k) {
-    return new KnnVectorQuery(field, vector, k);
+    return new KnnFloatVectorQuery(field, vector, k);
   }
 
   @Override
@@ -69,7 +69,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   @Override
   AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
-    VectorValues vectorValues = reader.getVectorValues(fieldName);
+    FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
     float[][] vectors = new float[reader.maxDoc()][];
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
       vectors[vectorValues.docID()] =
@@ -81,12 +81,12 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnVectorField(name, vector, similarityFunction);
+    return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
   @Override
   RandomAccessVectorValues<float[]> circularVectorValues(int nDoc) {
-    return new CircularVectorValues(nDoc);
+    return new CircularFloatVectorValues(nDoc);
   }
 
   @Override
