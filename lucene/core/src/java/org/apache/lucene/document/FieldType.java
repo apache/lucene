@@ -380,7 +380,7 @@ public class FieldType implements IndexableFieldType {
     }
     if (numDimensions > FloatVectorValues.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
-          "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
+          "vector numDimensions must be <= FloatVectorValues.MAX_DIMENSIONS (="
               + FloatVectorValues.MAX_DIMENSIONS
               + "); got "
               + numDimensions);
