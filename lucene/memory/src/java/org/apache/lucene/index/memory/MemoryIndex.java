@@ -596,7 +596,7 @@ public class MemoryIndex {
                   + fieldName
                   + "]");
         }
-        info.numericProducer.dvLongValues = new long[] {(long) docValuesValue};
+        info.numericProducer.dvLongValues = new long[] {((Number) docValuesValue).longValue()};
         info.numericProducer.count++;
         break;
       case SORTED_NUMERIC:
@@ -605,7 +605,8 @@ public class MemoryIndex {
         }
         info.numericProducer.dvLongValues =
             ArrayUtil.grow(info.numericProducer.dvLongValues, info.numericProducer.count + 1);
-        info.numericProducer.dvLongValues[info.numericProducer.count++] = (long) docValuesValue;
+        info.numericProducer.dvLongValues[info.numericProducer.count++] =
+            ((Number) docValuesValue).longValue();
         break;
       case BINARY:
       case SORTED:
