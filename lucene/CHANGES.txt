@@ -77,6 +77,9 @@ API Changes
   accessed through their high-level representation, via
   VectorValues#vectorValue(). (Adrien Grand)
 
+* GITHUB#12105: Deprecate KnnVectorField in favour of KnnFloatVectorField, KnnVectoryQuery in favour of
+  KnnFloatVectorQuery, and LeafReader#getVectorValues in favour of LeafReader#getFloatVectorValues
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall

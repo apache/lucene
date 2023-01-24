@@ -22,7 +22,7 @@ import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
@@ -96,8 +96,8 @@ public class TestCheckIndex extends BaseTestCheckIndex {
           doc.add(new StoredField("field", "value" + TestUtil.randomSimpleString(random())));
 
           // vector
-          doc.add(new KnnVectorField("v1", randomVector(3)));
-          doc.add(new KnnVectorField("v2", randomVector(3)));
+          doc.add(new KnnFloatVectorField("v1", randomVector(3)));
+          doc.add(new KnnFloatVectorField("v2", randomVector(3)));
 
           // doc value
           doc.add(new NumericDocValuesField("dv", random().nextLong()));

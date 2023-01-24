@@ -48,7 +48,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
     throw new UnsupportedOperationException();
   }
 

@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
@@ -57,7 +57,7 @@ public abstract class HnswGraph {
    *
    * @param level level of the graph
    * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
-   *     VectorValues#size()}.
+   *     FloatVectorValues#size()}.
    */
   public abstract void seek(int level, int target) throws IOException;
 

@@ -37,7 +37,7 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
@@ -280,8 +280,8 @@ public class SearchFiles {
       semanticQueryText.append(term).append(' ');
     }
     if (semanticQueryText.length() > 0) {
-      KnnVectorQuery knnQuery =
-          new KnnVectorQuery(
+      KnnFloatVectorQuery knnQuery =
+          new KnnFloatVectorQuery(
               "contents-vector",
               new DemoEmbeddings(vectorDict).computeEmbedding(semanticQueryText.toString()),
               k);

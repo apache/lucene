@@ -34,7 +34,7 @@ import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
@@ -262,7 +262,8 @@ public class IndexFiles implements AutoCloseable {
               demoEmbeddings.computeEmbedding(
                   new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
-              new KnnVectorField("contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
+              new KnnFloatVectorField(
+                  "contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
         }
       }
 

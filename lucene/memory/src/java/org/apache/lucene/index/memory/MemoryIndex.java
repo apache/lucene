@@ -1392,7 +1392,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public VectorValues getVectorValues(String fieldName) {
+    public FloatVectorValues getFloatVectorValues(String fieldName) {
       return null;
     }
 

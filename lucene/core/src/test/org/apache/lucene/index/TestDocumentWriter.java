@@ -31,7 +31,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -382,7 +382,7 @@ public class TestDocumentWriter extends LuceneTestCase {
   public void testRAMUsageVector() throws IOException {
     doTestRAMUsage(
         field ->
-            new KnnVectorField(
+            new KnnFloatVectorField(
                 field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 }
