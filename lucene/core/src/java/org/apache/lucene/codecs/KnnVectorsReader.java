@@ -47,18 +47,6 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
   public abstract void checkIntegrity() throws IOException;
 
   /**
-   * Returns the {@link VectorValues} for the given {@code field}. The behavior is undefined if the
-   * given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
-   * never {@code null}.
-   *
-   * @deprecated use {@link #getFloatVectorValues(String)} instead
-   */
-  @Deprecated
-  public VectorValues getVectorValues(String field) throws IOException {
-    return new FilterVectorValues(getFloatVectorValues(field)) {};
-  }
-
-  /**
    * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
    * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
    * never {@code null}.
