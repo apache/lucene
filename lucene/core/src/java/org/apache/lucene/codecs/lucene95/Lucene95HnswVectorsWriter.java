@@ -419,13 +419,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         case FLOAT32:
           docsWithField =
               writeVectorData(
-                  tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
+                  tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
           break;
         default:
           throw new IllegalArgumentException(
               "unknown vector encoding=" + fieldInfo.getVectorEncoding());
       }
-      ;
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
