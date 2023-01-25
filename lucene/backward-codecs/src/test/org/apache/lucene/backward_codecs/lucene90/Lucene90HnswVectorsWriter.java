@@ -25,7 +25,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
@@ -107,10 +107,9 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
+  public void writeField(FieldInfo fieldInfo, FloatVectorValues floatVectorValues, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    FloatVectorValues vectors = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -120,7 +119,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     try {
       // write the vector data to a temporary file
       // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-      int[] docIds = writeVectorData(tempVectorData, vectors);
+      int[] docIds = writeVectorData(tempVectorData, floatVectorValues);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -134,7 +133,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
       // build the graph using the temporary vector data
       Lucene90HnswVectorsReader.OffHeapFloatVectorValues offHeapVectors =
           new Lucene90HnswVectorsReader.OffHeapFloatVectorValues(
-              vectors.dimension(), docIds, vectorDataInput);
+              floatVectorValues.dimension(), docIds, vectorDataInput);
 
       long[] offsets = new long[docIds.length];
       long vectorIndexOffset = vectorIndex.getFilePointer();
@@ -168,6 +167,11 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+  }
+
+  @Override
+  protected void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc) {
+    throw new UnsupportedOperationException("byte vectors not supported in this version");
   }
 
   /**

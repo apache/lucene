@@ -390,7 +390,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
             case BYTE -> writeByteVectorData(
                 tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
             case FLOAT32 -> writeVectorData(
-                tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
+                tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -656,7 +656,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       };
     }
 
-    @SuppressWarnings("unchecked")
     FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
