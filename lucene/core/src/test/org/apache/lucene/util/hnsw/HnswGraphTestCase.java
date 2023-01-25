@@ -215,26 +215,32 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           // ask to explore a lot of candidates to ensure the same returned hits,
           // as graphs of 2 indices are organized differently
           Query query = knnQuery("vector", randomVector(dim), 50);
-          List<String> ids1 = new ArrayList<>();
-          List<Integer> docs1 = new ArrayList<>();
-          List<String> ids2 = new ArrayList<>();
-          List<Integer> docs2 = new ArrayList<>();
+          int searchSize = 5;
+          List<String> ids1 = new ArrayList<>(searchSize);
+          List<Integer> docs1 = new ArrayList<>(searchSize);
+          List<String> ids2 = new ArrayList<>(searchSize);
+          List<Integer> docs2 = new ArrayList<>(searchSize);
 
-          TopDocs topDocs = searcher.search(query, 5);
+          // Check if a duplicate score exists in n+1, if so, this test is invalid
+          // Else, continue to fail on ID equality as this test failed
+          TopDocs topDocs = searcher.search(query, searchSize + 1);
           float lastScore = -1;
           StoredFields storedFields = reader.storedFields();
-          for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+          for (int j = 0; j < searchSize + 1; j++) {
+            ScoreDoc scoreDoc = topDocs.scoreDocs[j];
             if (scoreDoc.score == lastScore) {
               // if we have repeated score this test is invalid
               continue OUTER;
             } else {
               lastScore = scoreDoc.score;
             }
-            Document doc = storedFields.document(scoreDoc.doc, Set.of("id"));
-            ids1.add(doc.get("id"));
-            docs1.add(scoreDoc.doc);
+            if (j < searchSize) {
+              Document doc = storedFields.document(scoreDoc.doc, Set.of("id"));
+              ids1.add(doc.get("id"));
+              docs1.add(scoreDoc.doc);
+            }
           }
-          TopDocs topDocs2 = searcher2.search(query, 5);
+          TopDocs topDocs2 = searcher2.search(query, searchSize);
           StoredFields storedFields2 = reader2.storedFields();
           for (ScoreDoc scoreDoc : topDocs2.scoreDocs) {
             Document doc = storedFields2.document(scoreDoc.doc, Set.of("id"));
