@@ -62,7 +62,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         KnnFieldVectorsWriter<float[]> floatWriter =
             (KnnFieldVectorsWriter<float[]>) addField(fieldInfo);
         FloatVectorValues mergedFloats =
-            MergedVectorValues.mergeVectorValues(fieldInfo, mergeState);
+            MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
         for (int doc = mergedFloats.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = mergedFloats.nextDoc()) {
@@ -143,8 +143,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     private MergedVectorValues() {}
 
     /** Returns a merged view over all the segment's {@link FloatVectorValues}. */
-    public static FloatVectorValues mergeVectorValues(FieldInfo fieldInfo, MergeState mergeState)
-        throws IOException {
+    public static FloatVectorValues mergeFloatVectorValues(
+        FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
       if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
         throw new UnsupportedOperationException(

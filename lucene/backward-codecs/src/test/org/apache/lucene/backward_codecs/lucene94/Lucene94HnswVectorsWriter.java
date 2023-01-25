@@ -405,7 +405,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         case FLOAT32:
           docsWithField =
               writeVectorData(
-                  tempVectorData, MergedVectorValues.mergeVectorValues(fieldInfo, mergeState));
+                  tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
           break;
         default:
           throw new IllegalArgumentException(
@@ -680,7 +680,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    @SuppressWarnings("unchecked")
     FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
