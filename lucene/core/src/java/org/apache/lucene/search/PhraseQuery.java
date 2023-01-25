@@ -148,7 +148,7 @@ public class PhraseQuery extends Query {
   private final Term[] terms;
   private final int[] positions;
 
-  private PhraseQuery(int slop, Term[] terms, int[] positions) {
+  protected PhraseQuery(int slop, Term[] terms, int[] positions) {
     if (terms.length != positions.length) {
       throw new IllegalArgumentException("Must have as many terms as positions");
     }
