@@ -18,9 +18,9 @@ package org.apache.lucene.codecs.simpletext;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.StoredFieldsWriter;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
@@ -82,71 +82,66 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo info, IndexableField field) throws IOException {
+  public void writeField(FieldInfo info, StoredValue storedValue) throws IOException {
     write(FIELD);
     write(Integer.toString(info.number));
     newLine();
 
     write(NAME);
-    write(field.name());
+    write(info.name);
     newLine();
 
     write(TYPE);
-    final Number n = field.numericValue();
-
-    if (n != null) {
-      if (n instanceof Byte || n instanceof Short || n instanceof Integer) {
+    switch (storedValue.getType()) {
+      case INTEGER:
         write(TYPE_INT);
         newLine();
 
         write(VALUE);
-        write(Integer.toString(n.intValue()));
+        write(Integer.toString(storedValue.getIntValue()));
         newLine();
-      } else if (n instanceof Long) {
+        break;
+      case LONG:
         write(TYPE_LONG);
         newLine();
 
         write(VALUE);
-        write(Long.toString(n.longValue()));
+        write(Long.toString(storedValue.getLongValue()));
         newLine();
-      } else if (n instanceof Float) {
+        break;
+      case FLOAT:
         write(TYPE_FLOAT);
         newLine();
 
         write(VALUE);
-        write(Float.toString(n.floatValue()));
+        write(Float.toString(storedValue.getFloatValue()));
         newLine();
-      } else if (n instanceof Double) {
+        break;
+      case DOUBLE:
         write(TYPE_DOUBLE);
         newLine();
 
         write(VALUE);
-        write(Double.toString(n.doubleValue()));
+        write(Double.toString(storedValue.getDoubleValue()));
         newLine();
-      } else {
-        throw new IllegalArgumentException("cannot store numeric type " + n.getClass());
-      }
-    } else {
-      BytesRef bytes = field.binaryValue();
-      if (bytes != null) {
+        break;
+      case BINARY:
         write(TYPE_BINARY);
         newLine();
 
         write(VALUE);
-        write(bytes);
+        write(storedValue.getBinaryValue());
         newLine();
-      } else if (field.stringValue() == null) {
-        throw new IllegalArgumentException(
-            "field "
-                + field.name()
-                + " is stored but does not have binaryValue, stringValue nor numericValue");
-      } else {
+        break;
+      case STRING:
         write(TYPE_STRING);
         newLine();
         write(VALUE);
-        write(field.stringValue());
+        write(storedValue.getStringValue());
         newLine();
-      }
+        break;
+      default:
+        throw new AssertionError();
     }
   }
 

@@ -569,7 +569,7 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     try (StoredFieldsWriter consumer =
         codec.storedFieldsFormat().fieldsWriter(dir, segmentInfo, writeState.context)) {
       consumer.startDocument();
-      consumer.writeField(field, customField);
+      consumer.writeField(field, customField.storedValue());
       consumer.finishDocument();
       consumer.finish(1);
       IOUtils.close(consumer);

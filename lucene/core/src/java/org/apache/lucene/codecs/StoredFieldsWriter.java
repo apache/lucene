@@ -20,18 +20,13 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.util.Accountable;
@@ -43,7 +38,7 @@ import org.apache.lucene.util.BytesRef;
  * <ol>
  *   <li>For every document, {@link #startDocument()} is called, informing the Codec that a new
  *       document has started.
- *   <li>{@link #writeField(FieldInfo, IndexableField)} is called for each field in the document.
+ *   <li>{@link #writeField(FieldInfo, StoredValue)} is called for each field in the document.
  *   <li>After all documents have been written, {@link #finish(int)} is called for
  *       verification/sanity-checks.
  *   <li>Finally the writer is closed ({@link #close()})
@@ -58,7 +53,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
 
   /**
    * Called before writing the stored fields of the document. {@link #writeField(FieldInfo,
-   * IndexableField)} will be called for each stored field. Note that this is called even if the
+   * StoredValue)} will be called for each stored field. Note that this is called even if the
    * document has no stored fields.
    */
   public abstract void startDocument() throws IOException;
@@ -67,7 +62,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
   public void finishDocument() throws IOException {}
 
   /** Writes a single stored field. */
-  public abstract void writeField(FieldInfo info, IndexableField field) throws IOException;
+  public abstract void writeField(FieldInfo info, StoredValue value) throws IOException;
 
   /**
    * Called before {@link #close()}, passing in the number of documents that were written. Note that
@@ -104,7 +99,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
   /**
    * Merges in the stored fields from the readers in <code>mergeState</code>. The default
    * implementation skips over deleted documents, and uses {@link #startDocument()}, {@link
-   * #writeField(FieldInfo, IndexableField)}, and {@link #finish(int)}, returning the number of
+   * #writeField(FieldInfo, StoredValue)}, and {@link #finish(int)}, returning the number of
    * documents that were written. Implementations can override this method for more sophisticated
    * merging (bulk-byte copying, etc).
    */
@@ -154,10 +149,8 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
    * }
    * </pre>
    */
-  protected class MergeVisitor extends StoredFieldVisitor implements IndexableField {
-    BytesRef binaryValue;
-    String stringValue;
-    Number numericValue;
+  protected class MergeVisitor extends StoredFieldVisitor {
+    StoredValue storedValue;
     FieldInfo currentField;
     FieldInfos remapper;
 
@@ -179,83 +172,49 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
     public void binaryField(FieldInfo fieldInfo, byte[] value) throws IOException {
       reset(fieldInfo);
       // TODO: can we avoid new BR here?
-      binaryValue = new BytesRef(value);
+      storedValue = new StoredValue(new BytesRef(value));
       write();
     }
 
     @Override
     public void stringField(FieldInfo fieldInfo, String value) throws IOException {
       reset(fieldInfo);
-      stringValue = Objects.requireNonNull(value, "String value should not be null");
+      storedValue =
+          new StoredValue(Objects.requireNonNull(value, "String value should not be null"));
       write();
     }
 
     @Override
     public void intField(FieldInfo fieldInfo, int value) throws IOException {
       reset(fieldInfo);
-      numericValue = value;
+      storedValue = new StoredValue(value);
       write();
     }
 
     @Override
     public void longField(FieldInfo fieldInfo, long value) throws IOException {
       reset(fieldInfo);
-      numericValue = value;
+      storedValue = new StoredValue(value);
       write();
     }
 
     @Override
     public void floatField(FieldInfo fieldInfo, float value) throws IOException {
       reset(fieldInfo);
-      numericValue = value;
+      storedValue = new StoredValue(value);
       write();
     }
 
     @Override
     public void doubleField(FieldInfo fieldInfo, double value) throws IOException {
       reset(fieldInfo);
-      numericValue = value;
+      storedValue = new StoredValue(value);
       write();
     }
 
     @Override
     public Status needsField(FieldInfo fieldInfo) throws IOException {
       return Status.YES;
-    }
-
-    @Override
-    public String name() {
-      return currentField.name;
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return StoredField.TYPE;
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      return binaryValue;
-    }
-
-    @Override
-    public String stringValue() {
-      return stringValue;
-    }
-
-    @Override
-    public Number numericValue() {
-      return numericValue;
-    }
-
-    @Override
-    public Reader readerValue() {
-      return null;
-    }
-
-    @Override
-    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-      return null;
     }
 
     void reset(FieldInfo field) {
@@ -265,13 +224,11 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
       } else {
         currentField = field;
       }
-      binaryValue = null;
-      stringValue = null;
-      numericValue = null;
+      storedValue = null;
     }
 
     void write() throws IOException {
-      writeField(currentField, this);
+      writeField(currentField, storedValue);
     }
   }
 

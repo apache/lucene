@@ -28,11 +28,11 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.MatchingReaders;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsReader.SerializedDocument;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.ByteBuffersDataInput;
@@ -267,66 +267,61 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   @Override
-  public void writeField(FieldInfo info, IndexableField field) throws IOException {
+  public void writeField(FieldInfo info, StoredValue storedValue) throws IOException {
 
     ++numStoredFieldsInDoc;
 
-    int bits = 0;
-    final BytesRef bytes;
-    final String string;
+    final int bits;
 
-    Number number = field.numericValue();
-    if (number != null) {
-      if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
+    switch (storedValue.getType()) {
+      case INTEGER:
         bits = NUMERIC_INT;
-      } else if (number instanceof Long) {
+        break;
+      case LONG:
         bits = NUMERIC_LONG;
-      } else if (number instanceof Float) {
+        break;
+      case FLOAT:
         bits = NUMERIC_FLOAT;
-      } else if (number instanceof Double) {
+        break;
+      case DOUBLE:
         bits = NUMERIC_DOUBLE;
-      } else {
-        throw new IllegalArgumentException("cannot store numeric type " + number.getClass());
-      }
-      string = null;
-      bytes = null;
-    } else {
-      bytes = field.binaryValue();
-      if (bytes != null) {
+        break;
+      case BINARY:
         bits = BYTE_ARR;
-        string = null;
-      } else {
+        break;
+      case STRING:
         bits = STRING;
-        string = field.stringValue();
-        if (string == null) {
-          throw new IllegalArgumentException(
-              "field "
-                  + field.name()
-                  + " is stored but does not have binaryValue, stringValue nor numericValue");
-        }
-      }
+        break;
+      default:
+        throw new AssertionError();
     }
 
     final long infoAndBits = (((long) info.number) << TYPE_BITS) | bits;
     bufferedDocs.writeVLong(infoAndBits);
 
-    if (bytes != null) {
-      bufferedDocs.writeVInt(bytes.length);
-      bufferedDocs.writeBytes(bytes.bytes, bytes.offset, bytes.length);
-    } else if (string != null) {
-      bufferedDocs.writeString(string);
-    } else {
-      if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
-        bufferedDocs.writeZInt(number.intValue());
-      } else if (number instanceof Long) {
-        writeTLong(bufferedDocs, number.longValue());
-      } else if (number instanceof Float) {
-        writeZFloat(bufferedDocs, number.floatValue());
-      } else if (number instanceof Double) {
-        writeZDouble(bufferedDocs, number.doubleValue());
-      } else {
-        throw new AssertionError("Cannot get here");
-      }
+    switch (storedValue.getType()) {
+      case INTEGER:
+        bufferedDocs.writeZInt(storedValue.getIntValue());
+        break;
+      case LONG:
+        writeTLong(bufferedDocs, storedValue.getLongValue());
+        break;
+      case FLOAT:
+        writeZFloat(bufferedDocs, storedValue.getFloatValue());
+        break;
+      case DOUBLE:
+        writeZDouble(bufferedDocs, storedValue.getDoubleValue());
+        break;
+      case BINARY:
+        BytesRef binaryValue = storedValue.getBinaryValue();
+        bufferedDocs.writeVInt(binaryValue.length);
+        bufferedDocs.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+        break;
+      case STRING:
+        bufferedDocs.writeString(storedValue.getStringValue());
+        break;
+      default:
+        throw new AssertionError();
     }
   }
 

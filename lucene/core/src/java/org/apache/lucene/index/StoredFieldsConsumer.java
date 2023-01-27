@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsWriter;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
@@ -61,8 +62,8 @@ class StoredFieldsConsumer {
     writer.startDocument();
   }
 
-  void writeField(FieldInfo info, IndexableField field) throws IOException {
-    writer.writeField(info, field);
+  void writeField(FieldInfo info, StoredValue value) throws IOException {
+    writer.writeField(info, value);
   }
 
   void finishDocument() throws IOException {
