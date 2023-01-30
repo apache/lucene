@@ -28,7 +28,6 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.MatchingReaders;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsReader.SerializedDocument;
-import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
@@ -267,62 +266,52 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   @Override
-  public void writeField(FieldInfo info, StoredValue storedValue) throws IOException {
-
+  public void writeField(FieldInfo info, int value) throws IOException {
     ++numStoredFieldsInDoc;
-
-    final int bits;
-
-    switch (storedValue.getType()) {
-      case INTEGER:
-        bits = NUMERIC_INT;
-        break;
-      case LONG:
-        bits = NUMERIC_LONG;
-        break;
-      case FLOAT:
-        bits = NUMERIC_FLOAT;
-        break;
-      case DOUBLE:
-        bits = NUMERIC_DOUBLE;
-        break;
-      case BINARY:
-        bits = BYTE_ARR;
-        break;
-      case STRING:
-        bits = STRING;
-        break;
-      default:
-        throw new AssertionError();
-    }
-
-    final long infoAndBits = (((long) info.number) << TYPE_BITS) | bits;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_INT;
     bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeZInt(value);
+  }
 
-    switch (storedValue.getType()) {
-      case INTEGER:
-        bufferedDocs.writeZInt(storedValue.getIntValue());
-        break;
-      case LONG:
-        writeTLong(bufferedDocs, storedValue.getLongValue());
-        break;
-      case FLOAT:
-        writeZFloat(bufferedDocs, storedValue.getFloatValue());
-        break;
-      case DOUBLE:
-        writeZDouble(bufferedDocs, storedValue.getDoubleValue());
-        break;
-      case BINARY:
-        BytesRef binaryValue = storedValue.getBinaryValue();
-        bufferedDocs.writeVInt(binaryValue.length);
-        bufferedDocs.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-        break;
-      case STRING:
-        bufferedDocs.writeString(storedValue.getStringValue());
-        break;
-      default:
-        throw new AssertionError();
-    }
+  @Override
+  public void writeField(FieldInfo info, long value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_LONG;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeTLong(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, float value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_FLOAT;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeZFloat(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, double value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_DOUBLE;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeZDouble(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, BytesRef value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(value.length);
+    bufferedDocs.writeBytes(value.bytes, value.offset, value.length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, String value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | STRING;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeString(value);
   }
 
   // -0 isn't compressed.

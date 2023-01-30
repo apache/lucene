@@ -63,7 +63,28 @@ class StoredFieldsConsumer {
   }
 
   void writeField(FieldInfo info, StoredValue value) throws IOException {
-    writer.writeField(info, value);
+    switch (value.getType()) {
+      case INTEGER:
+        writer.writeField(info, value.getIntValue());
+        break;
+      case LONG:
+        writer.writeField(info, value.getLongValue());
+        break;
+      case FLOAT:
+        writer.writeField(info, value.getFloatValue());
+        break;
+      case DOUBLE:
+        writer.writeField(info, value.getDoubleValue());
+        break;
+      case BINARY:
+        writer.writeField(info, value.getBinaryValue());
+        break;
+      case STRING:
+        writer.writeField(info, value.getStringValue());
+        break;
+      default:
+        throw new AssertionError();
+    }
   }
 
   void finishDocument() throws IOException {

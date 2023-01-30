@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.simpletext;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.StoredFieldsWriter;
-import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.store.Directory;
@@ -82,7 +81,84 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo info, StoredValue storedValue) throws IOException {
+  public void writeField(FieldInfo info, int value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_INT);
+    newLine();
+
+    write(VALUE);
+    write(Integer.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, long value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_LONG);
+    newLine();
+
+    write(VALUE);
+    write(Long.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, float value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_FLOAT);
+    newLine();
+
+    write(VALUE);
+    write(Float.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, double value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_DOUBLE);
+    newLine();
+
+    write(VALUE);
+    write(Double.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, BytesRef value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_BINARY);
+    newLine();
+
+    write(VALUE);
+    write(value);
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, String value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_STRING);
+    newLine();
+
+    write(VALUE);
+    write(value);
+    newLine();
+  }
+
+  private void writeField(FieldInfo info) throws IOException {
     write(FIELD);
     write(Integer.toString(info.number));
     newLine();
@@ -90,59 +166,6 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
     write(NAME);
     write(info.name);
     newLine();
-
-    write(TYPE);
-    switch (storedValue.getType()) {
-      case INTEGER:
-        write(TYPE_INT);
-        newLine();
-
-        write(VALUE);
-        write(Integer.toString(storedValue.getIntValue()));
-        newLine();
-        break;
-      case LONG:
-        write(TYPE_LONG);
-        newLine();
-
-        write(VALUE);
-        write(Long.toString(storedValue.getLongValue()));
-        newLine();
-        break;
-      case FLOAT:
-        write(TYPE_FLOAT);
-        newLine();
-
-        write(VALUE);
-        write(Float.toString(storedValue.getFloatValue()));
-        newLine();
-        break;
-      case DOUBLE:
-        write(TYPE_DOUBLE);
-        newLine();
-
-        write(VALUE);
-        write(Double.toString(storedValue.getDoubleValue()));
-        newLine();
-        break;
-      case BINARY:
-        write(TYPE_BINARY);
-        newLine();
-
-        write(VALUE);
-        write(storedValue.getBinaryValue());
-        newLine();
-        break;
-      case STRING:
-        write(TYPE_STRING);
-        newLine();
-        write(VALUE);
-        write(storedValue.getStringValue());
-        newLine();
-        break;
-      default:
-        throw new AssertionError();
-    }
   }
 
   @Override

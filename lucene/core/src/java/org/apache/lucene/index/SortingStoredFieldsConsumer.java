@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
-import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -135,8 +134,6 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
   /** A visitor that copies every field it sees in the provided {@link StoredFieldsWriter}. */
   private static class CopyVisitor extends StoredFieldVisitor {
     final StoredFieldsWriter writer;
-    StoredValue storedValue;
-    FieldInfo currentField;
 
     CopyVisitor(StoredFieldsWriter writer) {
       this.writer = writer;
@@ -144,60 +141,39 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
 
     @Override
     public void binaryField(FieldInfo fieldInfo, byte[] value) throws IOException {
-      reset(fieldInfo);
       // TODO: can we avoid new BR here?
-      storedValue = new StoredValue(new BytesRef(value));
-      write();
+      writer.writeField(fieldInfo, new BytesRef(value));
     }
 
     @Override
     public void stringField(FieldInfo fieldInfo, String value) throws IOException {
-      reset(fieldInfo);
-      storedValue =
-          new StoredValue(Objects.requireNonNull(value, "String value should not be null"));
-      write();
+      writer.writeField(
+          fieldInfo, Objects.requireNonNull(value, "String value should not be null"));
     }
 
     @Override
     public void intField(FieldInfo fieldInfo, int value) throws IOException {
-      reset(fieldInfo);
-      storedValue = new StoredValue(value);
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public void longField(FieldInfo fieldInfo, long value) throws IOException {
-      reset(fieldInfo);
-      storedValue = new StoredValue(value);
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public void floatField(FieldInfo fieldInfo, float value) throws IOException {
-      reset(fieldInfo);
-      storedValue = new StoredValue(value);
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public void doubleField(FieldInfo fieldInfo, double value) throws IOException {
-      reset(fieldInfo);
-      storedValue = new StoredValue(value);
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public Status needsField(FieldInfo fieldInfo) throws IOException {
       return Status.YES;
-    }
-
-    void reset(FieldInfo field) {
-      currentField = field;
-      storedValue = null;
-    }
-
-    void write() throws IOException {
-      writer.writeField(currentField, storedValue);
     }
   }
 }

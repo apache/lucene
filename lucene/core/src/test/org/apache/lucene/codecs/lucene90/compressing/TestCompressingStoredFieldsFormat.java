@@ -18,7 +18,6 @@ package org.apache.lucene.codecs.lucene90.compressing;
 
 import java.io.IOException;
 import java.util.Random;
-
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
