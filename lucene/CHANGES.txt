@@ -116,7 +116,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#12118 Add FeatureQuery weight caching when scoring is not required (Ben Trent)
 
 Bug Fixes
 ---------------------
