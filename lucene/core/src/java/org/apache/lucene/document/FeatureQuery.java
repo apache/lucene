@@ -22,6 +22,7 @@ import org.apache.lucene.document.FeatureField.FeatureFunction;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -84,7 +85,7 @@ final class FeatureQuery extends Query {
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
-        return false;
+        return true;
       }
 
       @Override
@@ -100,7 +101,9 @@ final class FeatureQuery extends Query {
           return Explanation.noMatch(desc + ". Feature " + featureName + " doesn't exist.");
         }
 
-        PostingsEnum postings = termsEnum.postings(null, PostingsEnum.FREQS);
+        PostingsEnum postings =
+            termsEnum.postings(
+                null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE);
         if (postings.advance(doc) != doc) {
           return Explanation.noMatch(desc + ". Feature " + featureName + " isn't set.");
         }
@@ -117,24 +120,36 @@ final class FeatureQuery extends Query {
         }
 
         final SimScorer scorer = function.scorer(boost);
-        final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
-        final ImpactsDISI impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
-
+        final ImpactsEnum impacts;
+        final ImpactsDISI impactsDisi;
+        final PostingsEnum postingsEnum;
+        final DocIdSetIterator iterator;
+        if (scoreMode == ScoreMode.TOP_SCORES) {
+          postingsEnum = impacts = termsEnum.impacts(PostingsEnum.FREQS);
+          iterator = impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
+        } else {
+          iterator =
+              postingsEnum =
+                  termsEnum.postings(
+                      null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE);
+          impacts = new SlowImpactsEnum(postingsEnum);
+          impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
+        }
         return new Scorer(this) {
 
           @Override
           public int docID() {
-            return impacts.docID();
+            return postingsEnum.docID();
           }
 
           @Override
           public float score() throws IOException {
-            return scorer.score(impacts.freq(), 1L);
+            return scorer.score(postingsEnum.freq(), 1L);
           }
 
           @Override
           public DocIdSetIterator iterator() {
-            return impactsDisi;
+            return iterator;
           }
 
           @Override
