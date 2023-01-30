@@ -531,9 +531,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     HnswGraphBuilder<T> finalBuilder =
         HnswGraphBuilder.create(
-            finalVectorValues, getVectorEncoding(), similarityFunction, 10, 30, seed);
-
-    finalBuilder.initializeFromGraph(initializerGraph, initializerOrdMap);
+            finalVectorValues,
+            getVectorEncoding(),
+            similarityFunction,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            initializerOrdMap);
 
     // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, finalBuilder.getGraph());
@@ -561,9 +566,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     HnswGraphBuilder<T> finalBuilder =
         HnswGraphBuilder.create(
-            finalVectorValues, getVectorEncoding(), similarityFunction, 10, 30, seed);
-
-    finalBuilder.initializeFromGraph(initializerGraph, initializerOrdMap);
+            finalVectorValues,
+            getVectorEncoding(),
+            similarityFunction,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            initializerOrdMap);
 
     assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
 

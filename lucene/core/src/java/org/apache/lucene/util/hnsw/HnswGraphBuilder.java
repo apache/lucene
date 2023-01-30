@@ -80,6 +80,22 @@ public final class HnswGraphBuilder<T> {
     return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
   }
 
+  public static <T> HnswGraphBuilder<T> create(
+      RandomAccessVectorValues<T> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      Map<Integer, Integer> oldToNewOrdinalMap)
+      throws IOException {
+    HnswGraphBuilder<T> hnswGraphBuilder =
+        new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
+    return hnswGraphBuilder;
+  }
+
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
@@ -157,7 +173,7 @@ public final class HnswGraphBuilder<T> {
    * @param oldToNewOrdinalMap map for converting from ordinals in the initializerGraph to this
    *     builder's graph
    */
-  public void initializeFromGraph(
+  private void initializeFromGraph(
       HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
     assert hnsw.size() == 0;
     float[] vectorValue = null;
