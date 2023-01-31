@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.bloom;
 
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -46,7 +47,7 @@ public class MurmurHash64 extends HashFunction {
     // body
     for (int i = 0; i < nblocks; i++) {
 
-      long k = getLittleEndianLong(data, offset);
+      long k = (long) BitUtil.VH_LE_LONG.get(data, offset);
       k *= M64;
       k ^= k >>> R64;
       k *= M64;
@@ -70,26 +71,6 @@ public class MurmurHash64 extends HashFunction {
     h ^= h >>> R64;
 
     return h;
-  }
-
-  /**
-   * Gets the little-endian long from 8 bytes starting at the specified index.
-   *
-   * <p>from Apache commons MurmurHash2.
-   *
-   * @param data The data
-   * @param index The index
-   * @return The little-endian long
-   */
-  private static long getLittleEndianLong(final byte[] data, final int index) {
-    return (((long) data[index] & 0xff))
-        | (((long) data[index + 1] & 0xff) << 8)
-        | (((long) data[index + 2] & 0xff) << 16)
-        | (((long) data[index + 3] & 0xff) << 24)
-        | (((long) data[index + 4] & 0xff) << 32)
-        | (((long) data[index + 5] & 0xff) << 40)
-        | (((long) data[index + 6] & 0xff) << 48)
-        | (((long) data[index + 7] & 0xff) << 56);
   }
 
   @Override

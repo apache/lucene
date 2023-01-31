@@ -44,11 +44,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public class FuzzySet implements Accountable {
 
-  public static final int VERSION_SPI = 1; // HashFunction used to be loaded through a SPI
-  public static final int VERSION_START = VERSION_SPI;
-  public static final int VERSION_MURMUR2 = 2;
-  private static final int VERSION_MULTI_HASH = 3;
-  public static final int VERSION_CURRENT = VERSION_MULTI_HASH;
+  public static final int VERSION_START = 3;
+  public static final int VERSION_CURRENT = VERSION_START;
 
   public static HashFunction hashFunctionForVersion(int version) {
     if (version < VERSION_START) {
@@ -57,9 +54,6 @@ public class FuzzySet implements Accountable {
     } else if (version > VERSION_CURRENT) {
       throw new IllegalArgumentException(
           "Version " + version + " is too new, expected at most " + VERSION_CURRENT);
-    }
-    if (version == VERSION_MURMUR2) {
-      return MurmurHash2.INSTANCE;
     }
     return MurmurHash64.INSTANCE;
   }
@@ -206,9 +200,7 @@ public class FuzzySet implements Accountable {
    */
   public void serialize(DataOutput out) throws IOException {
     out.writeInt(version);
-    if (version >= VERSION_MULTI_HASH) {
-      out.writeVInt(hashCount);
-    }
+    out.writeVInt(hashCount);
     out.writeInt(bloomSize);
     long[] bits = filter.getBits();
     out.writeInt(bits.length);
@@ -221,10 +213,7 @@ public class FuzzySet implements Accountable {
 
   public static FuzzySet deserialize(DataInput in) throws IOException {
     int version = in.readInt();
-    if (version == VERSION_SPI) {
-      in.readString();
-    }
-    int hashCount = version >= VERSION_MULTI_HASH ? in.readVInt() : 1;
+    int hashCount = in.readVInt();
     int bloomSize = in.readInt();
     int numLongs = in.readInt();
     long[] longs = new long[numLongs];
