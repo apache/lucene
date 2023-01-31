@@ -44,9 +44,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public class FuzzySet implements Accountable {
 
-  public static final int VERSION_START = 3;
-  public static final int VERSION_CURRENT = VERSION_START;
-
   /**
    * Result from {@link FuzzySet#contains(BytesRef)}: can never return definitively YES (always
    * MAYBE), but can sometimes definitely return NO.
