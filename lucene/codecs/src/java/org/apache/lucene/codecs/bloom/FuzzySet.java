@@ -47,17 +47,6 @@ public class FuzzySet implements Accountable {
   public static final int VERSION_START = 3;
   public static final int VERSION_CURRENT = VERSION_START;
 
-  public static HashFunction hashFunctionForVersion(int version) {
-    if (version < VERSION_START) {
-      throw new IllegalArgumentException(
-          "Version " + version + " is too old, expected at least " + VERSION_START);
-    } else if (version > VERSION_CURRENT) {
-      throw new IllegalArgumentException(
-          "Version " + version + " is too new, expected at most " + VERSION_CURRENT);
-    }
-    return MurmurHash64.INSTANCE;
-  }
-
   /**
    * Result from {@link FuzzySet#contains(BytesRef)}: can never return definitively YES (always
    * MAYBE), but can sometimes definitely return NO.
@@ -71,7 +60,6 @@ public class FuzzySet implements Accountable {
   private FixedBitSet filter;
   private int bloomSize;
   private final int hashCount;
-  private final int version;
 
   // The sizes of BitSet used are all numbers that, when expressed in binary form,
   // are all ones. This is to enable fast downsizing from one bitset to another
@@ -129,13 +117,13 @@ public class FuzzySet implements Accountable {
 
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
     int setSize = getNearestSetSize(maxNumBytes);
-    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1, VERSION_CURRENT);
+    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
   public static FuzzySet createSetBasedOnQuality(
       int maxNumUniqueValues, float desiredMaxSaturation, int version) {
     int setSize = getNearestSetSize(maxNumUniqueValues, desiredMaxSaturation);
-    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1, version);
+    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
   public static FuzzySet createOptimalSet(int maxNumUniqueValues, float targetMaxFpp) {
@@ -146,15 +134,14 @@ public class FuzzySet implements Accountable {
                     / Math.log(1 / Math.pow(2, Math.log(2))));
     setSize = getNearestSetSize(2 * setSize);
     int optimalK = (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2));
-    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, optimalK, VERSION_CURRENT);
+    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, optimalK);
   }
 
-  private FuzzySet(FixedBitSet filter, int bloomSize, int hashCount, int version) {
+  private FuzzySet(FixedBitSet filter, int bloomSize, int hashCount) {
     super();
     this.filter = filter;
     this.bloomSize = bloomSize;
-    this.version = version;
-    this.hashFunction = hashFunctionForVersion(version);
+    this.hashFunction = MurmurHash64.INSTANCE;
     this.hashCount = hashCount;
   }
 
@@ -199,7 +186,6 @@ public class FuzzySet implements Accountable {
    * @throws IOException If there is a low-level I/O error
    */
   public void serialize(DataOutput out) throws IOException {
-    out.writeInt(version);
     out.writeVInt(hashCount);
     out.writeInt(bloomSize);
     long[] bits = filter.getBits();
@@ -212,7 +198,6 @@ public class FuzzySet implements Accountable {
   }
 
   public static FuzzySet deserialize(DataInput in) throws IOException {
-    int version = in.readInt();
     int hashCount = in.readVInt();
     int bloomSize = in.readInt();
     int numLongs = in.readInt();
@@ -221,7 +206,7 @@ public class FuzzySet implements Accountable {
       longs[i] = in.readLong();
     }
     FixedBitSet bits = new FixedBitSet(longs, bloomSize + 1);
-    return new FuzzySet(bits, bloomSize, hashCount, version);
+    return new FuzzySet(bits, bloomSize, hashCount);
   }
 
   private boolean mayContainValue(int aHash) {
@@ -288,7 +273,7 @@ public class FuzzySet implements Accountable {
     } else {
       return null;
     }
-    return new FuzzySet(rightSizedBitSet, rightSizedBitSetSize, hashCount, version);
+    return new FuzzySet(rightSizedBitSet, rightSizedBitSetSize, hashCount);
   }
 
   public int getEstimatedUniqueValues() {
@@ -307,7 +292,7 @@ public class FuzzySet implements Accountable {
   }
 
   public float getTargetMaxSaturation() {
-    return version < VERSION_CURRENT ? 0.1f : 0.5f;
+    return 0.5f;
   }
 
   public float getSaturation() {
