@@ -111,7 +111,7 @@ public final class StoredValue {
   }
 
   /** Set a double value. */
-  public void setLongValue(double value) {
+  public void setDoubleValue(double value) {
     if (type != Type.DOUBLE) {
       throw new IllegalArgumentException("Cannot set a double on a " + type + " value");
     }
@@ -120,7 +120,7 @@ public final class StoredValue {
 
   /** Set a binary value. */
   public void setBinaryValue(BytesRef value) {
-    if (type != Type.LONG) {
+    if (type != Type.BINARY) {
       throw new IllegalArgumentException("Cannot set a binary value on a " + type + " value");
     }
     binaryValue = Objects.requireNonNull(value);
