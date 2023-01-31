@@ -22,7 +22,7 @@ import org.apache.lucene.document.FeatureField.FeatureFunction;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -33,6 +33,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.BytesRef;
@@ -81,11 +82,18 @@ final class FeatureQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    if (!scoreMode.needsScores()) {
+      // We don't need scores, and since features are stored as terms, allow TermQuery to optimize
+      // in this case
+      TermQuery tq = new TermQuery(new Term(fieldName, featureName));
+      return searcher.rewrite(tq).createWeight(searcher, scoreMode, boost);
+    }
+
     return new Weight(this) {
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
-        return true;
+        return false;
       }
 
       @Override
@@ -101,9 +109,7 @@ final class FeatureQuery extends Query {
           return Explanation.noMatch(desc + ". Feature " + featureName + " doesn't exist.");
         }
 
-        PostingsEnum postings =
-            termsEnum.postings(
-                null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE);
+        PostingsEnum postings = termsEnum.postings(null, PostingsEnum.FREQS);
         if (postings.advance(doc) != doc) {
           return Explanation.noMatch(desc + ". Feature " + featureName + " isn't set.");
         }
@@ -120,36 +126,24 @@ final class FeatureQuery extends Query {
         }
 
         final SimScorer scorer = function.scorer(boost);
-        final ImpactsEnum impacts;
-        final ImpactsDISI impactsDisi;
-        final PostingsEnum postingsEnum;
-        final DocIdSetIterator iterator;
-        if (scoreMode == ScoreMode.TOP_SCORES) {
-          postingsEnum = impacts = termsEnum.impacts(PostingsEnum.FREQS);
-          iterator = impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
-        } else {
-          iterator =
-              postingsEnum =
-                  termsEnum.postings(
-                      null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE);
-          impacts = new SlowImpactsEnum(postingsEnum);
-          impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
-        }
+        final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
+        final ImpactsDISI impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
+
         return new Scorer(this) {
 
           @Override
           public int docID() {
-            return postingsEnum.docID();
+            return impacts.docID();
           }
 
           @Override
           public float score() throws IOException {
-            return scorer.score(postingsEnum.freq(), 1L);
+            return scorer.score(impacts.freq(), 1L);
           }
 
           @Override
           public DocIdSetIterator iterator() {
-            return iterator;
+            return impactsDisi;
           }
 
           @Override
