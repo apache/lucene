@@ -191,4 +191,13 @@ public abstract class IndexInput extends DataInput implements Closeable {
       };
     }
   }
+
+  /**
+   * Optional method: Give a hint to this input that some bytes will be read in the near future.
+   * IndexInput implementations may take advantage of this hint to start fetching a page of data
+   * immediately from storage.
+   *
+   * <p>The default implementation is a no-op.
+   */
+  public void prefetch() throws IOException {}
 }

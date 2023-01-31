@@ -19,10 +19,16 @@ package org.apache.lucene.store;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.channels.FileChannel;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future; // javadoc
 import org.apache.lucene.util.IOUtils;
 
@@ -47,6 +53,8 @@ import org.apache.lucene.util.IOUtils;
  */
 public class NIOFSDirectory extends FSDirectory {
 
+  private final ExecutorService executorService;
+
   /**
    * Create a new NIOFSDirectory for the named location. The directory is created at the named
    * location if it does not yet exist.
@@ -57,6 +65,7 @@ public class NIOFSDirectory extends FSDirectory {
    */
   public NIOFSDirectory(Path path, LockFactory lockFactory) throws IOException {
     super(path, lockFactory);
+    this.executorService = Executors.newVirtualThreadPerTaskExecutor();
   }
 
   /**
@@ -71,20 +80,37 @@ public class NIOFSDirectory extends FSDirectory {
   }
 
   @Override
+  public void close() throws IOException {
+    try {
+      super.close();
+    } finally {
+      executorService.shutdown();
+    }
+  }
+
+  @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
     ensureOpen();
     ensureCanRead(name);
     Path path = getDirectory().resolve(name);
-    FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
+    Set<OpenOption> openOptions = Collections.singleton(StandardOpenOption.READ);
+    // nocommit: does it really make sense to open both a sync and an async channel on the same
+    // file? or should we do sync reads via the async channel (but this seems to come with
+    // noticeable overhead when data fits in the cache)? or do the async I/O naively using the sync
+    // interface?
+    FileChannel fc = null;
+    AsynchronousFileChannel afc = null;
     boolean success = false;
     try {
+      fc = FileChannel.open(path, openOptions);
+      afc = AsynchronousFileChannel.open(path, openOptions, executorService);
       final NIOFSIndexInput indexInput =
-          new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, context);
+          new NIOFSIndexInput("NIOFSIndexInput(path=\"" + path + "\")", fc, afc, context);
       success = true;
       return indexInput;
     } finally {
       if (success == false) {
-        IOUtils.closeWhileHandlingException(fc);
+        IOUtils.closeWhileHandlingException(fc, afc);
       }
     }
   }
@@ -97,6 +123,9 @@ public class NIOFSDirectory extends FSDirectory {
     /** the file channel we will read from */
     protected final FileChannel channel;
 
+    /** the asynchronous channel to use for prefetching */
+    protected final AsynchronousFileChannel asynchronousChannel;
+
     /** is this instance a clone and hence does not own the file to close it */
     boolean isClone = false;
 
@@ -106,18 +135,26 @@ public class NIOFSDirectory extends FSDirectory {
     /** end offset (start+length) */
     protected final long end;
 
-    public NIOFSIndexInput(String resourceDesc, FileChannel fc, IOContext context)
+    public NIOFSIndexInput(
+        String resourceDesc, FileChannel fc, AsynchronousFileChannel afc, IOContext context)
         throws IOException {
       super(resourceDesc, context);
       this.channel = fc;
+      this.asynchronousChannel = afc;
       this.off = 0L;
       this.end = fc.size();
     }
 
     public NIOFSIndexInput(
-        String resourceDesc, FileChannel fc, long off, long length, int bufferSize) {
+        String resourceDesc,
+        FileChannel fc,
+        AsynchronousFileChannel afc,
+        long off,
+        long length,
+        int bufferSize) {
       super(resourceDesc, bufferSize);
       this.channel = fc;
+      this.asynchronousChannel = afc;
       this.off = off;
       this.end = off + length;
       this.isClone = true;
@@ -126,7 +163,7 @@ public class NIOFSDirectory extends FSDirectory {
     @Override
     public void close() throws IOException {
       if (!isClone) {
-        channel.close();
+        IOUtils.close(channel, asynchronousChannel);
       }
     }
 
@@ -155,6 +192,7 @@ public class NIOFSDirectory extends FSDirectory {
       return new NIOFSIndexInput(
           getFullSliceDescription(sliceDescription),
           channel,
+          asynchronousChannel,
           off + offset,
           length,
           getBufferSize());
@@ -202,6 +240,12 @@ public class NIOFSDirectory extends FSDirectory {
       } catch (IOException ioe) {
         throw new IOException(ioe.getMessage() + ": " + this, ioe);
       }
+    }
+
+    @Override
+    protected Future<Integer> readInternalAsync(ByteBuffer b) throws IOException {
+      long pos = getFilePointer() + off;
+      return asynchronousChannel.read(b, pos);
     }
 
     @Override

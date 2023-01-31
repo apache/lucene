@@ -58,6 +58,7 @@ import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
@@ -1511,5 +1512,65 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     vIntIn.close();
     dir.deleteFile("group-varint");
     dir.deleteFile("vint");
+  }
+
+  public void testPrefetch() throws IOException {
+    doTestPrefetch(0);
+  }
+
+  public void testPrefetchOnSlice() throws IOException {
+    doTestPrefetch(TestUtil.nextInt(random(), 1, 1024));
+  }
+
+  private void doTestPrefetch(int startOffset) throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
+      byte[] arr = new byte[totalLength];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+      byte[] temp = new byte[2048];
+
+      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        IndexInput in;
+        if (startOffset == 0) {
+          in = orig.clone();
+        } else {
+          in = orig.slice("slice", startOffset, totalLength - startOffset);
+        }
+        for (int i = 0; i < 10_000; ++i) {
+          final int startPointer = (int) in.getFilePointer();
+          assertTrue(startPointer < in.length());
+          if (random().nextBoolean()) {
+            in.prefetch();
+          }
+          assertEquals(startPointer, in.getFilePointer());
+          switch (random().nextInt(100)) {
+            case 0:
+              assertEquals(arr[startOffset + startPointer], in.readByte());
+              break;
+            case 1:
+              if (in.length() - startPointer >= Long.BYTES) {
+                assertEquals(
+                    (long) BitUtil.VH_LE_LONG.get(arr, startOffset + startPointer), in.readLong());
+              }
+              break;
+            default:
+              final int readLength =
+                  TestUtil.nextInt(
+                      random(), 1, (int) Math.min(temp.length, in.length() - startPointer));
+              in.readBytes(temp, 0, readLength);
+              assertArrayEquals(
+                  ArrayUtil.copyOfSubArray(
+                      arr, startOffset + startPointer, startOffset + startPointer + readLength),
+                  ArrayUtil.copyOfSubArray(temp, 0, readLength));
+          }
+          if (in.getFilePointer() == in.length() || random().nextBoolean()) {
+            in.seek(TestUtil.nextInt(random(), 0, (int) in.length() - 1));
+          }
+        }
+      }
+    }
   }
 }
