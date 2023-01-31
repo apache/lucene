@@ -104,7 +104,7 @@ public class HnswGraphSearcher<T> {
 
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
-      return NeighborQueue.EMPTY_MAX_HEAP_NEIGHBOR_QUEUE;
+      return new NeighborQueue(1, true);
     }
     int[] eps = new int[] {initialEp};
     int numVisited = 0;
