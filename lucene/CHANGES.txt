@@ -121,6 +121,8 @@ Optimizations
   in order to achieve the same false positive probability with less memory.
   (Jean-François Boeuf)
 
+* GITHUB#12050: Reuse HNSW graph for intialization during merge (Jack Mazanec)
+
 Bug Fixes
 ---------------------
 (No changes)
