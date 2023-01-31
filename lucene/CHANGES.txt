@@ -116,7 +116,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#12118 Add FeatureQuery weight caching when scoring is not required (Ben Trent, Robert Muir)
+* GITHUB#12118 Optimize FeatureQuery to TermQuery & weight when scoring is not required (Ben Trent, Robert Muir)
 
 Bug Fixes
 ---------------------
