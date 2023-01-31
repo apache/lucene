@@ -243,7 +243,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       lengths[i] = endOffsets[i] - endOffsets[i - 1];
       assert lengths[i] >= 0;
     }
-    final boolean sliced = bufferedDocs.size() >= 2 * chunkSize;
+    final boolean sliced = bufferedDocs.size() >= 2L * chunkSize;
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
     ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
@@ -513,7 +513,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID)
       throws IOException {
     assert reader.getVersion() == VERSION_CURRENT;
-    SerializedDocument doc = reader.document(docID);
+    SerializedDocument doc = reader.serializedDocument(docID);
     startDocument();
     bufferedDocs.copyBytes(doc.in, doc.length);
     numStoredFieldsInDoc = doc.numStoredFields;
@@ -641,7 +641,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       } else if (sub.mergeStrategy == MergeStrategy.VISITOR) {
         assert visitors[sub.readerIndex] != null;
         startDocument();
-        reader.visitDocument(sub.docID, visitors[sub.readerIndex]);
+        reader.document(sub.docID, visitors[sub.readerIndex]);
         finishDocument();
         ++docCount;
         sub = docIDMerger.next();
@@ -729,7 +729,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   @Override
   public long ramBytesUsed() {
     return bufferedDocs.ramBytesUsed()
-        + numStoredFields.length * Integer.BYTES
-        + endOffsets.length * Integer.BYTES;
+        + numStoredFields.length * (long) Integer.BYTES
+        + endOffsets.length * (long) Integer.BYTES;
   }
 }

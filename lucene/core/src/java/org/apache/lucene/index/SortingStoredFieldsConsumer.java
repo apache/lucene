@@ -113,7 +113,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
       CopyVisitor visitor = new CopyVisitor(sortWriter);
       for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
         sortWriter.startDocument();
-        reader.visitDocument(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
+        reader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
         sortWriter.finishDocument();
       }
       sortWriter.finish(state.segmentInfo.maxDoc());

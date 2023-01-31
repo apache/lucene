@@ -620,7 +620,7 @@ final class DocumentsWriterPerThread implements Accountable {
   @Override
   public long ramBytesUsed() {
     assert lock.isHeldByCurrentThread();
-    return (deleteDocIDs.length * Integer.BYTES)
+    return (deleteDocIDs.length * (long) Integer.BYTES)
         + pendingUpdates.ramBytesUsed()
         + indexingChain.ramBytesUsed();
   }

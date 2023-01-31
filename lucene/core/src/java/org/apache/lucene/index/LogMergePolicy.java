@@ -494,7 +494,7 @@ public abstract class LogMergePolicy extends MergePolicy {
       }
 
       final SegmentInfoAndLevel infoLevel =
-          new SegmentInfoAndLevel(info, (float) Math.log(size) / norm);
+          new SegmentInfoAndLevel(info, (float) Math.log((double) size) / norm);
       levels.add(infoLevel);
 
       if (verbose(mergeContext)) {
@@ -509,7 +509,7 @@ public abstract class LogMergePolicy extends MergePolicy {
                 + " level="
                 + infoLevel.level
                 + " size="
-                + String.format(Locale.ROOT, "%.3f MB", segBytes / 1024 / 1024.)
+                + String.format(Locale.ROOT, "%.3f MB", segBytes / 1024. / 1024.)
                 + extra,
             mergeContext);
       }
@@ -517,7 +517,7 @@ public abstract class LogMergePolicy extends MergePolicy {
 
     final float levelFloor;
     if (minMergeSize <= 0) levelFloor = (float) 0.0;
-    else levelFloor = (float) (Math.log(minMergeSize) / norm);
+    else levelFloor = (float) (Math.log((double) minMergeSize) / norm);
 
     // Now, we quantize the log values into levels.  The
     // first level is any segment whose log size is within

@@ -122,16 +122,15 @@ public final class VectorUtil {
   }
 
   /** Returns the cosine similarity between the two vectors. */
-  public static float cosine(BytesRef a, BytesRef b) {
+  public static float cosine(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
-    int aOffset = a.offset, bOffset = b.offset;
 
     for (int i = 0; i < a.length; i++) {
-      byte elem1 = a.bytes[aOffset++];
-      byte elem2 = b.bytes[bOffset++];
+      byte elem1 = a[i];
+      byte elem2 = b[i];
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
@@ -182,12 +181,11 @@ public final class VectorUtil {
   }
 
   /** Returns the sum of squared differences of the two vectors. */
-  public static float squareDistance(BytesRef a, BytesRef b) {
+  public static float squareDistance(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int squareSum = 0;
-    int aOffset = a.offset, bOffset = b.offset;
     for (int i = 0; i < a.length; i++) {
-      int diff = a.bytes[aOffset++] - b.bytes[bOffset++];
+      int diff = a[i] - b[i];
       squareSum += diff * diff;
     }
     return squareSum;
@@ -251,12 +249,11 @@ public final class VectorUtil {
    * @param b bytes containing another vector, of the same dimension
    * @return the value of the dot product of the two vectors
    */
-  public static float dotProduct(BytesRef a, BytesRef b) {
+  public static float dotProduct(byte[] a, byte[] b) {
     assert a.length == b.length;
     int total = 0;
-    int aOffset = a.offset, bOffset = b.offset;
     for (int i = 0; i < a.length; i++) {
-      total += a.bytes[aOffset++] * b.bytes[bOffset++];
+      total += a[i] * b[i];
     }
     return total;
   }
@@ -268,7 +265,7 @@ public final class VectorUtil {
    * @param b bytes containing another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
-  public static float dotProductScore(BytesRef a, BytesRef b) {
+  public static float dotProductScore(byte[] a, byte[] b) {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;

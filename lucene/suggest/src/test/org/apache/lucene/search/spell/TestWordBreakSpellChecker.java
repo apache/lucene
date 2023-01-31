@@ -56,6 +56,11 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
     {
       Document doc = new Document();
+      doc.add(newTextField("abba", "A B AB ABA BAB", Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    {
+      Document doc = new Document();
       doc.add(newTextField("numbers", "thou hast sand betwixt thy toes", Field.Store.NO));
       writer.addDocument(doc);
     }
@@ -78,6 +83,33 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
   public void tearDown() throws Exception {
     IOUtils.close(dir, analyzer);
     super.tearDown();
+  }
+
+  public void testMaxEvaluations() throws Exception {
+    final int maxEvals = 100;
+
+    try (IndexReader ir = DirectoryReader.open(dir)) {
+      WordBreakSpellChecker wbsp = new WordBreakSpellChecker();
+      wbsp.setMaxChanges(10);
+      wbsp.setMinBreakWordLength(1);
+      wbsp.setMinSuggestionFrequency(1);
+      wbsp.setMaxEvaluations(100);
+
+      Term term = new Term("abba", "ab".repeat(5));
+      SuggestWord[][] sw =
+          wbsp.suggestWordBreaks(
+              term,
+              500,
+              ir,
+              SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
+              BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
+
+      // sanity check that our suggester isn't completely broken
+      assertThat(sw.length, org.hamcrest.Matchers.greaterThan(0));
+
+      // if maxEvaluations is respected, we can't possibly have more suggestions then that.
+      assertThat(sw.length, org.hamcrest.Matchers.lessThan(maxEvals));
+    }
   }
 
   public void testCombiningWords() throws Exception {

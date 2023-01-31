@@ -845,7 +845,7 @@ public class TestTessellator extends LuceneTestCase {
     Polygon polygon = polygons[0];
     TestCountingMonitor monitor = new TestCountingMonitor();
     Tessellator.tessellate(polygon, true, monitor);
-    assertThat("Expected many monitor calls", monitor.count, greaterThan(400));
+    assertThat("Expected many monitor calls", monitor.count, greaterThan(390));
     assertThat("Expected specific number of splits", monitor.splitsStarted, equalTo(3));
     assertThat(
         "Expected splits to start and end", monitor.splitsStarted, equalTo(monitor.splitsEnded));
@@ -889,6 +889,30 @@ public class TestTessellator extends LuceneTestCase {
         "Expected specific error depending on checkSelfIntersections=" + checkSelfIntersections,
         error,
         ex.getMessage());
+  }
+
+  public void testComplexPolygon53() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-11986-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      for (Tessellator.Triangle t : tessellation) {
+        checkTriangleEdgesFromPolygon(polygon, t);
+      }
+    }
+  }
+
+  public void testComplexPolygon54() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-11986-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      for (Tessellator.Triangle t : tessellation) {
+        checkTriangleEdgesFromPolygon(polygon, t);
+      }
+    }
   }
 
   private static class TestCountingMonitor implements Tessellator.Monitor {

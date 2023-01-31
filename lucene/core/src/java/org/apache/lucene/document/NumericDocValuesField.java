@@ -83,9 +83,40 @@ public class NumericDocValuesField extends Field {
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
    * in an {@link IndexOrDocValuesQuery}, alongside a range query that executes on points, such as
    * {@link LongPoint#newRangeQuery}.
+   *
+   * @see IntField#newRangeQuery
+   * @see LongField#newRangeQuery
+   * @see FloatField#newRangeQuery
+   * @see DoubleField#newRangeQuery
    */
   public static Query newSlowRangeQuery(String field, long lowerValue, long upperValue) {
     return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue) {
+      @Override
+      SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
+        NumericDocValues values = reader.getNumericDocValues(field);
+        if (values == null) {
+          return null;
+        }
+        return DocValues.singleton(values);
+      }
+    };
+  }
+
+  /**
+   * Create a query matching any of the specified values.
+   *
+   * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them
+   * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
+   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on points, such as
+   * {@link LongPoint#newSetQuery}.
+   *
+   * @see IntField#newSetQuery
+   * @see LongField#newSetQuery
+   * @see FloatField#newSetQuery
+   * @see DoubleField#newSetQuery
+   */
+  public static Query newSlowSetQuery(String field, long... values) {
+    return new SortedNumericDocValuesSetQuery(field, values.clone()) {
       @Override
       SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
         NumericDocValues values = reader.getNumericDocValues(field);
@@ -104,6 +135,11 @@ public class NumericDocValuesField extends Field {
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
    * in an {@link IndexOrDocValuesQuery}, alongside a range query that executes on points, such as
    * {@link LongPoint#newExactQuery}.
+   *
+   * @see IntField#newExactQuery
+   * @see LongField#newExactQuery
+   * @see FloatField#newExactQuery
+   * @see DoubleField#newExactQuery
    */
   public static Query newSlowExactQuery(String field, long value) {
     return newSlowRangeQuery(field, value, value);

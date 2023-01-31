@@ -60,7 +60,7 @@ public class TestCompressingTermVectorsFormat extends BaseTermVectorsFormatTestC
     doc.add(new Field("foo", "this is a test", ft));
     iw.addDocument(doc);
     LeafReader ir = getOnlyLeafReader(iw.getReader());
-    Terms terms = ir.getTermVector(0, "foo");
+    Terms terms = ir.termVectors().get(0, "foo");
     assertNotNull(terms);
     TermsEnum termsEnum = terms.iterator();
     assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(new BytesRef("this")));

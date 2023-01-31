@@ -54,3 +54,18 @@ java.lang.Double#<init>(**)
 @defaultMessage Java deserialization is unsafe when the data is untrusted. The java developer is powerless: no checks or casts help, exploitation can happen in places such as clinit or finalize!
 java.io.ObjectInputStream
 java.io.ObjectOutputStream
+
+@defaultMessage JNDI is RCE-in-a-box, avoid it.
+javax.naming.Context
+javax.management.remote.JMXConnectorFactory
+javax.management.remote.rmi.RMIConnector
+javax.naming.directory.InitialDirContext
+javax.naming.InitialContext
+javax.naming.spi.ContinuationContext
+javax.naming.spi.ContinuationDirContext
+javax.sql.rowset.spi.ProviderImpl
+javax.sql.rowset.spi.SyncFactory
+
+@defaultMessage Math.fma is insanely slow (2500x) in many environments (e.g. VMs). Use multiply/add and suffer the extra rounding
+java.lang.Math#fma(float,float,float)
+java.lang.Math#fma(double,double,double)

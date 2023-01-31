@@ -18,7 +18,13 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;

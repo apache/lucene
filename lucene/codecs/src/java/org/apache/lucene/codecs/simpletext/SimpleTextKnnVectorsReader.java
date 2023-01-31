@@ -17,21 +17,25 @@
 
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.FIELD_NAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.FIELD_NUMBER;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.SIZE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VECTOR_DATA_LENGTH;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VECTOR_DATA_OFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VECTOR_DIMENSION;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
@@ -47,6 +51,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vector values from a simple text format. All vectors are read up front and cached in RAM in
@@ -81,8 +86,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
             SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
 
     boolean success = false;
-    try (ChecksumIndexInput in =
-        readState.directory.openChecksumInput(metaFileName, IOContext.DEFAULT)) {
+    try (ChecksumIndexInput in = readState.directory.openChecksumInput(metaFileName)) {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
         String fieldName = readString(in, FIELD_NAME);
@@ -111,7 +115,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
@@ -120,7 +124,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     int dimension = info.getVectorDimension();
     if (dimension == 0) {
-      return VectorValues.EMPTY;
+      throw new IllegalStateException(
+          "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
     FieldEntry fieldEntry = fieldEntries.get(field);
     if (fieldEntry == null) {
@@ -139,13 +144,46 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     IndexInput bytesSlice =
         dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new SimpleTextVectorValues(fieldEntry, bytesSlice);
+    return new SimpleTextFloatVectorValues(fieldEntry, bytesSlice);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    if (info == null) {
+      // mirror the handling in Lucene90VectorReader#getVectorValues
+      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
+      return null;
+    }
+    int dimension = info.getVectorDimension();
+    if (dimension == 0) {
+      throw new IllegalStateException(
+          "KNN vectors readers should not be called on fields that don't enable KNN vectors");
+    }
+    FieldEntry fieldEntry = fieldEntries.get(field);
+    if (fieldEntry == null) {
+      // mirror the handling in Lucene90VectorReader#getVectorValues
+      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
+      return null;
+    }
+    if (dimension != fieldEntry.dimension) {
+      throw new IllegalStateException(
+          "Inconsistent vector dimension for field=\""
+              + field
+              + "\"; "
+              + dimension
+              + " != "
+              + fieldEntry.dimension);
+    }
+    IndexInput bytesSlice =
+        dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+    return new SimpleTextByteVectorValues(fieldEntry, bytesSlice);
   }
 
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
-    VectorValues values = getVectorValues(field);
+    FloatVectorValues values = getFloatVectorValues(field);
     if (target.length != values.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -172,6 +210,47 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
 
       float[] vector = values.vectorValue();
+      float score = vectorSimilarity.compare(vector, target);
+      topK.insertWithOverflow(new ScoreDoc(doc, score));
+      numVisited++;
+    }
+    ScoreDoc[] topScoreDocs = new ScoreDoc[topK.size()];
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = topK.pop();
+    }
+    return new TopDocs(new TotalHits(numVisited, relation), topScoreDocs);
+  }
+
+  @Override
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    ByteVectorValues values = getByteVectorValues(field);
+    if (target.length != values.dimension()) {
+      throw new IllegalArgumentException(
+          "vector query dimension: "
+              + target.length
+              + " differs from field dimension: "
+              + values.dimension());
+    }
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    HitQueue topK = new HitQueue(k, false);
+
+    int numVisited = 0;
+    TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
+
+    int doc;
+    while ((doc = values.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+        continue;
+      }
+
+      if (numVisited >= visitedLimit) {
+        relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        break;
+      }
+
+      byte[] vector = values.vectorValue();
       float score = vectorSimilarity.compare(vector, target);
       topK.insertWithOverflow(new ScoreDoc(doc, score));
       numVisited++;
@@ -258,23 +337,20 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
   }
 
-  private static class SimpleTextVectorValues extends VectorValues
-      implements RandomAccessVectorValues {
+  private static class SimpleTextFloatVectorValues extends FloatVectorValues
+      implements RandomAccessVectorValues<float[]> {
 
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final FieldEntry entry;
     private final IndexInput in;
-    private final BytesRef binaryValue;
     private final float[][] values;
 
     int curOrd;
 
-    SimpleTextVectorValues(FieldEntry entry, IndexInput in) throws IOException {
+    SimpleTextFloatVectorValues(FieldEntry entry, IndexInput in) throws IOException {
       this.entry = entry;
       this.in = in;
       values = new float[entry.size()][entry.dimension];
-      binaryValue = new BytesRef(entry.dimension * Float.BYTES);
-      binaryValue.length = binaryValue.bytes.length;
       curOrd = -1;
       readAllVectors();
     }
@@ -295,13 +371,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public BytesRef binaryValue() {
-      ByteBuffer.wrap(binaryValue.bytes).asFloatBuffer().get(values[curOrd]);
-      return binaryValue;
-    }
-
-    @Override
-    public RandomAccessVectorValues copy() {
+    public RandomAccessVectorValues<float[]> copy() {
       return this;
     }
 
@@ -332,11 +402,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       return slowAdvance(target);
     }
 
-    @Override
-    public long cost() {
-      return size();
-    }
-
     private void readAllVectors() throws IOException {
       for (float[] value : values) {
         readVector(value);
@@ -359,10 +424,99 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     public float[] vectorValue(int targetOrd) throws IOException {
       return values[targetOrd];
     }
+  }
+
+  private static class SimpleTextByteVectorValues extends ByteVectorValues
+      implements RandomAccessVectorValues<BytesRef> {
+
+    private final BytesRefBuilder scratch = new BytesRefBuilder();
+    private final FieldEntry entry;
+    private final IndexInput in;
+    private final BytesRef binaryValue;
+    private final byte[][] values;
+
+    int curOrd;
+
+    SimpleTextByteVectorValues(FieldEntry entry, IndexInput in) throws IOException {
+      this.entry = entry;
+      this.in = in;
+      values = new byte[entry.size()][entry.dimension];
+      binaryValue = new BytesRef(entry.dimension);
+      binaryValue.length = binaryValue.bytes.length;
+      curOrd = -1;
+      readAllVectors();
+    }
 
     @Override
-    public BytesRef binaryValue(int targetOrd) throws IOException {
-      throw new UnsupportedOperationException();
+    public int dimension() {
+      return entry.dimension;
+    }
+
+    @Override
+    public int size() {
+      return entry.size();
+    }
+
+    @Override
+    public byte[] vectorValue() {
+      binaryValue.bytes = values[curOrd];
+      return binaryValue.bytes;
+    }
+
+    @Override
+    public RandomAccessVectorValues<BytesRef> copy() {
+      return this;
+    }
+
+    @Override
+    public int docID() {
+      if (curOrd == -1) {
+        return -1;
+      } else if (curOrd >= entry.size()) {
+        // when call to advance / nextDoc below already returns NO_MORE_DOCS, calling docID
+        // immediately afterward should also return NO_MORE_DOCS
+        // this is needed for TestSimpleTextKnnVectorsFormat.testAdvance test case
+        return NO_MORE_DOCS;
+      }
+
+      return entry.ordToDoc[curOrd];
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      if (++curOrd < entry.size()) {
+        return docID();
+      }
+      return NO_MORE_DOCS;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      return slowAdvance(target);
+    }
+
+    private void readAllVectors() throws IOException {
+      for (byte[] value : values) {
+        readVector(value);
+      }
+    }
+
+    private void readVector(byte[] value) throws IOException {
+      SimpleTextUtil.readLine(in, scratch);
+      // skip leading "[" and strip trailing "]"
+      String s = new BytesRef(scratch.bytes(), 1, scratch.length() - 2).utf8ToString();
+      String[] floatStrings = s.split(",");
+      assert floatStrings.length == value.length
+          : " read " + s + " when expecting " + value.length + " floats";
+      for (int i = 0; i < floatStrings.length; i++) {
+        value[i] = (byte) Float.parseFloat(floatStrings[i]);
+      }
+    }
+
+    @Override
+    public BytesRef vectorValue(int targetOrd) throws IOException {
+      binaryValue.bytes = values[curOrd];
+      return binaryValue;
     }
   }
 

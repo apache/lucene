@@ -17,53 +17,37 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.ArrayUtil;
 
-class MockVectorValues extends VectorValues implements RandomAccessVectorValues {
+class MockVectorValues extends AbstractMockVectorValues<float[]> {
   private final float[] scratch;
 
-  protected final int dimension;
-  protected final float[][] denseValues;
-  protected final float[][] values;
-  private final int numVectors;
-  private final BytesRef binaryValue;
-
-  private int pos = -1;
-
-  MockVectorValues(float[][] values) {
-    this.dimension = values[0].length;
-    this.values = values;
+  static MockVectorValues fromValues(float[][] values) {
+    int dimension = values[0].length;
     int maxDoc = values.length;
-    denseValues = new float[maxDoc][];
+    float[][] denseValues = new float[maxDoc][];
     int count = 0;
     for (int i = 0; i < maxDoc; i++) {
       if (values[i] != null) {
         denseValues[count++] = values[i];
       }
     }
-    numVectors = count;
-    scratch = new float[dimension];
-    // used by tests that build a graph from bytes rather than floats
-    binaryValue = new BytesRef(dimension);
-    binaryValue.length = dimension;
+    return new MockVectorValues(values, dimension, denseValues, count);
+  }
+
+  MockVectorValues(float[][] values, int dimension, float[][] denseValues, int numVectors) {
+    super(values, dimension, denseValues, numVectors);
+    this.scratch = new float[dimension];
   }
 
   @Override
   public MockVectorValues copy() {
-    return new MockVectorValues(values);
-  }
-
-  @Override
-  public int size() {
-    return numVectors;
-  }
-
-  @Override
-  public int dimension() {
-    return dimension;
+    return new MockVectorValues(
+        ArrayUtil.copyOfSubArray(values, 0, values.length),
+        dimension,
+        ArrayUtil.copyOfSubArray(denseValues, 0, denseValues.length),
+        numVectors);
   }
 
   @Override
@@ -72,9 +56,8 @@ class MockVectorValues extends VectorValues implements RandomAccessVectorValues 
       return values[pos];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
-      // This should help us catch cases of aliasing where the same VectorValues source is used
-      // twice in a
-      // single computation.
+      // This should help us catch cases of aliasing where the same vector values source is used
+      // twice in a single computation.
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
       return scratch;
     }
@@ -83,48 +66,5 @@ class MockVectorValues extends VectorValues implements RandomAccessVectorValues 
   @Override
   public float[] vectorValue(int targetOrd) {
     return denseValues[targetOrd];
-  }
-
-  @Override
-  public BytesRef binaryValue(int targetOrd) {
-    float[] value = vectorValue(targetOrd);
-    for (int i = 0; i < value.length; i++) {
-      binaryValue.bytes[i] = (byte) value[i];
-    }
-    return binaryValue;
-  }
-
-  private boolean seek(int target) {
-    if (target >= 0 && target < values.length && values[target] != null) {
-      pos = target;
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  @Override
-  public int docID() {
-    return pos;
-  }
-
-  @Override
-  public int nextDoc() {
-    return advance(pos + 1);
-  }
-
-  @Override
-  public int advance(int target) {
-    while (++pos < values.length) {
-      if (seek(pos)) {
-        return pos;
-      }
-    }
-    return NO_MORE_DOCS;
-  }
-
-  @Override
-  public long cost() {
-    return size();
   }
 }

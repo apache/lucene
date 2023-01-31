@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
@@ -57,7 +57,7 @@ public abstract class HnswGraph {
    *
    * @param level level of the graph
    * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
-   *     VectorValues#size()}.
+   *     FloatVectorValues#size()}.
    */
   public abstract void seek(int level, int target) throws IOException;
 
@@ -142,6 +142,28 @@ public abstract class HnswGraph {
     public NodesIterator(int size) {
       this.nodes = null;
       this.size = size;
+    }
+
+    /**
+     * Consume integers from the iterator and place them into the `dest` array.
+     *
+     * @param dest where to put the integers
+     * @return The number of integers written to `dest`
+     */
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      int numToCopy = Math.min(size - cur, dest.length);
+      if (nodes == null) {
+        for (int i = 0; i < numToCopy; i++) {
+          dest[i] = cur + i;
+        }
+        return numToCopy;
+      }
+      System.arraycopy(nodes, cur, dest, 0, numToCopy);
+      cur += numToCopy;
+      return numToCopy;
     }
 
     @Override

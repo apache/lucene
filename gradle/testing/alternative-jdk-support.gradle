@@ -3,6 +3,7 @@ import org.gradle.internal.jvm.JavaInfo
 import org.gradle.internal.jvm.Jvm
 import org.gradle.internal.jvm.inspection.JvmInstallationMetadata
 import org.gradle.internal.jvm.inspection.JvmMetadataDetector
+import org.gradle.jvm.toolchain.internal.InstallationLocation
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -49,7 +50,7 @@ if (jvmGradle != jvmCurrent) {
       doFirst {
 
         def jvmInfo = { JavaInfo javaInfo ->
-          JvmInstallationMetadata jvmMetadata = jvmDetector.getMetadata(javaInfo.javaHome)
+          JvmInstallationMetadata jvmMetadata = jvmDetector.getMetadata(new InstallationLocation(javaInfo.javaHome, "specific path"))
           return "${jvmMetadata.languageVersion} (${jvmMetadata.displayName} ${jvmMetadata.runtimeVersion}, home at: ${jvmMetadata.javaHome})"
         }
 
@@ -87,6 +88,6 @@ if (jvmGradle != jvmCurrent) {
 // Set up root project's properties.
 rootProject.ext.runtimeJavaExecutable = jvmCurrent.javaExecutable
 rootProject.ext.runtimeJavaHome = jvmCurrent.javaHome
-rootProject.ext.runtimeJavaVersion = jvmDetector.getMetadata(jvmCurrent.javaHome).languageVersion
+rootProject.ext.runtimeJavaVersion = jvmDetector.getMetadata(new InstallationLocation(jvmCurrent.javaHome, "specific path")).getLanguageVersion()
 rootProject.ext.usesAltJvm = (jvmGradle != jvmCurrent);
 

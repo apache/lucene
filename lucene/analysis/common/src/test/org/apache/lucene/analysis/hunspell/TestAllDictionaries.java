@@ -149,6 +149,7 @@ public class TestAllDictionaries extends LuceneTestCase {
   }
 
   public void testDictionariesLoadSuccessfully() throws Exception {
+    AtomicLong memoryWithCache = new AtomicLong();
     AtomicLong totalMemory = new AtomicLong();
     AtomicLong totalWords = new AtomicLong();
     int threads = Runtime.getRuntime().availableProcessors();
@@ -159,7 +160,16 @@ public class TestAllDictionaries extends LuceneTestCase {
         (Path aff) -> {
           try {
             Dictionary dic = loadDictionary(aff);
+            new Hunspell(dic).spell("aaaa");
+            Suggester suggester = new Suggester(dic).withSuggestibleEntryCache();
+            try {
+              suggester.suggestWithTimeout("aaaaaaaaaa", Hunspell.SUGGEST_TIME_LIMIT, () -> {});
+            } catch (
+                @SuppressWarnings("unused")
+                SuggestionTimeoutException e) {
+            }
             totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
+            memoryWithCache.addAndGet(RamUsageTester.ramUsed(suggester));
             totalWords.addAndGet(RamUsageTester.ramUsed(dic.words));
             System.out.println(aff + "\t" + memoryUsageSummary(dic));
           } catch (Throwable e) {
@@ -195,6 +205,9 @@ public class TestAllDictionaries extends LuceneTestCase {
     System.out.println("Total memory: " + RamUsageEstimator.humanReadableUnits(totalMemory.get()));
     System.out.println(
         "Total memory for word storage: " + RamUsageEstimator.humanReadableUnits(totalWords.get()));
+    System.out.println(
+        "Additional memory if withSuggestibleEntryCache is enabled: "
+            + RamUsageEstimator.humanReadableUnits(memoryWithCache.get() - totalMemory.get()));
   }
 
   private static String memoryUsageSummary(Dictionary dic) {

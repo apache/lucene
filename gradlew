@@ -124,7 +124,7 @@ GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
 "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
 WRAPPER_STATUS=$?
 if [ "$WRAPPER_STATUS" -eq 1 ]; then
-    echo "ERROR: Something went wrong. Make sure you're using Java 17 or 18."
+    echo "ERROR: Something went wrong. Make sure you're using Java version between 17 and 19."
     exit $WRAPPER_STATUS
 elif [ "$WRAPPER_STATUS" -ne 0 ]; then
     exit $WRAPPER_STATUS
@@ -208,6 +208,9 @@ save () {
     echo " "
 }
 APP_ARGS=$(save "$@")
+
+# Prevent jgit from forking/searching git.exe
+export GIT_CONFIG_NOSYSTEM=1
 
 # Collect all arguments for the java command, following the shell quoting and substitution rules
 eval set -- $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain $GRADLE_DAEMON_CTRL "$APP_ARGS"

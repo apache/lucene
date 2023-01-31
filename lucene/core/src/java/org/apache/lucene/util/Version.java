@@ -70,8 +70,30 @@ public final class Version {
    * Match settings and bugs in Lucene's 9.4.1 release.
    *
    * @deprecated Use latest
+   * @deprecated (9.4.2) Use latest
    */
   @Deprecated public static final Version LUCENE_9_4_1 = new Version(9, 4, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 9.4.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_4_2 = new Version(9, 4, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 9.5.0 release.
+   *
+   * @deprecated (9.6.0) Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_5_0 = new Version(9, 5, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.6.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_6_0 = new Version(9, 6, 0);
 
   /**
    * Match settings and bugs in Lucene's 10.0.0 release.

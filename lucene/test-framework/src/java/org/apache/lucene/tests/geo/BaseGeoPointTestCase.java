@@ -53,6 +53,7 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -687,6 +688,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       boolean fail = false;
 
+      StoredFields storedFields = s.storedFields();
       for (int docID = 0; docID < lats.length / 2; docID++) {
         double latDoc1 = lats[2 * docID];
         double lonDoc1 = lons[2 * docID];
@@ -699,7 +701,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
         boolean expected = result1 || result2;
 
         if (hits.get(docID) != expected) {
-          String id = s.doc(docID).get("id");
+          String id = storedFields.document(docID).get("id");
           if (expected) {
             System.out.println("TEST: id=" + id + " docID=" + docID + " should match but did not");
           } else {
@@ -1486,6 +1488,7 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
     IndexReader reader = writer.getReader();
     IndexSearcher searcher = newSearcher(reader);
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < numQueries; i++) {
       double lat = nextLatitude();
       double lon = nextLongitude();
@@ -1493,8 +1496,10 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
 
       BitSet expected = new BitSet();
       for (int doc = 0; doc < reader.maxDoc(); doc++) {
-        double docLatitude = reader.document(doc).getField("lat").numericValue().doubleValue();
-        double docLongitude = reader.document(doc).getField("lon").numericValue().doubleValue();
+        double docLatitude =
+            storedFields.document(doc).getField("lat").numericValue().doubleValue();
+        double docLongitude =
+            storedFields.document(doc).getField("lon").numericValue().doubleValue();
         double distance = SloppyMath.haversinMeters(lat, lon, docLatitude, docLongitude);
         if (distance <= radius) {
           expected.set(doc);
@@ -1514,8 +1519,10 @@ public abstract class BaseGeoPointTestCase extends LuceneTestCase {
       } catch (AssertionError e) {
         System.out.println("center: (" + lat + "," + lon + "), radius=" + radius);
         for (int doc = 0; doc < reader.maxDoc(); doc++) {
-          double docLatitude = reader.document(doc).getField("lat").numericValue().doubleValue();
-          double docLongitude = reader.document(doc).getField("lon").numericValue().doubleValue();
+          double docLatitude =
+              storedFields.document(doc).getField("lat").numericValue().doubleValue();
+          double docLongitude =
+              storedFields.document(doc).getField("lon").numericValue().doubleValue();
           double distance = SloppyMath.haversinMeters(lat, lon, docLatitude, docLongitude);
           System.out.println(
               "" + doc + ": (" + docLatitude + "," + docLongitude + "), distance=" + distance);

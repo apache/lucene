@@ -18,7 +18,8 @@ package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Map;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper;

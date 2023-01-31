@@ -82,7 +82,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     merging = false;
 
     // read in the entries from the metadata file.
-    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName, state.context)) {
+    try (ChecksumIndexInput in = state.directory.openChecksumInput(metaName)) {
       Throwable priorE = null;
 
       try {

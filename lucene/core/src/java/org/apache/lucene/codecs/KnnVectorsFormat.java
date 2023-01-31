@@ -18,11 +18,11 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
 
@@ -84,7 +84,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
       new KnnVectorsFormat("EMPTY") {
         @Override
         public KnnVectorsWriter fieldsWriter(SegmentWriteState state) {
-          throw new UnsupportedOperationException("Attempt to write EMPTY VectorValues");
+          throw new UnsupportedOperationException("Attempt to write EMPTY vector values");
         }
 
         @Override
@@ -94,14 +94,25 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             public void checkIntegrity() {}
 
             @Override
-            public VectorValues getVectorValues(String field) {
-              return VectorValues.EMPTY;
+            public FloatVectorValues getFloatVectorValues(String field) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteVectorValues getByteVectorValues(String field) {
+              throw new UnsupportedOperationException();
             }
 
             @Override
             public TopDocs search(
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-              return TopDocsCollector.EMPTY_TOPDOCS;
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public TopDocs search(
+                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+              throw new UnsupportedOperationException();
             }
 
             @Override

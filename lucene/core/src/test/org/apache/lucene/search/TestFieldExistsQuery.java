@@ -23,7 +23,7 @@ import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -583,7 +583,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
           Document doc = new Document();
           boolean hasValue = random().nextBoolean();
           if (hasValue) {
-            doc.add(new KnnVectorField("vector", randomVector(5)));
+            doc.add(new KnnFloatVectorField("vector", randomVector(5)));
             doc.add(new StringField("has_value", "yes", Store.NO));
           }
           doc.add(new StringField("field", "value", Store.NO));
@@ -632,7 +632,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 100; ++i) {
         Document doc = new Document();
-        doc.add(new KnnVectorField("vector", randomVector(5)));
+        doc.add(new KnnFloatVectorField("vector", randomVector(5)));
         iw.addDocument(doc);
       }
       iw.commit();
@@ -656,7 +656,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         if (allDocsHaveVector || random().nextBoolean()) {
-          doc.add(new KnnVectorField("vector", randomVector(5)));
+          doc.add(new KnnFloatVectorField("vector", randomVector(5)));
           numVectors++;
         }
         doc.add(new StringField("field", "value" + (i % 2), Store.NO));
@@ -685,7 +685,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       // 1st segment has the field, but 2nd one does not
       Document doc = new Document();
-      doc.add(new KnnVectorField("vector", randomVector(3)));
+      doc.add(new KnnFloatVectorField("vector", randomVector(3)));
       iw.addDocument(doc);
       iw.commit();
       iw.addDocument(new Document());
