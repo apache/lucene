@@ -20,10 +20,10 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import java.util.Set;
 import org.apache.lucene.index.FloatVectorValues;
 
 /**
@@ -204,11 +204,11 @@ public abstract class HnswGraph {
   }
 
   /** Nodes iterator based on set representation of nodes. */
-  public static class SetNodesIterator extends NodesIterator {
+  public static class CollectionNodesIterator extends NodesIterator {
     Iterator<Integer> nodes;
 
-    /** Constructor for iterator based on set representing nodes */
-    public SetNodesIterator(Set<Integer> nodes) {
+    /** Constructor for iterator based on collection representing nodes */
+    public CollectionNodesIterator(Collection<Integer> nodes) {
       super(nodes.size());
       this.nodes = nodes.iterator();
     }

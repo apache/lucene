@@ -440,8 +440,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<byte[]> hnswGraphBuilder =
-                    createByteVectorHnswGraphBuilder(
-                        mergeState, fieldInfo, vectorValues, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
@@ -453,8 +452,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<float[]> hnswGraphBuilder =
-                    createFloatVectorHnswGraphBuilder(
-                        mergeState, fieldInfo, vectorValues, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
@@ -485,10 +483,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private HnswGraphBuilder<float[]> createFloatVectorHnswGraphBuilder(
+  private <T> HnswGraphBuilder<T> createHnswGraphBuilder(
       MergeState mergeState,
       FieldInfo fieldInfo,
-      RandomAccessVectorValues<float[]> floatVectorValues,
+      RandomAccessVectorValues<T> floatVectorValues,
       int initializerIndex)
       throws IOException {
     if (initializerIndex == -1) {
@@ -507,37 +505,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
     return HnswGraphBuilder.create(
         floatVectorValues,
-        fieldInfo.getVectorEncoding(),
-        fieldInfo.getVectorSimilarityFunction(),
-        M,
-        beamWidth,
-        HnswGraphBuilder.randSeed,
-        initializerGraph,
-        ordinalMapper);
-  }
-
-  private HnswGraphBuilder<byte[]> createByteVectorHnswGraphBuilder(
-      MergeState mergeState,
-      FieldInfo fieldInfo,
-      RandomAccessVectorValues<byte[]> byteVectorValues,
-      int initializerIndex)
-      throws IOException {
-    if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(
-          byteVectorValues,
-          fieldInfo.getVectorEncoding(),
-          fieldInfo.getVectorSimilarityFunction(),
-          M,
-          beamWidth,
-          HnswGraphBuilder.randSeed);
-    }
-
-    HnswGraph initializerGraph =
-        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]);
-    Map<Integer, Integer> ordinalMapper =
-        getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
-    return HnswGraphBuilder.create(
-        byteVectorValues,
         fieldInfo.getVectorEncoding(),
         fieldInfo.getVectorSimilarityFunction(),
         M,

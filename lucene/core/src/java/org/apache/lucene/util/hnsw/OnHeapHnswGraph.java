@@ -41,8 +41,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
   private final List<NeighborArray> graphLevel0;
   // Represents levels 1-N. Each level is represented with a TreeMap that maps a levels level 0
-  // ordinal to its
-  // neighbors on that level.
+  // ordinal to its neighbors on that level. All nodes are in level 0, so we do not need to maintain
+  // it in this list. However, to avoid changing list indexing, we always will make the first
+  // element
+  // null.
   private final List<TreeMap<Integer, NeighborArray>> graphUpperLevels;
   private final int nsize;
   private final int nsize0;
@@ -160,7 +162,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     if (level == 0) {
       return new ArrayNodesIterator(size());
     } else {
-      return new SetNodesIterator(graphUpperLevels.get(level).keySet());
+      return new CollectionNodesIterator(graphUpperLevels.get(level).keySet());
     }
   }
 
