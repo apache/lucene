@@ -270,23 +270,4 @@ public final class VectorUtil {
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
   }
-
-  /**
-   * Convert a floating point vector to an array of bytes using casting; the vector values should be
-   * in [-128,127]
-   *
-   * @param vector a vector
-   * @return a new BytesRef containing the vector's values cast to byte.
-   */
-  public static BytesRef toBytesRef(float[] vector) {
-    BytesRef b = new BytesRef(new byte[vector.length]);
-    for (int i = 0; i < vector.length; i++) {
-      if (vector[i] < -128 || vector[i] > 127) {
-        throw new IllegalArgumentException(
-            "Vector value at " + i + " is out of range [-128.127]: " + vector[i]);
-      }
-      b.bytes[i] = (byte) vector[i];
-    }
-    return b;
-  }
 }
