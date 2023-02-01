@@ -181,7 +181,7 @@ public final class VectorUtil {
   }
 
   /** Returns the sum of squared differences of the two vectors. */
-  public static float squareDistance(byte[] a, byte[] b) {
+  public static int squareDistance(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int squareSum = 0;
     for (int i = 0; i < a.length; i++) {
@@ -249,7 +249,7 @@ public final class VectorUtil {
    * @param b bytes containing another vector, of the same dimension
    * @return the value of the dot product of the two vectors
    */
-  public static float dotProduct(byte[] a, byte[] b) {
+  public static int dotProduct(byte[] a, byte[] b) {
     assert a.length == b.length;
     int total = 0;
     for (int i = 0; i < a.length; i++) {
