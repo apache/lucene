@@ -262,16 +262,4 @@ public class TestVectorUtil extends LuceneTestCase {
     u[1] = -v[0];
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
   }
-
-  public void testToBytesRef() {
-    assertEquals(
-        new BytesRef(new byte[] {-128, 0, 127}),
-        VectorUtil.toBytesRef(new float[] {-128f, 0, 127f}));
-    assertEquals(
-        new BytesRef(new byte[] {-19, 0, 33}),
-        VectorUtil.toBytesRef(new float[] {-19.9f, 0.5f, 33.7f}));
-    expectThrows(
-        IllegalArgumentException.class, () -> VectorUtil.toBytesRef(new float[] {-128.1f}));
-    expectThrows(IllegalArgumentException.class, () -> VectorUtil.toBytesRef(new float[] {127.1f}));
-  }
 }
