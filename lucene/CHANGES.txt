@@ -124,7 +124,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
+  IndexInput and IndexOutput classes (Marc D'Mello)
 
 ======================== Lucene 9.5.0 =======================
 
@@ -2444,9 +2446,6 @@ Other
   (kkewwei via Adrien Grand)
 
 * LUCENE-9225: Rectangle extends LatLonGeometry so it can be used in a geometry collection. (Ignacio Vera)
-
-* LUCENE-11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
-  IndexInput and IndexOutput classes (Marc D'Mello)
 
 ======================= Lucene 8.4.1 =======================
 
