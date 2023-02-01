@@ -166,10 +166,8 @@ public class FuzzySet implements Accountable {
    * Serializes the data set to file using the following format:
    *
    * <ul>
-   *   <li>FuzzySet --&gt;FuzzySetVersion,hashCount,BloomSize,
+   *   <li>FuzzySet --&gt;hashCount,BloomSize,
    *       NumBitSetWords,BitSetWord<sup>NumBitSetWords</sup>
-   *   <li>FuzzySetVersion --&gt; {@link DataOutput#writeInt Uint32} The version number of the
-   *       {@link FuzzySet} class
    *   <li>hashCount --&gt; {@link DataOutput#writeVInt Uint32} The number of hash functions (k).
    *   <li>BloomSize --&gt; {@link DataOutput#writeInt Uint32} The modulo value used to project
    *       hashes into the field's Bitset
