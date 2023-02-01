@@ -27,6 +27,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -150,54 +151,32 @@ public class TestMultiLevelSkipList extends LuceneTestCase {
 
   // Simply extends IndexInput in a way that we are able to count the number
   // of bytes read
-  class CountingStream extends IndexInput {
-    private IndexInput input;
+  class CountingStream extends FilterIndexInput {
 
     CountingStream(IndexInput input) {
-      super("CountingStream(" + input + ")");
-      this.input = input;
+      super("CountingStream(" + input + ")", input);
     }
 
     @Override
     public byte readByte() throws IOException {
       TestMultiLevelSkipList.this.counter++;
-      return this.input.readByte();
+      return in.readByte();
     }
 
     @Override
     public void readBytes(byte[] b, int offset, int len) throws IOException {
       TestMultiLevelSkipList.this.counter += len;
-      this.input.readBytes(b, offset, len);
-    }
-
-    @Override
-    public void close() throws IOException {
-      this.input.close();
-    }
-
-    @Override
-    public long getFilePointer() {
-      return this.input.getFilePointer();
-    }
-
-    @Override
-    public void seek(long pos) throws IOException {
-      this.input.seek(pos);
-    }
-
-    @Override
-    public long length() {
-      return this.input.length();
+      in.readBytes(b, offset, len);
     }
 
     @Override
     public CountingStream clone() {
-      return new CountingStream(this.input.clone());
+      return new CountingStream(in.clone());
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return new CountingStream(this.input.slice(sliceDescription, offset, length));
+      return new CountingStream(in.slice(sliceDescription, offset, length));
     }
   }
 }
