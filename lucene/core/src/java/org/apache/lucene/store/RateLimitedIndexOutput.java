@@ -23,9 +23,8 @@ import java.io.IOException;
  *
  * @lucene.internal
  */
-public final class RateLimitedIndexOutput extends IndexOutput {
+public final class RateLimitedIndexOutput extends FilterIndexOutput {
 
-  private final IndexOutput delegate;
   private final RateLimiter rateLimiter;
 
   /** How many bytes we've written since we last called rateLimiter.pause. */
@@ -37,33 +36,17 @@ public final class RateLimitedIndexOutput extends IndexOutput {
    */
   private long currentMinPauseCheckBytes;
 
-  public RateLimitedIndexOutput(final RateLimiter rateLimiter, final IndexOutput delegate) {
-    super("RateLimitedIndexOutput(" + delegate + ")", delegate.getName());
-    this.delegate = delegate;
+  public RateLimitedIndexOutput(final RateLimiter rateLimiter, final IndexOutput out) {
+    super("RateLimitedIndexOutput(" + out + ")", out.getName(), out);
     this.rateLimiter = rateLimiter;
     this.currentMinPauseCheckBytes = rateLimiter.getMinPauseCheckBytes();
-  }
-
-  @Override
-  public void close() throws IOException {
-    delegate.close();
-  }
-
-  @Override
-  public long getFilePointer() {
-    return delegate.getFilePointer();
-  }
-
-  @Override
-  public long getChecksum() throws IOException {
-    return delegate.getChecksum();
   }
 
   @Override
   public void writeByte(byte b) throws IOException {
     bytesSinceLastPause++;
     checkRate();
-    delegate.writeByte(b);
+    out.writeByte(b);
   }
 
   @Override
@@ -74,28 +57,28 @@ public final class RateLimitedIndexOutput extends IndexOutput {
     // This can cause instant write rate to breach rate limit if there have
     // been no writes for enough time to keep the average write rate within limit.
     // See https://issues.apache.org/jira/browse/LUCENE-10448
-    delegate.writeBytes(b, offset, length);
+    out.writeBytes(b, offset, length);
   }
 
   @Override
   public void writeInt(int i) throws IOException {
     bytesSinceLastPause += Integer.BYTES;
     checkRate();
-    delegate.writeInt(i);
+    out.writeInt(i);
   }
 
   @Override
   public void writeShort(short i) throws IOException {
     bytesSinceLastPause += Short.BYTES;
     checkRate();
-    delegate.writeShort(i);
+    out.writeShort(i);
   }
 
   @Override
   public void writeLong(long i) throws IOException {
     bytesSinceLastPause += Long.BYTES;
     checkRate();
-    delegate.writeLong(i);
+    out.writeLong(i);
   }
 
   private void checkRate() throws IOException {

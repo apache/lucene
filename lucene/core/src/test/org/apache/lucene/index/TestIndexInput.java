@@ -211,7 +211,7 @@ public class TestIndexInput extends LuceneTestCase {
     RANDOM_TEST_BYTES = null;
   }
 
-  private void checkReads(DataInput is, Class<? extends Exception> expectedEx) throws IOException {
+  void checkReads(DataInput is, Class<? extends Exception> expectedEx) throws IOException {
     assertEquals(128, is.readVInt());
     assertEquals(16383, is.readVInt());
     assertEquals(16384, is.readVInt());
@@ -254,7 +254,7 @@ public class TestIndexInput extends LuceneTestCase {
     assertEquals(1L, is.readVLong()); // guard value
   }
 
-  private void checkRandomReads(DataInput is) throws IOException {
+  void checkRandomReads(DataInput is) throws IOException {
     for (int i = 0; i < COUNT; i++) {
       assertEquals(INTS[i], is.readVInt());
       assertEquals(INTS[i], is.readInt());
@@ -263,7 +263,7 @@ public class TestIndexInput extends LuceneTestCase {
     }
   }
 
-  private void checkSeeksAndSkips(IndexInput is, Random random) throws IOException {
+  void checkSeeksAndSkips(IndexInput is, Random random) throws IOException {
     long len = is.length();
 
     int iterations = LuceneTestCase.TEST_NIGHTLY ? 1_000 : 10;
@@ -332,21 +332,25 @@ public class TestIndexInput extends LuceneTestCase {
   public void testNoReadOnSkipBytes() throws IOException {
     long len = LuceneTestCase.TEST_NIGHTLY ? Long.MAX_VALUE : 1_000_000;
     long maxSeekPos = len - 1;
-    InterceptingIndexInput is = new InterceptingIndexInput("foo", len);
+    IndexInput is = getIndexInput(len);
 
-    while (is.pos < maxSeekPos) {
-      long seekPos = TestUtil.nextLong(random(), is.pos, maxSeekPos);
-      long skipDelta = seekPos - is.pos;
+    while (is.getFilePointer() < maxSeekPos) {
+      long seekPos = TestUtil.nextLong(random(), is.getFilePointer(), maxSeekPos);
+      long skipDelta = seekPos - is.getFilePointer();
       is.skipBytes(skipDelta);
-      assertEquals(seekPos, is.pos);
+      assertEquals(seekPos, is.getFilePointer());
     }
+  }
+
+  public IndexInput getIndexInput(long len) {
+    return new InterceptingIndexInput("foo", len);
   }
 
   /**
    * Mock IndexInput that just tracks a position (which responds to seek/skip) and throws if
    * #readByte or #readBytes are called, ensuring seek/skip doesn't invoke reads.
    */
-  private static final class InterceptingIndexInput extends IndexInput {
+  protected static final class InterceptingIndexInput extends IndexInput {
     long pos = 0;
     final long len;
 

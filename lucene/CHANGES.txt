@@ -27,7 +27,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
+  IndexInput and IndexOutput classes (Marc D'Mello)
 
 ======================== Lucene 9.5.0 =======================
 
