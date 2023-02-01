@@ -20,21 +20,21 @@ package org.apache.lucene.backward_codecs.lucene91;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -42,7 +42,6 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -90,7 +89,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene91HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
         versionMeta =
@@ -219,9 +218,14 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
     return getOffHeapVectorValues(fieldEntry);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -235,7 +239,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-    OffHeapVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
+    OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
 
     NeighborQueue results =
         HnswGraphSearcher.search(
@@ -265,15 +269,16 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     throw new UnsupportedOperationException();
   }
 
-  private OffHeapVectorValues getOffHeapVectorValues(FieldEntry fieldEntry) throws IOException {
+  private OffHeapFloatVectorValues getOffHeapVectorValues(FieldEntry fieldEntry)
+      throws IOException {
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    return new OffHeapVectorValues(
+    return new OffHeapFloatVectorValues(
         fieldEntry.dimension, fieldEntry.size(), fieldEntry.ordToDoc, bytesSlice);
   }
 
@@ -398,31 +403,28 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapVectorValues extends VectorValues implements RandomAccessVectorValues {
+  static class OffHeapFloatVectorValues extends FloatVectorValues
+      implements RandomAccessVectorValues<float[]> {
 
     private final int dimension;
     private final int size;
     private final int[] ordToDoc;
     private final IntUnaryOperator ordToDocOperator;
     private final IndexInput dataIn;
-    private final BytesRef binaryValue;
-    private final ByteBuffer byteBuffer;
     private final int byteSize;
     private final float[] value;
 
     private int ord = -1;
     private int doc = -1;
 
-    OffHeapVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
+    OffHeapFloatVectorValues(int dimension, int size, int[] ordToDoc, IndexInput dataIn) {
       this.dimension = dimension;
       this.size = size;
       this.ordToDoc = ordToDoc;
       ordToDocOperator = ordToDoc == null ? IntUnaryOperator.identity() : (ord) -> ordToDoc[ord];
       this.dataIn = dataIn;
       byteSize = Float.BYTES * dimension;
-      byteBuffer = ByteBuffer.allocate(byteSize);
       value = new float[dimension];
-      binaryValue = new BytesRef(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }
 
     @Override
@@ -440,13 +442,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) ord * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
-    }
-
-    @Override
-    public BytesRef binaryValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
     }
 
     @Override
@@ -486,8 +481,8 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public RandomAccessVectorValues copy() {
-      return new OffHeapVectorValues(dimension, size, ordToDoc, dataIn.clone());
+    public RandomAccessVectorValues<float[]> copy() {
+      return new OffHeapFloatVectorValues(dimension, size, ordToDoc, dataIn.clone());
     }
 
     @Override
@@ -495,17 +490,6 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek((long) targetOrd * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;
-    }
-
-    @Override
-    public BytesRef binaryValue(int targetOrd) throws IOException {
-      readValue(targetOrd);
-      return binaryValue;
-    }
-
-    private void readValue(int targetOrd) throws IOException {
-      dataIn.seek((long) targetOrd * byteSize);
-      dataIn.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
     }
   }
 

@@ -8,6 +8,9 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 
+* LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
+  instead. (Vigya Sharma)
+
 * LUCENE-10010: AutomatonQuery, CompiledAutomaton, RunAutomaton, RegExp
   classes no longer determinize NFAs. Instead it is the responsibility
   of the caller to determinize.  (Robert Muir)
@@ -37,7 +40,12 @@ API Changes
 * GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
   rewriting. (Patrick Zhai)
 
+* GITHUB#11933: Remove IOContext from Directory#openChecksumInput. (Zach Chen)
+
 * GITHUB#11814: Support deletions in IndexRearranger. (Stefan Vodita)
+
+* GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
+  LeafReader#getVectorValues. (Luca Cavanna)
 
 New Features
 ---------------------
@@ -92,6 +100,32 @@ Other
 
 * GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
 
+======================== Lucene 9.6.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.5.0 =======================
 
 API Changes
@@ -113,7 +147,7 @@ API Changes
 * GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
 
-* GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
+* GITHUB#11822: Configure replicator PrimaryNode replica shutdown timeout. (Steven Schlansker)
 
 * GITHUB#11930: Added IOContext#LOAD for files that are a small fraction of the
   total index size and heavily accessed with a random access pattern. Some
@@ -143,6 +177,30 @@ API Changes
   provide best performance for filtering and sorting.
   (Francisco Fernández Castaño, Adrien Grand)
 
+* GITHUB#12066: Retire/deprecate instance method MMapDirectory#setUseUnmap().
+  Like the new setting for MemorySegments, this feature is enabled by default and
+  can only be disabled globally by passing the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableUnmapHack=false" (Uwe Schindler)
+
+* GITHUB#12038: Deprecate non-NRT replication support.
+  Please migrate to org.apache.lucene.replicator.nrt instead. (Robert Muir)
+
+* GITHUB#12087: Move DocValuesNumbersQuery from sandbox to NumericDocValuesField#newSlowSetQuery
+  and SortedNumericDocValuesField#newSlowSetQuery. IntField, LongField, FloatField, and DoubleField
+  implement newSetQuery with best-practice use of IndexOrDocValuesQuery. (Robert Muir)
+
+* GITHUB#12064: Create new KnnByteVectorField, ByteVectorValues and KnnVectorsReader#getByteVectorValues(String)
+  that are specialized for byte-sized vectors, and clarify the public API by making a clear distinction
+  between classes that produce and read float vectors and those that produce and read byte vectors. (Ben Trent)
+
+* GITHUB#12101: Remove VectorValues#binaryValue(). Vectors should only be
+  accessed through their high-level representation, via
+  VectorValues#vectorValue(). (Adrien Grand)
+
+* GITHUB#12105: Deprecate KnnVectorField in favour of KnnFloatVectorField,
+  KnnVectoryQuery in favour of KnnFloatVectorQuery, and LeafReader#getVectorValues
+  in favour of LeafReader#getFloatVectorValues. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
@@ -156,6 +214,16 @@ New Features
 * GITHUB#11997: Add IntField, LongField, FloatField and DoubleField: easy to
   use numeric fields that perform well both for filtering and sorting.
   (Francisco Fernández Castaño)
+
+* GITHUB#12033: Support for Java 19 foreign memory support is now enabled by default,
+  no need to pass "--enable-preview" on the command line. If exactly Java 19 is used,
+  MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and
+  indexes closed while queries are running can no longer crash the JVM.
+  To disable this feature, pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
+* GITHUB#11869: RangeOnRangeFacetCounts added, supporting numeric range "relationship" faceting over docvalue-stored
+  ranges. (Marc D'Mello)
 
 Improvements
 ---------------------
@@ -179,6 +247,11 @@ Improvements
 * GITHUB#12003: Minor cleanup/improvements to IndexSortSortedNumericDocValuesRangeQuery. (Greg Miller)
 
 * GITHUB#12016: Upgrade lucene/expressions to use antlr 4.11.1 (Andriy Redko)
+
+* GITHUB#12034: Remove null check in IndexReaderContext#leaves() usages (Erik Pellizzon)
+
+* GITHUB#12070: Compound file creation is no longer subject to merge throttling.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -206,6 +279,21 @@ Bug Fixes
   common vertex. (Ignacio Vera)
 
 * GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
+
+* GITHUB#12058: Fix detection of Hotspot in TestRamUsageEstimator so it works with OpenJ9.
+  (Uwe Schindler)
+
+* GITHUB#12046: Out of boundary in CombinedFieldQuery#addTerm. (Lu Xugang)
+
+* GITHUB#12072: Fix exponential runtime for nested BooleanQuery#rewrite when a
+  BooleanClause is non-scoring. (Ben Trent)
+
+* GITHUB#12088: WeightedSpanTermExtractor should not throw UnsupportedOperationException
+  when it encounters a FieldExistsQuery. (Alan Woodward)
+
+* GITHUB#12084: Same bound with fallbackQuery. (Lu Xugang)
+
+* GITHUB#12077: WordBreakSpellChecker now correctly respects maxEvaluations (hossman)
 
 Optimizations
 ---------------------
@@ -243,7 +331,16 @@ Optimizations
 
 * GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
 
+* GITHUB#12011: Minor speedup to flushing long postings lists when an index
+  sort is configured. (Adrien Grand)
+
 * GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
+* GITHUB#12079: Faster merging of 1D points. (Adrien Grand)
+
+* GITHUB#12081: Small merging speedup on sorted indexes. (Adrien Grand)
+
+* GITHUB#12078: Enhance XXXField#newRangeQuery. (Lu Xugang)
 
 Other
 ---------------------
@@ -264,6 +361,8 @@ Other
   public. (Alan Woodward)
 
 * LUCENE-10546: Update Faceting user guide. (Egor Potemkin)
+
+* GITHUB#12099: Introduce support in KnnVectorQuery for getters. (Alessandro Benedetti)
 
 Build
 ---------------------

@@ -21,7 +21,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * {@code LeafReader} is an abstract class, providing an interface for accessing an index. Search of
@@ -201,12 +200,20 @@ public abstract class LeafReader extends IndexReader {
   public abstract NumericDocValues getNormValues(String field) throws IOException;
 
   /**
-   * Returns {@link VectorValues} for this field, or null if no {@link VectorValues} were indexed.
-   * The returned instance should only be used by a single thread.
+   * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were
+   * indexed. The returned instance should only be used by a single thread.
    *
    * @lucene.experimental
    */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns {@link ByteVectorValues} for this field, or null if no {@link ByteVectorValues} were
+   * indexed. The returned instance should only be used by a single thread.
+   *
+   * @lucene.experimental
+   */
+  public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -262,7 +269,7 @@ public abstract class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

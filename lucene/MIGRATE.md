@@ -38,6 +38,15 @@ for (ScoreDoc hit : hits.scoreDocs) {
 Note that these StoredFields and TermVectors instances should only be consumed in the thread where
 they were acquired. For instance, it is illegal to share them across threads.
 
+### Field can no longer configure a TokenStream independently from a value
+
+Lucene 9.x and earlier versions allowed to set a TokenStream on Field instances
+independently from a string, binary or numeric value. This is no longer allowed
+on the base Field class. If you need to replicate this behavior, you need to
+either provide two fields, one with a TokenStream and another one with a value,
+or create a sub-class of Field that overrides `TokenStream
+tokenStream(Analyzer, TokenStream)` to return a custom TokenStream.
+
 ### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
 
 PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
@@ -73,6 +82,12 @@ currently-positioned document. Callers should instead use `SortedSetDocValues#do
 determine the number of valid ordinals for the currently-positioned document up-front. It is now
 illegal to call `SortedSetDocValues#nextOrd()` more than `SortedSetDocValues#docValueCount()` times
 for the currently-positioned document (doing so will result in undefined behavior).
+
+### IOContext removed from Directory#openChecksumInput (GITHUB-12027)
+
+`Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
+`IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
+Callers should remove the parameter when calling this method.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 

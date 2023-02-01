@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
@@ -38,6 +39,7 @@ import org.apache.lucene.util.NumericUtils;
  * <ul>
  *   <li>{@link #newExactQuery(String, int)} for matching an exact 1D point.
  *   <li>{@link #newRangeQuery(String, int, int)} for matching a 1D range.
+ *   <li>{@link #newSetQuery(String, int...)} for matching a 1D set.
  * </ul>
  *
  * @see PointValues
@@ -105,9 +107,33 @@ public final class IntField extends Field {
    */
   public static Query newRangeQuery(String field, int lowerValue, int upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
+    Query fallbackQuery =
+        new IndexOrDocValuesQuery(
+            IntPoint.newRangeQuery(field, lowerValue, upperValue),
+            SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+        field, lowerValue, upperValue, fallbackQuery);
+  }
+
+  /**
+   * Create a query matching values in a supplied set
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values integer values
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this set.
+   */
+  public static Query newSetQuery(String field, int... values) {
+    if (field == null) {
+      throw new IllegalArgumentException("field cannot be null");
+    }
+    long points[] = new long[values.length];
+    for (int i = 0; i < values.length; i++) {
+      points[i] = values[i];
+    }
     return new IndexOrDocValuesQuery(
-        IntPoint.newRangeQuery(field, lowerValue, upperValue),
-        SortedNumericDocValuesField.newSlowRangeQuery(field, lowerValue, upperValue));
+        IntPoint.newSetQuery(field, values.clone()),
+        SortedNumericDocValuesField.newSlowSetQuery(field, points));
   }
 
   /**

@@ -152,7 +152,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       ChecksumIndexInput bloomIn = null;
       boolean success = false;
       try {
-        bloomIn = state.directory.openChecksumInput(bloomFileName, state.context);
+        bloomIn = state.directory.openChecksumInput(bloomFileName);
         CodecUtil.checkIndexHeader(
             bloomIn,
             BLOOM_CODEC_NAME,

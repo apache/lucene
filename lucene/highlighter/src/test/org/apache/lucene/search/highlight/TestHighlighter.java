@@ -63,6 +63,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -1422,6 +1423,17 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
         3,
         new CannedTokenStream(new Token("aa", 0, 2), new Token("bb", 2, 4)),
         "foo"); // field "foo"
+  }
+
+  public void testFieldExistsQuery() throws IOException {
+    Query q =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "term")), Occur.MUST)
+            .add(new FieldExistsQuery("field"), Occur.MUST)
+            .build();
+
+    WeightedSpanTermExtractor extractor = new WeightedSpanTermExtractor();
+    extractor.getWeightedSpanTerms(q, 1, new CannedTokenStream(new Token("term", 0, 4)), "field");
   }
 
   public void testGetBestSingleFragmentWithWeights() throws Exception {

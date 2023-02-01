@@ -127,7 +127,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     /** Adds a term to this builder. */
     public Builder addTerm(BytesRef term) {
-      if (termsSet.size() > IndexSearcher.getMaxClauseCount()) {
+      if (termsSet.size() >= IndexSearcher.getMaxClauseCount()) {
         throw new IndexSearcher.TooManyClauses();
       }
       termsSet.add(term);

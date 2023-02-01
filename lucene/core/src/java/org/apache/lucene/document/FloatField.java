@@ -38,6 +38,7 @@ import org.apache.lucene.util.NumericUtils;
  * <ul>
  *   <li>{@link #newExactQuery(String, float)} for matching an exact 1D point.
  *   <li>{@link #newRangeQuery(String, float, float)} for matching a 1D range.
+ *   <li>{@link #newSetQuery(String, float...)} for matching a 1D set.
  * </ul>
  *
  * @see PointValues
@@ -125,6 +126,27 @@ public final class FloatField extends Field {
             field,
             NumericUtils.floatToSortableInt(lowerValue),
             NumericUtils.floatToSortableInt(upperValue)));
+  }
+
+  /**
+   * Create a query matching values in a supplied set
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values float values
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this set.
+   */
+  public static Query newSetQuery(String field, float... values) {
+    if (field == null) {
+      throw new IllegalArgumentException("field cannot be null");
+    }
+    long points[] = new long[values.length];
+    for (int i = 0; i < values.length; i++) {
+      points[i] = NumericUtils.floatToSortableInt(values[i]);
+    }
+    return new IndexOrDocValuesQuery(
+        FloatPoint.newSetQuery(field, values.clone()),
+        SortedNumericDocValuesField.newSlowSetQuery(field, points));
   }
 
   /**

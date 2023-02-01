@@ -19,14 +19,14 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -45,11 +45,18 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
   public abstract void checkIntegrity() throws IOException;
 
   /**
-   * Returns the {@link VectorValues} for the given {@code field}. The behavior is undefined if the
-   * given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
    * never {@code null}.
    */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
+  public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -109,7 +116,7 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public abstract TopDocs search(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
    * that called {@link #getMergeInstance()}.

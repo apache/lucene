@@ -612,7 +612,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
-    Writer childLog;
+    final Writer childLog;
 
     if (SEPARATE_CHILD_OUTPUT) {
       Path childOut = childTempDir.resolve(id + ".log");

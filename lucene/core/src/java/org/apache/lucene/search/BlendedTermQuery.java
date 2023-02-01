@@ -314,14 +314,8 @@ public final class BlendedTermQuery extends Query {
       IndexReaderContext readerContext, TermStates ctx, int artificialDf, long artificialTtf)
       throws IOException {
     List<LeafReaderContext> leaves = readerContext.leaves();
-    final int len;
-    if (leaves == null) {
-      len = 1;
-    } else {
-      len = leaves.size();
-    }
     TermStates newCtx = new TermStates(readerContext);
-    for (int i = 0; i < len; ++i) {
+    for (int i = 0; i < leaves.size(); ++i) {
       TermState termState = ctx.get(leaves.get(i));
       if (termState == null) {
         continue;
