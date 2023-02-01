@@ -25,6 +25,7 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -174,53 +175,21 @@ public class TestLazyProxSkipping extends LuceneTestCase {
 
   // Simply extends IndexInput in a way that we are able to count the number
   // of invocations of seek()
-  class SeeksCountingStream extends IndexInput {
-    private IndexInput input;
+  class SeeksCountingStream extends FilterIndexInput {
 
     SeeksCountingStream(IndexInput input) {
-      super("SeekCountingStream(" + input + ")");
-      this.input = input;
-    }
-
-    @Override
-    public byte readByte() throws IOException {
-      return this.input.readByte();
-    }
-
-    @Override
-    public void readBytes(byte[] b, int offset, int len) throws IOException {
-      this.input.readBytes(b, offset, len);
-    }
-
-    @Override
-    public void close() throws IOException {
-      this.input.close();
-    }
-
-    @Override
-    public long getFilePointer() {
-      return this.input.getFilePointer();
+      super("SeekCountingStream(" + input + ")", input);
     }
 
     @Override
     public void seek(long pos) throws IOException {
       TestLazyProxSkipping.this.seeksCounter++;
-      this.input.seek(pos);
-    }
-
-    @Override
-    public long length() {
-      return this.input.length();
+      in.seek(pos);
     }
 
     @Override
     public SeeksCountingStream clone() {
-      return new SeeksCountingStream(this.input.clone());
-    }
-
-    @Override
-    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return new SeeksCountingStream(this.input.slice(sliceDescription, offset, length));
+      return new SeeksCountingStream(in.clone());
     }
   }
 }
