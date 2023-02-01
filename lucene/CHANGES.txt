@@ -116,7 +116,10 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
+  in order to achieve the same false positive probability with less memory.
+  (Jean-François Boeuf)
 
 Bug Fixes
 ---------------------
