@@ -29,9 +29,8 @@ import org.apache.lucene.util.NumericUtils;
 
 /**
  * Field that stores a per-document <code>float</code> value for scoring, sorting or value retrieval
- * and index the field for fast range filters. If you also need to store the value, you should add a
- * separate {@link StoredField} instance. If you need more fine-grained control you can use {@link
- * FloatPoint} and {@link FloatDocValuesField}.
+ * and index the field for fast range filters. If you need more fine-grained control you can use
+ * {@link FloatPoint}, {@link FloatDocValuesField} and {@link StoredField}.
  *
  * <p>This field defines static factory methods for creating common queries:
  *
