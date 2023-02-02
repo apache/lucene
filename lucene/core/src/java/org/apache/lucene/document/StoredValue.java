@@ -29,11 +29,17 @@ public final class StoredValue {
 
   /** Type of a {@link StoredValue}. */
   public enum Type {
+    /** Type of integer values. */
     INTEGER,
+    /** Type of long values. */
     LONG,
+    /** Type of float values. */
     FLOAT,
+    /** Type of double values. */
     DOUBLE,
+    /** Type of binary values. */
     BINARY,
+    /** Type of string values. */
     STRING;
   }
 
