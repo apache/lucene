@@ -127,7 +127,7 @@ public final class StoredValue {
   }
 
   /** Set a string value. */
-  public void setBinaryValue(String value) {
+  public void setStringValue(String value) {
     if (type != Type.STRING) {
       throw new IllegalArgumentException("Cannot set a string value on a " + type + " value");
     }

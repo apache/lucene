@@ -245,7 +245,7 @@ public class IndexFiles implements AutoCloseable {
       // year/month/day/hour/minutes/seconds, down the resolution you require.
       // For example the long value 2011021714 would mean
       // February 17, 2011, 2-3 PM.
-      doc.add(new LongField("modified", lastModified));
+      doc.add(new LongField("modified", lastModified, Field.Store.NO));
 
       // Add the contents of the file to a field named "contents".  Specify a Reader,
       // so that the text of the file is tokenized and indexed, but not stored.

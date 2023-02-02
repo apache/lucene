@@ -46,12 +46,19 @@ import org.apache.lucene.util.NumericUtils;
 public final class DoubleField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORED;
 
   static {
     FIELD_TYPE.setDimensions(1, Double.BYTES);
     FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     FIELD_TYPE.freeze();
+
+    FIELD_TYPE_STORED = new FieldType(FIELD_TYPE);
+    FIELD_TYPE_STORED.setStored(true);
+    FIELD_TYPE_STORED.freeze();
   }
+
+  private final StoredValue storedValue;
 
   /**
    * Creates a new DoubleField, indexing the provided point and storing it as a DocValue
@@ -59,10 +66,31 @@ public final class DoubleField extends Field {
    * @param name field name
    * @param value the double value
    * @throws IllegalArgumentException if the field name or value is null.
+   * @deprecated Use {@link #DoubleField(String, int, Field.Store)} with {@link Field.Store#NO}
+   *     instead.
    */
+  @Deprecated
   public DoubleField(String name, double value) {
-    super(name, FIELD_TYPE);
+    this(name, value, Field.Store.NO);
+  }
+
+  /**
+   * Creates a new DoubleField, indexing the provided point, storing it as a DocValue, and
+   * optionally storing it as a stored field.
+   *
+   * @param name field name
+   * @param value the double value
+   * @param stored whether to store the field
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public DoubleField(String name, double value, Field.Store stored) {
+    super(name, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
     fieldsData = NumericUtils.doubleToSortableLong(value);
+    if (stored == Field.Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   @Override
@@ -78,6 +106,11 @@ public final class DoubleField extends Field {
   }
 
   @Override
+  public StoredValue storedValue() {
+    return storedValue;
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName() + " <" + name + ':' + getValueAsDouble() + '>';
   }
@@ -85,6 +118,9 @@ public final class DoubleField extends Field {
   @Override
   public void setDoubleValue(double value) {
     super.setLongValue(NumericUtils.doubleToSortableLong(value));
+    if (storedValue != null) {
+      storedValue.setDoubleValue(value);
+    }
   }
 
   @Override

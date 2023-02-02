@@ -37,6 +37,7 @@ import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntField;
@@ -818,7 +819,7 @@ public class TestMemoryIndex extends LuceneTestCase {
           }
         };
 
-    Field intField = new IntField("int_field", 50);
+    Field intField = new IntField("int_field", 50, Store.NO);
 
     MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, multiField, intField), null);
     IndexSearcher searcher = index.createSearcher();

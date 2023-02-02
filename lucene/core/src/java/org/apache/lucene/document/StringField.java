@@ -45,6 +45,8 @@ public final class StringField extends Field {
     TYPE_STORED.freeze();
   }
 
+  private final StoredValue storedValue;
+
   /**
    * Creates a new textual StringField, indexing the provided String value as a single token.
    *
@@ -55,6 +57,11 @@ public final class StringField extends Field {
    */
   public StringField(String name, String value, Store stored) {
     super(name, value, stored == Store.YES ? TYPE_STORED : TYPE_NOT_STORED);
+    if (stored == Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   /**
@@ -69,5 +76,31 @@ public final class StringField extends Field {
    */
   public StringField(String name, BytesRef value, Store stored) {
     super(name, value, stored == Store.YES ? TYPE_STORED : TYPE_NOT_STORED);
+    if (stored == Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
+  }
+
+  @Override
+  public void setStringValue(String value) {
+    super.setStringValue(value);
+    if (storedValue != null) {
+      storedValue.setStringValue(value);
+    }
+  }
+
+  @Override
+  public void setBytesValue(BytesRef value) {
+    super.setBytesValue(value);
+    if (storedValue != null) {
+      storedValue.setBinaryValue(value);
+    }
+  }
+
+  @Override
+  public StoredValue storedValue() {
+    return storedValue;
   }
 }
