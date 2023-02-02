@@ -83,8 +83,8 @@ final class FeatureQuery extends Query {
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     if (!scoreMode.needsScores()) {
-      // We don't need scores, and since features are stored as terms, allow TermQuery to optimize
-      // in this case
+      // We don't need scores (e.g. for faceting), and since features are stored as terms,
+      // allow TermQuery to optimize in this case
       TermQuery tq = new TermQuery(new Term(fieldName, featureName));
       return searcher.rewrite(tq).createWeight(searcher, scoreMode, boost);
     }
