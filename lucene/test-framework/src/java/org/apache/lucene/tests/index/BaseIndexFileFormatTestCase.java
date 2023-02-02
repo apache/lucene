@@ -79,6 +79,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -803,40 +804,18 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
   }
 
-  private static class ReadBytesIndexInputWrapper extends IndexInput {
+  private static class ReadBytesIndexInputWrapper extends FilterIndexInput {
 
-    private final IndexInput in;
     private final IntConsumer readByte;
 
     ReadBytesIndexInputWrapper(IndexInput in, IntConsumer readByte) {
-      super(in.toString());
-      this.in = in;
+      super(in.toString(), in);
       this.readByte = readByte;
     }
 
     @Override
     public IndexInput clone() {
       return new ReadBytesIndexInputWrapper(in.clone(), readByte);
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
-    }
-
-    @Override
-    public long getFilePointer() {
-      return in.getFilePointer();
-    }
-
-    @Override
-    public void seek(long pos) throws IOException {
-      in.seek(pos);
-    }
-
-    @Override
-    public long length() {
-      return in.length();
     }
 
     @Override

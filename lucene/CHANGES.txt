@@ -116,7 +116,10 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
+  in order to achieve the same false positive probability with less memory.
+  (Jean-François Boeuf)
 
 Bug Fixes
 ---------------------
@@ -124,7 +127,9 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
+  IndexInput and IndexOutput classes (Marc D'Mello)
 
 ======================== Lucene 9.5.0 =======================
 

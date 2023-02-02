@@ -37,7 +37,7 @@ public enum VectorSimilarityFunction {
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
-      return 1 / (1 + squareDistance(v1, v2));
+      return 1 / (1f + squareDistance(v1, v2));
     }
   },
 
