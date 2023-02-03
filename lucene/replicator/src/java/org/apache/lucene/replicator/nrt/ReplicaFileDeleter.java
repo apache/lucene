@@ -17,12 +17,11 @@
 
 package org.apache.lucene.replicator.nrt;
 
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.FileDeleter;
-
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.FileDeleter;
 
 class ReplicaFileDeleter {
   private final FileDeleter fileDeleter;
