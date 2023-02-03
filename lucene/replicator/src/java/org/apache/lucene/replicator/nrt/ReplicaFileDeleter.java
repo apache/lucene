@@ -17,14 +17,12 @@
 
 package org.apache.lucene.replicator.nrt;
 
-import java.io.FileNotFoundException;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.FileDeleter;
+
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
 import java.util.Collection;
 import java.util.Set;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.FileDeleter;
 
 class ReplicaFileDeleter {
   private final FileDeleter fileDeleter;
@@ -42,19 +40,6 @@ class ReplicaFileDeleter {
                 node.message(s);
               }
             }));
-  }
-
-  /**
-   * Used only by asserts: returns true if the file exists (can be opened), false if it cannot be
-   * opened, and (unlike Java's File.exists) throws IOException if there's some unexpected error.
-   */
-  private static boolean slowFileExists(Directory dir, String fileName) throws IOException {
-    try {
-      dir.openInput(fileName, IOContext.DEFAULT).close();
-      return true;
-    } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
-      return false;
-    }
   }
 
   public synchronized void incRef(Collection<String> fileNames) throws IOException {
