@@ -74,7 +74,7 @@ public class FileDeleter {
   }
 
   public void incRef(String fileName) {
-    RefCount rc = getOrCreateRefCount(fileName);
+    RefCount rc = getRefCountInternal(fileName);
     if (messenger != null) {
       messenger.accept(MsgType.REF, "IncRef \"" + fileName + "\": pre-incr count is " + rc.count);
     }
@@ -111,7 +111,7 @@ public class FileDeleter {
 
   /** Returns true if the file should be deleted */
   private boolean decRef(String fileName) {
-    RefCount rc = getOrCreateRefCount(fileName);
+    RefCount rc = getRefCountInternal(fileName);
     if (messenger != null) {
       messenger.accept(MsgType.REF, "DecRef \"" + fileName + "\": pre-decr count is " + rc.count);
     }
@@ -122,13 +122,13 @@ public class FileDeleter {
     return false;
   }
 
-  private RefCount getOrCreateRefCount(String fileName) {
+  private RefCount getRefCountInternal(String fileName) {
     return refCounts.computeIfAbsent(fileName, RefCount::new);
   }
 
   /**
    * get ref count for a provided file, if the file is not yet recorded, this method will create a
-   * record with count 0
+   * new RefCount object with count 0
    */
   public int getRefCount(String fileName) {
     return refCounts.computeIfAbsent(fileName, RefCount::new).count;
