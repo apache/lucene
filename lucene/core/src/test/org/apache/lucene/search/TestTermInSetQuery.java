@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -100,23 +101,189 @@ public class TestTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
 
+  public void testRewriteApproaches() throws IOException {
+    final List<BytesRef> denseTerms = new ArrayList<>();
+    for (int i = 0; i < 25; ++i) {
+      final String value = TestUtil.randomSimpleString(random(), 20, 40);
+      denseTerms.add(newBytesRef(value));
+    }
+    final List<BytesRef> sparseTerms = new ArrayList<>();
+    for (int i = 0; i < 1000; i++) {
+      final String value = TestUtil.randomSimpleString(random(), 20, 40);
+      sparseTerms.add(newBytesRef(value));
+    }
+
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    // Almost all 100,000 docs have the same "lead" term. Each doc has a random "dense" term chosen
+    // from 25, so each of the 25 terms should cover 4,000 docs. Each doc also has a "sparse"
+    // term chosen from 1,000, so each of the 1,000 terms should cover 100 docs:
+    for (int i = 0; i < 100000; i++) {
+      Document doc = new Document();
+      // "common" covers all but 20 docs (which are covered by "rare"):
+      if (i % 5000 != 0) {
+        doc.add(new StringField("lead", new BytesRef("common"), Store.NO));
+      } else {
+        doc.add(new StringField("lead", new BytesRef("rare"), Store.NO));
+      }
+      BytesRef term = denseTerms.get(i % denseTerms.size());
+      doc.add(new StringField("t", term, Store.NO));
+      doc.add(new SortedSetDocValuesField("t", term));
+      term = sparseTerms.get(i % sparseTerms.size());
+      doc.add(new StringField("t", term, Store.NO));
+      doc.add(new SortedSetDocValuesField("t", term));
+      iw.addDocument(doc);
+    }
+    // Force merge to ensure our relative cost setup holds:
+    iw.forceMerge(1);
+
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    final float boost = random().nextFloat() * 10;
+
+    // Query with 20 of the random dense terms, meaning our term-in-set terms should cover 80,000
+    // docs in total. First do this with the "common" lead term to ensure we run a postings-based
+    // approach:
+    List<BytesRef> queryTerms = denseTerms.subList(0, 20);
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "common")), Occur.MUST);
+    for (BytesRef term : queryTerms) {
+      bq.add(new TermQuery(new Term("t", term)), Occur.SHOULD);
+    }
+    bq.setMinimumNumberShouldMatch(1);
+    Query q1 = new ConstantScoreQuery(bq.build());
+
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "common")), Occur.MUST);
+    bq.add(new TermInSetQuery("t", queryTerms), Occur.MUST);
+    Query q2 = new ConstantScoreQuery(bq.build());
+
+    assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+
+    // Query with 20 of the random sparse terms, meaning our term-in-set terms should cover 2,000
+    // docs in total. Each of the terms should only have 100 docs, forcing our term-in-set
+    // implementation to pre-process all the postings into a bitset up-front:
+    queryTerms = sparseTerms.subList(0, 20);
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "common")), Occur.MUST);
+    for (BytesRef term : queryTerms) {
+      bq.add(new TermQuery(new Term("t", term)), Occur.SHOULD);
+    }
+    bq.setMinimumNumberShouldMatch(1);
+    q1 = new ConstantScoreQuery(bq.build());
+
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "common")), Occur.MUST);
+    bq.add(new TermInSetQuery("t", queryTerms), Occur.MUST);
+    q2 = new ConstantScoreQuery(bq.build());
+
+    assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+
+    // Query with a mix of sparse and dense terms. The 20 sparse terms should cover 2,000 docs
+    // with each covering 100. These should all be pre-processed into a bitset. We then include
+    // 5 dense terms (each covering 4,000), which should not be pre-processed up-front. The total
+    // cost should be 22,000, which should still be low enough relative to the lead cost to force
+    // a postings-based approach:
+    queryTerms = new ArrayList<>(sparseTerms.subList(0, 20));
+    queryTerms.addAll(denseTerms.subList(0, 5));
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "common")), Occur.MUST);
+    for (BytesRef term : queryTerms) {
+      bq.add(new TermQuery(new Term("t", term)), Occur.SHOULD);
+    }
+    bq.setMinimumNumberShouldMatch(1);
+    q1 = new ConstantScoreQuery(bq.build());
+
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "common")), Occur.MUST);
+    bq.add(new TermInSetQuery("t", queryTerms), Occur.MUST);
+    q2 = new ConstantScoreQuery(bq.build());
+
+    assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+
+    // Now use a "rare" lead term with 50 sparse terms. Because there are only 20 "rare" docs, we
+    // should use a dv-approach based on the number of terms alone:
+    queryTerms = sparseTerms.subList(0, 50);
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "rare")), Occur.MUST);
+    for (BytesRef term : queryTerms) {
+      bq.add(new TermQuery(new Term("t", term)), Occur.SHOULD);
+    }
+    bq.setMinimumNumberShouldMatch(1);
+    q1 = new ConstantScoreQuery(bq.build());
+
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "rare")), Occur.MUST);
+    bq.add(new TermInSetQuery("t", queryTerms), Occur.MUST);
+    q2 = new ConstantScoreQuery(bq.build());
+
+    assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+
+    // Finally, run a similar query but with < 20 sparse terms to trigger a dv-approach based on
+    // visiting some terms to evaluate an expected cost:
+    queryTerms = denseTerms.subList(0, 18);
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "rare")), Occur.MUST);
+    for (BytesRef term : queryTerms) {
+      bq.add(new TermQuery(new Term("t", term)), Occur.SHOULD);
+    }
+    bq.setMinimumNumberShouldMatch(1);
+    q1 = new ConstantScoreQuery(bq.build());
+
+    bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(new Term("lead", "rare")), Occur.MUST);
+    bq.add(new TermInSetQuery("t", queryTerms), Occur.MUST);
+    q2 = new ConstantScoreQuery(bq.build());
+
+    assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+
+    reader.close();
+    dir.close();
+  }
+
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
+    final String leadField = "l";
     final String field = "f";
+    final BytesRef[] leadTerms = {new BytesRef("a"), new BytesRef("b"), new BytesRef("c")};
     for (int iter = 0; iter < iters; ++iter) {
+      final boolean indexDocValues = random().nextBoolean();
       final List<BytesRef> allTerms = new ArrayList<>();
       final int numTerms = TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 10));
       for (int i = 0; i < numTerms; ++i) {
         final String value = TestUtil.randomAnalysisString(random(), 10, true);
         allTerms.add(newBytesRef(value));
       }
+      final List<BytesRef> denseTerms = new ArrayList<>();
+      for (int i = 0; i < 5; ++i) {
+        final String value = TestUtil.randomAnalysisString(random(), 10, true);
+        denseTerms.add(newBytesRef(value));
+      }
       Directory dir = newDirectory();
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
       final int numDocs = atLeast(100);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
+        int r = random().nextInt(10);
+        BytesRef leadTerm;
+        if (r < 1) { // 10% chance
+          leadTerm = leadTerms[0];
+        } else if (r < 4) { // 30% chance
+          leadTerm = leadTerms[1];
+        } else { // 60% chance
+          leadTerm = leadTerms[2];
+        }
+        doc.add(new StringField(leadField, leadTerm, Store.NO));
         final BytesRef term = allTerms.get(random().nextInt(allTerms.size()));
         doc.add(new StringField(field, term, Store.NO));
+        final BytesRef denseTerm = denseTerms.get(random().nextInt(denseTerms.size()));
+        doc.add(new StringField(field, denseTerm, Store.NO));
+        if (indexDocValues) {
+          doc.add(new SortedSetDocValuesField(field, term));
+          doc.add(new SortedSetDocValuesField(field, denseTerm));
+        }
         iw.addDocument(doc);
       }
       if (numTerms > 1 && random().nextBoolean()) {
@@ -139,15 +306,35 @@ public class TestTermInSetQuery extends LuceneTestCase {
             TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 8));
         List<BytesRef> queryTerms = new ArrayList<>();
         for (int j = 0; j < numQueryTerms; ++j) {
-          queryTerms.add(allTerms.get(random().nextInt(allTerms.size())));
+          List<BytesRef> candidateTerms;
+          if (random().nextInt(10) < 3) {
+            candidateTerms = denseTerms;
+          } else {
+            candidateTerms = allTerms;
+          }
+          queryTerms.add(candidateTerms.get(random().nextInt(candidateTerms.size())));
         }
-        final BooleanQuery.Builder bq = new BooleanQuery.Builder();
+        BooleanQuery.Builder bq = new BooleanQuery.Builder();
         for (BytesRef t : queryTerms) {
           bq.add(new TermQuery(new Term(field, t)), Occur.SHOULD);
         }
         final Query q1 = new ConstantScoreQuery(bq.build());
         final Query q2 = new TermInSetQuery(field, queryTerms);
         assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+
+        for (BytesRef lead : leadTerms) {
+          bq = new BooleanQuery.Builder();
+          bq.add(new TermQuery(new Term(leadField, lead)), Occur.MUST);
+          bq.add(q1, Occur.MUST);
+          final Query q3 = new ConstantScoreQuery(bq.build());
+
+          bq = new BooleanQuery.Builder();
+          bq.add(new TermQuery(new Term(leadField, lead)), Occur.MUST);
+          bq.add(q2, Occur.MUST);
+          final Query q4 = new ConstantScoreQuery(bq.build());
+
+          assertSameMatches(searcher, new BoostQuery(q3, boost), new BoostQuery(q4, boost), true);
+        }
       }
 
       reader.close();

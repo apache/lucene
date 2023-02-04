@@ -120,8 +120,11 @@ Optimizations
 * GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
   in order to achieve the same false positive probability with less memory.
   (Jean-François Boeuf)
-  
+
 * GITHUB#12118 Optimize FeatureQuery to TermQuery & weight when scoring is not required (Ben Trent, Robert Muir)
+
+* GITHUB#12089: TermInSetQuery will choose between using postings and doc values (if doc values are indexed) to more
+  optimally execute the query. (Greg Miller)
 
 Bug Fixes
 ---------------------
