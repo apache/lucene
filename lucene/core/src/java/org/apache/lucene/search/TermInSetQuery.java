@@ -647,6 +647,8 @@ public class TermInSetQuery extends Query implements Accountable {
         SortedSetDocValues dv = DocValues.getSortedSet(reader, field);
 
         boolean hasAtLeastOneTerm = false;
+        // TODO: Consider LongHashSet instead. Benchmarks hinted that this might increase latency
+        // by as much as 20%, but we should revisit.
         LongBitSet ords = new LongBitSet(dv.getValueCount());
         PrefixCodedTerms.TermIterator termIterator = termData.iterator();
         for (BytesRef term = termIterator.next(); term != null; term = termIterator.next()) {
