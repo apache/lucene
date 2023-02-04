@@ -524,6 +524,11 @@ public class TestField extends LuceneTestCase {
       trySetTokenStreamValue(field);
 
       assertEquals("baz", field.stringValue());
+      if (field.fieldType().stored()) {
+        assertEquals("baz", field.storedValue().getStringValue());
+      } else {
+        assertNull(field.storedValue());
+      }
     }
   }
 
@@ -543,6 +548,7 @@ public class TestField extends LuceneTestCase {
     trySetTokenStreamValue(field);
 
     assertNotNull(field.readerValue());
+    assertNull(field.storedValue());
   }
 
   /* TODO: this is pretty expert and crazy
