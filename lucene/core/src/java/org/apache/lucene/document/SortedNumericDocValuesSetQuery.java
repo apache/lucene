@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -37,7 +36,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /** Similar to SortedNumericDocValuesRangeQuery but for a set */
-abstract class SortedNumericDocValuesSetQuery extends Query implements Accountable {
+final class SortedNumericDocValuesSetQuery extends Query implements Accountable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(SortedNumericDocValuesSetQuery.class);
 
@@ -60,7 +59,7 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
 
   @Override
   public int hashCode() {
-    return 31 * classHash() + Objects.hash(field, numbers);
+    return Objects.hash(classHash(), field, numbers);
   }
 
   @Override
@@ -90,8 +89,6 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
     return super.rewrite(indexSearcher);
   }
 
-  abstract SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException;
-
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
@@ -104,10 +101,10 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues values = getValues(context.reader(), field);
-        if (values == null) {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         final TwoPhaseIterator iterator;
         if (singleton != null) {

@@ -16,11 +16,7 @@
  */
 package org.apache.lucene.document;
 
-import java.io.IOException;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
@@ -78,12 +74,7 @@ public class SortedSetDocValuesField extends Field {
       boolean lowerInclusive,
       boolean upperInclusive) {
     return new SortedSetDocValuesRangeQuery(
-        field, lowerValue, upperValue, lowerInclusive, upperInclusive) {
-      @Override
-      SortedSetDocValues getValues(LeafReader reader, String field) throws IOException {
-        return DocValues.getSortedSet(reader, field);
-      }
-    };
+        field, lowerValue, upperValue, lowerInclusive, upperInclusive);
   }
 
   /**
