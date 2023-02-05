@@ -14,15 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.document;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -31,6 +27,7 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -41,18 +38,74 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-public class TestDocValuesTermsQuery extends LuceneTestCase {
+public class TestSortedSetDocValuesSetQuery extends LuceneTestCase {
+
+  public void testMissingTerms() throws Exception {
+    String fieldName = "field1";
+    Directory rd = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), rd);
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      int term = i * 10; // terms are units of 10;
+      doc.add(newStringField(fieldName, "" + term, Field.Store.YES));
+      doc.add(new SortedDocValuesField(fieldName, new BytesRef("" + term)));
+      w.addDocument(doc);
+    }
+    IndexReader reader = w.getReader();
+    w.close();
+
+    IndexSearcher searcher = newSearcher(reader);
+    int numDocs = reader.numDocs();
+    ScoreDoc[] results;
+
+    List<BytesRef> terms = new ArrayList<>();
+    terms.add(new BytesRef("5"));
+    results =
+        searcher.search(
+                SortedDocValuesField.newSlowSetQuery(fieldName, terms.toArray(new BytesRef[0])),
+                numDocs)
+            .scoreDocs;
+    assertEquals("Must match nothing", 0, results.length);
+
+    terms = new ArrayList<>();
+    terms.add(new BytesRef("10"));
+    results =
+        searcher.search(
+                SortedDocValuesField.newSlowSetQuery(fieldName, terms.toArray(new BytesRef[0])),
+                numDocs)
+            .scoreDocs;
+    assertEquals("Must match 1", 1, results.length);
+
+    terms = new ArrayList<>();
+    terms.add(new BytesRef("10"));
+    terms.add(new BytesRef("20"));
+    results =
+        searcher.search(
+                SortedDocValuesField.newSlowSetQuery(fieldName, terms.toArray(new BytesRef[0])),
+                numDocs)
+            .scoreDocs;
+    assertEquals("Must match 2", 2, results.length);
+
+    reader.close();
+    rd.close();
+  }
 
   public void testEquals() {
-    assertEquals(new DocValuesTermsQuery("foo", "bar"), new DocValuesTermsQuery("foo", "bar"));
     assertEquals(
-        new DocValuesTermsQuery("foo", "bar"), new DocValuesTermsQuery("foo", "bar", "bar"));
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar")),
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar")));
     assertEquals(
-        new DocValuesTermsQuery("foo", "bar", "baz"), new DocValuesTermsQuery("foo", "baz", "bar"));
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar")),
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"), new BytesRef("bar")));
+    assertEquals(
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"), new BytesRef("baz")),
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("baz"), new BytesRef("bar")));
     assertFalse(
-        new DocValuesTermsQuery("foo", "bar").equals(new DocValuesTermsQuery("foo2", "bar")));
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"))
+            .equals(SortedDocValuesField.newSlowSetQuery("foo2", new BytesRef("bar"))));
     assertFalse(
-        new DocValuesTermsQuery("foo", "bar").equals(new DocValuesTermsQuery("foo", "baz")));
+        SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("bar"))
+            .equals(SortedDocValuesField.newSlowSetQuery("foo", new BytesRef("baz"))));
   }
 
   public void testDuelTermsQuery() throws IOException {
@@ -70,7 +123,7 @@ public class TestDocValuesTermsQuery extends LuceneTestCase {
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final Term term = allTerms.get(random().nextInt(allTerms.size()));
-        doc.add(new StringField(term.field(), term.text(), Store.NO));
+        doc.add(new StringField(term.field(), term.text(), Field.Store.NO));
         doc.add(new SortedDocValuesField(term.field(), new BytesRef(term.text())));
         iw.addDocument(doc);
       }
@@ -101,12 +154,14 @@ public class TestDocValuesTermsQuery extends LuceneTestCase {
           bq.add(new TermQuery(term), Occur.SHOULD);
         }
         Query q1 = new BoostQuery(new ConstantScoreQuery(bq.build()), boost);
-        List<String> bytesTerms = new ArrayList<>();
+        List<BytesRef> bytesTerms = new ArrayList<>();
         for (Term term : queryTerms) {
-          bytesTerms.add(term.text());
+          bytesTerms.add(term.bytes());
         }
         final Query q2 =
-            new BoostQuery(new DocValuesTermsQuery("f", bytesTerms.toArray(new String[0])), boost);
+            new BoostQuery(
+                SortedDocValuesField.newSlowSetQuery("f", bytesTerms.toArray(new BytesRef[0])),
+                boost);
         assertSameMatches(searcher, q1, q2, true);
       }
 
@@ -130,7 +185,7 @@ public class TestDocValuesTermsQuery extends LuceneTestCase {
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final Term term = allTerms.get(random().nextInt(allTerms.size()));
-        doc.add(new StringField(term.field(), term.text(), Store.NO));
+        doc.add(new StringField(term.field(), term.text(), Field.Store.NO));
         doc.add(new SortedDocValuesField(term.field(), new BytesRef(term.text())));
         iw.addDocument(doc);
       }
@@ -161,12 +216,14 @@ public class TestDocValuesTermsQuery extends LuceneTestCase {
           bq.add(new TermQuery(term), Occur.SHOULD);
         }
         Query q1 = new BoostQuery(new ConstantScoreQuery(bq.build()), boost);
-        List<String> bytesTerms = new ArrayList<>();
+        List<BytesRef> bytesTerms = new ArrayList<>();
         for (Term term : queryTerms) {
-          bytesTerms.add(term.text());
+          bytesTerms.add(term.bytes());
         }
         final Query q2 =
-            new BoostQuery(new DocValuesTermsQuery("f", bytesTerms.toArray(new String[0])), boost);
+            new BoostQuery(
+                SortedDocValuesField.newSlowSetQuery("f", bytesTerms.toArray(new BytesRef[0])),
+                boost);
 
         BooleanQuery.Builder bq1 = new BooleanQuery.Builder();
         bq1.add(q1, Occur.MUST);

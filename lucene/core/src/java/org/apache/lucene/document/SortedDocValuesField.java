@@ -97,4 +97,16 @@ public class SortedDocValuesField extends Field {
   public static Query newSlowExactQuery(String field, BytesRef value) {
     return newSlowRangeQuery(field, value, value, true, true);
   }
+
+  /**
+   * Create a query matching any of the specified values.
+   *
+   * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them
+   * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
+   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on points, such as
+   * {@link BinaryPoint#newSetQuery}.
+   */
+  public static Query newSlowSetQuery(String field, BytesRef... values) {
+    return new SortedSetDocValuesSetQuery(field, values.clone());
+  }
 }
