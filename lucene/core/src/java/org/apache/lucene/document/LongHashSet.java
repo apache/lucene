@@ -120,6 +120,27 @@ final class LongHashSet implements Accountable {
     return false;
   }
 
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder("[");
+    boolean seenValue = false;
+    if (hasMissingValue) {
+      sb.append(MISSING);
+      seenValue = true;
+    }
+    for (long v : table) {
+      if (v != MISSING) {
+        if (seenValue) {
+          sb.append(", ");
+        }
+        sb.append(v);
+        seenValue = true;
+      }
+    }
+    sb.append("]");
+    return sb.toString();
+  }
+
   /** number of elements in the set */
   int size() {
     return size;
@@ -133,13 +154,13 @@ final class LongHashSet implements Accountable {
   // for testing only
   Set<Long> toSet() {
     Set<Long> set = new HashSet<>();
+    if (hasMissingValue) {
+      set.add(MISSING);
+    }
     for (long v : table) {
       if (v != MISSING) {
         set.add(v);
       }
-    }
-    if (hasMissingValue) {
-      set.add(MISSING);
     }
     return set;
   }
