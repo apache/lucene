@@ -26,15 +26,18 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
@@ -192,41 +195,85 @@ public class DocValuesTermsQuery extends Query implements Accountable {
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        final SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
-        final LongBitSet bits = new LongBitSet(values.getValueCount());
-        boolean matchesAtLeastOneTerm = false;
-        TermIterator iterator = termData.iterator();
-        for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-          final long ord = values.lookupTerm(term);
-          if (ord >= 0) {
-            matchesAtLeastOneTerm = true;
-            bits.set(ord);
-          }
-        }
-        if (matchesAtLeastOneTerm == false) {
+        ScorerSupplier scorerSupplier = scorerSupplier(context);
+        if (scorerSupplier == null) {
           return null;
         }
-        return new ConstantScoreScorer(
-            this,
-            score(),
-            scoreMode,
-            new TwoPhaseIterator(values) {
+        return scorerSupplier.get(Long.MAX_VALUE);
+      }
 
-              @Override
-              public boolean matches() throws IOException {
-                for (int i = 0; i < values.docValueCount(); i++) {
-                  if (bits.get(values.nextOrd())) {
-                    return true;
-                  }
-                }
-                return false;
-              }
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Weight weight = this;
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+          return null;
+        }
+        final SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
 
-              @Override
-              public float matchCost() {
-                return 3; // lookup in a bitset
+        // implement ScorerSupplier, since we do some expensive stuff to make a scorer
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            final LongBitSet bits = new LongBitSet(values.getValueCount());
+            long maxOrd = -1;
+            TermIterator termIterator = termData.iterator();
+            for (BytesRef term = termIterator.next(); term != null; term = termIterator.next()) {
+              final long ord = values.lookupTerm(term);
+              if (ord >= 0) {
+                maxOrd = ord;
+                bits.set(ord);
               }
-            });
+            }
+            // no terms matched in this segment
+            if (maxOrd < 0) {
+              return new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty());
+            }
+            final SortedDocValues singleton = DocValues.unwrapSingleton(values);
+            final TwoPhaseIterator iterator;
+            final long max = maxOrd;
+            if (singleton != null) {
+              iterator =
+                  new TwoPhaseIterator(singleton) {
+                    @Override
+                    public boolean matches() throws IOException {
+                      return bits.get(singleton.ordValue());
+                    }
+
+                    @Override
+                    public float matchCost() {
+                      return 3; // lookup in a bitset
+                    }
+                  };
+            } else {
+              iterator =
+                  new TwoPhaseIterator(values) {
+                    @Override
+                    public boolean matches() throws IOException {
+                      for (int i = 0; i < values.docValueCount(); i++) {
+                        long value = values.nextOrd();
+                        if (value > max) {
+                          return false; // values are sorted, terminate
+                        } else if (bits.get(value)) {
+                          return true;
+                        }
+                      }
+                      return false;
+                    }
+
+                    @Override
+                    public float matchCost() {
+                      return 3; // lookup in a bitset
+                    }
+                  };
+            }
+            return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+          }
+
+          @Override
+          public long cost() {
+            return values.cost();
+          }
+        };
       }
 
       @Override
