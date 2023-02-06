@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -45,6 +46,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
 
   SortedNumericDocValuesSetQuery(String field, long[] numbers) {
     this.field = Objects.requireNonNull(field);
+    Arrays.sort(numbers);
     this.numbers = new LongHashSet(numbers);
   }
 
@@ -112,12 +114,15 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
               new TwoPhaseIterator(singleton) {
                 @Override
                 public boolean matches() throws IOException {
-                  return numbers.contains(singleton.longValue());
+                  long value = singleton.longValue();
+                  return value >= numbers.minValue
+                      && value <= numbers.maxValue
+                      && numbers.contains(value);
                 }
 
                 @Override
                 public float matchCost() {
-                  return 5; // lookup in the set
+                  return 5; // 2 comparisions, possible lookup in the set
                 }
               };
         } else {
@@ -127,7 +132,12 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
                 public boolean matches() throws IOException {
                   int count = values.docValueCount();
                   for (int i = 0; i < count; i++) {
-                    if (numbers.contains(values.nextValue())) {
+                    final long value = values.nextValue();
+                    if (value < numbers.minValue) {
+                      continue;
+                    } else if (value > numbers.maxValue) {
+                      return false; // values are sorted, terminate
+                    } else if (numbers.contains(value)) {
                       return true;
                     }
                   }
@@ -136,7 +146,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
 
                 @Override
                 public float matchCost() {
-                  return 5; // lookup in the set
+                  return 5; // 2 comparisons, possible lookup in the set
                 }
               };
         }

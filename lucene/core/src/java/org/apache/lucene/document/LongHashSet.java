@@ -16,15 +16,16 @@
  */
 package org.apache.lucene.document;
 
-import java.util.AbstractSet;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 
-final class LongHashSet extends AbstractSet<Long> implements Accountable {
+/** Set of longs, optimized for docvalues usage */
+final class LongHashSet implements Accountable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(LongHashSet.class);
 
@@ -34,8 +35,12 @@ final class LongHashSet extends AbstractSet<Long> implements Accountable {
   final int mask;
   final boolean hasMissingValue;
   final int size;
-  final int hashCode;
+  /** minimum value in the set, or Long.MAX_VALUE for an empty set */
+  final long minValue;
+  /** maximum value in the set, or Long.MIN_VALUE for an empty set */
+  final long maxValue;
 
+  /** Construct a set. Values must be in sorted order. */
   LongHashSet(long[] values) {
     int tableSize = Math.toIntExact(values.length * 3L / 2);
     tableSize = 1 << PackedInts.bitsRequired(tableSize); // make it a power of 2
@@ -45,19 +50,21 @@ final class LongHashSet extends AbstractSet<Long> implements Accountable {
     mask = tableSize - 1;
     boolean hasMissingValue = false;
     int size = 0;
-    int hashCode = 0;
+    long previousValue = Long.MIN_VALUE; // for assert
     for (long value : values) {
       if (value == MISSING || add(value)) {
         if (value == MISSING) {
           hasMissingValue = true;
         }
         ++size;
-        hashCode += Long.hashCode(value);
       }
+      assert value >= previousValue : "values must be provided in sorted order";
+      previousValue = value;
     }
     this.hasMissingValue = hasMissingValue;
     this.size = size;
-    this.hashCode = hashCode;
+    this.minValue = values.length == 0 ? Long.MAX_VALUE : values[0];
+    this.maxValue = values.length == 0 ? Long.MIN_VALUE : values[values.length - 1];
   }
 
   private boolean add(long l) {
@@ -74,6 +81,12 @@ final class LongHashSet extends AbstractSet<Long> implements Accountable {
     }
   }
 
+  /**
+   * check for membership in the set.
+   *
+   * <p>You should use {@link #minValue} and {@link #maxValue} to guide/terminate iteration before
+   * calling this.
+   */
   boolean contains(long l) {
     if (l == MISSING) {
       return hasMissingValue;
@@ -89,32 +102,48 @@ final class LongHashSet extends AbstractSet<Long> implements Accountable {
   }
 
   @Override
-  public int size() {
-    return size;
-  }
-
-  @Override
   public int hashCode() {
-    return hashCode;
+    return Objects.hash(size, minValue, maxValue, mask, hasMissingValue, Arrays.hashCode(table));
   }
 
   @Override
   public boolean equals(Object obj) {
-    if (obj != null && obj.getClass() == LongHashSet.class) {
+    if (obj != null && obj instanceof LongHashSet) {
       LongHashSet that = (LongHashSet) obj;
-      if (hashCode != that.hashCode
-          || size != that.size
-          || hasMissingValue != that.hasMissingValue) {
-        return false;
-      }
-      for (long v : table) {
-        if (v != MISSING && that.contains(v) == false) {
-          return false;
-        }
-      }
-      return true;
+      return size == that.size
+          && minValue == that.minValue
+          && maxValue == that.maxValue
+          && mask == that.mask
+          && hasMissingValue == that.hasMissingValue
+          && Arrays.equals(table, that.table);
     }
-    return super.equals(obj);
+    return false;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder("[");
+    boolean seenValue = false;
+    if (hasMissingValue) {
+      sb.append(MISSING);
+      seenValue = true;
+    }
+    for (long v : table) {
+      if (v != MISSING) {
+        if (seenValue) {
+          sb.append(", ");
+        }
+        sb.append(v);
+        seenValue = true;
+      }
+    }
+    sb.append("]");
+    return sb.toString();
+  }
+
+  /** number of elements in the set */
+  int size() {
+    return size;
   }
 
   @Override
@@ -122,41 +151,17 @@ final class LongHashSet extends AbstractSet<Long> implements Accountable {
     return BASE_RAM_BYTES + RamUsageEstimator.sizeOfObject(table);
   }
 
-  @Override
-  public boolean contains(Object o) {
-    return o instanceof Long && contains(((Long) o).longValue());
-  }
-
-  @Override
-  public Iterator<Long> iterator() {
-    return new Iterator<Long>() {
-
-      private boolean hasNext = hasMissingValue;
-      private int i = -1;
-      private long value = MISSING;
-
-      @Override
-      public boolean hasNext() {
-        if (hasNext) {
-          return true;
-        }
-        while (++i < table.length) {
-          value = table[i];
-          if (value != MISSING) {
-            return hasNext = true;
-          }
-        }
-        return false;
+  // for testing only
+  Set<Long> toSet() {
+    Set<Long> set = new HashSet<>();
+    if (hasMissingValue) {
+      set.add(MISSING);
+    }
+    for (long v : table) {
+      if (v != MISSING) {
+        set.add(v);
       }
-
-      @Override
-      public Long next() {
-        if (hasNext() == false) {
-          throw new NoSuchElementException();
-        }
-        hasNext = false;
-        return value;
-      }
-    };
+    }
+    return set;
   }
 }
