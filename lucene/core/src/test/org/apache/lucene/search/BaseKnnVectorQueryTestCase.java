@@ -38,7 +38,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -49,7 +48,7 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
-/** Test cases for KnnVectorQuery objects. */
+/** Test cases for AbstractKnnVectorQuery objects. */
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
@@ -63,8 +62,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   abstract float[] randomVector(int dim);
-
-  abstract VectorEncoding vectorEncoding();
 
   abstract Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction);
@@ -93,6 +90,33 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {1, 1}, 10));
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 2));
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0}, 10));
+  }
+
+  public void testGetField() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 10, filter1);
+
+    assertEquals("f1", q1.getField());
+    assertEquals("f2", q2.getField());
+  }
+
+  public void testGetK() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 6);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 7, filter1);
+
+    assertEquals(6, q1.getK());
+    assertEquals(7, q2.getK());
+  }
+
+  public void testGetFilter() {
+    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 6);
+    Query filter1 = new TermQuery(new Term("id", "id1"));
+    AbstractKnnVectorQuery q2 = getKnnVectorQuery("f2", new float[] {0, 1}, 7, filter1);
+
+    assertNull(q1.getFilter());
+    assertEquals(filter1, q2.getFilter());
   }
 
   /**

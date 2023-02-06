@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -376,7 +377,7 @@ public final class CheckIndex implements Closeable {
       public Throwable error;
     }
 
-    /** Status from testing VectorValues */
+    /** Status from testing vector values */
     public static final class VectorValuesStatus {
 
       VectorValuesStatus() {}
@@ -1014,7 +1015,7 @@ public final class CheckIndex implements Closeable {
         // Test PointValues
         segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
 
-        // Test VectorValues
+        // Test FloatVectorValues and ByteVectorValues
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
         // Test Index Sort
@@ -2588,62 +2589,37 @@ public final class CheckIndex implements Closeable {
                       + "\" has vector values but dimension is "
                       + dimension);
             }
-            VectorValues values = reader.getVectorValues(fieldInfo.name);
-            if (values == null) {
+            if (reader.getFloatVectorValues(fieldInfo.name) == null
+                && reader.getByteVectorValues(fieldInfo.name) == null) {
               continue;
             }
 
             status.totalKnnVectorFields++;
-
-            int docCount = 0;
-            int everyNdoc = Math.max(values.size() / 64, 1);
-            while (values.nextDoc() != NO_MORE_DOCS) {
-              // search the first maxNumSearches vectors to exercise the graph
-              if (values.docID() % everyNdoc == 0) {
-                TopDocs docs =
-                    switch (fieldInfo.getVectorEncoding()) {
-                      case FLOAT32 -> reader
-                          .getVectorReader()
-                          .search(
-                              fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
-                      case BYTE -> reader
-                          .getVectorReader()
-                          .search(
-                              fieldInfo.name, values.binaryValue(), 10, null, Integer.MAX_VALUE);
-                    };
-                if (docs.scoreDocs.length == 0) {
-                  throw new CheckIndexException(
-                      "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
-                }
-              }
-              float[] vectorValue = values.vectorValue();
-              int valueLength = vectorValue.length;
-              if (valueLength != dimension) {
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE:
+                checkByteVectorValues(
+                    Objects.requireNonNull(reader.getByteVectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
+              case FLOAT32:
+                checkFloatVectorValues(
+                    Objects.requireNonNull(reader.getFloatVectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
+              default:
                 throw new CheckIndexException(
                     "Field \""
                         + fieldInfo.name
-                        + "\" has a value whose dimension="
-                        + valueLength
-                        + " not matching the field's dimension="
-                        + dimension);
-              }
-              ++docCount;
+                        + "\" has unexpected vector encoding: "
+                        + fieldInfo.getVectorEncoding());
             }
-            if (docCount != values.size()) {
-              throw new CheckIndexException(
-                  "Field \""
-                      + fieldInfo.name
-                      + "\" has size="
-                      + values.size()
-                      + " but when iterated, returns "
-                      + docCount
-                      + " docs with values");
-            }
-            status.totalVectorValues += docCount;
           }
         }
       }
-
       msg(
           infoStream,
           String.format(
@@ -2665,6 +2641,96 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  private static void checkFloatVectorValues(
+      FloatVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int docCount = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    while (values.nextDoc() != NO_MORE_DOCS) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (values.docID() % everyNdoc == 0) {
+        TopDocs docs =
+            codecReader
+                .getVectorReader()
+                .search(fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
+        if (docs.scoreDocs.length == 0) {
+          throw new CheckIndexException(
+              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        }
+      }
+      int valueLength = values.vectorValue().length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++docCount;
+    }
+    if (docCount != values.size()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + docCount
+              + " docs with values");
+    }
+    status.totalVectorValues += docCount;
+  }
+
+  private static void checkByteVectorValues(
+      ByteVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int docCount = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    while (values.nextDoc() != NO_MORE_DOCS) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (values.docID() % everyNdoc == 0) {
+        TopDocs docs =
+            codecReader
+                .getVectorReader()
+                .search(fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
+        if (docs.scoreDocs.length == 0) {
+          throw new CheckIndexException(
+              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        }
+      }
+      int valueLength = values.vectorValue().length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++docCount;
+    }
+    if (docCount != values.size()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + docCount
+              + " docs with values");
+    }
+    status.totalVectorValues += docCount;
   }
 
   /**

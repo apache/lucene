@@ -48,7 +48,7 @@ public final class Lucene90HnswGraphBuilder {
   private final Lucene90NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
-  private final RandomAccessVectorValues vectorValues;
+  private final RandomAccessVectorValues<float[]> vectorValues;
   private final SplittableRandom random;
   private final Lucene90BoundsChecker bound;
   final Lucene90OnHeapHnswGraph hnsw;
@@ -57,10 +57,10 @@ public final class Lucene90HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private final RandomAccessVectorValues buildVectors;
+  private final RandomAccessVectorValues<float[]> buildVectors;
 
   /**
-   * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
+   * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
@@ -72,7 +72,7 @@ public final class Lucene90HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene90HnswGraphBuilder(
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
@@ -96,14 +96,15 @@ public final class Lucene90HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a random access VectorValues. Providing two copies
-   * enables efficient retrieval without extra data copying, while avoiding collision of the
+   * Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
+   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public Lucene90OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public Lucene90OnHeapHnswGraph build(RandomAccessVectorValues<float[]> vectors)
+      throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -229,7 +230,7 @@ public final class Lucene90HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene90NeighborArray neighbors,
-      RandomAccessVectorValues vectorValues)
+      RandomAccessVectorValues<float[]> vectorValues)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {

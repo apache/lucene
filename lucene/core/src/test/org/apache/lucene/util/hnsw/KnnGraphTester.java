@@ -45,7 +45,8 @@ import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -59,7 +60,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
@@ -70,9 +71,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -515,12 +514,10 @@ public class KnnGraphTester {
 
   private static class VectorReaderByte extends VectorReader {
     private final byte[] scratch;
-    private final BytesRef bytesRef;
 
     VectorReaderByte(FileChannel input, int dim, int bufferSize) {
       super(input, dim, bufferSize);
       scratch = new byte[dim];
-      bytesRef = new BytesRef(scratch);
     }
 
     @Override
@@ -533,17 +530,17 @@ public class KnnGraphTester {
       return target;
     }
 
-    BytesRef nextBytes() throws IOException {
+    byte[] nextBytes() throws IOException {
       readNext();
       bytes.get(scratch);
-      return bytesRef;
+      return scratch;
     }
   }
 
   private static TopDocs doKnnVectorQuery(
       IndexSearcher searcher, String field, float[] vector, int k, int fanout, Query filter)
       throws IOException {
-    return searcher.search(new KnnVectorQuery(field, vector, k + fanout, filter), k);
+    return searcher.search(new KnnFloatVectorQuery(field, vector, k + fanout, filter), k);
   }
 
   private float checkResults(TopDocs[] results, int[][] nn) {
@@ -704,7 +701,11 @@ public class KnnGraphTester {
     iwc.setUseCompoundFile(false);
     // iwc.setMaxBufferedDocs(10000);
 
-    FieldType fieldType = KnnVectorField.createFieldType(dim, vectorEncoding, similarityFunction);
+    FieldType fieldType =
+        switch (vectorEncoding) {
+          case BYTE -> KnnByteVectorField.createFieldType(dim, similarityFunction);
+          case FLOAT32 -> KnnFloatVectorField.createFieldType(dim, similarityFunction);
+        };
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));
       System.out.println("creating index in " + indexPath);
@@ -718,9 +719,10 @@ public class KnnGraphTester {
           Document doc = new Document();
           switch (vectorEncoding) {
             case BYTE -> doc.add(
-                new KnnVectorField(
+                new KnnByteVectorField(
                     KNN_FIELD, ((VectorReaderByte) vectorReader).nextBytes(), fieldType));
-            case FLOAT32 -> doc.add(new KnnVectorField(KNN_FIELD, vectorReader.next(), fieldType));
+            case FLOAT32 -> doc.add(
+                new KnnFloatVectorField(KNN_FIELD, vectorReader.next(), fieldType));
           }
           doc.add(new StoredField(ID_FIELD, i));
           iw.addDocument(doc);
@@ -745,40 +747,7 @@ public class KnnGraphTester {
     System.exit(1);
   }
 
-  static class NeighborArraySorter extends IntroSorter {
-    private final int[] node;
-    private final float[] score;
-
-    NeighborArraySorter(NeighborArray neighbors) {
-      node = neighbors.node;
-      score = neighbors.score;
-    }
-
-    int pivot;
-
-    @Override
-    protected void swap(int i, int j) {
-      int tmpNode = node[i];
-      float tmpScore = score[i];
-      node[i] = node[j];
-      score[i] = score[j];
-      node[j] = tmpNode;
-      score[j] = tmpScore;
-    }
-
-    @Override
-    protected void setPivot(int i) {
-      pivot = i;
-    }
-
-    @Override
-    protected int comparePivot(int j) {
-      return Float.compare(score[pivot], score[j]);
-    }
-  }
-
   private static class BitSetQuery extends Query {
-
     private final FixedBitSet docs;
     private final int cardinality;
 

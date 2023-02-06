@@ -19,22 +19,21 @@ package org.apache.lucene.tests.store;
 
 import java.io.IOException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 
 /** Corrupts on bit of a file after close */
-public class CorruptingIndexOutput extends IndexOutput {
-  protected final IndexOutput out;
+public class CorruptingIndexOutput extends FilterIndexOutput {
   final Directory dir;
   final long byteToCorrupt;
   private boolean closed;
 
   public CorruptingIndexOutput(Directory dir, long byteToCorrupt, IndexOutput out) {
-    super("CorruptingIndexOutput(" + out + ")", out.getName());
+    super("CorruptingIndexOutput(" + out + ")", out.getName(), out);
     this.dir = dir;
     this.byteToCorrupt = byteToCorrupt;
-    this.out = out;
   }
 
   @Override
@@ -84,23 +83,8 @@ public class CorruptingIndexOutput extends IndexOutput {
   }
 
   @Override
-  public long getFilePointer() {
-    return out.getFilePointer();
-  }
-
-  @Override
   public long getChecksum() throws IOException {
     return out.getChecksum() ^ 1;
-  }
-
-  @Override
-  public String toString() {
-    return "CorruptingIndexOutput(" + out + ")";
-  }
-
-  @Override
-  public void writeByte(byte b) throws IOException {
-    out.writeByte(b);
   }
 
   @Override

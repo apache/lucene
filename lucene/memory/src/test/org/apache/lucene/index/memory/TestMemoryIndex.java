@@ -37,8 +37,10 @@ import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -792,5 +794,51 @@ public class TestMemoryIndex extends LuceneTestCase {
       }
     }
     return false;
+  }
+
+  public void testIntegerNumericDocValue() throws IOException {
+    // MemoryIndex used to fail when doc values are enabled and numericValue() returns an Integer
+    // such as with IntField.
+    FieldType ft = new FieldType();
+    ft.setDocValuesType(DocValuesType.NUMERIC);
+    ft.freeze();
+    Field field =
+        new Field("field", ft) {
+          {
+            fieldsData = 35;
+          }
+        };
+
+    FieldType multiFt = new FieldType();
+    multiFt.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    multiFt.freeze();
+    Field multiField =
+        new Field("multi_field", multiFt) {
+          {
+            fieldsData = 42;
+          }
+        };
+
+    Field intField = new IntField("int_field", 50, Store.NO);
+
+    MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, multiField, intField), null);
+    IndexSearcher searcher = index.createSearcher();
+
+    NumericDocValues ndv =
+        searcher.getIndexReader().leaves().get(0).reader().getNumericDocValues("field");
+    assertTrue(ndv.advanceExact(0));
+    assertEquals(35, ndv.longValue());
+
+    SortedNumericDocValues sndv =
+        searcher.getIndexReader().leaves().get(0).reader().getSortedNumericDocValues("multi_field");
+    assertTrue(sndv.advanceExact(0));
+    assertEquals(1, sndv.docValueCount());
+    assertEquals(42, sndv.nextValue());
+
+    sndv =
+        searcher.getIndexReader().leaves().get(0).reader().getSortedNumericDocValues("int_field");
+    assertTrue(sndv.advanceExact(0));
+    assertEquals(1, sndv.docValueCount());
+    assertEquals(50, sndv.nextValue());
   }
 }

@@ -114,15 +114,15 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
       if (i < 1000) {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 500; j++) {
-          doc.add(new LongField("f2", 42L));
+          doc.add(new LongField("f2", 42L, Store.NO));
         }
       } else if (i == 1001) {
         doc.add(new StringField("f1", "foo", Store.NO));
-        doc.add(new LongField("f2", 2L));
+        doc.add(new LongField("f2", 2L, Store.NO));
       } else {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 100; j++) {
-          doc.add(new LongField("f2", 2L));
+          doc.add(new LongField("f2", 2L, Store.NO));
         }
       }
       w.addDocument(doc);

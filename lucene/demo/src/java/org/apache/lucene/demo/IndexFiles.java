@@ -34,8 +34,8 @@ import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -238,13 +238,14 @@ public class IndexFiles implements AutoCloseable {
       doc.add(pathField);
 
       // Add the last modified date of the file a field named "modified".
-      // Use a LongPoint that is indexed (i.e. efficiently filterable with
-      // PointRangeQuery).  This indexes to milli-second resolution, which
+      // Use a LongField that is indexed with points and doc values, and is efficient
+      // for both filtering (LongField#newRangeQuery) and sorting
+      // (LongField#newSortField).  This indexes to milli-second resolution, which
       // is often too fine.  You could instead create a number based on
       // year/month/day/hour/minutes/seconds, down the resolution you require.
       // For example the long value 2011021714 would mean
       // February 17, 2011, 2-3 PM.
-      doc.add(new LongPoint("modified", lastModified));
+      doc.add(new LongField("modified", lastModified, Field.Store.NO));
 
       // Add the contents of the file to a field named "contents".  Specify a Reader,
       // so that the text of the file is tokenized and indexed, but not stored.
@@ -261,7 +262,8 @@ public class IndexFiles implements AutoCloseable {
               demoEmbeddings.computeEmbedding(
                   new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
-              new KnnVectorField("contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
+              new KnnFloatVectorField(
+                  "contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
         }
       }
 

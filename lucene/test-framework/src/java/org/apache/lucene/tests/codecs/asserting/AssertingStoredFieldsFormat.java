@@ -23,13 +23,13 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.BytesRef;
 
 /** Just like the default stored fields format but with additional asserts. */
 public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
@@ -130,9 +130,39 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
-    public void writeField(FieldInfo info, IndexableField field) throws IOException {
+    public void writeField(FieldInfo info, int value) throws IOException {
       assert docStatus == Status.STARTED;
-      in.writeField(info, field);
+      in.writeField(info, value);
+    }
+
+    @Override
+    public void writeField(FieldInfo info, long value) throws IOException {
+      assert docStatus == Status.STARTED;
+      in.writeField(info, value);
+    }
+
+    @Override
+    public void writeField(FieldInfo info, float value) throws IOException {
+      assert docStatus == Status.STARTED;
+      in.writeField(info, value);
+    }
+
+    @Override
+    public void writeField(FieldInfo info, double value) throws IOException {
+      assert docStatus == Status.STARTED;
+      in.writeField(info, value);
+    }
+
+    @Override
+    public void writeField(FieldInfo info, BytesRef value) throws IOException {
+      assert docStatus == Status.STARTED;
+      in.writeField(info, value);
+    }
+
+    @Override
+    public void writeField(FieldInfo info, String value) throws IOException {
+      assert docStatus == Status.STARTED;
+      in.writeField(info, value);
     }
 
     @Override

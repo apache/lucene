@@ -29,15 +29,15 @@ import org.apache.lucene.util.NumericUtils;
 
 /**
  * Field that stores a per-document <code>double</code> value for scoring, sorting or value
- * retrieval and index the field for fast range filters. If you also need to store the value, you
- * should add a separate {@link StoredField} instance. If you need more fine-grained control you can
- * use {@link DoublePoint} and {@link DoubleDocValuesField}.
+ * retrieval and index the field for fast range filters. If you need more fine-grained control you
+ * can use {@link DoublePoint}, {@link DoubleDocValuesField} and {@link StoredField}.
  *
  * <p>This field defines static factory methods for creating common queries:
  *
  * <ul>
  *   <li>{@link #newExactQuery(String, double)} for matching an exact 1D point.
  *   <li>{@link #newRangeQuery(String, double, double)} for matching a 1D range.
+ *   <li>{@link #newSetQuery(String, double...)} for matching a 1D set.
  * </ul>
  *
  * @see PointValues
@@ -45,12 +45,19 @@ import org.apache.lucene.util.NumericUtils;
 public final class DoubleField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORED;
 
   static {
     FIELD_TYPE.setDimensions(1, Double.BYTES);
     FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     FIELD_TYPE.freeze();
+
+    FIELD_TYPE_STORED = new FieldType(FIELD_TYPE);
+    FIELD_TYPE_STORED.setStored(true);
+    FIELD_TYPE_STORED.freeze();
   }
+
+  private final StoredValue storedValue;
 
   /**
    * Creates a new DoubleField, indexing the provided point and storing it as a DocValue
@@ -58,10 +65,31 @@ public final class DoubleField extends Field {
    * @param name field name
    * @param value the double value
    * @throws IllegalArgumentException if the field name or value is null.
+   * @deprecated Use {@link #DoubleField(String, int, Field.Store)} with {@link Field.Store#NO}
+   *     instead.
    */
+  @Deprecated
   public DoubleField(String name, double value) {
-    super(name, FIELD_TYPE);
+    this(name, value, Field.Store.NO);
+  }
+
+  /**
+   * Creates a new DoubleField, indexing the provided point, storing it as a DocValue, and
+   * optionally storing it as a stored field.
+   *
+   * @param name field name
+   * @param value the double value
+   * @param stored whether to store the field
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public DoubleField(String name, double value, Field.Store stored) {
+    super(name, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
     fieldsData = NumericUtils.doubleToSortableLong(value);
+    if (stored == Field.Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   @Override
@@ -77,6 +105,11 @@ public final class DoubleField extends Field {
   }
 
   @Override
+  public StoredValue storedValue() {
+    return storedValue;
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName() + " <" + name + ':' + getValueAsDouble() + '>';
   }
@@ -84,6 +117,9 @@ public final class DoubleField extends Field {
   @Override
   public void setDoubleValue(double value) {
     super.setLongValue(NumericUtils.doubleToSortableLong(value));
+    if (storedValue != null) {
+      storedValue.setDoubleValue(value);
+    }
   }
 
   @Override
@@ -125,6 +161,27 @@ public final class DoubleField extends Field {
             field,
             NumericUtils.doubleToSortableLong(lowerValue),
             NumericUtils.doubleToSortableLong(upperValue)));
+  }
+
+  /**
+   * Create a query matching values in a supplied set
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values double values
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this set.
+   */
+  public static Query newSetQuery(String field, double... values) {
+    if (field == null) {
+      throw new IllegalArgumentException("field cannot be null");
+    }
+    long points[] = new long[values.length];
+    for (int i = 0; i < values.length; i++) {
+      points[i] = NumericUtils.doubleToSortableLong(values[i]);
+    }
+    return new IndexOrDocValuesQuery(
+        DoublePoint.newSetQuery(field, values.clone()),
+        SortedNumericDocValuesField.newSlowSetQuery(field, points));
   }
 
   /**

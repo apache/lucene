@@ -146,6 +146,7 @@ allprojects { prj ->
             '-Xep:IdentityHashMapBoxing:ERROR',
             // '-Xep:IgnoredPureGetter:OFF', // we don't use these annotations
             // '-Xep:Immutable:OFF', // we don't use this annotation
+            // '-Xep:ImpossibleNullComparison:OFF', // we don't use protobuf
             '-Xep:Incomparable:ERROR',
             // '-Xep:IncompatibleArgumentType:OFF', // we don't use this annotation
             // '-Xep:IncompatibleModifiers:OFF', // we don't use this annotation
@@ -173,6 +174,7 @@ allprojects { prj ->
             '-Xep:JUnitParameterMethodNotFound:ERROR',
             // '-Xep:JavaxInjectOnAbstractMethod:OFF', // we don't this annotation
             // '-Xep:JodaToSelf:OFF', // we don't use joda-time
+            // '-Xep:LenientFormatStringValidation:OFF' // we don't use these google libraries
             // '-Xep:LiteByteStringUtf8:OFF', // we don't use protobuf
             // '-Xep:LocalDateTemporalAmount:OFF', // we don't use LocalDate math
             '-Xep:LockOnBoxedPrimitive:ERROR',
@@ -255,6 +257,7 @@ allprojects { prj ->
 
             // On by Default : WARNING
 
+            // '-Xep:ASTHelpersSuggestions:OFF', // we don't use ASTHelpers
             // '-Xep:AlmostJavadoc:OFF', // noisy (e.g. commented-out code misinterpreted as javadocs)
             // '-Xep:AlreadyChecked:OFF', // TODO: there are problems
             // '-Xep:AmbiguousMethodReference:OFF',
@@ -315,6 +318,7 @@ allprojects { prj ->
             // '-Xep:ExtendingJUnitAssert:OFF', // noisy
             // '-Xep:ExtendsObject:OFF', // TODO: there are problems
             // '-Xep:FallThrough:OFF', // TODO: there are problems
+            '-Xep:Finalize:WARN', // catches actual finalizers that don't call super
             // '-Xep:Finally:OFF', // TODO: there are problems
             '-Xep:FloatCast:WARN',
             '-Xep:FloatingPointAssertionWithinEpsilon:WARN',
@@ -331,9 +335,11 @@ allprojects { prj ->
             // '-Xep:ImmutableEnumChecker:OFF', // noisy
             // '-Xep:InconsistentCapitalization:OFF', // TODO: there are problems
             // '-Xep:InconsistentHashCode:OFF', // noisy
+            // '-Xep:IgnoredPureGetter:OFF', // we don't use these google libraries
             '-Xep:IncorrectMainMethod:WARN',
             '-Xep:IncrementInForLoopAndHeader:WARN',
             '-Xep:InheritDoc:WARN',
+            // '-Xep:InjectOnBugCheckers:OFF', // we don't use this annotation
             // '-Xep:InjectInvalidTargetingOnScopingAnnotation:OFF', // we don't use this annotation
             // '-Xep:InjectOnConstructorOfAbstractClass:OFF', // we don't use this annotation
             // '-Xep:InjectScopeAnnotationOnInterfaceOrAbstractClass:OFF', // we don't use this annotation
@@ -374,6 +380,7 @@ allprojects { prj ->
             // '-Xep:JodaPlusMinusLong:OFF', // we don't use joda-time
             // '-Xep:JodaTimeConverterManager:OFF', // we don't use joda-time
             // '-Xep:JodaWithDurationAddedLong:OFF', // we don't use joda-time
+            // '-Xep:LabelledBreakTarget:OFF', // stylistic
             // '-Xep:LiteEnumValueOf:OFF', // we don't use protobuf
             // '-Xep:LiteProtoToString:OFF', // we don't use protobuf
             // '-Xep:LockNotBeforeTry:OFF', // TODO: there are problems
@@ -382,7 +389,7 @@ allprojects { prj ->
             '-Xep:LongFloatConversion:WARN',
             '-Xep:LoopOverCharArray:WARN',
             '-Xep:MalformedInlineTag:WARN',
-            // '-Xep:MathAbsoluteRandom:OFF', // TODO: there are problems
+            // '-Xep:MathAbsoluteNegative:OFF', // TODO: there are problems
             // '-Xep:MemoizeConstantVisitorStateLookups:OFF', // we don't use this class
             // '-Xep:MissingCasesInEnumSwitch:OFF', // redundant with ECJ incompleteEnumSwitch/missingEnumCaseDespiteDefault
             // '-Xep:MissingFail:OFF', // TODO: there are problems
@@ -401,6 +408,7 @@ allprojects { prj ->
             // '-Xep:NarrowingCompoundAssignment:OFF', // noisy
             '-Xep:NegativeCharLiteral:WARN',
             '-Xep:NestedInstanceOfConditions:WARN',
+            // '-Xep:NewFileSystem:OFF', // we don't create new filesystems
             // '-Xep:NonAtomicVolatileUpdate:OFF', // TODO: there are problems
             // '-Xep:NonCanonicalType:OFF', // noisy
             '-Xep:NonOverridingEquals:WARN',
@@ -470,10 +478,12 @@ allprojects { prj ->
             // '-Xep:UnnecessaryMethodInvocationMatcher:OFF', // we don't use spring
             '-Xep:UnnecessaryMethodReference:WARN',
             // '-Xep:UnnecessaryParentheses:OFF', // noisy
+            // '-Xep:UnqualifiedYield:OFF', // javac takes care
             '-Xep:UnrecognisedJavadocTag:WARN',
             // '-Xep:UnsafeFinalization:OFF', // we don't use finalizers, deprecated for removal, fails build
             '-Xep:UnsafeReflectiveConstructionCast:WARN',
             // '-Xep:UnsynchronizedOverridesSynchronized:OFF', // TODO: there are problems
+            // '-Xep:UnusedLabel:OFF', // TODO: there are problems
             // '-Xep:UnusedMethod:OFF', // TODO: there are problems
             '-Xep:UnusedNestedClass:WARN',
             // '-Xep:UnusedTypeParameter:OFF', // TODO: there are problems

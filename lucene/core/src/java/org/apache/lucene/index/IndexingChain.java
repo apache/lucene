@@ -38,7 +38,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -696,17 +698,20 @@ final class IndexingChain implements Accountable {
 
     // Add stored fields
     if (fieldType.stored()) {
-      String value = field.stringValue();
-      if (value != null && value.length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
+      StoredValue storedValue = field.storedValue();
+      if (storedValue == null) {
+        throw new IllegalArgumentException("Cannot store a null value");
+      } else if (storedValue.getType() == StoredValue.Type.STRING
+          && storedValue.getStringValue().length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
         throw new IllegalArgumentException(
             "stored field \""
                 + field.name()
                 + "\" is too large ("
-                + value.length()
+                + storedValue.getStringValue().length()
                 + " characters) to store");
       }
       try {
-        storedFieldsConsumer.writeField(pf.fieldInfo, field);
+        storedFieldsConsumer.writeField(pf.fieldInfo, storedValue);
       } catch (Throwable th) {
         onAbortingException(th);
         throw th;
@@ -721,11 +726,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      switch (fieldType.vectorEncoding()) {
-        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
-        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
-            docID, ((KnnVectorField) field).vectorValue());
-      }
+      indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
     return indexedField;
   }
@@ -956,6 +957,18 @@ final class IndexingChain implements Accountable {
       case NONE:
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void indexVectorValue(
+      int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
+      throws IOException {
+    switch (vectorEncoding) {
+      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 

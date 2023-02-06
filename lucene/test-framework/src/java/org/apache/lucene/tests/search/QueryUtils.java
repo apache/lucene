@@ -24,7 +24,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -39,7 +41,6 @@ import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -54,7 +55,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 import org.junit.Assert;
 
@@ -225,7 +225,12 @@ public class QueryUtils {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return null;
       }
 
@@ -237,7 +242,7 @@ public class QueryUtils {
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+          String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 

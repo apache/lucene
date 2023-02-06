@@ -809,8 +809,8 @@ public class TestSortOptimization extends LuceneTestCase {
       int value = random().nextInt();
       int value2 = random().nextInt();
       final Document doc = new Document();
-      doc.add(new LongField("my_field", value));
-      doc.add(new LongField("my_field", value2));
+      doc.add(new LongField("my_field", value, Store.NO));
+      doc.add(new LongField("my_field", value2, Store.NO));
       writer.addDocument(doc);
     }
     final IndexReader reader = DirectoryReader.open(writer);

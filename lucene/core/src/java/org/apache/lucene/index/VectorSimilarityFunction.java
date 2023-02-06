@@ -21,8 +21,6 @@ import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
-import org.apache.lucene.util.BytesRef;
-
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
  * vector. This is a label describing the method used during indexing and searching of the vectors
@@ -38,8 +36,8 @@ public enum VectorSimilarityFunction {
     }
 
     @Override
-    public float compare(BytesRef v1, BytesRef v2) {
-      return 1 / (1 + squareDistance(v1, v2));
+    public float compare(byte[] v1, byte[] v2) {
+      return 1 / (1f + squareDistance(v1, v2));
     }
   },
 
@@ -57,7 +55,7 @@ public enum VectorSimilarityFunction {
     }
 
     @Override
-    public float compare(BytesRef v1, BytesRef v2) {
+    public float compare(byte[] v1, byte[] v2) {
       return dotProductScore(v1, v2);
     }
   },
@@ -75,7 +73,7 @@ public enum VectorSimilarityFunction {
     }
 
     @Override
-    public float compare(BytesRef v1, BytesRef v2) {
+    public float compare(byte[] v1, byte[] v2) {
       return (1 + cosine(v1, v2)) / 2;
     }
   };
@@ -99,5 +97,5 @@ public enum VectorSimilarityFunction {
    * @param v2 another vector, of the same dimension
    * @return the value of the similarity function applied to the two vectors
    */
-  public abstract float compare(BytesRef v1, BytesRef v2);
+  public abstract float compare(byte[] v1, byte[] v2);
 }
