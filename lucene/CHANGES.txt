@@ -7,7 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#12116: Introduce IndexableField#storedValue() to expose the value that
+  should be stored to IndexingChain without needing to guess the field's type.
+  (Adrien Grand, Robert Muir)
 
 New Features
 ---------------------

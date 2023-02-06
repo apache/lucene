@@ -22,6 +22,7 @@ import java.util.Collections;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
@@ -90,6 +91,11 @@ public class TestFieldReuse extends BaseTokenStreamTestCase {
 
     @Override
     public Number numericValue() {
+      return null;
+    }
+
+    @Override
+    public StoredValue storedValue() {
       return null;
     }
   }

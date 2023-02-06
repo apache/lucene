@@ -50,6 +50,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.EmptyDocValuesProducer;
@@ -570,7 +571,29 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     try (StoredFieldsWriter consumer =
         codec.storedFieldsFormat().fieldsWriter(dir, segmentInfo, writeState.context)) {
       consumer.startDocument();
-      consumer.writeField(field, customField);
+      StoredValue value = customField.storedValue();
+      switch (value.getType()) {
+        case INTEGER:
+          consumer.writeField(field, value.getIntValue());
+          break;
+        case LONG:
+          consumer.writeField(field, value.getLongValue());
+          break;
+        case FLOAT:
+          consumer.writeField(field, value.getFloatValue());
+          break;
+        case DOUBLE:
+          consumer.writeField(field, value.getDoubleValue());
+          break;
+        case BINARY:
+          consumer.writeField(field, value.getBinaryValue());
+          break;
+        case STRING:
+          consumer.writeField(field, value.getStringValue());
+          break;
+        default:
+          throw new AssertionError();
+      }
       consumer.finishDocument();
       consumer.finish(1);
       IOUtils.close(consumer);
