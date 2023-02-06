@@ -52,10 +52,10 @@ final class LongHashSet implements Accountable {
     int size = 0;
     long previousValue = Long.MIN_VALUE; // for assert
     for (long value : values) {
-      if (value == MISSING || add(value)) {
-        if (value == MISSING) {
-          hasMissingValue = true;
-        }
+      if (value == MISSING) {
+        size += hasMissingValue ? 0 : 1;
+        hasMissingValue = true;
+      } else if (add(value)) {
         ++size;
       }
       assert value >= previousValue : "values must be provided in sorted order";

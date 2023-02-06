@@ -26,8 +26,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestLongHashSet extends LuceneTestCase {
 
   private void assertEquals(Set<Long> set1, LongHashSet longHashSet) {
-    Set<Long> set2 = longHashSet.stream().boxed().collect(Collectors.toSet());
+    assertEquals(set1.size(), longHashSet.size());
 
+    Set<Long> set2 = longHashSet.stream().boxed().collect(Collectors.toSet());
     LuceneTestCase.assertEquals(set1, set2);
 
     if (set1.isEmpty() == false) {
@@ -36,11 +37,14 @@ public class TestLongHashSet extends LuceneTestCase {
       while (true) {
         long next = random().nextLong();
         if (next != removed && set3.add(next)) {
+          assertFalse(longHashSet.contains(next));
           break;
         }
       }
       assertNotEquals(set3, longHashSet);
     }
+
+    assertTrue(set1.stream().allMatch(longHashSet::contains));
   }
 
   private void assertNotEquals(Set<Long> set1, LongHashSet longHashSet) {
@@ -51,11 +55,14 @@ public class TestLongHashSet extends LuceneTestCase {
     LongHashSet set3 = new LongHashSet(set1.stream().mapToLong(Long::longValue).sorted().toArray());
 
     LuceneTestCase.assertNotEquals(set2, set3.stream().boxed().collect(Collectors.toSet()));
+
+    assertFalse(set1.stream().allMatch(longHashSet::contains));
   }
 
   public void testEmpty() {
     Set<Long> set1 = new HashSet<>();
     LongHashSet set2 = new LongHashSet(new long[] {});
+    assertEquals(0, set2.size());
     assertEquals(Long.MAX_VALUE, set2.minValue);
     assertEquals(Long.MIN_VALUE, set2.maxValue);
     assertEquals(set1, set2);
@@ -64,12 +71,14 @@ public class TestLongHashSet extends LuceneTestCase {
   public void testOneValue() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L));
     LongHashSet set2 = new LongHashSet(new long[] {42L});
+    assertEquals(1, set2.size());
     assertEquals(42L, set2.minValue);
     assertEquals(42L, set2.maxValue);
     assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE));
     set2 = new LongHashSet(new long[] {Long.MIN_VALUE});
+    assertEquals(1, set2.size());
     assertEquals(Long.MIN_VALUE, set2.minValue);
     assertEquals(Long.MIN_VALUE, set2.maxValue);
     assertEquals(set1, set2);
@@ -78,15 +87,31 @@ public class TestLongHashSet extends LuceneTestCase {
   public void testTwoValues() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L, Long.MAX_VALUE));
     LongHashSet set2 = new LongHashSet(new long[] {42L, Long.MAX_VALUE});
+    assertEquals(2, set2.size());
     assertEquals(42, set2.minValue);
     assertEquals(Long.MAX_VALUE, set2.maxValue);
     assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE, 42L));
     set2 = new LongHashSet(new long[] {Long.MIN_VALUE, 42L});
+    assertEquals(2, set2.size());
     assertEquals(Long.MIN_VALUE, set2.minValue);
     assertEquals(42, set2.maxValue);
     assertEquals(set1, set2);
+  }
+
+  public void testSameValue() {
+    LongHashSet set2 = new LongHashSet(new long[] {42L, 42L});
+    assertEquals(1, set2.size());
+    assertEquals(42L, set2.minValue);
+    assertEquals(42L, set2.maxValue);
+  }
+
+  public void testSameMissingPlaceholder() {
+    LongHashSet set2 = new LongHashSet(new long[] {Long.MIN_VALUE, Long.MIN_VALUE});
+    assertEquals(1, set2.size());
+    assertEquals(Long.MIN_VALUE, set2.minValue);
+    assertEquals(Long.MIN_VALUE, set2.maxValue);
   }
 
   public void testRandom() {
