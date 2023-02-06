@@ -38,7 +38,7 @@ import org.apache.lucene.util.BytesRef;
  * <ol>
  *   <li>For every document, {@link #startDocument()} is called, informing the Codec that a new
  *       document has started.
- *   <li>{@link #writeField} is called for each field in the document.
+ *   <li>{@code writeField} is called for each field in the document.
  *   <li>After all documents have been written, {@link #finish(int)} is called for
  *       verification/sanity-checks.
  *   <li>Finally the writer is closed ({@link #close()})
@@ -52,7 +52,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
   protected StoredFieldsWriter() {}
 
   /**
-   * Called before writing the stored fields of the document. {@link #writeField} will be called for
+   * Called before writing the stored fields of the document. {@code writeField} will be called for
    * each stored field. Note that this is called even if the document has no stored fields.
    */
   public abstract void startDocument() throws IOException;
@@ -112,8 +112,8 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
 
   /**
    * Merges in the stored fields from the readers in <code>mergeState</code>. The default
-   * implementation skips over deleted documents, and uses {@link #startDocument()}, {@link
-   * #writeField}, and {@link #finish(int)}, returning the number of documents that were written.
+   * implementation skips over deleted documents, and uses {@link #startDocument()}, {@code
+   * writeField}, and {@link #finish(int)}, returning the number of documents that were written.
    * Implementations can override this method for more sophisticated merging (bulk-byte copying,
    * etc).
    */
