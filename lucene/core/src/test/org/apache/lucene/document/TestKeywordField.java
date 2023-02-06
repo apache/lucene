@@ -31,10 +31,11 @@ import org.apache.lucene.util.BytesRef;
 public class TestKeywordField extends LuceneTestCase {
 
   public void testSetBytesValue() {
-    Field[] fields = new Field[] {
-        new KeywordField("name", newBytesRef("value"), Field.Store.NO),
-        new KeywordField("name", newBytesRef("value"), Field.Store.YES)
-    };
+    Field[] fields =
+        new Field[] {
+          new KeywordField("name", newBytesRef("value"), Field.Store.NO),
+          new KeywordField("name", newBytesRef("value"), Field.Store.YES)
+        };
     for (Field field : fields) {
       assertEquals(newBytesRef("value"), field.binaryValue());
       assertNull(field.stringValue());
@@ -55,10 +56,11 @@ public class TestKeywordField extends LuceneTestCase {
   }
 
   public void testSetStringValue() {
-    Field[] fields = new Field[] {
-        new KeywordField("name", "value", Field.Store.NO),
-        new KeywordField("name", "value", Field.Store.YES)
-    };
+    Field[] fields =
+        new Field[] {
+          new KeywordField("name", "value", Field.Store.NO),
+          new KeywordField("name", "value", Field.Store.YES)
+        };
     for (Field field : fields) {
       assertEquals("value", field.stringValue());
       assertEquals(newBytesRef("value"), field.binaryValue());
@@ -81,7 +83,8 @@ public class TestKeywordField extends LuceneTestCase {
   public void testIndexBytesValue() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    w.addDocument(Collections.singleton(new KeywordField("field", newBytesRef("value"), Field.Store.YES)));
+    w.addDocument(
+        Collections.singleton(new KeywordField("field", newBytesRef("value"), Field.Store.YES)));
     IndexReader reader = DirectoryReader.open(w);
     w.close();
     LeafReader leaf = getOnlyLeafReader(reader);
