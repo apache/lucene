@@ -132,11 +132,16 @@ fi
 
 CLASSPATH=$GRADLE_WRAPPER_JAR
 
-# Don't fork a daemon mode on initial run that generates local defaults.
-GRADLE_DAEMON_CTRL=
+# START OF SOLR CUSTOMIZATION
+# Generate gradle.properties if they don't exist
 if [ ! -e "$APP_HOME/gradle.properties" ]; then
-    GRADLE_DAEMON_CTRL=--no-daemon
+    "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
+    GENERATOR_STATUS=$?
+    if [ "$GENERATOR_STATUS" -ne 0 ]; then
+        exit $GENERATOR_STATUS
+    fi
 fi
+# END OF SOLR CUSTOMIZATION
 
 # Increase the maximum file descriptors if we can.
 if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
@@ -209,6 +214,11 @@ save () {
 }
 APP_ARGS=$(save "$@")
 
+set -- \
+        "-Dorg.gradle.appname=$APP_BASE_NAME" \
+        -classpath "$CLASSPATH" \
+        org.gradle.wrapper.GradleWrapperMain \
+        "$@"
 # Prevent jgit from forking/searching git.exe
 export GIT_CONFIG_NOSYSTEM=1
 
