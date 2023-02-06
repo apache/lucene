@@ -16,12 +16,7 @@
  */
 package org.apache.lucene.document;
 
-import java.io.IOException;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
 
@@ -90,16 +85,7 @@ public class NumericDocValuesField extends Field {
    * @see DoubleField#newRangeQuery
    */
   public static Query newSlowRangeQuery(String field, long lowerValue, long upperValue) {
-    return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue) {
-      @Override
-      SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
-        NumericDocValues values = reader.getNumericDocValues(field);
-        if (values == null) {
-          return null;
-        }
-        return DocValues.singleton(values);
-      }
-    };
+    return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue);
   }
 
   /**
@@ -116,16 +102,7 @@ public class NumericDocValuesField extends Field {
    * @see DoubleField#newSetQuery
    */
   public static Query newSlowSetQuery(String field, long... values) {
-    return new SortedNumericDocValuesSetQuery(field, values.clone()) {
-      @Override
-      SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
-        NumericDocValues values = reader.getNumericDocValues(field);
-        if (values == null) {
-          return null;
-        }
-        return DocValues.singleton(values);
-      }
-    };
+    return new SortedNumericDocValuesSetQuery(field, values.clone());
   }
 
   /**

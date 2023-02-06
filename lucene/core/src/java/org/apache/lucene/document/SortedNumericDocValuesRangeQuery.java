@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -35,7 +34,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
-abstract class SortedNumericDocValuesRangeQuery extends Query {
+final class SortedNumericDocValuesRangeQuery extends Query {
 
   private final String field;
   private final long lowerValue;
@@ -60,11 +59,7 @@ abstract class SortedNumericDocValuesRangeQuery extends Query {
 
   @Override
   public int hashCode() {
-    int h = classHash();
-    h = 31 * h + field.hashCode();
-    h = 31 * h + Long.hashCode(lowerValue);
-    h = 31 * h + Long.hashCode(upperValue);
-    return h;
+    return Objects.hash(classHash(), field, lowerValue, upperValue);
   }
 
   @Override
@@ -96,8 +91,6 @@ abstract class SortedNumericDocValuesRangeQuery extends Query {
     return super.rewrite(reader);
   }
 
-  abstract SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException;
-
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
@@ -110,10 +103,10 @@ abstract class SortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues values = getValues(context.reader(), field);
-        if (values == null) {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         final TwoPhaseIterator iterator;
         if (singleton != null) {
