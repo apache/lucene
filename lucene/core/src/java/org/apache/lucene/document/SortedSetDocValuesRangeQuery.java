@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -35,7 +34,7 @@ import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
 
-abstract class SortedSetDocValuesRangeQuery extends Query {
+final class SortedSetDocValuesRangeQuery extends Query {
 
   private final String field;
   private final BytesRef lowerValue;
@@ -71,13 +70,7 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
 
   @Override
   public int hashCode() {
-    int h = classHash();
-    h = 31 * h + field.hashCode();
-    h = 31 * h + Objects.hashCode(lowerValue);
-    h = 31 * h + Objects.hashCode(upperValue);
-    h = 31 * h + Boolean.hashCode(lowerInclusive);
-    h = 31 * h + Boolean.hashCode(upperInclusive);
-    return h;
+    return Objects.hash(classHash(), field, lowerValue, upperValue, lowerInclusive, upperInclusive);
   }
 
   @Override
@@ -109,18 +102,16 @@ abstract class SortedSetDocValuesRangeQuery extends Query {
     return super.rewrite(indexSearcher);
   }
 
-  abstract SortedSetDocValues getValues(LeafReader reader, String field) throws IOException;
-
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     return new ConstantScoreWeight(this, boost) {
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedSetDocValues values = getValues(context.reader(), field);
-        if (values == null) {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
 
         final long minOrd;
         if (lowerValue == null) {
