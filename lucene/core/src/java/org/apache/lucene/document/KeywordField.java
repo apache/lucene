@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
 import java.util.Objects;
+
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
@@ -25,27 +27,31 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedSetSortField;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Field that indexes a per-document {@link BytesRef} into an inverted index for fast filtering and
- * stores values in a columnar fashion using {@link DocValuesType#SORTED_SET} doc values for sorting
- * and faceting. This field does not support scoring: queries produce constant scores. If you also
+ * Field that indexes a per-document String or {@link BytesRef} into an inverted index for fast
+ * filtering, stores values in a columnar fashion using {@link DocValuesType#SORTED_SET} doc
+ * values for sorting and faceting, and optionally stores values as stored fields for top-hits
+ * retrieval. This field does not support scoring: queries produce constant scores. If you also
  * need to store the value, you should add a separate {@link StoredField} instance. If you need more
- * fine-grained control you can use {@link StringField} and {@link SortedDocValuesField} or {@link
- * SortedSetDocValuesField}.
+ * fine-grained control you can use {@link StringField}, {@link SortedDocValuesField} or
+ * {@link SortedSetDocValuesField}, and {@link StoredField}.
  *
  * <p>This field defines static factory methods for creating common query objects:
  *
  * <ul>
  *   <li>{@link #newExactQuery} for matching a value.
+ *   <li>{@link #newSetQuery} for matching any of the values coming from a set.
  *   <li>{@link #newSortField} for matching a value.
  * </ul>
  */
 public class KeywordField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORED;
 
   static {
     FIELD_TYPE.setIndexOptions(IndexOptions.DOCS);
@@ -53,17 +59,29 @@ public class KeywordField extends Field {
     FIELD_TYPE.setTokenized(false);
     FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_SET);
     FIELD_TYPE.freeze();
+
+    FIELD_TYPE_STORED = new FieldType(FIELD_TYPE);
+    FIELD_TYPE_STORED.setStored(true);
+    FIELD_TYPE_STORED.freeze();
   }
+
+  private final StoredValue storedValue;
 
   /**
    * Creates a new KeywordField.
    *
    * @param name field name
    * @param value the BytesRef value
+   * @param stored whether to store the field
    * @throws IllegalArgumentException if the field name or value is null.
    */
-  public KeywordField(String name, BytesRef value) {
-    super(name, value, FIELD_TYPE);
+  public KeywordField(String name, BytesRef value, Store stored) {
+    super(name, value, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
+    if (stored == Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   /**
@@ -71,10 +89,16 @@ public class KeywordField extends Field {
    *
    * @param name field name
    * @param value the BytesRef value
+   * @param stored whether to store the field
    * @throws IllegalArgumentException if the field name or value is null.
    */
-  public KeywordField(String name, String value) {
-    super(name, value, FIELD_TYPE);
+  public KeywordField(String name, String value, Store stored) {
+    super(name, value, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
+    if (stored == Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   @Override
@@ -87,12 +111,33 @@ public class KeywordField extends Field {
     }
   }
 
+  @Override
+  public void setStringValue(String value) {
+    super.setStringValue(value);
+    if (storedValue != null) {
+      storedValue.setStringValue(value);
+    }
+  }
+
+  @Override
+  public void setBytesValue(BytesRef value) {
+    super.setBytesValue(value);
+    if (storedValue != null) {
+      storedValue.setBinaryValue(value);
+    }
+  }
+
+  @Override
+  public StoredValue storedValue() {
+    return storedValue;
+  }
+
   /**
    * Create a query for matching an exact {@link BytesRef} value.
    *
    * @param field field name. must not be {@code null}.
    * @param value exact value
-   * @throws IllegalArgumentException if {@code field} is null.
+   * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
    */
   public static Query newExactQuery(String field, BytesRef value) {
@@ -106,11 +151,26 @@ public class KeywordField extends Field {
    *
    * @param field field name. must not be {@code null}.
    * @param value exact value
-   * @throws IllegalArgumentException if {@code field} is null.
+   * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
    */
   public static Query newExactQuery(String field, String value) {
+    Objects.requireNonNull(value, "value must not be null");
     return newExactQuery(field, new BytesRef(value));
+  }
+
+  /**
+   * Create a query for matching any of a set of provided {@link BytesRef} values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param values the set of values to match
+   * @throws NullPointerException if {@code field} is null.
+   * @return a query matching documents with this exact value
+   */
+  public static Query newSetQuery(String field, Collection<BytesRef> values) {
+    Objects.requireNonNull(field, "field must not be null");
+    Objects.requireNonNull(values, "values must not be null");
+    return new TermInSetQuery(field, values);
   }
 
   /**
@@ -122,6 +182,8 @@ public class KeywordField extends Field {
    */
   public static SortField newSortField(
       String field, boolean reverse, SortedSetSelector.Type selector) {
+    Objects.requireNonNull(field, "field must not be null");
+    Objects.requireNonNull(selector, "selector must not be null");
     return new SortedSetSortField(field, reverse, selector);
   }
 }

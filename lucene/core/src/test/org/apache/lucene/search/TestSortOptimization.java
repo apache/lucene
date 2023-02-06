@@ -808,8 +808,8 @@ public class TestSortOptimization extends LuceneTestCase {
       int value = random().nextInt();
       int value2 = random().nextInt();
       final Document doc = new Document();
-      doc.add(new LongField("my_field", value, Store.NO));
-      doc.add(new LongField("my_field", value2, Store.NO));
+      doc.add(new LongField("my_field", value, Field.Store.NO));
+      doc.add(new LongField("my_field", value2, Field.Store.NO));
       writer.addDocument(doc);
     }
     final IndexReader reader = DirectoryReader.open(writer);
@@ -890,7 +890,7 @@ public class TestSortOptimization extends LuceneTestCase {
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
       final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
-      doc.add(new KeywordField("my_field", value));
+      doc.add(new KeywordField("my_field", value, Field.Store.NO));
       writer.addDocument(doc);
       if (i % 2000 == 0) writer.flush(); // multiple segments
     }
@@ -914,7 +914,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final Document doc = new Document();
       if (random().nextInt(2) == 0) {
         final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
-        doc.add(new KeywordField("my_field", value));
+        doc.add(new KeywordField("my_field", value, Field.Store.NO));
       }
       writer.addDocument(doc);
     }

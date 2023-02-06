@@ -31,27 +31,57 @@ import org.apache.lucene.util.BytesRef;
 public class TestKeywordField extends LuceneTestCase {
 
   public void testSetBytesValue() {
-    KeywordField field = new KeywordField("name", newBytesRef("value"));
-    assertEquals(newBytesRef("value"), field.binaryValue());
-    assertNull(field.stringValue());
-    field.setBytesValue(newBytesRef("value2"));
-    assertEquals(newBytesRef("value2"), field.binaryValue());
-    assertNull(field.stringValue());
+    Field[] fields = new Field[] {
+        new KeywordField("name", newBytesRef("value"), Field.Store.NO),
+        new KeywordField("name", newBytesRef("value"), Field.Store.YES)
+    };
+    for (Field field : fields) {
+      assertEquals(newBytesRef("value"), field.binaryValue());
+      assertNull(field.stringValue());
+      if (field.fieldType().stored()) {
+        assertEquals(newBytesRef("value"), field.storedValue().getBinaryValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+      field.setBytesValue(newBytesRef("value2"));
+      assertEquals(newBytesRef("value2"), field.binaryValue());
+      assertNull(field.stringValue());
+      if (field.fieldType().stored()) {
+        assertEquals(newBytesRef("value2"), field.storedValue().getBinaryValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
   }
 
   public void testSetStringValue() {
-    KeywordField field = new KeywordField("name", "value");
-    assertEquals("value", field.stringValue());
-    assertEquals(newBytesRef("value"), field.binaryValue());
-    field.setStringValue("value2");
-    assertEquals("value2", field.stringValue());
-    assertEquals(newBytesRef("value2"), field.binaryValue());
+    Field[] fields = new Field[] {
+        new KeywordField("name", "value", Field.Store.NO),
+        new KeywordField("name", "value", Field.Store.YES)
+    };
+    for (Field field : fields) {
+      assertEquals("value", field.stringValue());
+      assertEquals(newBytesRef("value"), field.binaryValue());
+      if (field.fieldType().stored()) {
+        assertEquals("value", field.storedValue().getStringValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+      field.setStringValue("value2");
+      assertEquals("value2", field.stringValue());
+      assertEquals(newBytesRef("value2"), field.binaryValue());
+      if (field.fieldType().stored()) {
+        assertEquals("value2", field.storedValue().getStringValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
   }
 
   public void testIndexBytesValue() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    w.addDocument(Collections.singleton(new KeywordField("field", newBytesRef("value"))));
+    w.addDocument(Collections.singleton(new KeywordField("field", newBytesRef("value"), Field.Store.YES)));
     IndexReader reader = DirectoryReader.open(w);
     w.close();
     LeafReader leaf = getOnlyLeafReader(reader);
@@ -63,6 +93,8 @@ public class TestKeywordField extends LuceneTestCase {
     assertEquals(1, values.docValueCount());
     assertEquals(0L, values.nextOrd());
     assertEquals(new BytesRef("value"), values.lookupOrd(0));
+    Document storedDoc = leaf.storedFields().document(0);
+    assertEquals(new BytesRef("value"), storedDoc.getBinaryValue("field"));
     reader.close();
     dir.close();
   }
@@ -70,7 +102,7 @@ public class TestKeywordField extends LuceneTestCase {
   public void testIndexStringValue() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    w.addDocument(Collections.singleton(new KeywordField("field", "value")));
+    w.addDocument(Collections.singleton(new KeywordField("field", "value", Field.Store.YES)));
     IndexReader reader = DirectoryReader.open(w);
     w.close();
     LeafReader leaf = getOnlyLeafReader(reader);
@@ -82,6 +114,8 @@ public class TestKeywordField extends LuceneTestCase {
     assertEquals(1, values.docValueCount());
     assertEquals(0L, values.nextOrd());
     assertEquals(new BytesRef("value"), values.lookupOrd(0));
+    Document storedDoc = leaf.storedFields().document(0);
+    assertEquals("value", storedDoc.get("field"));
     reader.close();
     dir.close();
   }
