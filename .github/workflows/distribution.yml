@@ -38,8 +38,5 @@ jobs:
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
 
-    - name: Initialize gradle settings (${{ matrix.os }})
-      run: ./gradlew localSettings
-
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
       run: ./gradlew -p lucene/distribution.tests test

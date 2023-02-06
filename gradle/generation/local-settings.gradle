@@ -41,82 +41,12 @@ configure(rootProject) {
         throw new GradleException(
             "Certain gradle tasks and plugins require access to jdk.compiler" +
                 " internals, your gradle.properties might have just been generated or could be" +
-                " out of sync (see help/localSettings.txt)")
-      }
-    }
-  }
-
-  task localSettings() {
-    doFirst {
-      // If we don't have the defaults yet, create them.
-      if (hasDefaults) {
-        logger.lifecycle("Local settings already exist, skipping generation.")
-      } else {
-        // Approximate a common-sense default for running gradle/tests with parallel
-        // workers: half the count of available cpus but not more than 12.
-        def cpus = Runtime.runtime.availableProcessors()
-        def maxWorkers = (int) Math.max(1d, Math.min(cpus * 0.5d, 12))
-        def testsJvms = (int) Math.max(1d, Math.min(cpus * 0.5d, 12))
-
-        // Write the defaults for this machine.
-        rootProject.file("gradle.properties").write("""
-# These settings have been generated automatically on the first run.
-# See gradlew :helpLocalSettings for more information.
-systemProp.file.encoding=UTF-8
-
-# Set up gradle JVM defaults.
-#
-# We also open up internal compiler modules for spotless/ google java format.
-org.gradle.jvmargs=-Xmx1g -XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1 \\
- --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \\
- --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \\
- --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \\
- --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \\
- --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-
-# Run at normal priority, in parallel
-org.gradle.parallel=true
-org.gradle.priority=normal
-
-# Silence gradle warnings. We'll deal with them when we upgrade the wrapper.
-org.gradle.warning.mode=none
-
-# You may disable the background daemon if it consumes too much memory.
-org.gradle.daemon=true
-# timeout after 15 mins of inactivity.
-org.gradle.daemon.idletimeout=900000
-
-# Maximum number of parallel gradle workers.
-org.gradle.workers.max=${maxWorkers}
-
-# Maximum number of test JVMs forked per test task.
-tests.jvms=${testsJvms}
-
-# Enable auto JVM provisioning.
-org.gradle.java.installations.auto-download=true
-
-# Set these to enable automatic JVM location discovery.
-org.gradle.java.installations.fromEnv=JAVA17_HOME,JAVA19_HOME,JAVA20_HOME,JAVA21_HOME,RUNTIME_JAVA_HOME
-#org.gradle.java.installations.paths=(custom paths)
-
-""", "UTF-8")
-
-        logger.log(LogLevel.WARN, "\nIMPORTANT. This is the first time you ran the build. " +
-            "I wrote some sane defaults (for this machine) to 'gradle.properties', " +
-            "they will be picked up on consecutive gradle invocations (not this one).\n\n" +
-            "Run gradlew :helpLocalSettings for more information.")
+                " out of sync (see gradle/template.gradle.properties)")
       }
     }
   }
 }
 
-if (!hasDefaults) {
-  // Make all tasks depend on local setup to make sure it'll run.
-  allprojects {
-    tasks.all { task ->
-      if (task != rootProject.localSettings) {
-        task.dependsOn rootProject.localSettings
-      }
-    }
-  }
+task localSettings() {
+  // This is just a placeholder until all references to the localSettings task are removed
 }

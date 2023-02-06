@@ -39,9 +39,6 @@ jobs:
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
 
-    - name: Initialize gradle settings
-      run: ./gradlew localSettings --max-workers 2
-
     - name: Run gradle check (without tests)
       run: ./gradlew check -x test -Ptask.times=true --max-workers 2
 
@@ -72,11 +69,8 @@ jobs:
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
 
-    - name: Initialize gradle settings
-      run: ./gradlew localSettings --max-workers 2
+    - name: Run gradle tests
+      run: ./gradlew test "-Ptask.times=true" --max-workers 2
 
     - name: Echo settings
       run: cat gradle.properties
-
-    - name: Run gradle tests
-      run: ./gradlew test "-Ptask.times=true" --max-workers 2
