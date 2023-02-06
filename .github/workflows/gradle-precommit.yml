@@ -69,8 +69,8 @@ jobs:
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
 
-    - name: Echo settings
-      run: cat gradle.properties
-
     - name: Run gradle tests
       run: ./gradlew test "-Ptask.times=true" --max-workers 2
+
+    - name: Echo settings
+      run: cat gradle.properties
