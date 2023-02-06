@@ -25,11 +25,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestLongHashSet extends LuceneTestCase {
 
-  private void assertEquals(Set<Long> set1, LongHashSet set2) {
+  private void assertEquals(Set<Long> set1, LongHashSet longHashSet) {
+    Set<Long> set2 = longHashSet.toSet();
+
     LuceneTestCase.assertEquals(set1, set2);
-    LuceneTestCase.assertEquals(set2, set1);
-    LuceneTestCase.assertEquals(set2, set2);
-    assertEquals(set1.hashCode(), set2.hashCode());
 
     if (set1.isEmpty() == false) {
       Set<Long> set3 = new HashSet<>(set1);
@@ -40,40 +39,53 @@ public class TestLongHashSet extends LuceneTestCase {
           break;
         }
       }
-      assertNotEquals(set3, set2);
+      assertNotEquals(set3, longHashSet);
     }
   }
 
-  private void assertNotEquals(Set<Long> set1, LongHashSet set2) {
-    assertFalse(set1.equals(set2));
-    assertFalse(set2.equals(set1));
-    LongHashSet set3 = new LongHashSet(set1.stream().mapToLong(Long::longValue).toArray());
-    assertFalse(set2.equals(set3));
+  private void assertNotEquals(Set<Long> set1, LongHashSet longHashSet) {
+    Set<Long> set2 = longHashSet.toSet();
+
+    LuceneTestCase.assertNotEquals(set1, set2);
+
+    LongHashSet set3 = new LongHashSet(set1.stream().mapToLong(Long::longValue).sorted().toArray());
+
+    LuceneTestCase.assertNotEquals(set2, set3.toSet());
   }
 
   public void testEmpty() {
     Set<Long> set1 = new HashSet<>();
     LongHashSet set2 = new LongHashSet(new long[] {});
+    assertEquals(Long.MAX_VALUE, set2.minValue);
+    assertEquals(Long.MIN_VALUE, set2.maxValue);
     assertEquals(set1, set2);
   }
 
   public void testOneValue() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L));
     LongHashSet set2 = new LongHashSet(new long[] {42L});
+    assertEquals(42L, set2.minValue);
+    assertEquals(42L, set2.maxValue);
     assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE));
     set2 = new LongHashSet(new long[] {Long.MIN_VALUE});
+    assertEquals(Long.MIN_VALUE, set2.minValue);
+    assertEquals(Long.MIN_VALUE, set2.maxValue);
     assertEquals(set1, set2);
   }
 
   public void testTwoValues() {
     Set<Long> set1 = new HashSet<>(Arrays.asList(42L, Long.MAX_VALUE));
     LongHashSet set2 = new LongHashSet(new long[] {42L, Long.MAX_VALUE});
+    assertEquals(42, set2.minValue);
+    assertEquals(Long.MAX_VALUE, set2.maxValue);
     assertEquals(set1, set2);
 
     set1 = new HashSet<>(Arrays.asList(Long.MIN_VALUE, 42L));
     set2 = new LongHashSet(new long[] {Long.MIN_VALUE, 42L});
+    assertEquals(Long.MIN_VALUE, set2.minValue);
+    assertEquals(42, set2.maxValue);
     assertEquals(set1, set2);
   }
 
@@ -95,6 +107,7 @@ public class TestLongHashSet extends LuceneTestCase {
           LongStream.of(values)
               .mapToObj(Long::valueOf)
               .collect(Collectors.toCollection(HashSet::new));
+      Arrays.sort(values);
       LongHashSet set2 = new LongHashSet(values);
       assertEquals(set1, set2);
     }
