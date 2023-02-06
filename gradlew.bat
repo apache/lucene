@@ -83,7 +83,7 @@ IF %ERRORLEVEL% NEQ 0 goto fail
 @rem Setup the command line
 set CLASSPATH=%GRADLE_WRAPPER_JAR%
 
-@rem START OF SOLR CUSTOMIZATION
+@rem START OF LUCENE CUSTOMIZATION
 @rem Generate gradle.properties if they don't exist
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
   @rem local expansion is needed to check ERRORLEVEL inside control blocks.
@@ -92,13 +92,13 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
   IF %ERRORLEVEL% NEQ 0 goto fail
   endlocal
 )
-@rem END OF SOLR CUSTOMIZATION
+@rem END OF LUCENE CUSTOMIZATION
 
 @rem Prevent jgit from forking/searching git.exe
 SET GIT_CONFIG_NOSYSTEM=1
 
 @rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+"%JAVA_EXE%" %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
 
 :end
 @rem End local scope for the variables with windows NT shell

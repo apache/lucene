@@ -132,7 +132,7 @@ fi
 
 CLASSPATH=$GRADLE_WRAPPER_JAR
 
-# START OF SOLR CUSTOMIZATION
+# START OF LUCENE CUSTOMIZATION
 # Generate gradle.properties if they don't exist
 if [ ! -e "$APP_HOME/gradle.properties" ]; then
     "$JAVACMD" $JAVA_OPTS --source 11 "$APP_HOME/buildSrc/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
@@ -141,7 +141,7 @@ if [ ! -e "$APP_HOME/gradle.properties" ]; then
         exit $GENERATOR_STATUS
     fi
 fi
-# END OF SOLR CUSTOMIZATION
+# END OF LUCENE CUSTOMIZATION
 
 # Increase the maximum file descriptors if we can.
 if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
@@ -214,16 +214,11 @@ save () {
 }
 APP_ARGS=$(save "$@")
 
-set -- \
-        "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
-        org.gradle.wrapper.GradleWrapperMain \
-        "$@"
 # Prevent jgit from forking/searching git.exe
 export GIT_CONFIG_NOSYSTEM=1
 
 # Collect all arguments for the java command, following the shell quoting and substitution rules
-eval set -- $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain $GRADLE_DAEMON_CTRL "$APP_ARGS"
+eval set -- $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
 
 # by default we should be in the correct project dir, but when run from Finder on Mac, the cwd is wrong
 if [ "$(uname)" = "Darwin" ] && [ "$HOME" = "$PWD" ]; then

@@ -48,5 +48,5 @@ configure(rootProject) {
 }
 
 task localSettings() {
-  // This is just a placeholder until all references to the localSettings task are removed #SOLR-16641
+  // This is just a placeholder until all references to the localSettings task are removed
 }
