@@ -27,6 +27,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -185,6 +186,17 @@ public class TestIndexableField extends LuceneTestCase {
       return readerValue() != null
           ? analyzer.tokenStream(name(), readerValue())
           : analyzer.tokenStream(name(), new StringReader(stringValue()));
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      if (stringValue() != null) {
+        return new StoredValue(stringValue());
+      } else if (binaryValue() != null) {
+        return new StoredValue(binaryValue());
+      } else {
+        return null;
+      }
     }
   }
 
@@ -387,6 +399,11 @@ public class TestIndexableField extends LuceneTestCase {
       ft.setStoreTermVectors(true);
       ft.freeze();
       return ft;
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return null;
     }
   }
 

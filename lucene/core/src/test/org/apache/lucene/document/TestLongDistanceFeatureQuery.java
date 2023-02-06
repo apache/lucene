@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -61,7 +62,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
+    LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
 
     field.setLongValue(3);
@@ -123,7 +124,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
+    LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
 
     field.setLongValue(3);
@@ -209,7 +210,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
             dir,
             newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
+    LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
 
     field.setLongValue(3);
@@ -254,31 +255,31 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
 
     Document doc = new Document();
     for (long v : new long[] {3, 1000, Long.MAX_VALUE}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongField("foo", v, Store.NO));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {-100, 12, 999}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongField("foo", v, Store.NO));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {Long.MIN_VALUE, -1000, 8}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongField("foo", v, Store.NO));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {-1}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongField("foo", v, Store.NO));
     }
     w.addDocument(doc);
 
     doc = new Document();
     for (long v : new long[] {Long.MIN_VALUE, 7}) {
-      doc.add(new LongField("foo", v));
+      doc.add(new LongField("foo", v, Store.NO));
     }
     w.addDocument(doc);
 
@@ -324,7 +325,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
         new IndexWriter(
             dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
-    LongField field = new LongField("foo", 0L);
+    LongField field = new LongField("foo", 0L, Store.NO);
     doc.add(field);
 
     int numDocs = atLeast(10000);
