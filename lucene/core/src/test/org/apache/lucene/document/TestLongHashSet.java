@@ -26,7 +26,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestLongHashSet extends LuceneTestCase {
 
   private void assertEquals(Set<Long> set1, LongHashSet longHashSet) {
-    Set<Long> set2 = longHashSet.toSet();
+    Set<Long> set2 = longHashSet.stream().boxed().collect(Collectors.toSet());
 
     LuceneTestCase.assertEquals(set1, set2);
 
@@ -44,13 +44,13 @@ public class TestLongHashSet extends LuceneTestCase {
   }
 
   private void assertNotEquals(Set<Long> set1, LongHashSet longHashSet) {
-    Set<Long> set2 = longHashSet.toSet();
+    Set<Long> set2 = longHashSet.stream().boxed().collect(Collectors.toSet());
 
     LuceneTestCase.assertNotEquals(set1, set2);
 
     LongHashSet set3 = new LongHashSet(set1.stream().mapToLong(Long::longValue).sorted().toArray());
 
-    LuceneTestCase.assertNotEquals(set2, set3.toSet());
+    LuceneTestCase.assertNotEquals(set2, set3.stream().boxed().collect(Collectors.toSet()));
   }
 
   public void testEmpty() {
@@ -103,10 +103,7 @@ public class TestLongHashSet extends LuceneTestCase {
       if (values.length > 0 && random().nextBoolean()) {
         values[values.length / 2] = Long.MIN_VALUE;
       }
-      Set<Long> set1 =
-          LongStream.of(values)
-              .mapToObj(Long::valueOf)
-              .collect(Collectors.toCollection(HashSet::new));
+      Set<Long> set1 = LongStream.of(values).mapToObj(Long::valueOf).collect(Collectors.toSet());
       Arrays.sort(values);
       LongHashSet set2 = new LongHashSet(values);
       assertEquals(set1, set2);
