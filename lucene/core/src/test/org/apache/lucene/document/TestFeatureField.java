@@ -84,7 +84,7 @@ public class TestFeatureField extends LuceneTestCase {
     writer.close();
 
     IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
-    LeafReaderContext context = reader.leaves().get(0);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
 
     Query q = FeatureField.newLogQuery("features", "pagerank", 3f, 4.5f);
     Weight w = q.createWeight(searcher, ScoreMode.TOP_SCORES, 2);
@@ -408,7 +408,7 @@ public class TestFeatureField extends LuceneTestCase {
       }
 
       IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
-      LeafReaderContext context = reader.leaves().get(0);
+      LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
 
       for (Query q :
           List.of(
