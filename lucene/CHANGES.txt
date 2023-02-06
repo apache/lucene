@@ -109,6 +109,9 @@ API Changes
   should be stored to IndexingChain without needing to guess the field's type.
   (Adrien Grand, Robert Muir)
 
+* GITHUB#12129: Move DocValuesTermsQuery from sandbox to SortedDocValuesField#newSlowSetQuery
+  and SortedSetDocValuesField#newSlowSetQuery. (Robert Muir)
+
 New Features
 ---------------------
 (No changes)
