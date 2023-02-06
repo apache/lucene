@@ -100,6 +100,20 @@ public class TestLongHashSet extends LuceneTestCase {
     assertEquals(set1, set2);
   }
 
+  public void testSameValue() {
+    LongHashSet set2 = new LongHashSet(new long[] {42L, 42L});
+    assertEquals(1, set2.size());
+    assertEquals(42L, set2.minValue);
+    assertEquals(42L, set2.maxValue);
+  }
+
+  public void testSameMissingPlaceholder() {
+    LongHashSet set2 = new LongHashSet(new long[] {Long.MIN_VALUE, Long.MIN_VALUE});
+    assertEquals(1, set2.size());
+    assertEquals(Long.MIN_VALUE, set2.minValue);
+    assertEquals(Long.MIN_VALUE, set2.maxValue);
+  }
+
   public void testRandom() {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
