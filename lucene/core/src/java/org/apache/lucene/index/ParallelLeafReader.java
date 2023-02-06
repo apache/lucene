@@ -29,7 +29,6 @@ import java.util.TreeMap;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
 /**
@@ -402,10 +401,17 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String fieldName) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null ? null : reader.getVectorValues(fieldName);
+    return reader == null ? null : reader.getFloatVectorValues(fieldName);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.getByteVectorValues(fieldName);
   }
 
   @Override
@@ -421,7 +427,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String fieldName, BytesRef target, int k, Bits acceptDocs, int visitedLimit)
+      String fieldName, byte[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);

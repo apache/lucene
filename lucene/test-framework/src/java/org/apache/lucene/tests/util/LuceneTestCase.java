@@ -1530,7 +1530,8 @@ public abstract class LuceneTestCase extends Assert {
             }
           }
         }
-        if (!newType.storeTermVectorOffsets()) {
+        // Check for strings as offsets are disallowed on binary fields
+        if (value instanceof String && !newType.storeTermVectorOffsets()) {
           newType.setStoreTermVectorOffsets(random.nextBoolean());
         }
 

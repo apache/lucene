@@ -17,11 +17,9 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -37,11 +35,11 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   float[] randomVector(int dim) {
-    BytesRef bytesRef = TestVectorUtil.randomVectorBytes(dim);
-    float[] v = new float[bytesRef.length];
+    byte[] b = TestVectorUtil.randomVectorBytes(dim);
+    float[] v = new float[b.length];
     int vi = 0;
-    for (int i = bytesRef.offset; i < v.length; i++) {
-      v[vi++] = bytesRef.bytes[i];
+    for (int i = 0; i < v.length; i++) {
+      v[vi++] = b[i];
     }
     return v;
   }
@@ -49,13 +47,12 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnVectorField(name, new BytesRef(floatToBytes(vector)), similarityFunction);
+    return new KnnByteVectorField(name, floatToBytes(vector), similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnVectorField(
-        name, new BytesRef(floatToBytes(vector)), VectorSimilarityFunction.EUCLIDEAN);
+    return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
   private static byte[] floatToBytes(float[] query) {
@@ -73,9 +70,11 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     assertEquals("KnnByteVectorQuery:f1[0,...][10]", q1.toString("ignored"));
   }
 
-  @Override
-  VectorEncoding vectorEncoding() {
-    return VectorEncoding.BYTE;
+  public void testGetTarget() {
+    byte[] queryVectorBytes = floatToBytes(new float[] {0, 1});
+    KnnByteVectorQuery q1 = new KnnByteVectorQuery("f1", queryVectorBytes, 10);
+    assertArrayEquals(queryVectorBytes, q1.getTargetCopy());
+    assertNotSame(queryVectorBytes, q1.getTargetCopy());
   }
 
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {

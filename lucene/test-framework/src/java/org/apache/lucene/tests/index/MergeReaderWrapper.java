@@ -24,10 +24,12 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
@@ -38,10 +40,8 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * This is a hack to make index sorting fast, with a {@link LeafReader} that always returns merge
@@ -218,8 +218,13 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) throws IOException {
-    return in.getVectorValues(fieldName);
+  public FloatVectorValues getFloatVectorValues(String fieldName) throws IOException {
+    return in.getFloatVectorValues(fieldName);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
+    return in.getByteVectorValues(fieldName);
   }
 
   @Override
@@ -230,7 +235,7 @@ class MergeReaderWrapper extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
   }
 

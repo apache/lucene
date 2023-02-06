@@ -315,12 +315,21 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
-      final VectorValues vectorValues = in.getVectorValues(field);
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      final FloatVectorValues vectorValues = in.getFloatVectorValues(field);
       if (vectorValues == null) {
         return null;
       }
-      return new ExitableVectorValues(vectorValues);
+      return new ExitableFloatVectorValues(vectorValues);
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      final ByteVectorValues vectorValues = in.getByteVectorValues(field);
+      if (vectorValues == null) {
+        return null;
+      }
+      return new ExitableByteVectorValues(vectorValues);
     }
 
     @Override
@@ -387,17 +396,18 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
     }
 
-    private class ExitableVectorValues extends FilterVectorValues {
+    private class ExitableFloatVectorValues extends FloatVectorValues {
       private int docToCheck;
+      private final FloatVectorValues vectorValues;
 
-      public ExitableVectorValues(VectorValues vectorValues) {
-        super(vectorValues);
+      public ExitableFloatVectorValues(FloatVectorValues vectorValues) {
+        this.vectorValues = vectorValues;
         docToCheck = 0;
       }
 
       @Override
       public int advance(int target) throws IOException {
-        final int advance = super.advance(target);
+        final int advance = vectorValues.advance(target);
         if (advance >= docToCheck) {
           checkAndThrow();
           docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
@@ -406,8 +416,13 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public int docID() {
+        return vectorValues.docID();
+      }
+
+      @Override
       public int nextDoc() throws IOException {
-        final int nextDoc = super.nextDoc();
+        final int nextDoc = vectorValues.nextDoc();
         if (nextDoc >= docToCheck) {
           checkAndThrow();
           docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
@@ -416,13 +431,18 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
-      public float[] vectorValue() throws IOException {
-        return in.vectorValue();
+      public int dimension() {
+        return vectorValues.dimension();
       }
 
       @Override
-      public BytesRef binaryValue() throws IOException {
-        return in.binaryValue();
+      public float[] vectorValue() throws IOException {
+        return vectorValues.vectorValue();
+      }
+
+      @Override
+      public int size() {
+        return vectorValues.size();
       }
 
       /**
@@ -434,11 +454,78 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           throw new ExitingReaderException(
               "The request took too long to iterate over vector values. Timeout: "
                   + queryTimeout.toString()
-                  + ", VectorValues="
+                  + ", FloatVectorValues="
                   + in);
         } else if (Thread.interrupted()) {
           throw new ExitingReaderException(
-              "Interrupted while iterating over vector values. VectorValues=" + in);
+              "Interrupted while iterating over vector values. FloatVectorValues=" + in);
+        }
+      }
+    }
+
+    private class ExitableByteVectorValues extends ByteVectorValues {
+      private int docToCheck;
+      private final ByteVectorValues vectorValues;
+
+      public ExitableByteVectorValues(ByteVectorValues vectorValues) {
+        this.vectorValues = vectorValues;
+        docToCheck = 0;
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        final int advance = vectorValues.advance(target);
+        if (advance >= docToCheck) {
+          checkAndThrow();
+          docToCheck = advance + DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return advance;
+      }
+
+      @Override
+      public int docID() {
+        return vectorValues.docID();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        final int nextDoc = vectorValues.nextDoc();
+        if (nextDoc >= docToCheck) {
+          checkAndThrow();
+          docToCheck = nextDoc + DOCS_BETWEEN_TIMEOUT_CHECK;
+        }
+        return nextDoc;
+      }
+
+      @Override
+      public int dimension() {
+        return vectorValues.dimension();
+      }
+
+      @Override
+      public int size() {
+        return vectorValues.size();
+      }
+
+      @Override
+      public byte[] vectorValue() throws IOException {
+        return vectorValues.vectorValue();
+      }
+
+      /**
+       * Throws {@link ExitingReaderException} if {@link QueryTimeout#shouldExit()} returns true, or
+       * if {@link Thread#interrupted()} returns true.
+       */
+      private void checkAndThrow() {
+        if (queryTimeout.shouldExit()) {
+          throw new ExitingReaderException(
+              "The request took too long to iterate over vector values. Timeout: "
+                  + queryTimeout.toString()
+                  + ", ByteVectorValues="
+                  + in);
+        } else if (Thread.interrupted()) {
+          throw new ExitingReaderException(
+              "Interrupted while iterating over vector values. ByteVectorValues=" + in);
         }
       }
     }

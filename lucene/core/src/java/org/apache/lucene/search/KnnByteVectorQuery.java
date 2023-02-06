@@ -17,18 +17,19 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, BytesRef, int, Bits, int)} to perform nearest
- * neighbour search.
+ * Uses {@link KnnVectorsReader#search(String, byte[], int, Bits, int)} to perform nearest neighbour
+ * search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
  * executes the filter for each leaf, then chooses a strategy dynamically:
@@ -43,13 +44,13 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final BytesRef target;
+  private final byte[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
@@ -62,7 +63,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
    *
-   * @param field a field that has been indexed as a {@link KnnVectorField}.
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search
    * @param k the number of documents to find
    * @param filter a filter applied before the vector search
@@ -70,7 +71,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    */
   public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
     super(field, k, filter);
-    this.target = new BytesRef(target);
+    this.target = target;
   }
 
   @Override
@@ -91,14 +92,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName()
-        + ":"
-        + this.field
-        + "["
-        + target.bytes[target.offset]
-        + ",...]["
-        + k
-        + "]";
+    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
   }
 
   @Override
@@ -106,11 +100,18 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
     if (this == o) return true;
     if (super.equals(o) == false) return false;
     KnnByteVectorQuery that = (KnnByteVectorQuery) o;
-    return Objects.equals(target, that.target);
+    return Arrays.equals(target, that.target);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), target);
+    return Objects.hash(super.hashCode(), Arrays.hashCode(target));
+  }
+
+  /**
+   * @return the target query vector of the search. Each vector element is a byte.
+   */
+  public byte[] getTargetCopy() {
+    return ArrayUtil.copyOfSubArray(target, 0, target.length);
   }
 }

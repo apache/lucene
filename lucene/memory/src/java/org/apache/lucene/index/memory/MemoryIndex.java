@@ -596,7 +596,7 @@ public class MemoryIndex {
                   + fieldName
                   + "]");
         }
-        info.numericProducer.dvLongValues = new long[] {(long) docValuesValue};
+        info.numericProducer.dvLongValues = new long[] {((Number) docValuesValue).longValue()};
         info.numericProducer.count++;
         break;
       case SORTED_NUMERIC:
@@ -605,7 +605,8 @@ public class MemoryIndex {
         }
         info.numericProducer.dvLongValues =
             ArrayUtil.grow(info.numericProducer.dvLongValues, info.numericProducer.count + 1);
-        info.numericProducer.dvLongValues[info.numericProducer.count++] = (long) docValuesValue;
+        info.numericProducer.dvLongValues[info.numericProducer.count++] =
+            ((Number) docValuesValue).longValue();
         break;
       case BINARY:
       case SORTED:
@@ -1391,7 +1392,12 @@ public class MemoryIndex {
     }
 
     @Override
-    public VectorValues getVectorValues(String fieldName) {
+    public FloatVectorValues getFloatVectorValues(String fieldName) {
+      return null;
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String fieldName) {
       return null;
     }
 
@@ -1403,7 +1409,7 @@ public class MemoryIndex {
 
     @Override
     public TopDocs searchNearestVectors(
-        String field, BytesRef target, int k, Bits acceptDocs, int visitedLimit) {
+        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
       return null;
     }
 

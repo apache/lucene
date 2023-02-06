@@ -53,7 +53,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -65,6 +65,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexFormatTooOldException;
 import org.apache.lucene.index.IndexOptions;
@@ -97,12 +98,11 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -167,7 +167,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-      KnnVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public void testCreateCFS() throws IOException {
@@ -365,7 +365,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.4.1-cfs",
     "9.4.1-nocfs",
     "9.4.2-cfs",
-    "9.4.2-nocfs"
+    "9.4.2-nocfs",
+    "9.5.0-cfs",
+    "9.5.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -379,7 +381,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.3.0",
     "sorted.9.4.0",
     "sorted.9.4.1",
-    "sorted.9.4.2"
+    "sorted.9.4.2",
+    "sorted.9.5.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -1327,7 +1330,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       // test vector values
       int cnt = 0;
       for (LeafReaderContext ctx : reader.leaves()) {
-        VectorValues values = ctx.reader().getVectorValues(KNN_VECTOR_FIELD);
+        FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
@@ -1360,7 +1363,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       String expectedFirstDocId)
       throws IOException {
     ScoreDoc[] hits =
-        searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
+        searcher.search(new KnnFloatVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
     assertEquals("wrong number of hits", expectedHitsCount, hits.length);
     Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", expectedFirstDocId, d.get("id"));
@@ -1598,7 +1601,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doc.add(new Field("content6", "here is more content with aaa aaa aaa", customType4));
 
     float[] vector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * id};
-    doc.add(new KnnVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
+    doc.add(new KnnFloatVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
 
     // TODO:
     //   index different norms types via similarity (we use a random one currently?!)

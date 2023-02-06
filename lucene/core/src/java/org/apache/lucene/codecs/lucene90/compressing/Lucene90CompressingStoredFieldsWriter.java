@@ -32,7 +32,6 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.ByteBuffersDataInput;
@@ -267,67 +266,52 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   @Override
-  public void writeField(FieldInfo info, IndexableField field) throws IOException {
-
+  public void writeField(FieldInfo info, int value) throws IOException {
     ++numStoredFieldsInDoc;
-
-    int bits = 0;
-    final BytesRef bytes;
-    final String string;
-
-    Number number = field.numericValue();
-    if (number != null) {
-      if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
-        bits = NUMERIC_INT;
-      } else if (number instanceof Long) {
-        bits = NUMERIC_LONG;
-      } else if (number instanceof Float) {
-        bits = NUMERIC_FLOAT;
-      } else if (number instanceof Double) {
-        bits = NUMERIC_DOUBLE;
-      } else {
-        throw new IllegalArgumentException("cannot store numeric type " + number.getClass());
-      }
-      string = null;
-      bytes = null;
-    } else {
-      bytes = field.binaryValue();
-      if (bytes != null) {
-        bits = BYTE_ARR;
-        string = null;
-      } else {
-        bits = STRING;
-        string = field.stringValue();
-        if (string == null) {
-          throw new IllegalArgumentException(
-              "field "
-                  + field.name()
-                  + " is stored but does not have binaryValue, stringValue nor numericValue");
-        }
-      }
-    }
-
-    final long infoAndBits = (((long) info.number) << TYPE_BITS) | bits;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_INT;
     bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeZInt(value);
+  }
 
-    if (bytes != null) {
-      bufferedDocs.writeVInt(bytes.length);
-      bufferedDocs.writeBytes(bytes.bytes, bytes.offset, bytes.length);
-    } else if (string != null) {
-      bufferedDocs.writeString(string);
-    } else {
-      if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
-        bufferedDocs.writeZInt(number.intValue());
-      } else if (number instanceof Long) {
-        writeTLong(bufferedDocs, number.longValue());
-      } else if (number instanceof Float) {
-        writeZFloat(bufferedDocs, number.floatValue());
-      } else if (number instanceof Double) {
-        writeZDouble(bufferedDocs, number.doubleValue());
-      } else {
-        throw new AssertionError("Cannot get here");
-      }
-    }
+  @Override
+  public void writeField(FieldInfo info, long value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_LONG;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeTLong(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, float value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_FLOAT;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeZFloat(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, double value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_DOUBLE;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeZDouble(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, BytesRef value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(value.length);
+    bufferedDocs.writeBytes(value.bytes, value.offset, value.length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, String value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | STRING;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeString(value);
   }
 
   // -0 isn't compressed.
