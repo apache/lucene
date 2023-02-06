@@ -127,6 +127,11 @@ Bug Fixes
 ---------------------
 (No changes)
 
+Build
+---------------------
+
+* GITHUB#12131: Generate gradle.properties from gradlew, if absent (Colvin Cowie, Uwe Schindler)
+
 Other
 ---------------------
 
