@@ -88,7 +88,7 @@ set CLASSPATH=%GRADLE_WRAPPER_JAR%
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
   @rem local expansion is needed to check ERRORLEVEL inside control blocks.
   setlocal enableDelayedExpansion
-  "%JAVA_EXE%" --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "%APP_HOME%\gradle\template.gradle.properties" "%APP_HOME%\gradle.properties"
+  "%JAVA_EXE%" %JAVA_OPTS% --source 11 "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "%APP_HOME%\gradle\template.gradle.properties" "%APP_HOME%\gradle.properties"
   IF %ERRORLEVEL% NEQ 0 goto fail
   endlocal
 )
