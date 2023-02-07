@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.document;
 
-import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
@@ -34,9 +33,8 @@ import org.apache.lucene.util.BytesRef;
  * Field that indexes a per-document String or {@link BytesRef} into an inverted index for fast
  * filtering, stores values in a columnar fashion using {@link DocValuesType#SORTED_SET} doc values
  * for sorting and faceting, and optionally stores values as stored fields for top-hits retrieval.
- * This field does not support scoring: queries produce constant scores. If you also need to store
- * the value, you should add a separate {@link StoredField} instance. If you need more fine-grained
- * control you can use {@link StringField}, {@link SortedDocValuesField} or {@link
+ * This field does not support scoring: queries produce constant scores. If you need more
+ * fine-grained control you can use {@link StringField}, {@link SortedDocValuesField} or {@link
  * SortedSetDocValuesField}, and {@link StoredField}.
  *
  * <p>This field defines static factory methods for creating common query objects:
@@ -166,7 +164,7 @@ public class KeywordField extends Field {
    * @throws NullPointerException if {@code field} is null.
    * @return a query matching documents with this exact value
    */
-  public static Query newSetQuery(String field, Collection<BytesRef> values) {
+  public static Query newSetQuery(String field, BytesRef... values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
     return new TermInSetQuery(field, values);
