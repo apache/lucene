@@ -18,10 +18,14 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
@@ -63,6 +67,7 @@ public final class HnswGraphBuilder<T> {
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
   private final RandomAccessVectorValues<T> vectorsCopy;
+  private final Set<Integer> initializedNodes;
 
   public static <T> HnswGraphBuilder<T> create(
       RandomAccessVectorValues<T> vectors,
@@ -73,6 +78,22 @@ public final class HnswGraphBuilder<T> {
       long seed)
       throws IOException {
     return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+  }
+
+  public static <T> HnswGraphBuilder<T> create(
+      RandomAccessVectorValues<T> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      Map<Integer, Integer> oldToNewOrdinalMap)
+      throws IOException {
+    HnswGraphBuilder<T> hnswGraphBuilder =
+        new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
+    return hnswGraphBuilder;
   }
 
   /**
@@ -110,8 +131,7 @@ public final class HnswGraphBuilder<T> {
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    int levelOfFirstNode = getRandomGraphLevel(ml, random);
-    this.hnsw = new OnHeapHnswGraph(M, levelOfFirstNode);
+    this.hnsw = new OnHeapHnswGraph(M);
     this.graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
@@ -120,6 +140,7 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
+    this.initializedNodes = new HashSet<>();
   }
 
   /**
@@ -142,10 +163,75 @@ public final class HnswGraphBuilder<T> {
     return hnsw;
   }
 
+  /**
+   * Initializes the graph of this builder. Transfers the nodes and their neighbors from the
+   * initializer graph into the graph being produced by this builder, mapping ordinals from the
+   * initializer graph to their new ordinals in this builder's graph. The builder's graph must be
+   * empty before calling this method.
+   *
+   * @param initializerGraph graph used for initialization
+   * @param oldToNewOrdinalMap map for converting from ordinals in the initializerGraph to this
+   *     builder's graph
+   */
+  private void initializeFromGraph(
+      HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
+    assert hnsw.size() == 0;
+    float[] vectorValue = null;
+    byte[] binaryValue = null;
+    for (int level = 0; level < initializerGraph.numLevels(); level++) {
+      HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
+
+      while (it.hasNext()) {
+        int oldOrd = it.nextInt();
+        int newOrd = oldToNewOrdinalMap.get(oldOrd);
+
+        hnsw.addNode(level, newOrd);
+
+        if (level == 0) {
+          initializedNodes.add(newOrd);
+        }
+
+        switch (this.vectorEncoding) {
+          case FLOAT32:
+            vectorValue = (float[]) vectors.vectorValue(newOrd);
+            break;
+          case BYTE:
+            binaryValue = (byte[]) vectors.vectorValue(newOrd);
+            break;
+        }
+
+        NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
+        initializerGraph.seek(level, oldOrd);
+        for (int oldNeighbor = initializerGraph.nextNeighbor();
+            oldNeighbor != NO_MORE_DOCS;
+            oldNeighbor = initializerGraph.nextNeighbor()) {
+          int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
+          float score;
+          switch (this.vectorEncoding) {
+            case FLOAT32:
+            default:
+              score =
+                  this.similarityFunction.compare(
+                      vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor));
+              break;
+            case BYTE:
+              score =
+                  this.similarityFunction.compare(
+                      binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
+              break;
+          }
+          newNeighbors.insertSorted(newNeighbor, score);
+        }
+      }
+    }
+  }
+
   private void addVectors(RandomAccessVectorValues<T> vectorsToAdd) throws IOException {
     long start = System.nanoTime(), t = start;
-    // start at node 1! node 0 is added implicitly, in the constructor
-    for (int node = 1; node < vectorsToAdd.size(); node++) {
+    for (int node = 0; node < vectorsToAdd.size(); node++) {
+      if (initializedNodes.contains(node)) {
+        continue;
+      }
       addGraphNode(node, vectorsToAdd);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
@@ -167,6 +253,14 @@ public final class HnswGraphBuilder<T> {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
+
+    // If entrynode is -1, then this should finish without adding neighbors
+    if (hnsw.entryNode() == -1) {
+      for (int level = nodeLevel; level >= 0; level--) {
+        hnsw.addNode(level, node);
+      }
+      return;
+    }
     int[] eps = new int[] {hnsw.entryNode()};
 
     // if a node introduces new levels to the graph, add this new node on new levels

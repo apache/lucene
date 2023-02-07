@@ -355,7 +355,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new NodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
         }
       }
     };
@@ -711,10 +711,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       assert docID > lastDocID;
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
-      if (node > 0) {
-        // start at node 1! node 0 is added implicitly, in the constructor
-        hnswGraphBuilder.addGraphNode(node, vectorValue);
-      }
+      hnswGraphBuilder.addGraphNode(node, vectorValue);
       node++;
       lastDocID = docID;
     }

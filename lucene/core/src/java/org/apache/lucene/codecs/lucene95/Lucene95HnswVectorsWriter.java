@@ -25,11 +25,16 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.*;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -369,7 +374,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new NodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
         }
       }
     };
@@ -444,6 +449,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
+        int initializerIndex = selectGraphForInitialization(mergeState, fieldInfo);
         // build graph
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE:
@@ -454,13 +460,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     vectorDataInput,
                     byteSize);
             HnswGraphBuilder<byte[]> bytesRefHnswGraphBuilder =
-                HnswGraphBuilder.create(
-                    byteVectorValues,
-                    fieldInfo.getVectorEncoding(),
-                    fieldInfo.getVectorSimilarityFunction(),
-                    M,
-                    beamWidth,
-                    HnswGraphBuilder.randSeed);
+                createHnswGraphBuilder(mergeState, fieldInfo, byteVectorValues, initializerIndex);
             bytesRefHnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
             graph = bytesRefHnswGraphBuilder.build(byteVectorValues.copy());
             break;
@@ -472,13 +472,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     vectorDataInput,
                     byteSize);
             HnswGraphBuilder<float[]> hnswGraphBuilder =
-                HnswGraphBuilder.create(
-                    vectorValues,
-                    fieldInfo.getVectorEncoding(),
-                    fieldInfo.getVectorSimilarityFunction(),
-                    M,
-                    beamWidth,
-                    HnswGraphBuilder.randSeed);
+                createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
             hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
             graph = hnswGraphBuilder.build(vectorValues.copy());
             break;
@@ -510,6 +504,202 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+  }
+
+  private <T> HnswGraphBuilder<T> createHnswGraphBuilder(
+      MergeState mergeState,
+      FieldInfo fieldInfo,
+      RandomAccessVectorValues<T> floatVectorValues,
+      int initializerIndex)
+      throws IOException {
+    if (initializerIndex == -1) {
+      return HnswGraphBuilder.create(
+          floatVectorValues,
+          fieldInfo.getVectorEncoding(),
+          fieldInfo.getVectorSimilarityFunction(),
+          M,
+          beamWidth,
+          HnswGraphBuilder.randSeed);
+    }
+
+    HnswGraph initializerGraph =
+        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]);
+    Map<Integer, Integer> ordinalMapper =
+        getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
+    return HnswGraphBuilder.create(
+        floatVectorValues,
+        fieldInfo.getVectorEncoding(),
+        fieldInfo.getVectorSimilarityFunction(),
+        M,
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        initializerGraph,
+        ordinalMapper);
+  }
+
+  private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
+      throws IOException {
+    // Find the KnnVectorReader with the most docs that meets the following criteria:
+    //  1. Does not contain any deleted docs
+    //  2. Is a Lucene95HnswVectorsReader/PerFieldKnnVectorReader
+    // If no readers exist that meet this criteria, return -1. If they do, return their index in
+    // merge state
+    int maxCandidateVectorCount = 0;
+    int initializerIndex = -1;
+
+    for (int i = 0; i < mergeState.liveDocs.length; i++) {
+      KnnVectorsReader currKnnVectorsReader = mergeState.knnVectorsReaders[i];
+      if (mergeState.knnVectorsReaders[i] instanceof PerFieldKnnVectorsFormat.FieldsReader) {
+        PerFieldKnnVectorsFormat.FieldsReader candidateReader =
+            (PerFieldKnnVectorsFormat.FieldsReader) mergeState.knnVectorsReaders[i];
+        currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
+      }
+
+      if (!allMatch(mergeState.liveDocs[i])
+          || !(currKnnVectorsReader instanceof Lucene95HnswVectorsReader)) {
+        continue;
+      }
+      Lucene95HnswVectorsReader candidateReader = (Lucene95HnswVectorsReader) currKnnVectorsReader;
+
+      int candidateVectorCount = 0;
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE:
+          ByteVectorValues byteVectorValues = candidateReader.getByteVectorValues(fieldInfo.name);
+          if (byteVectorValues == null) {
+            continue;
+          }
+          candidateVectorCount = byteVectorValues.size();
+          break;
+        case FLOAT32:
+          FloatVectorValues vectorValues = candidateReader.getFloatVectorValues(fieldInfo.name);
+          if (vectorValues == null) {
+            continue;
+          }
+          candidateVectorCount = vectorValues.size();
+          break;
+      }
+
+      if (candidateVectorCount > maxCandidateVectorCount) {
+        maxCandidateVectorCount = candidateVectorCount;
+        initializerIndex = i;
+      }
+    }
+    return initializerIndex;
+  }
+
+  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
+      throws IOException {
+    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
+      PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
+          (PerFieldKnnVectorsFormat.FieldsReader) knnVectorsReader;
+      if (perFieldReader.getFieldReader(fieldName) instanceof Lucene95HnswVectorsReader) {
+        Lucene95HnswVectorsReader fieldReader =
+            (Lucene95HnswVectorsReader) perFieldReader.getFieldReader(fieldName);
+        return fieldReader.getGraph(fieldName);
+      }
+    }
+
+    if (knnVectorsReader instanceof Lucene95HnswVectorsReader) {
+      return ((Lucene95HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    }
+
+    // We should not reach here because knnVectorsReader's type is checked in
+    // selectGraphForInitialization
+    throw new IllegalArgumentException(
+        "Invalid KnnVectorsReader type for field: "
+            + fieldName
+            + ". Must be Lucene95HnswVectorsReader or newer");
+  }
+
+  private Map<Integer, Integer> getOldToNewOrdinalMap(
+      MergeState mergeState, FieldInfo fieldInfo, int initializerIndex) throws IOException {
+
+    DocIdSetIterator initializerIterator = null;
+
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE:
+        initializerIterator =
+            mergeState.knnVectorsReaders[initializerIndex].getByteVectorValues(fieldInfo.name);
+        break;
+      case FLOAT32:
+        initializerIterator =
+            mergeState.knnVectorsReaders[initializerIndex].getFloatVectorValues(fieldInfo.name);
+        break;
+    }
+
+    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
+
+    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
+    int oldOrd = 0;
+    int maxNewDocID = -1;
+    for (int oldId = initializerIterator.nextDoc();
+        oldId != NO_MORE_DOCS;
+        oldId = initializerIterator.nextDoc()) {
+      if (isCurrentVectorNull(initializerIterator)) {
+        continue;
+      }
+      int newId = initializerDocMap.get(oldId);
+      maxNewDocID = Math.max(newId, maxNewDocID);
+      newIdToOldOrdinal.put(newId, oldOrd);
+      oldOrd++;
+    }
+
+    if (maxNewDocID == -1) {
+      return Collections.emptyMap();
+    }
+
+    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
+
+    DocIdSetIterator vectorIterator = null;
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE:
+        vectorIterator = MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+        break;
+      case FLOAT32:
+        vectorIterator = MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+        break;
+    }
+
+    int newOrd = 0;
+    for (int newDocId = vectorIterator.nextDoc();
+        newDocId <= maxNewDocID;
+        newDocId = vectorIterator.nextDoc()) {
+      if (isCurrentVectorNull(vectorIterator)) {
+        continue;
+      }
+
+      if (newIdToOldOrdinal.containsKey(newDocId)) {
+        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
+      }
+      newOrd++;
+    }
+
+    return oldToNewOrdinalMap;
+  }
+
+  private boolean isCurrentVectorNull(DocIdSetIterator docIdSetIterator) throws IOException {
+    if (docIdSetIterator instanceof FloatVectorValues) {
+      return ((FloatVectorValues) docIdSetIterator).vectorValue() == null;
+    }
+
+    if (docIdSetIterator instanceof ByteVectorValues) {
+      return ((ByteVectorValues) docIdSetIterator).vectorValue() == null;
+    }
+
+    return true;
+  }
+
+  private boolean allMatch(Bits bits) {
+    if (bits == null) {
+      return true;
+    }
+
+    for (int i = 0; i < bits.length(); i++) {
+      if (!bits.get(i)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
@@ -762,10 +952,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       assert docID > lastDocID;
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
-      if (node > 0) {
-        // start at node 1! node 0 is added implicitly, in the constructor
-        hnswGraphBuilder.addGraphNode(node, vectorValue);
-      }
+      hnswGraphBuilder.addGraphNode(node, vectorValue);
       node++;
       lastDocID = docID;
     }

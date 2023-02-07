@@ -25,10 +25,14 @@ import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
@@ -83,6 +87,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   abstract AbstractMockVectorValues<T> vectorValues(LeafReader reader, String fieldName)
       throws IOException;
+
+  abstract AbstractMockVectorValues<T> vectorValues(
+      int size,
+      int dimension,
+      AbstractMockVectorValues<T> pregeneratedVectorValues,
+      int pregeneratedOffset);
 
   abstract Field knnVectorField(String name, T vector, VectorSimilarityFunction similarityFunction);
 
@@ -449,6 +459,238 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
+  public void testBuildOnHeapHnswGraphOutOfOrder() throws IOException {
+    int maxNumLevels = randomIntBetween(2, 10);
+    int nodeCount = randomIntBetween(1, 100);
+
+    List<List<Integer>> nodesPerLevel = new ArrayList<>();
+    for (int i = 0; i < maxNumLevels; i++) {
+      nodesPerLevel.add(new ArrayList<>());
+    }
+
+    int numLevels = 0;
+    for (int currNode = 0; currNode < nodeCount; currNode++) {
+      int nodeMaxLevel = random().nextInt(maxNumLevels) + 1;
+      numLevels = Math.max(numLevels, nodeMaxLevel);
+      for (int currLevel = 0; currLevel < nodeMaxLevel; currLevel++) {
+        nodesPerLevel.get(currLevel).add(currNode);
+      }
+    }
+
+    OnHeapHnswGraph topDownOrderReversedHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
+      List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
+      int currLevelNodesSize = currLevelNodes.size();
+      for (int currNodeInd = currLevelNodesSize - 1; currNodeInd >= 0; currNodeInd--) {
+        topDownOrderReversedHnsw.addNode(currLevel, currLevelNodes.get(currNodeInd));
+      }
+    }
+
+    OnHeapHnswGraph bottomUpOrderReversedHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = 0; currLevel < numLevels; currLevel++) {
+      List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
+      int currLevelNodesSize = currLevelNodes.size();
+      for (int currNodeInd = currLevelNodesSize - 1; currNodeInd >= 0; currNodeInd--) {
+        bottomUpOrderReversedHnsw.addNode(currLevel, currLevelNodes.get(currNodeInd));
+      }
+    }
+
+    OnHeapHnswGraph topDownOrderRandomHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
+      List<Integer> currLevelNodes = new ArrayList<>(nodesPerLevel.get(currLevel));
+      Collections.shuffle(currLevelNodes, random());
+      for (Integer currNode : currLevelNodes) {
+        topDownOrderRandomHnsw.addNode(currLevel, currNode);
+      }
+    }
+
+    OnHeapHnswGraph bottomUpExpectedHnsw = new OnHeapHnswGraph(10);
+    for (int currLevel = 0; currLevel < numLevels; currLevel++) {
+      for (Integer currNode : nodesPerLevel.get(currLevel)) {
+        bottomUpExpectedHnsw.addNode(currLevel, currNode);
+      }
+    }
+
+    assertEquals(nodeCount, bottomUpExpectedHnsw.getNodesOnLevel(0).size());
+    for (Integer node : nodesPerLevel.get(0)) {
+      assertEquals(0, bottomUpExpectedHnsw.getNeighbors(0, node).size());
+    }
+
+    for (int currLevel = 1; currLevel < numLevels; currLevel++) {
+      NodesIterator nodesIterator = bottomUpExpectedHnsw.getNodesOnLevel(currLevel);
+      List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
+      assertEquals(expectedNodesOnLevel.size(), nodesIterator.size());
+      for (Integer expectedNode : expectedNodesOnLevel) {
+        int currentNode = nodesIterator.nextInt();
+        assertEquals(expectedNode.intValue(), currentNode);
+        assertEquals(0, bottomUpExpectedHnsw.getNeighbors(currLevel, currentNode).size());
+      }
+    }
+
+    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
+    assertGraphEqual(bottomUpExpectedHnsw, bottomUpOrderReversedHnsw);
+    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderRandomHnsw);
+  }
+
+  public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
+    int totalSize = atLeast(100);
+    int initializerSize = random().nextInt(totalSize - 5) + 5;
+    int docIdOffset = 0;
+    int dim = atLeast(10);
+    long seed = random().nextLong();
+
+    AbstractMockVectorValues<T> initializerVectors = vectorValues(initializerSize, dim);
+    HnswGraphBuilder<T> initializerBuilder =
+        HnswGraphBuilder.create(
+            initializerVectors, getVectorEncoding(), similarityFunction, 10, 30, seed);
+
+    OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
+    AbstractMockVectorValues<T> finalVectorValues =
+        vectorValues(totalSize, dim, initializerVectors, docIdOffset);
+
+    Map<Integer, Integer> initializerOrdMap =
+        createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
+
+    HnswGraphBuilder<T> finalBuilder =
+        HnswGraphBuilder.create(
+            finalVectorValues,
+            getVectorEncoding(),
+            similarityFunction,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            initializerOrdMap);
+
+    // When offset is 0, the graphs should be identical before vectors are added
+    assertGraphEqual(initializerGraph, finalBuilder.getGraph());
+
+    OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.copy());
+    assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
+  }
+
+  public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() throws IOException {
+    int totalSize = atLeast(100);
+    int initializerSize = random().nextInt(totalSize - 5) + 5;
+    int docIdOffset = random().nextInt(totalSize - initializerSize) + 1;
+    int dim = atLeast(10);
+    long seed = random().nextLong();
+
+    AbstractMockVectorValues<T> initializerVectors = vectorValues(initializerSize, dim);
+    HnswGraphBuilder<T> initializerBuilder =
+        HnswGraphBuilder.create(
+            initializerVectors.copy(), getVectorEncoding(), similarityFunction, 10, 30, seed);
+    OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
+    AbstractMockVectorValues<T> finalVectorValues =
+        vectorValues(totalSize, dim, initializerVectors.copy(), docIdOffset);
+    Map<Integer, Integer> initializerOrdMap =
+        createOffsetOrdinalMap(initializerSize, finalVectorValues.copy(), docIdOffset);
+
+    HnswGraphBuilder<T> finalBuilder =
+        HnswGraphBuilder.create(
+            finalVectorValues,
+            getVectorEncoding(),
+            similarityFunction,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            initializerOrdMap);
+
+    assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
+
+    // Confirm that the graph is appropriately constructed by checking that the nodes in the old
+    // graph are present in the levels of the new graph
+    OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.copy());
+    assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
+  }
+
+  private void assertGraphContainsGraph(
+      HnswGraph g, HnswGraph h, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
+    for (int i = 0; i < h.numLevels(); i++) {
+      int[] finalGraphNodesOnLevel = nodesIteratorToArray(g.getNodesOnLevel(i));
+      int[] initializerGraphNodesOnLevel =
+          mapArrayAndSort(nodesIteratorToArray(h.getNodesOnLevel(i)), oldToNewOrdMap);
+      int overlap = computeOverlap(finalGraphNodesOnLevel, initializerGraphNodesOnLevel);
+      assertEquals(initializerGraphNodesOnLevel.length, overlap);
+    }
+  }
+
+  private void assertGraphInitializedFromGraph(
+      HnswGraph g, HnswGraph h, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
+    assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
+    // Confirm that the size of the new graph includes all nodes up to an including the max new
+    // ordinal in the old to
+    // new ordinal mapping
+    assertEquals(
+        "the number of nodes in the graphs are different!",
+        g.size(),
+        Collections.max(oldToNewOrdMap.values()) + 1);
+
+    // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
+    for (int level = 1; level < g.numLevels(); level++) {
+      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
+      NodesIterator nodesOnLevel2 = h.getNodesOnLevel(level);
+      while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
+        int node = nodesOnLevel.nextInt();
+        int node2 = oldToNewOrdMap.get(nodesOnLevel2.nextInt());
+        assertEquals("nodes in the graphs are different", node, node2);
+      }
+    }
+
+    // assert that the neighbors from the old graph are successfully transferred to the new graph
+    for (int level = 0; level < g.numLevels(); level++) {
+      NodesIterator nodesOnLevel = h.getNodesOnLevel(level);
+      while (nodesOnLevel.hasNext()) {
+        int node = nodesOnLevel.nextInt();
+        g.seek(level, oldToNewOrdMap.get(node));
+        h.seek(level, node);
+        assertEquals(
+            "arcs differ for node " + node,
+            getNeighborNodes(g),
+            getNeighborNodes(h).stream().map(oldToNewOrdMap::get).collect(Collectors.toSet()));
+      }
+    }
+  }
+
+  private Map<Integer, Integer> createOffsetOrdinalMap(
+      int docIdSize, AbstractMockVectorValues<T> totalVectorValues, int docIdOffset) {
+    // Compute the offset for the ordinal map to be the number of non-null vectors in the total
+    // vector values
+    // before the docIdOffset
+    int ordinalOffset = 0;
+    while (totalVectorValues.nextDoc() < docIdOffset) {
+      ordinalOffset++;
+    }
+
+    Map<Integer, Integer> offsetOrdinalMap = new HashMap<>();
+    for (int curr = 0;
+        totalVectorValues.docID() < docIdOffset + docIdSize;
+        totalVectorValues.nextDoc()) {
+      offsetOrdinalMap.put(curr, ordinalOffset + curr++);
+    }
+
+    return offsetOrdinalMap;
+  }
+
+  private int[] nodesIteratorToArray(NodesIterator nodesIterator) {
+    int[] arr = new int[nodesIterator.size()];
+    int i = 0;
+    while (nodesIterator.hasNext()) {
+      arr[i++] = nodesIterator.nextInt();
+    }
+    return arr;
+  }
+
+  private int[] mapArrayAndSort(int[] arr, Map<Integer, Integer> map) {
+    int[] mappedA = new int[arr.length];
+    for (int i = 0; i < arr.length; i++) {
+      mappedA[i] = map.get(arr[i]);
+    }
+    Arrays.sort(mappedA);
+    return mappedA;
+  }
+
   @SuppressWarnings("unchecked")
   public void testVisitedLimit() throws IOException {
     int nDoc = 500;
@@ -560,8 +802,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         HnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
-    // builder.addGraphNode(vectors.vectorValue(0));
     RandomAccessVectorValues<T> vectorsCopy = vectors.copy();
+    builder.addGraphNode(0, vectorsCopy);
     builder.addGraphNode(1, vectorsCopy);
     builder.addGraphNode(2, vectorsCopy);
     // now every node has tried to attach every other node as a neighbor, but
@@ -615,9 +857,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder<T> builder =
         HnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 1, 10, random().nextInt());
-    // node 0 is added by the builder constructor
-    // builder.addGraphNode(vectors.vectorValue(0));
     RandomAccessVectorValues<T> vectorsCopy = vectors.copy();
+    builder.addGraphNode(0, vectorsCopy);
     builder.addGraphNode(1, vectorsCopy);
     builder.addGraphNode(2, vectorsCopy);
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
@@ -648,9 +889,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder<T> builder =
         HnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 1, 10, random().nextInt());
-    // node 0 is added by the builder constructor
-    // builder.addGraphNode(vectors.vectorValue(0));
     RandomAccessVectorValues<T> vectorsCopy = vectors.copy();
+    builder.addGraphNode(0, vectorsCopy);
     builder.addGraphNode(1, vectorsCopy);
     builder.addGraphNode(2, vectorsCopy);
     assertLevel0Neighbors(builder.hnsw, 0, 1, 2);
