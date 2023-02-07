@@ -17,7 +17,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12054: Introduce a new KeywordField for simple and efficient
+  filtering, sorting and faceting. (Adrien Grand)
 
 Improvements
 ---------------------
