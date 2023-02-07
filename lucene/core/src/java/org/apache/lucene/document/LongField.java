@@ -70,7 +70,7 @@ public final class LongField extends Field {
    * @param name field name
    * @param value the long value
    * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #LongField(String, int, Field.Store)} with {@link Field.Store#NO}
+   * @deprecated Use {@link #LongField(String, long, Field.Store)} with {@link Field.Store#NO}
    *     instead.
    */
   @Deprecated
