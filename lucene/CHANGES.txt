@@ -133,6 +133,8 @@ Optimizations
 
 * GITHUB#12128, GITHUB#12133: Speed up docvalues set query by making use of sortedness. (Robert Muir, Uwe Schindler)
 
+* GITHUB#12050: Reuse HNSW graph for intialization during merge (Jack Mazanec)
+
 Bug Fixes
 ---------------------
 (No changes)
