@@ -289,7 +289,7 @@ public final class Lucene50CompressingStoredFieldsWriter extends StoredFieldsWri
     ++numStoredFieldsInDoc;
     final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_LONG;
     bufferedDocs.writeVLong(infoAndBits);
-    writeTLong(bufferedDocs, value);
+    writeTLong(EndiannessReverserUtil.wrapDataOutput(bufferedDocs), value);
   }
 
   @Override
@@ -297,7 +297,7 @@ public final class Lucene50CompressingStoredFieldsWriter extends StoredFieldsWri
     ++numStoredFieldsInDoc;
     final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_FLOAT;
     bufferedDocs.writeVLong(infoAndBits);
-    writeZFloat(bufferedDocs, value);
+    writeZFloat(EndiannessReverserUtil.wrapDataOutput(bufferedDocs), value);
   }
 
   @Override
@@ -305,7 +305,7 @@ public final class Lucene50CompressingStoredFieldsWriter extends StoredFieldsWri
     ++numStoredFieldsInDoc;
     final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_DOUBLE;
     bufferedDocs.writeVLong(infoAndBits);
-    writeZDouble(bufferedDocs, value);
+    writeZDouble(EndiannessReverserUtil.wrapDataOutput(bufferedDocs), value);
   }
 
   @Override

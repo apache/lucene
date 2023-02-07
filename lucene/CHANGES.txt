@@ -109,6 +109,9 @@ API Changes
   should be stored to IndexingChain without needing to guess the field's type.
   (Adrien Grand, Robert Muir)
 
+* GITHUB#12129: Move DocValuesTermsQuery from sandbox to SortedDocValuesField#newSlowSetQuery
+  and SortedSetDocValuesField#newSlowSetQuery. (Robert Muir)
+
 New Features
 ---------------------
 (No changes)
@@ -124,11 +127,18 @@ Optimizations
   in order to achieve the same false positive probability with less memory.
   (Jean-François Boeuf)
   
-* GITHUB#12118 Optimize FeatureQuery to TermQuery & weight when scoring is not required (Ben Trent, Robert Muir)
+* GITHUB#12118: Optimize FeatureQuery to TermQuery & weight when scoring is not required. (Ben Trent, Robert Muir)
+
+* GITHUB#12128, GITHUB#12133: Speed up docvalues set query by making use of sortedness. (Robert Muir, Uwe Schindler)
 
 Bug Fixes
 ---------------------
 (No changes)
+
+Build
+---------------------
+
+* GITHUB#12131: Generate gradle.properties from gradlew, if absent (Colvin Cowie, Uwe Schindler)
 
 Other
 ---------------------

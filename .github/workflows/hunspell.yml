@@ -27,8 +27,5 @@ jobs:
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
 
-    - name: Initialize gradle settings
-      run: ./gradlew localSettings
-
     - name: Run regular and regression tests
       run: ./gradlew -p lucene/analysis/common check testRegressions

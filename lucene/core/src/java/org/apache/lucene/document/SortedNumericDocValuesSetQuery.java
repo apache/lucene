@@ -17,9 +17,9 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -37,7 +37,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /** Similar to SortedNumericDocValuesRangeQuery but for a set */
-abstract class SortedNumericDocValuesSetQuery extends Query implements Accountable {
+final class SortedNumericDocValuesSetQuery extends Query implements Accountable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(SortedNumericDocValuesSetQuery.class);
 
@@ -46,6 +46,7 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
 
   SortedNumericDocValuesSetQuery(String field, long[] numbers) {
     this.field = Objects.requireNonNull(field);
+    Arrays.sort(numbers);
     this.numbers = new LongHashSet(numbers);
   }
 
@@ -60,7 +61,7 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
 
   @Override
   public int hashCode() {
-    return 31 * classHash() + Objects.hash(field, numbers);
+    return Objects.hash(classHash(), field, numbers);
   }
 
   @Override
@@ -90,8 +91,6 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
     return super.rewrite(indexSearcher);
   }
 
-  abstract SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException;
-
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
@@ -104,10 +103,10 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        SortedNumericDocValues values = getValues(context.reader(), field);
-        if (values == null) {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         final TwoPhaseIterator iterator;
         if (singleton != null) {
@@ -115,12 +114,15 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
               new TwoPhaseIterator(singleton) {
                 @Override
                 public boolean matches() throws IOException {
-                  return numbers.contains(singleton.longValue());
+                  long value = singleton.longValue();
+                  return value >= numbers.minValue
+                      && value <= numbers.maxValue
+                      && numbers.contains(value);
                 }
 
                 @Override
                 public float matchCost() {
-                  return 5; // lookup in the set
+                  return 5; // 2 comparisions, possible lookup in the set
                 }
               };
         } else {
@@ -130,7 +132,12 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
                 public boolean matches() throws IOException {
                   int count = values.docValueCount();
                   for (int i = 0; i < count; i++) {
-                    if (numbers.contains(values.nextValue())) {
+                    final long value = values.nextValue();
+                    if (value < numbers.minValue) {
+                      continue;
+                    } else if (value > numbers.maxValue) {
+                      return false; // values are sorted, terminate
+                    } else if (numbers.contains(value)) {
                       return true;
                     }
                   }
@@ -139,7 +146,7 @@ abstract class SortedNumericDocValuesSetQuery extends Query implements Accountab
 
                 @Override
                 public float matchCost() {
-                  return 5; // lookup in the set
+                  return 5; // 2 comparisons, possible lookup in the set
                 }
               };
         }

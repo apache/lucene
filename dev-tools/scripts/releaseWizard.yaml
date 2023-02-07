@@ -343,8 +343,6 @@ groups:
         cmd: git pull --ff-only
         stdout: true
       - !Command
-        cmd: "{{ gradle_cmd }} localSettings"
-      - !Command
         cmd: "{{ gradle_cmd }} clean check -x test"
   - !Todo
     id: create_stable_branch
