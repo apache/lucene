@@ -252,7 +252,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
       if (Node.VERBOSE_FILES) {
         dest.message("remove partial file " + current.tmpName);
       }
-      dest.deleter.deleteNewFile(current.tmpName);
+      dest.deleter.forceDeleteFile(current.tmpName);
       current = null;
     }
   }

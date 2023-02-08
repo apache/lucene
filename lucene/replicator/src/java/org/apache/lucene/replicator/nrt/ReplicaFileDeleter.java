@@ -72,7 +72,7 @@ class ReplicaFileDeleter {
     fileDeleter.deleteFileIfNoRef(fileName);
   }
 
-  public synchronized void deleteNewFile(String fileName) throws IOException {
+  public synchronized void forceDeleteFile(String fileName) throws IOException {
     fileDeleter.forceDelete(fileName);
   }
 
