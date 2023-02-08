@@ -120,7 +120,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#12135: KeywordField#newSetQuery avoids duplicate sorting/cloning of values across TermInSetQuery and
+  SortedSetDocValuesSetQuery. (Greg Miller)
 
 Optimizations
 ---------------------

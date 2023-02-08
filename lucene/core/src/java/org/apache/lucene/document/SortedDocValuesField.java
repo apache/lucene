@@ -98,6 +98,6 @@ public class SortedDocValuesField extends Field {
    * {@link BinaryPoint#newSetQuery}.
    */
   public static Query newSlowSetQuery(String field, BytesRef... values) {
-    return new SortedSetDocValuesSetQuery(field, values.clone());
+    return new SortedSetDocValuesSetQuery(field, values);
   }
 }

@@ -16,12 +16,17 @@
  */
 package org.apache.lucene.index;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestPrefixCodedTerms extends LuceneTestCase {
 
@@ -67,6 +72,29 @@ public class TestPrefixCodedTerms extends LuceneTestCase {
     while (iter.next() != null) {
       assertTrue(expected.hasNext());
       assertEquals(expected.next(), new Term(iter.field(), iter.bytes));
+    }
+
+    assertFalse(expected.hasNext());
+  }
+
+  public void testSingleField() {
+    Set<BytesRef> values = new HashSet<>();
+    String field = TestUtil.randomUnicodeString(random(), 8);
+    int nterms = atLeast(10000);
+    for (int i = 0; i < nterms; i++) {
+      values.add(new BytesRef(TestUtil.randomUnicodeString(random())));
+    }
+
+    PrefixCodedTerms codedTerms = PrefixCodedTerms.ofFieldTerms(field, values);
+
+    List<BytesRef> expectedValues = new ArrayList<>(values);
+    Collections.sort(expectedValues);
+    TermIterator iter = codedTerms.iterator();
+    Iterator<BytesRef> expected = expectedValues.iterator();
+    while (iter.next() != null) {
+      assertTrue(expected.hasNext());
+      assertEquals(expected.next(), iter.bytes);
+      assertEquals(field, iter.field);
     }
 
     assertFalse(expected.hasNext());

@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
@@ -168,8 +171,10 @@ public class KeywordField extends Field {
   public static Query newSetQuery(String field, BytesRef... values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
+    SortedSet<BytesRef> sortedValues = new TreeSet<>(Arrays.asList(values));
     return new IndexOrDocValuesQuery(
-        new TermInSetQuery(field, values), new SortedSetDocValuesSetQuery(field, values));
+        new TermInSetQuery(field, sortedValues),
+        new SortedSetDocValuesSetQuery(field, sortedValues));
   }
 
   /**

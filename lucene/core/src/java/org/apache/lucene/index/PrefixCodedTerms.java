@@ -18,11 +18,14 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.SortedSet;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.StringHelper;
@@ -38,6 +41,33 @@ public class PrefixCodedTerms implements Accountable {
   private final long size;
   private long delGen;
   private int lazyHash;
+
+  /** Create a {@link PrefixCodedTerms} for a single field and collection of terms. */
+  public static PrefixCodedTerms ofFieldTerms(String field, Collection<BytesRef> terms) {
+    // already sorted if we are a SortedSet with natural order
+    boolean sorted =
+        terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
+    PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
+    if (sorted == false) {
+      BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
+      ArrayUtil.timSort(sortedTerms);
+      BytesRefBuilder previous = null;
+      for (BytesRef term : sortedTerms) {
+        if (previous == null) {
+          previous = new BytesRefBuilder();
+        } else if (previous.get().equals(term)) {
+          continue; // deduplicate
+        }
+        builder.add(field, term);
+        previous.copyBytes(term);
+      }
+    } else {
+      for (BytesRef term : terms) {
+        builder.add(field, term);
+      }
+    }
+    return builder.finish();
+  }
 
   private PrefixCodedTerms(List<ByteBuffer> content, long size) {
     this.content = Objects.requireNonNull(content);

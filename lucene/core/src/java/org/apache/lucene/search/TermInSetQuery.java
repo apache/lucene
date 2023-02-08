@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.SortedSet;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -36,9 +35,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automata;
@@ -83,26 +80,8 @@ public class TermInSetQuery extends Query implements Accountable {
 
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(String field, Collection<BytesRef> terms) {
-    BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
-    // already sorted if we are a SortedSet with natural order
-    boolean sorted =
-        terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
-    if (!sorted) {
-      ArrayUtil.timSort(sortedTerms);
-    }
-    PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    BytesRefBuilder previous = null;
-    for (BytesRef term : sortedTerms) {
-      if (previous == null) {
-        previous = new BytesRefBuilder();
-      } else if (previous.get().equals(term)) {
-        continue; // deduplicate
-      }
-      builder.add(field, term);
-      previous.copyBytes(term);
-    }
     this.field = field;
-    termData = builder.finish();
+    termData = PrefixCodedTerms.ofFieldTerms(field, terms);
     termDataHashCode = termData.hashCode();
   }
 

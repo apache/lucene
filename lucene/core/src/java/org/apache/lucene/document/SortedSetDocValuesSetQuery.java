@@ -17,6 +17,8 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -37,7 +39,6 @@ import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -51,19 +52,13 @@ final class SortedSetDocValuesSetQuery extends Query implements Accountable {
   private final PrefixCodedTerms termData;
   private final int termDataHashCode; // cached hashcode of termData
 
-  SortedSetDocValuesSetQuery(String field, BytesRef terms[]) {
-    this.field = Objects.requireNonNull(field);
-    Objects.requireNonNull(terms);
-    ArrayUtil.timSort(terms);
-    PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    BytesRef previous = null;
-    for (BytesRef term : terms) {
-      if (term.equals(previous) == false) {
-        builder.add(field, term);
-      }
-      previous = term;
-    }
-    termData = builder.finish();
+  SortedSetDocValuesSetQuery(String field, BytesRef[] terms) {
+    this(field, Arrays.asList(terms));
+  }
+
+  SortedSetDocValuesSetQuery(String field, Collection<BytesRef> terms) {
+    this.field = field;
+    termData = PrefixCodedTerms.ofFieldTerms(field, terms);
     termDataHashCode = termData.hashCode();
   }
 
