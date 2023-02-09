@@ -403,8 +403,8 @@ public class TestFeatureField extends LuceneTestCase {
         pageRankDoc.add(pagerank);
         writer.addDocument(pageRankDoc);
 
-        reader = writer.getReader();
         writer.forceMerge(1);
+        reader = writer.getReader();
       }
 
       IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
