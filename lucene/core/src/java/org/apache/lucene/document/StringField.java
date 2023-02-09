@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.util.BytesRef;
 
@@ -81,6 +83,16 @@ public final class StringField extends Field {
     } else {
       storedValue = null;
     }
+  }
+
+  @Override
+  public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+    if (binaryValue() != null) {
+      // Return null so that the indexing chain indexes the field directly through the
+      // #binaryValue() and saves the TokenStream overhead.
+      return null;
+    }
+    return super.tokenStream(analyzer, reuse);
   }
 
   @Override

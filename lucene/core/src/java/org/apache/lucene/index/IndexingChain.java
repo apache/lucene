@@ -1105,11 +1105,24 @@ final class IndexingChain implements Accountable {
      * this field name in this document.
      */
     public void invert(int docID, IndexableField field, boolean first) throws IOException {
+      assert field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0;
+
       if (first) {
         // First time we're seeing this field (indexed) in this document
         invertState.reset();
       }
 
+      if (invertTokenStream(docID, field, first) == false
+          && invertKeyword(docID, field, first) == false) {
+        throw new IllegalArgumentException(
+            "Indexed fields must produce a TokenStream or a binary value, but "
+                + field.name()
+                + " did not");
+      }
+    }
+
+    private boolean invertTokenStream(int docID, IndexableField field, boolean first)
+        throws IOException {
       final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
       /*
        * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
@@ -1118,6 +1131,10 @@ final class IndexingChain implements Accountable {
        */
       boolean succeededInProcessingField = false;
       try (TokenStream stream = tokenStream = field.tokenStream(analyzer, tokenStream)) {
+        if (stream == null) {
+          succeededInProcessingField = true; // nothing to do
+          return false;
+        }
         // reset the TokenStream to the first token
         stream.reset();
         invertState.setAttributeSource(stream);
@@ -1251,6 +1268,50 @@ final class IndexingChain implements Accountable {
         invertState.position += analyzer.getPositionIncrementGap(fieldInfo.name);
         invertState.offset += analyzer.getOffsetGap(fieldInfo.name);
       }
+      return true;
+    }
+
+    private boolean invertKeyword(int docID, IndexableField field, boolean first)
+        throws IOException {
+      BytesRef binaryValue = field.binaryValue();
+      if (binaryValue == null) {
+        return false;
+      }
+      final IndexableFieldType fieldType = field.fieldType();
+      if (fieldType.tokenized()
+          || fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) > 0
+          || fieldType.storeTermVectorPositions()
+          || fieldType.storeTermVectorOffsets()
+          || fieldType.storeTermVectorPayloads()) {
+        throw new IllegalArgumentException(
+            "Fields that are tokenized or index proximity data must produce a non-null TokenStream, but "
+                + field.name()
+                + " did not");
+      }
+      invertState.setAttributeSource(null);
+      invertState.position++;
+      invertState.length++;
+      termsHashPerField.start(field, first);
+      invertState.length = Math.addExact(invertState.length, 1);
+      try {
+        termsHashPerField.add(binaryValue, docID);
+      } catch (MaxBytesLengthExceededException e) {
+        byte[] prefix = new byte[30];
+        System.arraycopy(binaryValue.bytes, binaryValue.offset, prefix, 0, 30);
+        String msg =
+            "Document contains at least one immense term in field=\""
+                + fieldInfo.name
+                + "\" (whose length is longer than the max length "
+                + IndexWriter.MAX_TERM_LENGTH
+                + "), all of which were skipped. The prefix of the first immense term is: '"
+                + Arrays.toString(prefix)
+                + "...'";
+        if (infoStream.isEnabled("IW")) {
+          infoStream.message("IW", "ERROR: " + msg);
+        }
+        throw new IllegalArgumentException(msg, e);
+      }
+      return true;
     }
   }
 
