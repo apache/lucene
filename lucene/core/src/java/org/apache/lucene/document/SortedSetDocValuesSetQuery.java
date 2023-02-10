@@ -17,7 +17,10 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PrefixCodedTerms;
@@ -34,10 +37,10 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -51,20 +54,23 @@ final class SortedSetDocValuesSetQuery extends Query implements Accountable {
   private final PrefixCodedTerms termData;
   private final int termDataHashCode; // cached hashcode of termData
 
-  SortedSetDocValuesSetQuery(String field, BytesRef terms[]) {
+  /**
+   * Creates a new {@link TermInSetQuery} from the given collection of terms. This is most efficient
+   * if it is a sorted set or any other collection which has a presorted and distinct spliterator.
+   */
+  SortedSetDocValuesSetQuery(String field, Collection<BytesRef> terms) {
+    this(field, terms.stream());
+  }
+
+  /** Creates a new {@link TermInSetQuery} from the given array of terms. */
+  SortedSetDocValuesSetQuery(String field, BytesRef... terms) {
+    this(field, Arrays.stream(terms));
+  }
+
+  private SortedSetDocValuesSetQuery(String field, Stream<BytesRef> stream) {
     this.field = Objects.requireNonNull(field);
-    Objects.requireNonNull(terms);
-    ArrayUtil.timSort(terms);
-    PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    BytesRef previous = null;
-    for (BytesRef term : terms) {
-      if (term.equals(previous) == false) {
-        builder.add(field, term);
-      }
-      previous = term;
-    }
-    termData = builder.finish();
-    termDataHashCode = termData.hashCode();
+    this.termData = stream.sorted().distinct().collect(PrefixCodedTerms.collector(field));
+    this.termDataHashCode = this.termData.hashCode();
   }
 
   @Override

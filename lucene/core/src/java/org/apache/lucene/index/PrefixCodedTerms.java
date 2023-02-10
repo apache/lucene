@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collector;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.util.Accountable;
@@ -102,6 +103,16 @@ public class PrefixCodedTerms implements Accountable {
     public PrefixCodedTerms finish() {
       return new PrefixCodedTerms(output.toBufferList(), size);
     }
+  }
+
+  public static Collector<BytesRef, Builder, PrefixCodedTerms> collector(String field) {
+    return Collector.of(
+        Builder::new,
+        (builder, bytes) -> builder.add(field, bytes),
+        (b1, b2) -> {
+          throw new IllegalStateException("concurrent collection is not possible");
+        },
+        Builder::finish);
   }
 
   /** An iterator over the list of terms stored in a {@link PrefixCodedTerms}. */
