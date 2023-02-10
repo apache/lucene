@@ -34,20 +34,20 @@ import org.apache.lucene.util.BytesRef;
 public class TestFieldReuse extends BaseTokenStreamTestCase {
 
   public void testStringField() throws IOException {
-    StringField stringField = new StringField("foo", "bar", Field.Store.NO);
+    Field stringField = new Field("foo", "bar", StringField.TYPE_NOT_STORED);
 
     // passing null
     TokenStream ts = stringField.tokenStream(null, null);
     assertTokenStreamContents(ts, new String[] {"bar"}, new int[] {0}, new int[] {3});
 
     // now reuse previous stream
-    stringField = new StringField("foo", "baz", Field.Store.NO);
+    stringField = new Field("foo", "baz", StringField.TYPE_NOT_STORED);
     TokenStream ts2 = stringField.tokenStream(null, ts);
     assertSame(ts, ts2);
     assertTokenStreamContents(ts, new String[] {"baz"}, new int[] {0}, new int[] {3});
 
     // pass a bogus stream and ensure it's still ok
-    stringField = new StringField("foo", "beer", Field.Store.NO);
+    stringField = new Field("foo", "beer", StringField.TYPE_NOT_STORED);
     TokenStream bogus = new CannedTokenStream();
     ts = stringField.tokenStream(null, bogus);
     assertNotSame(ts, bogus);
