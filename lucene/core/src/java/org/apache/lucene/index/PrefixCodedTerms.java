@@ -105,6 +105,10 @@ public class PrefixCodedTerms implements Accountable {
     }
   }
 
+  /**
+   * A stream {@link Collector} to process a stream of {@link BytesRef} instances and build instance
+   * of {@code PrefixCodedTerms}.
+   */
   public static Collector<BytesRef, ?, PrefixCodedTerms> collector(String field) {
     return Collector.of(
         Builder::new,
