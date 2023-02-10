@@ -105,7 +105,7 @@ public class PrefixCodedTerms implements Accountable {
     }
   }
 
-  public static Collector<BytesRef, Builder, PrefixCodedTerms> collector(String field) {
+  public static Collector<BytesRef, ?, PrefixCodedTerms> collector(String field) {
     return Collector.of(
         Builder::new,
         (builder, bytes) -> builder.add(field, bytes),
