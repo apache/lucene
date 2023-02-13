@@ -189,14 +189,16 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
     int len = topK.scoreDocs.length;
+
+    assert len > 0;
+    float maxScore = topK.scoreDocs[0].score;
+
     Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
     int[] docs = new int[len];
     float[] scores = new float[len];
-    float maxScore = 0.0f;
     for (int i = 0; i < len; i++) {
       docs[i] = topK.scoreDocs[i].doc;
       scores[i] = topK.scoreDocs[i].score;
-      maxScore = Math.max(maxScore, scores[i]);
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
     return new DocAndScoreQuery(k, docs, scores, maxScore, segmentStarts, reader.getContext().id());
