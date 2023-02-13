@@ -286,7 +286,12 @@ abstract class AbstractKnnVectorQuery extends Query {
      *     query
      */
     DocAndScoreQuery(
-        int k, int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
+        int k,
+        int[] docs,
+        float[] scores,
+        float maxScore,
+        int[] segmentStarts,
+        Object contextIdentity) {
       this.k = k;
       this.docs = docs;
       this.scores = scores;
