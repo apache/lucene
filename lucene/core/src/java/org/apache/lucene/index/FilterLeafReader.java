@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Iterator;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
@@ -348,8 +347,13 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
-    return in.getVectorValues(field);
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return in.getFloatVectorValues(field);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    return in.getByteVectorValues(field);
   }
 
   @Override
@@ -359,15 +363,15 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectorsExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-    return in.searchNearestVectorsExhaustively(field, target, k, acceptDocs);
+  public TopDocs searchNearestVectors(
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+    return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
+  public TermVectors termVectors() throws IOException {
     ensureOpen();
-    return in.getTermVectors(docID);
+    return in.termVectors();
   }
 
   @Override
@@ -383,9 +387,9 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public StoredFields storedFields() throws IOException {
     ensureOpen();
-    in.document(docID, visitor);
+    return in.storedFields();
   }
 
   @Override

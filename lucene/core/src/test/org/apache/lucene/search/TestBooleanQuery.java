@@ -771,9 +771,6 @@ public class TestBooleanQuery extends LuceneTestCase {
     Query builtQuery = q.build();
 
     assertEquals(searcher.count(builtQuery), numMatchingDocs);
-    final Weight weight = searcher.createWeight(builtQuery, ScoreMode.COMPLETE, 1);
-    // tests that the Weight#count API returns -1 instead of returning the total number of matches
-    assertEquals(weight.count(reader.leaves().get(0)), -1);
 
     IOUtils.close(reader, w, dir);
   }
@@ -848,11 +845,14 @@ public class TestBooleanQuery extends LuceneTestCase {
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     Document doc = new Document();
     LongPoint longPoint = new LongPoint("long", 3L);
+    LongPoint longPoint3dim = new LongPoint("long3dim", 3L, 4L, 5L);
     doc.add(longPoint);
+    doc.add(longPoint3dim);
     StringField stringField = new StringField("string", "abc", Store.NO);
     doc.add(stringField);
     writer.addDocument(doc);
     longPoint.setLongValue(10);
+    longPoint3dim.setLongValues(10L, 11L, 12L);
     stringField.setStringValue("xyz");
     writer.addDocument(doc);
     IndexReader reader = DirectoryReader.open(writer);
@@ -903,6 +903,59 @@ public class TestBooleanQuery extends LuceneTestCase {
     // One query matches all docs, the count of the disjunction is the number of docs
     weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
     assertEquals(2, weight.count(reader.leaves().get(0)));
+
+    long[] lower = new long[] {4L, 5L, 6L};
+    long[] upper = new long[] {9L, 10L, 11L};
+    Query unknownCountQuery = LongPoint.newRangeQuery("long3dim", lower, upper);
+    assert reader.leaves().size() == 1;
+    assert searcher
+            .createWeight(unknownCountQuery, ScoreMode.COMPLETE, 1f)
+            .count(reader.leaves().get(0))
+        == -1;
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "xyz")), Occur.MUST)
+            .add(unknownCountQuery, Occur.MUST_NOT)
+            .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // count of the first MUST_NOT clause is unknown, but the second MUST_NOT clause matches all
+    // docs
+    assertEquals(0, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("string", "xyz")), Occur.MUST)
+            .add(unknownCountQuery, Occur.MUST_NOT)
+            .add(new TermQuery(new Term("string", "abc")), Occur.MUST_NOT)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // count of the first MUST_NOT clause is unknown, though the second MUST_NOT clause matche one
+    // doc, we can't figure out the number of
+    // docs
+    assertEquals(-1, weight.count(reader.leaves().get(0)));
+
+    // test pure disjunction
+    query =
+        new BooleanQuery.Builder()
+            .add(unknownCountQuery, Occur.SHOULD)
+            .add(new MatchAllDocsQuery(), Occur.SHOULD)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // count of the first SHOULD clause is unknown, but the second SHOULD clause matches all docs
+    assertEquals(2, weight.count(reader.leaves().get(0)));
+
+    query =
+        new BooleanQuery.Builder()
+            .add(unknownCountQuery, Occur.SHOULD)
+            .add(new TermQuery(new Term("string", "abc")), Occur.SHOULD)
+            .build();
+    weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1f);
+    // count of the first SHOULD clause is unknown, though the second SHOULD clause matche one doc,
+    // we can't figure out the number of
+    // docs
+    assertEquals(-1, weight.count(reader.leaves().get(0)));
 
     reader.close();
     dir.close();

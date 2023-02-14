@@ -550,7 +550,7 @@ abstract class ShapeDocValues {
       if (node.triangle.bc == true) {
         header |= 0x20;
       }
-      if (node.triangle.ca = true) {
+      if (node.triangle.ca == true) {
         header |= 0x40;
       }
 

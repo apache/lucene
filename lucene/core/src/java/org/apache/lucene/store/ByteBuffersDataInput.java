@@ -86,7 +86,7 @@ public final class ByteBuffersDataInput extends DataInput
   public long ramBytesUsed() {
     // Return a rough estimation for allocated blocks. Note that we do not make
     // any special distinction for what the type of buffer is (direct vs. heap-based).
-    return RamUsageEstimator.NUM_BYTES_OBJECT_REF * blocks.length
+    return (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * blocks.length
         + Arrays.stream(blocks).mapToLong(buf -> buf.capacity()).sum();
   }
 

@@ -127,7 +127,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, EXTENSION);
-    try (ChecksumIndexInput input = directory.openChecksumInput(fileName, context)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(fileName)) {
       Throwable priorE = null;
       FieldInfo[] infos = null;
       try {
@@ -373,7 +373,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final String EXTENSION = "fnm";
 
   // Codec header
-  static final String CODEC_NAME = "Lucene90FieldInfos";
+  static final String CODEC_NAME = "Lucene94FieldInfos";
   static final int FORMAT_START = 0;
   static final int FORMAT_CURRENT = FORMAT_START;
 

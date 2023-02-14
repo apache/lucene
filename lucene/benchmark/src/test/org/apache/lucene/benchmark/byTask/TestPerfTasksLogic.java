@@ -24,6 +24,7 @@ import java.text.Collator;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -47,6 +48,7 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SerialMergeScheduler;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -125,8 +127,10 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     CountingSearchTestTask.numSearches = 0;
     execBenchmark(algLines);
     assertTrue(CountingSearchTestTask.numSearches > 0);
-    long elapsed = CountingSearchTestTask.prevLastMillis - CountingSearchTestTask.startMillis;
-    assertTrue("elapsed time was " + elapsed + " msec", elapsed <= 1500);
+    long elapsed =
+        TimeUnit.NANOSECONDS.toMillis(
+            CountingSearchTestTask.prevLastNanos - CountingSearchTestTask.startNanos);
+    assertTrue("elapsed time was " + elapsed + " ms", elapsed <= 1500);
   }
 
   // disabled until we fix BG thread prio -- this test
@@ -237,8 +241,9 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
 
     final int maxDoc = r.maxDoc();
     assertEquals(1000, maxDoc);
+    StoredFields storedFields = r.storedFields();
     for (int i = 0; i < 1000; i++) {
-      assertNotNull("doc " + i + " has null country", r.document(i).getField("country"));
+      assertNotNull("doc " + i + " has null country", storedFields.document(i).getField("country"));
     }
     r.close();
   }
@@ -641,7 +646,7 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     writer.close();
     Directory dir = benchmark.getRunData().getDirectory();
     IndexReader reader = DirectoryReader.open(dir);
-    Fields tfv = reader.getTermVectors(0);
+    Fields tfv = reader.termVectors().get(0);
     assertNotNull(tfv);
     assertTrue(tfv.size() > 0);
     reader.close();

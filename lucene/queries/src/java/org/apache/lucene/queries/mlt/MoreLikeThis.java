@@ -34,6 +34,7 @@ import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
@@ -291,11 +292,11 @@ public final class MoreLikeThis {
   }
 
   /** Constructor requiring an IndexReader. */
-  public MoreLikeThis(IndexReader ir) {
+  public MoreLikeThis(IndexReader ir) throws IOException {
     this(ir, new ClassicSimilarity());
   }
 
-  public MoreLikeThis(IndexReader ir, TFIDFSimilarity sim) {
+  public MoreLikeThis(IndexReader ir, TFIDFSimilarity sim) throws IOException {
     this.ir = ir;
     this.similarity = sim;
   }
@@ -710,8 +711,9 @@ public final class MoreLikeThis {
    */
   private PriorityQueue<ScoreTerm> retrieveTerms(int docNum) throws IOException {
     Map<String, Map<String, Int>> field2termFreqMap = new HashMap<>();
+    TermVectors termVectors = ir.termVectors();
     for (String fieldName : fieldNames) {
-      final Fields vectors = ir.getTermVectors(docNum);
+      final Fields vectors = termVectors.get(docNum);
       final Terms vector;
       if (vectors != null) {
         vector = vectors.terms(fieldName);
@@ -721,7 +723,7 @@ public final class MoreLikeThis {
 
       // field does not store term vector info
       if (vector == null) {
-        Document d = ir.document(docNum);
+        Document d = ir.storedFields().document(docNum);
         IndexableField[] fields = d.getFields(fieldName);
         for (IndexableField field : fields) {
           final String stringValue = field.stringValue();
@@ -879,7 +881,9 @@ public final class MoreLikeThis {
     return createQueue(field2termFreqMap);
   }
 
-  /** @see #retrieveInterestingTerms(java.io.Reader, String) */
+  /**
+   * @see #retrieveInterestingTerms(java.io.Reader, String)
+   */
   public String[] retrieveInterestingTerms(int docNum) throws IOException {
     ArrayList<String> al = new ArrayList<>(maxQueryTerms);
     PriorityQueue<ScoreTerm> pq = retrieveTerms(docNum);

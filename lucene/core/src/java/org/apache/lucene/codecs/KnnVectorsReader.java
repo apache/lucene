@@ -19,17 +19,14 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.HitQueue;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -48,11 +45,18 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
   public abstract void checkIntegrity() throws IOException;
 
   /**
-   * Returns the {@link VectorValues} for the given {@code field}. The behavior is undefined if the
-   * given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
    * never {@code null}.
    */
-  public abstract VectorValues getVectorValues(String field) throws IOException;
+  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
+
+  /**
+   * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if
+   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
+   * never {@code null}.
+   */
+  public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -90,9 +94,9 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * is derived from the vector similarity in a way that ensures scores are positive and that a
    * larger score corresponds to a higher ranking.
    *
-   * <p>The search is exact, guaranteeing the true k closest neighbors will be returned. Typically
-   * this requires an exhaustive scan of the entire index. It is intended to be used when the number
-   * of potential matches is limited.
+   * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
+   * true k closest neighbors. For large values of k (for example when k is close to the total
+   * number of documents), the search may also retrieve fewer than k documents.
    *
    * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor, in
    * order of their similarity to the query vector (decreasing scores). The {@link TotalHits}
@@ -106,12 +110,13 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @param field the vector field to search
    * @param target the vector-valued query
    * @param k the number of docs to return
-   * @param acceptDocs {@link DocIdSetIterator} that represents the allowed documents to match.
+   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
+   *     if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs searchExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException;
-
+  public abstract TopDocs search(
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
    * that called {@link #getMergeInstance()}.
@@ -120,68 +125,5 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    */
   public KnnVectorsReader getMergeInstance() {
     return this;
-  }
-
-  /** {@link #searchExhaustively} */
-  protected static TopDocs exhaustiveSearch(
-      VectorValues vectorValues,
-      DocIdSetIterator acceptDocs,
-      VectorSimilarityFunction similarityFunction,
-      float[] target,
-      int k)
-      throws IOException {
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = acceptDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      int vectorDoc = vectorValues.advance(doc);
-      assert vectorDoc == doc;
-      float score = similarityFunction.compare(vectorValues.vectorValue(), target);
-      if (score >= topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
-      }
-    }
-    return topDocsFromHitQueue(queue, acceptDocs.cost());
-  }
-
-  /** {@link #searchExhaustively} */
-  protected static TopDocs exhaustiveSearch(
-      VectorValues vectorValues,
-      DocIdSetIterator acceptDocs,
-      VectorSimilarityFunction similarityFunction,
-      BytesRef target,
-      int k)
-      throws IOException {
-    HitQueue queue = new HitQueue(k, true);
-    ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = acceptDocs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      int vectorDoc = vectorValues.advance(doc);
-      assert vectorDoc == doc;
-      float score = similarityFunction.compare(vectorValues.binaryValue(), target);
-      if (score >= topDoc.score) {
-        topDoc.score = score;
-        topDoc.doc = doc;
-        topDoc = queue.updateTop();
-      }
-    }
-    return topDocsFromHitQueue(queue, acceptDocs.cost());
-  }
-
-  private static TopDocs topDocsFromHitQueue(HitQueue queue, long numHits) {
-    // Remove any remaining sentinel values
-    while (queue.size() > 0 && queue.top().score < 0) {
-      queue.pop();
-    }
-
-    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
-    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
-      topScoreDocs[i] = queue.pop();
-    }
-
-    TotalHits totalHits = new TotalHits(numHits, TotalHits.Relation.EQUAL_TO);
-    return new TopDocs(totalHits, topScoreDocs);
   }
 }

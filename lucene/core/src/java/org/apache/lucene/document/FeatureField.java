@@ -31,6 +31,7 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -223,7 +224,7 @@ public final class FeatureField extends Field {
 
     abstract Explanation explain(String field, String feature, float w, int freq);
 
-    FeatureFunction rewrite(IndexReader reader) throws IOException {
+    FeatureFunction rewrite(IndexSearcher indexSearcher) throws IOException {
       return this;
     }
   }
@@ -340,11 +341,11 @@ public final class FeatureField extends Field {
     }
 
     @Override
-    public FeatureFunction rewrite(IndexReader reader) throws IOException {
+    public FeatureFunction rewrite(IndexSearcher indexSearcher) throws IOException {
       if (pivot != null) {
-        return super.rewrite(reader);
+        return super.rewrite(indexSearcher);
       }
-      float newPivot = computePivotFeatureValue(reader, field, feature);
+      float newPivot = computePivotFeatureValue(indexSearcher.getIndexReader(), field, feature);
       return new SaturationFunction(field, feature, newPivot);
     }
 

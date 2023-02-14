@@ -20,9 +20,11 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 
 /**
  * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
@@ -57,7 +59,7 @@ public abstract class HnswGraph {
    *
    * @param level level of the graph
    * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
-   *     VectorValues#size()}.
+   *     FloatVectorValues#size()}.
    */
   public abstract void seek(int level, int target) throws IOException;
 
@@ -115,7 +117,7 @@ public abstract class HnswGraph {
 
         @Override
         public NodesIterator getNodesOnLevel(int level) {
-          return NodesIterator.EMPTY;
+          return ArrayNodesIterator.EMPTY;
         }
       };
 
@@ -123,25 +125,64 @@ public abstract class HnswGraph {
    * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
    * number of nodes to be iterated over.
    */
-  public static final class NodesIterator implements PrimitiveIterator.OfInt {
-    static NodesIterator EMPTY = new NodesIterator(0);
-
-    private final int[] nodes;
-    private final int size;
-    int cur = 0;
-
-    /** Constructor for iterator based on the nodes array up to the size */
-    public NodesIterator(int[] nodes, int size) {
-      assert nodes != null;
-      assert size <= nodes.length;
-      this.nodes = nodes;
-      this.size = size;
-    }
+  public abstract static class NodesIterator implements PrimitiveIterator.OfInt {
+    protected final int size;
 
     /** Constructor for iterator based on the size */
     public NodesIterator(int size) {
-      this.nodes = null;
       this.size = size;
+    }
+
+    /** The number of elements in this iterator * */
+    public int size() {
+      return size;
+    }
+
+    /**
+     * Consume integers from the iterator and place them into the `dest` array.
+     *
+     * @param dest where to put the integers
+     * @return The number of integers written to `dest`
+     */
+    public abstract int consume(int[] dest);
+  }
+
+  /** NodesIterator that accepts nodes as an integer array. */
+  public static class ArrayNodesIterator extends NodesIterator {
+    static NodesIterator EMPTY = new ArrayNodesIterator(0);
+
+    private final int[] nodes;
+    private int cur = 0;
+
+    /** Constructor for iterator based on integer array representing nodes */
+    public ArrayNodesIterator(int[] nodes, int size) {
+      super(size);
+      assert nodes != null;
+      assert size <= nodes.length;
+      this.nodes = nodes;
+    }
+
+    /** Constructor for iterator based on the size */
+    public ArrayNodesIterator(int size) {
+      super(size);
+      this.nodes = null;
+    }
+
+    @Override
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      int numToCopy = Math.min(size - cur, dest.length);
+      if (nodes == null) {
+        for (int i = 0; i < numToCopy; i++) {
+          dest[i] = cur + i;
+        }
+        return numToCopy;
+      }
+      System.arraycopy(nodes, cur, dest, 0, numToCopy);
+      cur += numToCopy;
+      return numToCopy;
     }
 
     @Override
@@ -160,10 +201,43 @@ public abstract class HnswGraph {
     public boolean hasNext() {
       return cur < size;
     }
+  }
 
-    /** The number of elements in this iterator * */
-    public int size() {
-      return size;
+  /** Nodes iterator based on set representation of nodes. */
+  public static class CollectionNodesIterator extends NodesIterator {
+    Iterator<Integer> nodes;
+
+    /** Constructor for iterator based on collection representing nodes */
+    public CollectionNodesIterator(Collection<Integer> nodes) {
+      super(nodes.size());
+      this.nodes = nodes.iterator();
+    }
+
+    @Override
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+
+      int destIndex = 0;
+      while (hasNext() && destIndex < dest.length) {
+        dest[destIndex++] = nextInt();
+      }
+
+      return destIndex;
+    }
+
+    @Override
+    public int nextInt() {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      return nodes.next();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nodes.hasNext();
     }
   }
 }

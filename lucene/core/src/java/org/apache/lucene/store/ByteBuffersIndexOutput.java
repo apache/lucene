@@ -159,4 +159,8 @@ public final class ByteBuffersIndexOutput extends IndexOutput {
       throw new AlreadyClosedException("Already closed.");
     }
   }
+
+  public byte[] toArrayCopy() {
+    return delegate.toArrayCopy();
+  }
 }

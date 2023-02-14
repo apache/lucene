@@ -17,11 +17,15 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
@@ -123,11 +127,12 @@ public class TestMultiThreadTermVectors extends LuceneTestCase {
     private void testTermVectors() throws Exception {
       // check:
       int numDocs = reader.numDocs();
+      TermVectors termVectors = reader.termVectors();
       for (int docId = 0; docId < numDocs; docId++) {
-        Fields vectors = reader.getTermVectors(docId);
+        Fields vectors = termVectors.get(docId);
         // verify vectors result
         verifyVectors(vectors, docId);
-        Terms vector = reader.getTermVectors(docId).terms("field");
+        Terms vector = termVectors.get(docId).terms("field");
         verifyVector(vector.iterator(), docId);
       }
     }

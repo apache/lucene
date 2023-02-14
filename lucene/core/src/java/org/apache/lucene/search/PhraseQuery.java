@@ -24,7 +24,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -284,7 +283,7 @@ public class PhraseQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (terms.length == 0) {
       return new MatchNoDocsQuery("empty PhraseQuery");
     } else if (terms.length == 1) {
@@ -296,7 +295,7 @@ public class PhraseQuery extends Query {
       }
       return new PhraseQuery(slop, terms, newPositions);
     } else {
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
   }
 

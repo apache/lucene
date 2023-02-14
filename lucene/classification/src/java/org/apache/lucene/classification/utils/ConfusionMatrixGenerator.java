@@ -30,6 +30,7 @@ import org.apache.lucene.classification.ClassificationResult;
 import org.apache.lucene.classification.Classifier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermRangeQuery;
@@ -80,13 +81,14 @@ public class ConfusionMatrixGenerator {
       double time = 0d;
 
       int counter = 0;
+      StoredFields storedFields = indexSearcher.storedFields();
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
 
         if (timeoutMilliseconds > 0 && time >= timeoutMilliseconds) {
           break;
         }
 
-        Document doc = reader.document(scoreDoc.doc);
+        Document doc = storedFields.document(scoreDoc.doc);
         String[] correctAnswers = doc.getValues(classFieldName);
 
         if (correctAnswers != null && correctAnswers.length > 0) {

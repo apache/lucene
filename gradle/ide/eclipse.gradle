@@ -24,6 +24,7 @@ def resources = scriptResources(buildscript)
 configure(rootProject) {
   apply plugin: "eclipse"
 
+  def eclipseJavaVersion = propertyOrDefault("eclipse.javaVersion", rootProject.minJavaVersion)
   def relativize = { other -> rootProject.rootDir.relativePath(other).toString() }
 
   eclipse {
@@ -41,13 +42,16 @@ configure(rootProject) {
           def projects = allprojects.findAll { prj ->
             return prj.plugins.hasPlugin(JavaPlugin)
           }
-
+          
+          Set<String> sourceSetNames = ['main', 'test', "main${eclipseJavaVersion}" as String, "test${eclipseJavaVersion}" as String, 'tools'] as Set
           Set<String> sources = []
           Set<File> jars = []
           projects.each { prj ->
             prj.sourceSets.each { sourceSet ->
-              sources += sourceSet.java.srcDirs.findAll { dir -> dir.exists() }.collect { dir -> relativize(dir) }
-              sources += sourceSet.resources.srcDirs.findAll { dir -> dir.exists() }.collect { dir -> relativize(dir) }
+              if (sourceSetNames.contains(sourceSet.name)) {
+                sources += sourceSet.java.srcDirs.findAll { dir -> dir.exists() }.collect { dir -> relativize(dir) }
+                sources += sourceSet.resources.srcDirs.findAll { dir -> dir.exists() }.collect { dir -> relativize(dir) }
+              } 
             }
 
             // This is hacky - we take the resolved compile classpath and just
@@ -71,9 +75,9 @@ configure(rootProject) {
     }
 
     jdt {
-      sourceCompatibility = rootProject.minJavaVersion
-      targetCompatibility = rootProject.minJavaVersion
-      javaRuntimeName = "JavaSE-${rootProject.minJavaVersion}"
+      sourceCompatibility = eclipseJavaVersion
+      targetCompatibility = eclipseJavaVersion
+      javaRuntimeName = "JavaSE-$eclipseJavaVersion"
     }
   }
 
@@ -85,6 +89,7 @@ configure(rootProject) {
     
     inputs.file(ecjLintFile)
     inputs.property('errorMode', errorMode)
+    inputs.property('eclipseJavaVersion', eclipseJavaVersion as String)
   
     from rootProject.file("${resources}/dot.settings")
     into rootProject.file(".settings")
@@ -94,13 +99,18 @@ configure(rootProject) {
     filteringCharset = 'UTF-8'
     
     doLast {
-      logger.lifecycle('Eclipse config written with ECJ errors configured as {}. Change by passing -Peclipse.errors=ignore/warning/error.', errorMode)
+      logger.lifecycle('Eclipse config for Java {} written with ECJ errors configured as {}. Change by passing -Peclipse.errors=ignore/warning/error.', eclipseJavaVersion, errorMode)
+      logger.lifecycle('To edit classes of MR-JARs for a specific Java version, use e.g., -Peclipse.javaVersion=19')
     }
   }
   
   eclipseJdt {
     enabled = false    
     dependsOn 'luceneEclipseJdt'
+  }
+  
+  eclipseClasspath {
+    inputs.property('eclipseJavaVersion', eclipseJavaVersion as String)
   }
 }
 

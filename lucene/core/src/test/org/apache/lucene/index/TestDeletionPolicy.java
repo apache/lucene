@@ -236,7 +236,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     ExpirationTimeDeletionPolicy policy =
         (ExpirationTimeDeletionPolicy) writer.getConfig().getIndexDeletionPolicy();
     Map<String, String> commitData = new HashMap<>();
-    commitData.put("commitTime", String.valueOf(System.currentTimeMillis()));
+    commitData.put("commitTime", String.valueOf(System.nanoTime()));
     writer.setLiveCommitData(commitData.entrySet());
     writer.commit();
     writer.close();
@@ -246,7 +246,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     while (policy.numDelete < targetNumDelete) {
       // Record last time when writer performed deletes of
       // past commits
-      lastDeleteTime = System.currentTimeMillis();
+      lastDeleteTime = System.nanoTime();
       conf =
           newIndexWriterConfig(new MockAnalyzer(random()))
               .setOpenMode(OpenMode.APPEND)
@@ -259,7 +259,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
         addDoc(writer);
       }
       commitData = new HashMap<>();
-      commitData.put("commitTime", String.valueOf(System.currentTimeMillis()));
+      commitData.put("commitTime", String.valueOf(System.nanoTime()));
       writer.setLiveCommitData(commitData.entrySet());
       writer.commit();
       writer.close();
@@ -297,7 +297,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
                 + SECONDS
                 + " seconds ("
                 + (lastDeleteTime - modTime)
-                + " msec) but did not get deleted ",
+                + " ms) but did not get deleted ",
             lastDeleteTime - modTime <= leeway);
       } catch (
           @SuppressWarnings("unused")

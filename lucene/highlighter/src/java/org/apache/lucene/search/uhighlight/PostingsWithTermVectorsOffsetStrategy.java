@@ -35,7 +35,7 @@ public class PostingsWithTermVectorsOffsetStrategy extends FieldOffsetStrategy {
   @Override
   public OffsetsEnum getOffsetsEnum(LeafReader leafReader, int docId, String content)
       throws IOException {
-    Terms docTerms = leafReader.getTermVector(docId, getField());
+    Terms docTerms = leafReader.termVectors().get(docId, getField());
     if (docTerms == null) {
       return OffsetsEnum.EMPTY;
     }

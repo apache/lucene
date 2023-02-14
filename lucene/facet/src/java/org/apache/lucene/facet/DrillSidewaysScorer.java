@@ -17,10 +17,12 @@
 package org.apache.lucene.facet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -30,9 +32,17 @@ import org.apache.lucene.search.ScoreCachingWrappingScorer;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PriorityQueue;
 
 class DrillSidewaysScorer extends BulkScorer {
+
+  private static final Comparator<DocsAndCost> APPROXIMATION_COMPARATOR =
+      Comparator.comparingLong(e -> e.cost);
+
+  private static final Comparator<DocsAndCost> TWO_PHASE_COMPARATOR =
+      (a, b) -> Float.compare(a.matchCost, b.matchCost);
 
   // private static boolean DEBUG = false;
 
@@ -44,6 +54,8 @@ class DrillSidewaysScorer extends BulkScorer {
   // DrillDown DocsEnums:
   private final Scorer baseScorer;
   private final DocIdSetIterator baseIterator;
+  private final DocIdSetIterator baseApproximation;
+  private final TwoPhaseIterator baseTwoPhase;
 
   private final LeafReaderContext context;
 
@@ -65,6 +77,12 @@ class DrillSidewaysScorer extends BulkScorer {
     this.context = context;
     this.baseScorer = baseScorer;
     this.baseIterator = baseScorer.iterator();
+    this.baseTwoPhase = baseScorer.twoPhaseIterator();
+    if (baseTwoPhase != null) {
+      this.baseApproximation = baseTwoPhase.approximation();
+    } else {
+      this.baseApproximation = baseIterator;
+    }
     this.drillDownCollector = drillDownCollector;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
@@ -143,66 +161,181 @@ class DrillSidewaysScorer extends BulkScorer {
   }
 
   /**
+   * Query-first scoring specialization when there is only one drill-sideways dimension, which is
+   * likely a common scenario.
+   */
+  private void doQueryFirstScoringSingleDim(
+      Bits acceptDocs, LeafCollector collector, DocsAndCost dim) throws IOException {
+    int docID = baseApproximation.docID();
+    while (docID != DocIdSetIterator.NO_MORE_DOCS) {
+      assert docID == baseApproximation.docID();
+
+      if (acceptDocs != null && acceptDocs.get(docID) == false) {
+        docID = baseApproximation.nextDoc();
+        continue;
+      }
+
+      if (baseTwoPhase != null && baseTwoPhase.matches() == false) {
+        docID = baseApproximation.nextDoc();
+        continue;
+      }
+
+      // We have either a near-miss or full match. Check the sideways dim to see which it is:
+      collectDocID = docID;
+      if (advanceIfBehind(docID, dim.approximation) != docID
+          || (dim.twoPhase != null && dim.twoPhase.matches() == false)) {
+        // The sideways dim missed, so we have a "near miss":
+        collectNearMiss(dim.sidewaysLeafCollector);
+      } else {
+        // Hit passed all filters, so it's "real":
+        collectHit(collector, dim);
+      }
+
+      docID = baseApproximation.nextDoc();
+    }
+  }
+
+  /**
    * Used when base query is highly constraining vs the drilldowns, or when the docs must be scored
-   * at once (i.e., like BooleanScorer2, not BooleanScorer). In this case we just .next() on base
-   * and .advance() on the dim filters.
+   * at once (i.e., like BooleanScorer2, not BooleanScorer).
    */
   private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
       throws IOException {
-    // if (DEBUG) {
-    //  System.out.println("  doQueryFirstScoring");
-    // }
     setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
 
-    int docID = baseScorer.docID();
+    // Specialize the single-dim use-case as we have a more efficient implementation for that:
+    if (dims.length == 1) {
+      doQueryFirstScoringSingleDim(acceptDocs, collector, dims[0]);
+      return;
+    }
+
+    // Sort our sideways dims by approximation cost so we can advance the lower cost ones first:
+    List<DocsAndCost> sidewaysDims = new ArrayList<>(dims.length);
+    sidewaysDims.addAll(List.of(dims));
+    CollectionUtil.timSort(sidewaysDims, APPROXIMATION_COMPARATOR);
+
+    // Maintain (optional) subset of sideways dims that support two-phase iteration, sorted by
+    // matchCost:
+    List<DocsAndCost> sidewaysTwoPhaseDims = null;
+    for (DocsAndCost dim : dims) {
+      if (dim.twoPhase != null) {
+        if (sidewaysTwoPhaseDims == null) {
+          sidewaysTwoPhaseDims = new ArrayList<>();
+        }
+        sidewaysTwoPhaseDims.add(dim);
+      }
+    }
+    if (sidewaysTwoPhaseDims != null) {
+      CollectionUtil.timSort(sidewaysTwoPhaseDims, TWO_PHASE_COMPARATOR);
+    }
+
+    // We keep track of a "runaway" dimension, which is a previously "near missed" dimension that
+    // has advanced beyond the docID the rest of the dimensions are positioned on. This functions
+    // a bit like the "head" queue in WANDScorer's "min should match" implementation. We use a
+    // single-valued PQ ordered by docID to easily determine the "closest" runaway dim we'll use
+    // for advancing in the case that multiple dim approximations miss.
+    PriorityQueue<DocsAndCost> runawayDim =
+        new PriorityQueue<>(1) {
+          @Override
+          protected boolean lessThan(DocsAndCost a, DocsAndCost b) {
+            return a.approximation.docID() < b.approximation.docID();
+          }
+        };
+
+    int docID = baseApproximation.docID();
 
     nextDoc:
-    while (docID != PostingsEnum.NO_MORE_DOCS) {
+    while (docID != DocIdSetIterator.NO_MORE_DOCS) {
+      assert docID == baseApproximation.docID();
+
       if (acceptDocs != null && acceptDocs.get(docID) == false) {
-        docID = baseIterator.nextDoc();
+        docID = baseApproximation.nextDoc();
         continue;
       }
-      LeafCollector failedCollector = null;
-      for (DocsAndCost dim : dims) {
-        // TODO: should we sort this 2nd dimension of
-        // docsEnums from most frequent to least?
-        if (dim.approximation.docID() < docID) {
-          dim.approximation.advance(docID);
-        }
 
-        boolean matches = false;
-        if (dim.approximation.docID() == docID) {
-          if (dim.twoPhase == null) {
-            matches = true;
-          } else {
-            matches = dim.twoPhase.matches();
+      // If we carried a "runaway" over from the last iteration, see if we've "caught up" yet:
+      DocsAndCost runaway = runawayDim.top();
+      if (runaway != null && runaway.approximation.docID() <= docID) {
+        runawayDim.clear();
+        runaway = null;
+      }
+
+      // Check the sideways dim approximations. At most, one dim is allowed to miss for the doc
+      // to be a near-miss or full match. If multiple sideways dims miss, we move on:
+      for (DocsAndCost dim : sidewaysDims) {
+        int dimDocID = advanceIfBehind(docID, dim.approximation);
+        if (dimDocID != docID && dim != runaway) {
+          DocsAndCost evicted = runawayDim.insertWithOverflow(dim);
+          if (evicted != null) {
+            // More than one dim has advanced beyond docID, so we jump ahead to the "closer" of
+            // the two:
+            int next = evicted.approximation.docID();
+            docID = baseApproximation.advance(next);
+            continue nextDoc;
           }
         }
+      }
 
-        if (matches == false) {
-          if (failedCollector != null) {
-            // More than one dim fails on this document, so
-            // it's neither a hit nor a near-miss; move to
-            // next doc:
-            docID = baseIterator.nextDoc();
-            continue nextDoc;
-          } else {
-            failedCollector = dim.sidewaysLeafCollector;
+      // At this point, we have an "approximate" near-miss or full match, but we still need
+      // to confirm two-phase iterators. First, check the base two-phase (it's always required):
+      if (baseTwoPhase != null && baseTwoPhase.matches() == false) {
+        docID = baseApproximation.nextDoc();
+        continue;
+      }
+
+      // If we have two-phase iterators for our sideways dims, check them now. At most, one
+      // sideways dim can miss for the doc to be a near-miss or full match. If more than one misses
+      // we move on:
+      DocsAndCost failedDim = runawayDim.top();
+      if (sidewaysTwoPhaseDims != null) {
+        if (failedDim == null) {
+          // If all sideways dims matched in their approximation phase, then we can allow one
+          // second-phase check to fail:
+          for (DocsAndCost dim : sidewaysTwoPhaseDims) {
+            assert dim.approximation.docID() == docID;
+            if (dim.twoPhase.matches() == false) {
+              if (failedDim != null) {
+                // Two second-phase checks have failed, so we move on:
+                docID = baseApproximation.nextDoc();
+                continue nextDoc;
+              } else {
+                failedDim = dim;
+              }
+            }
+          }
+        } else {
+          // If a sideways dim failed the approximate check, then no second-phase checks can fail:
+          for (DocsAndCost dim : sidewaysTwoPhaseDims) {
+            if (failedDim == dim) {
+              continue;
+            }
+            assert dim.approximation.docID() == docID;
+            if (dim.twoPhase.matches() == false) {
+              docID = baseApproximation.nextDoc();
+              continue nextDoc;
+            }
           }
         }
       }
 
       collectDocID = docID;
-
-      if (failedCollector == null) {
+      if (failedDim == null) {
         // Hit passed all filters, so it's "real":
-        collectHit(collector, dims);
+        collectHit(collector, sidewaysDims);
       } else {
-        // Hit missed exactly one filter:
-        collectNearMiss(failedCollector);
+        // Hit missed exactly one dim:
+        collectNearMiss(failedDim.sidewaysLeafCollector);
       }
 
-      docID = baseIterator.nextDoc();
+      docID = baseApproximation.nextDoc();
+    }
+  }
+
+  private static int advanceIfBehind(int docID, DocIdSetIterator iterator) throws IOException {
+    if (iterator.docID() < docID) {
+      return iterator.advance(docID);
+    } else {
+      return iterator.docID();
     }
   }
 
@@ -589,6 +722,28 @@ class DrillSidewaysScorer extends BulkScorer {
     }
   }
 
+  private void collectHit(LeafCollector collector, DocsAndCost dim) throws IOException {
+    collector.collect(collectDocID);
+    if (drillDownCollector != null) {
+      drillDownLeafCollector.collect(collectDocID);
+    }
+
+    // Tally sideways count:
+    dim.sidewaysLeafCollector.collect(collectDocID);
+  }
+
+  private void collectHit(LeafCollector collector, List<DocsAndCost> dims) throws IOException {
+    collector.collect(collectDocID);
+    if (drillDownCollector != null) {
+      drillDownLeafCollector.collect(collectDocID);
+    }
+
+    // Tally sideways counts:
+    for (DocsAndCost dim : dims) {
+      dim.sidewaysLeafCollector.collect(collectDocID);
+    }
+  }
+
   private void collectNearMiss(LeafCollector sidewaysCollector) throws IOException {
     // if (DEBUG) {
     //  System.out.println("      missingDim=" + dim);
@@ -627,8 +782,10 @@ class DrillSidewaysScorer extends BulkScorer {
   static class DocsAndCost {
     // approximation of matching docs, or the scorer itself
     final DocIdSetIterator approximation;
+    final long cost;
     // two-phase confirmation, or null if the approximation is accurate
     final TwoPhaseIterator twoPhase;
+    final float matchCost;
     final Collector sidewaysCollector;
     LeafCollector sidewaysLeafCollector;
 
@@ -637,10 +794,13 @@ class DrillSidewaysScorer extends BulkScorer {
       if (twoPhase == null) {
         this.approximation = scorer.iterator();
         this.twoPhase = null;
+        this.matchCost = 0f;
       } else {
         this.approximation = twoPhase.approximation();
         this.twoPhase = twoPhase;
+        this.matchCost = twoPhase.matchCost();
       }
+      this.cost = approximation.cost();
       this.sidewaysCollector = sidewaysCollector;
     }
   }

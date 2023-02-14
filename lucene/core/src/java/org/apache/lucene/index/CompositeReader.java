@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 import java.util.List;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.Directory;
 
 /**
  * Instances of this reader type can only be used to get stored fields from the underlying

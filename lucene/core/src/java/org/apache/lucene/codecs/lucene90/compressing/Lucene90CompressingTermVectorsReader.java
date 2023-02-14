@@ -143,7 +143,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
       final String metaStreamFN =
           IndexFileNames.segmentFileName(segment, segmentSuffix, VECTORS_META_EXTENSION);
-      metaIn = d.openChecksumInput(metaStreamFN, IOContext.READONCE);
+      metaIn = d.openChecksumInput(metaStreamFN);
       CodecUtil.checkIndexHeader(
           metaIn,
           VECTORS_INDEX_CODEC_NAME + "Meta",
@@ -284,7 +284,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     return numDocs;
   }
 
-  /** @throws AlreadyClosedException if this TermVectorsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this TermVectorsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");

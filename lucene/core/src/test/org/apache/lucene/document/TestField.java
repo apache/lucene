@@ -16,10 +16,19 @@
  */
 package org.apache.lucene.document;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
@@ -29,6 +38,7 @@ import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 
 // sanity check some basics of fields
 public class TestField extends LuceneTestCase {
@@ -204,6 +214,138 @@ public class TestField extends LuceneTestCase {
     assertEquals("IntPoint <foo:6,7>", field.toString());
   }
 
+  public void testIntField() throws Exception {
+    Field[] fields =
+        new Field[] {
+          new IntField("foo", 12, Field.Store.NO), new IntField("foo", 12, Field.Store.YES),
+        };
+
+    for (Field field : fields) {
+      trySetByteValue(field);
+      trySetBytesValue(field);
+      trySetBytesRefValue(field);
+      trySetDoubleValue(field);
+      field.setIntValue(6);
+      trySetLongValue(field);
+      trySetFloatValue(field);
+      trySetLongValue(field);
+      trySetReaderValue(field);
+      trySetShortValue(field);
+      trySetStringValue(field);
+      trySetTokenStreamValue(field);
+
+      assertEquals(6, field.numericValue().intValue());
+      assertEquals(6, NumericUtils.sortableBytesToInt(field.binaryValue().bytes, 0));
+      assertEquals("IntField <foo:6>", field.toString());
+      if (field.fieldType().stored()) {
+        assertEquals(6, field.storedValue().getIntValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
+  }
+
+  public void testLongField() throws Exception {
+    Field[] fields =
+        new Field[] {
+          new LongField("foo", 12, Field.Store.NO), new LongField("foo", 12, Field.Store.YES),
+        };
+
+    for (Field field : fields) {
+      trySetByteValue(field);
+      trySetBytesValue(field);
+      trySetBytesRefValue(field);
+      trySetDoubleValue(field);
+      trySetIntValue(field);
+      field.setLongValue(6);
+      trySetFloatValue(field);
+      trySetReaderValue(field);
+      trySetShortValue(field);
+      trySetStringValue(field);
+      trySetTokenStreamValue(field);
+
+      assertEquals(6L, field.numericValue().longValue());
+      assertEquals(6L, NumericUtils.sortableBytesToLong(field.binaryValue().bytes, 0));
+      assertEquals("LongField <foo:6>", field.toString());
+      if (field.fieldType().stored()) {
+        assertEquals(6, field.storedValue().getLongValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
+  }
+
+  public void testFloatField() throws Exception {
+    Field[] fields =
+        new Field[] {
+          new FloatField("foo", 12.6f, Field.Store.NO),
+          new FloatField("foo", 12.6f, Field.Store.YES),
+        };
+
+    for (Field field : fields) {
+      assertEquals(12.6f, NumericUtils.sortableIntToFloat(field.numericValue().intValue()), 0.0f);
+      assertEquals(12.6f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+      assertEquals("FloatField <foo:12.6>", field.toString());
+
+      trySetByteValue(field);
+      trySetBytesValue(field);
+      trySetBytesRefValue(field);
+      trySetDoubleValue(field);
+      trySetIntValue(field);
+      trySetLongValue(field);
+      field.setFloatValue(-28.8f);
+      trySetReaderValue(field);
+      trySetShortValue(field);
+      trySetStringValue(field);
+      trySetTokenStreamValue(field);
+
+      assertEquals(-28.8f, NumericUtils.sortableIntToFloat(field.numericValue().intValue()), 0.0f);
+      assertEquals(-28.8f, FloatPoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+      assertEquals("FloatField <foo:-28.8>", field.toString());
+      if (field.fieldType().stored()) {
+        assertEquals(-28.8f, field.storedValue().getFloatValue(), 0f);
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
+  }
+
+  public void testDoubleField() throws Exception {
+    Field[] fields =
+        new Field[] {
+          new DoubleField("foo", 12.7, Field.Store.NO),
+          new DoubleField("foo", 12.7, Field.Store.YES),
+        };
+
+    for (Field field : fields) {
+      assertEquals(12.7, NumericUtils.sortableLongToDouble(field.numericValue().longValue()), 0.0f);
+      assertEquals(12.7, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+      assertEquals("DoubleField <foo:12.7>", field.toString());
+
+      trySetByteValue(field);
+      trySetBytesValue(field);
+      trySetBytesRefValue(field);
+      trySetIntValue(field);
+      trySetLongValue(field);
+      trySetFloatValue(field);
+      field.setDoubleValue(-28.8);
+      trySetReaderValue(field);
+      trySetShortValue(field);
+      trySetStringValue(field);
+      trySetTokenStreamValue(field);
+
+      assertEquals(
+          -28.8, NumericUtils.sortableLongToDouble(field.numericValue().longValue()), 0.0f);
+      assertEquals(-28.8, DoublePoint.decodeDimension(field.binaryValue().bytes, 0), 0.0f);
+      assertEquals("DoubleField <foo:-28.8>", field.toString());
+      if (field.fieldType().stored()) {
+        assertEquals(-28.8, field.storedValue().getDoubleValue(), 0d);
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
+  }
+
   public void testNumericDocValuesField() throws Exception {
     NumericDocValuesField field = new NumericDocValuesField("foo", 5L);
 
@@ -324,6 +466,41 @@ public class TestField extends LuceneTestCase {
       trySetTokenStreamValue(field);
 
       assertEquals("baz", field.stringValue());
+      if (field.fieldType().stored()) {
+        assertEquals("baz", field.storedValue().getStringValue());
+      } else {
+        assertNull(field.storedValue());
+      }
+    }
+  }
+
+  public void testBinaryStringField() throws Exception {
+    Field[] fields =
+        new Field[] {
+          new StringField("foo", new BytesRef("bar"), Field.Store.NO),
+          new StringField("foo", new BytesRef("bar"), Field.Store.YES)
+        };
+
+    for (Field field : fields) {
+      trySetByteValue(field);
+      field.setBytesValue("baz".getBytes(StandardCharsets.UTF_8));
+      assertEquals(new BytesRef("baz"), field.binaryValue());
+      field.setBytesValue(new BytesRef("baz"));
+      trySetDoubleValue(field);
+      trySetIntValue(field);
+      trySetFloatValue(field);
+      trySetLongValue(field);
+      trySetReaderValue(field);
+      trySetShortValue(field);
+      trySetStringValue(field);
+      trySetTokenStreamValue(field);
+
+      assertEquals(new BytesRef("baz"), field.binaryValue());
+      if (field.fieldType().stored()) {
+        assertEquals(new BytesRef("baz"), field.storedValue().getBinaryValue());
+      } else {
+        assertNull(field.storedValue());
+      }
     }
   }
 
@@ -344,9 +521,14 @@ public class TestField extends LuceneTestCase {
       trySetReaderValue(field);
       trySetShortValue(field);
       field.setStringValue("baz");
-      field.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
+      trySetTokenStreamValue(field);
 
       assertEquals("baz", field.stringValue());
+      if (field.fieldType().stored()) {
+        assertEquals("baz", field.storedValue().getStringValue());
+      } else {
+        assertNull(field.storedValue());
+      }
     }
   }
 
@@ -363,9 +545,10 @@ public class TestField extends LuceneTestCase {
     field.setReaderValue(new StringReader("foobar"));
     trySetShortValue(field);
     trySetStringValue(field);
-    field.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
+    trySetTokenStreamValue(field);
 
     assertNotNull(field.readerValue());
+    assertNull(field.storedValue());
   }
 
   /* TODO: this is pretty expert and crazy
@@ -498,12 +681,51 @@ public class TestField extends LuceneTestCase {
     IndexSearcher s = newSearcher(r);
     TopDocs hits = s.search(new TermQuery(new Term("binary", br)), 1);
     assertEquals(1, hits.totalHits.value);
-    Document storedDoc = s.doc(hits.scoreDocs[0].doc);
+    Document storedDoc = s.storedFields().document(hits.scoreDocs[0].doc);
     assertEquals(br, storedDoc.getField("binary").binaryValue());
 
     r.close();
     w.close();
     dir.close();
+  }
+
+  public void testKnnVectorField() throws Exception {
+    if (Codec.getDefault().getName().equals("SimpleText")) {
+      return;
+    }
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      Document doc = new Document();
+      byte[] b = new byte[5];
+      KnnByteVectorField field =
+          new KnnByteVectorField("binary", b, VectorSimilarityFunction.EUCLIDEAN);
+      assertNull(field.binaryValue());
+      assertArrayEquals(b, field.vectorValue());
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> new KnnFloatVectorField("bogus", new float[] {1}, (FieldType) field.fieldType()));
+      float[] vector = new float[] {1, 2};
+      Field field2 = new KnnFloatVectorField("float", vector);
+      assertNull(field2.binaryValue());
+      doc.add(field);
+      doc.add(field2);
+      w.addDocument(doc);
+      try (IndexReader r = DirectoryReader.open(w)) {
+        ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
+        assertEquals(1, binary.size());
+        assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
+        assertNotNull(binary.vectorValue());
+        assertArrayEquals(b, binary.vectorValue());
+        assertEquals(NO_MORE_DOCS, binary.nextDoc());
+
+        FloatVectorValues floatValues = r.leaves().get(0).reader().getFloatVectorValues("float");
+        assertEquals(1, floatValues.size());
+        assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
+        assertEquals(vector.length, floatValues.vectorValue().length);
+        assertEquals(vector[0], floatValues.vectorValue()[0], 0);
+        assertEquals(NO_MORE_DOCS, floatValues.nextDoc());
+      }
+    }
   }
 
   private void trySetByteValue(Field f) {
@@ -592,5 +814,33 @@ public class TestField extends LuceneTestCase {
         () -> {
           f.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
         });
+  }
+
+  public void testDisabledField() {
+    // neither indexed nor stored
+    FieldType ft = new FieldType();
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", "", ft));
+  }
+
+  public void testTokenizedBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(true);
+    ft.setIndexOptions(IndexOptions.DOCS);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
+  }
+
+  public void testOffsetsBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(false);
+    ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
+  }
+
+  public void testTermVectorsOffsetsBinaryField() {
+    FieldType ft = new FieldType();
+    ft.setTokenized(false);
+    ft.setStoreTermVectors(true);
+    ft.setStoreTermVectorOffsets(true);
+    expectThrows(IllegalArgumentException.class, () -> new Field("name", new BytesRef(), ft));
   }
 }

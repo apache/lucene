@@ -110,7 +110,9 @@ public class Monitor implements Closeable {
     queryIndex.addListener(listener);
   }
 
-  /** @return Statistics for the internal query index and cache */
+  /**
+   * @return Statistics for the internal query index and cache
+   */
   public QueryCacheStats getQueryCacheStats() throws IOException {
     return new QueryCacheStats(
         queryIndex.numDocs(), queryIndex.cacheSize(), queryIndex.getLastPurged());
@@ -264,7 +266,9 @@ public class Monitor implements Closeable {
     return queryIndex.getQuery(queryId);
   }
 
-  /** @return the number of queries (after decomposition) stored in this Monitor */
+  /**
+   * @return the number of queries (after decomposition) stored in this Monitor
+   */
   public int getDisjunctCount() throws IOException {
     return queryIndex.numDocs();
   }

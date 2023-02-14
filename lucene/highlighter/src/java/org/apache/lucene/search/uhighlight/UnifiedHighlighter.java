@@ -44,10 +44,11 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -59,6 +60,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
@@ -96,18 +98,6 @@ public class UnifiedHighlighter {
   public static final int DEFAULT_MAX_LENGTH = 10000;
 
   public static final int DEFAULT_CACHE_CHARS_THRESHOLD = 524288; // ~ 1 MB (2 byte chars)
-
-  static final IndexSearcher EMPTY_INDEXSEARCHER;
-
-  static {
-    try {
-      IndexReader emptyReader = new MultiReader();
-      EMPTY_INDEXSEARCHER = new IndexSearcher(emptyReader);
-      EMPTY_INDEXSEARCHER.setQueryCache(null);
-    } catch (IOException bogus) {
-      throw new RuntimeException(bogus);
-    }
-  }
 
   protected static final LabelledCharArrayMatcher[] ZERO_LEN_AUTOMATA_ARRAY =
       new LabelledCharArrayMatcher[0];
@@ -452,10 +442,10 @@ public class UnifiedHighlighter {
     this.cacheFieldValCharsThreshold = builder.cacheFieldValCharsThreshold;
   }
 
-  /** Extracts matching terms after rewriting against an empty index */
-  protected static Set<Term> extractTerms(Query query) throws IOException {
+  /** Extracts matching terms */
+  protected static Set<Term> extractTerms(Query query) {
     Set<Term> queryTerms = new HashSet<>();
-    EMPTY_INDEXSEARCHER.rewrite(query).visit(QueryVisitor.termCollector(queryTerms));
+    query.visit(QueryVisitor.termCollector(queryTerms));
     return queryTerms;
   }
 
@@ -966,7 +956,7 @@ public class UnifiedHighlighter {
     //    caller simply iterates it to build another structure.
 
     // field -> object highlights parallel to docIdsIn
-    Map<String, Object[]> resultMap = new HashMap<>(fields.length);
+    Map<String, Object[]> resultMap = CollectionUtil.newHashMap(fields.length);
     for (int f = 0; f < fields.length; f++) {
       resultMap.put(fields[f], highlightDocsInByField[f]);
     }
@@ -1262,11 +1252,11 @@ public class UnifiedHighlighter {
 
   /**
    * When highlighting phrases accurately, we need to know which {@link SpanQuery}'s need to have
-   * {@link Query#rewrite(IndexReader)} called on them. It helps performance to avoid it if it's not
-   * needed. This method will be invoked on all SpanQuery instances recursively. If you have custom
-   * SpanQuery queries then override this to check instanceof and provide a definitive answer. If
-   * the query isn't your custom one, simply return null to have the default rules apply, which
-   * govern the ones included in Lucene.
+   * {@link Query#rewrite(IndexSearcher)} called on them. It helps performance to avoid it if it's
+   * not needed. This method will be invoked on all SpanQuery instances recursively. If you have
+   * custom SpanQuery queries then override this to check instanceof and provide a definitive
+   * answer. If the query isn't your custom one, simply return null to have the default rules apply,
+   * which govern the ones included in Lucene.
    */
   protected Boolean requiresRewrite(SpanQuery spanQuery) {
     return null;
@@ -1332,6 +1322,7 @@ public class UnifiedHighlighter {
         new ArrayList<>(cacheCharsThreshold == 0 ? 1 : (int) Math.min(64, docIter.cost()));
 
     LimitedStoredFieldVisitor visitor = newLimitedStoredFieldsVisitor(fields);
+    StoredFields storedFields = searcher.storedFields();
     int sumChars = 0;
     do {
       int docId = docIter.nextDoc();
@@ -1339,7 +1330,7 @@ public class UnifiedHighlighter {
         break;
       }
       visitor.init();
-      searcher.doc(docId, visitor);
+      storedFields.document(docId, visitor);
       CharSequence[] valuesByField = visitor.getValuesByField();
       docListOfFields.add(valuesByField);
       for (CharSequence val : valuesByField) {
@@ -1349,7 +1340,9 @@ public class UnifiedHighlighter {
     return docListOfFields;
   }
 
-  /** @lucene.internal */
+  /**
+   * @lucene.internal
+   */
   protected LimitedStoredFieldVisitor newLimitedStoredFieldsVisitor(String[] fields) {
     return new LimitedStoredFieldVisitor(fields, MULTIVAL_SEP_CHAR, getMaxLength());
   }
@@ -1428,9 +1421,9 @@ public class UnifiedHighlighter {
   }
 
   /**
-   * Wraps an IndexReader that remembers/caches the last call to {@link
-   * LeafReader#getTermVectors(int)} so that if the next call has the same ID, then it is reused. If
-   * TV's were column-stride (like doc-values), there would be no need for this.
+   * Wraps an IndexReader that remembers/caches the last call to {@link TermVectors#get(int)} so
+   * that if the next call has the same ID, then it is reused. If TV's were column-stride (like
+   * doc-values), there would be no need for this.
    */
   private static class TermVectorReusingLeafReader extends FilterLeafReader {
 
@@ -1460,12 +1453,18 @@ public class UnifiedHighlighter {
     }
 
     @Override
-    public Fields getTermVectors(int docID) throws IOException {
-      if (docID != lastDocId) {
-        lastDocId = docID;
-        tvFields = in.getTermVectors(docID);
-      }
-      return tvFields;
+    public TermVectors termVectors() throws IOException {
+      TermVectors orig = in.termVectors();
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) throws IOException {
+          if (docID != lastDocId) {
+            lastDocId = docID;
+            tvFields = orig.get(docID);
+          }
+          return tvFields;
+        }
+      };
     }
 
     @Override
@@ -1481,16 +1480,24 @@ public class UnifiedHighlighter {
 
   /** Flags for controlling highlighting behavior. */
   public enum HighlightFlag {
-    /** @see Builder#withHighlightPhrasesStrictly(boolean) */
+    /**
+     * @see Builder#withHighlightPhrasesStrictly(boolean)
+     */
     PHRASES,
 
-    /** @see Builder#withHandleMultiTermQuery(boolean) */
+    /**
+     * @see Builder#withHandleMultiTermQuery(boolean)
+     */
     MULTI_TERM_QUERY,
 
-    /** @see Builder#withPassageRelevancyOverSpeed(boolean) */
+    /**
+     * @see Builder#withPassageRelevancyOverSpeed(boolean)
+     */
     PASSAGE_RELEVANCY_OVER_SPEED,
 
-    /** @see Builder#withWeightMatches(boolean) */
+    /**
+     * @see Builder#withWeightMatches(boolean)
+     */
     WEIGHT_MATCHES
 
     // TODO: useQueryBoosts

@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
@@ -267,11 +266,20 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public StoredFields storedFields() throws IOException {
     ensureOpen();
-    for (final LeafReader reader : storedFieldsReaders) {
-      reader.document(docID, visitor);
+    StoredFields[] fields = new StoredFields[storedFieldsReaders.length];
+    for (int i = 0; i < fields.length; i++) {
+      fields[i] = storedFieldsReaders[i].storedFields();
     }
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        for (StoredFields reader : fields) {
+          reader.document(docID, visitor);
+        }
+      }
+    };
   }
 
   @Override
@@ -301,21 +309,27 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
+  public TermVectors termVectors() throws IOException {
     ensureOpen();
-    ParallelFields fields = null;
-    for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-      String fieldName = ent.getKey();
-      Terms vector = ent.getValue().getTermVector(docID, fieldName);
-      if (vector != null) {
-        if (fields == null) {
-          fields = new ParallelFields();
+    // TODO: optimize
+    return new TermVectors() {
+      @Override
+      public Fields get(int docID) throws IOException {
+        ParallelFields fields = null;
+        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
+          String fieldName = ent.getKey();
+          Terms vector = ent.getValue().termVectors().get(docID, fieldName);
+          if (vector != null) {
+            if (fields == null) {
+              fields = new ParallelFields();
+            }
+            fields.addField(fieldName, vector);
+          }
         }
-        fields.addField(fieldName, vector);
-      }
-    }
 
-    return fields;
+        return fields;
+      }
+    };
   }
 
   @Override
@@ -387,10 +401,17 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String fieldName) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null ? null : reader.getVectorValues(fieldName);
+    return reader == null ? null : reader.getFloatVectorValues(fieldName);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.getByteVectorValues(fieldName);
   }
 
   @Override
@@ -405,13 +426,14 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectorsExhaustively(
-      String fieldName, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
+  public TopDocs searchNearestVectors(
+      String fieldName, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectorsExhaustively(fieldName, target, k, acceptDocs);
+        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
   }
 
   @Override

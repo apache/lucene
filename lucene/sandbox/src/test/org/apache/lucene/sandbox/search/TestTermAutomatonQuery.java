@@ -36,6 +36,7 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -587,8 +588,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   private Set<String> toDocIDs(IndexSearcher s, TopDocs hits) throws IOException {
     Set<String> result = new HashSet<>();
+    StoredFields storedFields = s.storedFields();
     for (ScoreDoc hit : hits.scoreDocs) {
-      result.add(s.doc(hit.doc).get("id"));
+      result.add(storedFields.document(hit.doc).get("id"));
     }
     return result;
   }
@@ -785,7 +787,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    assertTrue(q.rewrite(r) instanceof MatchNoDocsQuery);
+    assertTrue(q.rewrite(newSearcher(r)) instanceof MatchNoDocsQuery);
     IOUtils.close(w, r, dir);
   }
 
@@ -804,7 +806,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof TermQuery);
     assertEquals(new Term("field", "foo"), ((TermQuery) rewrite).getTerm());
     IOUtils.close(w, r, dir);
@@ -827,7 +829,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof PhraseQuery);
     Term[] terms = ((PhraseQuery) rewrite).getTerms();
     assertEquals(new Term("field", "foo"), terms[0]);
@@ -859,7 +861,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof PhraseQuery);
     Term[] terms = ((PhraseQuery) rewrite).getTerms();
     assertEquals(new Term("field", "foo"), terms[0]);
@@ -888,7 +890,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof MultiPhraseQuery);
     Term[][] terms = ((MultiPhraseQuery) rewrite).getTermArrays();
     assertEquals(1, terms.length);
@@ -923,7 +925,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof MultiPhraseQuery);
     Term[][] terms = ((MultiPhraseQuery) rewrite).getTermArrays();
     assertEquals(2, terms.length);

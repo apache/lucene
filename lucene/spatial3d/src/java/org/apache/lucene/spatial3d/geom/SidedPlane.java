@@ -227,6 +227,27 @@ public class SidedPlane extends Plane implements Membership {
     }
   }
 
+  /**
+   * Construct sided plane from two points. This first constructs a plane that goes through the
+   * center, then finds one that is perpendicular that goes through the same two points.
+   */
+  public static SidedPlane constructSidedPlaneFromTwoPoints(
+      final Vector insidePoint, final Vector upperPoint, final Vector lowerPoint) {
+    final Plane plane = Plane.constructPerpendicularCenterPlaneTwoPoints(upperPoint, lowerPoint);
+    return new SidedPlane(insidePoint, plane.x, plane.y, plane.z, plane.D);
+  }
+
+  /**
+   * Construct sided plane from a plane and one point. This finds a plane perpendicular to the
+   * passed-in plane, and goes through both the origin and the point.
+   */
+  public static SidedPlane constructSidedPlaneFromOnePoint(
+      final Vector insidePoint, final Plane plane, final Vector intersectionPoint) {
+    final Plane newPlane =
+        Plane.constructPerpendicularCenterPlaneOnePoint(plane, intersectionPoint);
+    return new SidedPlane(insidePoint, newPlane.x, newPlane.y, newPlane.z, newPlane.D);
+  }
+
   /** Construct a sided plane from three points. */
   public static SidedPlane constructNormalizedThreePointSidedPlane(
       final Vector insidePoint, final Vector point1, final Vector point2, final Vector point3) {

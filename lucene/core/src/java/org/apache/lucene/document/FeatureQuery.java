@@ -20,9 +20,9 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.document.FeatureField.FeatureFunction;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -33,6 +33,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.BytesRef;
@@ -50,12 +51,12 @@ final class FeatureQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    FeatureFunction rewritten = function.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    FeatureFunction rewritten = function.rewrite(indexSearcher);
     if (function != rewritten) {
       return new FeatureQuery(fieldName, featureName, rewritten);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -81,6 +82,13 @@ final class FeatureQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    if (!scoreMode.needsScores()) {
+      // We don't need scores (e.g. for faceting), and since features are stored as terms,
+      // allow TermQuery to optimize in this case
+      TermQuery tq = new TermQuery(new Term(fieldName, featureName));
+      return searcher.rewrite(tq).createWeight(searcher, scoreMode, boost);
+    }
+
     return new Weight(this) {
 
       @Override

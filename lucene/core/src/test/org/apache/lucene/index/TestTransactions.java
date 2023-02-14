@@ -48,7 +48,7 @@ public class TestTransactions extends LuceneTestCase {
 
   private abstract static class TimedThread extends Thread {
     volatile boolean failed;
-    private static float RUN_TIME_MSEC = atLeast(500);
+    private static int MAX_ITERATIONS = atLeast(100);
     private TimedThread[] allThreads;
 
     public abstract void doWork() throws Throwable;
@@ -59,13 +59,13 @@ public class TestTransactions extends LuceneTestCase {
 
     @Override
     public void run() {
-      final long stopTime = System.currentTimeMillis() + (long) (RUN_TIME_MSEC);
-
       try {
+        int iterations = 0;
         do {
+          System.out.println(++iterations);
           if (anyErrors()) break;
           doWork();
-        } while (System.currentTimeMillis() < stopTime);
+        } while (iterations < MAX_ITERATIONS);
       } catch (Throwable e) {
         System.out.println(Thread.currentThread() + ": exc");
         e.printStackTrace(System.out);

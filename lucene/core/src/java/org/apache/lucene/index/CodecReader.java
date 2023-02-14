@@ -25,7 +25,6 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -36,14 +35,14 @@ public abstract class CodecReader extends LeafReader {
   protected CodecReader() {}
 
   /**
-   * Expert: retrieve thread-private StoredFieldsReader
+   * Expert: retrieve underlying StoredFieldsReader
    *
    * @lucene.internal
    */
   public abstract StoredFieldsReader getFieldsReader();
 
   /**
-   * Expert: retrieve thread-private TermVectorsReader
+   * Expert: retrieve underlying TermVectorsReader
    *
    * @lucene.internal
    */
@@ -85,23 +84,26 @@ public abstract class CodecReader extends LeafReader {
   public abstract KnnVectorsReader getVectorReader();
 
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    checkBounds(docID);
-    getFieldsReader().visitDocument(docID, visitor);
+  public final StoredFields storedFields() throws IOException {
+    final StoredFields reader = getFieldsReader();
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.document(docID, visitor);
+      }
+    };
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
-    TermVectorsReader termVectorsReader = getTermVectorsReader();
-    if (termVectorsReader == null) {
-      return null;
+  public final TermVectors termVectors() throws IOException {
+    TermVectorsReader reader = getTermVectorsReader();
+    if (reader == null) {
+      return TermVectors.EMPTY;
+    } else {
+      return reader;
     }
-    checkBounds(docID);
-    return termVectorsReader.get(docID);
-  }
-
-  private void checkBounds(int docID) {
-    Objects.checkIndex(docID, maxDoc());
   }
 
   @Override
@@ -212,15 +214,31 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
       return null;
     }
 
-    return getVectorReader().getVectorValues(field);
+    return getVectorReader().getFloatVectorValues(field);
+  }
+
+  @Override
+  public final ByteVectorValues getByteVectorValues(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
+      // Field does not exist or does not index vectors
+      return null;
+    }
+
+    return getVectorReader().getByteVectorValues(field);
   }
 
   @Override
@@ -237,8 +255,8 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final TopDocs searchNearestVectorsExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
+  public final TopDocs searchNearestVectors(
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -246,7 +264,7 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
 
-    return getVectorReader().searchExhaustively(field, target, k, acceptDocs);
+    return getVectorReader().search(field, target, k, acceptDocs, visitedLimit);
   }
 
   @Override

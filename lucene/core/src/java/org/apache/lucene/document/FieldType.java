@@ -21,12 +21,12 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -347,10 +347,8 @@ public class FieldType implements IndexableFieldType {
           "when dimensionCount is > 0, indexDimensionCount must be > 0; got "
               + indexDimensionCount);
     } else if (dimensionNumBytes == 0) {
-      if (dimensionCount != 0) {
-        throw new IllegalArgumentException(
-            "when dimensionNumBytes is 0, dimensionCount must be 0; got " + dimensionCount);
-      }
+      throw new IllegalArgumentException(
+          "when dimensionNumBytes is 0, dimensionCount must be 0; got " + dimensionCount);
     }
 
     this.dimensionCount = dimensionCount;
@@ -380,10 +378,10 @@ public class FieldType implements IndexableFieldType {
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
     }
-    if (numDimensions > VectorValues.MAX_DIMENSIONS) {
+    if (numDimensions > FloatVectorValues.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
-          "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
+          "vector numDimensions must be <= FloatVectorValues.MAX_DIMENSIONS (="
+              + FloatVectorValues.MAX_DIMENSIONS
               + "); got "
               + numDimensions);
     }

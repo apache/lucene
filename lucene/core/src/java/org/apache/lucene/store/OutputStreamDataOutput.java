@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.store;
 
-import java.io.*;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /** A {@link DataOutput} wrapping a plain {@link OutputStream}. */
 public class OutputStreamDataOutput extends DataOutput implements Closeable {

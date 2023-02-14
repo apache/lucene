@@ -29,7 +29,8 @@
 
 package org.apache.lucene.util.automaton;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.StringHelper;
 

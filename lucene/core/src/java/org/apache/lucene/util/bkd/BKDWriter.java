@@ -33,7 +33,6 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -367,19 +366,19 @@ public class BKDWriter implements Closeable {
   }
 
   private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final int bytesPerDim;
+    private final ArrayUtil.ByteArrayComparator comparator;
 
     public BKDMergeQueue(int bytesPerDim, int maxSize) {
       super(maxSize);
-      this.bytesPerDim = bytesPerDim;
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
     @Override
     public boolean lessThan(MergeReader a, MergeReader b) {
       assert a != b;
 
-      int cmp =
-          Arrays.compareUnsigned(a.packedValue, 0, bytesPerDim, b.packedValue, 0, bytesPerDim);
+      int cmp = comparator.compare(a.packedValue, 0, b.packedValue, 0);
+
       if (cmp < 0) {
         return true;
       } else if (cmp > 0) {
@@ -515,7 +514,7 @@ public class BKDWriter implements Closeable {
 
     checkMaxLeafNodeCount(numLeaves);
 
-    final byte[] splitPackedValues = new byte[numSplits * config.bytesPerDim];
+    final byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
     final byte[] splitDimensionValues = new byte[numSplits];
     final long[] leafBlockFPs = new long[numLeaves];
 
@@ -946,7 +945,7 @@ public class BKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.toIntExact(numSplits * config.bytesPerDim)];
+    byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
     byte[] splitDimensionValues = new byte[numSplits];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
@@ -988,8 +987,8 @@ public class BKDWriter implements Closeable {
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
-      // long t2 = System.nanoTime();
-      // System.out.println("write time: " + ((t2-t1)/1000000.0) + " msec");
+      // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
+      //   TimeUnit.SECONDS.toNanos(1)) + " ms");
 
       success = true;
     } finally {
@@ -1532,7 +1531,7 @@ public class BKDWriter implements Closeable {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
       if (tempDir.getCreatedFiles().contains(tempFileName)) {
-        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
           CodecUtil.checkFooter(in, priorException);
         }
       }

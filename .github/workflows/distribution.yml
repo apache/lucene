@@ -12,6 +12,9 @@ on:
     branches:
       - 'main'
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   test:
     name: Run distribution tests
@@ -24,18 +27,15 @@ jobs:
         os: [ubuntu-latest, macos-latest]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up JDK
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: 17
         java-package: jdk
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
-
-    - name: Initialize gradle settings (${{ matrix.os }})
-      run: ./gradlew localSettings
 
     - name: Run all distribution tests including GUI tests (${{ matrix.os }})
       run: ./gradlew -p lucene/distribution.tests test

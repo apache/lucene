@@ -53,6 +53,7 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -232,6 +233,8 @@ public class WeightedSpanTermExtractor {
       }
     } else if (query instanceof MatchAllDocsQuery) {
       // nothing
+    } else if (query instanceof FieldExistsQuery) {
+      // nothing
     } else if (query instanceof FunctionScoreQuery) {
       extract(((FunctionScoreQuery) query).getWrappedQuery(), boost, terms);
     } else if (isQueryUnsupported(query.getClass())) {
@@ -245,9 +248,11 @@ public class WeightedSpanTermExtractor {
       final IndexReader reader = getLeafContext().reader();
       Query rewritten;
       if (query instanceof MultiTermQuery) {
-        rewritten = MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(reader, (MultiTermQuery) query);
+        rewritten =
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(
+                new IndexSearcher(reader), (MultiTermQuery) query);
       } else {
-        rewritten = origQuery.rewrite(reader);
+        rewritten = origQuery.rewrite(new IndexSearcher(reader));
       }
       if (rewritten != origQuery) {
         // only rewrite once and then flatten again - the rewritten query could have a special

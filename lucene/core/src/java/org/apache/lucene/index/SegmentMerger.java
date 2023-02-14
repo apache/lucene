@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -271,10 +272,14 @@ final class SegmentMerger {
     }
     int numMerged = merger.merge();
     if (mergeState.infoStream.isEnabled("SM")) {
-      long t1 = System.nanoTime();
       mergeState.infoStream.message(
           "SM",
-          ((t1 - t0) / 1000000) + " msec to merge " + formatName + " [" + numMerged + " docs]");
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + " ms to merge "
+              + formatName
+              + " ["
+              + numMerged
+              + " docs]");
     }
     return numMerged;
   }
@@ -291,11 +296,16 @@ final class SegmentMerger {
       t0 = System.nanoTime();
     }
     merger.merge(segmentWriteState, segmentReadState);
+    long t1 = System.nanoTime();
     if (mergeState.infoStream.isEnabled("SM")) {
-      long t1 = System.nanoTime();
       mergeState.infoStream.message(
           "SM",
-          ((t1 - t0) / 1000000) + " msec to merge " + formatName + " [" + numMerged + " docs]");
+          TimeUnit.NANOSECONDS.toMillis(t1 - t0)
+              + " ms to merge "
+              + formatName
+              + " ["
+              + numMerged
+              + " docs]");
     }
   }
 }

@@ -18,7 +18,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -49,7 +48,12 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public final ByteVectorValues getByteVectorValues(String field) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -60,8 +64,8 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectorsExhaustively(
-      String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
+  public TopDocs searchNearestVectors(
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -76,7 +80,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
+  public final TermVectors termVectors() throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -91,7 +95,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public final StoredFields storedFields() throws IOException {
     throw new UnsupportedOperationException();
   }
 

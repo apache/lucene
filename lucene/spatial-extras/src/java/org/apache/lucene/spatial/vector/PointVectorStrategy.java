@@ -24,7 +24,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -154,7 +153,9 @@ public class PointVectorStrategy extends SpatialStrategy {
     throw new UnsupportedOperationException("Can only index Point, not " + shape);
   }
 
-  /** @see #createIndexableFields(org.locationtech.spatial4j.shape.Shape) */
+  /**
+   * @see #createIndexableFields(org.locationtech.spatial4j.shape.Shape)
+   */
   public Field[] createIndexableFields(Point point) {
     Field[] fields = new Field[fieldsLen];
     int idx = -1;
@@ -251,8 +252,8 @@ public class PointVectorStrategy extends SpatialStrategy {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query rewritten = inner.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query rewritten = inner.rewrite(indexSearcher);
       if (rewritten == inner) return this;
       return new DistanceRangeQuery(rewritten, distanceSource, limit);
     }

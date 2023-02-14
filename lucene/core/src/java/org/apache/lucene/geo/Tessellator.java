@@ -435,42 +435,21 @@ public final class Tessellator {
     final double my = connection.getY();
     double tanMin = Double.POSITIVE_INFINITY;
     double tan;
-    p = connection.next;
-    {
-      while (p != stop) {
-        if (hx >= p.getX()
-            && p.getX() >= mx
-            && hx != p.getX()
-            && pointInEar(
-                p.getX(), p.getY(), hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy)) {
-          tan = Math.abs(hy - p.getY()) / (hx - p.getX()); // tangential
-          if (isVertexEquals(p, connection) && isLocallyInside(p, holeNode)) {
-            // make sure we are not crossing the polygon. This might happen when several holes have
-            // a bridge to the same polygon vertex
-            // and this vertex has different vertex.
-            boolean crosses =
-                GeoUtils.lineCrossesLine(
-                    p.getX(),
-                    p.getY(),
-                    holeNode.getX(),
-                    holeNode.getY(),
-                    connection.next.getX(),
-                    connection.next.getY(),
-                    connection.previous.getX(),
-                    connection.previous.getY());
-            if (crosses == false) {
-              connection = p;
-              tanMin = tan;
-            }
-          } else if ((tan < tanMin || (tan == tanMin && p.getX() > connection.getX()))
-              && isLocallyInside(p, holeNode)) {
-            connection = p;
-            tanMin = tan;
-          }
+    p = connection;
+    do {
+      if (hx >= p.getX()
+          && p.getX() >= mx
+          && hx != p.getX()
+          && pointInEar(p.getX(), p.getY(), hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy)) {
+        tan = Math.abs(hy - p.getY()) / (hx - p.getX()); // tangential
+        if ((tan < tanMin || (tan == tanMin && p.getX() > connection.getX()))
+            && isLocallyInside(p, holeNode)) {
+          connection = p;
+          tanMin = tan;
         }
-        p = p.next;
       }
-    }
+      p = p.next;
+    } while (p != stop);
     return connection;
   }
 
@@ -772,7 +751,6 @@ public final class Tessellator {
 
       // a self-intersection where edge (v[i-1],v[i]) intersects (v[i+1],v[i+2])
       if (isVertexEquals(a, b) == false
-          && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false
           && linesIntersect(
               a.getX(),
               a.getY(),
@@ -783,7 +761,9 @@ public final class Tessellator {
               b.getX(),
               b.getY())
           && isLocallyInside(a, b)
-          && isLocallyInside(b, a)) {
+          && isLocallyInside(b, a)
+          // this call is expensive so do it last
+          && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false) {
         // compute edges from polygon
         boolean abFromPolygon =
             (a.next == node)
@@ -1117,7 +1097,6 @@ public final class Tessellator {
     }
     return a.next.idx != b.idx
         && a.previous.idx != b.idx
-        && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false
         && isLocallyInside(a, b)
         && isLocallyInside(b, a)
         && isLocallyInside(a.previous, b)
@@ -1127,7 +1106,9 @@ public final class Tessellator {
         && area(a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
         && area(a.getX(), a.getY(), b.getX(), b.getY(), b.next.getX(), b.next.getY()) != 0
         && area(a.next.getX(), a.next.getY(), a.getX(), a.getY(), b.getX(), b.getY()) != 0
-        && area(a.getX(), a.getY(), b.getX(), b.getY(), b.previous.getX(), b.previous.getY()) != 0;
+        && area(a.getX(), a.getY(), b.getX(), b.getY(), b.previous.getX(), b.previous.getY()) != 0
+        // this call is expensive so do it last
+        && isIntersectingPolygon(a, a.getX(), a.getY(), b.getX(), b.getY()) == false;
   }
 
   /** Determine whether the polygon defined between node start and node end is CW */

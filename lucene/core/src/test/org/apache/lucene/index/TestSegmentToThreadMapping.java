@@ -25,7 +25,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -68,8 +67,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public Fields getTermVectors(int doc) {
-        return null;
+      public TermVectors termVectors() {
+        return TermVectors.EMPTY;
       }
 
       @Override
@@ -108,7 +107,12 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) {
+      public FloatVectorValues getFloatVectorValues(String field) {
+        return null;
+      }
+
+      @Override
+      public ByteVectorValues getByteVectorValues(String field) {
         return null;
       }
 
@@ -119,8 +123,8 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public TopDocs searchNearestVectorsExhaustively(
-          String field, float[] target, int k, DocIdSetIterator acceptDocs) {
+      public TopDocs searchNearestVectors(
+          String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 
@@ -128,7 +132,12 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       protected void doClose() {}
 
       @Override
-      public void document(int doc, StoredFieldVisitor visitor) {}
+      public StoredFields storedFields() {
+        return new StoredFields() {
+          @Override
+          public void document(int doc, StoredFieldVisitor visitor) {}
+        };
+      }
 
       @Override
       public void checkIntegrity() throws IOException {}

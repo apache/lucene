@@ -27,16 +27,14 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
@@ -248,35 +246,35 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public VectorValues getVectorValues(String field) throws IOException {
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
       KnnVectorsReader knnVectorsReader = fields.get(field);
       if (knnVectorsReader == null) {
         return null;
       } else {
-        return knnVectorsReader.getVectorValues(field);
+        return knnVectorsReader.getFloatVectorValues(field);
+      }
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      KnnVectorsReader knnVectorsReader = fields.get(field);
+      if (knnVectorsReader == null) {
+        return null;
+      } else {
+        return knnVectorsReader.getByteVectorValues(field);
       }
     }
 
     @Override
     public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
         throws IOException {
-      KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
-        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-      } else {
-        return knnVectorsReader.search(field, target, k, acceptDocs, visitedLimit);
-      }
+      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
     }
 
     @Override
-    public TopDocs searchExhaustively(
-        String field, float[] target, int k, DocIdSetIterator acceptDocs) throws IOException {
-      KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
-        return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-      } else {
-        return knnVectorsReader.searchExhaustively(field, target, k, acceptDocs);
-      }
+    public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+        throws IOException {
+      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
     }
 
     @Override

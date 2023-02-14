@@ -18,13 +18,11 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
 
@@ -79,15 +77,6 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 
   /**
-   * Returns the current KnnVectorsFormat version number. Indexes written using the format will be
-   * "stamped" with this version.
-   */
-  public int currentVersion() {
-    // return the version supported by older codecs that did not override this method
-    return Lucene94HnswVectorsFormat.VERSION_START;
-  }
-
-  /**
    * EMPTY throws an exception when written. It acts as a sentinel indicating a Codec that does not
    * support vectors.
    */
@@ -95,7 +84,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
       new KnnVectorsFormat("EMPTY") {
         @Override
         public KnnVectorsWriter fieldsWriter(SegmentWriteState state) {
-          throw new UnsupportedOperationException("Attempt to write EMPTY VectorValues");
+          throw new UnsupportedOperationException("Attempt to write EMPTY vector values");
         }
 
         @Override
@@ -105,20 +94,25 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             public void checkIntegrity() {}
 
             @Override
-            public VectorValues getVectorValues(String field) {
-              return VectorValues.EMPTY;
+            public FloatVectorValues getFloatVectorValues(String field) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteVectorValues getByteVectorValues(String field) {
+              throw new UnsupportedOperationException();
             }
 
             @Override
             public TopDocs search(
                 String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
-              return TopDocsCollector.EMPTY_TOPDOCS;
+              throw new UnsupportedOperationException();
             }
 
             @Override
-            public TopDocs searchExhaustively(
-                String field, float[] target, int k, DocIdSetIterator acceptDocs) {
-              return TopDocsCollector.EMPTY_TOPDOCS;
+            public TopDocs search(
+                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+              throw new UnsupportedOperationException();
             }
 
             @Override

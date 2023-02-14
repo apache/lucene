@@ -127,7 +127,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     /** Adds a term to this builder. */
     public Builder addTerm(BytesRef term) {
-      if (termsSet.size() > IndexSearcher.getMaxClauseCount()) {
+      if (termsSet.size() >= IndexSearcher.getMaxClauseCount()) {
         throw new IndexSearcher.TooManyClauses();
       }
       termsSet.add(term);
@@ -253,7 +253,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (terms.length == 0 || fieldAndWeights.isEmpty()) {
       return new BooleanQuery.Builder().build();
     }

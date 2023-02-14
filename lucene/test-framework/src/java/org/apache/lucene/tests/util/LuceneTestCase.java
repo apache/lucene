@@ -144,6 +144,8 @@ import org.apache.lucene.index.SimpleMergedSegmentWarmer;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
@@ -275,10 +277,14 @@ public abstract class LuceneTestCase extends Assert {
   public static final String SYSPROP_MONSTER = "tests.monster";
   public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
 
-  /** @see #ignoreAfterMaxFailures */
+  /**
+   * @see #ignoreAfterMaxFailures
+   */
   public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
 
-  /** @see #ignoreAfterMaxFailures */
+  /**
+   * @see #ignoreAfterMaxFailures
+   */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
 
   /** Annotation for tests that should only be run during nightly builds. */
@@ -1524,7 +1530,8 @@ public abstract class LuceneTestCase extends Assert {
             }
           }
         }
-        if (!newType.storeTermVectorOffsets()) {
+        // Check for strings as offsets are disallowed on binary fields
+        if (value instanceof String && !newType.storeTermVectorOffsets()) {
           newType.setStoreTermVectorOffsets(random.nextBoolean());
         }
 
@@ -2416,9 +2423,11 @@ public abstract class LuceneTestCase extends Assert {
   public void assertStoredFieldsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
+    StoredFields leftStoredFields = leftReader.storedFields();
+    StoredFields rightStoredFields = rightReader.storedFields();
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Document leftDoc = leftReader.document(i);
-      Document rightDoc = rightReader.document(i);
+      Document leftDoc = leftStoredFields.document(i);
+      Document rightDoc = rightStoredFields.document(i);
 
       // TODO: I think this is bogus because we don't document what the order should be
       // from these iterators, etc. I think the codec/IndexReader should be free to order this stuff
@@ -2461,9 +2470,11 @@ public abstract class LuceneTestCase extends Assert {
   public void assertTermVectorsEquals(String info, IndexReader leftReader, IndexReader rightReader)
       throws IOException {
     assert leftReader.maxDoc() == rightReader.maxDoc();
+    TermVectors leftVectors = leftReader.termVectors();
+    TermVectors rightVectors = rightReader.termVectors();
     for (int i = 0; i < leftReader.maxDoc(); i++) {
-      Fields leftFields = leftReader.getTermVectors(i);
-      Fields rightFields = rightReader.getTermVectors(i);
+      Fields leftFields = leftVectors.get(i);
+      Fields rightFields = rightVectors.get(i);
 
       // Fields could be null if there are no postings,
       // but then it must be null for both

@@ -66,6 +66,7 @@ import org.apache.lucene.util.BytesRef;
  *       QueryRelation} with a polygon.
  *   <li>{@link #newGeometryQuery newGeometryQuery()} for matching geo shapes that have some {@link
  *       QueryRelation} with one or more {@link LatLonGeometry}.
+ *   <li>{@link #createLatLonShapeDocValues(BytesRef)} for creating the {@link LatLonShapeDocValues}
  * </ul>
  *
  * <b>WARNING</b>: Like {@link LatLonPoint}, vertex values are indexed with some loss of precision
@@ -339,6 +340,16 @@ public class LatLonShape {
         return new LatLonShapeQuery(field, queryRelation, latLonGeometries);
       }
     }
+  }
+
+  /**
+   * Factory method for creating the {@link LatLonShapeDocValues}
+   *
+   * @param bytesRef {@link BytesRef}
+   * @return {@link LatLonShapeDocValues}
+   */
+  public static LatLonShapeDocValues createLatLonShapeDocValues(BytesRef bytesRef) {
+    return new LatLonShapeDocValues(bytesRef);
   }
 
   private static Query makeContainsGeometryQuery(String field, LatLonGeometry... latLonGeometries) {

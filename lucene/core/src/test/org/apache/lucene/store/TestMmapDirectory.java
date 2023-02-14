@@ -18,11 +18,11 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 /** Tests MMapDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -32,7 +32,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   @Override
   protected Directory getDirectory(Path path) throws IOException {
     MMapDirectory m = new MMapDirectory(path);
-    m.setPreload(random().nextBoolean());
+    m.setPreload((file, context) -> random().nextBoolean());
     return m;
   }
 
@@ -41,10 +41,27 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
     assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 
-  @Ignore(
-      "This test is for JVM testing purposes. There are no guarantees that it may not fail with SIGSEGV!")
+  private static boolean isMemorySegmentImpl() {
+    return Objects.equals(
+        "MemorySegmentIndexInputProvider", MMapDirectory.PROVIDER.getClass().getSimpleName());
+  }
+
+  public void testCorrectImplementation() {
+    final int runtimeVersion = Runtime.version().feature();
+    if (runtimeVersion == 19) {
+      assertTrue(
+          "on Java 19 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
+          isMemorySegmentImpl());
+    } else {
+      assertSame(MappedByteBufferIndexInputProvider.class, MMapDirectory.PROVIDER.getClass());
+    }
+  }
+
   public void testAceWithThreads() throws Exception {
-    for (int iter = 0; iter < 10; iter++) {
+    assumeTrue("Test requires MemorySegmentIndexInput", isMemorySegmentImpl());
+
+    final int iters = RANDOM_MULTIPLIER * (TEST_NIGHTLY ? 50 : 10);
+    for (int iter = 0; iter < iters; iter++) {
       Directory dir = getDirectory(createTempDir("testAceWithThreads"));
       IndexOutput out = dir.createOutput("test", IOContext.DEFAULT);
       Random random = random();
@@ -73,7 +90,16 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
               });
       t1.start();
       shotgun.countDown();
-      in.close();
+      try {
+        in.close();
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
+        // this may also happen and is a valid exception, informing our user that, e.g., a query is
+        // running!
+        // "java.lang.IllegalStateException: Cannot close while another thread is accessing the
+        // segment"
+      }
       t1.join();
       dir.close();
     }

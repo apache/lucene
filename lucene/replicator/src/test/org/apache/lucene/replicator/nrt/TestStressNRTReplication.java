@@ -39,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -526,8 +527,8 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long t1 = System.nanoTime();
     message(
         "top: done translog replay; took "
-            + ((t1 - t0) / 1000000.0)
-            + " msec; now publish primary");
+            + ((t1 - t0) / (double) TimeUnit.MILLISECONDS.toNanos(1))
+            + " ms; now publish primary");
 
     // Publish new primary only after translog has succeeded in replaying; this is important, for
     // this test anyway, so we keep a "linear"
@@ -611,7 +612,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
-    Writer childLog;
+    final Writer childLog;
 
     if (SEPARATE_CHILD_OUTPUT) {
       Path childOut = childTempDir.resolve(id + ".log");
@@ -901,7 +902,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
           long nowNS = System.nanoTime();
           for (int i = 0; i < nodes.length; i++) {
             b.append(' ');
-            double sec = (nowNS - nodeTimeStamps[i]) / 1000000000.0;
+            double sec = (nowNS - nodeTimeStamps[i]) / (double) TimeUnit.SECONDS.toNanos(1);
             String prefix;
             if (nodes[i] == null) {
               downNodes.add(i);
@@ -1293,7 +1294,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
           if (random().nextInt(100) == 17) {
             int pauseMS = TestUtil.nextInt(random(), 500, 2000);
-            System.out.println("Indexer: now pause for " + pauseMS + " msec...");
+            System.out.println("Indexer: now pause for " + pauseMS + " ms...");
             Thread.sleep(pauseMS);
             System.out.println("Indexer: done pause for a bit...");
           }
@@ -1335,7 +1336,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
         String.format(
             Locale.ROOT,
             "%5.3fs       :     parent [%11s] %s",
-            (now - Node.globalStartNS) / 1000000000.,
+            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
             Thread.currentThread().getName(),
             message));
   }
@@ -1346,8 +1347,8 @@ public class TestStressNRTReplication extends LuceneTestCase {
         String.format(
             Locale.ROOT,
             "%5.3fs %5.1fs:     parent [%11s] %s",
-            (now - Node.globalStartNS) / 1000000000.,
-            (now - localStartNS) / 1000000000.,
+            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+            (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
             Thread.currentThread().getName(),
             message));
   }

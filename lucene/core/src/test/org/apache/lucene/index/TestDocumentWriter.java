@@ -31,7 +31,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -82,7 +82,7 @@ public class TestDocumentWriter extends LuceneTestCase {
     // After adding the document, we should be able to read it back in
     SegmentReader reader = new SegmentReader(info, Version.LATEST.major, newIOContext(random()));
     assertTrue(reader != null);
-    Document doc = reader.document(0);
+    Document doc = reader.storedFields().document(0);
     assertTrue(doc != null);
 
     // System.out.println("Document: " + doc);
@@ -382,7 +382,7 @@ public class TestDocumentWriter extends LuceneTestCase {
   public void testRAMUsageVector() throws IOException {
     doTestRAMUsage(
         field ->
-            new KnnVectorField(
+            new KnnFloatVectorField(
                 field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 }

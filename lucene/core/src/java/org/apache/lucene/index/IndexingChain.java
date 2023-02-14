@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -37,7 +38,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -241,7 +244,8 @@ final class IndexingChain implements Accountable {
     long t0 = System.nanoTime();
     writeNorms(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write norms");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write norms");
     }
     SegmentReadState readState =
         new SegmentReadState(
@@ -254,19 +258,22 @@ final class IndexingChain implements Accountable {
     t0 = System.nanoTime();
     writeDocValues(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write docValues");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write docValues");
     }
 
     t0 = System.nanoTime();
     writePoints(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write points");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write points");
     }
 
     t0 = System.nanoTime();
     vectorValuesConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write vectors");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write vectors");
     }
 
     // it's possible all docs hit non-aborting exceptions...
@@ -275,7 +282,8 @@ final class IndexingChain implements Accountable {
     storedFieldsConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
-          "IW", ((System.nanoTime() - t0) / 1000000) + " msec to finish stored fields");
+          "IW",
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to finish stored fields");
     }
 
     t0 = System.nanoTime();
@@ -304,7 +312,8 @@ final class IndexingChain implements Accountable {
     if (infoStream.isEnabled("IW")) {
       infoStream.message(
           "IW",
-          ((System.nanoTime() - t0) / 1000000) + " msec to write postings and finish vectors");
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+              + " ms to write postings and finish vectors");
     }
 
     // Important to save after asking consumer to flush so
@@ -317,7 +326,8 @@ final class IndexingChain implements Accountable {
         .fieldInfosFormat()
         .write(state.directory, state.segmentInfo, "", state.fieldInfos, IOContext.DEFAULT);
     if (infoStream.isEnabled("IW")) {
-      infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write fieldInfos");
+      infoStream.message(
+          "IW", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms to write fieldInfos");
     }
 
     return sortMap;
@@ -688,17 +698,20 @@ final class IndexingChain implements Accountable {
 
     // Add stored fields
     if (fieldType.stored()) {
-      String value = field.stringValue();
-      if (value != null && value.length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
+      StoredValue storedValue = field.storedValue();
+      if (storedValue == null) {
+        throw new IllegalArgumentException("Cannot store a null value");
+      } else if (storedValue.getType() == StoredValue.Type.STRING
+          && storedValue.getStringValue().length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
         throw new IllegalArgumentException(
             "stored field \""
                 + field.name()
                 + "\" is too large ("
-                + value.length()
+                + storedValue.getStringValue().length()
                 + " characters) to store");
       }
       try {
-        storedFieldsConsumer.writeField(pf.fieldInfo, field);
+        storedFieldsConsumer.writeField(pf.fieldInfo, storedValue);
       } catch (Throwable th) {
         onAbortingException(th);
         throw th;
@@ -713,11 +726,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      switch (fieldType.vectorEncoding()) {
-        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
-        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
-            docID, ((KnnVectorField) field).vectorValue());
-      }
+      indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
     return indexedField;
   }
@@ -948,6 +957,18 @@ final class IndexingChain implements Accountable {
       case NONE:
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private void indexVectorValue(
+      int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
+      throws IOException {
+    switch (vectorEncoding) {
+      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
     }
   }
 

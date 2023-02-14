@@ -30,6 +30,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Returns the counts for each given {@link FacetSet}
@@ -156,7 +157,45 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
     validateTopN(topN);
-    return getAllChildren(dim, path);
+
+    topN = Math.min(topN, counts.length);
+
+    PriorityQueue<Entry> pq =
+        new PriorityQueue<>(topN, () -> new Entry("", 0)) {
+          @Override
+          protected boolean lessThan(Entry a, Entry b) {
+            return compare(a.count, b.count, a.label, b.label) < 0;
+          }
+        };
+
+    int childCount = 0;
+    Entry reuse = pq.top();
+    for (int i = 0; i < counts.length; i++) {
+      int count = counts[i];
+      if (count > 0) {
+        childCount++;
+        String label = facetSetMatchers[i].label;
+        if (compare(reuse.count, count, reuse.label, label) < 0) {
+          reuse.label = label;
+          reuse.count = count;
+          reuse = pq.updateTop();
+        }
+      }
+    }
+
+    // Pop off any sentinel values in the case that we had fewer child labels with non-zero
+    // counts than the requested top-n:
+    while (childCount < pq.size()) {
+      pq.pop();
+    }
+
+    LabelAndValue[] labelValues = new LabelAndValue[Math.min(topN, childCount)];
+    for (int i = pq.size() - 1; i >= 0; i--) {
+      Entry e = pq.pop();
+      labelValues[i] = new LabelAndValue(e.label, e.count);
+    }
+
+    return new FacetResult(dim, path, totCount, labelValues, childCount);
   }
 
   @Override
@@ -175,5 +214,23 @@ public class MatchingFacetSetsCounts extends FacetCountsWithFilterQuery {
     int dims = facetSetMatchers[0].dims;
     return Arrays.stream(facetSetMatchers)
         .anyMatch(facetSetMatcher -> facetSetMatcher.dims != dims);
+  }
+
+  private static int compare(int count1, int count2, String label1, String label2) {
+    int cmp = Integer.compare(count1, count2);
+    if (cmp == 0) {
+      cmp = label2.compareTo(label1);
+    }
+    return cmp;
+  }
+
+  private static final class Entry {
+    String label;
+    int count;
+
+    Entry(String label, int count) {
+      this.label = label;
+      this.count = count;
+    }
   }
 }

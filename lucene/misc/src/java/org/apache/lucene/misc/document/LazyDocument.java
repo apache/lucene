@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
@@ -94,7 +95,7 @@ public class LazyDocument {
   synchronized Document getDocument() {
     if (doc == null) {
       try {
-        doc = reader.document(docID, fieldNames);
+        doc = reader.storedFields().document(docID, fieldNames);
       } catch (IOException ioe) {
         throw new IllegalStateException("unable to load document", ioe);
       }
@@ -188,6 +189,11 @@ public class LazyDocument {
     @Override
     public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
       return getRealValue().tokenStream(analyzer, reuse);
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return null;
     }
   }
 }
