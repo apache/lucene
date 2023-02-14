@@ -298,9 +298,9 @@ abstract class AbstractKnnVectorQuery extends Query {
         public Explanation explain(LeafReaderContext context, int doc) {
           int found = Arrays.binarySearch(docs, doc + context.docBase);
           if (found < 0) {
-            return Explanation.noMatch("not in top docs");
+            return Explanation.noMatch("not in top " + docs.length + " docs");
           }
-          return Explanation.match(scores[found] * boost, "within top docs");
+          return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs");
         }
 
         @Override
