@@ -536,6 +536,7 @@ public class TieredMergePolicy extends MergePolicy {
               // singleton merges
               candidate.add(segSizeDocs.segInfo);
               bytesThisMerge += segBytes;
+              break;
             }
             // NOTE: we continue, so that we can try
             // "packing" smaller segments into this merge
