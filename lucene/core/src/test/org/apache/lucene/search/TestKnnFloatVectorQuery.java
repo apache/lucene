@@ -60,9 +60,16 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     return new KnnFloatVectorField(name, vector);
   }
 
-  public void testToString() {
-    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
-    assertEquals("KnnFloatVectorQuery:f1[0.0,...][10]", q1.toString("ignored"));
+  public void testToString() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
+      assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
+
+      Query rewritten = query.rewrite(newSearcher(reader));
+      assertEquals("DocAndScoreQuery[0,...][1.0,...]", rewritten.toString("ignored"));
+    }
   }
 
   public void testGetTarget() {

@@ -345,13 +345,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertTrue(matched.isMatch());
         assertEquals(1 / 2f, matched.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("within top 3", matched.getDescription());
+        assertEquals("within top 3 docs", matched.getDescription());
 
         Explanation nomatch = searcher.explain(query, 4);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("not in top 3", nomatch.getDescription());
+        assertEquals("not in top 3 docs", nomatch.getDescription());
       }
     }
   }
@@ -373,13 +373,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertTrue(matched.isMatch());
         assertEquals(1 / 2f, matched.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("within top 3", matched.getDescription());
+        assertEquals("within top 3 docs", matched.getDescription());
 
         Explanation nomatch = searcher.explain(query, 4);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("not in top 3", nomatch.getDescription());
+        assertEquals("not in top 3 docs", nomatch.getDescription());
       }
     }
   }
