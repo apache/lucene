@@ -58,15 +58,17 @@ public class TestDocAndScoreQuery extends LuceneTestCase {
         ScoreDoc[] scoreDocs = scoreDocsList.toArray(new ScoreDoc[0]);
         int[] docs = new int[scoreDocs.length];
         float[] scores = new float[scoreDocs.length];
+        float maxScore = Float.MIN_VALUE;
         for (int i = 0; i < scoreDocs.length; i++) {
           docs[i] = scoreDocs[i].doc;
           scores[i] = scoreDocs[i].score;
+          maxScore = Math.max(maxScore, scores[i]);
         }
         int[] segments = AbstractKnnVectorQuery.findSegmentStarts(reader, docs);
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
             new AbstractKnnVectorQuery.DocAndScoreQuery(
-                docs, scores, segments, reader.getContext().id());
+                docs, scores, maxScore, segments, reader.getContext().id());
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
         assertEquals(scoreDocs.length, topDocs.totalHits.value);
