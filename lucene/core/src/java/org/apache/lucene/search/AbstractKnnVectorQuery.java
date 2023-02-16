@@ -200,7 +200,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new DocAndScoreQuery(docs, scores, segmentStarts, reader.getContext().id());
   }
 
-  private int[] findSegmentStarts(IndexReader reader, int[] docs) {
+  static int[] findSegmentStarts(IndexReader reader, int[] docs) {
     int[] starts = new int[reader.leaves().size() + 1];
     starts[starts.length - 1] = docs.length;
     if (starts.length == 2) {
@@ -304,8 +304,15 @@ abstract class AbstractKnnVectorQuery extends Query {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) {
+        public int count(LeafReaderContext context) {
+          return segmentStarts[context.ord + 1] - segmentStarts[context.ord];
+        }
 
+        @Override
+        public Scorer scorer(LeafReaderContext context) {
+          if (segmentStarts[context.ord] == segmentStarts[context.ord + 1]) {
+            return null;
+          }
           return new Scorer(this) {
             final int lower = segmentStarts[context.ord];
             final int upper = segmentStarts[context.ord + 1];
@@ -343,9 +350,11 @@ abstract class AbstractKnnVectorQuery extends Query {
 
             @Override
             public float getMaxScore(int docId) {
-              docId += context.docBase;
+              if (docId < NO_MORE_DOCS) {
+                docId += context.docBase;
+              }
               float maxScore = 0;
-              for (int idx = Math.max(0, upTo); idx < upper && docs[idx] <= docId; idx++) {
+              for (int idx = Math.max(lower, upTo); idx < upper && docs[idx] <= docId; idx++) {
                 maxScore = Math.max(maxScore, scores[idx]);
               }
               return maxScore * boost;
