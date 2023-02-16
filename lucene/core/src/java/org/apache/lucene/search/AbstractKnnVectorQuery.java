@@ -197,7 +197,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(docs, scores, segmentStarts, reader.getContext().id());
   }
 
   private int[] findSegmentStarts(IndexReader reader, int[] docs) {
@@ -263,7 +263,6 @@ abstract class AbstractKnnVectorQuery extends Query {
   /** Caches the results of a KnnVector search: a list of docs and their scores */
   static class DocAndScoreQuery extends Query {
 
-    private final int k;
     private final int[] docs;
     private final float[] scores;
     private final int[] segmentStarts;
@@ -272,7 +271,6 @@ abstract class AbstractKnnVectorQuery extends Query {
     /**
      * Constructor
      *
-     * @param k the number of documents requested
      * @param docs the global docids of documents that match, in ascending order
      * @param scores the scores of the matching documents
      * @param segmentStarts the indexes in docs and scores corresponding to the first matching
@@ -282,9 +280,7 @@ abstract class AbstractKnnVectorQuery extends Query {
      * @param contextIdentity an object identifying the reader context that was used to build this
      *     query
      */
-    DocAndScoreQuery(
-        int k, int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
-      this.k = k;
+    DocAndScoreQuery(int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
       this.docs = docs;
       this.scores = scores;
       this.segmentStarts = segmentStarts;
@@ -302,9 +298,9 @@ abstract class AbstractKnnVectorQuery extends Query {
         public Explanation explain(LeafReaderContext context, int doc) {
           int found = Arrays.binarySearch(docs, doc + context.docBase);
           if (found < 0) {
-            return Explanation.noMatch("not in top " + k);
+            return Explanation.noMatch("not in top " + docs.length + " docs");
           }
-          return Explanation.match(scores[found] * boost, "within top " + k);
+          return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs");
         }
 
         @Override
@@ -405,7 +401,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     @Override
     public String toString(String field) {
-      return "DocAndScore[" + k + "]";
+      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]";
     }
 
     @Override
