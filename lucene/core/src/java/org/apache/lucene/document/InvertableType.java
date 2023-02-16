@@ -16,14 +16,18 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexableField;
 
 /** Describes how an {@link IndexableField} should be inverted for indexing terms and postings. */
 public enum InvertableType {
 
   /**
-   * The field should be inverted through its {@link IndexableField#binaryValue()}, with a frequency
-   * of 1.
+   * The field should be treated as a single value whose binary content is returned by {@link
+   * IndexableField#binaryValue()}. The term frequency is assumed to be one. If you need to index
+   * multiple values, you should pass multiple {@link IndexableField} instances to the {@link
+   * IndexWriter}. If the same value is provided multiple times, the term frequency will be equal to
+   * the number of times that this value occurred in the same document.
    */
   BINARY,
 
