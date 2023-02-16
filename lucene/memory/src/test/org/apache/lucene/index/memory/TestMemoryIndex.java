@@ -902,7 +902,7 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     @Override
     public InvertableType invertableType() {
-      return InvertableType.TERM;
+      return InvertableType.BINARY;
     }
   }
 

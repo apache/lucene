@@ -1113,7 +1113,7 @@ final class IndexingChain implements Accountable {
       }
 
       switch (field.invertableType()) {
-        case TERM:
+        case BINARY:
           invertTerm(docID, field, first);
           break;
         case TOKEN_STREAM:

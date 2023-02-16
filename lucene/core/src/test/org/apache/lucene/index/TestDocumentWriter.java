@@ -442,7 +442,7 @@ public class TestDocumentWriter extends LuceneTestCase {
 
     @Override
     public InvertableType invertableType() {
-      return InvertableType.TERM;
+      return InvertableType.BINARY;
     }
   }
 

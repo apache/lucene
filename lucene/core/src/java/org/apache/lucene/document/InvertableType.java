@@ -25,7 +25,7 @@ public enum InvertableType {
    * The field should be inverted through its {@link IndexableField#binaryValue()}, with a frequency
    * of 1.
    */
-  TERM,
+  BINARY,
 
   /**
    * The field should be inverted through its {@link

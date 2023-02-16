@@ -88,7 +88,7 @@ public final class StringField extends Field {
 
   @Override
   public InvertableType invertableType() {
-    return InvertableType.TERM;
+    return InvertableType.BINARY;
   }
 
   @Override
