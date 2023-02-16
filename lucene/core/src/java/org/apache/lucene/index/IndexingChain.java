@@ -1112,16 +1112,19 @@ final class IndexingChain implements Accountable {
         invertState.reset();
       }
 
-      if (invertTokenStream(docID, field, first) == false
-          && invertKeyword(docID, field, first) == false) {
-        throw new IllegalArgumentException(
-            "Indexed fields must produce a TokenStream or a binary value, but "
-                + field.name()
-                + " did not");
+      switch (field.invertableType()) {
+        case TERM:
+          invertTerm(docID, field, first);
+          break;
+        case TOKEN_STREAM:
+          invertTokenStream(docID, field, first);
+          break;
+        default:
+          throw new AssertionError();
       }
     }
 
-    private boolean invertTokenStream(int docID, IndexableField field, boolean first)
+    private void invertTokenStream(int docID, IndexableField field, boolean first)
         throws IOException {
       final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
       /*
@@ -1131,10 +1134,6 @@ final class IndexingChain implements Accountable {
        */
       boolean succeededInProcessingField = false;
       try (TokenStream stream = tokenStream = field.tokenStream(analyzer, tokenStream)) {
-        if (stream == null) {
-          succeededInProcessingField = true; // nothing to do
-          return false;
-        }
         // reset the TokenStream to the first token
         stream.reset();
         invertState.setAttributeSource(stream);
@@ -1268,14 +1267,15 @@ final class IndexingChain implements Accountable {
         invertState.position += analyzer.getPositionIncrementGap(fieldInfo.name);
         invertState.offset += analyzer.getOffsetGap(fieldInfo.name);
       }
-      return true;
     }
 
-    private boolean invertKeyword(int docID, IndexableField field, boolean first)
-        throws IOException {
+    private void invertTerm(int docID, IndexableField field, boolean first) throws IOException {
       BytesRef binaryValue = field.binaryValue();
       if (binaryValue == null) {
-        return false;
+        throw new IllegalArgumentException(
+            "Field "
+                + field.name()
+                + " returns TERM for invertableType() and null for binaryValue(), which is illegal");
       }
       final IndexableFieldType fieldType = field.fieldType();
       if (fieldType.tokenized()
@@ -1311,7 +1311,6 @@ final class IndexingChain implements Accountable {
         }
         throw new IllegalArgumentException(msg, e);
       }
-      return true;
     }
   }
 

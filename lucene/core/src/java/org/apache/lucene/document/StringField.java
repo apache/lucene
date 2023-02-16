@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.document;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.util.BytesRef;
 
@@ -88,18 +86,9 @@ public final class StringField extends Field {
     }
   }
 
-  /**
-   * {@inheritDoc}
-   *
-   * @deprecated Pulling a tokenStream directly on a {@link StringField} is deprecated, it should
-   *     only be called via IndexingChain.
-   */
-  @Deprecated
   @Override
-  public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-    // Return null so that the indexing chain indexes the field directly through the
-    // #binaryValue() and saves the TokenStream overhead.
-    return null;
+  public InvertableType invertableType() {
+    return InvertableType.TERM;
   }
 
   @Override

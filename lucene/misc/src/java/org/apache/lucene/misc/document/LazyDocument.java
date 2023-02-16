@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -193,7 +194,12 @@ public class LazyDocument {
 
     @Override
     public StoredValue storedValue() {
-      return null;
+      return getRealValue().storedValue();
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return getRealValue().invertableType();
     }
   }
 }

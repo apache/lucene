@@ -22,6 +22,7 @@ import java.util.Collections;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.store.Directory;
@@ -97,6 +98,11 @@ public class TestFieldReuse extends BaseTokenStreamTestCase {
     @Override
     public StoredValue storedValue() {
       return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TOKEN_STREAM;
     }
   }
 

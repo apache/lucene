@@ -17,8 +17,6 @@
 package org.apache.lucene.document;
 
 import java.util.Objects;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
@@ -110,10 +108,8 @@ public class KeywordField extends Field {
   }
 
   @Override
-  public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-    // Return null so that the field gets indexed directly through its #binaryValue() and saves the
-    // TokenStream overhead.
-    return null;
+  public InvertableType invertableType() {
+    return InvertableType.TERM;
   }
 
   @Override

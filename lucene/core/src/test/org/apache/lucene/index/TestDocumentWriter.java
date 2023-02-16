@@ -34,6 +34,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -437,6 +438,11 @@ public class TestDocumentWriter extends LuceneTestCase {
     @Override
     public StoredValue storedValue() {
       return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TERM;
     }
   }
 

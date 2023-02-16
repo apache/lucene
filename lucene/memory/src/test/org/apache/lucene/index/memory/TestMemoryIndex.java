@@ -44,6 +44,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -897,6 +898,11 @@ public class TestMemoryIndex extends LuceneTestCase {
     @Override
     public StoredValue storedValue() {
       return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TERM;
     }
   }
 
