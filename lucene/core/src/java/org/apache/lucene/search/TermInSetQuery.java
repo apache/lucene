@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.SortedSet;
@@ -30,7 +31,6 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -40,6 +40,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
@@ -76,6 +77,8 @@ public class TermInSetQuery extends Query implements Accountable {
       RamUsageEstimator.shallowSizeOfInstance(TermInSetQuery.class);
   // Same threshold as MultiTermQueryConstantScoreWrapper
   static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
+  // postings lists under this threshold will always be "pre-processed" into a bitset
+  private static final int POSTINGS_PRE_PROCESS_THRESHOLD = 512;
 
   private final String field;
   private final PrefixCodedTerms termData;
@@ -203,35 +206,17 @@ public class TermInSetQuery extends Query implements Accountable {
     return Collections.emptyList();
   }
 
-  private static class TermAndState {
-    final String field;
-    final TermsEnum termsEnum;
-    final BytesRef term;
-    final TermState state;
-    final int docFreq;
-    final long totalTermFreq;
-
-    TermAndState(String field, TermsEnum termsEnum) throws IOException {
-      this.field = field;
-      this.termsEnum = termsEnum;
-      this.term = BytesRef.deepCopyOf(termsEnum.term());
-      this.state = termsEnum.termState();
-      this.docFreq = termsEnum.docFreq();
-      this.totalTermFreq = termsEnum.totalTermFreq();
-    }
-  }
-
-  private static class WeightOrDocIdSet {
+  private static class WeightOrDocIdSetIterator {
     final Weight weight;
-    final DocIdSet set;
+    final DocIdSetIterator iterator;
 
-    WeightOrDocIdSet(Weight weight) {
+    WeightOrDocIdSetIterator(Weight weight) {
       this.weight = Objects.requireNonNull(weight);
-      this.set = null;
+      this.iterator = null;
     }
 
-    WeightOrDocIdSet(DocIdSet bitset) {
-      this.set = bitset;
+    WeightOrDocIdSetIterator(DocIdSetIterator iterator) {
+      this.iterator = iterator;
       this.weight = null;
     }
   }
@@ -258,85 +243,122 @@ public class TermInSetQuery extends Query implements Accountable {
        * On the given leaf context, try to either rewrite to a disjunction if there are few matching
        * terms, or build a bitset containing matching docs.
        */
-      private WeightOrDocIdSet rewrite(LeafReaderContext context) throws IOException {
+      private WeightOrDocIdSetIterator rewrite(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
 
         Terms terms = reader.terms(field);
         if (terms == null) {
           return null;
         }
+
         final int fieldDocCount = terms.getDocCount();
         TermsEnum termsEnum = terms.iterator();
-        PostingsEnum docs = null;
+        PostingsEnum reuse = null;
         TermIterator iterator = termData.iterator();
 
-        // We will first try to collect up to 'threshold' terms into 'matchingTerms'
-        // if there are too many terms, we will fall back to building the 'builder'
+        // We will first try to collect up to 'threshold' terms into 'unprocessed'
+        // if there are too many terms, we will fall back to building the 'processedPostings'
         final int threshold =
             Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
         assert termData.size() > threshold : "Query should have been rewritten";
-        List<TermAndState> matchingTerms = new ArrayList<>(threshold);
-        DocIdSetBuilder builder = null;
+        List<PostingsEnum> unprocessed = new ArrayList<>(threshold);
+        PriorityQueue<PostingsEnum> unprocessedPq = null;
+        DocIdSetBuilder processedPostings = null;
 
         for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
           assert field.equals(iterator.field());
-          if (termsEnum.seekExact(term)) {
-            // If a term contains all docs with a value for the specified field (likely rare),
-            // we can discard the other terms and just use the dense term's postings:
-            int docFreq = termsEnum.docFreq();
-            if (fieldDocCount == docFreq) {
-              TermStates termStates = new TermStates(searcher.getTopReaderContext());
-              termStates.register(
-                  termsEnum.termState(), context.ord, docFreq, termsEnum.totalTermFreq());
-              Query q =
-                  new ConstantScoreQuery(
-                      new TermQuery(new Term(field, termsEnum.term()), termStates));
-              Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-              return new WeightOrDocIdSet(weight);
-            }
+          if (termsEnum.seekExact(term) == false) {
+            continue;
+          }
 
-            if (matchingTerms == null) {
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
-            } else if (matchingTerms.size() < threshold) {
-              matchingTerms.add(new TermAndState(field, termsEnum));
-            } else {
-              assert matchingTerms.size() == threshold;
-              builder = new DocIdSetBuilder(reader.maxDoc(), terms);
-              docs = termsEnum.postings(docs, PostingsEnum.NONE);
-              builder.add(docs);
-              for (TermAndState t : matchingTerms) {
-                t.termsEnum.seekExact(t.term, t.state);
-                docs = t.termsEnum.postings(docs, PostingsEnum.NONE);
-                builder.add(docs);
-              }
-              matchingTerms = null;
+          // If a term contains all docs with a value for the specified field (likely rare),
+          // we can discard the other terms and just use the dense term's postings:
+          int docFreq = termsEnum.docFreq();
+          if (fieldDocCount == docFreq) {
+            TermStates termStates = new TermStates(searcher.getTopReaderContext());
+            termStates.register(
+                termsEnum.termState(), context.ord, docFreq, termsEnum.totalTermFreq());
+            Query q =
+                new ConstantScoreQuery(
+                    new TermQuery(new Term(field, termsEnum.term()), termStates));
+            Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+            return new WeightOrDocIdSetIterator(weight);
+          }
+
+          // All small postings get immediately processed into our bitset:
+          if (docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
+            if (processedPostings == null) {
+              processedPostings = new DocIdSetBuilder(reader.maxDoc(), terms);
             }
+            reuse = termsEnum.postings(reuse, PostingsEnum.NONE);
+            processedPostings.add(reuse);
+            continue;
+          }
+
+          PostingsEnum p = termsEnum.postings(null, PostingsEnum.NONE);
+          if (unprocessedPq != null) {
+            // We've already switched to using a PQ, so find the next smallest postings of
+            // all the remaining unprocessed ones and process it into our bitset:
+            PostingsEnum evicted = unprocessedPq.insertWithOverflow(p);
+            assert evicted != null;
+            processedPostings.add(evicted);
+          } else if (unprocessed.size() < threshold) {
+            // We haven't hit our "unprocessed" limit yet, so just add to our list:
+            unprocessed.add(p);
+          } else {
+            // We're at our "unprocessed" limit, so we'll switch to a PQ in order to always
+            // lazily process the next shortest postings into our bitset:
+            assert unprocessed.size() == threshold;
+            unprocessedPq =
+                new PriorityQueue<>(threshold) {
+                  @Override
+                  protected boolean lessThan(PostingsEnum a, PostingsEnum b) {
+                    // Note: No tie-breaker for equal cost means that "larger" terms tied for lowest
+                    // cost will get immediately processed, avoiding churn. The PQ logic requires an
+                    // insertWithOverflow candidate to be strictly less than the smallest entry to
+                    // be
+                    // added to the queue:
+                    return a.cost() < b.cost();
+                  }
+                };
+            unprocessedPq.addAll(unprocessed);
+            unprocessed = null;
+            PostingsEnum evicted = unprocessedPq.insertWithOverflow(p);
+            assert evicted != null;
+            if (processedPostings == null) {
+              processedPostings = new DocIdSetBuilder(reader.maxDoc(), terms);
+            }
+            processedPostings.add(evicted);
           }
         }
 
-        if (matchingTerms != null) {
-          assert builder == null;
-          BooleanQuery.Builder bq = new BooleanQuery.Builder();
-          for (TermAndState t : matchingTerms) {
-            final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-            termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-            bq.add(new TermQuery(new Term(t.field, t.term), termStates), Occur.SHOULD);
-          }
-          Query q = new ConstantScoreQuery(bq.build());
-          final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-          return new WeightOrDocIdSet(weight);
+        int iteratorCount = processedPostings != null ? 1 : 0;
+        Iterator<PostingsEnum> unprocessedIt;
+        if (unprocessed != null) {
+          iteratorCount += unprocessed.size();
+          unprocessedIt = unprocessed.iterator();
         } else {
-          assert builder != null;
-          return new WeightOrDocIdSet(builder.build());
+          iteratorCount += unprocessedPq.size();
+          unprocessedIt = unprocessedPq.iterator();
         }
-      }
 
-      private Scorer scorer(DocIdSet set) throws IOException {
-        if (set == null) {
+        if (iteratorCount == 0) {
           return null;
         }
-        final DocIdSetIterator disi = set.iterator();
+
+        DisiPriorityQueue disiPq = new DisiPriorityQueue(iteratorCount);
+        while (unprocessedIt.hasNext()) {
+          disiPq.add(new DisiWrapper(unprocessedIt.next()));
+        }
+
+        if (processedPostings != null) {
+          disiPq.add(new DisiWrapper(processedPostings.build().iterator()));
+        }
+
+        return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(disiPq));
+      }
+
+      private Scorer scorer(DocIdSetIterator disi) throws IOException {
         if (disi == null) {
           return null;
         }
@@ -345,13 +367,13 @@ public class TermInSetQuery extends Query implements Accountable {
 
       @Override
       public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
+        final WeightOrDocIdSetIterator weightOrBitSet = rewrite(context);
         if (weightOrBitSet == null) {
           return null;
         } else if (weightOrBitSet.weight != null) {
           return weightOrBitSet.weight.bulkScorer(context);
         } else {
-          final Scorer scorer = scorer(weightOrBitSet.set);
+          final Scorer scorer = scorer(weightOrBitSet.iterator);
           if (scorer == null) {
             return null;
           }
@@ -391,14 +413,14 @@ public class TermInSetQuery extends Query implements Accountable {
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
-            WeightOrDocIdSet weightOrDocIdSet = rewrite(context);
+            WeightOrDocIdSetIterator weightOrDocIdSetIterator = rewrite(context);
             final Scorer scorer;
-            if (weightOrDocIdSet == null) {
+            if (weightOrDocIdSetIterator == null) {
               scorer = null;
-            } else if (weightOrDocIdSet.weight != null) {
-              scorer = weightOrDocIdSet.weight.scorer(context);
+            } else if (weightOrDocIdSetIterator.weight != null) {
+              scorer = weightOrDocIdSetIterator.weight.scorer(context);
             } else {
-              scorer = scorer(weightOrDocIdSet.set);
+              scorer = scorer(weightOrDocIdSetIterator.iterator);
             }
 
             return Objects.requireNonNullElseGet(
