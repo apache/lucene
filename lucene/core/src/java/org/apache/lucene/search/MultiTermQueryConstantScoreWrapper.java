@@ -44,6 +44,8 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
 
   // mtq that matches 16 terms or less will be executed as a regular disjunction
   private static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
+  // postings lists under this threshold will always be "pre-processed" into a bitset
+  private static final int POSTINGS_PRE_PROCESS_THRESHOLD = 512;
 
   @Override
   public long ramBytesUsed() {
@@ -186,8 +188,9 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
         }
 
         // Too many terms: go back to the terms we already collected and start building the bit set
+        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         PriorityQueue<PostingsEnum> highFrequencyTerms =
-            new PriorityQueue<PostingsEnum>(collectedTerms.size()) {
+            new PriorityQueue<>(collectedTerms.size()) {
               @Override
               protected boolean lessThan(PostingsEnum a, PostingsEnum b) {
                 return a.cost() < b.cost();
@@ -198,12 +201,15 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           for (TermAndState t : collectedTerms) {
             termsEnum2.seekExact(t.term, t.state);
             PostingsEnum postings = termsEnum2.postings(null, PostingsEnum.NONE);
-            highFrequencyTerms.add(postings);
+            if (t.docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
+              otherTerms.add(postings);
+            } else {
+              highFrequencyTerms.add(postings);
+            }
           }
         }
 
         // Then collect remaining terms
-        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         PostingsEnum postings = null;
         do {
           postings = termsEnum.postings(postings, PostingsEnum.NONE);
@@ -220,9 +226,15 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
             Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
             return new WeightOrDocIdSetIterator(weight);
           }
-          PostingsEnum dropped = highFrequencyTerms.insertWithOverflow(postings);
-          otherTerms.add(dropped);
-          postings = dropped;
+          if (docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
+            otherTerms.add(postings);
+          } else {
+            PostingsEnum dropped = highFrequencyTerms.insertWithOverflow(postings);
+            if (dropped != null) {
+              otherTerms.add(dropped);
+            }
+            postings = dropped;
+          }
         } while (termsEnum.next() != null);
 
         DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
