@@ -193,7 +193,6 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
                 return a.cost() < b.cost();
               }
             };
-        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         if (collectedTerms.isEmpty() == false) {
           TermsEnum termsEnum2 = terms.iterator();
           for (TermAndState t : collectedTerms) {
@@ -204,6 +203,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
         }
 
         // Then collect remaining terms
+        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         PostingsEnum postings = null;
         do {
           postings = termsEnum.postings(postings, PostingsEnum.NONE);
@@ -225,15 +225,12 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           postings = dropped;
         } while (termsEnum.next() != null);
 
-        List<DocIdSetIterator> disis = new ArrayList<>(highFrequencyTerms.size() + 1);
-        for (PostingsEnum pe : highFrequencyTerms) {
-          disis.add(pe);
-        }
-        disis.add(otherTerms.build().iterator());
-        DisiPriorityQueue subs = new DisiPriorityQueue(disis.size());
-        for (DocIdSetIterator disi : disis) {
+        DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
+        for (DocIdSetIterator disi : highFrequencyTerms) {
           subs.add(new DisiWrapper(disi));
         }
+        subs.add(new DisiWrapper(otherTerms.build().iterator()));
+
         return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }
 
