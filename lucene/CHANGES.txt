@@ -135,6 +135,8 @@ Optimizations
 
 * GITHUB#12050: Reuse HNSW graph for intialization during merge (Jack Mazanec)
 
+* GITHUB#12154: Implement ScorerSupplier for LatLonDocValuesQuery. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 (No changes)
