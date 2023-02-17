@@ -31,11 +31,13 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -50,7 +52,6 @@ class LatLonDocValuesQuery extends Query {
   private final String field;
   private final LatLonGeometry[] geometries;
   private final ShapeField.QueryRelation queryRelation;
-  private final Component2D component2D;
 
   LatLonDocValuesQuery(
       String field, ShapeField.QueryRelation queryRelation, LatLonGeometry... geometries) {
@@ -84,7 +85,6 @@ class LatLonDocValuesQuery extends Query {
     this.field = field;
     this.geometries = geometries;
     this.queryRelation = queryRelation;
-    this.component2D = LatLonGeometry.create(geometries);
   }
 
   @Override
@@ -129,37 +129,37 @@ class LatLonDocValuesQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    final GeoEncodingUtils.Component2DPredicate component2DPredicate =
-        queryRelation == ShapeField.QueryRelation.CONTAINS
-            ? null
-            : GeoEncodingUtils.createComponentPredicate(component2D);
+
     return new ConstantScoreWeight(this, boost) {
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
+        ScorerSupplier scorerSupplier = scorerSupplier(context);
+        if (scorerSupplier == null) {
+          return null;
+        }
+        return scorerSupplier.get(Long.MAX_VALUE);
+      }
+
+      @Override
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Weight weight = this;
         final SortedNumericDocValues values = context.reader().getSortedNumericDocValues(field);
         if (values == null) {
           return null;
         }
-        final TwoPhaseIterator iterator;
-        switch (queryRelation) {
-          case INTERSECTS:
-            iterator = intersects(values, component2DPredicate);
-            break;
-          case WITHIN:
-            iterator = within(values, component2DPredicate);
-            break;
-          case DISJOINT:
-            iterator = disjoint(values, component2DPredicate);
-            break;
-          case CONTAINS:
-            iterator = contains(values, geometries);
-            break;
-          default:
-            throw new IllegalArgumentException(
-                "Invalid query relationship:[" + queryRelation + "]");
-        }
-        return new ConstantScoreScorer(this, boost, scoreMode, iterator);
+        // implement ScorerSupplier, since we do some expensive stuff to make a scorer
+        return new ScorerSupplier() {
+          @Override
+          public Scorer get(long leadCost) {
+            return new ConstantScoreScorer(weight, score(), scoreMode, getTwoPhaseIterator(values));
+          }
+
+          @Override
+          public long cost() {
+            return values.cost();
+          }
+        };
       }
 
       @Override
@@ -169,9 +169,20 @@ class LatLonDocValuesQuery extends Query {
     };
   }
 
-  private TwoPhaseIterator intersects(
-      SortedNumericDocValues values, GeoEncodingUtils.Component2DPredicate component2DPredicate) {
-    return new TwoPhaseIterator(values) {
+  private TwoPhaseIterator getTwoPhaseIterator(SortedNumericDocValues values) {
+    // TODO: optimise for singleton doc values
+    return switch (queryRelation) {
+      case INTERSECTS -> intersects(values);
+      case WITHIN -> within(values);
+      case DISJOINT -> disjoint(values);
+      case CONTAINS -> contains(values);
+    };
+  }
+
+  private TwoPhaseIterator intersects(SortedNumericDocValues values) {
+    final GeoEncodingUtils.Component2DPredicate component2DPredicate =
+        GeoEncodingUtils.createComponentPredicate(LatLonGeometry.create(geometries));
+    return new LatLonDocValuesTwoPhaseIterator(values) {
       @Override
       public boolean matches() throws IOException {
         for (int i = 0, count = values.docValueCount(); i < count; ++i) {
@@ -184,17 +195,13 @@ class LatLonDocValuesQuery extends Query {
         }
         return false;
       }
-
-      @Override
-      public float matchCost() {
-        return 1000f; // TODO: what should it be?
-      }
     };
   }
 
-  private TwoPhaseIterator within(
-      SortedNumericDocValues values, GeoEncodingUtils.Component2DPredicate component2DPredicate) {
-    return new TwoPhaseIterator(values) {
+  private TwoPhaseIterator within(SortedNumericDocValues values) {
+    final GeoEncodingUtils.Component2DPredicate component2DPredicate =
+        GeoEncodingUtils.createComponentPredicate(LatLonGeometry.create(geometries));
+    return new LatLonDocValuesTwoPhaseIterator(values) {
       @Override
       public boolean matches() throws IOException {
         for (int i = 0, count = values.docValueCount(); i < count; ++i) {
@@ -207,17 +214,13 @@ class LatLonDocValuesQuery extends Query {
         }
         return true;
       }
-
-      @Override
-      public float matchCost() {
-        return 1000f; // TODO: what should it be?
-      }
     };
   }
 
-  private TwoPhaseIterator disjoint(
-      SortedNumericDocValues values, GeoEncodingUtils.Component2DPredicate component2DPredicate) {
-    return new TwoPhaseIterator(values) {
+  private TwoPhaseIterator disjoint(SortedNumericDocValues values) {
+    final GeoEncodingUtils.Component2DPredicate component2DPredicate =
+        GeoEncodingUtils.createComponentPredicate(LatLonGeometry.create(geometries));
+    return new LatLonDocValuesTwoPhaseIterator(values) {
       @Override
       public boolean matches() throws IOException {
         for (int i = 0, count = values.docValueCount(); i < count; ++i) {
@@ -230,20 +233,15 @@ class LatLonDocValuesQuery extends Query {
         }
         return true;
       }
-
-      @Override
-      public float matchCost() {
-        return 1000f; // TODO: what should it be?
-      }
     };
   }
 
-  private TwoPhaseIterator contains(SortedNumericDocValues values, LatLonGeometry[] geometries) {
+  private TwoPhaseIterator contains(SortedNumericDocValues values) {
     final List<Component2D> component2Ds = new ArrayList<>(geometries.length);
-    for (int i = 0; i < geometries.length; i++) {
-      component2Ds.add(LatLonGeometry.create(geometries[i]));
+    for (LatLonGeometry geometry : geometries) {
+      component2Ds.add(LatLonGeometry.create(geometry));
     }
-    return new TwoPhaseIterator(values) {
+    return new LatLonDocValuesTwoPhaseIterator(values) {
       @Override
       public boolean matches() throws IOException {
         Component2D.WithinRelation answer = Component2D.WithinRelation.DISJOINT;
@@ -262,11 +260,17 @@ class LatLonDocValuesQuery extends Query {
         }
         return answer == Component2D.WithinRelation.CANDIDATE;
       }
-
-      @Override
-      public float matchCost() {
-        return 1000f; // TODO: what should it be?
-      }
     };
+  }
+
+  private abstract static class LatLonDocValuesTwoPhaseIterator extends TwoPhaseIterator {
+    protected LatLonDocValuesTwoPhaseIterator(DocIdSetIterator approximation) {
+      super(approximation);
+    }
+
+    @Override
+    public float matchCost() {
+      return 1000f; // TODO: what should it be?
+    }
   }
 }
