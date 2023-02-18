@@ -31,18 +31,21 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * This class also provides the functionality behind {@link MultiTermQuery#CONSTANT_SCORE_REWRITE}.
- * It tries to rewrite per-segment as a boolean query that returns a constant score and otherwise
- * fills a bit set with matches and builds a Scorer on top of this bit set.
+ * This class provides the functionality behind {@link MultiTermQuery#CONSTANT_SCORE_AUTO_REWRITE}.
+ * It maintains a boolean query-like approach over the most costly terms with a limit of {@link
+ * #BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} while rewriting the remaining terms into a filter bitset.
  */
-final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends Query
+final class MultiTermQueryConstantScoreAutoWrapper<Q extends MultiTermQuery> extends Query
     implements Accountable {
 
   // mtq that matches 16 terms or less will be executed as a regular disjunction
   private static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
+  // postings lists under this threshold will always be "pre-processed" into a bitset
+  private static final int POSTINGS_PRE_PROCESS_THRESHOLD = 512;
 
   @Override
   public long ramBytesUsed() {
@@ -70,25 +73,25 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
     }
   }
 
-  private static class WeightOrDocIdSet {
+  private static class WeightOrDocIdSetIterator {
     final Weight weight;
-    final DocIdSet set;
+    final DocIdSetIterator iterator;
 
-    WeightOrDocIdSet(Weight weight) {
+    WeightOrDocIdSetIterator(Weight weight) {
       this.weight = Objects.requireNonNull(weight);
-      this.set = null;
+      this.iterator = null;
     }
 
-    WeightOrDocIdSet(DocIdSet bitset) {
-      this.set = bitset;
+    WeightOrDocIdSetIterator(DocIdSetIterator iterator) {
+      this.iterator = iterator;
       this.weight = null;
     }
   }
 
-  protected final Q query;
+  private final Q query;
 
   /** Wrap a {@link MultiTermQuery} as a Filter. */
-  protected MultiTermQueryConstantScoreWrapper(Q query) {
+  MultiTermQueryConstantScoreAutoWrapper(Q query) {
     this.query = query;
   }
 
@@ -99,13 +102,13 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
   }
 
   @Override
-  public final boolean equals(final Object other) {
+  public boolean equals(final Object other) {
     return sameClassAs(other)
-        && query.equals(((MultiTermQueryConstantScoreWrapper<?>) other).query);
+        && query.equals(((MultiTermQueryConstantScoreAutoWrapper<?>) other).query);
   }
 
   @Override
-  public final int hashCode() {
+  public int hashCode() {
     return 31 * classHash() + query.hashCode();
   }
 
@@ -115,7 +118,7 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
   }
 
   /** Returns the field name for this query */
-  public final String getField() {
+  public String getField() {
     return query.getField();
   }
 
@@ -124,11 +127,6 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
       throws IOException {
     return new ConstantScoreWeight(this, boost) {
 
-      /**
-       * Try to collect terms from the given terms enum and return true if all terms could be
-       * collected or if one of the iterated terms contains all docs for the field. If {@code false}
-       * is returned, the enum is left positioned on the next term.
-       */
       private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
           throws IOException {
         final int threshold =
@@ -155,22 +153,16 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
         return termsEnum.next() == null;
       }
 
-      /**
-       * On the given leaf context, try to either rewrite to a disjunction if there are few terms,
-       * or build a bitset containing matching docs.
-       */
-      private WeightOrDocIdSet rewrite(LeafReaderContext context) throws IOException {
+      private WeightOrDocIdSetIterator rewrite(LeafReaderContext context) throws IOException {
         final Terms terms = context.reader().terms(query.field);
         if (terms == null) {
           // field does not exist
-          return new WeightOrDocIdSet((DocIdSet) null);
+          return new WeightOrDocIdSetIterator((DocIdSetIterator) null);
         }
 
         final int fieldDocCount = terms.getDocCount();
         final TermsEnum termsEnum = query.getTermsEnum(terms);
         assert termsEnum != null;
-
-        PostingsEnum docs = null;
 
         final List<TermAndState> collectedTerms = new ArrayList<>();
         if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
@@ -183,23 +175,35 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
           }
           Query q = new ConstantScoreQuery(bq.build());
           final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-          return new WeightOrDocIdSet(weight);
+          return new WeightOrDocIdSetIterator(weight);
         }
 
         // Too many terms: go back to the terms we already collected and start building the bit set
-        DocIdSetBuilder builder = new DocIdSetBuilder(context.reader().maxDoc(), terms);
+        DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
+        PriorityQueue<PostingsEnum> highFrequencyTerms =
+            new PriorityQueue<>(collectedTerms.size()) {
+              @Override
+              protected boolean lessThan(PostingsEnum a, PostingsEnum b) {
+                return a.cost() < b.cost();
+              }
+            };
         if (collectedTerms.isEmpty() == false) {
           TermsEnum termsEnum2 = terms.iterator();
           for (TermAndState t : collectedTerms) {
             termsEnum2.seekExact(t.term, t.state);
-            docs = termsEnum2.postings(docs, PostingsEnum.NONE);
-            builder.add(docs);
+            PostingsEnum postings = termsEnum2.postings(null, PostingsEnum.NONE);
+            if (t.docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
+              otherTerms.add(postings);
+            } else {
+              highFrequencyTerms.add(postings);
+            }
           }
         }
 
-        // Then keep filling the bit set with remaining terms
+        // Then collect remaining terms
+        PostingsEnum postings = null;
         do {
-          docs = termsEnum.postings(docs, PostingsEnum.NONE);
+          postings = termsEnum.postings(postings, PostingsEnum.NONE);
           // If a term contains all docs with a value for the specified field, we can discard the
           // other terms and just use the dense term's postings:
           int docFreq = termsEnum.docFreq();
@@ -211,32 +215,42 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
                 new ConstantScoreQuery(
                     new TermQuery(new Term(query.field, termsEnum.term()), termStates));
             Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-            return new WeightOrDocIdSet(weight);
+            return new WeightOrDocIdSetIterator(weight);
           }
-          builder.add(docs);
+          if (docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
+            otherTerms.add(postings);
+          } else {
+            PostingsEnum dropped = highFrequencyTerms.insertWithOverflow(postings);
+            if (dropped != null) {
+              otherTerms.add(dropped);
+            }
+            postings = dropped;
+          }
         } while (termsEnum.next() != null);
 
-        return new WeightOrDocIdSet(builder.build());
+        DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
+        for (DocIdSetIterator disi : highFrequencyTerms) {
+          subs.add(new DisiWrapper(disi));
+        }
+        subs.add(new DisiWrapper(otherTerms.build().iterator()));
+
+        return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }
 
-      private Scorer scorer(DocIdSet set) throws IOException {
-        if (set == null) {
+      private Scorer scorer(DocIdSetIterator iterator) throws IOException {
+        if (iterator == null) {
           return null;
         }
-        final DocIdSetIterator disi = set.iterator();
-        if (disi == null) {
-          return null;
-        }
-        return new ConstantScoreScorer(this, score(), scoreMode, disi);
+        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
       }
 
       @Override
       public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
+        final WeightOrDocIdSetIterator weightOrBitSet = rewrite(context);
         if (weightOrBitSet.weight != null) {
           return weightOrBitSet.weight.bulkScorer(context);
         } else {
-          final Scorer scorer = scorer(weightOrBitSet.set);
+          final Scorer scorer = scorer(weightOrBitSet.iterator);
           if (scorer == null) {
             return null;
           }
@@ -259,11 +273,11 @@ final class MultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends
 
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSet weightOrBitSet = rewrite(context);
+        final WeightOrDocIdSetIterator weightOrBitSet = rewrite(context);
         if (weightOrBitSet.weight != null) {
           return weightOrBitSet.weight.scorer(context);
         } else {
-          return scorer(weightOrBitSet.set);
+          return scorer(weightOrBitSet.iterator);
         }
       }
 

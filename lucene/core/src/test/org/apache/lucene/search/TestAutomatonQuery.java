@@ -105,6 +105,11 @@ public class TestAutomatonQuery extends LuceneTestCase {
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
+                newTerm("bogus"), automaton, false, MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
                 newTerm("bogus"),
                 automaton,
                 false,
