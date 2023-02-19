@@ -36,6 +36,8 @@ Optimizations
 
 * GITHUB#12050: Reuse HNSW graph for intialization during merge (Jack Mazanec)
 
+* GITHUB#12155: Speed up DocValuesRewriteMethod by making use of sortedness. (Greg Miller)
+
 Bug Fixes
 ---------------------
 (No changes)

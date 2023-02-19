@@ -173,15 +173,25 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               // query that are actually present in the doc values field). Cannot use FixedBitSet
               // because we require long index (ord):
               final LongBitSet termSet = new LongBitSet(values.getValueCount());
+              long maxOrd = -1;
               do {
                 long ord = termsEnum.ord();
                 if (ord >= 0) {
+                  assert ord > maxOrd;
+                  maxOrd = ord;
                   termSet.set(ord);
                 }
               } while (termsEnum.next() != null);
 
+              // no terms matched in this segment
+              if (maxOrd < 0) {
+                return new ConstantScoreScorer(
+                    weight, score(), scoreMode, DocIdSetIterator.empty());
+              }
+
               final SortedDocValues singleton = DocValues.unwrapSingleton(values);
               final TwoPhaseIterator iterator;
+              final long max = maxOrd;
               if (singleton != null) {
                 iterator =
                     new TwoPhaseIterator(singleton) {
@@ -201,7 +211,10 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
                       @Override
                       public boolean matches() throws IOException {
                         for (int i = 0; i < values.docValueCount(); i++) {
-                          if (termSet.get(values.nextOrd())) {
+                          long value = values.nextOrd();
+                          if (value > max) {
+                            return false; // values are sorted, terminate
+                          } else if (termSet.get(value)) {
                             return true;
                           }
                         }
