@@ -140,7 +140,7 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* GITHUB#xxx: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
+* GITHUB#12158: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
 
 Build
 ---------------------
