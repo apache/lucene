@@ -1438,7 +1438,6 @@ public final class Tessellator {
     }
   }
 
-
   /**
    * Implementation of this interface will receive calls with internal data at each step of the
    * triangulation algorithm. This is of use for debugging complex cases, as well as gaining insight
