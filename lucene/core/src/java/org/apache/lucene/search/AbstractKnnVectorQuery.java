@@ -22,6 +22,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -62,9 +66,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
-    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
-    Weight filterWeight = null;
+    final Weight filterWeight;
     if (filter != null) {
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
@@ -73,17 +76,41 @@ abstract class AbstractKnnVectorQuery extends Query {
               .build();
       Query rewritten = indexSearcher.rewrite(booleanQuery);
       filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    } else {
+      filterWeight = null;
     }
 
-    for (LeafReaderContext ctx : reader.leaves()) {
-      TopDocs results = searchLeaf(ctx, filterWeight);
-      if (ctx.docBase > 0) {
-        for (ScoreDoc scoreDoc : results.scoreDocs) {
-          scoreDoc.doc += ctx.docBase;
-        }
-      }
-      perLeafResults[ctx.ord] = results;
-    }
+    TopDocs[] perLeafResults =
+        reader.leaves().stream()
+            .map(
+                ctx -> {
+                  Supplier<TopDocs> supplier =
+                      () -> {
+                        try {
+                          TopDocs results = searchLeaf(ctx, filterWeight);
+                          if (ctx.docBase > 0) {
+                            for (ScoreDoc scoreDoc : results.scoreDocs) {
+                              scoreDoc.doc += ctx.docBase;
+                            }
+                          }
+                          return results;
+                        } catch (Exception e) {
+                          throw new CompletionException(e);
+                        }
+                      };
+
+                  Executor executor = indexSearcher.getExecutor();
+                  if (executor == null) {
+                    return CompletableFuture.completedFuture(supplier.get());
+                  } else {
+                    return CompletableFuture.supplyAsync(supplier, executor);
+                  }
+                })
+            .toList()
+            .stream()
+            .map(CompletableFuture::join)
+            .toArray(TopDocs[]::new);
+
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
     if (topK.scoreDocs.length == 0) {

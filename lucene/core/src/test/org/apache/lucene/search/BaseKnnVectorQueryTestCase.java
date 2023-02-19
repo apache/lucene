@@ -23,6 +23,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletionException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -210,7 +211,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 10);
       IllegalArgumentException e =
-          expectThrows(IllegalArgumentException.class, () -> searcher.search(kvq, 10));
+          expectThrows(
+              CompletionException.class,
+              IllegalArgumentException.class,
+              () -> searcher.search(kvq, 10));
       assertEquals("vector query dimension: 1 differs from field dimension: 2", e.getMessage());
     }
   }
@@ -495,6 +499,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(9, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
+              CompletionException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -509,6 +514,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(5, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
+              CompletionException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -536,6 +542,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
           Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
           expectThrows(
+              CompletionException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -708,6 +715,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
         Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
         expectThrows(
+            CompletionException.class,
             UnsupportedOperationException.class,
             () ->
                 searcher.search(
