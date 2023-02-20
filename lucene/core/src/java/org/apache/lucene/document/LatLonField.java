@@ -23,6 +23,7 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
 import java.io.IOException;
 import org.apache.lucene.geo.LatLonGeometry;
+import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -144,6 +145,51 @@ public class LatLonField extends Field {
   }
 
   // static methods for generating queries
+  public static Query newBoxQuery(
+      String field,
+      double minLatitude,
+      double maxLatitude,
+      double minLongitude,
+      double maxLongitude) {
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newBoxQuery(field, minLatitude, maxLatitude, minLongitude, maxLongitude),
+        LatLonDocValuesField.newSlowBoxQuery(
+            field, minLatitude, maxLatitude, minLongitude, maxLongitude));
+  }
+
+  /**
+   * Create a query for matching points within the specified distance of the supplied location.
+   *
+   * @param field field name. must not be null.
+   * @param latitude latitude at the center: must be within standard +/-90 coordinate bounds.
+   * @param longitude longitude at the center: must be within standard +/-180 coordinate bounds.
+   * @param radiusMeters maximum distance from the center in meters: must be non-negative and
+   *     finite.
+   * @return query matching points within this distance
+   * @throws IllegalArgumentException if {@code field} is null, location has invalid coordinates, or
+   *     radius is invalid.
+   */
+  public static Query newDistanceQuery(
+      String field, double latitude, double longitude, double radiusMeters) {
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newDistanceQuery(field, latitude, longitude, radiusMeters),
+        LatLonDocValuesField.newSlowDistanceQuery(field, latitude, longitude, radiusMeters));
+  }
+
+  /**
+   * Create a query for matching one or more polygons.
+   *
+   * @param field field name. must not be null.
+   * @param polygons array of polygons. must not be null or empty
+   * @return query matching points within this polygon
+   * @throws IllegalArgumentException if {@code field} is null, {@code polygons} is null or empty
+   * @see Polygon
+   */
+  public static Query newPolygonQuery(String field, Polygon... polygons) {
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newPolygonQuery(field, polygons),
+        LatLonDocValuesField.newSlowPolygonQuery(field, polygons));
+  }
 
   /**
    * Create a query for matching one or more geometries against the provided {@link
