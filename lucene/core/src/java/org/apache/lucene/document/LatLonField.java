@@ -145,6 +145,19 @@ public class LatLonField extends Field {
   }
 
   // static methods for generating queries
+  /**
+   * Create a query for matching a bounding box.
+   *
+   * <p>The box may cross over the dateline.
+   *
+   * @param field field name. must not be null.
+   * @param minLatitude latitude lower bound: must be within standard +/-90 coordinate bounds.
+   * @param maxLatitude latitude upper bound: must be within standard +/-90 coordinate bounds.
+   * @param minLongitude longitude lower bound: must be within standard +/-180 coordinate bounds.
+   * @param maxLongitude longitude upper bound: must be within standard +/-180 coordinate bounds.
+   * @return query matching points within this box
+   * @throws IllegalArgumentException if {@code field} is null, or the box has invalid coordinates.
+   */
   public static Query newBoxQuery(
       String field,
       double minLatitude,
