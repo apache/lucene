@@ -20,6 +20,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.util.Arrays;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Circle;
+import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
@@ -52,19 +53,17 @@ public abstract class BaseLatLonPointTestCase extends BaseLatLonSpatialTestCase 
 
   @Override
   protected Query newLineQuery(String field, QueryRelation queryRelation, Object... lines) {
-    return LatLonPoint.newGeometryQuery(
-        field, queryRelation, Arrays.stream(lines).toArray(Line[]::new));
+    return newGeometryQuery(field, queryRelation, Arrays.stream(lines).toArray(Line[]::new));
   }
 
   @Override
   protected Query newPolygonQuery(String field, QueryRelation queryRelation, Object... polygons) {
-    return LatLonPoint.newGeometryQuery(
-        field, queryRelation, Arrays.stream(polygons).toArray(Polygon[]::new));
+    return newGeometryQuery(field, queryRelation, Arrays.stream(polygons).toArray(Polygon[]::new));
   }
 
   @Override
   protected Query newDistanceQuery(String field, QueryRelation queryRelation, Object circle) {
-    return LatLonPoint.newGeometryQuery(field, queryRelation, (Circle) circle);
+    return newGeometryQuery(field, queryRelation, (Circle) circle);
   }
 
   @Override
@@ -74,8 +73,11 @@ public abstract class BaseLatLonPointTestCase extends BaseLatLonSpatialTestCase 
       double[] point = (double[]) points[i];
       pointsArray[i] = new Point(point[0], point[1]);
     }
-    return LatLonPoint.newGeometryQuery(field, queryRelation, pointsArray);
+    return newGeometryQuery(field, queryRelation, pointsArray);
   }
+
+  public abstract Query newGeometryQuery(
+      String field, QueryRelation queryRelation, LatLonGeometry... geometries);
 
   public void testBoundingBoxQueriesEquivalence() throws Exception {
     int numShapes = atLeast(20);

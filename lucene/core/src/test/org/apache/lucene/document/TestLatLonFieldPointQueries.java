@@ -26,7 +26,7 @@ import org.apache.lucene.search.Query;
  * random bounding box, line, and polygon query tests for random indexed arrays of {@code latitude,
  * longitude} points
  */
-public class TestLatLonPointPointQueries extends BaseLatLonPointTestCase {
+public class TestLatLonFieldPointQueries extends BaseLatLonPointTestCase {
 
   @Override
   protected ShapeType getShapeType() {
@@ -41,13 +41,13 @@ public class TestLatLonPointPointQueries extends BaseLatLonPointTestCase {
   @Override
   protected Field[] createIndexableFields(String name, Object o) {
     Point point = (Point) o;
-    return new Field[] {new LatLonPoint(FIELD_NAME, point.getLat(), point.getLon())};
+    return new Field[] {new LatLonField(FIELD_NAME, point.getLat(), point.getLon())};
   }
 
   @Override
   public Query newGeometryQuery(
       String field, QueryRelation queryRelation, LatLonGeometry... geometries) {
-    return LatLonPoint.newGeometryQuery(field, queryRelation, geometries);
+    return LatLonField.newGeometryQuery(field, queryRelation, geometries);
   }
 
   protected static class PointValidator extends Validator {

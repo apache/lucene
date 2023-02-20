@@ -18,13 +18,15 @@ package org.apache.lucene.document;
 
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Point;
+import org.apache.lucene.search.Query;
 
 /**
  * random bounding box, line, and polygon query tests for random indexed arrays of {@code latitude,
  * longitude} points
  */
-public class TestLatLonMultiPointPointQueries extends BaseLatLonPointTestCase {
+public class TestLatLonFieldMultiPointQueries extends BaseLatLonPointTestCase {
 
   @Override
   protected ShapeType getShapeType() {
@@ -46,9 +48,15 @@ public class TestLatLonMultiPointPointQueries extends BaseLatLonPointTestCase {
     Point[] points = (Point[]) o;
     Field[] fields = new Field[points.length];
     for (int i = 0; i < points.length; i++) {
-      fields[i] = new LatLonPoint(FIELD_NAME, points[i].getLat(), points[i].getLon());
+      fields[i] = new LatLonField(FIELD_NAME, points[i].getLat(), points[i].getLon());
     }
     return fields;
+  }
+
+  @Override
+  public Query newGeometryQuery(
+      String field, QueryRelation queryRelation, LatLonGeometry... geometries) {
+    return LatLonField.newGeometryQuery(field, queryRelation, geometries);
   }
 
   @Override

@@ -112,6 +112,9 @@ API Changes
 * GITHUB#12129: Move DocValuesTermsQuery from sandbox to SortedDocValuesField#newSlowSetQuery
   and SortedSetDocValuesField#newSlowSetQuery. (Robert Muir)
 
+* GITHUB#12161: Introduce LatLonField which ndex both LatLonField and LatLonDDocValues.
+  (Ignacio Vera)
+
 New Features
 ---------------------
 
