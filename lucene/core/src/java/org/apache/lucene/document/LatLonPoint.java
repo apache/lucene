@@ -310,8 +310,23 @@ public class LatLonPoint extends Field {
   }
 
   /**
-   * Create a query for matching one or more geometries against the provided {@link
-   * ShapeField.QueryRelation}. Line geometries are not supported for WITHIN relationship.
+   * Expert: Create a query for matching one or more geometries against the provided {@link
+   * ShapeField.QueryRelation}.
+   *
+   * <p>The following {@link ShapeField.QueryRelation} can be defined:
+   *
+   * <ol>
+   *   <li>{@link ShapeField.QueryRelation#INTERSECTS}: Matches a document if at least one point of
+   *       the field matches at least one of the provided {@link LatLonGeometry}.
+   *   <li>{@link ShapeField.QueryRelation#WITHIN}: Matches a document if all points of the field
+   *       matches one or more of the provided {@link LatLonGeometry}. Line geometries are not
+   *       supported for WITHIN relationship.
+   *   <li>{@link ShapeField.QueryRelation#DISJOINT}: Matches a document if none of the points of
+   *       the field matches any of the provided {@link LatLonGeometry}.
+   *   <li>{@link ShapeField.QueryRelation#CONTAINS}: Matches a documents if one or more points of
+   *       the field matches all the provided {@link LatLonGeometry}. It returns {@link
+   *       MatchNoDocsQuery} if any of the provided {@link LatLonGeometry} is not a {@link Point}.
+   * </ol>
    *
    * @param field field name. must not be null.
    * @param queryRelation The relation the points needs to satisfy with the provided geometries,
