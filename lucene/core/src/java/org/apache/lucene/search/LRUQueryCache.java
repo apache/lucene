@@ -139,25 +139,21 @@ public class LRUQueryCache implements QueryCache, Accountable {
   /**
    * Create a new instance that will cache at most <code>maxSize</code> queries with at most <code>
    * maxRamBytesUsed</code> bytes of memory. Queries will only be cached on leaves that have more
-   * than 10k documents and have more than 3% of the total number of documents in the index. This
-   * should guarantee that all leaves from the upper {@link TieredMergePolicy tier} will be cached
-   * while ensuring that at most <code>33</code> leaves can make it to the cache (very likely less
-   * than 10 in practice), which is useful for this implementation since some operations perform in
-   * linear time with the number of cached leaves. Only clauses whose cost is at most 100x the cost
-   * of the top-level query will be cached in order to not hurt latency too much because of caching.
+   * than 10k documents and have more than half of the average documents per leave of the index.
+   * This should guarantee that all leaves from the upper {@link TieredMergePolicy tier} will be
+   * cached. Only clauses whose cost is at most 100x the cost of the top-level query will be cached
+   * in order to not hurt latency too much because of caching.
    */
   public LRUQueryCache(int maxSize, long maxRamBytesUsed) {
-    this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000, .03f), 10);
+    this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000), 10);
   }
 
   // pkg-private for testing
   static class MinSegmentSizePredicate implements Predicate<LeafReaderContext> {
     private final int minSize;
-    private final float minSizeRatio;
 
-    MinSegmentSizePredicate(int minSize, float minSizeRatio) {
+    MinSegmentSizePredicate(int minSize) {
       this.minSize = minSize;
-      this.minSizeRatio = minSizeRatio;
     }
 
     @Override
@@ -167,8 +163,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
         return false;
       }
       final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
-      final float sizeRatio = (float) context.reader().maxDoc() / topLevelContext.reader().maxDoc();
-      return sizeRatio >= minSizeRatio;
+      final int averageTotalDocs =
+          topLevelContext.reader().maxDoc() / topLevelContext.leaves().size();
+      return maxDoc * 2 > averageTotalDocs;
     }
   }
 
