@@ -200,7 +200,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.getContext().id());
   }
 
-  private int[] findSegmentStarts(IndexReader reader, int[] docs) {
+  static int[] findSegmentStarts(IndexReader reader, int[] docs) {
     int[] starts = new int[reader.leaves().size() + 1];
     starts[starts.length - 1] = docs.length;
     if (starts.length == 2) {
@@ -308,8 +308,15 @@ abstract class AbstractKnnVectorQuery extends Query {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) {
+        public int count(LeafReaderContext context) {
+          return segmentStarts[context.ord + 1] - segmentStarts[context.ord];
+        }
 
+        @Override
+        public Scorer scorer(LeafReaderContext context) {
+          if (segmentStarts[context.ord] == segmentStarts[context.ord + 1]) {
+            return null;
+          }
           return new Scorer(this) {
             final int lower = segmentStarts[context.ord];
             final int upper = segmentStarts[context.ord + 1];
