@@ -20,8 +20,10 @@ import static org.apache.lucene.util.RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_E
 import static org.apache.lucene.util.RamUsageEstimator.LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY;
 import static org.apache.lucene.util.RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
@@ -1387,46 +1390,45 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
   public void testMinSegmentSizePredicate() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
-    w.addDocument(new Document());
-    DirectoryReader reader = w.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
-
-    LRUQueryCache cache =
-        new LRUQueryCache(
-            2, 10000, new LRUQueryCache.MinSegmentSizePredicate(2, 0f), Float.POSITIVE_INFINITY);
-    searcher.setQueryCache(cache);
-    searcher.count(new DummyQuery());
-    assertEquals(0, cache.getCacheCount());
-
-    cache =
-        new LRUQueryCache(
-            2, 10000, new LRUQueryCache.MinSegmentSizePredicate(1, 0f), Float.POSITIVE_INFINITY);
-    searcher.setQueryCache(cache);
-    searcher.count(new DummyQuery());
-    assertEquals(1, cache.getCacheCount());
-
-    cache =
-        new LRUQueryCache(
-            2, 10000, new LRUQueryCache.MinSegmentSizePredicate(0, .6f), Float.POSITIVE_INFINITY);
-    searcher.setQueryCache(cache);
-    searcher.count(new DummyQuery());
-    assertEquals(1, cache.getCacheCount());
-
-    w.addDocument(new Document());
-    reader.close();
-    reader = w.getReader();
-    searcher = newSearcher(reader);
-    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
-    cache =
-        new LRUQueryCache(
-            2, 10000, new LRUQueryCache.MinSegmentSizePredicate(0, .6f), Float.POSITIVE_INFINITY);
-    searcher.setQueryCache(cache);
-    searcher.count(new DummyQuery());
-    assertEquals(0, cache.getCacheCount());
-
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter w = new IndexWriter(dir, iwc);
+    IntConsumer newSegment =
+        numDocs -> {
+          try {
+            for (int i = 0; i < numDocs; i++) {
+              w.addDocument(new Document());
+            }
+            w.flush();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        };
+    newSegment.accept(1);
+    newSegment.accept(4);
+    newSegment.accept(10);
+    newSegment.accept(35);
+    int numLargeSegments = RandomNumbers.randomIntBetween(random(), 2, 40);
+    for (int i = 0; i < numLargeSegments; i++) {
+      newSegment.accept(RandomNumbers.randomIntBetween(random(), 50, 55));
+    }
+    DirectoryReader reader = DirectoryReader.open(w);
+    for (int i = 0; i < 3; i++) {
+      var predicate =
+          new LRUQueryCache.MinSegmentSizePredicate(
+              RandomNumbers.randomIntBetween(random(), 1, Integer.MAX_VALUE));
+      assertFalse(predicate.test(reader.leaves().get(i)));
+    }
+    for (int i = 3; i < reader.leaves().size(); i++) {
+      var leaf = reader.leaves().get(i);
+      var small =
+          new LRUQueryCache.MinSegmentSizePredicate(
+              RandomNumbers.randomIntBetween(random(), 60, Integer.MAX_VALUE));
+      assertFalse(small.test(leaf));
+      var big =
+          new LRUQueryCache.MinSegmentSizePredicate(
+              RandomNumbers.randomIntBetween(random(), 10, 30));
+      assertTrue(big.test(leaf));
+    }
     reader.close();
     w.close();
     dir.close();
