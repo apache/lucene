@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.BooleanClause;
@@ -197,6 +198,11 @@ public class TestIndexableField extends LuceneTestCase {
       } else {
         return null;
       }
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TOKEN_STREAM;
     }
   }
 
@@ -404,6 +410,11 @@ public class TestIndexableField extends LuceneTestCase {
     @Override
     public StoredValue storedValue() {
       return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TOKEN_STREAM;
     }
   }
 
