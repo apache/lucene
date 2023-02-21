@@ -63,6 +63,7 @@ public class KeywordField extends Field {
     FIELD_TYPE_STORED.freeze();
   }
 
+  private BytesRef binaryValue;
   private final StoredValue storedValue;
 
   /**
@@ -75,6 +76,7 @@ public class KeywordField extends Field {
    */
   public KeywordField(String name, BytesRef value, Store stored) {
     super(name, value, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
+    this.binaryValue = value;
     if (stored == Store.YES) {
       storedValue = new StoredValue(value);
     } else {
@@ -92,6 +94,7 @@ public class KeywordField extends Field {
    */
   public KeywordField(String name, String value, Store stored) {
     super(name, value, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
+    this.binaryValue = new BytesRef(value);
     if (stored == Store.YES) {
       storedValue = new StoredValue(value);
     } else {
@@ -101,17 +104,18 @@ public class KeywordField extends Field {
 
   @Override
   public BytesRef binaryValue() {
-    BytesRef binaryValue = super.binaryValue();
-    if (binaryValue != null) {
-      return binaryValue;
-    } else {
-      return new BytesRef(stringValue());
-    }
+    return binaryValue;
+  }
+
+  @Override
+  public InvertableType invertableType() {
+    return InvertableType.BINARY;
   }
 
   @Override
   public void setStringValue(String value) {
     super.setStringValue(value);
+    binaryValue = new BytesRef(value);
     if (storedValue != null) {
       storedValue.setStringValue(value);
     }
@@ -120,6 +124,7 @@ public class KeywordField extends Field {
   @Override
   public void setBytesValue(BytesRef value) {
     super.setBytesValue(value);
+    binaryValue = value;
     if (storedValue != null) {
       storedValue.setBinaryValue(value);
     }

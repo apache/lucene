@@ -40,6 +40,8 @@ Optimizations
 
 * GITHUB#12155: Speed up DocValuesRewriteMethod by making use of sortedness. (Greg Miller)
 
+* GITHUB#12139: Faster indexing of string fields. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 (No changes)

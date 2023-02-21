@@ -391,6 +391,13 @@ public class MemoryIndex {
     }
     if (tokenStream != null) {
       storeTerms(info, tokenStream, positionIncrementGap, offsetGap);
+    } else if (field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0) {
+      BytesRef binaryValue = field.binaryValue();
+      if (binaryValue == null) {
+        throw new IllegalArgumentException(
+            "Indexed field must provide a TokenStream or a binary value");
+      }
+      storeTerm(info, binaryValue);
     }
 
     DocValuesType docValuesType = field.fieldType().docValuesType();
@@ -630,6 +637,29 @@ public class MemoryIndex {
       default:
         throw new UnsupportedOperationException("unknown doc values type [" + docValuesType + "]");
     }
+  }
+
+  private void storeTerm(Info info, BytesRef term) {
+    info.numTokens++;
+    int ord = info.terms.add(term);
+    if (ord < 0) {
+      ord = -ord - 1;
+      postingsWriter.reset(info.sliceArray.end[ord]);
+    } else {
+      info.sliceArray.start[ord] = postingsWriter.startNewSlice();
+    }
+    info.sliceArray.freq[ord]++;
+    info.maxTermFrequency = Math.max(info.maxTermFrequency, info.sliceArray.freq[ord]);
+    info.sumTotalTermFreq++;
+    postingsWriter.writeInt(info.lastPosition++); // fake position
+    if (storeOffsets) { // fake offsests
+      postingsWriter.writeInt(0);
+      postingsWriter.writeInt(0);
+    }
+    if (storePayloads) {
+      postingsWriter.writeInt(-1); // fake payload
+    }
+    info.sliceArray.end[ord] = postingsWriter.getCurrentOffset();
   }
 
   private void storeTerms(

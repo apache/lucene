@@ -284,6 +284,9 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   }
 
   private int getTermFreq() {
+    if (termFreqAtt == null) {
+      return 1;
+    }
     int freq = termFreqAtt.getTermFrequency();
     if (freq != 1) {
       if (doVectorPositions) {

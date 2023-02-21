@@ -450,6 +450,11 @@ public class Field implements IndexableField {
   }
 
   @Override
+  public InvertableType invertableType() {
+    return InvertableType.TOKEN_STREAM;
+  }
+
+  @Override
   public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
     if (fieldType().indexOptions() == IndexOptions.NONE) {
       // Not indexed
