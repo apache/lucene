@@ -120,7 +120,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
 
 Optimizations
 ---------------------
