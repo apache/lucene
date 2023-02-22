@@ -19,13 +19,14 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.function.Supplier;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -80,35 +81,42 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    TopDocs[] perLeafResults =
+    List<FutureTask<TopDocs>> tasks =
         reader.leaves().stream()
             .map(
-                ctx -> {
-                  Supplier<TopDocs> supplier =
-                      () -> {
-                        try {
-                          TopDocs results = searchLeaf(ctx, filterWeight);
-                          if (ctx.docBase > 0) {
-                            for (ScoreDoc scoreDoc : results.scoreDocs) {
-                              scoreDoc.doc += ctx.docBase;
+                ctx ->
+                    new FutureTask<>(
+                        () -> {
+                          try {
+                            TopDocs results = searchLeaf(ctx, filterWeight);
+                            if (ctx.docBase > 0) {
+                              for (ScoreDoc scoreDoc : results.scoreDocs) {
+                                scoreDoc.doc += ctx.docBase;
+                              }
                             }
+                            return results;
+                          } catch (IOException e) {
+                            throw new UncheckedIOException(e);
                           }
-                          return results;
-                        } catch (Exception e) {
-                          throw new CompletionException(e);
-                        }
-                      };
+                        }))
+            .toList();
 
-                  Executor executor = indexSearcher.getExecutor();
-                  if (executor == null) {
-                    return CompletableFuture.completedFuture(supplier.get());
-                  } else {
-                    return CompletableFuture.supplyAsync(supplier, executor);
+    Executor executor = Objects.requireNonNullElse(indexSearcher.getExecutor(), Runnable::run);
+    SliceExecutor sliceExecutor = new SliceExecutor(executor);
+    sliceExecutor.invokeAll(tasks);
+
+    TopDocs[] perLeafResults =
+        tasks.stream()
+            .map(
+                task -> {
+                  try {
+                    return task.get();
+                  } catch (ExecutionException e) {
+                    throw new RuntimeException(e.getCause());
+                  } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                   }
                 })
-            .toList()
-            .stream()
-            .map(CompletableFuture::join)
             .toArray(TopDocs[]::new);
 
     // Merge sort the results
