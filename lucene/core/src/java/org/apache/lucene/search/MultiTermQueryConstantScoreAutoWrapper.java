@@ -201,9 +201,9 @@ final class MultiTermQueryConstantScoreAutoWrapper<Q extends MultiTermQuery> ext
         }
 
         // Then collect remaining terms
-        PostingsEnum postings = null;
+        PostingsEnum reuse = null;
         do {
-          postings = termsEnum.postings(postings, PostingsEnum.NONE);
+          reuse = termsEnum.postings(reuse, PostingsEnum.NONE);
           // If a term contains all docs with a value for the specified field, we can discard the
           // other terms and just use the dense term's postings:
           int docFreq = termsEnum.docFreq();
@@ -218,13 +218,16 @@ final class MultiTermQueryConstantScoreAutoWrapper<Q extends MultiTermQuery> ext
             return new WeightOrDocIdSetIterator(weight);
           }
           if (docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
-            otherTerms.add(postings);
+            otherTerms.add(reuse);
           } else {
-            PostingsEnum dropped = highFrequencyTerms.insertWithOverflow(postings);
+            PostingsEnum dropped = highFrequencyTerms.insertWithOverflow(reuse);
             if (dropped != null) {
               otherTerms.add(dropped);
             }
-            postings = dropped;
+            // Reuse the postings that drop out of the PQ. Note that `dropped` will be null here
+            // if nothing is evicted, meaning we will _not_ reuse any postings (which is intentional
+            // since we can't reuse postings that are in the PQ).
+            reuse = dropped;
           }
         } while (termsEnum.next() != null);
 
