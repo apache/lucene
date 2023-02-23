@@ -278,7 +278,7 @@ Improvements
   (Adrien Grand)
 
 * GITHUB#12055: Better skipping support for multi-term queries that have a
-  FILTER rewrite, as well as TermInSetQuery. (Adrien Grand, Greg Miller)
+  FILTER rewrite. (Adrien Grand, Greg Miller)
 
 Bug Fixes
 ---------------------

@@ -97,15 +97,22 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     small = null;
   }
 
-  /** macro for readability */
+  /**
+   * macro for readability
+   *
+   * @deprecated please use {@link #cspq(Term, MultiTermQuery.RewriteMethod)} instead
+   */
+  @Deprecated
   public static Query csrq(String f, String l, String h, boolean il, boolean ih) {
-    TermRangeQuery query = TermRangeQuery.newStringRange(f, l, h, il, ih);
+    TermRangeQuery query =
+        TermRangeQuery.newStringRange(f, l, h, il, ih, MultiTermQuery.CONSTANT_SCORE_REWRITE);
     if (VERBOSE) {
       System.out.println("TEST: query=" + query);
     }
     return query;
   }
 
+  /** macro for readability */
   public static Query csrq(
       String f, String l, String h, boolean il, boolean ih, MultiTermQuery.RewriteMethod method) {
     TermRangeQuery query = TermRangeQuery.newStringRange(f, l, h, il, ih, method);
@@ -115,20 +122,33 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     return query;
   }
 
-  /** macro for readability */
+  /**
+   * macro for readability
+   *
+   * @deprecated please use {@link #cspq(Term, MultiTermQuery.RewriteMethod)} instead
+   */
+  @Deprecated
   public static Query cspq(Term prefix) {
-    return new PrefixQuery(prefix);
+    return new PrefixQuery(prefix, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
+  /** macro for readability */
   public static Query cspq(Term prefix, MultiTermQuery.RewriteMethod method) {
     return new PrefixQuery(prefix, method);
   }
 
-  /** macro for readability */
+  /**
+   * macro for readability
+   *
+   * @deprecated please use {@link #cswcq(Term, MultiTermQuery.RewriteMethod)} instead
+   */
+  @Deprecated
   public static Query cswcq(Term wild) {
-    return new WildcardQuery(wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    return new WildcardQuery(
+        wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
+  /** macro for readability */
   public static Query cswcq(Term wild, MultiTermQuery.RewriteMethod method) {
     return new WildcardQuery(wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, method);
   }
@@ -160,7 +180,10 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     // some hits match more terms then others, score should be the same
 
-    result = search.search(csrq("data", "1", "6", T, T), 1000).scoreDocs;
+    result =
+        search.search(
+                csrq("data", "1", "6", T, T, MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE), 1000)
+            .scoreDocs;
     int numHits = result.length;
     assertEquals("wrong number of results", 6, numHits);
     float score = result[0].score;
@@ -204,7 +227,9 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     bq.add(dummyTerm, BooleanClause.Occur.SHOULD); // hits one doc
-    bq.add(csrq("data", "#", "#", T, T), BooleanClause.Occur.SHOULD); // hits no docs
+    bq.add(
+        csrq("data", "#", "#", T, T, MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE),
+        BooleanClause.Occur.SHOULD); // hits no docs
     result = search.search(bq.build(), 1000).scoreDocs;
     int numHits = result.length;
     assertEquals("wrong number of results", 1, numHits);

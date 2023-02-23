@@ -78,7 +78,7 @@ public abstract class MultiTermQuery extends Query {
    * <p>This method aims to balance the benefits of both {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} and
    * {@link #CONSTANT_SCORE_REWRITE} by enabling skipping and early termination over costly terms
    * while limiting the overhead of a BooleanQuery with many terms. It also ensures you cannot hit
-   * {@link org.apache.lucene.search.IndexSearcher.TooManyClauses}. For some uses-case with all low
+   * {@link org.apache.lucene.search.IndexSearcher.TooManyClauses}. For some use-cases with all low
    * cost terms, {@link #CONSTANT_SCORE_REWRITE} may be more performant. While for some use-cases
    * with all high cost terms, {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} may be better.
    */
