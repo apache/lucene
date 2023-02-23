@@ -309,17 +309,17 @@ public class TestQPHelper extends LuceneTestCase {
     Query q = qp.parse("foo*bar", "field");
     assertTrue(q instanceof WildcardQuery);
     assertEquals(
-        MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE, ((MultiTermQuery) q).getRewriteMethod());
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, ((MultiTermQuery) q).getRewriteMethod());
 
     q = qp.parse("foo*", "field");
     assertTrue(q instanceof PrefixQuery);
     assertEquals(
-        MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE, ((MultiTermQuery) q).getRewriteMethod());
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, ((MultiTermQuery) q).getRewriteMethod());
 
     q = qp.parse("[a TO z]", "field");
     assertTrue(q instanceof TermRangeQuery);
     assertEquals(
-        MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE, ((MultiTermQuery) q).getRewriteMethod());
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, ((MultiTermQuery) q).getRewriteMethod());
   }
 
   public void testCJK() throws Exception {
@@ -649,7 +649,7 @@ public class TestQPHelper extends LuceneTestCase {
   public void testRange() throws Exception {
     assertQueryEquals("[ a TO z]", null, "[a TO z]");
     assertEquals(
-        MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE,
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
         ((TermRangeQuery) getQuery("[ a TO z]", null)).getRewriteMethod());
 
     StandardQueryParser qp = new StandardQueryParser();

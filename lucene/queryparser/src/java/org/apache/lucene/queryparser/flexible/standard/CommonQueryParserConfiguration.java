@@ -59,7 +59,7 @@ public interface CommonQueryParserConfiguration {
 
   /**
    * By default QueryParser uses {@link
-   * org.apache.lucene.search.MultiTermQuery#CONSTANT_SCORE_AUTO_REWRITE} when creating a {@link
+   * org.apache.lucene.search.MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} when creating a {@link
    * PrefixQuery}, {@link WildcardQuery} or {@link TermRangeQuery}. This implementation is generally
    * preferable because it a) Runs faster b) Does not have the scarcity of terms unduly influence
    * score c) avoids any {@link org.apache.lucene.search.IndexSearcher.TooManyClauses} exception.

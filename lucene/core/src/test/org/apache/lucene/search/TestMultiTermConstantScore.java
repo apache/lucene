@@ -41,7 +41,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
   public static final float SCORE_COMP_THRESH = 1e-6f;
 
   public static final Set<MultiTermQuery.RewriteMethod> CONSTANT_SCORE_REWRITES =
-      Set.of(MultiTermQuery.CONSTANT_SCORE_REWRITE, MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE);
+      Set.of(MultiTermQuery.CONSTANT_SCORE_REWRITE, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
 
   static Directory small;
   static IndexReader reader;
@@ -182,7 +182,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     result =
         search.search(
-                csrq("data", "1", "6", T, T, MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE), 1000)
+                csrq("data", "1", "6", T, T, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE), 1000)
             .scoreDocs;
     int numHits = result.length;
     assertEquals("wrong number of results", 6, numHits);
@@ -228,7 +228,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     bq.add(dummyTerm, BooleanClause.Occur.SHOULD); // hits one doc
     bq.add(
-        csrq("data", "#", "#", T, T, MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE),
+        csrq("data", "#", "#", T, T, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE),
         BooleanClause.Occur.SHOULD); // hits no docs
     result = search.search(bq.build(), 1000).scoreDocs;
     int numHits = result.length;

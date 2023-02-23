@@ -35,11 +35,12 @@ import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
- * This class provides the functionality behind {@link MultiTermQuery#CONSTANT_SCORE_AUTO_REWRITE}.
- * It maintains a boolean query-like approach over the most costly terms with a limit of {@link
- * #BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} while rewriting the remaining terms into a filter bitset.
+ * This class provides the functionality behind {@link
+ * MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE}. It maintains a boolean query-like approach over
+ * the most costly terms with a limit of {@link #BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} while
+ * rewriting the remaining terms into a filter bitset.
  */
-final class MultiTermQueryConstantScoreAutoWrapper<Q extends MultiTermQuery> extends Query
+final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> extends Query
     implements Accountable {
 
   // mtq that matches 16 terms or less will be executed as a regular disjunction
@@ -91,7 +92,7 @@ final class MultiTermQueryConstantScoreAutoWrapper<Q extends MultiTermQuery> ext
   private final Q query;
 
   /** Wrap a {@link MultiTermQuery} as a Filter. */
-  MultiTermQueryConstantScoreAutoWrapper(Q query) {
+  MultiTermQueryConstantScoreBlendedWrapper(Q query) {
     this.query = query;
   }
 
@@ -104,7 +105,7 @@ final class MultiTermQueryConstantScoreAutoWrapper<Q extends MultiTermQuery> ext
   @Override
   public boolean equals(final Object other) {
     return sameClassAs(other)
-        && query.equals(((MultiTermQueryConstantScoreAutoWrapper<?>) other).query);
+        && query.equals(((MultiTermQueryConstantScoreBlendedWrapper<?>) other).query);
   }
 
   @Override

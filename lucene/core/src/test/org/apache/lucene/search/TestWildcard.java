@@ -88,8 +88,8 @@ public class TestWildcard extends LuceneTestCase {
             new WildcardQuery(
                 new Term("field", "nowildcard"),
                 Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE));
-    assertTrue(q instanceof MultiTermQueryConstantScoreAutoWrapper);
+                MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE));
+    assertTrue(q instanceof MultiTermQueryConstantScoreBlendedWrapper);
 
     q =
         searcher.rewrite(

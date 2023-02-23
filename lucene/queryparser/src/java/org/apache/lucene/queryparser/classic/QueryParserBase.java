@@ -82,7 +82,8 @@ public abstract class QueryParserBase extends QueryBuilder
   /** The actual operator that parser uses to combine query terms */
   Operator operator = OR_OPERATOR;
 
-  MultiTermQuery.RewriteMethod multiTermRewriteMethod = MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE;
+  MultiTermQuery.RewriteMethod multiTermRewriteMethod =
+      MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE;
   boolean allowLeadingWildcard = false;
 
   protected String field;

@@ -54,7 +54,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
             0,
             name -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_AUTO_REWRITE);
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
 
     TopDocs fieldCacheDocs = searcher1.search(fieldCache, 25);
     TopDocs filterDocs = searcher2.search(filter, 25);

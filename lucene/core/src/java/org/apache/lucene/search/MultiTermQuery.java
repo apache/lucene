@@ -39,10 +39,10 @@ import org.apache.lucene.util.AttributeSource;
  * {@link #SCORING_BOOLEAN_REWRITE}, you may encounter a {@link IndexSearcher.TooManyClauses}
  * exception during searching, which happens when the number of terms to be searched exceeds {@link
  * IndexSearcher#getMaxClauseCount()}. Setting {@link RewriteMethod} to {@link
- * #CONSTANT_SCORE_AUTO_REWRITE} or {@link #CONSTANT_SCORE_REWRITE} prevents this.
+ * #CONSTANT_SCORE_BLENDED_REWRITE} or {@link #CONSTANT_SCORE_REWRITE} prevents this.
  *
- * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_AUTO_REWRITE}: it doesn't spend CPU
- * computing unhelpful scores, and is the most performant rewrite method given the query. If you
+ * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_BLENDED_REWRITE}: it doesn't spend
+ * CPU computing unhelpful scores, and is the most performant rewrite method given the query. If you
  * need scoring (like {@link FuzzyQuery}, use {@link TopTermsScoringBooleanQueryRewrite} which uses
  * a priority queue to only collect competitive terms and not hit this limitation.
  *
@@ -82,11 +82,11 @@ public abstract class MultiTermQuery extends Query {
    * cost terms, {@link #CONSTANT_SCORE_REWRITE} may be more performant. While for some use-cases
    * with all high cost terms, {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} may be better.
    */
-  public static final RewriteMethod CONSTANT_SCORE_AUTO_REWRITE =
+  public static final RewriteMethod CONSTANT_SCORE_BLENDED_REWRITE =
       new RewriteMethod() {
         @Override
         public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
-          return new MultiTermQueryConstantScoreAutoWrapper<>(query);
+          return new MultiTermQueryConstantScoreBlendedWrapper<>(query);
         }
       };
 
