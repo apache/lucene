@@ -16,45 +16,26 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.PriorityQueue;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 /**
  * This class provides the functionality behind {@link
- * MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE}. It maintains a boolean query-like approach over
- * the most costly terms with a limit of {@link #BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} while
- * rewriting the remaining terms into a filter bitset.
+ * MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE}. It maintains a boolean query-like approach over a
+ * limited number of the most costly terms while rewriting the remaining terms into a filter bitset.
  */
-final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> extends AbstractMultiTermQueryConstantScoreWrapper<Q> {
+final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
+    extends AbstractMultiTermQueryConstantScoreWrapper<Q> {
   // postings lists under this threshold will always be "pre-processed" into a bitset
   private static final int POSTINGS_PRE_PROCESS_THRESHOLD = 512;
-
-  private static class WeightOrDocIdSetIterator {
-    final Weight weight;
-    final DocIdSetIterator iterator;
-
-    WeightOrDocIdSetIterator(Weight weight) {
-      this.weight = Objects.requireNonNull(weight);
-      this.iterator = null;
-    }
-
-    WeightOrDocIdSetIterator(DocIdSetIterator iterator) {
-      this.iterator = iterator;
-      this.weight = null;
-    }
-  }
 
   MultiTermQueryConstantScoreBlendedWrapper(Q query) {
     super(query);
@@ -63,33 +44,16 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    return new WrapperWeight(query, boost, scoreMode) {
-      private WeightOrDocIdSetIterator rewrite(LeafReaderContext context) throws IOException {
-        final Terms terms = context.reader().terms(query.field);
-        if (terms == null) {
-          // field does not exist
-          return new WeightOrDocIdSetIterator((DocIdSetIterator) null);
-        }
+    return new RewritingWeight(query, boost, scoreMode, searcher) {
 
-        final int fieldDocCount = terms.getDocCount();
-        final TermsEnum termsEnum = query.getTermsEnum(terms);
-        assert termsEnum != null;
-
-        final List<TermAndState> collectedTerms = new ArrayList<>();
-        if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-          // build a boolean query
-          BooleanQuery.Builder bq = new BooleanQuery.Builder();
-          for (TermAndState t : collectedTerms) {
-            final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-            termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-            bq.add(new TermQuery(new Term(query.field, t.term), termStates), Occur.SHOULD);
-          }
-          Query q = new ConstantScoreQuery(bq.build());
-          final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-          return new WeightOrDocIdSetIterator(weight);
-        }
-
-        // Too many terms: go back to the terms we already collected and start building the bit set
+      @Override
+      protected WeightOrDocIdSetIterator rewriteInner(
+          LeafReaderContext context,
+          int fieldDocCount,
+          Terms terms,
+          TermsEnum termsEnum,
+          List<TermAndState> collectedTerms)
+          throws IOException {
         DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         PriorityQueue<PostingsEnum> highFrequencyTerms =
             new PriorityQueue<>(collectedTerms.size()) {
@@ -98,6 +62,8 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
                 return a.cost() < b.cost();
               }
             };
+
+        // Handle the already-collected terms:
         if (collectedTerms.isEmpty() == false) {
           TermsEnum termsEnum2 = terms.iterator();
           for (TermAndState t : collectedTerms) {
@@ -111,7 +77,7 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
           }
         }
 
-        // Then collect remaining terms
+        // Then collect remaining terms:
         PostingsEnum reuse = null;
         do {
           reuse = termsEnum.postings(reuse, PostingsEnum.NONE);
@@ -128,6 +94,7 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
             Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
             return new WeightOrDocIdSetIterator(weight);
           }
+
           if (docFreq <= POSTINGS_PRE_PROCESS_THRESHOLD) {
             otherTerms.add(reuse);
           } else {
@@ -150,38 +117,6 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
 
         return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }
-
-      private Scorer scorer(DocIdSetIterator iterator) {
-        if (iterator == null) {
-          return null;
-        }
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
-      }
-
-      @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSetIterator weightOrBitSet = rewrite(context);
-        if (weightOrBitSet.weight != null) {
-          return weightOrBitSet.weight.bulkScorer(context);
-        } else {
-          final Scorer scorer = scorer(weightOrBitSet.iterator);
-          if (scorer == null) {
-            return null;
-          }
-          return new DefaultBulkScorer(scorer);
-        }
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final WeightOrDocIdSetIterator weightOrBitSet = rewrite(context);
-        if (weightOrBitSet.weight != null) {
-          return weightOrBitSet.weight.scorer(context);
-        } else {
-          return scorer(weightOrBitSet.iterator);
-        }
-      }
     };
   }
-
 }
