@@ -16,23 +16,20 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.PriorityQueue;
-import org.apache.lucene.util.RamUsageEstimator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * This class provides the functionality behind {@link
@@ -40,39 +37,9 @@ import org.apache.lucene.util.RamUsageEstimator;
  * the most costly terms with a limit of {@link #BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD} while
  * rewriting the remaining terms into a filter bitset.
  */
-final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> extends Query
-    implements Accountable {
-
-  // mtq that matches 16 terms or less will be executed as a regular disjunction
-  private static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
+final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> extends AbstractMultiTermQueryConstantScoreWrapper<Q> {
   // postings lists under this threshold will always be "pre-processed" into a bitset
   private static final int POSTINGS_PRE_PROCESS_THRESHOLD = 512;
-
-  @Override
-  public long ramBytesUsed() {
-    if (query instanceof Accountable) {
-      return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-          + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-          + ((Accountable) query).ramBytesUsed();
-    }
-    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-        + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
-  }
-
-  private static class TermAndState {
-    final BytesRef term;
-    final TermState state;
-    final int docFreq;
-    final long totalTermFreq;
-
-    TermAndState(BytesRef term, TermState state, int docFreq, long totalTermFreq) {
-      this.term = term;
-      this.state = state;
-      this.docFreq = docFreq;
-      this.totalTermFreq = totalTermFreq;
-    }
-  }
 
   private static class WeightOrDocIdSetIterator {
     final Weight weight;
@@ -89,71 +56,14 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
     }
   }
 
-  private final Q query;
-
-  /** Wrap a {@link MultiTermQuery} as a Filter. */
   MultiTermQueryConstantScoreBlendedWrapper(Q query) {
-    this.query = query;
-  }
-
-  @Override
-  public String toString(String field) {
-    // query.toString should be ok for the filter, too, if the query boost is 1.0f
-    return query.toString(field);
-  }
-
-  @Override
-  public boolean equals(final Object other) {
-    return sameClassAs(other)
-        && query.equals(((MultiTermQueryConstantScoreBlendedWrapper<?>) other).query);
-  }
-
-  @Override
-  public int hashCode() {
-    return 31 * classHash() + query.hashCode();
-  }
-
-  /** Returns the encapsulated query */
-  public Q getQuery() {
-    return query;
-  }
-
-  /** Returns the field name for this query */
-  public String getField() {
-    return query.getField();
+    super(query);
   }
 
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    return new ConstantScoreWeight(this, boost) {
-
-      private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
-          throws IOException {
-        final int threshold =
-            Math.min(BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD, IndexSearcher.getMaxClauseCount());
-        for (int i = 0; i < threshold; ++i) {
-          final BytesRef term = termsEnum.next();
-          if (term == null) {
-            return true;
-          }
-          TermState state = termsEnum.termState();
-          int docFreq = termsEnum.docFreq();
-          TermAndState termAndState =
-              new TermAndState(
-                  BytesRef.deepCopyOf(term), state, docFreq, termsEnum.totalTermFreq());
-          if (fieldDocCount == docFreq) {
-            // If the term contains every document with a value for the field, we can ignore all
-            // other terms:
-            terms.clear();
-            terms.add(termAndState);
-            return true;
-          }
-          terms.add(termAndState);
-        }
-        return termsEnum.next() == null;
-      }
-
+    return new WrapperWeight(query, boost, scoreMode) {
       private WeightOrDocIdSetIterator rewrite(LeafReaderContext context) throws IOException {
         final Terms terms = context.reader().terms(query.field);
         if (terms == null) {
@@ -241,7 +151,7 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
         return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }
 
-      private Scorer scorer(DocIdSetIterator iterator) throws IOException {
+      private Scorer scorer(DocIdSetIterator iterator) {
         if (iterator == null) {
           return null;
         }
@@ -263,19 +173,6 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
       }
 
       @Override
-      public Matches matches(LeafReaderContext context, int doc) throws IOException {
-        final Terms terms = context.reader().terms(query.field);
-        if (terms == null) {
-          return null;
-        }
-        return MatchesUtils.forField(
-            query.field,
-            () ->
-                DisjunctionMatchesIterator.fromTermsEnum(
-                    context, doc, query, query.field, query.getTermsEnum(terms)));
-      }
-
-      @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
         final WeightOrDocIdSetIterator weightOrBitSet = rewrite(context);
         if (weightOrBitSet.weight != null) {
@@ -284,18 +181,7 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery> 
           return scorer(weightOrBitSet.iterator);
         }
       }
-
-      @Override
-      public boolean isCacheable(LeafReaderContext ctx) {
-        return true;
-      }
     };
   }
 
-  @Override
-  public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(getField())) {
-      query.visit(visitor.getSubVisitor(Occur.FILTER, this));
-    }
-  }
 }
