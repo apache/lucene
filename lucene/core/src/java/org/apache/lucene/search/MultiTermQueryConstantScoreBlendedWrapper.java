@@ -111,12 +111,26 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
 
         DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
         for (DocIdSetIterator disi : highFrequencyTerms) {
-          subs.add(new DisiWrapper(disi));
+          Scorer s = wrapWithDummyScorer(this, disi);
+          subs.add(new DisiWrapper(s));
         }
-        subs.add(new DisiWrapper(otherTerms.build().iterator()));
+        Scorer s = wrapWithDummyScorer(this, otherTerms.build().iterator());
+        subs.add(new DisiWrapper(s));
 
         return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }
     };
+  }
+
+  /**
+   * Wraps a DISI with a "dummy" scorer so we can easily use {@link DisiWrapper} and {@link
+   * DisjunctionDISIApproximation} as-is. This is really just a convenient vehicle to get the DISI
+   * into the priority queue used by {@link DisjunctionDISIApproximation}. The {@link Scorer}
+   * ultimately provided by the weight provides a constant boost and reflects the actual score mode.
+   */
+  private static Scorer wrapWithDummyScorer(Weight weight, DocIdSetIterator disi) {
+    // The score and score mode do not actually matter here, except that using TOP_SCORES results
+    // in another wrapper object getting created around the disi, so we try to avoid that:
+    return new ConstantScoreScorer(weight, 1f, ScoreMode.COMPLETE_NO_SCORES, disi);
   }
 }

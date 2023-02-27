@@ -56,13 +56,4 @@ public class DisiWrapper {
       matchCost = 0f;
     }
   }
-
-  public DisiWrapper(DocIdSetIterator iterator) {
-    this.scorer = null;
-    this.iterator = iterator;
-    this.cost = iterator.cost();
-    this.twoPhaseView = null;
-    this.approximation = iterator;
-    this.matchCost = 0;
-  }
 }

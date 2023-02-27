@@ -65,7 +65,10 @@ public interface CommonQueryParserConfiguration {
    * score c) avoids any {@link org.apache.lucene.search.IndexSearcher.TooManyClauses} exception.
    * However, if your application really needs to use the old-fashioned {@link BooleanQuery}
    * expansion rewriting and the above points are not relevant then use this to change the rewrite
-   * method.
+   * method. As another alternative, if you prefer all terms to be rewritten as a filter up-front,
+   * you can use {@link org.apache.lucene.search.MultiTermQuery#CONSTANT_SCORE_REWRITE}. For more
+   * information on the different rewrite methods available, see {@link
+   * org.apache.lucene.search.MultiTermQuery} documentation.
    */
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method);
 

@@ -120,7 +120,10 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#12055: MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE rewrite method introduced and used as the new default
+  for multi-term queries with a FILTER rewrite (PrefixQuery, WildcardQuery, TermRangeQuery). This introduces better
+  skipping support for common use-cases. (Adrien Grand, Greg Miller)
 
 Optimizations
 ---------------------
@@ -276,9 +279,6 @@ Improvements
 
 * GITHUB#12070: Compound file creation is no longer subject to merge throttling.
   (Adrien Grand)
-
-* GITHUB#12055: Better skipping support for multi-term queries that have a
-  FILTER rewrite. (Adrien Grand, Greg Miller)
 
 Bug Fixes
 ---------------------
