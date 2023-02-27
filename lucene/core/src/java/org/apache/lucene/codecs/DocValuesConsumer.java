@@ -709,7 +709,7 @@ public abstract class DocValuesConsumer implements Closeable {
 
     return new SortedDocValues() {
       private int docID = -1;
-      private int ord;
+      private SortedDocValuesSub current;
 
       @Override
       public int docID() {
@@ -718,20 +718,20 @@ public abstract class DocValuesConsumer implements Closeable {
 
       @Override
       public int nextDoc() throws IOException {
-        SortedDocValuesSub sub = docIDMerger.next();
-        if (sub == null) {
-          return docID = NO_MORE_DOCS;
+        current = docIDMerger.next();
+        if (current == null) {
+          docID = NO_MORE_DOCS;
+        } else {
+          docID = current.mappedDocID;
         }
-        int subOrd = sub.values.ordValue();
-        assert subOrd != -1;
-        ord = (int) sub.map.get(subOrd);
-        docID = sub.mappedDocID;
         return docID;
       }
 
       @Override
-      public int ordValue() {
-        return ord;
+      public int ordValue() throws IOException {
+        int subOrd = current.values.ordValue();
+        assert subOrd != -1;
+        return (int) current.map.get(subOrd);
       }
 
       @Override
