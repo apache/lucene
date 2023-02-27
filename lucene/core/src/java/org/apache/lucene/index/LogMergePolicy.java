@@ -554,11 +554,6 @@ public abstract class LogMergePolicy extends MergePolicy {
         // With a merge factor of 10, this means that the biggest segment and the smallest segment
         // that take part of a merge have a size difference of at most 5.6x.
         levelBottom = (float) (maxLevel - LEVEL_LOG_SPAN);
-
-        // Force a boundary at the level floor
-        if (levelBottom < levelFloor && maxLevel >= levelFloor) {
-          levelBottom = levelFloor;
-        }
       } else {
         // For segments below the floor size, we allow more unbalanced merges, but still somewhat
         // balanced to avoid running into O(n^2) merging.
