@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -38,6 +39,9 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
   /** threshold for comparing floats */
   public static final float SCORE_COMP_THRESH = 1e-6f;
+
+  public static final Set<MultiTermQuery.RewriteMethod> CONSTANT_SCORE_REWRITES =
+      Set.of(MultiTermQuery.CONSTANT_SCORE_REWRITE, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
 
   static Directory small;
   static IndexReader reader;
@@ -93,7 +97,12 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     small = null;
   }
 
-  /** macro for readability */
+  /**
+   * macro for readability
+   *
+   * @deprecated please use {@link #cspq(Term, MultiTermQuery.RewriteMethod)} instead
+   */
+  @Deprecated
   public static Query csrq(String f, String l, String h, boolean il, boolean ih) {
     TermRangeQuery query =
         TermRangeQuery.newStringRange(f, l, h, il, ih, MultiTermQuery.CONSTANT_SCORE_REWRITE);
@@ -103,6 +112,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     return query;
   }
 
+  /** macro for readability */
   public static Query csrq(
       String f, String l, String h, boolean il, boolean ih, MultiTermQuery.RewriteMethod method) {
     TermRangeQuery query = TermRangeQuery.newStringRange(f, l, h, il, ih, method);
@@ -112,28 +122,52 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     return query;
   }
 
-  /** macro for readability */
+  /**
+   * macro for readability
+   *
+   * @deprecated please use {@link #cspq(Term, MultiTermQuery.RewriteMethod)} instead
+   */
+  @Deprecated
   public static Query cspq(Term prefix) {
     return new PrefixQuery(prefix, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
   /** macro for readability */
+  public static Query cspq(Term prefix, MultiTermQuery.RewriteMethod method) {
+    return new PrefixQuery(prefix, method);
+  }
+
+  /**
+   * macro for readability
+   *
+   * @deprecated please use {@link #cswcq(Term, MultiTermQuery.RewriteMethod)} instead
+   */
+  @Deprecated
   public static Query cswcq(Term wild) {
     return new WildcardQuery(
         wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
+  /** macro for readability */
+  public static Query cswcq(Term wild, MultiTermQuery.RewriteMethod method) {
+    return new WildcardQuery(wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, method);
+  }
+
   @Test
   public void testBasics() throws IOException {
-    QueryUtils.check(csrq("data", "1", "6", T, T));
-    QueryUtils.check(csrq("data", "A", "Z", T, T));
-    QueryUtils.checkUnequal(csrq("data", "1", "6", T, T), csrq("data", "A", "Z", T, T));
+    for (MultiTermQuery.RewriteMethod rw : CONSTANT_SCORE_REWRITES) {
+      QueryUtils.check(csrq("data", "1", "6", T, T, rw));
+      QueryUtils.check(csrq("data", "A", "Z", T, T, rw));
+      QueryUtils.checkUnequal(csrq("data", "1", "6", T, T, rw), csrq("data", "A", "Z", T, T, rw));
 
-    QueryUtils.check(cspq(new Term("data", "p*u?")));
-    QueryUtils.checkUnequal(cspq(new Term("data", "pre*")), cspq(new Term("data", "pres*")));
+      QueryUtils.check(cspq(new Term("data", "p*u?"), rw));
+      QueryUtils.checkUnequal(
+          cspq(new Term("data", "pre*"), rw), cspq(new Term("data", "pres*"), rw));
 
-    QueryUtils.check(cswcq(new Term("data", "p")));
-    QueryUtils.checkUnequal(cswcq(new Term("data", "pre*n?t")), cswcq(new Term("data", "pr*t?j")));
+      QueryUtils.check(cswcq(new Term("data", "p"), rw));
+      QueryUtils.checkUnequal(
+          cswcq(new Term("data", "pre*n?t"), rw), cswcq(new Term("data", "pr*t?j"), rw));
+    }
   }
 
   @Test
@@ -146,7 +180,10 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     // some hits match more terms then others, score should be the same
 
-    result = search.search(csrq("data", "1", "6", T, T), 1000).scoreDocs;
+    result =
+        search.search(
+                csrq("data", "1", "6", T, T, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE), 1000)
+            .scoreDocs;
     int numHits = result.length;
     assertEquals("wrong number of results", 6, numHits);
     float score = result[0].score;
@@ -190,7 +227,9 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     BooleanQuery.Builder bq = new BooleanQuery.Builder();
     bq.add(dummyTerm, BooleanClause.Occur.SHOULD); // hits one doc
-    bq.add(csrq("data", "#", "#", T, T), BooleanClause.Occur.SHOULD); // hits no docs
+    bq.add(
+        csrq("data", "#", "#", T, T, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE),
+        BooleanClause.Occur.SHOULD); // hits no docs
     result = search.search(bq.build(), 1000).scoreDocs;
     int numHits = result.length;
     assertEquals("wrong number of results", 1, numHits);
@@ -233,26 +272,29 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     IndexSearcher search = newSearcher(reader);
 
-    // first do a regular TermRangeQuery which uses term expansion so
-    // docs with more terms in range get higher scores
+    for (MultiTermQuery.RewriteMethod rw : CONSTANT_SCORE_REWRITES) {
 
-    Query rq = TermRangeQuery.newStringRange("data", "1", "4", T, T);
+      // first do a regular TermRangeQuery which uses term expansion so
+      // docs with more terms in range get higher scores
 
-    ScoreDoc[] expected = search.search(rq, 1000).scoreDocs;
-    int numHits = expected.length;
+      Query rq = TermRangeQuery.newStringRange("data", "1", "4", T, T, rw);
 
-    // now do a boolean where which also contains a
-    // ConstantScoreRangeQuery and make sure hte order is the same
+      ScoreDoc[] expected = search.search(rq, 1000).scoreDocs;
+      int numHits = expected.length;
 
-    BooleanQuery.Builder q = new BooleanQuery.Builder();
-    q.add(rq, BooleanClause.Occur.MUST); // T, F);
-    q.add(csrq("data", "1", "6", T, T), BooleanClause.Occur.MUST); // T, F);
+      // now do a boolean where which also contains a
+      // ConstantScoreRangeQuery and make sure the order is the same
 
-    ScoreDoc[] actual = search.search(q.build(), 1000).scoreDocs;
+      BooleanQuery.Builder q = new BooleanQuery.Builder();
+      q.add(rq, BooleanClause.Occur.MUST); // T, F);
+      q.add(csrq("data", "1", "6", T, T, rw), BooleanClause.Occur.MUST); // T, F);
 
-    assertEquals("wrong numebr of hits", numHits, actual.length);
-    for (int i = 0; i < numHits; i++) {
-      assertEquals("mismatch in docid for hit#" + i, expected[i].doc, actual[i].doc);
+      ScoreDoc[] actual = search.search(q.build(), 1000).scoreDocs;
+
+      assertEquals("wrong number of hits", numHits, actual.length);
+      for (int i = 0; i < numHits; i++) {
+        assertEquals("mismatch in docid for hit#" + i, expected[i].doc, actual[i].doc);
+      }
     }
   }
 
@@ -279,153 +321,74 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     ScoreDoc[] result;
 
-    // test id, bounded on both ends
+    for (MultiTermQuery.RewriteMethod rw : CONSTANT_SCORE_REWRITES) {
 
-    result = search.search(csrq("id", minIP, maxIP, T, T), numDocs).scoreDocs;
-    assertEquals("find all", numDocs, result.length);
+      // test id, bounded on both ends
 
-    result =
-        search.search(
-                csrq("id", minIP, maxIP, T, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("find all", numDocs, result.length);
+      result = search.search(csrq("id", minIP, maxIP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("find all", numDocs, result.length);
 
-    result = search.search(csrq("id", minIP, maxIP, T, F), numDocs).scoreDocs;
-    assertEquals("all but last", numDocs - 1, result.length);
+      result = search.search(csrq("id", minIP, maxIP, T, F, rw), numDocs).scoreDocs;
+      assertEquals("all but last", numDocs - 1, result.length);
 
-    result =
-        search.search(
-                csrq("id", minIP, maxIP, T, F, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("all but last", numDocs - 1, result.length);
+      result = search.search(csrq("id", minIP, maxIP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("all but first", numDocs - 1, result.length);
 
-    result = search.search(csrq("id", minIP, maxIP, F, T), numDocs).scoreDocs;
-    assertEquals("all but first", numDocs - 1, result.length);
+      result = search.search(csrq("id", minIP, maxIP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("all but ends", numDocs - 2, result.length);
 
-    result =
-        search.search(
-                csrq("id", minIP, maxIP, F, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("all but first", numDocs - 1, result.length);
+      result = search.search(csrq("id", medIP, maxIP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("med and up", 1 + maxId - medId, result.length);
 
-    result = search.search(csrq("id", minIP, maxIP, F, F), numDocs).scoreDocs;
-    assertEquals("all but ends", numDocs - 2, result.length);
+      result = search.search(csrq("id", minIP, medIP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("up to med", 1 + medId - minId, result.length);
 
-    result =
-        search.search(
-                csrq("id", minIP, maxIP, F, F, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("all but ends", numDocs - 2, result.length);
+      // unbounded id
 
-    result = search.search(csrq("id", medIP, maxIP, T, T), numDocs).scoreDocs;
-    assertEquals("med and up", 1 + maxId - medId, result.length);
+      result = search.search(csrq("id", minIP, null, T, F, rw), numDocs).scoreDocs;
+      assertEquals("min and up", numDocs, result.length);
 
-    result =
-        search.search(
-                csrq("id", medIP, maxIP, T, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("med and up", 1 + maxId - medId, result.length);
+      result = search.search(csrq("id", null, maxIP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("max and down", numDocs, result.length);
 
-    result = search.search(csrq("id", minIP, medIP, T, T), numDocs).scoreDocs;
-    assertEquals("up to med", 1 + medId - minId, result.length);
+      result = search.search(csrq("id", minIP, null, F, F, rw), numDocs).scoreDocs;
+      assertEquals("not min, but up", numDocs - 1, result.length);
 
-    result =
-        search.search(
-                csrq("id", minIP, medIP, T, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("up to med", 1 + medId - minId, result.length);
+      result = search.search(csrq("id", null, maxIP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("not max, but down", numDocs - 1, result.length);
 
-    // unbounded id
+      result = search.search(csrq("id", medIP, maxIP, T, F, rw), numDocs).scoreDocs;
+      assertEquals("med and up, not max", maxId - medId, result.length);
 
-    result = search.search(csrq("id", minIP, null, T, F), numDocs).scoreDocs;
-    assertEquals("min and up", numDocs, result.length);
+      result = search.search(csrq("id", minIP, medIP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("not min, up to med", medId - minId, result.length);
 
-    result = search.search(csrq("id", null, maxIP, F, T), numDocs).scoreDocs;
-    assertEquals("max and down", numDocs, result.length);
+      // very small sets
 
-    result = search.search(csrq("id", minIP, null, F, F), numDocs).scoreDocs;
-    assertEquals("not min, but up", numDocs - 1, result.length);
+      result = search.search(csrq("id", minIP, minIP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("min,min,F,F", 0, result.length);
 
-    result = search.search(csrq("id", null, maxIP, F, F), numDocs).scoreDocs;
-    assertEquals("not max, but down", numDocs - 1, result.length);
+      result = search.search(csrq("id", medIP, medIP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("med,med,F,F", 0, result.length);
 
-    result = search.search(csrq("id", medIP, maxIP, T, F), numDocs).scoreDocs;
-    assertEquals("med and up, not max", maxId - medId, result.length);
+      result = search.search(csrq("id", maxIP, maxIP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("max,max,F,F", 0, result.length);
 
-    result = search.search(csrq("id", minIP, medIP, F, T), numDocs).scoreDocs;
-    assertEquals("not min, up to med", medId - minId, result.length);
+      result = search.search(csrq("id", minIP, minIP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("min,min,T,T", 1, result.length);
 
-    // very small sets
+      result = search.search(csrq("id", null, minIP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("nul,min,F,T", 1, result.length);
 
-    result = search.search(csrq("id", minIP, minIP, F, F), numDocs).scoreDocs;
-    assertEquals("min,min,F,F", 0, result.length);
+      result = search.search(csrq("id", maxIP, maxIP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("max,max,T,T", 1, result.length);
 
-    result =
-        search.search(
-                csrq("id", minIP, minIP, F, F, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("min,min,F,F", 0, result.length);
+      result = search.search(csrq("id", maxIP, null, T, F, rw), numDocs).scoreDocs;
+      assertEquals("max,nul,T,T", 1, result.length);
 
-    result = search.search(csrq("id", medIP, medIP, F, F), numDocs).scoreDocs;
-    assertEquals("med,med,F,F", 0, result.length);
-
-    result =
-        search.search(
-                csrq("id", medIP, medIP, F, F, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("med,med,F,F", 0, result.length);
-
-    result = search.search(csrq("id", maxIP, maxIP, F, F), numDocs).scoreDocs;
-    assertEquals("max,max,F,F", 0, result.length);
-
-    result =
-        search.search(
-                csrq("id", maxIP, maxIP, F, F, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("max,max,F,F", 0, result.length);
-
-    result = search.search(csrq("id", minIP, minIP, T, T), numDocs).scoreDocs;
-    assertEquals("min,min,T,T", 1, result.length);
-
-    result =
-        search.search(
-                csrq("id", minIP, minIP, T, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("min,min,T,T", 1, result.length);
-
-    result = search.search(csrq("id", null, minIP, F, T), numDocs).scoreDocs;
-    assertEquals("nul,min,F,T", 1, result.length);
-
-    result =
-        search.search(csrq("id", null, minIP, F, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("nul,min,F,T", 1, result.length);
-
-    result = search.search(csrq("id", maxIP, maxIP, T, T), numDocs).scoreDocs;
-    assertEquals("max,max,T,T", 1, result.length);
-
-    result =
-        search.search(
-                csrq("id", maxIP, maxIP, T, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("max,max,T,T", 1, result.length);
-
-    result = search.search(csrq("id", maxIP, null, T, F), numDocs).scoreDocs;
-    assertEquals("max,nul,T,T", 1, result.length);
-
-    result =
-        search.search(csrq("id", maxIP, null, T, F, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("max,nul,T,T", 1, result.length);
-
-    result = search.search(csrq("id", medIP, medIP, T, T), numDocs).scoreDocs;
-    assertEquals("med,med,T,T", 1, result.length);
-
-    result =
-        search.search(
-                csrq("id", medIP, medIP, T, T, MultiTermQuery.CONSTANT_SCORE_REWRITE), numDocs)
-            .scoreDocs;
-    assertEquals("med,med,T,T", 1, result.length);
+      result = search.search(csrq("id", medIP, medIP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("med,med,T,T", 1, result.length);
+    }
   }
 
   @Test
@@ -444,49 +407,52 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
 
     ScoreDoc[] result;
 
-    // test extremes, bounded on both ends
+    for (MultiTermQuery.RewriteMethod rw : CONSTANT_SCORE_REWRITES) {
 
-    result = search.search(csrq("rand", minRP, maxRP, T, T), numDocs).scoreDocs;
-    assertEquals("find all", numDocs, result.length);
+      // test extremes, bounded on both ends
 
-    result = search.search(csrq("rand", minRP, maxRP, T, F), numDocs).scoreDocs;
-    assertEquals("all but biggest", numDocs - 1, result.length);
+      result = search.search(csrq("rand", minRP, maxRP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("find all", numDocs, result.length);
 
-    result = search.search(csrq("rand", minRP, maxRP, F, T), numDocs).scoreDocs;
-    assertEquals("all but smallest", numDocs - 1, result.length);
+      result = search.search(csrq("rand", minRP, maxRP, T, F, rw), numDocs).scoreDocs;
+      assertEquals("all but biggest", numDocs - 1, result.length);
 
-    result = search.search(csrq("rand", minRP, maxRP, F, F), numDocs).scoreDocs;
-    assertEquals("all but extremes", numDocs - 2, result.length);
+      result = search.search(csrq("rand", minRP, maxRP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("all but smallest", numDocs - 1, result.length);
 
-    // unbounded
+      result = search.search(csrq("rand", minRP, maxRP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("all but extremes", numDocs - 2, result.length);
 
-    result = search.search(csrq("rand", minRP, null, T, F), numDocs).scoreDocs;
-    assertEquals("smallest and up", numDocs, result.length);
+      // unbounded
 
-    result = search.search(csrq("rand", null, maxRP, F, T), numDocs).scoreDocs;
-    assertEquals("biggest and down", numDocs, result.length);
+      result = search.search(csrq("rand", minRP, null, T, F, rw), numDocs).scoreDocs;
+      assertEquals("smallest and up", numDocs, result.length);
 
-    result = search.search(csrq("rand", minRP, null, F, F), numDocs).scoreDocs;
-    assertEquals("not smallest, but up", numDocs - 1, result.length);
+      result = search.search(csrq("rand", null, maxRP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("biggest and down", numDocs, result.length);
 
-    result = search.search(csrq("rand", null, maxRP, F, F), numDocs).scoreDocs;
-    assertEquals("not biggest, but down", numDocs - 1, result.length);
+      result = search.search(csrq("rand", minRP, null, F, F, rw), numDocs).scoreDocs;
+      assertEquals("not smallest, but up", numDocs - 1, result.length);
 
-    // very small sets
+      result = search.search(csrq("rand", null, maxRP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("not biggest, but down", numDocs - 1, result.length);
 
-    result = search.search(csrq("rand", minRP, minRP, F, F), numDocs).scoreDocs;
-    assertEquals("min,min,F,F", 0, result.length);
-    result = search.search(csrq("rand", maxRP, maxRP, F, F), numDocs).scoreDocs;
-    assertEquals("max,max,F,F", 0, result.length);
+      // very small sets
 
-    result = search.search(csrq("rand", minRP, minRP, T, T), numDocs).scoreDocs;
-    assertEquals("min,min,T,T", 1, result.length);
-    result = search.search(csrq("rand", null, minRP, F, T), numDocs).scoreDocs;
-    assertEquals("nul,min,F,T", 1, result.length);
+      result = search.search(csrq("rand", minRP, minRP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("min,min,F,F", 0, result.length);
+      result = search.search(csrq("rand", maxRP, maxRP, F, F, rw), numDocs).scoreDocs;
+      assertEquals("max,max,F,F", 0, result.length);
 
-    result = search.search(csrq("rand", maxRP, maxRP, T, T), numDocs).scoreDocs;
-    assertEquals("max,max,T,T", 1, result.length);
-    result = search.search(csrq("rand", maxRP, null, T, F), numDocs).scoreDocs;
-    assertEquals("max,nul,T,T", 1, result.length);
+      result = search.search(csrq("rand", minRP, minRP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("min,min,T,T", 1, result.length);
+      result = search.search(csrq("rand", null, minRP, F, T, rw), numDocs).scoreDocs;
+      assertEquals("nul,min,F,T", 1, result.length);
+
+      result = search.search(csrq("rand", maxRP, maxRP, T, T, rw), numDocs).scoreDocs;
+      assertEquals("max,max,T,T", 1, result.length);
+      result = search.search(csrq("rand", maxRP, null, T, F, rw), numDocs).scoreDocs;
+      assertEquals("max,nul,T,T", 1, result.length);
+    }
   }
 }

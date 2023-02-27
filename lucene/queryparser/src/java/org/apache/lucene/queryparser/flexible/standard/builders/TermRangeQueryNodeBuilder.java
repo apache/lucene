@@ -53,7 +53,7 @@ public class TermRangeQueryNodeBuilder implements StandardQueryBuilder {
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
     if (method == null) {
-      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
+      method = MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE;
     }
 
     return TermRangeQuery.newStringRange(
