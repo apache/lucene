@@ -26,7 +26,7 @@ public class DisiWrapper {
   public final Scorer scorer;
   public final long cost;
   public final float matchCost; // the match cost for two-phase iterators, 0 otherwise
-  public int doc = -1; // the current doc, used for comparison
+  public int doc; // the current doc, used for comparison
   public DisiWrapper next; // reference to a next element, see #topList
 
   // An approximation of the iterator, or the iterator itself if it does not
@@ -46,6 +46,7 @@ public class DisiWrapper {
     this.scorer = scorer;
     this.iterator = scorer.iterator();
     this.cost = iterator.cost();
+    this.doc = -1;
     this.twoPhaseView = scorer.twoPhaseIterator();
 
     if (twoPhaseView != null) {
