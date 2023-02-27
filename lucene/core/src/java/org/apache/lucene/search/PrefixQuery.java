@@ -24,13 +24,13 @@ import org.apache.lucene.util.automaton.Automaton;
  * A Query that matches documents containing terms with a specified prefix. A PrefixQuery is built
  * by QueryParser for input like <code>app*</code>.
  *
- * <p>This query uses the {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} rewrite method.
+ * <p>This query uses the {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} rewrite method.
  */
 public class PrefixQuery extends AutomatonQuery {
 
   /** Constructs a query for terms starting with <code>prefix</code>. */
   public PrefixQuery(Term prefix) {
-    this(prefix, CONSTANT_SCORE_REWRITE);
+    this(prefix, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**

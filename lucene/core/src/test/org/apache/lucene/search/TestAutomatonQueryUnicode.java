@@ -124,6 +124,15 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
                 automaton,
                 Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
                 false,
+                MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"),
+                automaton,
+                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+                false,
                 MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }
 

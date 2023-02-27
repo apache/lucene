@@ -30,7 +30,7 @@ import org.apache.lucene.util.automaton.Automaton;
  * <p><b>NOTE</b>: {@link TermRangeQuery} performs significantly slower than {@link PointRangeQuery
  * point-based ranges} as it needs to visit all terms that match the range and merges their matches.
  *
- * <p>This query uses the {@link MultiTermQuery#CONSTANT_SCORE_REWRITE} rewrite method.
+ * <p>This query uses the {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} rewrite method.
  *
  * @since 2.9
  */
@@ -60,7 +60,7 @@ public class TermRangeQuery extends AutomatonQuery {
       BytesRef upperTerm,
       boolean includeLower,
       boolean includeUpper) {
-    this(field, lowerTerm, upperTerm, includeLower, includeUpper, CONSTANT_SCORE_REWRITE);
+    this(field, lowerTerm, upperTerm, includeLower, includeUpper, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**
@@ -121,7 +121,7 @@ public class TermRangeQuery extends AutomatonQuery {
       boolean includeLower,
       boolean includeUpper) {
     return newStringRange(
-        field, lowerTerm, upperTerm, includeLower, includeUpper, CONSTANT_SCORE_REWRITE);
+        field, lowerTerm, upperTerm, includeLower, includeUpper, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /** Factory that creates a new TermRangeQuery using Strings for term text. */

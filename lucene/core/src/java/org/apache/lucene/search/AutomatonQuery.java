@@ -96,7 +96,7 @@ public class AutomatonQuery extends MultiTermQuery implements Accountable {
    */
   public AutomatonQuery(
       final Term term, Automaton automaton, int determinizeWorkLimit, boolean isBinary) {
-    this(term, automaton, determinizeWorkLimit, isBinary, CONSTANT_SCORE_REWRITE);
+    this(term, automaton, determinizeWorkLimit, isBinary, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**
