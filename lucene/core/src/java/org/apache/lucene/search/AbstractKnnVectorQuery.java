@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +33,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -87,17 +87,13 @@ abstract class AbstractKnnVectorQuery extends Query {
                 ctx ->
                     new FutureTask<>(
                         () -> {
-                          try {
-                            TopDocs results = searchLeaf(ctx, filterWeight);
-                            if (ctx.docBase > 0) {
-                              for (ScoreDoc scoreDoc : results.scoreDocs) {
-                                scoreDoc.doc += ctx.docBase;
-                              }
+                          TopDocs results = searchLeaf(ctx, filterWeight);
+                          if (ctx.docBase > 0) {
+                            for (ScoreDoc scoreDoc : results.scoreDocs) {
+                              scoreDoc.doc += ctx.docBase;
                             }
-                            return results;
-                          } catch (IOException e) {
-                            throw new UncheckedIOException(e);
                           }
+                          return results;
                         }))
             .toList();
 
@@ -114,7 +110,7 @@ abstract class AbstractKnnVectorQuery extends Query {
                   } catch (ExecutionException e) {
                     throw new RuntimeException(e.getCause());
                   } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    throw new ThreadInterruptedException(e);
                   }
                 })
             .toArray(TopDocs[]::new);
