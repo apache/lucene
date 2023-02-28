@@ -125,6 +125,10 @@ Improvements
   for multi-term queries with a FILTER rewrite (PrefixQuery, WildcardQuery, TermRangeQuery). This introduces better
   skipping support for common use-cases. (Adrien Grand, Greg Miller)
 
+* GITHUB#12156: TermInSetQuery now extends MultiTermQuery instead of providing its own custom implementation (which
+  was essentially a clone of MultiTermQuery#CONSTANT_SCORE_REWRITE). It uses the new CONSTANT_SCORE_BLENDED_REWRITE
+  by default, but can be overridden through the constructor. (Greg Miller)
+
 Optimizations
 ---------------------
 
