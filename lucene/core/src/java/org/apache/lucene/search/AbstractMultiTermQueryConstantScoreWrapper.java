@@ -40,7 +40,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQuery> extends Query
     implements Accountable {
   // mtq that matches 16 terms or less will be executed as a regular disjunction
-  private static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
+  static final int BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD = 16;
 
   protected final Q query;
 
@@ -153,12 +153,9 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         List<TermAndState> collectedTerms)
         throws IOException;
 
-    private WeightOrDocIdSetIterator rewrite(LeafReaderContext context) throws IOException {
-      final Terms terms = context.reader().terms(q.field);
-      if (terms == null) {
-        // field does not exist
-        return null;
-      }
+    private WeightOrDocIdSetIterator rewrite(LeafReaderContext context, Terms terms)
+        throws IOException {
+      assert terms != null;
 
       final int fieldDocCount = terms.getDocCount();
       final TermsEnum termsEnum = q.getTermsEnum(terms);
@@ -216,7 +213,11 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
     @Override
     public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context);
+      final Terms terms = context.reader().terms(q.getField());
+      if (terms == null) {
+        return null;
+      }
+      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
       if (weightOrIterator == null) {
         return null;
       } else if (weightOrIterator.weight != null) {
@@ -232,14 +233,11 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
-      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context);
-      if (weightOrIterator == null) {
+      final ScorerSupplier scorerSupplier = scorerSupplier(context);
+      if (scorerSupplier == null) {
         return null;
-      } else if (weightOrIterator.weight != null) {
-        return weightOrIterator.weight.scorer(context);
-      } else {
-        return scorerForIterator(weightOrIterator.iterator);
       }
+      return scorerSupplier.get(Long.MAX_VALUE);
     }
 
     @Override
@@ -253,6 +251,72 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           () ->
               DisjunctionMatchesIterator.fromTermsEnum(
                   context, doc, q, q.field, q.getTermsEnum(terms)));
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Terms terms = context.reader().terms(q.getField());
+      if (terms == null) {
+        return null;
+      }
+
+      final long cost = estimateCost(terms, q.getTermsCount());
+
+      final Weight weight = this;
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          final Scorer scorer;
+          if (weightOrIterator == null) {
+            scorer = null;
+          } else if (weightOrIterator.weight != null) {
+            scorer = weightOrIterator.weight.scorer(context);
+          } else {
+            scorer = scorerForIterator(weightOrIterator.iterator);
+          }
+
+          // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
+          // So if our ScoreSupplier was non-null (i.e., thought there might be hits) but we now
+          // find that there are actually no hits, we need to return an empty Scorer as opposed
+          // to null:
+          return Objects.requireNonNullElseGet(
+              scorer,
+              () -> new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+        }
+
+        @Override
+        public long cost() {
+          return cost;
+        }
+      };
+    }
+
+    private static long estimateCost(Terms terms, long queryTermsCount) throws IOException {
+      // Estimate the cost. If the MTQ can provide its term count, we can do a better job
+      // estimating.
+      // Cost estimation reasoning is:
+      // 1. If we don't know how many query terms there are, we assume that every term could be
+      //    in the MTQ and estimate the work as the total docs across all terms.
+      // 2. If we know how many query terms there are...
+      //    2a. Assume every query term matches at least one document (queryTermsCount).
+      //    2b. Determine the total number of docs beyond the first one for each term.
+      //        That count provides a ceiling on the number of extra docs that could match beyond
+      //        that first one. (We omit the first since it's already been counted in 2a).
+      // See: LUCENE-10207
+      long cost;
+      if (queryTermsCount == -1) {
+        cost = terms.getSumDocFreq();
+      } else {
+        long potentialExtraCost = terms.getSumDocFreq();
+        final long indexedTermCount = terms.size();
+        if (indexedTermCount != -1) {
+          potentialExtraCost -= indexedTermCount;
+        }
+        cost = queryTermsCount + potentialExtraCost;
+      }
+
+      return cost;
     }
 
     @Override
