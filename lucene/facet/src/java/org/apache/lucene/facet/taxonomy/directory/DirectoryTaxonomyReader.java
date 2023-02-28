@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
@@ -76,6 +77,11 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
   private LRUHashMap<Integer, FacetLabel> categoryCache;
 
   private volatile TaxonomyIndexArrays taxoArrays;
+
+  private final AtomicLong ordinalCacheHitCount = new AtomicLong();
+  private final AtomicLong ordinalCacheMissCount = new AtomicLong();
+  private final AtomicLong categoryCacheHitCount = new AtomicLong();
+  private final AtomicLong categoryCacheMissCount = new AtomicLong();
 
   /**
    * Expert: Use this method to explicitly force the {@link DirectoryTaxonomyReader} to use specific
@@ -272,6 +278,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     synchronized (ordinalCache) {
       Integer res = ordinalCache.get(cp);
       if (res != null) {
+        ordinalCacheHitCount.incrementAndGet();
         if (res < indexReader.maxDoc()) {
           // Since the cache is shared with DTR instances allocated from
           // doOpenIfChanged, we need to ensure that the ordinal is one that
@@ -286,6 +293,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         }
       }
     }
+    ordinalCacheMissCount.incrementAndGet();
 
     // If we're still here, we have a cache miss. We need to fetch the
     // value from disk, and then also put it in the cache:
@@ -310,6 +318,22 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     return ret;
+  }
+
+  /** Get ordinal cache hit count */
+  public long getOrdinalCacheHitCount() {
+    return ordinalCacheHitCount.get();
+  }
+
+  /** Get ordinal cache miss count */
+  public long getOrdinalCacheMissCount() {
+    return ordinalCacheMissCount.get();
+  }
+
+  /** Get ordinal cache hit rate */
+  public double getOrdinalCacheHitRate() {
+    return (ordinalCacheHitCount.get() * 1.0f)
+        / (ordinalCacheHitCount.get() + ordinalCacheMissCount.get());
   }
 
   @Override
@@ -358,7 +382,28 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         facetLabels[i] = categoryCache.get(ordinals[i]);
       }
     }
+    if (facetLabels[0] != null) {
+      categoryCacheHitCount.incrementAndGet();
+    } else {
+      categoryCacheMissCount.incrementAndGet();
+    }
     return facetLabels;
+  }
+
+  /** Get category cache hit count */
+  public long getCategoryCacheHitCount() {
+    return categoryCacheHitCount.get();
+  }
+
+  /** Get category cache miss count */
+  public long getCategoryCacheMissCount() {
+    return categoryCacheMissCount.get();
+  }
+
+  /** Get category cache hit rate */
+  public double getCategoryCacheHitRate() {
+    return (categoryCacheHitCount.get() * 1.0f)
+        / (categoryCacheHitCount.get() + categoryCacheMissCount.get());
   }
 
   /**

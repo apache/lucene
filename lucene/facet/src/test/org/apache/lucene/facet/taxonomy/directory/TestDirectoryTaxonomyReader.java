@@ -643,4 +643,79 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     r1.close();
     src.close();
   }
+
+  @Test
+  public void testCacheHitAndMissCount() throws Exception {
+    // tests isf the cache hit/ miss count and cache hot rate is correctly calculated
+    try (Directory dir = newDirectory()) {
+      DirectoryTaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);
+      FacetLabel cp_a = new FacetLabel("a");
+      FacetLabel cp_b = new FacetLabel("b");
+      writer.addCategory(cp_a);
+      writer.addCategory(cp_b);
+      writer.close();
+
+      try (DirectoryTaxonomyReader r1 = new DirectoryTaxonomyReader(dir)) {
+        // initially ordinal cache hit and miss must be 0 so rate must be NaN
+        assertEquals(r1.getOrdinalCacheHitRate(), Double.NaN, 0.0);
+        // fill r1's caches
+        assertEquals(1, r1.getOrdinal(cp_a));
+        assertEquals(cp_a, r1.getPath(1));
+        // initially ordinal cache is empty so no cache hit
+        assertEquals(r1.getOrdinalCacheHitCount(), 0);
+        assertEquals(r1.getCategoryCacheHitCount(), 0);
+        // initially ordinal cache is empty so it causes cache miss
+        assertEquals(r1.getOrdinalCacheMissCount(), 1);
+        assertEquals(r1.getOrdinalCacheMissCount(), 1);
+        // rate = (0)/(0+1) = 0
+        assertEquals(r1.getOrdinalCacheHitRate(), 0.0, 0.0);
+        assertEquals(r1.getCategoryCacheHitRate(), 0.0, 0.0);
+
+        // check r1 cache again for same category/label
+        assertEquals(1, r1.getOrdinal(cp_a));
+        assertEquals(cp_a, r1.getPath(1));
+        // now the cache must have ordinal and category cached
+        assertEquals(r1.getOrdinalCacheHitCount(), 1);
+        assertEquals(r1.getCategoryCacheHitCount(), 1);
+        // no change in cache miss count
+        assertEquals(r1.getOrdinalCacheMissCount(), 1);
+        assertEquals(r1.getCategoryCacheMissCount(), 1);
+        // rate = (1)/(1+1) = 0.5
+        assertEquals(r1.getOrdinalCacheHitRate(), 0.5, 0.0);
+        assertEquals(r1.getCategoryCacheHitRate(), 0.5, 0.0);
+
+        // Again trigger cache miss
+        assertEquals(2, r1.getOrdinal(cp_b));
+        assertEquals(cp_b, r1.getPath(2));
+
+        assertEquals(r1.getOrdinalCacheHitCount(), 1);
+        assertEquals(r1.getOrdinalCacheMissCount(), 2);
+        assertEquals(r1.getOrdinalCacheHitRate(), 0.33, 0.01);
+        assertEquals(r1.getCategoryCacheHitCount(), 1);
+        assertEquals(r1.getCategoryCacheMissCount(), 2);
+        assertEquals(r1.getCategoryCacheHitRate(), 0.33, 0.01);
+
+        // check that r1 doesn't see unknown category
+        assertEquals(TaxonomyReader.INVALID_ORDINAL, r1.getOrdinal(new FacetLabel("x")));
+        // above causes cache miss to change in ordinal cache hit rate
+        assertEquals(r1.getOrdinalCacheHitRate(), 0.25, 0.0);
+        // no effect on category cache
+        assertEquals(r1.getCategoryCacheHitRate(), 0.33, 0.01);
+
+        // now recreate, add a different category
+        writer = new DirectoryTaxonomyWriter(dir, OpenMode.CREATE);
+        FacetLabel cp_c = new FacetLabel("c");
+        writer.addCategory(cp_c);
+        writer.close();
+
+        try (DirectoryTaxonomyReader r2 = TaxonomyReader.openIfChanged(r1)) {
+          assertNotNull(r2);
+
+          // check cache are reset for the new reader even if shared
+          assertEquals(r2.getOrdinalCacheHitRate(), Double.NaN, 0.0);
+          assertEquals(r2.getCategoryCacheHitRate(), Double.NaN, 0.0);
+        }
+      }
+    }
+  }
 }
