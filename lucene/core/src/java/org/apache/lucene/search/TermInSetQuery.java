@@ -168,7 +168,13 @@ public class TermInSetQuery extends Query implements Accountable {
     return 31 * classHash() + termDataHashCode;
   }
 
-  /** Returns the terms wrapped in a PrefixCodedTerms. */
+  /**
+   * Returns the terms wrapped in a PrefixCodedTerms.
+   *
+   * @deprecated the encoded terms will no longer be exposed in a future major version; this is an
+   *     implementation detail that could change at some point and shouldn't be relied on directly
+   */
+  @Deprecated
   public PrefixCodedTerms getTermData() {
     return termData;
   }
