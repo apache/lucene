@@ -22,6 +22,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedSetSelector;
@@ -173,8 +174,9 @@ public class KeywordField extends Field {
   public static Query newSetQuery(String field, BytesRef... values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
-    return new IndexOrDocValuesQuery(
-        new TermInSetQuery(field, values), new SortedSetDocValuesSetQuery(field, values.clone()));
+    Query indexQuery = new TermInSetQuery(field, values);
+    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
+    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
   }
 
   /**

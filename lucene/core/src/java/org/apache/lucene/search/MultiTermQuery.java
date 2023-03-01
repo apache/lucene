@@ -108,6 +108,19 @@ public abstract class MultiTermQuery extends Query {
       };
 
   /**
+   * A rewrite method that uses {@link org.apache.lucene.index.DocValuesType#SORTED} / {@link
+   * org.apache.lucene.index.DocValuesType#SORTED_SET} doc values to find matching docs through a
+   * post-filtering type approach. This will be very slow if used in isolation, but will likely be
+   * the most performant option when combined with a sparse query clause. All matching docs are
+   * assigned a constant score equal to the query's boost.
+   *
+   * <p>If you don't have doc values indexed, see the other rewrite methods that rely on postings
+   * alone (e.g., {@link #CONSTANT_SCORE_BLENDED_REWRITE}, {@link #SCORING_BOOLEAN_REWRITE}, etc.
+   * depending on scoring needs).
+   */
+  public static final RewriteMethod DOC_VALUES_REWRITE = new DocValuesRewriteMethod();
+
+  /**
    * A rewrite method that first translates each term into {@link BooleanClause.Occur#SHOULD} clause
    * in a BooleanQuery, and keeps the scores as computed by the query. Note that typically such
    * scores are meaningless to the user, and require non-trivial CPU to compute, so it's almost
