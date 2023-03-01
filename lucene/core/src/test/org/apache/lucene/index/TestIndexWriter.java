@@ -27,6 +27,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -4699,5 +4700,49 @@ public class TestIndexWriter extends LuceneTestCase {
     Document doc = new Document();
     doc.add(newField(field, "value", storedTextType));
     writer.addDocument(doc);
+  }
+
+  public void testReaderCommitGeneration() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    IndexWriter writer = new IndexWriter(dir, iwc);
+    CountDownLatch latch = new CountDownLatch(1);
+    AtomicBoolean stopped = new AtomicBoolean();
+    Thread refreshThread =
+        new Thread(
+            () -> {
+              try {
+                DirectoryReader reader = null;
+                try {
+                  reader = DirectoryReader.open(writer);
+                  latch.countDown();
+                  while (stopped.get() == false) {
+                    long beforeGen = writer.cloneSegmentInfos().getGeneration();
+                    DirectoryReader newReader = DirectoryReader.openIfChanged(reader);
+                    if (newReader != null) {
+                      reader.close();
+                      reader = newReader;
+                    }
+                    long afterGen = reader.getIndexCommit().getGeneration();
+                    assertTrue("before=" + beforeGen + " after=" + afterGen, afterGen >= beforeGen);
+                  }
+                } finally {
+                  IOUtils.close(reader);
+                }
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+              latch.countDown();
+            });
+    refreshThread.start();
+    int numFlushes = 1 + random().nextInt(100);
+    latch.await();
+    for (int i = 0; i < numFlushes; i++) {
+      writer.addDocument(new Document());
+      writer.commit();
+    }
+    stopped.set(true);
+    refreshThread.join();
+    IOUtils.close(writer, dir);
   }
 }

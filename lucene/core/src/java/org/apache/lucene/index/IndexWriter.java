@@ -495,7 +495,8 @@ public class IndexWriter
    *     instance
    * @throws IOException If there is a low-level I/O error
    */
-  DirectoryReader getReader(boolean applyAllDeletes, boolean writeAllDeletes) throws IOException {
+  StandardDirectoryReader getReader(boolean applyAllDeletes, boolean writeAllDeletes)
+      throws IOException {
     ensureOpen();
 
     if (writeAllDeletes && applyAllDeletes == false) {
@@ -5661,7 +5662,8 @@ public class IndexWriter
   synchronized boolean nrtIsCurrent(SegmentInfos infos) {
     ensureOpen();
     boolean isCurrent =
-        infos.getVersion() == segmentInfos.getVersion()
+        infos.getGeneration() == segmentInfos.getGeneration()
+            && infos.getVersion() == segmentInfos.getVersion()
             && docWriter.anyChanges() == false
             && bufferedUpdatesStream.any() == false
             && readerPool.anyDocValuesChanges() == false;

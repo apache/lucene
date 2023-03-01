@@ -378,10 +378,11 @@ public final class StandardDirectoryReader extends DirectoryReader {
       return null;
     }
 
-    DirectoryReader reader = writer.getReader(applyAllDeletes, writeAllDeletes);
+    StandardDirectoryReader reader = writer.getReader(applyAllDeletes, writeAllDeletes);
 
     // If in fact no changes took place, return null:
-    if (reader.getVersion() == segmentInfos.getVersion()) {
+    if (reader.segmentInfos.getVersion() == segmentInfos.getVersion()
+        && reader.segmentInfos.getGeneration() == segmentInfos.getGeneration()) {
       reader.decRef();
       return null;
     }
