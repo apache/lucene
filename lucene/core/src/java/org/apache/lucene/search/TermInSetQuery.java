@@ -65,9 +65,10 @@ import org.apache.lucene.util.automaton.Operations;
  * more details, see {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE}.
  *
  * <p>Users may also provide a custom {@link MultiTermQuery.RewriteMethod} to define different
- * execution behavior, such as relying on doc values (see: {@link DocValuesRewriteMethod}), or if
- * scores are required (see: {@link MultiTermQuery#SCORING_BOOLEAN_REWRITE}). See {@link
- * MultiTermQuery} documentation for more rewrite options.
+ * execution behavior, such as relying on doc values (see: {@link
+ * MultiTermQuery#DOC_VALUES_REWRITE}), or if scores are required (see: {@link
+ * MultiTermQuery#SCORING_BOOLEAN_REWRITE}). See {@link MultiTermQuery} documentation for more
+ * rewrite options.
  *
  * <p>NOTE: This query produces scores that are equal to its boost
  */
