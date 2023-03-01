@@ -51,6 +51,12 @@ final class SortedSetDocValuesSetQuery extends Query implements Accountable {
   private final PrefixCodedTerms termData;
   private final int termDataHashCode; // cached hashcode of termData
 
+  /**
+   * Sole constructor. Note that {@code terms} will be sorted in-place, so callers should clone the
+   * array prior to calling if they care to preserve original ordering. This decision was made since
+   * this is an internal implementation (pkg-private class) and not expected to be used directly by
+   * users.
+   */
   SortedSetDocValuesSetQuery(String field, BytesRef terms[]) {
     this.field = Objects.requireNonNull(field);
     Objects.requireNonNull(terms);

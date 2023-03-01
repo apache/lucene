@@ -174,7 +174,7 @@ public class KeywordField extends Field {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
     return new IndexOrDocValuesQuery(
-        new TermInSetQuery(field, values), new SortedSetDocValuesSetQuery(field, values));
+        new TermInSetQuery(field, values), new SortedSetDocValuesSetQuery(field, values.clone()));
   }
 
   /**
