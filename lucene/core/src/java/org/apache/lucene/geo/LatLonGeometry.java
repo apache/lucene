@@ -17,7 +17,23 @@
 
 package org.apache.lucene.geo;
 
-/** Lat/Lon Geometry object. */
+/**
+ * Represents a unified view of the supported geometries on the earth's surface. They can determine
+ * their spatial relationship against data indexed with {@link
+ * org.apache.lucene.document.LatLonField}, {@link org.apache.lucene.document.LatLonPoint} and
+ * {@link org.apache.lucene.document.LatLonDocValuesField}.
+ *
+ * <p>The supported geometries are:
+ *
+ * <ol>
+ *   <li>{@link Point}
+ *   <li>{@link Line}
+ *   <li>{@link Polygon}
+ *   <li>{@link Circle}
+ * </ol>
+ *
+ * @lucene.experimental
+ */
 public abstract class LatLonGeometry extends Geometry {
 
   /** Creates a Component2D from the provided LatLonGeometry array */

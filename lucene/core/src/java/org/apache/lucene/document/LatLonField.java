@@ -19,43 +19,29 @@ package org.apache.lucene.document;
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
-import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitudeCeil;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
-import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitudeCeil;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.lucene.geo.Circle;
-import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
-import org.apache.lucene.geo.Rectangle;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopFieldDocs;
-import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.SloppyMath;
 
 /**
- * An indexed location field.
+ * An indexed location field for querying and sorting. If you need more fine-grained control you can
+ * use {@link LatLonPoint} and {@link LatLonDocValuesField}.
  *
  * <p>Finding all documents within a range at search time is efficient. Multiple values for the same
  * field in one document is allowed.
@@ -67,28 +53,25 @@ import org.apache.lucene.util.SloppyMath;
  *   <li>{@link #newDistanceQuery newDistanceQuery()} for matching points within a specified
  *       distance.
  *   <li>{@link #newPolygonQuery newPolygonQuery()} for matching points within an arbitrary polygon.
- *   <li>{@link #newGeometryQuery newGeometryQuery()} for matching points within an arbitrary
- *       geometry collection.
+ *   <li>{@link #newGeometryQuery newGeometryQuery()} for matching points complying with a spatial
+ *       relationship with an arbitrary geometry.
+ *   <li>{@link #newDistanceFeatureQuery newDistanceFeatureQuery()} for returning points scored by
+ *       distance to a specified location.
+ *   <li>{@link #nearest nearest()} for returning the nearest points from a specified location.
+ *   <li>{@link #newDistanceSort newDistanceSort()} for ordering documents by distance from a
+ *       specified location.
  * </ul>
  *
- * <p>If you also need per-document operations such as sort by distance, add a separate {@link
- * LatLonDocValuesField} instance. If you also need to store the value, you should add a separate
- * {@link StoredField} instance.
+ * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  *
  * <p><b>WARNING</b>: Values are indexed with some loss of precision from the original {@code
  * double} values (4.190951585769653E-8 for the latitude component and 8.381903171539307E-8 for
  * longitude).
  *
- * @see PointValues
+ * @see LatLonPoint
  * @see LatLonDocValuesField
  */
-// TODO ^^^ that is very sandy and hurts the API, usage, and tests tremendously, because what the
-// user passes
-// to the field is not actually what gets indexed. Float would be 1E-5 error vs 1E-7, but it might
-// be
-// a better tradeoff? then it would be completely transparent to the user and lucene would be
-// "lossless".
-public class LatLonPoint extends Field {
+public class LatLonField extends Field {
   /** LatLonPoint is encoded as integer values so number of bytes is 4 */
   public static final int BYTES = Integer.BYTES;
   /**
@@ -100,8 +83,12 @@ public class LatLonPoint extends Field {
 
   static {
     TYPE.setDimensions(2, Integer.BYTES);
+    TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     TYPE.freeze();
   }
+
+  // holds the doc value value.
+  private long docValue;
 
   /**
    * Change the values of this field
@@ -124,6 +111,12 @@ public class LatLonPoint extends Field {
     int longitudeEncoded = encodeLongitude(longitude);
     NumericUtils.intToSortableBytes(latitudeEncoded, bytes, 0);
     NumericUtils.intToSortableBytes(longitudeEncoded, bytes, Integer.BYTES);
+    docValue = Long.valueOf((((long) latitudeEncoded) << 32) | (longitudeEncoded & 0xFFFFFFFFL));
+  }
+
+  @Override
+  public Number numericValue() {
+    return docValue;
   }
 
   /**
@@ -135,7 +128,7 @@ public class LatLonPoint extends Field {
    * @throws IllegalArgumentException if the field name is null or latitude or longitude are out of
    *     bounds
    */
-  public LatLonPoint(String name, double latitude, double longitude) {
+  public LatLonField(String name, double latitude, double longitude) {
     super(name, TYPE);
     setLocationValue(latitude, longitude);
   }
@@ -157,51 +150,7 @@ public class LatLonPoint extends Field {
     return result.toString();
   }
 
-  /** sugar encodes a single point as a byte array */
-  private static byte[] encode(double latitude, double longitude) {
-    byte[] bytes = new byte[2 * Integer.BYTES];
-    NumericUtils.intToSortableBytes(encodeLatitude(latitude), bytes, 0);
-    NumericUtils.intToSortableBytes(encodeLongitude(longitude), bytes, Integer.BYTES);
-    return bytes;
-  }
-
-  /** sugar encodes a single point as a byte array, rounding values up */
-  private static byte[] encodeCeil(double latitude, double longitude) {
-    byte[] bytes = new byte[2 * Integer.BYTES];
-    NumericUtils.intToSortableBytes(encodeLatitudeCeil(latitude), bytes, 0);
-    NumericUtils.intToSortableBytes(encodeLongitudeCeil(longitude), bytes, Integer.BYTES);
-    return bytes;
-  }
-
-  /** helper: checks a fieldinfo and throws exception if its definitely not a LatLonPoint */
-  static void checkCompatible(FieldInfo fieldInfo) {
-    // point/dv properties could be "unset", if you e.g. used only StoredField with this same name
-    // in the segment.
-    if (fieldInfo.getPointDimensionCount() != 0
-        && fieldInfo.getPointDimensionCount() != TYPE.pointDimensionCount()) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + fieldInfo.name
-              + "\" was indexed with numDims="
-              + fieldInfo.getPointDimensionCount()
-              + " but this point type has numDims="
-              + TYPE.pointDimensionCount()
-              + ", is the field really a LatLonPoint?");
-    }
-    if (fieldInfo.getPointNumBytes() != 0 && fieldInfo.getPointNumBytes() != TYPE.pointNumBytes()) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + fieldInfo.name
-              + "\" was indexed with bytesPerDim="
-              + fieldInfo.getPointNumBytes()
-              + " but this point type has bytesPerDim="
-              + TYPE.pointNumBytes()
-              + ", is the field really a LatLonPoint?");
-    }
-  }
-
   // static methods for generating queries
-
   /**
    * Create a query for matching a bounding box.
    *
@@ -221,62 +170,10 @@ public class LatLonPoint extends Field {
       double maxLatitude,
       double minLongitude,
       double maxLongitude) {
-    // exact double values of lat=90.0D and lon=180.0D must be treated special as they are not
-    // represented in the encoding
-    // and should not drag in extra bogus junk! TODO: should encodeCeil just throw
-    // ArithmeticException to be less trappy here?
-    if (minLatitude == 90.0) {
-      // range cannot match as 90.0 can never exist
-      return new MatchNoDocsQuery("LatLonPoint.newBoxQuery with minLatitude=90.0");
-    }
-    if (minLongitude == 180.0) {
-      if (maxLongitude == 180.0) {
-        // range cannot match as 180.0 can never exist
-        return new MatchNoDocsQuery("LatLonPoint.newBoxQuery with minLongitude=maxLongitude=180.0");
-      } else if (maxLongitude < minLongitude) {
-        // encodeCeil() with dateline wrapping!
-        minLongitude = -180.0;
-      }
-    }
-    byte[] lower = encodeCeil(minLatitude, minLongitude);
-    byte[] upper = encode(maxLatitude, maxLongitude);
-    // Crosses date line: we just rewrite into OR of two bboxes, with longitude as an open range:
-    if (maxLongitude < minLongitude) {
-      // Disable coord here because a multi-valued doc could match both rects and get unfairly
-      // boosted:
-      BooleanQuery.Builder q = new BooleanQuery.Builder();
-
-      // E.g.: maxLon = -179, minLon = 179
-      byte[] leftOpen = lower.clone();
-      // leave longitude open
-      NumericUtils.intToSortableBytes(Integer.MIN_VALUE, leftOpen, Integer.BYTES);
-      Query left = newBoxInternal(field, leftOpen, upper);
-      q.add(new BooleanClause(left, BooleanClause.Occur.SHOULD));
-
-      byte[] rightOpen = upper.clone();
-      // leave longitude open
-      NumericUtils.intToSortableBytes(Integer.MAX_VALUE, rightOpen, Integer.BYTES);
-      Query right = newBoxInternal(field, lower, rightOpen);
-      q.add(new BooleanClause(right, BooleanClause.Occur.SHOULD));
-      return new ConstantScoreQuery(q.build());
-    } else {
-      return newBoxInternal(field, lower, upper);
-    }
-  }
-
-  private static Query newBoxInternal(String field, byte[] min, byte[] max) {
-    return new PointRangeQuery(field, min, max, 2) {
-      @Override
-      protected String toString(int dimension, byte[] value) {
-        if (dimension == 0) {
-          return Double.toString(decodeLatitude(value, 0));
-        } else if (dimension == 1) {
-          return Double.toString(decodeLongitude(value, 0));
-        } else {
-          throw new AssertionError();
-        }
-      }
-    };
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newBoxQuery(field, minLatitude, maxLatitude, minLongitude, maxLongitude),
+        LatLonDocValuesField.newSlowBoxQuery(
+            field, minLatitude, maxLatitude, minLongitude, maxLongitude));
   }
 
   /**
@@ -293,7 +190,9 @@ public class LatLonPoint extends Field {
    */
   public static Query newDistanceQuery(
       String field, double latitude, double longitude, double radiusMeters) {
-    return new LatLonPointDistanceQuery(field, latitude, longitude, radiusMeters);
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newDistanceQuery(field, latitude, longitude, radiusMeters),
+        LatLonDocValuesField.newSlowDistanceQuery(field, latitude, longitude, radiusMeters));
   }
 
   /**
@@ -306,7 +205,9 @@ public class LatLonPoint extends Field {
    * @see Polygon
    */
   public static Query newPolygonQuery(String field, Polygon... polygons) {
-    return newGeometryQuery(field, ShapeField.QueryRelation.INTERSECTS, polygons);
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newPolygonQuery(field, polygons),
+        LatLonDocValuesField.newSlowPolygonQuery(field, polygons));
   }
 
   /**
@@ -339,38 +240,13 @@ public class LatLonPoint extends Field {
    */
   public static Query newGeometryQuery(
       String field, ShapeField.QueryRelation queryRelation, LatLonGeometry... latLonGeometries) {
-    if (queryRelation == ShapeField.QueryRelation.INTERSECTS && latLonGeometries.length == 1) {
-      if (latLonGeometries[0] instanceof Rectangle) {
-        final Rectangle rect = (Rectangle) latLonGeometries[0];
-        return newBoxQuery(field, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
-      }
-      if (latLonGeometries[0] instanceof Circle) {
-        final Circle circle = (Circle) latLonGeometries[0];
-        return newDistanceQuery(field, circle.getLat(), circle.getLon(), circle.getRadius());
-      }
-    }
-    if (queryRelation == ShapeField.QueryRelation.CONTAINS) {
-      return makeContainsGeometryQuery(field, latLonGeometries);
-    }
-    return new LatLonPointQuery(field, queryRelation, latLonGeometries);
-  }
-
-  private static Query makeContainsGeometryQuery(String field, LatLonGeometry... latLonGeometries) {
-    BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    for (LatLonGeometry geometry : latLonGeometries) {
-      if ((geometry instanceof Point) == false) {
-        return new MatchNoDocsQuery(
-            "Contains LatLonPoint.newGeometryQuery with non-point geometries");
-      }
-      builder.add(
-          new LatLonPointQuery(field, ShapeField.QueryRelation.CONTAINS, geometry),
-          BooleanClause.Occur.MUST);
-    }
-    return new ConstantScoreQuery(builder.build());
+    return new IndexOrDocValuesQuery(
+        LatLonPoint.newGeometryQuery(field, queryRelation, latLonGeometries),
+        LatLonDocValuesField.newSlowGeometryQuery(field, queryRelation, latLonGeometries));
   }
 
   /**
-   * Given a field that indexes point values into a {@link LatLonPoint} and doc values into {@link
+   * Given a field that indexes point values into a {@link LatLonField} and doc values into {@link
    * LatLonDocValuesField}, this returns a query that scores documents based on their haversine
    * distance in meters to {@code (originLat, originLon)}: {@code score = weight *
    * pivotDistanceMeters / (pivotDistanceMeters + distance)}, ie. score is in the {@code [0,
@@ -383,12 +259,8 @@ public class LatLonPoint extends Field {
    */
   public static Query newDistanceFeatureQuery(
       String field, float weight, double originLat, double originLon, double pivotDistanceMeters) {
-    Query query =
-        new LatLonPointDistanceFeatureQuery(field, originLat, originLon, pivotDistanceMeters);
-    if (weight != 1f) {
-      query = new BoostQuery(query, weight);
-    }
-    return query;
+    return LatLonPoint.newDistanceFeatureQuery(
+        field, weight, originLat, originLon, pivotDistanceMeters);
   }
 
   /**
@@ -419,41 +291,28 @@ public class LatLonPoint extends Field {
   public static TopFieldDocs nearest(
       IndexSearcher searcher, String field, double latitude, double longitude, int n)
       throws IOException {
-    GeoUtils.checkLatitude(latitude);
-    GeoUtils.checkLongitude(longitude);
-    if (n < 1) {
-      throw new IllegalArgumentException("n must be at least 1; got " + n);
-    }
-    if (field == null) {
-      throw new IllegalArgumentException("field must not be null");
-    }
-    if (searcher == null) {
-      throw new IllegalArgumentException("searcher must not be null");
-    }
-    List<PointValues> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
-    List<Bits> liveDocs = new ArrayList<>();
-    int totalHits = 0;
-    for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {
-      PointValues points = leaf.reader().getPointValues(field);
-      if (points != null) {
-        totalHits += points.getDocCount();
-        readers.add(points);
-        docBases.add(leaf.docBase);
-        liveDocs.add(leaf.reader().getLiveDocs());
-      }
-    }
+    return LatLonPoint.nearest(searcher, field, latitude, longitude, n);
+  }
 
-    NearestNeighbor.NearestHit[] hits =
-        NearestNeighbor.nearest(latitude, longitude, readers, liveDocs, docBases, n);
-
-    // Convert to TopFieldDocs:
-    ScoreDoc[] scoreDocs = new ScoreDoc[hits.length];
-    for (int i = 0; i < hits.length; i++) {
-      NearestNeighbor.NearestHit hit = hits[i];
-      double hitDistance = SloppyMath.haversinMeters(hit.distanceSortKey);
-      scoreDocs[i] = new FieldDoc(hit.docID, 0.0f, new Object[] {Double.valueOf(hitDistance)});
-    }
-    return new TopFieldDocs(new TotalHits(totalHits, TotalHits.Relation.EQUAL_TO), scoreDocs, null);
+  /**
+   * Creates a SortField for sorting by distance from a location.
+   *
+   * <p>This sort orders documents by ascending distance from the location. The value returned in
+   * {@link FieldDoc} for the hits contains a Double instance with the distance in meters.
+   *
+   * <p>If a document is missing the field, then by default it is treated as having {@link
+   * Double#POSITIVE_INFINITY} distance (missing values sort last).
+   *
+   * <p>If a document contains multiple values for the field, the <i>closest</i> distance to the
+   * location is used.
+   *
+   * @param field field name. must not be null.
+   * @param latitude latitude at the center: must be within standard +/-90 coordinate bounds.
+   * @param longitude longitude at the center: must be within standard +/-180 coordinate bounds.
+   * @return SortField ordering documents by distance
+   * @throws IllegalArgumentException if {@code field} is null or location has invalid coordinates.
+   */
+  public static SortField newDistanceSort(String field, double latitude, double longitude) {
+    return new LatLonPointSortField(field, latitude, longitude);
   }
 }

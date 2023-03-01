@@ -26,7 +26,7 @@ import org.apache.lucene.search.Query;
  * random bounding box, line, and polygon query tests for random indexed arrays of {@code latitude,
  * longitude} points
  */
-public class TestLatLonPointPointQueries extends BaseLatLonPointTestCase {
+public class TestLatLonPointMultiPointQueries extends BaseLatLonPointTestCase {
 
   @Override
   protected ShapeType getShapeType() {
@@ -34,14 +34,23 @@ public class TestLatLonPointPointQueries extends BaseLatLonPointTestCase {
   }
 
   @Override
-  protected Validator getValidator() {
-    return new TestLatLonPointShapeQueries.PointValidator(this.ENCODER);
+  protected Object nextShape() {
+    int n = random().nextInt(4) + 1;
+    Point[] points = new Point[n];
+    for (int i = 0; i < n; i++) {
+      points[i] = (Point) ShapeType.POINT.nextShape();
+    }
+    return points;
   }
 
   @Override
   protected Field[] createIndexableFields(String name, Object o) {
-    Point point = (Point) o;
-    return new Field[] {new LatLonPoint(FIELD_NAME, point.getLat(), point.getLon())};
+    Point[] points = (Point[]) o;
+    Field[] fields = new Field[points.length];
+    for (int i = 0; i < points.length; i++) {
+      fields[i] = new LatLonPoint(FIELD_NAME, points[i].getLat(), points[i].getLon());
+    }
+    return fields;
   }
 
   @Override
@@ -50,21 +59,42 @@ public class TestLatLonPointPointQueries extends BaseLatLonPointTestCase {
     return LatLonPoint.newGeometryQuery(field, queryRelation, geometries);
   }
 
-  protected static class PointValidator extends Validator {
-    protected PointValidator(Encoder encoder) {
+  @Override
+  public Validator getValidator() {
+    return new MultiPointValidator(ENCODER);
+  }
+
+  protected class MultiPointValidator extends Validator {
+    TestLatLonPointShapeQueries.PointValidator POINTVALIDATOR;
+
+    MultiPointValidator(Encoder encoder) {
       super(encoder);
+      POINTVALIDATOR = new TestLatLonPointShapeQueries.PointValidator(encoder);
+    }
+
+    @Override
+    public Validator setRelation(QueryRelation relation) {
+      super.setRelation(relation);
+      POINTVALIDATOR.queryRelation = relation;
+      return this;
     }
 
     @Override
     public boolean testComponentQuery(Component2D query, Object shape) {
-      Point p = (Point) shape;
-      if (queryRelation == QueryRelation.CONTAINS) {
-        return testWithinQuery(
-                query, LatLonShape.createIndexableFields("dummy", p.getLat(), p.getLon()))
-            == Component2D.WithinRelation.CANDIDATE;
+      Point[] points = (Point[]) shape;
+      for (Point p : points) {
+        boolean b = POINTVALIDATOR.testComponentQuery(query, p);
+        if (b == true && queryRelation == QueryRelation.INTERSECTS) {
+          return true;
+        } else if (b == true && queryRelation == QueryRelation.CONTAINS) {
+          return true;
+        } else if (b == false && queryRelation == QueryRelation.DISJOINT) {
+          return false;
+        } else if (b == false && queryRelation == QueryRelation.WITHIN) {
+          return false;
+        }
       }
-      return testComponentQuery(
-          query, LatLonShape.createIndexableFields("dummy", p.getLat(), p.getLon()));
+      return queryRelation != QueryRelation.INTERSECTS && queryRelation != QueryRelation.CONTAINS;
     }
   }
 

@@ -230,12 +230,26 @@ public class LatLonDocValuesField extends Field {
   }
 
   /**
-   * Create a query for matching one or more geometries against the provided {@link
-   * ShapeField.QueryRelation}. Line geometries are not supported for WITHIN relationship. This
-   * query is usually slow as it does not use an index structure and needs to verify documents
-   * one-by-one in order to know whether they match. It is best used wrapped in an {@link
-   * IndexOrDocValuesQuery} alongside a {@link LatLonPoint#newGeometryQuery(String,
-   * ShapeField.QueryRelation, LatLonGeometry...)}.
+   * Expert: Create a query for matching one or more geometries against the provided {@link
+   * ShapeField.QueryRelation}. This query is usually slow as it does not use an index structure and
+   * needs to verify documents one-by-one in order to know whether they match. It is best used
+   * wrapped in an {@link IndexOrDocValuesQuery} alongside a {@link
+   * LatLonPoint#newGeometryQuery(String, ShapeField.QueryRelation, LatLonGeometry...)}.
+   *
+   * <p>The following {@link ShapeField.QueryRelation} can be defined:
+   *
+   * <ol>
+   *   <li>{@link ShapeField.QueryRelation#INTERSECTS}: Matches a document if at least one point of
+   *       the field matches at least one of the provided {@link LatLonGeometry}.
+   *   <li>{@link ShapeField.QueryRelation#WITHIN}: Matches a document if all points of the field
+   *       matches one or more of the provided {@link LatLonGeometry}. Line geometries are not
+   *       supported for WITHIN relationship.
+   *   <li>{@link ShapeField.QueryRelation#DISJOINT}: Matches a document if none of the points of
+   *       the field matches any of the provided {@link LatLonGeometry}.
+   *   <li>{@link ShapeField.QueryRelation#CONTAINS}: Matches a documents if one or more points of
+   *       the field matches all the provided {@link LatLonGeometry}. It returns {@link
+   *       MatchNoDocsQuery} if any of the provided {@link LatLonGeometry} is not a {@link Point}.
+   * </ol>
    *
    * @param field field name. must not be null.
    * @param queryRelation The relation the points needs to satisfy with the provided geometries,
