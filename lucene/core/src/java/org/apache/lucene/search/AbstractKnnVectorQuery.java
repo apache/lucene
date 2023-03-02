@@ -81,39 +81,11 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    List<FutureTask<TopDocs>> tasks =
-        reader.leaves().stream()
-            .map(
-                ctx ->
-                    new FutureTask<>(
-                        () -> {
-                          TopDocs results = searchLeaf(ctx, filterWeight);
-                          if (ctx.docBase > 0) {
-                            for (ScoreDoc scoreDoc : results.scoreDocs) {
-                              scoreDoc.doc += ctx.docBase;
-                            }
-                          }
-                          return results;
-                        }))
-            .toList();
-
-    Executor executor = Objects.requireNonNullElse(indexSearcher.getExecutor(), Runnable::run);
-    SliceExecutor sliceExecutor = new SliceExecutor(executor);
-    sliceExecutor.invokeAll(tasks);
-
+    Executor executor = indexSearcher.getExecutor();
     TopDocs[] perLeafResults =
-        tasks.stream()
-            .map(
-                task -> {
-                  try {
-                    return task.get();
-                  } catch (ExecutionException e) {
-                    throw new RuntimeException(e.getCause());
-                  } catch (InterruptedException e) {
-                    throw new ThreadInterruptedException(e);
-                  }
-                })
-            .toArray(TopDocs[]::new);
+        (executor == null)
+            ? sequentialSearch(reader.leaves(), filterWeight)
+            : parallelSearch(reader.leaves(), filterWeight, executor);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -123,7 +95,54 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
+  private TopDocs[] sequentialSearch(
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) {
+    try {
+      TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+      for (LeafReaderContext ctx : leafReaderContexts) {
+        perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
+      }
+      return perLeafResults;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private TopDocs[] parallelSearch(
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, Executor executor) {
+    List<FutureTask<TopDocs>> tasks =
+        leafReaderContexts.stream()
+            .map(ctx -> new FutureTask<>(() -> searchLeaf(ctx, filterWeight)))
+            .toList();
+
+    SliceExecutor sliceExecutor = new SliceExecutor(executor);
+    sliceExecutor.invokeAll(tasks);
+
+    return tasks.stream()
+        .map(
+            task -> {
+              try {
+                return task.get();
+              } catch (ExecutionException e) {
+                throw new RuntimeException(e.getCause());
+              } catch (InterruptedException e) {
+                throw new ThreadInterruptedException(e);
+              }
+            })
+        .toArray(TopDocs[]::new);
+  }
+
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+    TopDocs results = getLeafResults(ctx, filterWeight);
+    if (ctx.docBase > 0) {
+      for (ScoreDoc scoreDoc : results.scoreDocs) {
+        scoreDoc.doc += ctx.docBase;
+      }
+    }
+    return results;
+  }
+
+  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
