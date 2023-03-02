@@ -151,7 +151,7 @@ Optimizations
 
 * GITHUB#12139: Faster indexing of string fields. (Adrien Grand)
 
-* GITHUB#xxx: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
+* GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
 
 Bug Fixes
 ---------------------
