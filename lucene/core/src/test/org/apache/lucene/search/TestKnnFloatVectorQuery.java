@@ -201,11 +201,12 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           scores[i] = scoreDocs[i].score;
           maxScore = Math.max(maxScore, scores[i]);
         }
-        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(reader, docs);
+        IndexReader indexReader = searcher.getIndexReader();
+        int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader, docs);
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
             new AbstractKnnVectorQuery.DocAndScoreQuery(
-                docs, scores, maxScore, segments, reader.getContext().id());
+                docs, scores, maxScore, segments, indexReader.getContext().id());
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
         assertEquals(scoreDocs.length, topDocs.totalHits.value);
