@@ -20,6 +20,7 @@
 module org.apache.lucene.facet {
   requires com.carrotsearch.hppc;
   requires org.apache.lucene.core;
+  requires org.apache.lucene.expressions;
 
   exports org.apache.lucene.facet;
   exports org.apache.lucene.facet.range;

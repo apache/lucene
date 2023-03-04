@@ -22,6 +22,7 @@ description = 'Faceted indexing and search capabilities'
 
 dependencies {
   moduleApi project(':lucene:core')
+  moduleApi project(':lucene:expressions')
   moduleImplementation 'com.carrotsearch:hppc'
 
   moduleTestImplementation project(':lucene:test-framework')
