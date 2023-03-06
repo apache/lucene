@@ -22,6 +22,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
+import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedSetSelector;
@@ -63,6 +64,7 @@ public class KeywordField extends Field {
     FIELD_TYPE_STORED.freeze();
   }
 
+  private BytesRef binaryValue;
   private final StoredValue storedValue;
 
   /**
@@ -75,6 +77,7 @@ public class KeywordField extends Field {
    */
   public KeywordField(String name, BytesRef value, Store stored) {
     super(name, value, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
+    this.binaryValue = value;
     if (stored == Store.YES) {
       storedValue = new StoredValue(value);
     } else {
@@ -92,6 +95,7 @@ public class KeywordField extends Field {
    */
   public KeywordField(String name, String value, Store stored) {
     super(name, value, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
+    this.binaryValue = new BytesRef(value);
     if (stored == Store.YES) {
       storedValue = new StoredValue(value);
     } else {
@@ -101,17 +105,18 @@ public class KeywordField extends Field {
 
   @Override
   public BytesRef binaryValue() {
-    BytesRef binaryValue = super.binaryValue();
-    if (binaryValue != null) {
-      return binaryValue;
-    } else {
-      return new BytesRef(stringValue());
-    }
+    return binaryValue;
+  }
+
+  @Override
+  public InvertableType invertableType() {
+    return InvertableType.BINARY;
   }
 
   @Override
   public void setStringValue(String value) {
     super.setStringValue(value);
+    binaryValue = new BytesRef(value);
     if (storedValue != null) {
       storedValue.setStringValue(value);
     }
@@ -120,6 +125,7 @@ public class KeywordField extends Field {
   @Override
   public void setBytesValue(BytesRef value) {
     super.setBytesValue(value);
+    binaryValue = value;
     if (storedValue != null) {
       storedValue.setBinaryValue(value);
     }
@@ -168,8 +174,9 @@ public class KeywordField extends Field {
   public static Query newSetQuery(String field, BytesRef... values) {
     Objects.requireNonNull(field, "field must not be null");
     Objects.requireNonNull(values, "values must not be null");
-    return new IndexOrDocValuesQuery(
-        new TermInSetQuery(field, values), new SortedSetDocValuesSetQuery(field, values));
+    Query indexQuery = new TermInSetQuery(field, values);
+    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
+    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
   }
 
   /**

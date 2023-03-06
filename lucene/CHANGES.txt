@@ -70,6 +70,8 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
+* GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
+
 Bug Fixes
 ---------------------
 
@@ -112,6 +114,9 @@ API Changes
 * GITHUB#12129: Move DocValuesTermsQuery from sandbox to SortedDocValuesField#newSlowSetQuery
   and SortedSetDocValuesField#newSlowSetQuery. (Robert Muir)
 
+* GITHUB#12173: TermInSetQuery#getTermData has been deprecated. This exposes internal implementation details that we
+  may want to change in the future, and users shouldn't rely on the encoding directly. (Greg Miller)
+
 New Features
 ---------------------
 
@@ -121,6 +126,16 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#12055: MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE rewrite method introduced and used as the new default
+  for multi-term queries with a FILTER rewrite (PrefixQuery, WildcardQuery, TermRangeQuery). This introduces better
+  skipping support for common use-cases. (Adrien Grand, Greg Miller)
+
+* GITHUB#12156: TermInSetQuery now extends MultiTermQuery instead of providing its own custom implementation (which
+  was essentially a clone of MultiTermQuery#CONSTANT_SCORE_REWRITE). It uses the new CONSTANT_SCORE_BLENDED_REWRITE
+  by default, but can be overridden through the constructor. (Greg Miller)
+
+* GITHUB#12175: Remove SortedSetDocValuesSetQuery in favor of TermInSetQuery with DocValuesRewriteMethod. (Greg Miller)
+
 * GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
 
 Optimizations
@@ -129,16 +144,21 @@ Optimizations
 * GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
   in order to achieve the same false positive probability with less memory.
   (Jean-François Boeuf)
-  
+
 * GITHUB#12118: Optimize FeatureQuery to TermQuery & weight when scoring is not required. (Ben Trent, Robert Muir)
 
 * GITHUB#12128, GITHUB#12133: Speed up docvalues set query by making use of sortedness. (Robert Muir, Uwe Schindler)
 
 * GITHUB#12050: Reuse HNSW graph for intialization during merge (Jack Mazanec)
 
+* GITHUB#12155: Speed up DocValuesRewriteMethod by making use of sortedness. (Greg Miller)
+
+* GITHUB#12139: Faster indexing of string fields. (Adrien Grand)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12158: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
 
 Build
 ---------------------
