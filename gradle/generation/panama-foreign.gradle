@@ -39,7 +39,19 @@ configure(project(":lucene:core")) {
       javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(jdkVersion)
       }
-
+      
+      onlyIf {
+        try {
+          javaLauncher.get()
+          return true
+        } catch (Exception e) {
+          logger.warn('Launcher for Java {} is not available; skipping regeneration of Panama Foreign API JAR.', jdkVersion)
+          logger.warn('Error: {}', e.cause?.message)
+          logger.warn("Please make sure to point env 'JAVA{}_HOME' to exactly JDK version {} or enable Gradle toolchain auto-download.", jdkVersion, jdkVersion)
+          return false
+        }
+      }
+      
       classpath = configurations.apiextractor
       mainClass = file("${resources}/ExtractForeignAPI.java") as String
       args = [
