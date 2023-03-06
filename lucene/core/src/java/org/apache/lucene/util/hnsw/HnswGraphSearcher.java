@@ -101,7 +101,12 @@ public class HnswGraphSearcher<T> {
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     NeighborQueue results;
-    int[] eps = new int[] {graph.entryNode()};
+
+    int initialEp = graph.entryNode();
+    if (initialEp == -1) {
+      return new NeighborQueue(1, true);
+    }
+    int[] eps = new int[] {initialEp};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);

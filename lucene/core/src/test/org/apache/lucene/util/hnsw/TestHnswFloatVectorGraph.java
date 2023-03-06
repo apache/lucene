@@ -80,6 +80,35 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
+  AbstractMockVectorValues<float[]> vectorValues(
+      int size,
+      int dimension,
+      AbstractMockVectorValues<float[]> pregeneratedVectorValues,
+      int pregeneratedOffset) {
+    float[][] vectors = new float[size][];
+    float[][] randomVectors =
+        createRandomFloatVectors(
+            size - pregeneratedVectorValues.values.length, dimension, random());
+
+    for (int i = 0; i < pregeneratedOffset; i++) {
+      vectors[i] = randomVectors[i];
+    }
+
+    int currentDoc;
+    while ((currentDoc = pregeneratedVectorValues.nextDoc()) != NO_MORE_DOCS) {
+      vectors[pregeneratedOffset + currentDoc] = pregeneratedVectorValues.values[currentDoc];
+    }
+
+    for (int i = pregeneratedOffset + pregeneratedVectorValues.values.length;
+        i < vectors.length;
+        i++) {
+      vectors[i] = randomVectors[i - pregeneratedVectorValues.values.length];
+    }
+
+    return MockVectorValues.fromValues(vectors);
+  }
+
+  @Override
   Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     return new KnnFloatVectorField(name, vector, similarityFunction);
   }

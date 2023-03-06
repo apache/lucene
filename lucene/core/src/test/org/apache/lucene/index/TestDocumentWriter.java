@@ -17,6 +17,9 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;
@@ -31,14 +34,17 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -65,10 +71,6 @@ public class TestDocumentWriter extends LuceneTestCase {
   public void tearDown() throws Exception {
     dir.close();
     super.tearDown();
-  }
-
-  public void test() {
-    assertTrue(dir != null);
   }
 
   public void testAddDocument() throws Exception {
@@ -384,5 +386,223 @@ public class TestDocumentWriter extends LuceneTestCase {
         field ->
             new KnnFloatVectorField(
                 field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
+  }
+
+  private static class MockIndexableField implements IndexableField {
+
+    private final String field;
+    private final BytesRef value;
+    private final IndexableFieldType fieldType;
+
+    MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType) {
+      this.field = field;
+      this.value = value;
+      this.fieldType = fieldType;
+    }
+
+    @Override
+    public String name() {
+      return field;
+    }
+
+    @Override
+    public IndexableFieldType fieldType() {
+      return fieldType;
+    }
+
+    @Override
+    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+      return null;
+    }
+
+    @Override
+    public BytesRef binaryValue() {
+      return value;
+    }
+
+    @Override
+    public String stringValue() {
+      return null;
+    }
+
+    @Override
+    public Reader readerValue() {
+      return null;
+    }
+
+    @Override
+    public Number numericValue() {
+      return null;
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.BINARY;
+    }
+  }
+
+  public void testIndexBinaryValueWithoutTokenStream() throws IOException {
+    List<FieldType> illegalFieldTypes = new ArrayList<>();
+    {
+      FieldType illegalFT = new FieldType();
+      // cannot index a tokenized binary field
+      illegalFT.setTokenized(true);
+      illegalFT.setIndexOptions(IndexOptions.DOCS);
+      illegalFT.freeze();
+      illegalFieldTypes.add(illegalFT);
+    }
+    {
+      FieldType illegalFT = new FieldType();
+      illegalFT.setTokenized(false);
+      // cannot index positions on a binary field
+      illegalFT.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+      illegalFT.freeze();
+      illegalFieldTypes.add(illegalFT);
+    }
+    {
+      FieldType illegalFT = new FieldType();
+      illegalFT.setTokenized(false);
+      illegalFT.setIndexOptions(IndexOptions.DOCS);
+      illegalFT.setStoreTermVectors(true);
+      // cannot index term vector positions
+      illegalFT.setStoreTermVectorPositions(true);
+      illegalFT.freeze();
+      illegalFieldTypes.add(illegalFT);
+    }
+    {
+      FieldType illegalFT = new FieldType();
+      illegalFT.setTokenized(false);
+      illegalFT.setIndexOptions(IndexOptions.DOCS);
+      illegalFT.setStoreTermVectors(true);
+      // cannot index term vector offsets
+      illegalFT.setStoreTermVectorOffsets(true);
+      illegalFT.freeze();
+      illegalFieldTypes.add(illegalFT);
+    }
+
+    for (FieldType ft : illegalFieldTypes) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setOpenMode(OpenMode.CREATE))) {
+        MockIndexableField field = new MockIndexableField("field", new BytesRef("a"), ft);
+        Document doc = new Document();
+        doc.add(field);
+        expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+      }
+    }
+
+    try (IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setOpenMode(OpenMode.CREATE))) {
+      // Field that has both a null token stream and a null binary value
+      MockIndexableField field = new MockIndexableField("field", null, StringField.TYPE_NOT_STORED);
+      Document doc = new Document();
+      doc.add(field);
+      expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+    }
+
+    List<FieldType> legalFieldTypes = new ArrayList<>();
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setOmitNorms(false);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(false);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setOmitNorms(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setStoreTermVectors(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setStoreTermVectors(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+
+    for (FieldType ft : legalFieldTypes) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setOpenMode(OpenMode.CREATE))) {
+        MockIndexableField field = new MockIndexableField("field", new BytesRef("a"), ft);
+        Document doc = new Document();
+        doc.add(field);
+        doc.add(field);
+        w.addDocument(doc);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+
+        {
+          Terms terms = leafReader.terms("field");
+          assertEquals(1, terms.getSumDocFreq());
+          if (ft.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+            assertEquals(2, terms.getSumTotalTermFreq());
+          } else {
+            assertEquals(1, terms.getSumTotalTermFreq());
+          }
+          TermsEnum termsEnum = terms.iterator();
+          assertTrue(termsEnum.seekExact(new BytesRef("a")));
+          PostingsEnum pe = termsEnum.postings(null, PostingsEnum.ALL);
+          assertEquals(0, pe.nextDoc());
+          if (ft.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+            assertEquals(2, pe.freq());
+          } else {
+            assertEquals(1, pe.freq());
+          }
+          assertEquals(-1, pe.nextPosition());
+          assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
+        }
+
+        if (ft.storeTermVectors()) {
+          Terms tvTerms = leafReader.termVectors().get(0).terms("field");
+          assertEquals(1, tvTerms.getSumDocFreq());
+          assertEquals(2, tvTerms.getSumTotalTermFreq());
+          TermsEnum tvTermsEnum = tvTerms.iterator();
+          assertTrue(tvTermsEnum.seekExact(new BytesRef("a")));
+          PostingsEnum pe = tvTermsEnum.postings(null, PostingsEnum.ALL);
+          assertEquals(0, pe.nextDoc());
+          assertEquals(2, pe.freq());
+          assertEquals(-1, pe.nextPosition());
+          assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
+        } else {
+          assertNull(leafReader.termVectors().get(0));
+        }
+      }
+    }
   }
 }

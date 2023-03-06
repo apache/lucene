@@ -135,7 +135,7 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
         new WildcardQuery(
             new Term(field, "fo*"),
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_REWRITE);
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     // be wary of unanalyzed text
     return new Query[] {
       new SpanFirstQuery(new SpanTermQuery(new Term(field, "ford")), 5),

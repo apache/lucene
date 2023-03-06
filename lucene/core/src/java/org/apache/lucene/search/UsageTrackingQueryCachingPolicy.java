@@ -47,6 +47,7 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
     // already have the DocIdSetIterator#cost API) but the cost to build the
     // DocIdSet in the first place
     return query instanceof MultiTermQuery
+        || query instanceof MultiTermQueryConstantScoreBlendedWrapper
         || query instanceof MultiTermQueryConstantScoreWrapper
         || query instanceof TermInSetQuery
         || isPointQuery(query);
