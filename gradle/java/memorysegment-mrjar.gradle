@@ -15,36 +15,19 @@
  * limitations under the License.
  */
 
-// Produce an MR-JAR with Java 19 MemorySegment implementation for MMapDirectory
+// Produce an MR-JAR with Java 19+ MemorySegment implementation for MMapDirectory
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
-    sourceSets {
-      main19 {
+    for (jdkVersion : panamaJavaVersions) {
+      sourceSets.create("main${jdkVersion}") {
         java {
-          srcDirs = ['src/java19']
+          srcDirs = ["src/java${jdkVersion}"]
         }
       }
-      main20 {
-        java {
-          srcDirs = ['src/java20']
-        }
-      }
-    }
+      configurations["main${jdkVersion}Implementation"].extendsFrom(configurations['implementation'])
+      dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
-    configurations {
-      // Inherit any dependencies from the main source set.
-      main19Implementation.extendsFrom implementation
-      main20Implementation.extendsFrom implementation
-    }
-    
-    dependencies {
-      // We need the main classes to compile our MR-JAR pieces.
-      main19Implementation sourceSets.main.output
-      main20Implementation sourceSets.main.output
-    }
-
-    for (jdkVersion : [ 19, 20 ]) {
       tasks.named("compileMain${jdkVersion}Java").configure {
         def apijar = new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar")
         
@@ -62,11 +45,10 @@ configure(project(":lucene:core")) {
     }
     
     tasks.named('jar').configure {
-      into('META-INF/versions/19') {
-        from sourceSets.main19.output
-      }
-      into('META-INF/versions/20') {
-        from sourceSets.main20.output
+      for (jdkVersion : panamaJavaVersions) {
+        into("META-INF/versions/${jdkVersion}") {
+          from sourceSets["main${jdkVersion}"].output
+        }
       }
 
       manifest.attributes(

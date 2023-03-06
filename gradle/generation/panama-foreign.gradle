@@ -20,6 +20,7 @@ def resources = scriptResources(buildscript)
 configure(project(":lucene:core")) {
   ext {
     apijars = file('src/generated/jdk');
+    panamaJavaVersions = [ 19, 20 ]
   }
   
   configurations {
@@ -30,7 +31,7 @@ configure(project(":lucene:core")) {
     apiextractor "org.ow2.asm:asm:${scriptDepVersions['asm']}"
   }
 
-  for (jdkVersion : [ 19, 20 ]) {
+  for (jdkVersion : panamaJavaVersions) {
     def task = tasks.create(name: "generatePanamaForeignApiJar${jdkVersion}", type: JavaExec) {
       description "Regenerate the API-only JAR file with public Panama Foreign API from JDK ${jdkVersion}"
       group "generation"
