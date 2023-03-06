@@ -116,6 +116,10 @@ public final class ExtractForeignAPI {
         super.visitInnerClass(name, outerName, innerName, access);
       }
     }
+    
+    @Override
+    public void visitPermittedSubclass​(String c) {
+    }
 
   }
   
