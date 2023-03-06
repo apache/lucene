@@ -17,9 +17,9 @@
 package org.apache.lucene.document;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
@@ -52,10 +52,10 @@ final class LongHashSet implements Accountable {
     int size = 0;
     long previousValue = Long.MIN_VALUE; // for assert
     for (long value : values) {
-      if (value == MISSING || add(value)) {
-        if (value == MISSING) {
-          hasMissingValue = true;
-        }
+      if (value == MISSING) {
+        size += hasMissingValue ? 0 : 1;
+        hasMissingValue = true;
+      } else if (add(value)) {
         ++size;
       }
       assert value >= previousValue : "values must be provided in sorted order";
@@ -101,6 +101,15 @@ final class LongHashSet implements Accountable {
     }
   }
 
+  /** returns a stream of all values contained in this set */
+  LongStream stream() {
+    LongStream stream = Arrays.stream(table).filter(v -> v != MISSING);
+    if (hasMissingValue) {
+      stream = LongStream.concat(LongStream.of(MISSING), stream);
+    }
+    return stream;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(size, minValue, maxValue, mask, hasMissingValue, Arrays.hashCode(table));
@@ -122,23 +131,7 @@ final class LongHashSet implements Accountable {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder("[");
-    boolean seenValue = false;
-    if (hasMissingValue) {
-      sb.append(MISSING);
-      seenValue = true;
-    }
-    for (long v : table) {
-      if (v != MISSING) {
-        if (seenValue) {
-          sb.append(", ");
-        }
-        sb.append(v);
-        seenValue = true;
-      }
-    }
-    sb.append("]");
-    return sb.toString();
+    return stream().mapToObj(String::valueOf).collect(Collectors.joining(", ", "[", "]"));
   }
 
   /** number of elements in the set */
@@ -149,19 +142,5 @@ final class LongHashSet implements Accountable {
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES + RamUsageEstimator.sizeOfObject(table);
-  }
-
-  // for testing only
-  Set<Long> toSet() {
-    Set<Long> set = new HashSet<>();
-    if (hasMissingValue) {
-      set.add(MISSING);
-    }
-    for (long v : table) {
-      if (v != MISSING) {
-        set.add(v);
-      }
-    }
-    return set;
   }
 }

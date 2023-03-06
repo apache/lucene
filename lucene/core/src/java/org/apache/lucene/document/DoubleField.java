@@ -65,7 +65,7 @@ public final class DoubleField extends Field {
    * @param name field name
    * @param value the double value
    * @throws IllegalArgumentException if the field name or value is null.
-   * @deprecated Use {@link #DoubleField(String, int, Field.Store)} with {@link Field.Store#NO}
+   * @deprecated Use {@link #DoubleField(String, double, Field.Store)} with {@link Field.Store#NO}
    *     instead.
    */
   @Deprecated

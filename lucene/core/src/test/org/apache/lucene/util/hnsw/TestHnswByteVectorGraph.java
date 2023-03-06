@@ -86,6 +86,34 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
+  AbstractMockVectorValues<byte[]> vectorValues(
+      int size,
+      int dimension,
+      AbstractMockVectorValues<byte[]> pregeneratedVectorValues,
+      int pregeneratedOffset) {
+    byte[][] vectors = new byte[size][];
+    byte[][] randomVectors =
+        createRandomByteVectors(size - pregeneratedVectorValues.values.length, dimension, random());
+
+    for (int i = 0; i < pregeneratedOffset; i++) {
+      vectors[i] = randomVectors[i];
+    }
+
+    int currentDoc;
+    while ((currentDoc = pregeneratedVectorValues.nextDoc()) != NO_MORE_DOCS) {
+      vectors[pregeneratedOffset + currentDoc] = pregeneratedVectorValues.values[currentDoc];
+    }
+
+    for (int i = pregeneratedOffset + pregeneratedVectorValues.values.length;
+        i < vectors.length;
+        i++) {
+      vectors[i] = randomVectors[i - pregeneratedVectorValues.values.length];
+    }
+
+    return MockByteVectorValues.fromValues(vectors);
+  }
+
+  @Override
   AbstractMockVectorValues<byte[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
     ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);

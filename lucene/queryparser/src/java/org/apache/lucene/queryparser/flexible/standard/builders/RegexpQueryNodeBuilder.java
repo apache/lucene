@@ -40,7 +40,7 @@ public class RegexpQueryNodeBuilder implements StandardQueryBuilder {
     MultiTermQuery.RewriteMethod method =
         (MultiTermQuery.RewriteMethod) queryNode.getTag(MultiTermRewriteMethodProcessor.TAG_ID);
     if (method == null) {
-      method = MultiTermQuery.CONSTANT_SCORE_REWRITE;
+      method = MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE;
     }
 
     // TODO: make the maxStates configurable w/ a reasonable default (QueryParserBase uses 10000)

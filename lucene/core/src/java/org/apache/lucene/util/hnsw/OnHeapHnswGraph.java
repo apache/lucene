@@ -20,10 +20,9 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.TreeMap;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -33,19 +32,20 @@ import org.apache.lucene.util.RamUsageEstimator;
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   private int numLevels; // the current number of levels in the graph
-  private int entryNode; // the current graph entry node on the top level
+  private int entryNode; // the current graph entry node on the top level. -1 if not set
 
-  // Nodes by level expressed as the level 0's nodes' ordinals.
-  // As level 0 contains all nodes, nodesByLevel.get(0) is null.
-  private final List<int[]> nodesByLevel;
-
-  // graph is a list of graph levels.
-  // Each level is represented as List<NeighborArray> – nodes' connections on this level.
+  // Level 0 is represented as List<NeighborArray> – nodes' connections on level 0.
   // Each entry in the list has the top maxConn/maxConn0 neighbors of a node. The nodes correspond
   // to vectors
   // added to HnswBuilder, and the node values are the ordinals of those vectors.
   // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
-  private final List<List<NeighborArray>> graph;
+  private final List<NeighborArray> graphLevel0;
+  // Represents levels 1-N. Each level is represented with a TreeMap that maps a levels level 0
+  // ordinal to its neighbors on that level. All nodes are in level 0, so we do not need to maintain
+  // it in this list. However, to avoid changing list indexing, we always will make the first
+  // element
+  // null.
+  private final List<TreeMap<Integer, NeighborArray>> graphUpperLevels;
   private final int nsize;
   private final int nsize0;
 
@@ -53,24 +53,17 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int M, int levelOfFirstNode) {
-    this.numLevels = levelOfFirstNode + 1;
-    this.graph = new ArrayList<>(numLevels);
-    this.entryNode = 0;
+  OnHeapHnswGraph(int M) {
+    this.numLevels = 1; // Implicitly start the graph with a single level
+    this.graphLevel0 = new ArrayList<>();
+    this.entryNode = -1; // Entry node should be negative until a node is added
     // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
     this.nsize = M + 1;
     this.nsize0 = (M * 2 + 1);
-    for (int l = 0; l < numLevels; l++) {
-      graph.add(new ArrayList<>());
-      graph.get(l).add(new NeighborArray(l == 0 ? nsize0 : nsize, true));
-    }
 
-    this.nodesByLevel = new ArrayList<>(numLevels);
-    nodesByLevel.add(null); // we don't need this for 0th level, as it contains all nodes
-    for (int l = 1; l < numLevels; l++) {
-      nodesByLevel.add(new int[] {0});
-    }
+    this.graphUpperLevels = new ArrayList<>(numLevels);
+    graphUpperLevels.add(null); // we don't need this for 0th level, as it contains all nodes
   }
 
   /**
@@ -81,49 +74,52 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   public NeighborArray getNeighbors(int level, int node) {
     if (level == 0) {
-      return graph.get(level).get(node);
+      return graphLevel0.get(node);
     }
-    int nodeIndex = Arrays.binarySearch(nodesByLevel.get(level), 0, graph.get(level).size(), node);
-    assert nodeIndex >= 0;
-    return graph.get(level).get(nodeIndex);
+    TreeMap<Integer, NeighborArray> levelMap = graphUpperLevels.get(level);
+    assert levelMap.containsKey(node);
+    return levelMap.get(node);
   }
 
   @Override
   public int size() {
-    return graph.get(0).size(); // all nodes are located on the 0th level
+    return graphLevel0.size(); // all nodes are located on the 0th level
   }
 
   /**
-   * Add node on the given level
+   * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
+   * preceded by the node inserted out of order are eventually added.
    *
    * @param level level to add a node on
    * @param node the node to add, represented as an ordinal on the level 0.
    */
   public void addNode(int level, int node) {
+    if (entryNode == -1) {
+      entryNode = node;
+    }
+
     if (level > 0) {
       // if the new node introduces a new level, add more levels to the graph,
       // and make this node the graph's new entry point
       if (level >= numLevels) {
         for (int i = numLevels; i <= level; i++) {
-          graph.add(new ArrayList<>());
-          nodesByLevel.add(new int[] {node});
+          graphUpperLevels.add(new TreeMap<>());
         }
         numLevels = level + 1;
         entryNode = node;
-      } else {
-        // Add this node id to this level's nodes
-        int[] nodes = nodesByLevel.get(level);
-        int idx = graph.get(level).size();
-        if (idx < nodes.length) {
-          nodes[idx] = node;
-        } else {
-          nodes = ArrayUtil.grow(nodes);
-          nodes[idx] = node;
-          nodesByLevel.set(level, nodes);
-        }
+      }
+
+      graphUpperLevels.get(level).put(node, new NeighborArray(nsize, true));
+    } else {
+      // Add nodes all the way up to and including "node" in the new graph on level 0. This will
+      // cause the size of the
+      // graph to differ from the number of nodes added to the graph. The size of the graph and the
+      // number of nodes
+      // added will only be in sync once all nodes from 0...last_node are added into the graph.
+      while (node >= graphLevel0.size()) {
+        graphLevel0.add(new NeighborArray(nsize0, true));
       }
     }
-    graph.get(level).add(new NeighborArray(level == 0 ? nsize0 : nsize, true));
   }
 
   @Override
@@ -164,9 +160,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public NodesIterator getNodesOnLevel(int level) {
     if (level == 0) {
-      return new NodesIterator(size());
+      return new ArrayNodesIterator(size());
     } else {
-      return new NodesIterator(nodesByLevel.get(level), graph.get(level).size());
+      return new CollectionNodesIterator(graphUpperLevels.get(level).keySet());
     }
   }
 
@@ -184,19 +180,26 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
             + Integer.BYTES * 2;
     long total = 0;
     for (int l = 0; l < numLevels; l++) {
-      int numNodesOnLevel = graph.get(l).size();
       if (l == 0) {
         total +=
-            numNodesOnLevel * neighborArrayBytes0
+            graphLevel0.size() * neighborArrayBytes0
                 + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
       } else {
+        long numNodesOnLevel = graphUpperLevels.get(l).size();
+
+        // For levels > 0, we represent the graph structure with a tree map.
+        // A single node in the tree contains 3 references (left root, right root, value) as well
+        // as an Integer for the key and 1 extra byte for the color of the node (this is actually 1
+        // bit, but
+        // because we do not have that granularity, we set to 1 byte). In addition, we include 1
+        // more reference for
+        // the tree map itself.
         total +=
-            nodesByLevel.get(l).length * Integer.BYTES
-                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for nodesByLevel
-        total +=
-            numNodesOnLevel * neighborArrayBytes
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
+            numNodesOnLevel * (3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES + 1)
+                + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+
+        // Add the size neighbor of each node
+        total += numNodesOnLevel * neighborArrayBytes;
       }
     }
     return total;

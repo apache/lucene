@@ -81,7 +81,7 @@ public class TestPrefixRandom extends LuceneTestCase {
     private final BytesRef prefix;
 
     DumbPrefixQuery(Term term) {
-      super(term.field(), CONSTANT_SCORE_REWRITE);
+      super(term.field(), CONSTANT_SCORE_BLENDED_REWRITE);
       prefix = term.bytes();
     }
 

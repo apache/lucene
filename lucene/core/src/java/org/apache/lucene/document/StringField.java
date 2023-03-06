@@ -45,6 +45,7 @@ public final class StringField extends Field {
     TYPE_STORED.freeze();
   }
 
+  private BytesRef binaryValue;
   private final StoredValue storedValue;
 
   /**
@@ -57,6 +58,7 @@ public final class StringField extends Field {
    */
   public StringField(String name, String value, Store stored) {
     super(name, value, stored == Store.YES ? TYPE_STORED : TYPE_NOT_STORED);
+    binaryValue = new BytesRef(value);
     if (stored == Store.YES) {
       storedValue = new StoredValue(value);
     } else {
@@ -76,6 +78,7 @@ public final class StringField extends Field {
    */
   public StringField(String name, BytesRef value, Store stored) {
     super(name, value, stored == Store.YES ? TYPE_STORED : TYPE_NOT_STORED);
+    binaryValue = value;
     if (stored == Store.YES) {
       storedValue = new StoredValue(value);
     } else {
@@ -84,8 +87,19 @@ public final class StringField extends Field {
   }
 
   @Override
+  public InvertableType invertableType() {
+    return InvertableType.BINARY;
+  }
+
+  @Override
+  public BytesRef binaryValue() {
+    return binaryValue;
+  }
+
+  @Override
   public void setStringValue(String value) {
     super.setStringValue(value);
+    binaryValue = new BytesRef(value);
     if (storedValue != null) {
       storedValue.setStringValue(value);
     }
@@ -94,6 +108,7 @@ public final class StringField extends Field {
   @Override
   public void setBytesValue(BytesRef value) {
     super.setBytesValue(value);
+    binaryValue = value;
     if (storedValue != null) {
       storedValue.setBinaryValue(value);
     }

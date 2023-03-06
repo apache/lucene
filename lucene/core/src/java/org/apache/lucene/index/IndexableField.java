@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.Reader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.util.BytesRef;
 
@@ -75,4 +76,10 @@ public interface IndexableField {
    * if the field stored.
    */
   public StoredValue storedValue();
+
+  /**
+   * Describes how this field should be inverted. This must return a non-null value if the field
+   * indexes terms and postings.
+   */
+  public InvertableType invertableType();
 }
