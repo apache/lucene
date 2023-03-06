@@ -23,11 +23,11 @@ configure(project(":lucene:core")) {
   }
   
   configurations {
-    asm
+    apiextractor
   }
 
   dependencies {
-    asm "org.ow2.asm:asm:${scriptDepVersions['asm']}"
+    apiextractor "org.ow2.asm:asm:${scriptDepVersions['asm']}"
   }
 
   for (jdkVersion : [ 19, 20 ]) {
@@ -39,7 +39,7 @@ configure(project(":lucene:core")) {
         languageVersion = JavaLanguageVersion.of(jdkVersion)
       }
 
-      classpath = configurations.asm
+      classpath = configurations.apiextractor
       mainClass = file("${resources}/ExtractForeignAPI.java") as String
       args = [
         new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar"),
