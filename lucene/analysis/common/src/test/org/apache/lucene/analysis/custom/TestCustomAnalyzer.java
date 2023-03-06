@@ -266,7 +266,13 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         CustomAnalyzer.builder(this.getDataPath(""))
             .withTokenizer("whitespace")
             .addTokenFilter(
-                "stop", "ignoreCase", "true", "words", "teststop.txt", "format", "wordset")
+                "stop",
+                "ignoreCase",
+                "true",
+                "words",
+                this.getDataPath("teststop.txt").toString(),
+                "format",
+                "wordset")
             .build();
     assertAnalyzesTo(a, "foo Foo Bar", new String[0]);
     a.close();
