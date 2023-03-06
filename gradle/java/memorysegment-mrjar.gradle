@@ -46,7 +46,7 @@ configure(project(":lucene:core")) {
 
     for (jdkVersion : [ 19, 20 ]) {
       tasks.named("compileMain${jdkVersion}Java").configure {
-        def apijar = file("src/generated/jdk/panama-foreign-jdk${jdkVersion}.apijar")
+        def apijar = new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar")
         
         inputs.file(apijar)
         

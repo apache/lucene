@@ -18,6 +18,10 @@
 def resources = scriptResources(buildscript)
 
 configure(project(":lucene:core")) {
+  ext {
+    apijars = file('src/generated/jdk');
+  }
+  
   configurations {
     asm
   }
@@ -38,7 +42,7 @@ configure(project(":lucene:core")) {
       classpath = configurations.asm
       mainClass = file("${resources}/ExtractForeignAPI.java") as String
       args = [
-        file("src/generated/jdk/panama-foreign-jdk${jdkVersion}.apijar"),
+        new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar"),
       ]
     }
 
