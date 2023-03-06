@@ -174,7 +174,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   public void testDocAndScoreQueryBasics() throws IOException {
     try (Directory directory = newDirectory()) {
-      final DirectoryReader reader;
+      final DirectoryReader directoryReader;
       try (RandomIndexWriter iw = new RandomIndexWriter(random(), directory)) {
         for (int i = 0; i < 50; i++) {
           Document doc = new Document();
@@ -184,10 +184,12 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             iw.flush();
           }
         }
-        reader = iw.getReader();
+        directoryReader = iw.getReader();
       }
-      try (reader) {
-        IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+
+      try (directoryReader) {
+        IndexSearcher searcher = LuceneTestCase.newSearcher(directoryReader);
+        IndexReader reader = searcher.getIndexReader();
         List<ScoreDoc> scoreDocsList = new ArrayList<>();
         for (int doc = 0; doc < 30; doc += 1 + random().nextInt(5)) {
           scoreDocsList.add(new ScoreDoc(doc, randomFloat()));
