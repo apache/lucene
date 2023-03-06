@@ -38,12 +38,8 @@ configure(project(":lucene:core")) {
       classpath = configurations.asm
       mainClass = file("${resources}/ExtractForeignAPI.java") as String
       args = [
-        file("lib/panama-foreign-jdk${jdkVersion}.apijar"),
+        file("src/generated/jdk/panama-foreign-jdk${jdkVersion}.apijar"),
       ]
-      
-      doFirst {
-        mkdir 'lib'
-      }
     }
 
     regenerate.dependsOn task
