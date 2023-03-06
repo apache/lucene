@@ -46,6 +46,10 @@ public class KnnFloatVectorField extends Field {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
+    return createType(dimension, similarityFunction);
+  }
+
+  private static FieldType createType(int dimension, VectorSimilarityFunction similarityFunction) {
     if (dimension > FloatVectorValues.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + FloatVectorValues.MAX_DIMENSIONS);
@@ -68,10 +72,7 @@ public class KnnFloatVectorField extends Field {
    */
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction) {
-    FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
-    type.freeze();
-    return type;
+    return createType(dimension, similarityFunction);
   }
 
   /**
@@ -136,6 +137,10 @@ public class KnnFloatVectorField extends Field {
               + name
               + " using float[] but the field encoding is "
               + fieldType.vectorEncoding());
+    }
+    if (fieldType.vectorDimension() > FloatVectorValues.MAX_DIMENSIONS) {
+      throw new IllegalArgumentException(
+          "cannot index vectors with dimension greater than " + FloatVectorValues.MAX_DIMENSIONS);
     }
     fieldsData = vector;
   }

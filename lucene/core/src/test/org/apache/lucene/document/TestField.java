@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import org.apache.lucene.codecs.Codec;
@@ -687,6 +688,55 @@ public class TestField extends LuceneTestCase {
     r.close();
     w.close();
     dir.close();
+  }
+
+  public void testKnnVectorFieldLimits() {
+    if (Codec.getDefault().getName().equals("SimpleText")) {
+      return;
+    }
+    new KnnFloatVectorField(
+        RandomizedTest.randomAsciiLettersOfLength(10), new float[FloatVectorValues.MAX_DIMENSIONS]);
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new KnnFloatVectorField(
+                "bogus",
+                new float
+                    [FloatVectorValues.MAX_DIMENSIONS
+                        + 1
+                        + random().nextInt(FloatVectorValues.MAX_DIMENSIONS)]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new KnnFloatVectorField(
+                "bogus",
+                new float
+                    [FloatVectorValues.MAX_DIMENSIONS
+                        + 1
+                        + random().nextInt(FloatVectorValues.MAX_DIMENSIONS)],
+                RandomizedTest.randomFrom(VectorSimilarityFunction.values())));
+    // Should not throw
+    new KnnByteVectorField(
+        RandomizedTest.randomAsciiLettersOfLength(10), new byte[ByteVectorValues.MAX_DIMENSIONS]);
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new KnnByteVectorField(
+                "bogus",
+                new byte
+                    [ByteVectorValues.MAX_DIMENSIONS
+                        + 1
+                        + random().nextInt(ByteVectorValues.MAX_DIMENSIONS)]));
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new KnnByteVectorField(
+                "bogus",
+                new byte
+                    [ByteVectorValues.MAX_DIMENSIONS
+                        + 1
+                        + random().nextInt(ByteVectorValues.MAX_DIMENSIONS)],
+                RandomizedTest.randomFrom(VectorSimilarityFunction.values())));
   }
 
   public void testKnnVectorField() throws Exception {

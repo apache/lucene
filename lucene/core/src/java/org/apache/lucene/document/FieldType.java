@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
@@ -377,13 +376,6 @@ public class FieldType implements IndexableFieldType {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
-    }
-    if (numDimensions > FloatVectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "vector numDimensions must be <= FloatVectorValues.MAX_DIMENSIONS (="
-              + FloatVectorValues.MAX_DIMENSIONS
-              + "); got "
-              + numDimensions);
     }
     this.vectorDimension = numDimensions;
     this.vectorSimilarityFunction = Objects.requireNonNull(similarity);

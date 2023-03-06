@@ -45,6 +45,10 @@ public class KnnByteVectorField extends Field {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
+    return createType(dimension, similarityFunction);
+  }
+
+  private static FieldType createType(int dimension, VectorSimilarityFunction similarityFunction) {
     if (dimension > ByteVectorValues.MAX_DIMENSIONS) {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + ByteVectorValues.MAX_DIMENSIONS);
@@ -79,10 +83,7 @@ public class KnnByteVectorField extends Field {
    */
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction) {
-    FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.BYTE, similarityFunction);
-    type.freeze();
-    return type;
+    return createType(dimension, similarityFunction);
   }
 
   /**
@@ -135,6 +136,10 @@ public class KnnByteVectorField extends Field {
               + name
               + " using byte[] but the field encoding is "
               + fieldType.vectorEncoding());
+    }
+    if (fieldType.vectorDimension() > ByteVectorValues.MAX_DIMENSIONS) {
+      throw new IllegalArgumentException(
+          "cannot index vectors with dimension greater than " + ByteVectorValues.MAX_DIMENSIONS);
     }
     fieldsData = vector;
   }

@@ -29,7 +29,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 public abstract class ByteVectorValues extends DocIdSetIterator {
 
   /** The maximum length of a vector */
-  public static final int MAX_DIMENSIONS = 1024;
+  public static final int MAX_DIMENSIONS = 2048;
 
   /** Sole constructor */
   protected ByteVectorValues() {}
