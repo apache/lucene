@@ -399,7 +399,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
       }
-      actual = facetCounts.getTopChildrenSortByCount(topN);
+      actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
           "all docs, sort facets by count",
           expectedCounts,
@@ -488,7 +488,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       } else {
         topN = random().nextInt(docCount);
       }
-      actual = facetCounts.getTopChildrenSortByCount(topN);
+      actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
           "id " + minId + "-" + maxId + ", sort facets by count",
           expectedCounts,
@@ -662,7 +662,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
       }
-      actual = facetCounts.getTopChildrenSortByCount(topN);
+      actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
           "all docs, sort facets by count",
           expectedCounts,
@@ -729,7 +729,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       } else {
         topN = random().nextInt(docCount);
       }
-      actual = facetCounts.getTopChildrenSortByCount(topN);
+      actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
           "id " + minId + "-" + maxId + ", sort facets by count",
           expectedCounts,
