@@ -167,18 +167,18 @@ allprojects {
 
         // Enable security manager, if requested. We could move the selection of security manager and security policy
         // to each project's build/ configuration but it seems compact enough to keep it here for now.
+        def securityArgumentProvider = new SecurityArgumentProvider(commonDir: project(":lucene").layout.projectDirectory)
         if (Boolean.parseBoolean(testOptionsResolved["tests.useSecurityManager"])) {
           if (project.path.endsWith(".tests")) {
             // LUCENE-10301: for now, do not use the security manager for modular tests (test framework is not available).
           } else if (project.path == ":lucene:replicator") {
             systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/replicator-tests.policy")
+            securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/replicator-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
             systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
+            securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/tests.policy")
           }
-
-          systemProperty 'common.dir', commonDir
+          jvmArgumentProviders.add(securityArgumentProvider)
 
           def gradleUserHome = project.gradle.getGradleUserHomeDir()
           systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
@@ -225,5 +225,24 @@ allprojects {
         }
       }
     }
+  }
+}
+
+class SecurityArgumentProvider implements CommandLineArgumentProvider {
+  @Internal
+  Directory commonDir
+
+  @InputFile
+  @Optional
+  @PathSensitive(PathSensitivity.RELATIVE)
+  RegularFile javaSecurityPolicy
+
+  @Override
+  Iterable<String> asArguments() {
+    def args = ["-Dcommon.dir=${commonDir.getAsFile()}"]
+    if (javaSecurityPolicy) {
+      args.add("-Djava.security.policy=${javaSecurityPolicy.getAsFile()}")
+    }
+    return args
   }
 }
