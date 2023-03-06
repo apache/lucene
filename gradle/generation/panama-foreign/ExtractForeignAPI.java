@@ -40,10 +40,13 @@ public final class ExtractForeignAPI {
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
   public static void main(String... args) throws IOException {
-    if (args.length != 1) {
-      throw new IllegalArgumentException("Need one parameter with output file.");
+    if (args.length != 2) {
+      throw new IllegalArgumentException("Need two parameters: java version, output file");
     }
-    var outputPath = Paths.get(args[0]);
+    if (Integer.parseInt(args[0]) != Runtime.version().feature()) {
+      throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
+    }
+    var outputPath = Paths.get(args[1]);
     var javaBaseModule = Paths.get(URI.create("jrt:/")).resolve("java.base").toRealPath();
     var fileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel}.class");
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath)); var stream = Files.walk(javaBaseModule)) {
