@@ -15,12 +15,12 @@
     limitations under the License.
  -->
 
-# Generated JDK signatures files
+# Generated Java API signatures files
 
 This directory contains generated `.apijar` files. Those are special JAR files containing
 class files that only have public signatures of certain packages of the Java class
 library, but no bytecode at all. Those files are only used to compile the MR-JAR of Apache
-Lucene while allowing to linking against APIs only provided as preview APIs in future
+Lucene while allowing to link against APIs only provided as preview APIs in future
 JDK versions.
 
 `.apijar` files are provided for developer's convenience in the Lucene source tree.
@@ -32,10 +32,12 @@ class library. They contain **no** program code.
 This allows Lucene developers to compile the code without downloading a copy of all
 supported JDK versions (Java 19, Java 20,...).
 
-To regenerate those file call `gradlew :lucene:core:regenerate`. While doing this
+To regenerate those files call `gradlew :lucene:core:regenerate`. While doing this
 you need to either have
 [Gradle toolchain auto-provisioning](https://docs.gradle.org/current/userguide/toolchains.html#sec:provisioning)
 enabled (this is the default for Lucene) or use environment variables like `JAVA19_HOME`
 to point the Lucene build system to missing JDK versions. The regeneration task prints
 a warning if a specific JDK is missing, leaving the already existing `.apijar` file
 untouched.
+
+The extraction is done with the ASM library, see `ExtractForeignAPI.java` source code.
