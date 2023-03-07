@@ -69,17 +69,20 @@ public final class ExtractForeignAPI {
     private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
     private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
     
+    private boolean completelyHidden = false;
+    
     Cleaner(ClassWriter out) {
       super(Opcodes.ASM9, out);
     }
     
-    private static boolean isHidden(int access) {
-      return (access & (Opcodes.ACC_PROTECTED | Opcodes.ACC_PUBLIC)) == 0;
+    private boolean isHidden(int access) {
+      return completelyHidden || (access & (Opcodes.ACC_PROTECTED | Opcodes.ACC_PUBLIC)) == 0;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
+      completelyHidden = isHidden(access);
     }
 
     @Override
