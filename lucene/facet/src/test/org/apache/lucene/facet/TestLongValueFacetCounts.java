@@ -17,6 +17,7 @@
 
 package org.apache.lucene.facet;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -394,7 +395,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = random().nextInt(docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -486,7 +487,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = random().nextInt(docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
       }
       actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
@@ -657,7 +658,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = random().nextInt(docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -727,7 +728,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = random().nextInt(docCount);
+        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
       }
       actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
