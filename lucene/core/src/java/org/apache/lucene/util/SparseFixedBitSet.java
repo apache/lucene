@@ -349,6 +349,61 @@ public class SparseFixedBitSet extends BitSet {
     return (i64 << 6) | Long.numberOfTrailingZeros(bits);
   }
 
+  @Override
+  public int nextClearBit(int i) {
+    assert i < length;
+    // block id
+    final int i4096 = i >>> 12;
+    // index presented by a long, 64 bits representing 64 longs in this block
+    final long index = indices[i4096];
+    // which long in this block should i sit
+    int i64 = i >>> 6;
+
+    // the bitArray only includes long that has at least 1 bit set
+    // (1L << i64) - 1 to create a bit mask to get the index into bit array
+    int o = Long.bitCount(index & ((1L << i64) - 1));
+
+    // long array holding values of 64 longs in this block
+    long[] bitArray = bits[i4096];
+
+    if ((index & (1L << i64)) != 0) {
+      // There is at least one bit that is set in the current long, check if
+      // after i
+
+      final long bitsLeft = bitArray[o] >>> i; // shifts are mod 64
+
+      if (bitsLeft == 0) {
+        // no bit set for the rest of this long
+        return i;
+      }
+
+      int n = Long.numberOfTrailingZeros(~bitsLeft);
+
+      if (n + i % Long.SIZE < Long.SIZE - Long.numberOfLeadingZeros(bitArray[o])) {
+        return i + n;
+      } else {
+        o++;
+        // loop through indices
+        for (int blockId = i4096; blockId < indices.length; blockId++) {
+          bitArray = bits[blockId];
+          for (; o < Long.SIZE; o++) {
+            long bits = bitArray[o];
+
+            if (Long.bitCount(bits) != Long.SIZE) { // there are 0s in this long
+              return blockId << 12 | o << 6 | Long.numberOfTrailingZeros(~bits);
+            }
+          }
+          o = 0;
+        }
+
+        return DocIdSetIterator.NO_MORE_DOCS;
+      }
+    } else {
+      // The long where i sits is 0, returns i
+      return i;
+    }
+  }
+
   /** Return the last document that occurs on or before the provided block index. */
   private int lastDoc(int i4096) {
     long index;

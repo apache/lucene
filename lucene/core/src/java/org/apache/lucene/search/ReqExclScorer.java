@@ -142,15 +142,43 @@ class ReqExclScorer extends Scorer {
     final float matchCost =
         matchCost(reqApproximation, reqTwoPhaseIterator, exclApproximation, exclTwoPhaseIterator);
 
+    final DocIdSetIterator skippingReqApproximation =
+        new DocIdSetIterator() {
+          @Override
+          public int docID() {
+            return reqApproximation.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            int exclNonMatchingDoc = exclApproximation.peekNextNonMatchingDocID();
+            if (exclApproximation.docID() < docID() && docID() < exclNonMatchingDoc) {
+              return reqApproximation.advance(exclNonMatchingDoc);
+            } else {
+              return reqApproximation.nextDoc();
+            }
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            return reqApproximation.advance(target);
+          }
+
+          @Override
+          public long cost() {
+            return reqApproximation.cost();
+          }
+        };
+
     if (reqTwoPhaseIterator == null
         || (exclTwoPhaseIterator != null
             && reqTwoPhaseIterator.matchCost() <= exclTwoPhaseIterator.matchCost())) {
       // reqTwoPhaseIterator is LESS costly than exclTwoPhaseIterator, check it first
-      return new TwoPhaseIterator(reqApproximation) {
+      return new TwoPhaseIterator(skippingReqApproximation) {
 
         @Override
         public boolean matches() throws IOException {
-          final int doc = reqApproximation.docID();
+          final int doc = skippingReqApproximation.docID();
           // check if the doc is not excluded
           int exclDoc = exclApproximation.docID();
           if (exclDoc < doc) {
@@ -169,11 +197,11 @@ class ReqExclScorer extends Scorer {
       };
     } else {
       // reqTwoPhaseIterator is MORE costly than exclTwoPhaseIterator, check it last
-      return new TwoPhaseIterator(reqApproximation) {
+      return new TwoPhaseIterator(skippingReqApproximation) {
 
         @Override
         public boolean matches() throws IOException {
-          final int doc = reqApproximation.docID();
+          final int doc = skippingReqApproximation.docID();
           // check if the doc is not excluded
           int exclDoc = exclApproximation.docID();
           if (exclDoc < doc) {

@@ -39,6 +39,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -329,6 +330,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     private int blockUpto; // number of docs in or before the current block
     private int doc; // doc we last read
     private long accum; // accumulator for doc deltas
+    private int lastNonMatchingDoc;
 
     // Where this term's postings start in the .doc file:
     private long docTermStartFP;
@@ -477,6 +479,31 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       assert docBuffer[BLOCK_SIZE] == NO_MORE_DOCS;
+    }
+
+    @Override
+    public int peekNextNonMatchingDocID() throws IOException {
+      // exercised by src/python/example.py -source wikimedium10m via not queries
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        return lastNonMatchingDoc = DocIdSetIterator.NO_MORE_DOCS;
+      }
+      if (doc < lastNonMatchingDoc) {
+        return lastNonMatchingDoc;
+      }
+
+      if (docBufferUpto == 0 || docBufferUpto == BLOCK_SIZE || docBuffer[docBufferUpto] - doc > 1) {
+        // when at boundary, don't load buffer and only provide best-guess
+        return lastNonMatchingDoc = doc + 1;
+      }
+
+      for (int i = docBufferUpto; i < BLOCK_SIZE; i++) {
+        if (docBuffer[i] - docBuffer[i - 1] > 1) { // consecutive matching docs
+          return lastNonMatchingDoc = (int) docBuffer[i - 1] + 1;
+        }
+      }
+
+      // entire block contains consecutive matching docs, provide last doc + 1 as best-guess
+      return lastNonMatchingDoc = (int) docBuffer[BLOCK_SIZE - 1] + 1;
     }
 
     @Override
