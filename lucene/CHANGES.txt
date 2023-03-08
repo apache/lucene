@@ -63,6 +63,8 @@ Bug Fixes
 
 * GITHUB#12158: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
 
+* GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
+
 Build
 ---------------------
 
