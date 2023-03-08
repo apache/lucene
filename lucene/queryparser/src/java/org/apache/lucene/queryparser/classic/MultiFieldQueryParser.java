@@ -124,10 +124,10 @@ public class MultiFieldQueryParser extends QueryParser {
       if (slop != mpq.getSlop()) {
         q = new MultiPhraseQuery.Builder(mpq).setSlop(slop).build();
       }
-    } else if (q instanceof BoostQuery boostQuery) {
-      Query subQuery = boostQuery.getQuery();
+    } else if (q instanceof BoostQuery) {
+      Query subQuery = ((BoostQuery) q).getQuery();
       subQuery = applySlop(subQuery, slop);
-      q = new BoostQuery(subQuery, boostQuery.getBoost());
+      q = new BoostQuery(subQuery, ((BoostQuery) q).getBoost());
     }
     return q;
   }
