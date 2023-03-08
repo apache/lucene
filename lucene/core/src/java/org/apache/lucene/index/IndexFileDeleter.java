@@ -151,7 +151,7 @@ final class IndexFileDeleter implements Closeable {
                 || fileName.startsWith(IndexFileNames.PENDING_SEGMENTS))) {
 
           // Add this file to refCounts with initial count 0:
-          fileDeleter.getRefCount(fileName);
+          fileDeleter.initRefCount(fileName);
 
           if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
 

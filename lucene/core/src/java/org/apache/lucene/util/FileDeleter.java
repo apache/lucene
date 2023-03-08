@@ -33,8 +33,10 @@ import org.apache.lucene.store.Directory;
  * when their counts decreased to 0.
  *
  * <p>This class is NOT thread-safe, the user should make sure the thread-safety themselves
+ *
+ * @lucene.internal
  */
-public class FileDeleter {
+public final class FileDeleter {
 
   private final Map<String, RefCount> refCounts = new HashMap<>();
 
@@ -45,6 +47,11 @@ public class FileDeleter {
    * second argument will be the actual message
    */
   private final BiConsumer<MsgType, String> messenger;
+
+  /*
+   * used to return 0 ref count
+   */
+  private static final RefCount ZERO_REF = new RefCount("");
 
   /**
    * Create a new FileDeleter with a messenger consumes various verbose messages
@@ -126,12 +133,16 @@ public class FileDeleter {
     return refCounts.computeIfAbsent(fileName, RefCount::new);
   }
 
+  /** if the file is not yet recorded, this method will create a new RefCount object with count 0 */
+  public void initRefCount(String fileName) {
+    refCounts.computeIfAbsent(fileName, RefCount::new);
+  }
+
   /**
-   * get ref count for a provided file, if the file is not yet recorded, this method will create a
-   * new RefCount object with count 0
+   * get ref count for a provided file, if the file is not yet recorded, this method will return 0
    */
   public int getRefCount(String fileName) {
-    return refCounts.computeIfAbsent(fileName, RefCount::new).count;
+    return refCounts.getOrDefault(fileName, ZERO_REF).count;
   }
 
   /** get all files, some of them may have ref count 0 */

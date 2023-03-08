@@ -64,7 +64,7 @@ class ReplicaFileDeleter {
     */
   }
 
-  public synchronized Integer getRefCount(String fileName) {
+  public synchronized int getRefCount(String fileName) {
     return fileDeleter.getRefCount(fileName);
   }
 
