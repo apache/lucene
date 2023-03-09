@@ -50,7 +50,7 @@ public abstract class Query {
       new VirtualMethod<>(Query.class, "rewrite", IndexReader.class);
   static final VirtualMethod<Query> newMethod =
       new VirtualMethod<>(Query.class, "rewrite", IndexSearcher.class);
-  final boolean isDeprecatedMethodOverridden =
+  final boolean isDeprecatedRewriteMethodOverridden =
       VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) > 0;
 
   /**
