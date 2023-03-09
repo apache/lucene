@@ -117,6 +117,8 @@ API Changes
 * GITHUB#12173: TermInSetQuery#getTermData has been deprecated. This exposes internal implementation details that we
   may want to change in the future, and users shouldn't rely on the encoding directly. (Greg Miller)
 
+* GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
+
 New Features
 ---------------------
 
@@ -153,10 +155,14 @@ Optimizations
 
 * GITHUB#12139: Faster indexing of string fields. (Adrien Grand)
 
+* GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
+
 Bug Fixes
 ---------------------
 
 * GITHUB#12158: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
+
+* GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
 
 Build
 ---------------------

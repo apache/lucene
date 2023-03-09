@@ -42,8 +42,9 @@ import org.apache.lucene.util.PriorityQueue;
  * {@link Facets} implementation that computes counts for all unique long values, more efficiently
  * counting small values (0-1023) using an int array, and switching to a <code>HashMap</code> for
  * values above 1023. Retrieve all facet counts, in value order, with {@link
- * #getAllChildrenSortByValue}, or get the topN values sorted by count with {@link
- * #getTopChildrenSortByCount}.
+ * #getAllChildrenSortByValue}, or get all children with no ordering requirements with {@link
+ * #getAllChildren(String, String...)}, or get the topN values sorted by count with {@link
+ * #getTopChildren(int, String, String...)}.
  *
  * @lucene.experimental
  */
@@ -376,17 +377,7 @@ public class LongValueFacetCounts extends Facets {
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
     validateDimAndPathForGetChildren(dim, path);
-    return getTopChildrenSortByCount(topN);
-  }
 
-  /** Reusable hash entry to hold long facet value and int count. */
-  private static class Entry {
-    int count;
-    long value;
-  }
-
-  /** Returns the specified top number of facets, sorted by count. */
-  public FacetResult getTopChildrenSortByCount(int topN) {
     PriorityQueue<Entry> pq =
         new PriorityQueue<>(Math.min(topN, counts.length + hashCounts.size())) {
           @Override
@@ -434,7 +425,20 @@ public class LongValueFacetCounts extends Facets {
     return new FacetResult(field, new String[0], totCount, results, childCount);
   }
 
-  /** Returns all unique values seen, sorted by value. */
+  /** Reusable hash entry to hold long facet value and int count. */
+  private static class Entry {
+    int count;
+    long value;
+  }
+
+  /**
+   * Returns all unique values seen, sorted by value. This functionality is very similar to {@link
+   * #getAllChildren(String, String...)}, but it guarantees the returned values will be sorted by
+   * value (while {@code #getAllChildren} doesn't guarantee any sort order).
+   *
+   * <p>Note: If you don't care about the order of children returned, it may be slightly more
+   * efficient to use {@link #getAllChildren(String, String...)}.
+   */
   public FacetResult getAllChildrenSortByValue() {
     List<LabelAndValue> labelValues = new ArrayList<>();
 
