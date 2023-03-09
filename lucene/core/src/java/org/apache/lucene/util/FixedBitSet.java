@@ -305,11 +305,12 @@ public final class FixedBitSet extends BitSet {
 
     while (++wordIndex < numWords) {
       word = bits[wordIndex];
-      if (Long.bitCount(word) != Long.SIZE) { // there are 0s in this word
+      if (word != -1L) { // there are 0s in this word
         return (wordIndex << 6) + Long.numberOfTrailingZeros(~word);
       }
     }
 
+    // TODO to be fixed
     return DocIdSetIterator.NO_MORE_DOCS;
   }
 

@@ -389,13 +389,14 @@ public class SparseFixedBitSet extends BitSet {
           for (; o < Long.SIZE; o++) {
             long bits = bitArray[o];
 
-            if (Long.bitCount(bits) != Long.SIZE) { // there are 0s in this long
+            if (bits != -1) { // there are 0s in this long
               return blockId << 12 | o << 6 | Long.numberOfTrailingZeros(~bits);
             }
           }
           o = 0;
         }
 
+        // TODO to be fixed
         return DocIdSetIterator.NO_MORE_DOCS;
       }
     } else {

@@ -84,7 +84,7 @@ public abstract class DocIdSetIterator {
 
       @Override
       public int peekNextNonMatchingDocID() {
-        return NO_MORE_DOCS;
+        return maxDoc;
       }
 
       @Override

@@ -151,17 +151,20 @@ class ReqExclScorer extends Scorer {
 
           @Override
           public int nextDoc() throws IOException {
-            int exclNonMatchingDoc = exclApproximation.peekNextNonMatchingDocID();
-            if (exclApproximation.docID() < docID() && docID() < exclNonMatchingDoc) {
-              return reqApproximation.advance(exclNonMatchingDoc);
-            } else {
-              return reqApproximation.nextDoc();
-            }
+            return advance(docID() + 1);
           }
 
           @Override
           public int advance(int target) throws IOException {
-            return reqApproximation.advance(target);
+            int exclNonMatchingDoc = exclApproximation.peekNextNonMatchingDocID();
+            // TODO exclNonMatchingDoc != NO_MORE_DOCS to be removed
+            if (exclApproximation.docID() < target
+                && target < exclNonMatchingDoc
+                && exclNonMatchingDoc != NO_MORE_DOCS) {
+              return reqApproximation.advance(exclNonMatchingDoc);
+            } else {
+              return reqApproximation.advance(target);
+            }
           }
 
           @Override

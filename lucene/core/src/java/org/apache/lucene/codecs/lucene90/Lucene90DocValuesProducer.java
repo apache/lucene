@@ -420,7 +420,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public int peekNextNonMatchingDocID() {
       // TODO not exercised by wikimedium10m benchmark
       // all docs contain values
-      return NO_MORE_DOCS;
+      return maxDoc;
     }
 
     @Override

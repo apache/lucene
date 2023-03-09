@@ -463,7 +463,7 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   @Override
   public int peekNextNonMatchingDocID() throws IOException {
-    if (doc + 1 <= lastNonMatchingDoc) {
+    if (doc < lastNonMatchingDoc) {
       return lastNonMatchingDoc;
     }
     /*
@@ -477,11 +477,11 @@ public final class IndexedDISI extends DocIdSetIterator {
     }
 
     if (block == targetBlock) {
-      return method.peekNextNonMatchingDocWithinBlock(this);
+      return lastNonMatchingDoc = method.peekNextNonMatchingDocWithinBlock(this);
     }
 
     // return base doc of next block as best guess
-    return block + BLOCK_SIZE;
+    return lastNonMatchingDoc = block + BLOCK_SIZE;
   }
 
   public boolean advanceExact(int target) throws IOException {
@@ -722,7 +722,7 @@ public final class IndexedDISI extends DocIdSetIterator {
         while (++index < DENSE_BLOCK_LONGS) {
           currWord = disi.slice.readLong();
 
-          if (Long.bitCount(currWord) == Long.SIZE) {
+          if (currWord == -1) { // all 1s
             continue;
           } else {
             int cumulativeOffSet = index << DENSE_BLOCK_WORD_INDEX_CONVERSION_SHIFT;

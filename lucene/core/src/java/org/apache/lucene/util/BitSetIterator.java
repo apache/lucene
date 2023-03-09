@@ -97,7 +97,7 @@ public class BitSetIterator extends DocIdSetIterator {
   public int peekNextNonMatchingDocID() {
     // TODO not exercised by wikimedium10m benchmark
     if (doc == NO_MORE_DOCS || doc + 1 >= length) {
-      return nextNonMatchingDoc = NO_MORE_DOCS;
+      return nextNonMatchingDoc = length;
     }
 
     if (doc < nextNonMatchingDoc) {
