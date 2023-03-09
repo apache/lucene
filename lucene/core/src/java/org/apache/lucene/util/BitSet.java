@@ -83,8 +83,8 @@ public abstract class BitSet implements Bits, Accountable {
   public abstract int nextSetBit(int index);
 
   /**
-   * Returns the index of the first clear bit starting at the index specified.
-   * Max doc represented by this bitset is returned if there are no more clear bits.
+   * Returns the index of the first clear bit starting at the index specified. Max doc represented
+   * by this bitset is returned if there are no more clear bits.
    */
   public abstract int nextClearBit(int index);
 
