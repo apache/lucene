@@ -183,7 +183,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             });
   }
 
-  /** Checks that Lucene Core is a MR-JAR and has JDK 19/20 classes */
+  /** Checks that Lucene Core is a MR-JAR and has Panama foreign classes */
   @Test
   public void testMultiReleaseJar() {
     ModuleLayer bootLayer = ModuleLayer.boot();
@@ -206,18 +206,18 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               ClassLoader loader = layer.findLoader(coreModuleId);
 
-              Assertions.assertThat(
-                      loader.getResource(
-                          "META-INF/versions/19/org/apache/lucene/store/MemorySegmentIndexInput.class"))
-                  .isNotNull();
-
-              Assertions.assertThat(
-                      loader.getResource(
-                          "META-INF/versions/20/org/apache/lucene/store/MemorySegmentIndexInput.class"))
-                  .isNotNull();
+              final Set<Integer> jarVersions = Set.of(19, 20);
+              for (var v : jarVersions) {
+                Assertions.assertThat(
+                        loader.getResource(
+                            "META-INF/versions/"
+                                + v
+                                + "/org/apache/lucene/store/MemorySegmentIndexInput.class"))
+                    .isNotNull();
+              }
 
               final int runtimeVersion = Runtime.version().feature();
-              if (runtimeVersion == 19 || runtimeVersion == 20) {
+              if (jarVersions.contains(Integer.valueOf(runtimeVersion))) {
                 Assertions.assertThat(
                         loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
                     .isNotNull();
