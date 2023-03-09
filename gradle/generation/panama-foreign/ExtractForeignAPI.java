@@ -48,7 +48,7 @@ public final class ExtractForeignAPI {
     }
     var outputPath = Paths.get(args[1]);
     var javaBaseModule = Paths.get(URI.create("jrt:/")).resolve("java.base").toRealPath();
-    var fileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel}.class");
+    var fileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel,util/Objects}.class");
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath)); var stream = Files.walk(javaBaseModule)) {
       var filesToExtract = stream.map(javaBaseModule::relativize).filter(fileMatcher::matches).sorted().collect(Collectors.toList());
       for (Path relative : filesToExtract) {
