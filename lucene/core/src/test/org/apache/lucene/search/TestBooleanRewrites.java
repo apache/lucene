@@ -946,7 +946,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexReader indexReader) {
+    public Query rewrite(IndexSearcher indexSearcher) {
       numRewrites++;
       return this;
     }

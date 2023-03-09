@@ -155,7 +155,7 @@ public class FieldQuery {
       if (sourceQuery instanceof MultiTermQuery) {
         rewritten =
             new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(MAX_MTQ_TERMS)
-                .rewrite(searcher, (MultiTermQuery) query);
+                .rewrite(searcher.getIndexReader(), (MultiTermQuery) query);
       } else {
         rewritten = query.rewrite(searcher);
       }

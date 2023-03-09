@@ -87,8 +87,8 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
   public static final RewriteMethod CONSTANT_SCORE_BOOLEAN_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) throws IOException {
-          final Query bq = SCORING_BOOLEAN_REWRITE.rewrite(indexSearcher, query);
+        public Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
+          final Query bq = SCORING_BOOLEAN_REWRITE.rewrite(reader, query);
           // strip the scores off
           return new ConstantScoreQuery(bq);
         }
@@ -101,9 +101,7 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
   protected abstract void checkMaxClauseCount(int count) throws IOException;
 
   @Override
-  public final Query rewrite(IndexSearcher indexSearcher, final MultiTermQuery query)
-      throws IOException {
-    IndexReader reader = indexSearcher.getIndexReader();
+  public final Query rewrite(IndexReader reader, final MultiTermQuery query) throws IOException {
     final B builder = getTopLevelBuilder();
     final ParallelArraysTermCollector col = new ParallelArraysTermCollector();
     collectTerms(reader, query, col);

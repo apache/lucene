@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.FilteredTermsEnum;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -55,8 +56,7 @@ public abstract class MultiTermQuery extends Query {
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {
-    public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
-        throws IOException;
+    public abstract Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException;
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
      *
@@ -85,7 +85,7 @@ public abstract class MultiTermQuery extends Query {
   public static final RewriteMethod CONSTANT_SCORE_BLENDED_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
+        public Query rewrite(IndexReader reader, MultiTermQuery query) {
           return new MultiTermQueryConstantScoreBlendedWrapper<>(query);
         }
       };
@@ -102,7 +102,7 @@ public abstract class MultiTermQuery extends Query {
   public static final RewriteMethod CONSTANT_SCORE_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
+        public Query rewrite(IndexReader reader, MultiTermQuery query) {
           return new MultiTermQueryConstantScoreWrapper<>(query);
         }
       };
@@ -322,7 +322,7 @@ public abstract class MultiTermQuery extends Query {
    */
   @Override
   public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    return rewriteMethod.rewrite(indexSearcher, this);
+    return rewriteMethod.rewrite(indexSearcher.getIndexReader(), this);
   }
 
   public RewriteMethod getRewriteMethod() {

@@ -44,7 +44,7 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
     assertEquals(query.toString(), "MatchNoDocsQuery(\"\")");
     query = new MatchNoDocsQuery("field 'title' not found");
     assertEquals(query.toString(), "MatchNoDocsQuery(\"field 'title' not found\")");
-    Query rewrite = query.rewrite(null);
+    Query rewrite = query.rewrite((IndexSearcher) null);
     assertTrue(rewrite instanceof MatchNoDocsQuery);
     assertEquals(rewrite.toString(), "MatchNoDocsQuery(\"field 'title' not found\")");
   }

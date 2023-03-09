@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -35,7 +36,7 @@ import org.apache.lucene.util.LongBitSet;
 public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
 
   @Override
-  public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
+  public Query rewrite(IndexReader reader, MultiTermQuery query) {
     return new ConstantScoreQuery(new MultiTermQueryDocValuesWrapper(query));
   }
 

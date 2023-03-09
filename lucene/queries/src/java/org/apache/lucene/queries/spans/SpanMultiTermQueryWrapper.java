@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -117,7 +118,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    return rewriteMethod.rewrite(indexSearcher, query);
+    return rewriteMethod.rewrite(indexSearcher.getIndexReader(), query);
   }
 
   @Override
@@ -140,8 +141,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class SpanRewriteMethod extends MultiTermQuery.RewriteMethod {
     @Override
-    public abstract SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
-        throws IOException;
+    public abstract SpanQuery rewrite(IndexReader reader, MultiTermQuery query) throws IOException;
   }
 
   /**
@@ -182,9 +182,8 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
             };
 
         @Override
-        public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
-            throws IOException {
-          return (SpanQuery) delegate.rewrite(indexSearcher, query);
+        public SpanQuery rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
+          return (SpanQuery) delegate.rewrite(reader, query);
         }
       };
 
@@ -234,8 +233,8 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
     }
 
     @Override
-    public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query) throws IOException {
-      return (SpanQuery) delegate.rewrite(indexSearcher, query);
+    public SpanQuery rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
+      return (SpanQuery) delegate.rewrite(reader, query);
     }
 
     @Override
