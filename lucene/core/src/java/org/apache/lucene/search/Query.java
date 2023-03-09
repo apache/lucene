@@ -90,7 +90,7 @@ public abstract class Query {
    */
   @Deprecated
   public Query rewrite(IndexReader reader) throws IOException {
-    return isDeprecatedMethodOverridden ? this : rewrite(new IndexSearcher(reader));
+    return isDeprecatedRewriteMethodOverridden ? this : rewrite(new IndexSearcher(reader));
   }
 
   /**
@@ -106,7 +106,7 @@ public abstract class Query {
    * @see IndexSearcher#rewrite(Query)
    */
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    return isDeprecatedMethodOverridden ? rewrite(indexSearcher.getIndexReader()) : this;
+    return isDeprecatedRewriteMethodOverridden ? rewrite(indexSearcher.getIndexReader()) : this;
   }
 
   /**
