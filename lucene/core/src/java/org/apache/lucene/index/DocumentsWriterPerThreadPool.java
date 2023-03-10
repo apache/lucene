@@ -44,11 +44,11 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
 
   private final Set<DocumentsWriterPerThread> dwpts =
       Collections.newSetFromMap(new IdentityHashMap<>());
-  private final ApproximatePriorityQueue<DocumentsWriterPerThread> freeList =
-      new ApproximatePriorityQueue<>();
+  private final ConcurrentApproximatePriorityQueue<DocumentsWriterPerThread> freeList =
+      new ConcurrentApproximatePriorityQueue<>();
   private final Supplier<DocumentsWriterPerThread> dwptFactory;
   private int takenWriterPermits = 0;
-  private boolean closed;
+  private volatile boolean closed;
 
   DocumentsWriterPerThreadPool(Supplier<DocumentsWriterPerThread> dwptFactory) {
     this.dwptFactory = dwptFactory;
@@ -113,15 +113,19 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
    * operation (add/updateDocument).
    */
   DocumentsWriterPerThread getAndLock() {
-    synchronized (this) {
-      ensureOpen();
-      DocumentsWriterPerThread dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
-      if (dwpt == null) {
-        dwpt = newWriter();
+    ensureOpen();
+    DocumentsWriterPerThread dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
+    if (dwpt == null) {
+      synchronized (this) {
+        // try again, in case a DWPT was added to the freeList while we were waiting on the lock
+        dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
+        if (dwpt == null) {
+          dwpt = newWriter();
+        }
       }
-      // DWPT is already locked before return by this method:
-      return dwpt;
     }
+    // DWPT is already locked before return by this method:
+    return dwpt;
   }
 
   private void ensureOpen() {
@@ -130,13 +134,15 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
     }
   }
 
+  private synchronized boolean contains(DocumentsWriterPerThread state) {
+    return dwpts.contains(state);
+  }
+
   void marksAsFreeAndUnlock(DocumentsWriterPerThread state) {
     final long ramBytesUsed = state.ramBytesUsed();
-    synchronized (this) {
-      assert dwpts.contains(state)
-          : "we tried to add a DWPT back to the pool but the pool doesn't know aobut this DWPT";
-      freeList.add(state, ramBytesUsed);
-    }
+    assert contains(state)
+        : "we tried to add a DWPT back to the pool but the pool doesn't know aobut this DWPT";
+    freeList.add(state, ramBytesUsed);
     state.unlock();
   }
 
