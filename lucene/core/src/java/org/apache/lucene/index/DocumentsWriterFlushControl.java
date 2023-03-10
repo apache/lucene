@@ -185,8 +185,12 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     return true;
   }
 
-  DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread, boolean isUpdate) {
+  DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread) {
     final long delta = perThread.getCommitLastBytesUsedDelta();
+    if (flushPolicy.flushOnDocCount() == false && delta < flushPolicy.flushOnRAMGranularity()) {
+      // Skip accounting for now, we'll come back to it later when the delta is bigger
+      return null;
+    }
     synchronized (this) {
       // we need to commit this under lock but calculate it outside of the lock to minimize the time
       // this lock is held
@@ -208,11 +212,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         } else {
           activeBytes += delta;
           assert updatePeaks(delta);
-          if (isUpdate) {
-            flushPolicy.onUpdate(this, perThread);
-          } else {
-            flushPolicy.onInsert(this, perThread);
-          }
+          flushPolicy.onChange(this, perThread);
           if (!perThread.isFlushPending() && perThread.ramBytesUsed() > hardMaxBytesPerDWPT) {
             // Safety check to prevent a single DWPT exceeding its RAM limit. This
             // is super important since we can not address more than 2048 MB per DWPT
@@ -462,7 +462,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   synchronized void doOnDelete() {
     // pass null this is a global delete no update
-    flushPolicy.onDelete(this, null);
+    flushPolicy.onChange(this, null);
   }
 
   /**
@@ -724,7 +724,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   synchronized DocumentsWriterPerThread findLargestNonPendingWriter() {
     DocumentsWriterPerThread maxRamUsingWriter = null;
-    long maxRamSoFar = 0;
+    // Note: should be initialized to -1 since some DWPTs might return 0 if their RAM usage has not
+    // been committed yet.
+    long maxRamSoFar = -1;
     int count = 0;
     for (DocumentsWriterPerThread next : perThreadPool) {
       if (next.isFlushPending() == false && next.getNumDocsInRAM() > 0) {
