@@ -147,9 +147,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // -----
   //
-  // To generate backcompat indexes with the current default codec, run the following ant command:
-  //  ant test -Dtestcase=TestBackwardsCompatibility -Dtests.bwcdir=/path/to/store/indexes
-  //           -Dtests.codec=default -Dtests.useSecurityManager=false
+  // To generate backcompat indexes with the current default codec, run the following gradle
+  // command:
+  //  gradlew test -Dtestcase=TestBackwardsCompatibility -Dtests.bwcdir=/path/to/store/indexes
+  //               -Dtests.codec=default -Dtests.useSecurityManager=false
   // Also add testmethod with one of the index creation methods below, for example:
   //    -Dtestmethod=testCreateCFS
   //
@@ -227,7 +228,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     Thread.sleep(100000);
   }
 
-  // ant test -Dtestcase=TestBackwardsCompatibility -Dtestmethod=testCreateSortedIndex
+  // gradlew test -Dtestcase=TestBackwardsCompatibility -Dtestmethod=testCreateSortedIndex
   // -Dtests.codec=default -Dtests.useSecurityManager=false -Dtests.bwcdir=/tmp/sorted
   public void testCreateSortedIndex() throws Exception {
 
