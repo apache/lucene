@@ -613,8 +613,7 @@ public final class IndexedDISI extends DocIdSetIterator {
         // restore state
         disi.slice.seek(next);
 
-        // consecutive matching docs, return next base doc of next block as best guess
-        return disi.lastNonMatchingDoc = disi.block + BLOCK_SIZE;
+        return disi.lastNonMatchingDoc = lastDoc + 1;
       }
 
       @Override
@@ -699,21 +698,19 @@ public final class IndexedDISI extends DocIdSetIterator {
         // find next non-matching doc in current word
         long leftBits = disi.word >>> disi.doc;
 
-        if (leftBits == 0) {
-          // all future docs within this word after disi.doc does not match
-          return disi.doc + 1;
-        } else {
-          int n = Long.numberOfTrailingZeros(~leftBits);
-
-          // TODO is there a cleaner way to check if all bits after disi.doc in current word are
-          // set?
-          if (n + disi.doc % Long.SIZE < Long.SIZE - Long.numberOfLeadingZeros(disi.word)) {
-            return disi.lastNonMatchingDoc = disi.doc + n;
-          }
-
-          // all docs match after disi.doc in this word
+        if (leftBits == 0 || (leftBits & 1L) == 0) {
+          return disi.doc;
         }
 
+        int n = Long.numberOfTrailingZeros(~leftBits);
+
+        // TODO is there a cleaner way to check if all bits after disi.doc in current word are
+        // set?
+        if (n + disi.doc % Long.SIZE <= Long.SIZE - Long.numberOfLeadingZeros(disi.word)) {
+          return disi.lastNonMatchingDoc = disi.doc + n;
+        }
+
+        // all docs match after disi.doc in this word
         // find next non-matching docs in later words
         int index = disi.wordIndex;
         long lastPos = disi.slice.getFilePointer();

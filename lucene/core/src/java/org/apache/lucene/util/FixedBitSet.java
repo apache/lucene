@@ -293,13 +293,13 @@ public final class FixedBitSet extends BitSet {
     int wordIndex = index >> 6;
     long word = bits[wordIndex] >> index; // skip all the bits to the right of index
 
-    if (word == 0) {
+    if (word == 0 || (word & 1L) == 0) {
       return index;
     }
 
     int n = Long.numberOfTrailingZeros(~word);
 
-    if (n + index % Long.SIZE < Long.SIZE - Long.numberOfLeadingZeros(bits[wordIndex])) {
+    if (n + index % Long.SIZE <= Long.SIZE - Long.numberOfLeadingZeros(bits[wordIndex])) {
       return index + n;
     }
 
@@ -310,8 +310,7 @@ public final class FixedBitSet extends BitSet {
       }
     }
 
-    // TODO to be fixed
-    return DocIdSetIterator.NO_MORE_DOCS;
+    return numBits;
   }
 
   @Override

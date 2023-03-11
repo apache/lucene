@@ -372,14 +372,14 @@ public class SparseFixedBitSet extends BitSet {
 
       final long bitsLeft = bitArray[o] >>> i; // shifts are mod 64
 
-      if (bitsLeft == 0) {
+      if (bitsLeft == 0 || (bitsLeft & 1L) == 0) {
         // no bit set for the rest of this long
         return i;
       }
 
       int n = Long.numberOfTrailingZeros(~bitsLeft);
 
-      if (n + i % Long.SIZE < Long.SIZE - Long.numberOfLeadingZeros(bitArray[o])) {
+      if (n + i % Long.SIZE <= Long.SIZE - Long.numberOfLeadingZeros(bitArray[o])) {
         return i + n;
       } else {
         o++;
