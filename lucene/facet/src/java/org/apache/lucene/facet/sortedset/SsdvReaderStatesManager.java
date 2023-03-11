@@ -17,11 +17,12 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.index.IndexReader;
 
 /**
  * This class demonstrates how Lucene could help a user build SSDV ordinal maps eagerly, on refresh.
@@ -29,48 +30,60 @@ import org.apache.lucene.search.IndexSearcher;
  *
  * <p>1. A centralized store of SSDV reader states.
  *
- * <p>2. A method to rebuild all reader states the user needs.
+ * <p>2. A mechanism to rebuild all reader states the user needs.
  */
 public class SsdvReaderStatesManager {
-  /**
-   * The only attribute is a mapping of SSDV fields to reader states. Each reader state will be a
-   * {@link DefaultSortedSetDocValuesReaderState} with an ordinal map for one of the fields.
-   */
-  private Map<String, SortedSetDocValuesReaderState> fieldToReaderState;
-
-  /** No arguments in the constructor. */
-  SsdvReaderStatesManager() {}
+  /** Use the {@link FacetsConfig} to find out which fields are used for faceting. */
+  FacetsConfig facetsConfig;
 
   /**
-   * The application code would have a set of fields the user wants to facet on. They pass this set
-   * here once, on application start-up.
+   * The values in this map are mappings of fields to reader states. Each reader state will be a
+   * {@link DefaultSortedSetDocValuesReaderState} with an ordinal map for the field. These mappings
+   * are keyed by {@link IndexReader} to account for multiple active index readers during refresh.
    */
-  public void registerFields(Set<String> fields) {
-    fields.forEach(field -> fieldToReaderState.put(field, null));
+  private final Map<IndexReader, Map<String, SortedSetDocValuesReaderState>> readerStates =
+      new HashMap<>();
+
+  /** Accept a {@link FacetsConfig}. */
+  public SsdvReaderStatesManager(FacetsConfig facetsConfig) {
+    this.facetsConfig = facetsConfig;
   }
 
   /**
-   * Here we create corresponding reader states for all the fields. Each time the user does a
-   * refresh, they would also call this method, which ensures they will be using up-to-date ordinal
-   * maps until the next refresh.
+   * Retrieve and, if necessary, create reader states for all the fields in the {@link
+   * FacetsConfig}.
    */
-  public void loadReaderStates(IndexSearcher searcher, FacetsConfig facetsConfig) {
-    fieldToReaderState.replaceAll(
-        (field, readerState) -> {
-          try {
-            return new DefaultSortedSetDocValuesReaderState(
-                searcher.getIndexReader(), field, facetsConfig);
-          } catch (IOException e) {
-            throw new UncheckedIOException(e);
-          }
-        });
+  public Set<SortedSetDocValuesReaderState> getReaderStates(IndexReader indexReader)
+      throws IOException {
+    Set<SortedSetDocValuesReaderState> states = new HashSet<>();
+    for (String field : facetsConfig.getFieldNames()) {
+      states.add(getReaderState(indexReader, field));
+    }
+    return states;
+  }
+
+  /** Retrieve and, if necessary, create the reader state for the default field. */
+  public SortedSetDocValuesReaderState getReaderState(IndexReader indexReader) throws IOException {
+    return getReaderState(indexReader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
   }
 
   /**
-   * When the user wants to facet on a field, they call getReaderState on that field and pass the
-   * resulting reader state to the {@link SortedSetDocValuesFacetCounts} constructor.
+   * Retrieve and, if necessary, create the reader state for a named field. Store the reader state
+   * for re-use.
    */
-  public SortedSetDocValuesReaderState getReaderState(String field) {
-    return fieldToReaderState.get(field);
+  public SortedSetDocValuesReaderState getReaderState(IndexReader indexReader, String field)
+      throws IOException {
+    Map<String, SortedSetDocValuesReaderState> states = readerStates.get(indexReader);
+    if (states == null) {
+      states = new HashMap<>();
+      readerStates.put(indexReader, states);
+    }
+
+    SortedSetDocValuesReaderState state = states.get(field);
+    if (state == null) {
+      state = new DefaultSortedSetDocValuesReaderState(indexReader, field, facetsConfig);
+      states.put(field, state);
+    }
+    return state;
   }
 }
