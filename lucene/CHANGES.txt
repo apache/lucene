@@ -21,7 +21,7 @@ API Changes
 * GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
 
 * GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
-  rewriting. (Patrick Zhai)
+  rewriting. (Patrick Zhai, Ben Trent)
 
 New Features
 ---------------------
