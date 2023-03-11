@@ -103,9 +103,9 @@ public abstract class Query {
    * <p>The rewrite process may be able to make use of IndexSearcher's executor and be executed in
    * parallel if the executor is provided.
    *
-   * <p>However, if any of the intermediary queries do not satisfy the new API, parallel
-   * rewrite is not possible for any subsequent sub-queries. To take advantage of this API, the entire query tree
-   * must override this method.
+   * <p>However, if any of the intermediary queries do not satisfy the new API, parallel rewrite is
+   * not possible for any subsequent sub-queries. To take advantage of this API, the entire query
+   * tree must override this method.
    *
    * @see IndexSearcher#rewrite(Query)
    */
