@@ -310,7 +310,7 @@ public final class FixedBitSet extends BitSet {
       }
     }
 
-    return numBits;
+    return DocIdSetIterator.NO_MORE_DOCS;
   }
 
   @Override

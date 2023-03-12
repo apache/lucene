@@ -104,7 +104,13 @@ public class BitSetIterator extends DocIdSetIterator {
       return nextNonMatchingDoc;
     }
 
-    return nextNonMatchingDoc = bits.nextClearBit(doc + 1);
+    int nextClear = bits.nextClearBit(doc + 1);
+
+    if (nextClear == NO_MORE_DOCS) {
+      return nextNonMatchingDoc = length;
+    } else {
+      return nextNonMatchingDoc = nextClear;
+    }
   }
 
   @Override

@@ -396,7 +396,6 @@ public class SparseFixedBitSet extends BitSet {
           o = 0;
         }
 
-        // TODO to be fixed
         return DocIdSetIterator.NO_MORE_DOCS;
       }
     } else {
