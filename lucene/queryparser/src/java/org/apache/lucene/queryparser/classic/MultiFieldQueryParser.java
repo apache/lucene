@@ -132,6 +132,16 @@ public class MultiFieldQueryParser extends QueryParser {
     return q;
   }
 
+  private Query applyBoost(Query q, String field) {
+    if (boosts != null) {
+      Float boost = boosts.get(field);
+      if (boost != null) {
+        q = new BoostQuery(q, boost);
+      }
+    }
+    return q;
+  }
+
   @Override
   protected Query getFieldQuery(String field, String queryText, boolean quoted)
       throws ParseException {
@@ -205,7 +215,8 @@ public class MultiFieldQueryParser extends QueryParser {
       }
       return getMultiFieldQuery(clauses);
     }
-    return super.getFuzzyQuery(field, termStr, minSimilarity);
+    Query q = super.getFuzzyQuery(field, termStr, minSimilarity);
+    return applyBoost(q, field);
   }
 
   @Override
@@ -217,7 +228,8 @@ public class MultiFieldQueryParser extends QueryParser {
       }
       return getMultiFieldQuery(clauses);
     }
-    return super.getPrefixQuery(field, termStr);
+    Query q = super.getPrefixQuery(field, termStr);
+    return applyBoost(q, field);
   }
 
   @Override
@@ -229,7 +241,8 @@ public class MultiFieldQueryParser extends QueryParser {
       }
       return getMultiFieldQuery(clauses);
     }
-    return super.getWildcardQuery(field, termStr);
+    Query q = super.getWildcardQuery(field, termStr);
+    return applyBoost(q, field);
   }
 
   @Override
@@ -243,7 +256,8 @@ public class MultiFieldQueryParser extends QueryParser {
       }
       return getMultiFieldQuery(clauses);
     }
-    return super.getRangeQuery(field, part1, part2, startInclusive, endInclusive);
+    Query q = super.getRangeQuery(field, part1, part2, startInclusive, endInclusive);
+    return applyBoost(q, field);
   }
 
   @Override
@@ -255,7 +269,8 @@ public class MultiFieldQueryParser extends QueryParser {
       }
       return getMultiFieldQuery(clauses);
     }
-    return super.getRegexpQuery(field, termStr);
+    Query q = super.getRegexpQuery(field, termStr);
+    return applyBoost(q, field);
   }
 
   /** Creates a multifield query */
