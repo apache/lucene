@@ -115,15 +115,14 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
   DocumentsWriterPerThread getAndLock() {
     ensureOpen();
     DocumentsWriterPerThread dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
-    if (dwpt == null) {
-      // newWriter() adds the DWPT to the `dwpts` set as a side-effect. However it is not added to
-      // `freeList` at this point, it will be added later on once DocumentsWriter has indexed a
-      // document into this DWPT and then gives it back to the pool by calling
-      // #marksAsFreeAndUnlock.
-      dwpt = newWriter();
+    if (dwpt != null) {
+      return dwpt;
     }
-    // DWPT is already locked before return by this method:
-    return dwpt;
+    // newWriter() adds the DWPT to the `dwpts` set as a side-effect. However it is not added to
+    // `freeList` at this point, it will be added later on once DocumentsWriter has indexed a
+    // document into this DWPT and then gives it back to the pool by calling
+    // #marksAsFreeAndUnlock.
+    return newWriter();
   }
 
   private void ensureOpen() {
