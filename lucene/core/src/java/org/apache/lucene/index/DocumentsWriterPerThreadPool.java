@@ -116,13 +116,11 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
     ensureOpen();
     DocumentsWriterPerThread dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
     if (dwpt == null) {
-      synchronized (this) {
-        // try again, in case a DWPT was added to the freeList while we were waiting on the lock
-        dwpt = freeList.poll(DocumentsWriterPerThread::tryLock);
-        if (dwpt == null) {
-          dwpt = newWriter();
-        }
-      }
+      // newWriter() adds the DWPT to the `dwpts` set as a side-effect. However it is not added to
+      // `freeList` at this point, it will be added later on once DocumentsWriter has indexed a
+      // document into this DWPT and then gives it back to the pool by calling
+      // #marksAsFreeAndUnlock.
+      dwpt = newWriter();
     }
     // DWPT is already locked before return by this method:
     return dwpt;
@@ -141,7 +139,7 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
   void marksAsFreeAndUnlock(DocumentsWriterPerThread state) {
     final long ramBytesUsed = state.ramBytesUsed();
     assert contains(state)
-        : "we tried to add a DWPT back to the pool but the pool doesn't know aobut this DWPT";
+        : "we tried to add a DWPT back to the pool but the pool doesn't know about this DWPT";
     freeList.add(state, ramBytesUsed);
     state.unlock();
   }
@@ -181,6 +179,9 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
    * @return <code>true</code> iff the given DWPT has been removed. Otherwise <code>false</code>
    */
   synchronized boolean checkout(DocumentsWriterPerThread perThread) {
+    // The DWPT must be held by the current thread. This guarantees that concurrent calls to
+    // #getAndLock cannot pull this DWPT out of the pool since #getAndLock does a DWPT#tryLock to
+    // check if the DWPT is available.
     assert perThread.isHeldByCurrentThread();
     if (dwpts.remove(perThread)) {
       freeList.remove(perThread);
