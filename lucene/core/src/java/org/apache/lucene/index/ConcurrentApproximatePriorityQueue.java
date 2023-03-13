@@ -28,12 +28,12 @@ import java.util.function.Predicate;
 final class ConcurrentApproximatePriorityQueue<T> {
 
   /** Keeping 8 queues should already help a lot compared to a single one. */
-  private static final int CONCURRENCY = 8;
+  static final int CONCURRENCY = 8;
 
   private static final int MASK = 0x07;
 
-  private final Lock[] locks;
-  private final ApproximatePriorityQueue<T>[] queues;
+  final Lock[] locks;
+  final ApproximatePriorityQueue<T>[] queues;
 
   ConcurrentApproximatePriorityQueue() {
     locks = new Lock[CONCURRENCY];
