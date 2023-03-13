@@ -71,6 +71,8 @@ Bug Fixes
 
 * GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
 
+* GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
+
 Build
 ---------------------
 
