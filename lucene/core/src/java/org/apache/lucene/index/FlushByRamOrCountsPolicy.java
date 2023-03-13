@@ -100,9 +100,11 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
     if (ramBufferSizeMB == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
       ramBufferSizeMB = indexWriterConfig.getRAMPerThreadHardLimitMB();
     }
-    // We use a granularity of RAMBufferSize/1024. This means that with 20 active DWPTs, we'd be
-    // missing at most 20/1024~=2% in the global RAM buffer accounting.
-    final long granularity = (long) (ramBufferSizeMB * 1024.d);
+    // No more than ~0.1% of the RAM buffer size.
+    long granularity = (long) (ramBufferSizeMB * 1024.d);
+    // Or 16kB, so that with e.g. 64 active DWPTs, we'd never be missing more than 64*16kB = 1MB in
+    // the global RAM buffer accounting.
+    granularity = Math.min(granularity, 16 * 1024L);
     return granularity;
   }
 
