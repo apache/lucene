@@ -144,6 +144,8 @@ Improvements
 
 * GITHUB#12175: Remove SortedSetDocValuesSetQuery in favor of TermInSetQuery with DocValuesRewriteMethod. (Greg Miller)
 
+* GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
+
 Optimizations
 ---------------------
 
