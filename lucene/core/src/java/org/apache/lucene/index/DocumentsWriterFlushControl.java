@@ -44,6 +44,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   private long activeBytes = 0;
   private volatile long flushBytes = 0;
   private volatile int numPending = 0;
+  private volatile int numQueued = 0;
   private int numDocsSinceStalled = 0; // only with assert
   private final AtomicBoolean flushDeletes = new AtomicBoolean(false);
   private boolean fullFlush = false;
@@ -437,11 +438,18 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   }
 
   DocumentsWriterPerThread nextPendingFlush() {
+    if (numQueued == 0 && numPending == 0) {
+      // Common case, avoid taking a lock.
+      return null;
+    }
+
     int numPending;
     boolean fullFlush;
     synchronized (this) {
       final DocumentsWriterPerThread poll;
+      assert numQueued == flushQueue.size();
       if ((poll = flushQueue.poll()) != null) {
+        numQueued = flushQueue.size();
         updateStallState();
         return poll;
       }
@@ -507,6 +515,14 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   public boolean getAndResetApplyAllDeletes() {
     return flushDeletes.getAndSet(false);
+  }
+
+  /**
+   * Check whether deletes need to be applied. This can be used as a pre-flight check before calling
+   * {@link #getAndResetApplyAllDeletes()} to make sure that a single thread applies deletes.
+   */
+  public boolean getApplyAllDeletes() {
+    return flushDeletes.get();
   }
 
   public void setApplyAllDeletes() {
@@ -604,7 +620,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
        * blocking indexing.*/
       pruneBlockedQueue(flushingQueue);
       assert assertBlockedFlushes(documentsWriter.deleteQueue);
+      assert numQueued == flushQueue.size();
       flushQueue.addAll(fullFlushBuffer);
+      numQueued = flushQueue.size();
       updateStallState();
       fullFlushMarkDone =
           true; // at this point we must have collected all DWPTs that belong to the old delete
@@ -634,7 +652,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         iterator.remove();
         addFlushingDWPT(blockedFlush);
         // don't decr pending here - it's already done when DWPT is blocked
+        assert numQueued == flushQueue.size();
         flushQueue.add(blockedFlush);
+        numQueued = flushQueue.size();
       }
     }
   }
@@ -701,6 +721,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       }
     } finally {
       flushQueue.clear();
+      numQueued = 0;
       blockedFlushes.clear();
       updateStallState();
     }
@@ -712,8 +733,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   }
 
   /** Returns the number of flushes that are already checked out but not yet actively flushing */
-  synchronized int numQueuedFlushes() {
-    return flushQueue.size();
+  int numQueuedFlushes() {
+    return numQueued;
   }
 
   /**

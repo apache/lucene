@@ -168,7 +168,9 @@ final class DocumentsWriter implements Closeable, Accountable {
   private boolean applyAllDeletes() throws IOException {
     final DocumentsWriterDeleteQueue deleteQueue = this.deleteQueue;
 
-    if (flushControl.isFullFlush() == false
+    // Check getApplyAllDeletes first: it doesn't require taking a lock and is usually false.
+    if (flushControl.getApplyAllDeletes()
+        && flushControl.isFullFlush() == false
         // never apply deletes during full flush this breaks happens before relationship
         && deleteQueue.isOpen()
         // if it's closed then it's already fully applied and we have a new delete queue
