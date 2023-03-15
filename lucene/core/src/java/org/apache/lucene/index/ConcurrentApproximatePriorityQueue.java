@@ -112,13 +112,15 @@ final class ConcurrentApproximatePriorityQueue<T> {
   // Only used for assertions
   boolean contains(Object o) {
     for (int i = 0; i < CONCURRENCY; ++i) {
-      locks[i].lock();
+      final Lock lock = locks[i];
+      final ApproximatePriorityQueue<T> queue = queues[i];
+      lock.lock();
       try {
-        if (queues[i].contains(o)) {
+        if (queue.contains(o)) {
           return true;
         }
       } finally {
-        locks[i].unlock();
+        lock.unlock();
       }
     }
     return false;
@@ -126,13 +128,15 @@ final class ConcurrentApproximatePriorityQueue<T> {
 
   boolean remove(Object o) {
     for (int i = 0; i < CONCURRENCY; ++i) {
-      locks[i].lock();
+      final Lock lock = locks[i];
+      final ApproximatePriorityQueue<T> queue = queues[i];
+      lock.lock();
       try {
-        if (queues[i].remove(o)) {
+        if (queue.remove(o)) {
           return true;
         }
       } finally {
-        locks[i].unlock();
+        lock.unlock();
       }
     }
     return false;
