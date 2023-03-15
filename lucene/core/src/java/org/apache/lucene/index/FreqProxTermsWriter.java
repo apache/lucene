@@ -408,6 +408,7 @@ final class FreqProxTermsWriter extends TermsHash {
       startOffset = -1;
       endOffset = -1;
 
+      buffer.reset();
       int doc;
       int i = 0;
       while ((doc = in.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
