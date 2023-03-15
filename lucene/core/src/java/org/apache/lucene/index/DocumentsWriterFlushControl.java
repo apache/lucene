@@ -185,14 +185,33 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     return true;
   }
 
+  /**
+   * Return the smallest number of bytes that we would like to make sure to not miss from the global
+   * RAM accounting.
+   */
+  private long ramBufferGranularity() {
+    double ramBufferSizeMB = config.getRAMBufferSizeMB();
+    if (ramBufferSizeMB == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
+      ramBufferSizeMB = config.getRAMPerThreadHardLimitMB();
+    }
+    // No more than ~0.1% of the RAM buffer size.
+    long granularity = (long) (ramBufferSizeMB * 1024.d);
+    // Or 16kB, so that with e.g. 64 active DWPTs, we'd never be missing more than 64*16kB = 1MB in
+    // the global RAM buffer accounting.
+    granularity = Math.min(granularity, 16 * 1024L);
+    return granularity;
+  }
+
   DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread) {
     final long delta = perThread.getCommitLastBytesUsedDelta();
-    // in order to prevent contention in the case of many threads indexing small documents 
+    // in order to prevent contention in the case of many threads indexing small documents
     // we skip ram accounting unless the DWPT accumulated enough ram to be worthwhile
-    if (flushPolicy.flushOnDocCount() == false && delta < flushPolicy.flushOnRAMGranularity()) {
+    if (config.getMaxBufferedDocs() == IndexWriterConfig.DISABLE_AUTO_FLUSH
+        && delta < ramBufferGranularity()) {
       // Skip accounting for now, we'll come back to it later when the delta is bigger
       return null;
     }
+
     synchronized (this) {
       // we need to commit this under lock but calculate it outside of the lock to minimize the time
       // this lock is held

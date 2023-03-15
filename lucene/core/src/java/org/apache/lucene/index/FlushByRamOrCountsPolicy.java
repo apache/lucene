@@ -89,23 +89,12 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
     }
   }
 
-  @Override
-  public boolean flushOnDocCount() {
+  /**
+   * Returns <code>true</code> if this {@link FlushPolicy} flushes on {@link
+   * IndexWriterConfig#getMaxBufferedDocs()}, otherwise <code>false</code>.
+   */
+  protected boolean flushOnDocCount() {
     return indexWriterConfig.getMaxBufferedDocs() != IndexWriterConfig.DISABLE_AUTO_FLUSH;
-  }
-
-  @Override
-  public long flushOnRAMGranularity() {
-    double ramBufferSizeMB = indexWriterConfig.getRAMBufferSizeMB();
-    if (ramBufferSizeMB == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
-      ramBufferSizeMB = indexWriterConfig.getRAMPerThreadHardLimitMB();
-    }
-    // No more than ~0.1% of the RAM buffer size.
-    long granularity = (long) (ramBufferSizeMB * 1024.d);
-    // Or 16kB, so that with e.g. 64 active DWPTs, we'd never be missing more than 64*16kB = 1MB in
-    // the global RAM buffer accounting.
-    granularity = Math.min(granularity, 16 * 1024L);
-    return granularity;
   }
 
   /**

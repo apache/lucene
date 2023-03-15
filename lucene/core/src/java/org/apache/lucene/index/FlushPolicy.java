@@ -57,18 +57,6 @@ abstract class FlushPolicy {
   public abstract void onChange(
       DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread);
 
-  /**
-   * Returns {@code true} if this policy takes the document count as an input to decide whether to
-   * flush.
-   */
-  public abstract boolean flushOnDocCount();
-
-  /**
-   * Return the smallest number of bytes that we would like to make sure to not miss from the global
-   * RAM accounting.
-   */
-  public abstract long flushOnRAMGranularity();
-
   /** Called by DocumentsWriter to initialize the FlushPolicy */
   protected synchronized void init(LiveIndexWriterConfig indexWriterConfig) {
     this.indexWriterConfig = indexWriterConfig;
