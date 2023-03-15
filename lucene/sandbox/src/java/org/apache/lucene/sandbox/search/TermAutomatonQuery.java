@@ -442,10 +442,33 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      // TODO
-      return null;
+        Scorer scorer = scorer(context);
+        if (scorer == null) {
+            return Explanation.noMatch("no matching terms in document");
+        } else if (scorer.iterator().advance(doc) != doc) {
+            return Explanation.noMatch("document not found");
+        } else {
+            float score = scorer.score();
+            Explanation expl = new Explanation(score, "TermAutomatonQuery, product of:");
+            for (EnumAndScorer enumAndScorer : ((TermAutomatonScorer) scorer).getEnums()) {
+                if (enumAndScorer != null) {
+                    int termID = enumAndScorer.termID;
+                    String termText = idToTerm.get(termID).utf8ToString();
+                    float termWeight = enumAndScorer.scorer.freq() * termWeight(termID, scorer.getStats(), context.reader());
+                    Explanation termExpl = new Explanation(termWeight, "termWeight(" + termText + ")");
+                    expl.addDetail(termExpl);
+
+                    Explanation postingsExpl = new Explanation();
+                    enumAndScorer.scorer.iterator().advance(doc);
+                    int freq = enumAndScorer.scorer.freq();
+                    postingsExpl.setValue(scorer.score());
+                    postingsExpl.setDescription(freq + " times in " + enumAndScorer.scorer.freq() + ", " + termText);
+                    termExpl.addDetail(postingsExpl);
+                }
+            }
+        return expl;
     }
-  }
+}
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
