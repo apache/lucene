@@ -111,6 +111,12 @@ final class ConcurrentApproximatePriorityQueue<T> {
 
   // Only used for assertions
   boolean contains(Object o) {
+    boolean assertionsAreEnabled = false;
+    assert assertionsAreEnabled = true;
+    if (assertionsAreEnabled == false) {
+      throw new AssertionError("contains should only be used for assertions");
+    }
+
     for (int i = 0; i < CONCURRENCY; ++i) {
       final Lock lock = locks[i];
       final ApproximatePriorityQueue<T> queue = queues[i];
