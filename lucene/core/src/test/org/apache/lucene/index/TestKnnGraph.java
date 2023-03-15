@@ -48,14 +48,12 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.junit.After;
 import org.junit.Before;
 
@@ -179,21 +177,6 @@ public class TestKnnGraph extends LuceneTestCase {
     }
   }
 
-  /**
-   * Verify that we get the *same* graph by indexing one segment as we do by indexing two segments
-   * and merging.
-   */
-  public void testMergeProducesSameGraph() throws Exception {
-    long seed = random().nextLong();
-    int numDoc = atLeast(100);
-    int dimension = atLeast(10);
-    float[][] values = randomVectors(numDoc, dimension);
-    int mergePoint = random().nextInt(numDoc);
-    int[][][] mergedGraph = getIndexedGraph(values, mergePoint, seed);
-    int[][][] singleSegmentGraph = getIndexedGraph(values, -1, seed);
-    assertGraphEquals(singleSegmentGraph, mergedGraph);
-  }
-
   /** Test writing and reading of multiple vector fields * */
   public void testMultipleVectorFields() throws Exception {
     int numVectorFields = randomIntBetween(2, 5);
@@ -227,52 +210,6 @@ public class TestKnnGraph extends LuceneTestCase {
     }
   }
 
-  private void assertGraphEquals(int[][][] expected, int[][][] actual) {
-    assertEquals("graph sizes differ", expected.length, actual.length);
-    for (int level = 0; level < expected.length; level++) {
-      for (int node = 0; node < expected[level].length; node++) {
-        assertArrayEquals("difference at ord=" + node, expected[level][node], actual[level][node]);
-      }
-    }
-  }
-
-  /**
-   * Return a naive representation of an HNSW graph as a 3 dimensional array: 1st dim represents a
-   * graph layer. Each layer contains an array of arrays – a list of nodes and for each node a list
-   * of the node's neighbours. 2nd dim represents a node on a layer, and contains the node's
-   * neighbourhood, or {@code null} if a node is not present on this layer. 3rd dim represents
-   * neighbours of a node.
-   */
-  private int[][][] getIndexedGraph(float[][] values, int mergePoint, long seed)
-      throws IOException {
-    HnswGraphBuilder.randSeed = seed;
-    int[][][] graph;
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = newIndexWriterConfig();
-      iwc.setMergePolicy(new LogDocMergePolicy()); // for predictable segment ordering when merging
-      iwc.setCodec(codec); // don't use SimpleTextCodec
-      try (IndexWriter iw = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < values.length; i++) {
-          add(iw, i, values[i]);
-          if (i == mergePoint) {
-            // flush proactively to create a segment
-            iw.flush();
-          }
-        }
-        iw.forceMerge(1);
-      }
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        PerFieldKnnVectorsFormat.FieldsReader perFieldReader =
-            (PerFieldKnnVectorsFormat.FieldsReader)
-                ((CodecReader) getOnlyLeafReader(reader)).getVectorReader();
-        Lucene95HnswVectorsReader vectorReader =
-            (Lucene95HnswVectorsReader) perFieldReader.getFieldReader(KNN_GRAPH_FIELD);
-        graph = copyGraph(vectorReader.getGraph(KNN_GRAPH_FIELD));
-      }
-    }
-    return graph;
-  }
-
   private float[][] randomVectors(int numDoc, int dimension) {
     float[][] values = new float[numDoc][];
     for (int i = 0; i < numDoc; i++) {
@@ -295,27 +232,6 @@ public class TestKnnGraph extends LuceneTestCase {
       }
     }
     return value;
-  }
-
-  int[][][] copyGraph(HnswGraph graphValues) throws IOException {
-    int[][][] graph = new int[graphValues.numLevels()][][];
-    int size = graphValues.size();
-    int[] scratch = new int[M * 2];
-
-    for (int level = 0; level < graphValues.numLevels(); level++) {
-      NodesIterator nodesItr = graphValues.getNodesOnLevel(level);
-      graph[level] = new int[size][];
-      while (nodesItr.hasNext()) {
-        int node = nodesItr.nextInt();
-        graphValues.seek(level, node);
-        int n, count = 0;
-        while ((n = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
-          scratch[count++] = n;
-        }
-        graph[level][node] = ArrayUtil.copyOfSubArray(scratch, 0, count);
-      }
-    }
-    return graph;
   }
 
   /** Verify that searching does something reasonable */

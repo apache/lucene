@@ -18,15 +18,14 @@ package org.apache.lucene.tests.util;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Intentionally slow IndexOutput for testing. */
-public class ThrottledIndexOutput extends IndexOutput {
+public class ThrottledIndexOutput extends FilterIndexOutput {
   public static final int DEFAULT_MIN_WRITTEN_BYTES = 1024;
   private final int bytesPerSecond;
-  private IndexOutput delegate;
   private long flushDelayMillis;
   private long closeDelayMillis;
   private long seekDelayMillis;
@@ -35,29 +34,24 @@ public class ThrottledIndexOutput extends IndexOutput {
   private long timeElapsed;
   private final byte[] bytes = new byte[1];
 
-  public ThrottledIndexOutput newFromDelegate(IndexOutput output) {
+  public ThrottledIndexOutput newFromDelegate(IndexOutput out) {
     return new ThrottledIndexOutput(
-        bytesPerSecond,
-        flushDelayMillis,
-        closeDelayMillis,
-        seekDelayMillis,
-        minBytesWritten,
-        output);
+        bytesPerSecond, flushDelayMillis, closeDelayMillis, seekDelayMillis, minBytesWritten, out);
   }
 
-  public ThrottledIndexOutput(int bytesPerSecond, long delayInMillis, IndexOutput delegate) {
+  public ThrottledIndexOutput(int bytesPerSecond, long delayInMillis, IndexOutput out) {
     this(
         bytesPerSecond,
         delayInMillis,
         delayInMillis,
         delayInMillis,
         DEFAULT_MIN_WRITTEN_BYTES,
-        delegate);
+        out);
   }
 
   public ThrottledIndexOutput(
-      int bytesPerSecond, long delays, int minBytesWritten, IndexOutput delegate) {
-    this(bytesPerSecond, delays, delays, delays, minBytesWritten, delegate);
+      int bytesPerSecond, long delays, int minBytesWritten, IndexOutput out) {
+    this(bytesPerSecond, delays, delays, delays, minBytesWritten, out);
   }
 
   public static final int mBitsToBytes(int mbits) {
@@ -70,10 +64,9 @@ public class ThrottledIndexOutput extends IndexOutput {
       long closeDelayMillis,
       long seekDelayMillis,
       long minBytesWritten,
-      IndexOutput delegate) {
-    super("ThrottledIndexOutput(" + delegate + ")", delegate == null ? "n/a" : delegate.getName());
+      IndexOutput out) {
+    super("ThrottledIndexOutput(" + out + ")", out == null ? "n/a" : out.getName(), out);
     assert bytesPerSecond > 0;
-    this.delegate = delegate;
     this.bytesPerSecond = bytesPerSecond;
     this.flushDelayMillis = flushDelayMillis;
     this.closeDelayMillis = closeDelayMillis;
@@ -86,13 +79,8 @@ public class ThrottledIndexOutput extends IndexOutput {
     try {
       sleep(closeDelayMillis + getDelay(true));
     } finally {
-      delegate.close();
+      out.close();
     }
-  }
-
-  @Override
-  public long getFilePointer() {
-    return delegate.getFilePointer();
   }
 
   @Override
@@ -107,7 +95,7 @@ public class ThrottledIndexOutput extends IndexOutput {
     // TODO: sometimes, write only half the bytes, then
     // sleep, then 2nd half, then sleep, so we sometimes
     // interrupt having only written not all bytes
-    delegate.writeBytes(b, offset, length);
+    out.writeBytes(b, offset, length);
     timeElapsed += System.nanoTime() - before;
     pendingBytes += length;
     sleep(getDelay(false));
@@ -127,7 +115,7 @@ public class ThrottledIndexOutput extends IndexOutput {
     return 0;
   }
 
-  private static final void sleep(long ms) {
+  private static void sleep(long ms) {
     if (ms <= 0) {
       return;
     }
@@ -136,15 +124,5 @@ public class ThrottledIndexOutput extends IndexOutput {
     } catch (InterruptedException e) {
       throw new ThreadInterruptedException(e);
     }
-  }
-
-  @Override
-  public void copyBytes(DataInput input, long numBytes) throws IOException {
-    delegate.copyBytes(input, numBytes);
-  }
-
-  @Override
-  public long getChecksum() throws IOException {
-    return delegate.getChecksum();
   }
 }

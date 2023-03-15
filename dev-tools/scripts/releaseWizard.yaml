@@ -343,8 +343,6 @@ groups:
         cmd: git pull --ff-only
         stdout: true
       - !Command
-        cmd: "{{ gradle_cmd }} localSettings"
-      - !Command
         cmd: "{{ gradle_cmd }} clean check -x test"
   - !Todo
     id: create_stable_branch
@@ -933,7 +931,7 @@ groups:
       commands_text: In the source checkout do the following (note that this step will prompt you for your Apache LDAP credentials)
       commands:
         - !Command
-          cmd: java dev-tools/scripts/StageArtifacts.java --user {{ gpg.apache_id }} --description "{{ 'Apache Lucene ', release_version, ' (commit ', git_sha, ')' }}" "{{ [dist_file_path, dist_folder, 'solr', 'maven'] | path_join }}"
+          cmd: java dev-tools/scripts/StageArtifacts.java --user {{ gpg.apache_id }} --description "{{ 'Apache Lucene ', release_version, ' (commit ', git_sha, ')' }}" "{{ [dist_file_path, dist_folder, 'lucene', 'maven'] | path_join }}"
           tee: true
           logfile: publish_lucene_maven.log
     post_description: The artifacts are not published yet, please proceed with the next step to actually publish!

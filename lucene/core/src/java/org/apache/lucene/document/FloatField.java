@@ -29,9 +29,8 @@ import org.apache.lucene.util.NumericUtils;
 
 /**
  * Field that stores a per-document <code>float</code> value for scoring, sorting or value retrieval
- * and index the field for fast range filters. If you also need to store the value, you should add a
- * separate {@link StoredField} instance. If you need more fine-grained control you can use {@link
- * FloatPoint} and {@link FloatDocValuesField}.
+ * and index the field for fast range filters. If you need more fine-grained control you can use
+ * {@link FloatPoint}, {@link FloatDocValuesField} and {@link StoredField}.
  *
  * <p>This field defines static factory methods for creating common queries:
  *
@@ -46,12 +45,19 @@ import org.apache.lucene.util.NumericUtils;
 public final class FloatField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORED;
 
   static {
     FIELD_TYPE.setDimensions(1, Float.BYTES);
     FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     FIELD_TYPE.freeze();
+
+    FIELD_TYPE_STORED = new FieldType(FIELD_TYPE);
+    FIELD_TYPE_STORED.setStored(true);
+    FIELD_TYPE_STORED.freeze();
   }
+
+  private final StoredValue storedValue;
 
   /**
    * Creates a new FloatField, indexing the provided point and storing it as a DocValue
@@ -59,10 +65,31 @@ public final class FloatField extends Field {
    * @param name field name
    * @param value the float value
    * @throws IllegalArgumentException if the field name or value is null.
+   * @deprecated Use {@link #FloatField(String, float, Field.Store)} with {@link Field.Store#NO}
+   *     instead.
    */
+  @Deprecated
   public FloatField(String name, float value) {
-    super(name, FIELD_TYPE);
+    this(name, value, Field.Store.NO);
+  }
+
+  /**
+   * Creates a new FloatField, indexing the provided point, storing it as a DocValue, and optionally
+   * storing it as a stored field.
+   *
+   * @param name field name
+   * @param value the float value
+   * @param stored whether to store the field
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public FloatField(String name, float value, Field.Store stored) {
+    super(name, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
     fieldsData = (long) NumericUtils.floatToSortableInt(value);
+    if (stored == Field.Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   @Override
@@ -78,6 +105,11 @@ public final class FloatField extends Field {
   }
 
   @Override
+  public StoredValue storedValue() {
+    return storedValue;
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName() + " <" + name + ':' + getValueAsFloat() + '>';
   }
@@ -85,6 +117,9 @@ public final class FloatField extends Field {
   @Override
   public void setFloatValue(float value) {
     super.setLongValue(NumericUtils.floatToSortableInt(value));
+    if (storedValue != null) {
+      storedValue.setFloatValue(value);
+    }
   }
 
   @Override

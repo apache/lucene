@@ -50,6 +50,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.EmptyDocValuesProducer;
@@ -78,6 +79,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -569,7 +571,29 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     try (StoredFieldsWriter consumer =
         codec.storedFieldsFormat().fieldsWriter(dir, segmentInfo, writeState.context)) {
       consumer.startDocument();
-      consumer.writeField(field, customField);
+      StoredValue value = customField.storedValue();
+      switch (value.getType()) {
+        case INTEGER:
+          consumer.writeField(field, value.getIntValue());
+          break;
+        case LONG:
+          consumer.writeField(field, value.getLongValue());
+          break;
+        case FLOAT:
+          consumer.writeField(field, value.getFloatValue());
+          break;
+        case DOUBLE:
+          consumer.writeField(field, value.getDoubleValue());
+          break;
+        case BINARY:
+          consumer.writeField(field, value.getBinaryValue());
+          break;
+        case STRING:
+          consumer.writeField(field, value.getStringValue());
+          break;
+        default:
+          throw new AssertionError();
+      }
       consumer.finishDocument();
       consumer.finish(1);
       IOUtils.close(consumer);
@@ -780,40 +804,18 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
   }
 
-  private static class ReadBytesIndexInputWrapper extends IndexInput {
+  private static class ReadBytesIndexInputWrapper extends FilterIndexInput {
 
-    private final IndexInput in;
     private final IntConsumer readByte;
 
     ReadBytesIndexInputWrapper(IndexInput in, IntConsumer readByte) {
-      super(in.toString());
-      this.in = in;
+      super(in.toString(), in);
       this.readByte = readByte;
     }
 
     @Override
     public IndexInput clone() {
       return new ReadBytesIndexInputWrapper(in.clone(), readByte);
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
-    }
-
-    @Override
-    public long getFilePointer() {
-      return in.getFilePointer();
-    }
-
-    @Override
-    public void seek(long pos) throws IOException {
-      in.seek(pos);
-    }
-
-    @Override
-    public long length() {
-      return in.length();
     }
 
     @Override

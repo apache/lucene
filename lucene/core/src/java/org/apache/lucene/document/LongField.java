@@ -33,9 +33,9 @@ import org.apache.lucene.util.NumericUtils;
 
 /**
  * Field that stores a per-document <code>long</code> value for scoring, sorting or value retrieval
- * and index the field for fast range filters. If you also need to store the value, you should add a
- * separate {@link StoredField} instance. If you need more fine-grained control you can use {@link
- * LongPoint} and {@link NumericDocValuesField} or {@link SortedNumericDocValuesField}.
+ * and index the field for fast range filters. If you need more fine-grained control you can use
+ * {@link LongPoint}, {@link NumericDocValuesField} or {@link SortedNumericDocValuesField}, and
+ * {@link StoredField}.
  *
  * <p>This field defines static factory methods for creating common queries:
  *
@@ -50,12 +50,19 @@ import org.apache.lucene.util.NumericUtils;
 public final class LongField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORED;
 
   static {
     FIELD_TYPE.setDimensions(1, Long.BYTES);
     FIELD_TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     FIELD_TYPE.freeze();
+
+    FIELD_TYPE_STORED = new FieldType(FIELD_TYPE);
+    FIELD_TYPE_STORED.setStored(true);
+    FIELD_TYPE_STORED.freeze();
   }
+
+  private final StoredValue storedValue;
 
   /**
    * Creates a new LongField, indexing the provided point and storing it as a DocValue
@@ -63,10 +70,31 @@ public final class LongField extends Field {
    * @param name field name
    * @param value the long value
    * @throws IllegalArgumentException if the field name or value is null.
+   * @deprecated Use {@link #LongField(String, long, Field.Store)} with {@link Field.Store#NO}
+   *     instead.
    */
+  @Deprecated
   public LongField(String name, long value) {
-    super(name, FIELD_TYPE);
+    this(name, value, Field.Store.NO);
+  }
+
+  /**
+   * Creates a new LongField, indexing the provided point, storing it as a DocValue, and optionally
+   * storing it as a stored field.
+   *
+   * @param name field name
+   * @param value the long value
+   * @param stored whether to store the field
+   * @throws IllegalArgumentException if the field name or value is null.
+   */
+  public LongField(String name, long value, Field.Store stored) {
+    super(name, stored == Field.Store.YES ? FIELD_TYPE_STORED : FIELD_TYPE);
     fieldsData = value;
+    if (stored == Field.Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   @Override
@@ -74,6 +102,19 @@ public final class LongField extends Field {
     var bytes = new byte[Long.BYTES];
     NumericUtils.longToSortableBytes((Long) fieldsData, bytes, 0);
     return new BytesRef(bytes);
+  }
+
+  @Override
+  public StoredValue storedValue() {
+    return storedValue;
+  }
+
+  @Override
+  public void setLongValue(long value) {
+    super.setLongValue(value);
+    if (storedValue != null) {
+      storedValue.setLongValue(value);
+    }
   }
 
   @Override

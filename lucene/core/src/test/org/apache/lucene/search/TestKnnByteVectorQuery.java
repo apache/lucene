@@ -16,10 +16,14 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -65,9 +69,16 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     return bytes;
   }
 
-  public void testToString() {
-    AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
-    assertEquals("KnnByteVectorQuery:f1[0,...][10]", q1.toString("ignored"));
+  public void testToString() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0, 1}, 10);
+      assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
+
+      Query rewritten = query.rewrite(newSearcher(reader));
+      assertEquals("DocAndScoreQuery[0,...][1.0,...]", rewritten.toString("ignored"));
+    }
   }
 
   public void testGetTarget() {

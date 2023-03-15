@@ -18,74 +18,31 @@ package org.apache.lucene.misc.store;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IndexOutput;
 
 /** An {@link IndexOutput} that wraps another instance and tracks the number of bytes written */
-public class ByteTrackingIndexOutput extends IndexOutput {
+public class ByteTrackingIndexOutput extends FilterIndexOutput {
 
-  private final IndexOutput output;
   private final AtomicLong byteTracker;
   private boolean closed = false;
 
-  protected ByteTrackingIndexOutput(IndexOutput output, AtomicLong byteTracker) {
+  protected ByteTrackingIndexOutput(IndexOutput out, AtomicLong byteTracker) {
     super(
-        "Byte tracking wrapper for: " + output.getName(),
-        "ByteTrackingIndexOutput{" + output.getName() + "}");
-    this.output = output;
+        "Byte tracking wrapper for: " + out.getName(),
+        "ByteTrackingIndexOutput{" + out.getName() + "}",
+        out);
     this.byteTracker = byteTracker;
-  }
-
-  @Override
-  public void writeByte(byte b) throws IOException {
-    output.writeByte(b);
-  }
-
-  @Override
-  public void writeBytes(byte[] b, int offset, int length) throws IOException {
-    output.writeBytes(b, offset, length);
-  }
-
-  @Override
-  public void writeShort(short i) throws IOException {
-    output.writeShort(i);
-  }
-
-  @Override
-  public void writeInt(int i) throws IOException {
-    output.writeInt(i);
-  }
-
-  @Override
-  public void writeLong(long i) throws IOException {
-    output.writeLong(i);
   }
 
   @Override
   public void close() throws IOException {
     if (closed) {
-      output.close();
+      out.close();
       return;
     }
-    byteTracker.addAndGet(output.getFilePointer());
+    byteTracker.addAndGet(out.getFilePointer());
     closed = true;
-    output.close();
-  }
-
-  @Override
-  public long getFilePointer() {
-    return output.getFilePointer();
-  }
-
-  @Override
-  public long getChecksum() throws IOException {
-    return output.getChecksum();
-  }
-
-  public String getWrappedName() {
-    return output.getName();
-  }
-
-  public String getWrappedToString() {
-    return output.toString();
+    out.close();
   }
 }

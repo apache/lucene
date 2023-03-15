@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.core.StringContains.containsString;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,22 +32,26 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.LongStream;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinaryDocValues;
@@ -55,6 +60,7 @@ import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
@@ -62,6 +68,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -818,7 +825,7 @@ public class TestMemoryIndex extends LuceneTestCase {
           }
         };
 
-    Field intField = new IntField("int_field", 50);
+    Field intField = new IntField("int_field", 50, Store.NO);
 
     MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, multiField, intField), null);
     IndexSearcher searcher = index.createSearcher();
@@ -839,5 +846,148 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertTrue(sndv.advanceExact(0));
     assertEquals(1, sndv.docValueCount());
     assertEquals(50, sndv.nextValue());
+  }
+
+  private static class MockIndexableField implements IndexableField {
+
+    private final String field;
+    private final BytesRef value;
+    private final IndexableFieldType fieldType;
+
+    MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType) {
+      this.field = field;
+      this.value = value;
+      this.fieldType = fieldType;
+    }
+
+    @Override
+    public String name() {
+      return field;
+    }
+
+    @Override
+    public IndexableFieldType fieldType() {
+      return fieldType;
+    }
+
+    @Override
+    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+      return null;
+    }
+
+    @Override
+    public BytesRef binaryValue() {
+      return value;
+    }
+
+    @Override
+    public String stringValue() {
+      return null;
+    }
+
+    @Override
+    public Reader readerValue() {
+      return null;
+    }
+
+    @Override
+    public Number numericValue() {
+      return null;
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.BINARY;
+    }
+  }
+
+  public void testKeywordWithoutTokenStream() throws IOException {
+    List<FieldType> legalFieldTypes = new ArrayList<>();
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setOmitNorms(false);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(false);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setOmitNorms(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setOmitNorms(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS);
+      ft.setStoreTermVectors(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+    {
+      FieldType ft = new FieldType();
+      ft.setTokenized(false);
+      ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      ft.setStoreTermVectors(true);
+      ft.freeze();
+      legalFieldTypes.add(ft);
+    }
+
+    for (FieldType ft : legalFieldTypes) {
+      MockIndexableField field = new MockIndexableField("field", new BytesRef("a"), ft);
+      MemoryIndex index = MemoryIndex.fromDocument(Arrays.asList(field, field), null);
+      LeafReader leafReader = index.createSearcher().getIndexReader().leaves().get(0).reader();
+      {
+        Terms terms = leafReader.terms("field");
+        assertEquals(1, terms.getSumDocFreq());
+        assertEquals(2, terms.getSumTotalTermFreq());
+        TermsEnum termsEnum = terms.iterator();
+        assertTrue(termsEnum.seekExact(new BytesRef("a")));
+        PostingsEnum pe = termsEnum.postings(null, PostingsEnum.ALL);
+        assertEquals(0, pe.nextDoc());
+        assertEquals(2, pe.freq());
+        assertEquals(0, pe.nextPosition());
+        assertEquals(1, pe.nextPosition());
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
+      }
+
+      if (ft.storeTermVectors()) {
+        Terms tvTerms = leafReader.termVectors().get(0).terms("field");
+        assertEquals(1, tvTerms.getSumDocFreq());
+        assertEquals(2, tvTerms.getSumTotalTermFreq());
+        TermsEnum tvTermsEnum = tvTerms.iterator();
+        assertTrue(tvTermsEnum.seekExact(new BytesRef("a")));
+        PostingsEnum pe = tvTermsEnum.postings(null, PostingsEnum.ALL);
+        assertEquals(0, pe.nextDoc());
+        assertEquals(2, pe.freq());
+        assertEquals(0, pe.nextPosition());
+        assertEquals(1, pe.nextPosition());
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, pe.nextDoc());
+      }
+    }
   }
 }

@@ -26,15 +26,14 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.IntRange;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -809,8 +808,8 @@ public class TestSortOptimization extends LuceneTestCase {
       int value = random().nextInt();
       int value2 = random().nextInt();
       final Document doc = new Document();
-      doc.add(new LongField("my_field", value));
-      doc.add(new LongField("my_field", value2));
+      doc.add(new LongField("my_field", value, Field.Store.NO));
+      doc.add(new LongField("my_field", value2, Field.Store.NO));
       writer.addDocument(doc);
     }
     final IndexReader reader = DirectoryReader.open(writer);
@@ -891,8 +890,7 @@ public class TestSortOptimization extends LuceneTestCase {
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
       final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
-      doc.add(new StringField("my_field", value, Store.NO));
-      doc.add(new SortedDocValuesField("my_field", value));
+      doc.add(new KeywordField("my_field", value, Field.Store.NO));
       writer.addDocument(doc);
       if (i % 2000 == 0) writer.flush(); // multiple segments
     }
@@ -916,8 +914,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final Document doc = new Document();
       if (random().nextInt(2) == 0) {
         final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
-        doc.add(new StringField("my_field", value, Store.NO));
-        doc.add(new SortedDocValuesField("my_field", value));
+        doc.add(new KeywordField("my_field", value, Field.Store.NO));
       }
       writer.addDocument(doc);
     }
@@ -936,7 +933,8 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numHits = 5;
 
     { // simple ascending sort
-      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      SortField sortField =
+          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
@@ -944,7 +942,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // simple descending sort
-      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
@@ -952,21 +950,23 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // ascending sort that returns missing values first
-      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      SortField sortField =
+          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       assertSort(reader, sort, numHits, null);
     }
 
     { // descending sort that returns missing values last
-      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       assertSort(reader, sort, numHits, null);
     }
 
     { // paging ascending sort with after
-      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      SortField sortField =
+          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
@@ -976,7 +976,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // paging descending sort with after
-      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
@@ -986,7 +986,8 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // paging ascending sort with after that returns missing values first
-      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      SortField sortField =
+          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_FIRST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "23" : "230000000");
@@ -996,7 +997,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // paging descending sort with after that returns missing values first
-      SortField sortField = new SortField("my_field", SortField.Type.STRING, true);
+      SortField sortField = KeywordField.newSortField("my_field", true, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField);
       BytesRef afterValue = new BytesRef(random().nextBoolean() ? "17" : "170000000");
@@ -1006,7 +1007,8 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // test that if there is the secondary sort on _score, hits are still skipped
-      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      SortField sortField =
+          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(sortField, FIELD_SCORE);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
@@ -1014,7 +1016,8 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // test that if string field is a secondary sort, no optimization is run
-      SortField sortField = new SortField("my_field", SortField.Type.STRING);
+      SortField sortField =
+          KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
       sortField.setMissingValue(SortField.STRING_LAST);
       Sort sort = new Sort(FIELD_SCORE, sortField);
       TopDocs topDocs = assertSort(reader, sort, numHits, null);
@@ -1025,10 +1028,7 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   public void doTestStringSortOptimizationDisabled(DirectoryReader reader) throws IOException {
-    SortField sortField =
-        random().nextBoolean()
-            ? new SortedSetSortField("my_field", false)
-            : new SortField("my_field", SortField.Type.STRING);
+    SortField sortField = KeywordField.newSortField("my_field", false, SortedSetSelector.Type.MIN);
     sortField.setMissingValue(SortField.STRING_LAST);
     sortField.setOptimizeSortWithIndexedData(false);
 

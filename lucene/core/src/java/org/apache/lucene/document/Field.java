@@ -456,6 +456,11 @@ public class Field implements IndexableField {
   }
 
   @Override
+  public InvertableType invertableType() {
+    return InvertableType.TOKEN_STREAM;
+  }
+
+  @Override
   public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
     if (fieldType().indexOptions() == IndexOptions.NONE) {
       // Not indexed
@@ -596,5 +601,28 @@ public class Field implements IndexableField {
 
     /** Do not store the field value in the index. */
     NO
+  }
+
+  @Override
+  public StoredValue storedValue() {
+    if (fieldType().stored() == false) {
+      return null;
+    } else if (fieldsData == null) {
+      throw new IllegalArgumentException("fieldsData is unset");
+    } else if (fieldsData instanceof Integer) {
+      return new StoredValue((int) fieldsData);
+    } else if (fieldsData instanceof Long) {
+      return new StoredValue((long) fieldsData);
+    } else if (fieldsData instanceof Float) {
+      return new StoredValue((float) fieldsData);
+    } else if (fieldsData instanceof Double) {
+      return new StoredValue((double) fieldsData);
+    } else if (fieldsData instanceof BytesRef) {
+      return new StoredValue((BytesRef) fieldsData);
+    } else if (fieldsData instanceof String) {
+      return new StoredValue((String) fieldsData);
+    } else {
+      throw new IllegalStateException("Cannot store value of type " + fieldsData.getClass());
+    }
   }
 }

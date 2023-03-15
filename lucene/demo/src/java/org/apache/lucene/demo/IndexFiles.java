@@ -34,9 +34,9 @@ import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -234,8 +234,7 @@ public class IndexFiles implements AutoCloseable {
       // field that is indexed (i.e. searchable), but don't tokenize
       // the field into separate words and don't index term frequency
       // or positional information:
-      Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-      doc.add(pathField);
+      doc.add(new KeywordField("path", file.toString(), Field.Store.YES));
 
       // Add the last modified date of the file a field named "modified".
       // Use a LongField that is indexed with points and doc values, and is efficient
@@ -245,7 +244,7 @@ public class IndexFiles implements AutoCloseable {
       // year/month/day/hour/minutes/seconds, down the resolution you require.
       // For example the long value 2011021714 would mean
       // February 17, 2011, 2-3 PM.
-      doc.add(new LongField("modified", lastModified));
+      doc.add(new LongField("modified", lastModified, Field.Store.NO));
 
       // Add the contents of the file to a field named "contents".  Specify a Reader,
       // so that the text of the file is tokenized and indexed, but not stored.
