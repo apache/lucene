@@ -187,6 +187,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread) {
     final long delta = perThread.getCommitLastBytesUsedDelta();
+    // in order to prevent contention in the case of many threads indexing small documents 
+    // we skip ram accounting unless the DWPT accumulated enough ram to be worthwhile
     if (flushPolicy.flushOnDocCount() == false && delta < flushPolicy.flushOnRAMGranularity()) {
       // Skip accounting for now, we'll come back to it later when the delta is bigger
       return null;
