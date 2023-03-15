@@ -188,7 +188,7 @@ final class FreqProxTermsWriter extends TermsHash {
           wrapReuse = (SortingPostingsEnum) reuse;
           inReuse = wrapReuse.getWrapped();
         } else {
-          wrapReuse = null;
+          wrapReuse = new SortingPostingsEnum();
           inReuse = reuse;
         }
 
@@ -201,8 +201,8 @@ final class FreqProxTermsWriter extends TermsHash {
             indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
         final boolean storeOffsets =
             indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
-        return new SortingPostingsEnum(
-            docMap.size(), wrapReuse, inDocsAndPositions, docMap, storePositions, storeOffsets);
+        wrapReuse.reset(docMap, inDocsAndPositions, storePositions, storeOffsets);
+        return wrapReuse;
       }
 
       final PostingsEnum inReuse;
@@ -213,33 +213,29 @@ final class FreqProxTermsWriter extends TermsHash {
         wrapReuse = (SortingDocsEnum) reuse;
         inReuse = wrapReuse.getWrapped();
       } else {
-        wrapReuse = null;
-        inReuse = null;
+        wrapReuse = new SortingDocsEnum();
+        inReuse = reuse;
       }
 
       final PostingsEnum inDocs = in.postings(inReuse, flags);
-      return new SortingDocsEnum(docMap.size(), wrapReuse, inDocs, docMap);
+      wrapReuse.reset(docMap, inDocs);
+      return wrapReuse;
     }
   }
 
   static class SortingDocsEnum extends PostingsEnum {
 
-    private final PostingsEnum in;
     private final LSBRadixSorter sorter;
-    private int[] docs;
-    private int docIt = -1;
-    private final int upTo;
+    private PostingsEnum in;
+    private int[] docs = IntsRef.EMPTY_INTS;
+    private int docIt;
+    private int upTo;
 
-    SortingDocsEnum(
-        int maxDoc, SortingDocsEnum reuse, final PostingsEnum in, final Sorter.DocMap docMap)
-        throws IOException {
-      if (reuse != null) {
-        sorter = reuse.sorter;
-        docs = reuse.docs;
-      } else {
-        sorter = new LSBRadixSorter();
-        docs = IntsRef.EMPTY_INTS;
-      }
+    SortingDocsEnum() {
+      sorter = new LSBRadixSorter();
+    }
+
+    void reset(Sorter.DocMap docMap, PostingsEnum in) throws IOException {
       this.in = in;
       int i = 0;
       for (int doc = in.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = in.nextDoc()) {
@@ -253,10 +249,12 @@ final class FreqProxTermsWriter extends TermsHash {
         docs = ArrayUtil.grow(docs);
       }
       docs[upTo] = DocIdSetIterator.NO_MORE_DOCS;
+      final int maxDoc = docMap.size();
       final int numBits = PackedInts.bitsRequired(Math.max(0, maxDoc - 1));
       // Even though LSBRadixSorter cannot take advantage of partial ordering like TimSorter it is
       // often still faster for nearly-sorted inputs.
       sorter.sort(numBits, docs, upTo);
+      docIt = -1;
     }
 
     PostingsEnum getWrapped() {
@@ -311,7 +309,7 @@ final class FreqProxTermsWriter extends TermsHash {
     }
   }
 
-  static class SortingPostingsEnum extends FilterLeafReader.FilterPostingsEnum {
+  static class SortingPostingsEnum extends PostingsEnum {
 
     /**
      * A {@link TimSorter} which sorts two parallel arrays of doc IDs and offsets in one go. Everyti
@@ -324,8 +322,8 @@ final class FreqProxTermsWriter extends TermsHash {
       private int[] tmpDocs;
       private long[] tmpOffsets;
 
-      public DocOffsetSorter(int maxDoc) {
-        super(maxDoc / 8);
+      public DocOffsetSorter(int numTempSlots) {
+        super(numTempSlots);
         this.tmpDocs = IntsRef.EMPTY_INTS;
         this.tmpOffsets = LongsRef.EMPTY_LONGS;
       }
@@ -379,54 +377,36 @@ final class FreqProxTermsWriter extends TermsHash {
       }
     }
 
-    private final int maxDoc;
-    private final DocOffsetSorter sorter;
-    private int[] docs;
-    private long[] offsets;
-    private final int upto;
+    private DocOffsetSorter sorter;
+    private int[] docs = IntsRef.EMPTY_INTS;
+    private long[] offsets = LongsRef.EMPTY_LONGS;
+    private int upto;
 
-    private final ByteBuffersDataInput postingInput;
-    private final boolean storePositions, storeOffsets;
+    private ByteBuffersDataInput postingInput;
+    private PostingsEnum in;
+    private boolean storePositions, storeOffsets;
 
-    private int docIt = -1;
+    private int docIt;
     private int pos;
-    private int startOffset = -1;
-    private int endOffset = -1;
-    private final BytesRef payload;
+    private int startOffset;
+    private int endOffset;
+    private final BytesRef payload = new BytesRef();
     private int currFreq;
 
-    private final ByteBuffersDataOutput buffer;
+    private final ByteBuffersDataOutput buffer = ByteBuffersDataOutput.newResettableInstance();
 
-    SortingPostingsEnum(
-        int maxDoc,
-        SortingPostingsEnum reuse,
-        final PostingsEnum in,
-        Sorter.DocMap docMap,
-        boolean storePositions,
-        boolean storeOffsets)
+    void reset(Sorter.DocMap docMap, PostingsEnum in, boolean storePositions, boolean storeOffsets)
         throws IOException {
-      super(in);
-      this.maxDoc = maxDoc;
+      this.in = in;
       this.storePositions = storePositions;
       this.storeOffsets = storeOffsets;
-      if (reuse != null) {
-        docs = reuse.docs;
-        offsets = reuse.offsets;
-        payload = reuse.payload;
-        buffer = reuse.buffer;
-        buffer.reset();
-        if (reuse.maxDoc == maxDoc) {
-          sorter = reuse.sorter;
-        } else {
-          sorter = new DocOffsetSorter(maxDoc);
-        }
-      } else {
-        docs = new int[32];
-        offsets = new long[32];
-        payload = new BytesRef(32);
-        buffer = ByteBuffersDataOutput.newResettableInstance();
-        sorter = new DocOffsetSorter(maxDoc);
+      if (sorter == null) {
+        final int numTempSlots = docMap.size() / 8;
+        sorter = new DocOffsetSorter(numTempSlots);
       }
+      docIt = -1;
+      startOffset = -1;
+      endOffset = -1;
 
       int doc;
       int i = 0;
@@ -547,6 +527,11 @@ final class FreqProxTermsWriter extends TermsHash {
     /** Returns the wrapped {@link PostingsEnum}. */
     PostingsEnum getWrapped() {
       return in;
+    }
+
+    @Override
+    public long cost() {
+      return in.cost();
     }
   }
 }
