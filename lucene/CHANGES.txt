@@ -64,7 +64,7 @@ Optimizations
 
 * GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
 
-* GITHUB#12198: Reduced contention when indexing with many threads. (Adrien Grand)
+* GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
 
 Bug Fixes
 ---------------------
