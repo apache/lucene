@@ -34,6 +34,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * A range query that can take advantage of the fact that the index is sorted to speed up execution.
@@ -45,7 +46,8 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * <ul>
  *   <li>The index is sorted, and its primary sort is on the same field as the query.
  *   <li>The query field has either {@link SortedNumericDocValues} or {@link NumericDocValues}.
- *   <li>The sort field is of type {@code SortField.Type.LONG} or {@code SortField.Type.INT}.
+ *   <li>The sort field is of type {@code SortField.Type.LONG}, {@code SortField.Type.INT}, {@code
+ *       SortField.Type.FLOAT}, {@code SortField.Type.DOUBLE}.
  *   <li>The segments must have at most one field value per document (otherwise we cannot easily
  *       determine the matching document IDs through a binary search).
  * </ul>
@@ -72,21 +74,66 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   private final long lowerValue;
   private final long upperValue;
   private final Query fallbackQuery;
+  // for #toString() to get decode value(lowerValue, upperValue) to get original value for float and
+  // double
+  private final SortField.Type fieldType;
+
+  public IndexSortSortedNumericDocValuesRangeQuery(
+      String field, long lowerValue, long upperValue, Query fallbackQuery, SortField.Type type) {
+    this.field = Objects.requireNonNull(field);
+    this.lowerValue = lowerValue;
+    this.upperValue = upperValue;
+    this.fallbackQuery = fallbackQuery;
+    this.fieldType = type;
+  }
 
   /**
    * Creates a new {@link IndexSortSortedNumericDocValuesRangeQuery}.
    *
    * @param field The field name.
-   * @param lowerValue The lower end of the range (inclusive).
-   * @param upperValue The upper end of the range (exclusive).
+   * @param lowerValue The lower end of the range (inclusive), int/long type.
+   * @param upperValue The upper end of the range (exclusive), int/long type.
    * @param fallbackQuery A query to fall back to if the optimization cannot be applied.
    */
   public IndexSortSortedNumericDocValuesRangeQuery(
       String field, long lowerValue, long upperValue, Query fallbackQuery) {
-    this.field = Objects.requireNonNull(field);
-    this.lowerValue = lowerValue;
-    this.upperValue = upperValue;
-    this.fallbackQuery = fallbackQuery;
+    this(field, lowerValue, upperValue, fallbackQuery, Type.LONG);
+  }
+
+  /**
+   * Creates a new {@link IndexSortSortedNumericDocValuesRangeQuery}.
+   *
+   * @param field The field name.
+   * @param lowerValue The lower end of the range (inclusive), float type.
+   * @param upperValue The upper end of the range (exclusive), float type.
+   * @param fallbackQuery A query to fall back to if the optimization cannot be applied.
+   */
+  public IndexSortSortedNumericDocValuesRangeQuery(
+      String field, float lowerValue, float upperValue, Query fallbackQuery) {
+    this(
+        field,
+        NumericUtils.floatToSortableInt(lowerValue),
+        NumericUtils.floatToSortableInt(upperValue),
+        fallbackQuery,
+        Type.FLOAT);
+  }
+
+  /**
+   * Creates a new {@link IndexSortSortedNumericDocValuesRangeQuery}.
+   *
+   * @param field The field name.
+   * @param lowerValue The lower end of the range (inclusive), double type.
+   * @param upperValue The upper end of the range (exclusive), double type.
+   * @param fallbackQuery A query to fall back to if the optimization cannot be applied.
+   */
+  public IndexSortSortedNumericDocValuesRangeQuery(
+      String field, double lowerValue, double upperValue, Query fallbackQuery) {
+    this(
+        field,
+        NumericUtils.doubleToSortableLong(lowerValue),
+        NumericUtils.doubleToSortableLong(upperValue),
+        fallbackQuery,
+        Type.DOUBLE);
   }
 
   public Query getFallbackQuery() {
@@ -123,12 +170,21 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     if (this.field.equals(field) == false) {
       b.append(this.field).append(":");
     }
-    return b.append("[")
-        .append(lowerValue)
-        .append(" TO ")
-        .append(upperValue)
-        .append("]")
-        .toString();
+    b.append("[");
+    if (fieldType == Type.LONG) {
+      b.append(lowerValue).append(" TO ").append(upperValue);
+    } else if (fieldType == Type.FLOAT) {
+      b.append(NumericUtils.sortableIntToFloat((int) lowerValue))
+          .append(" TO ")
+          .append(NumericUtils.sortableIntToFloat((int) upperValue));
+    } else {
+      // assume DOUBLE for the other case
+      b.append(NumericUtils.sortableLongToDouble(lowerValue))
+          .append(" TO ")
+          .append(NumericUtils.sortableLongToDouble(upperValue));
+    }
+    b.append("]");
+    return b.toString();
   }
 
   @Override
@@ -426,11 +482,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       return null;
     }
 
-    if (points.getBytesPerDimension() != Long.BYTES
-        && points.getBytesPerDimension() != Integer.BYTES) {
-      return null;
-    }
-
     if (points.size() != points.getDocCount()) {
       return null;
     }
@@ -438,10 +489,12 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     assert lowerValue <= upperValue;
     byte[] queryLowerPoint;
     byte[] queryUpperPoint;
-    if (points.getBytesPerDimension() == Integer.BYTES) {
+    if (points.getBytesPerDimension() == Integer.BYTES
+        || points.getBytesPerDimension() == Float.BYTES) {
       queryLowerPoint = IntPoint.pack((int) lowerValue).bytes;
       queryUpperPoint = IntPoint.pack((int) upperValue).bytes;
     } else {
+      // assuming DOUBLE/LONG for all other cases
       queryLowerPoint = LongPoint.pack(lowerValue).bytes;
       queryUpperPoint = LongPoint.pack(upperValue).bytes;
     }
@@ -515,10 +568,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
         final SortField sortField = indexSort.getSort()[0];
         final SortField.Type sortFieldType = getSortFieldType(sortField);
-        // The index sort optimization is only supported for Type.INT and Type.LONG
-        if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
-          return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
-        }
+        return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
       }
     }
     return null;
@@ -586,9 +636,20 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     }
 
     Object missingValue = sortField.getMissingValue();
+    long missingLongValue;
+    if (missingValue == null) {
+      missingLongValue = 0L;
+    } else if (sortFieldType == Type.INT) {
+      missingLongValue = (int) missingValue;
+    } else if (sortFieldType == Type.LONG) {
+      missingLongValue = (long) missingValue;
+    } else if (sortFieldType == Type.FLOAT) {
+      missingLongValue = NumericUtils.floatToSortableInt((float) missingValue);
+    } else {
+      missingLongValue = NumericUtils.doubleToSortableLong((double) missingValue);
+    }
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
-    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
@@ -611,9 +672,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
         (FieldComparator<Number>) sortField.getComparator(1, false);
     if (type == Type.INT) {
       fieldComparator.setTopValue((int) topValue);
-    } else {
-      // Since we support only Type.INT and Type.LONG, assuming LONG for all other cases
+    } else if (type == Type.LONG) {
       fieldComparator.setTopValue(topValue);
+    } else if (type == Type.FLOAT) {
+      fieldComparator.setTopValue(NumericUtils.sortableIntToFloat((int) topValue));
+    } else {
+      // assuming DOUBLE for all other cases
+      fieldComparator.setTopValue(NumericUtils.sortableLongToDouble(topValue));
     }
 
     LeafFieldComparator leafFieldComparator = fieldComparator.getLeafComparator(context);
