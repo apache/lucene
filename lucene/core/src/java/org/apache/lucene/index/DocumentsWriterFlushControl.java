@@ -447,7 +447,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     boolean fullFlush;
     synchronized (this) {
       final DocumentsWriterPerThread poll;
-      assert numQueued == flushQueue.size();
+      assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       if ((poll = flushQueue.poll()) != null) {
         numQueued = flushQueue.size();
         updateStallState();
@@ -620,7 +620,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
        * blocking indexing.*/
       pruneBlockedQueue(flushingQueue);
       assert assertBlockedFlushes(documentsWriter.deleteQueue);
-      assert numQueued == flushQueue.size();
+      assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       flushQueue.addAll(fullFlushBuffer);
       numQueued = flushQueue.size();
       updateStallState();
@@ -652,7 +652,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         iterator.remove();
         addFlushingDWPT(blockedFlush);
         // don't decr pending here - it's already done when DWPT is blocked
-        assert numQueued == flushQueue.size();
+        assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
         flushQueue.add(blockedFlush);
         numQueued = flushQueue.size();
       }
