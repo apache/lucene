@@ -146,6 +146,9 @@ Improvements
 
 * GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
 
+* GITHUB#12126: Refactor part of IndexFileDeleter and ReplicaFileDeleter into a public common utility class
+  FileDeleter. (Patrick Zhai)
+
 Optimizations
 ---------------------
 
