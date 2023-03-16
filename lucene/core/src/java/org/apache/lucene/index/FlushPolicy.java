@@ -47,37 +47,14 @@ abstract class FlushPolicy {
   protected InfoStream infoStream;
 
   /**
-   * Called for each delete term. If this is a delete triggered due to an update the given {@link
-   * DocumentsWriterPerThread} is non-null.
+   * Called for each delete, insert or update. For pure deletes, the given {@link
+   * DocumentsWriterPerThread} may be {@code null}.
    *
    * <p>Note: This method is called synchronized on the given {@link DocumentsWriterFlushControl}
    * and it is guaranteed that the calling thread holds the lock on the given {@link
    * DocumentsWriterPerThread}
    */
-  public abstract void onDelete(
-      DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread);
-
-  /**
-   * Called for each document update on the given {@link DocumentsWriterPerThread}'s {@link
-   * DocumentsWriterPerThread}.
-   *
-   * <p>Note: This method is called synchronized on the given {@link DocumentsWriterFlushControl}
-   * and it is guaranteed that the calling thread holds the lock on the given {@link
-   * DocumentsWriterPerThread}
-   */
-  public void onUpdate(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
-    onInsert(control, perThread);
-    onDelete(control, perThread);
-  }
-
-  /**
-   * Called for each document addition on the given {@link DocumentsWriterPerThread}s {@link
-   * DocumentsWriterPerThread}.
-   *
-   * <p>Note: This method is synchronized by the given {@link DocumentsWriterFlushControl} and it is
-   * guaranteed that the calling thread holds the lock on the given {@link DocumentsWriterPerThread}
-   */
-  public abstract void onInsert(
+  public abstract void onChange(
       DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread);
 
   /** Called by DocumentsWriter to initialize the FlushPolicy */

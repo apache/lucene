@@ -1,0 +1,65 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+def resources = scriptResources(buildscript)
+
+configure(project(":lucene:core")) {
+  ext {
+    apijars = file('src/generated/jdk');
+    panamaJavaVersions = [ 19, 20 ]
+  }
+  
+  configurations {
+    apiextractor
+  }
+
+  dependencies {
+    apiextractor "org.ow2.asm:asm:${scriptDepVersions['asm']}"
+  }
+
+  for (jdkVersion : panamaJavaVersions) {
+    def task = tasks.create(name: "generatePanamaForeignApiJar${jdkVersion}", type: JavaExec) {
+      description "Regenerate the API-only JAR file with public Panama Foreign API from JDK ${jdkVersion}"
+      group "generation"
+      
+      javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(jdkVersion)
+      }
+      
+      onlyIf {
+        try {
+          javaLauncher.get()
+          return true
+        } catch (Exception e) {
+          logger.warn('Launcher for Java {} is not available; skipping regeneration of Panama Foreign API JAR.', jdkVersion)
+          logger.warn('Error: {}', e.cause?.message)
+          logger.warn("Please make sure to point env 'JAVA{}_HOME' to exactly JDK version {} or enable Gradle toolchain auto-download.", jdkVersion, jdkVersion)
+          return false
+        }
+      }
+      
+      classpath = configurations.apiextractor
+      mainClass = file("${resources}/ExtractForeignAPI.java") as String
+      args = [
+        jdkVersion,
+        new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar"),
+      ]
+    }
+
+    regenerate.dependsOn task
+  }
+}
