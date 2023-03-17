@@ -44,6 +44,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   private long activeBytes = 0;
   private volatile long flushBytes = 0;
   private volatile int numPending = 0;
+  private volatile int numQueued = 0;
   private int numDocsSinceStalled = 0; // only with assert
   private final AtomicBoolean flushDeletes = new AtomicBoolean(false);
   private boolean fullFlush = false;
@@ -437,10 +438,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   }
 
   DocumentsWriterPerThread nextPendingFlush() {
-    if (numPending == 0) {
-      // Nothing to do. This short circuit helps avoid taking the lock, which can otherwise cause
-      // contention. Note that pending flushes include queued flushes, so flushQueue is also empty
-      // here.
+    if (numQueued == 0 && numPending == 0) {
+      // Common case, avoid taking a lock.
       return null;
     }
 
@@ -448,7 +447,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     boolean fullFlush;
     synchronized (this) {
       final DocumentsWriterPerThread poll;
+      assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       if ((poll = flushQueue.poll()) != null) {
+        numQueued = flushQueue.size();
         updateStallState();
         return poll;
       }
@@ -619,7 +620,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
        * blocking indexing.*/
       pruneBlockedQueue(flushingQueue);
       assert assertBlockedFlushes(documentsWriter.deleteQueue);
+      assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       flushQueue.addAll(fullFlushBuffer);
+      numQueued = flushQueue.size();
       updateStallState();
       fullFlushMarkDone =
           true; // at this point we must have collected all DWPTs that belong to the old delete
@@ -649,7 +652,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         iterator.remove();
         addFlushingDWPT(blockedFlush);
         // don't decr pending here - it's already done when DWPT is blocked
+        assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
         flushQueue.add(blockedFlush);
+        numQueued = flushQueue.size();
       }
     }
   }
@@ -716,6 +721,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       }
     } finally {
       flushQueue.clear();
+      numQueued = 0;
       blockedFlushes.clear();
       updateStallState();
     }
@@ -728,17 +734,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   /** Returns the number of flushes that are already checked out but not yet actively flushing */
   int numQueuedFlushes() {
-    if (numPending == 0) {
-      // Since queued flushed are a subset of pending flushes, a number of pending flushes equal to
-      // zero means that there are no queued flushes either. This short circuit helps avoid taking
-      // the lock on `this`, which introduces contention.
-      return 0;
-    }
-    synchronized (this) {
-      assert flushQueue.size() <= numPending
-          : "queued: " + flushQueue.size() + ", pending: " + numPending;
-      return flushQueue.size();
-    }
+    return numQueued;
   }
 
   /**
