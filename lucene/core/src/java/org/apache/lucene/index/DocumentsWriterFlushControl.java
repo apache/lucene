@@ -44,6 +44,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   private long activeBytes = 0;
   private volatile long flushBytes = 0;
   private volatile int numPending = 0;
+  // The number of queued flushes from full flushes. This is the cached size of `flushQueue`, but
+  // doesn't require synchronizing on `this` for access.
   private volatile int numQueued = 0;
   private int numDocsSinceStalled = 0; // only with assert
   private final AtomicBoolean flushDeletes = new AtomicBoolean(false);
@@ -439,7 +441,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   DocumentsWriterPerThread nextPendingFlush() {
     if (numQueued == 0 && numPending == 0) {
-      // Common case, avoid taking a lock.
+      // If there is no queued flush and no pending flush, there is no flush that this indexing
+      // thread can take. This short circuit helps avoid synchronizing on `this`, which could cause
+      // contention.
       return null;
     }
 
@@ -447,7 +451,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     boolean fullFlush;
     synchronized (this) {
       final DocumentsWriterPerThread poll;
-      assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
+      assert numQueued == flushQueue.size()
+          : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       if ((poll = flushQueue.poll()) != null) {
         numQueued--; // write acces synced
         updateStallState();
@@ -620,7 +625,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
        * blocking indexing.*/
       pruneBlockedQueue(flushingQueue);
       assert assertBlockedFlushes(documentsWriter.deleteQueue);
-      assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
+      assert numQueued == flushQueue.size()
+          : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       flushQueue.addAll(fullFlushBuffer);
       numQueued += fullFlushBuffer.size(); // write acces synced
       updateStallState();
@@ -652,7 +658,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         iterator.remove();
         addFlushingDWPT(blockedFlush);
         // don't decr pending here - it's already done when DWPT is blocked
-        assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
+        assert numQueued == flushQueue.size()
+            : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
         flushQueue.add(blockedFlush);
         numQueued++; // write acces synced
       }
