@@ -861,16 +861,6 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IOUtils.close(w, r, dir);
   }
 
-  //    TopDocs topDocs = searcher.search(rewrite, 10);
-//    assertTrue(topDocs.totalHits.value > 0);
-//    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-//      int docId = topDocs.scoreDocs[i].doc;
-//      Explanation explanation = searcher.explain(rewrite, docId);
-
-  // assertNotNull("Explanation should not be null", explanation);
-//      void assertEquals("Explanation score should match the actual score",
-  //topDocs.scoreDocs[i].score, explanation.getValue(), 0.001;);
-
   public void testRewritePhraseWithAny() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int initState = q.createState();
