@@ -833,15 +833,15 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     int initState = q.createState();
     int s1 = q.createState();
     int s2 = q.createState();
-    q.addTransition(initState, s1, "foo");
-    q.addTransition(s1, s2, "bar");
+    q.addTransition(initState, s1, "xml");
+    q.addTransition(s1, s2, "json");
     q.setAccept(s2, true);
     q.finish();
 
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(newTextField("field", "x y z", Field.Store.NO));
+    doc.add(newTextField("field", "bson", Field.Store.NO));
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
@@ -861,6 +861,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IOUtils.close(w, r, dir);
   }
 
+  // TODO: Implement a test that evaluates the output of explain for matching documents
   public void testRewritePhraseWithAny() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int initState = q.createState();
