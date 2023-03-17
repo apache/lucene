@@ -43,8 +43,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   private final long hardMaxBytesPerDWPT;
   private long activeBytes = 0;
   private volatile long flushBytes = 0;
-  // The number of DWPTs that are pending flush but aren't actively flushing. Note that this
-  // includes blocked and queued flushes.
   private volatile int numPending = 0;
   private int numDocsSinceStalled = 0; // only with assert
   private final AtomicBoolean flushDeletes = new AtomicBoolean(false);
@@ -91,27 +89,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     this.documentsWriter = documentsWriter;
   }
 
-  private synchronized boolean assertNumPending() {
-    int numBlocked = blockedFlushes.size();
-    int numQueued = flushQueue.size();
-    int numOtherPending = 0;
-    for (DocumentsWriterPerThread dwpt : perThreadPool) {
-      if (dwpt.isFlushPending()) {
-        numOtherPending++;
-      }
-    }
-    assert numPending == numBlocked + numQueued + numOtherPending
-        : "numPending="
-            + numPending
-            + ", numBlocked="
-            + numBlocked
-            + ", numQueued="
-            + numQueued
-            + ", numOtherPending="
-            + numOtherPending;
-    return true;
-  }
-
   public synchronized long activeBytes() {
     return activeBytes;
   }
@@ -147,7 +124,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
       // 2 * ramBufferBytes -> before we stall we need to cross the 2xRAM Buffer border this is
       // still a valid limit
-      // (numPending + numFlushingDWPT()) * peakDelta) -> those are the total
+      // (numPending + numFlushingDWPT() + numBlockedFlushes()) * peakDelta) -> those are the total
       // number of DWPT that are not active but not yet fully flushed
       // all of them could theoretically be taken out of the loop once they crossed the RAM buffer
       // and the last document was the peak delta
@@ -156,7 +133,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       // peak document
       final long expected =
           (2 * ramBufferBytes)
-              + ((numPending + numFlushingDWPT()) * peakDelta)
+              + ((numPending + numFlushingDWPT() + numBlockedFlushes()) * peakDelta)
               + (numDocsSinceStalled * peakDelta);
       // the expected ram consumption is an upper bound at this point and not really the expected
       // consumption
@@ -421,10 +398,10 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     assert perThread.isHeldByCurrentThread();
     assert perThread.isFlushPending() : "can not block non-pending threadstate";
     assert fullFlush : "can not block if fullFlush == false";
+    numPending--; // write access synced
     blockedFlushes.add(perThread);
     boolean checkedOut = perThreadPool.checkout(perThread);
     assert checkedOut;
-    assert assertNumPending();
   }
 
   private synchronized DocumentsWriterPerThread checkOutForFlush(
@@ -438,7 +415,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       numPending--; // write access synced
       boolean checkedOut = perThreadPool.checkout(perThread);
       assert checkedOut;
-      assert assertNumPending();
       return perThread;
     } finally {
       updateStallState();
@@ -461,7 +437,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   }
 
   DocumentsWriterPerThread nextPendingFlush() {
-    assert assertNumPending();
     if (numPending == 0) {
       // Nothing to do. This short circuit helps avoid taking the lock, which can otherwise cause
       // contention. Note that pending flushes include queued flushes, so flushQueue is also empty
@@ -474,7 +449,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     synchronized (this) {
       final DocumentsWriterPerThread poll;
       if ((poll = flushQueue.poll()) != null) {
-        this.numPending--; // write access synced
         updateStallState();
         return poll;
       }
@@ -646,12 +620,10 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       pruneBlockedQueue(flushingQueue);
       assert assertBlockedFlushes(documentsWriter.deleteQueue);
       flushQueue.addAll(fullFlushBuffer);
-      numPending += fullFlushBuffer.size(); // write access synced
       updateStallState();
       fullFlushMarkDone =
           true; // at this point we must have collected all DWPTs that belong to the old delete
       // queue
-      assert assertNumPending();
     }
     assert assertActiveDeleteQueue(documentsWriter.deleteQueue);
     assert flushingQueue.getLastSequenceNumber() <= flushingQueue.getMaxSeqNo();
@@ -680,7 +652,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         flushQueue.add(blockedFlush);
       }
     }
-    assert assertNumPending();
   }
 
   synchronized void finishFullFlush() {
@@ -744,7 +715,6 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         }
       }
     } finally {
-      numPending = numPending - flushQueue.size() - blockedFlushes.size(); // write access synced
       flushQueue.clear();
       blockedFlushes.clear();
       updateStallState();
