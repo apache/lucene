@@ -449,7 +449,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       final DocumentsWriterPerThread poll;
       assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       if ((poll = flushQueue.poll()) != null) {
-        numQueued = flushQueue.size();
+        numQueued--; // write acces synced
         updateStallState();
         return poll;
       }
@@ -622,7 +622,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       assert assertBlockedFlushes(documentsWriter.deleteQueue);
       assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
       flushQueue.addAll(fullFlushBuffer);
-      numQueued = flushQueue.size();
+      numQueued += fullFlushBuffer.size(); // write acces synced
       updateStallState();
       fullFlushMarkDone =
           true; // at this point we must have collected all DWPTs that belong to the old delete
@@ -654,7 +654,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         // don't decr pending here - it's already done when DWPT is blocked
         assert numQueued == flushQueue.size() : "flush queue size: " + flushQueue.size() + ", cache size: " + numQueued;
         flushQueue.add(blockedFlush);
-        numQueued = flushQueue.size();
+        numQueued++; // write acces synced
       }
     }
   }
@@ -721,7 +721,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       }
     } finally {
       flushQueue.clear();
-      numQueued = 0;
+      numQueued = 0; // write acces synced
       blockedFlushes.clear();
       updateStallState();
     }
