@@ -824,7 +824,6 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     assertEquals(0, positions[0]);
     assertEquals(1, positions[1]);
 
-
     IOUtils.close(w, r, dir);
   }
 
@@ -855,7 +854,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       Explanation explanation = searcher.explain(rewrite, scoreDoc.doc);
       assertNotNull("Explanation should not be null", explanation);
-      assertTrue("Explanation score should match the actual score", Float.compare(scoreDoc.score, (Float) explanation.getValue()) == 0);
+      assertTrue(
+          "Explanation score should match the actual score",
+          Float.compare(scoreDoc.score, (Float) explanation.getValue()) == 0);
     }
 
     IOUtils.close(w, r, dir);

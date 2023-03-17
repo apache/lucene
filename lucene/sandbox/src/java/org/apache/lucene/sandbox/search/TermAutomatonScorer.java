@@ -349,6 +349,7 @@ class TermAutomatonScorer extends Scorer {
   public EnumAndScorer[] getEnums() {
     return enums;
   }
+
   public LeafSimScorer getLeafSimScorer() {
     return docScorer;
   }

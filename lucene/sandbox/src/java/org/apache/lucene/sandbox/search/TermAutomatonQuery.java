@@ -433,7 +433,6 @@ public class TermAutomatonQuery extends Query implements Accountable {
       } else {
         return null;
       }
-
     }
 
     @Override
@@ -464,10 +463,12 @@ public class TermAutomatonQuery extends Query implements Accountable {
           if (postingsEnum.docID() == doc) {
             float termScore = leafSimScorer.score(doc, postingsEnum.freq());
             termExplanations.add(
+                Explanation.match(
+                    postingsEnum.freq(),
+                    "term frequency in the document",
                     Explanation.match(
-                            postingsEnum.freq(),
-                            "term frequency in the document",
-                            Explanation.match(termScore, "score for term: " + idToTerm.get(enumAndScorer.termID).utf8ToString())));
+                        termScore,
+                        "score for term: " + idToTerm.get(enumAndScorer.termID).utf8ToString())));
           }
         }
       }
@@ -477,12 +478,9 @@ public class TermAutomatonQuery extends Query implements Accountable {
       }
 
       Explanation freqExplanation =
-              Explanation.match(score, "TermAutomatonQuery, product of:", termExplanations);
+          Explanation.match(score, "TermAutomatonQuery, product of:", termExplanations);
       return leafSimScorer.explain(doc, freqExplanation);
     }
-
-
-
   }
 
   @Override
