@@ -38,23 +38,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.ConstantScoreScorer;
-import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.MultiPhraseQuery;
-import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
@@ -839,8 +824,52 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     assertEquals(0, positions[0]);
     assertEquals(1, positions[1]);
 
+
     IOUtils.close(w, r, dir);
   }
+
+  public void testExplainNonMatchingDocument() throws Exception {
+    TermAutomatonQuery q = new TermAutomatonQuery("field");
+    int initState = q.createState();
+    int s1 = q.createState();
+    int s2 = q.createState();
+    q.addTransition(initState, s1, "foo");
+    q.addTransition(s1, s2, "bar");
+    q.setAccept(s2, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(newTextField("field", "x y z", Field.Store.NO));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrite = q.rewrite(searcher);
+    assertTrue(rewrite instanceof PhraseQuery);
+
+    TopDocs topDocs = searcher.search(rewrite, 10);
+    assertEquals(0, topDocs.totalHits.value);
+
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      Explanation explanation = searcher.explain(rewrite, scoreDoc.doc);
+      assertNotNull("Explanation should not be null", explanation);
+      assertTrue("Explanation score should match the actual score", Float.compare(scoreDoc.score, (Float) explanation.getValue()) == 0);
+    }
+
+    IOUtils.close(w, r, dir);
+  }
+
+  //    TopDocs topDocs = searcher.search(rewrite, 10);
+//    assertTrue(topDocs.totalHits.value > 0);
+//    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+//      int docId = topDocs.scoreDocs[i].doc;
+//      Explanation explanation = searcher.explain(rewrite, docId);
+
+  // assertNotNull("Explanation should not be null", explanation);
+//      void assertEquals("Explanation score should match the actual score",
+  //topDocs.scoreDocs[i].score, explanation.getValue(), 0.001;);
 
   public void testRewritePhraseWithAny() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");

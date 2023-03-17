@@ -52,6 +52,7 @@ class TermAutomatonScorer extends Scorer {
 
   private int docID = -1;
   private int freq;
+  private EnumAndScorer[] enums;
 
   public TermAutomatonScorer(
       TermAutomatonWeight weight, EnumAndScorer[] subs, int anyTermID, LeafSimScorer docScorer)
@@ -343,6 +344,13 @@ class TermAutomatonScorer extends Scorer {
     for (int i = 0; i <= limit; i++) {
       positions[i].count = 0;
     }
+  }
+
+  public EnumAndScorer[] getEnums() {
+    return enums;
+  }
+  public LeafSimScorer getLeafSimScorer() {
+    return docScorer;
   }
 
   @Override

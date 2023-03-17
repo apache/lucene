@@ -433,6 +433,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
       } else {
         return null;
       }
+
     }
 
     @Override
@@ -442,33 +443,47 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-        Scorer scorer = scorer(context);
-        if (scorer == null) {
-            return Explanation.noMatch("no matching terms in document");
-        } else if (scorer.iterator().advance(doc) != doc) {
-            return Explanation.noMatch("document not found");
-        } else {
-            float score = scorer.score();
-            Explanation expl = new Explanation(score, "TermAutomatonQuery, product of:");
-            for (EnumAndScorer enumAndScorer : ((TermAutomatonScorer) scorer).getEnums()) {
-                if (enumAndScorer != null) {
-                    int termID = enumAndScorer.termID;
-                    String termText = idToTerm.get(termID).utf8ToString();
-                    float termWeight = enumAndScorer.scorer.freq() * termWeight(termID, scorer.getStats(), context.reader());
-                    Explanation termExpl = new Explanation(termWeight, "termWeight(" + termText + ")");
-                    expl.addDetail(termExpl);
+      Scorer scorer = scorer(context);
+      if (scorer == null) {
+        return Explanation.noMatch("No matching terms in the document");
+      }
 
-                    Explanation postingsExpl = new Explanation();
-                    enumAndScorer.scorer.iterator().advance(doc);
-                    int freq = enumAndScorer.scorer.freq();
-                    postingsExpl.setValue(scorer.score());
-                    postingsExpl.setDescription(freq + " times in " + enumAndScorer.scorer.freq() + ", " + termText);
-                    termExpl.addDetail(postingsExpl);
-                }
-            }
-        return expl;
+      int advancedDoc = scorer.iterator().advance(doc);
+      if (advancedDoc != doc) {
+        return Explanation.noMatch("No matching terms in the document");
+      }
+
+      float score = scorer.score();
+      LeafSimScorer leafSimScorer = ((TermAutomatonScorer) scorer).getLeafSimScorer();
+      EnumAndScorer[] enums = ((TermAutomatonScorer) scorer).getEnums();
+
+      List<Explanation> termExplanations = new ArrayList<>();
+      for (EnumAndScorer enumAndScorer : enums) {
+        if (enumAndScorer != null) {
+          PostingsEnum postingsEnum = enumAndScorer.posEnum;
+          if (postingsEnum.docID() == doc) {
+            float termScore = leafSimScorer.score(doc, postingsEnum.freq());
+            termExplanations.add(
+                    Explanation.match(
+                            postingsEnum.freq(),
+                            "term frequency in the document",
+                            Explanation.match(termScore, "score for term: " + idToTerm.get(enumAndScorer.termID).utf8ToString())));
+          }
+        }
+      }
+
+      if (termExplanations.isEmpty()) {
+        return Explanation.noMatch("No matching terms in the document");
+      }
+
+      Explanation freqExplanation =
+              Explanation.match(score, "TermAutomatonQuery, product of:", termExplanations);
+      return leafSimScorer.explain(doc, freqExplanation);
     }
-}
+
+
+
+  }
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
