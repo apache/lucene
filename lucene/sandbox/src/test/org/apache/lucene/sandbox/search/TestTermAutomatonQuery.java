@@ -917,15 +917,22 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
       Explanation explanation = searcher.explain(q, scoreDoc.doc);
       assertNotNull("Explanation should not be null", explanation);
       assertTrue("Explanation should indicate a match", explanation.isMatch());
-      assertEquals("Score in the explanation should match the actual score", scoreDoc.score, explanation.getValue().floatValue(), 0.001f);
+      assertEquals(
+          "Score in the explanation should match the actual score",
+          scoreDoc.score,
+          explanation.getValue().floatValue(),
+          0.001f);
       // ? representing single character wildcard
-      assertTrue("Explanation should contain matching terms", explanation.toString().contains("foo ? bar") );
+      assertTrue(
+          "Explanation should contain matching terms",
+          explanation.toString().contains("foo ? bar"));
       // Check that the explanation details exist
       Explanation[] details = explanation.getDetails();
       assertTrue("Explanation should have details", details.length > 0);
     }
     IOUtils.close(w, r, dir);
   }
+
   public void testRewritePhraseWithAny() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int initState = q.createState();
