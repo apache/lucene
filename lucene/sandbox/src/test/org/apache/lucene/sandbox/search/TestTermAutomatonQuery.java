@@ -62,6 +62,7 @@ import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeSource;
@@ -878,7 +879,53 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IOUtils.close(w, r, dir);
   }
 
-  // TODO: Implement a test that evaluates the output of explain for matching documents
+  // TODO: improve experience of working with explain
+
+  public void testExplainMatchingDocuments() throws Exception {
+    TermAutomatonQuery q = new TermAutomatonQuery("field");
+
+    int initState = q.createState();
+    int s1 = q.createState();
+    int s2 = q.createState();
+    int s3 = q.createState();
+    q.addTransition(initState, s1, "foo");
+    q.addAnyTransition(s1, s2);
+    q.addTransition(s2, s3, "bar");
+    q.setAccept(s3, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc1 = new Document();
+    doc1.add(newTextField("field", "foo x bar", Field.Store.NO));
+    w.addDocument(doc1);
+
+    Document doc2 = new Document();
+    doc2.add(newTextField("field", "foo y bar", Field.Store.NO));
+    w.addDocument(doc2);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+
+    QueryUtils.check(random(), q, searcher);
+    TopDocs topDocs = searcher.search(q, 10);
+    // Verify that the docs matched fasho
+    assertEquals(2, topDocs.totalHits.value);
+
+    // Iterate through score docs and test assert aspects of explanation
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      Explanation explanation = searcher.explain(q, scoreDoc.doc);
+      assertNotNull("Explanation should not be null", explanation);
+      assertTrue("Explanation should indicate a match", explanation.isMatch());
+      assertEquals("Score in the explanation should match the actual score", scoreDoc.score, explanation.getValue().floatValue(), 0.001f);
+      // ? representing single character wildcard
+      assertTrue("Explanation should contain matching terms", explanation.toString().contains("foo ? bar") );
+      // Check that the explanation details exist
+      Explanation[] details = explanation.getDetails();
+      assertTrue("Explanation should have details", details.length > 0);
+    }
+    IOUtils.close(w, r, dir);
+  }
   public void testRewritePhraseWithAny() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int initState = q.createState();
