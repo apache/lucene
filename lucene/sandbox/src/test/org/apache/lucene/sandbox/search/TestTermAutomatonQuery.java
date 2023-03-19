@@ -857,7 +857,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(newTextField("field", "bson", Field.Store.NO));
+    doc.add(newTextField("field", "protobuf", Field.Store.NO));
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
