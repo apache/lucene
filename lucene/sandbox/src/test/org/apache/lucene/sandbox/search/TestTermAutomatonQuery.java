@@ -912,7 +912,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     // Verify that the docs matched fasho
     assertEquals(2, topDocs.totalHits.value);
 
-    // Iterate through score docs and test assert aspects of explanation
+    // Iterate through score docs and assert aspects of explanation
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       Explanation explanation = searcher.explain(q, scoreDoc.doc);
       assertNotNull("Explanation should not be null", explanation);
