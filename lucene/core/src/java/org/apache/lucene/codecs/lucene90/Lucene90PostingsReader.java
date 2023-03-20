@@ -485,13 +485,18 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     public int peekNextNonMatchingDocID() throws IOException {
       // exercised by src/python/example.py -source wikimedium10m via not queries
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        return lastNonMatchingDoc = DocIdSetIterator.NO_MORE_DOCS;
+        return lastNonMatchingDoc;
       }
       if (doc < lastNonMatchingDoc) {
         return lastNonMatchingDoc;
       }
 
-      if (docBufferUpto == 0 || docBufferUpto == BLOCK_SIZE || docBuffer[docBufferUpto] - doc > 1) {
+      if (BLOCK_SIZE - docBufferUpto == docBuffer[BLOCK_SIZE - 1] - docBuffer[docBufferUpto] + 1) {
+        // continuous match for the rest of block
+        return lastNonMatchingDoc = (int) docBuffer[BLOCK_SIZE - 1] + 1;
+      }
+
+      if (docBufferUpto == BLOCK_SIZE || docBuffer[docBufferUpto] - doc > 1) {
         // when at boundary, don't load buffer and only provide best-guess
         return lastNonMatchingDoc = doc + 1;
       }

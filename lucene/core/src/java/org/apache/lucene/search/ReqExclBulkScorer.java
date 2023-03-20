@@ -38,10 +38,12 @@ final class ReqExclBulkScorer extends BulkScorer {
       if (exclDoc < upTo) {
         exclDoc = excl.advance(upTo);
       }
+
+      int exclNonMatchingDocID = excl.peekNextNonMatchingDocID();
       if (exclDoc == upTo) {
         // upTo is excluded so we can consider that we scored up to upTo+1
-        upTo += 1;
-        exclDoc = excl.nextDoc();
+        upTo = exclNonMatchingDocID;
+        exclDoc = excl.advance(exclNonMatchingDocID);
       } else {
         upTo = req.score(collector, acceptDocs, upTo, Math.min(exclDoc, max));
       }

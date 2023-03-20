@@ -965,6 +965,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
 
       @Override
+      public int peekNextNonMatchingDocID() throws IOException {
+        return ords.peekNextNonMatchingDocID();
+      }
+
+      @Override
       public int advance(int target) throws IOException {
         return ords.advance(target);
       }
