@@ -149,18 +149,15 @@ public class PrefixQuery extends MultiTermQuery {
 
     @Override
     protected BytesRef nextSeekTerm(BytesRef currentTerm) {
-      if (currentTerm == null) {
-        return startTerm;
-      } else {
-        return null;
-      }
+      assert currentTerm == null;
+      return startTerm;
     }
 
     @Override
     protected AcceptStatus accept(BytesRef candidate) {
       if (thresholdLength == candidate.length
           && determinant == Byte.toUnsignedInt(candidate.bytes[candidate.offset + tdi])) {
-        return AcceptStatus.NO_AND_SEEK;
+        return AcceptStatus.END;
       } else {
         return AcceptStatus.YES;
       }
