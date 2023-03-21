@@ -142,46 +142,15 @@ class ReqExclScorer extends Scorer {
     final float matchCost =
         matchCost(reqApproximation, reqTwoPhaseIterator, exclApproximation, exclTwoPhaseIterator);
 
-    final DocIdSetIterator skippingReqApproximation =
-        new DocIdSetIterator() {
-          @Override
-          public int docID() {
-            return reqApproximation.docID();
-          }
-
-          @Override
-          public int nextDoc() throws IOException {
-            return advance(docID() + 1);
-          }
-
-          @Override
-          public int advance(int target) throws IOException {
-            int exclNonMatchingDoc = exclApproximation.peekNextNonMatchingDocID();
-            // TODO exclNonMatchingDoc != NO_MORE_DOCS to be removed
-            if (exclApproximation.docID() < target
-                && target < exclNonMatchingDoc
-                && exclNonMatchingDoc != NO_MORE_DOCS) {
-              return reqApproximation.advance(exclNonMatchingDoc);
-            } else {
-              return reqApproximation.advance(target);
-            }
-          }
-
-          @Override
-          public long cost() {
-            return reqApproximation.cost();
-          }
-        };
-
     if (reqTwoPhaseIterator == null
         || (exclTwoPhaseIterator != null
             && reqTwoPhaseIterator.matchCost() <= exclTwoPhaseIterator.matchCost())) {
       // reqTwoPhaseIterator is LESS costly than exclTwoPhaseIterator, check it first
-      return new TwoPhaseIterator(skippingReqApproximation) {
+      return new TwoPhaseIterator(reqApproximation) {
 
         @Override
         public boolean matches() throws IOException {
-          final int doc = skippingReqApproximation.docID();
+          final int doc = reqApproximation.docID();
           // check if the doc is not excluded
           int exclDoc = exclApproximation.docID();
           if (exclDoc < doc) {
@@ -200,11 +169,11 @@ class ReqExclScorer extends Scorer {
       };
     } else {
       // reqTwoPhaseIterator is MORE costly than exclTwoPhaseIterator, check it last
-      return new TwoPhaseIterator(skippingReqApproximation) {
+      return new TwoPhaseIterator(reqApproximation) {
 
         @Override
         public boolean matches() throws IOException {
-          final int doc = skippingReqApproximation.docID();
+          final int doc = reqApproximation.docID();
           // check if the doc is not excluded
           int exclDoc = exclApproximation.docID();
           if (exclDoc < doc) {

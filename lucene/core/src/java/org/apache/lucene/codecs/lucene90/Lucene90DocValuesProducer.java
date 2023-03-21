@@ -53,8 +53,6 @@ import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
 final class Lucene90DocValuesProducer extends DocValuesProducer {
-  private static final int NO_DOCS_CONTAIN_VALUE = -2;
-  private static final int ALL_DOCS_CONTAIN_VALUE = -1;
   private final Map<String, NumericEntry> numerics;
   private final Map<String, BinaryEntry> binaries;
   private final Map<String, SortedEntry> sorted;
@@ -417,13 +415,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int peekNextNonMatchingDocID() {
-      // TODO not exercised by wikimedium10m benchmark
-      // all docs contain values
-      return maxDoc;
-    }
-
-    @Override
     public int advance(int target) throws IOException {
       if (target >= maxDoc) {
         return doc = NO_MORE_DOCS;
@@ -472,12 +463,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int peekNextNonMatchingDocID() throws IOException {
-      // TODO not exercised by wikimedium10m benchmark
-      return disi.peekNextNonMatchingDocID();
-    }
-
-    @Override
     public long cost() {
       return disi.cost();
     }
@@ -493,10 +478,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private NumericDocValues getNumeric(NumericEntry entry) throws IOException {
-    if (entry.docsWithFieldOffset == NO_DOCS_CONTAIN_VALUE) {
+    if (entry.docsWithFieldOffset == -2) {
       // empty
       return DocValues.emptyNumeric();
-    } else if (entry.docsWithFieldOffset == ALL_DOCS_CONTAIN_VALUE) {
+    } else if (entry.docsWithFieldOffset == -1) {
       // dense
       if (entry.bitsPerValue == 0) {
         return new DenseNumericDocValues(maxDoc) {
@@ -559,7 +544,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               entry.jumpTableEntryCount,
               entry.denseRankPower,
               entry.numValues);
-      if (entry.bitsPerValue == 0) { // all docs stored same value
+      if (entry.bitsPerValue == 0) {
         return new SparseNumericDocValues(disi) {
           @Override
           public long longValue() throws IOException {
@@ -749,13 +734,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
     BinaryEntry entry = binaries.get(field.name);
 
-    if (entry.docsWithFieldOffset == NO_DOCS_CONTAIN_VALUE) {
+    if (entry.docsWithFieldOffset == -2) {
       return DocValues.emptyBinary();
     }
 
     final IndexInput bytesSlice = data.slice("fixed-binary", entry.dataOffset, entry.dataLength);
 
-    if (entry.docsWithFieldOffset == ALL_DOCS_CONTAIN_VALUE) {
+    if (entry.docsWithFieldOffset == -1) {
       // dense
       if (entry.minLength == entry.maxLength) {
         // fixed length
@@ -856,7 +841,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       final LongValues values =
           getDirectReaderInstance(slice, ordsEntry.bitsPerValue, 0L, ordsEntry.numValues);
 
-      if (ordsEntry.docsWithFieldOffset == ALL_DOCS_CONTAIN_VALUE) { // dense
+      if (ordsEntry.docsWithFieldOffset == -1) { // dense
         return new BaseSortedDocValues(entry) {
 
           private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;
@@ -962,11 +947,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int nextDoc() throws IOException {
         return ords.nextDoc();
-      }
-
-      @Override
-      public int peekNextNonMatchingDocID() throws IOException {
-        return ords.peekNextNonMatchingDocID();
       }
 
       @Override
@@ -1323,7 +1303,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     final LongValues values = getNumericValues(entry);
 
-    if (entry.docsWithFieldOffset == ALL_DOCS_CONTAIN_VALUE) {
+    if (entry.docsWithFieldOffset == -1) {
       // dense
       return new SortedNumericDocValues() {
 
@@ -1468,7 +1448,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           data.randomAccessSlice(ordsEntry.valuesOffset, ordsEntry.valuesLength);
       final LongValues values = DirectReader.getInstance(slice, ordsEntry.bitsPerValue);
 
-      if (ordsEntry.docsWithFieldOffset == ALL_DOCS_CONTAIN_VALUE) { // dense
+      if (ordsEntry.docsWithFieldOffset == -1) { // dense
         return new BaseSortedSetDocValues(entry, data) {
 
           private final int maxDoc = Lucene90DocValuesProducer.this.maxDoc;

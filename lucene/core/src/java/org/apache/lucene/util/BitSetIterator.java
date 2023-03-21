@@ -53,7 +53,6 @@ public class BitSetIterator extends DocIdSetIterator {
   private final int length;
   private final long cost;
   private int doc = -1;
-  private int nextNonMatchingDoc = -1;
 
   /** Sole constructor. */
   public BitSetIterator(BitSet bits, long cost) {
@@ -91,26 +90,6 @@ public class BitSetIterator extends DocIdSetIterator {
       return doc = NO_MORE_DOCS;
     }
     return doc = bits.nextSetBit(target);
-  }
-
-  @Override
-  public int peekNextNonMatchingDocID() {
-    // TODO not exercised by wikimedium10m benchmark
-    if (doc == NO_MORE_DOCS || doc + 1 >= length) {
-      return nextNonMatchingDoc = length;
-    }
-
-    if (doc < nextNonMatchingDoc) {
-      return nextNonMatchingDoc;
-    }
-
-    int nextClear = bits.nextClearBit(doc + 1);
-
-    if (nextClear == NO_MORE_DOCS) {
-      return nextNonMatchingDoc = length;
-    } else {
-      return nextNonMatchingDoc = nextClear;
-    }
   }
 
   @Override

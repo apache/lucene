@@ -101,12 +101,8 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   private static final int BLOCK_SIZE =
       65536; // The number of docIDs that a single block represents
-  // bit mask to get the base doc id of a block, whose size is BLOCK_SIZE (2^16), that may contain
-  // the doc that this mask is applied on
-  public static final int BLOCK_SIZE_MULTIPLE_BIT_MASK = 0xFFFF0000;
 
   private static final int DENSE_BLOCK_LONGS = BLOCK_SIZE / Long.SIZE; // 1024
-  private static final int DENSE_BLOCK_WORD_INDEX_CONVERSION_SHIFT = 6; // Long.SIZE = 2^6
   public static final byte DEFAULT_DENSE_RANK_POWER = 9; // Every 512 docIDs / 8 longs
 
   static final int MAX_ARRAY_LENGTH = (1 << 12) - 1;
@@ -114,12 +110,12 @@ public final class IndexedDISI extends DocIdSetIterator {
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
       throws IOException {
-    assert block >= 0 && block < BLOCK_SIZE;
+    assert block >= 0 && block < 65536;
     out.writeShort((short) block);
-    assert cardinality > 0 && cardinality <= BLOCK_SIZE;
+    assert cardinality > 0 && cardinality <= 65536;
     out.writeShort((short) (cardinality - 1));
     if (cardinality > MAX_ARRAY_LENGTH) {
-      if (cardinality != BLOCK_SIZE) { // all docs are set
+      if (cardinality != 65536) { // all docs are set
         if (denseRankPower != -1) {
           final byte[] rank = createRank(buffer, denseRankPower);
           out.writeBytes(rank, rank.length);
@@ -411,8 +407,6 @@ public final class IndexedDISI extends DocIdSetIterator {
     }
   }
 
-  // block is effectively the base doc id of current block, computed as block = doc >>> 16 during
-  // write
   int block = -1;
   long blockEnd;
   long denseBitmapOffset = -1; // Only used for DENSE blocks
@@ -436,9 +430,6 @@ public final class IndexedDISI extends DocIdSetIterator {
   // ALL variables
   int gap;
 
-  // cached non-matching doc from last call to peekNextNonMatchingDocWithinBlock
-  private int lastNonMatchingDoc = -1;
-
   @Override
   public int docID() {
     return doc;
@@ -446,7 +437,7 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   @Override
   public int advance(int target) throws IOException {
-    final int targetBlock = target & BLOCK_SIZE_MULTIPLE_BIT_MASK;
+    final int targetBlock = target & 0xFFFF0000;
     if (block < targetBlock) {
       advanceBlock(targetBlock);
     }
@@ -461,31 +452,8 @@ public final class IndexedDISI extends DocIdSetIterator {
     return doc;
   }
 
-  @Override
-  public int peekNextNonMatchingDocID() throws IOException {
-    if (doc < lastNonMatchingDoc) {
-      return lastNonMatchingDoc;
-    }
-    /*
-    targetBlock is the base doc id of the block that may contain target doc
-     */
-    final int targetBlock = (doc + 1) & BLOCK_SIZE_MULTIPLE_BIT_MASK;
-
-    if (block < targetBlock) {
-      // do not load next block, return doc + 1 as best guess
-      return lastNonMatchingDoc = doc + 1;
-    }
-
-    if (block == targetBlock) {
-      return lastNonMatchingDoc = method.peekNextNonMatchingDocWithinBlock(this);
-    }
-
-    // return base doc of next block as best guess
-    return lastNonMatchingDoc = block + BLOCK_SIZE;
-  }
-
   public boolean advanceExact(int target) throws IOException {
-    final int targetBlock = target & BLOCK_SIZE_MULTIPLE_BIT_MASK;
+    final int targetBlock = target & 0xFFFF0000;
     if (block < targetBlock) {
       advanceBlock(targetBlock);
     }
@@ -527,7 +495,7 @@ public final class IndexedDISI extends DocIdSetIterator {
     if (numValues <= MAX_ARRAY_LENGTH) {
       method = Method.SPARSE;
       blockEnd = slice.getFilePointer() + (numValues << 1);
-    } else if (numValues == BLOCK_SIZE) {
+    } else if (numValues == 65536) {
       method = Method.ALL;
       blockEnd = slice.getFilePointer();
       gap = block - index - 1;
@@ -572,7 +540,6 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   enum Method {
     SPARSE {
-
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
@@ -587,33 +554,6 @@ public final class IndexedDISI extends DocIdSetIterator {
           }
         }
         return false;
-      }
-
-      @Override
-      int peekNextNonMatchingDocWithinBlock(IndexedDISI disi) throws IOException {
-        // TODO not exercised by wikimedium10m benchmark
-        // save state
-        long next = disi.slice.getFilePointer();
-        int lastIndex = disi.index;
-        int lastDoc = disi.doc;
-
-        for (; lastIndex < disi.nextBlockIndex; ) {
-          int doc = disi.block | Short.toUnsignedInt(disi.slice.readShort());
-          if (doc - lastDoc > 1) {
-            // restore state
-            disi.slice.seek(next);
-
-            return disi.lastNonMatchingDoc = lastDoc + 1;
-          } else {
-            lastDoc = doc;
-            lastIndex++;
-          }
-        }
-
-        // restore state
-        disi.slice.seek(next);
-
-        return disi.lastNonMatchingDoc = lastDoc + 1;
       }
 
       @Override
@@ -643,37 +583,32 @@ public final class IndexedDISI extends DocIdSetIterator {
     DENSE {
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
-        // target doc id offset from base doc id of the current block
         final int targetInBlock = target & 0xFFFF;
-        final int targetWordIndex = targetInBlock >>> DENSE_BLOCK_WORD_INDEX_CONVERSION_SHIFT;
+        final int targetWordIndex = targetInBlock >>> 6;
 
         // If possible, skip ahead using the rank cache
         // If the distance between the current position and the target is < rank-longs
         // there is no sense in using rank
-        int wordCountPerRank = 1 << (disi.denseRankPower - 6);
-        if (disi.denseRankPower != -1 && targetWordIndex - disi.wordIndex >= wordCountPerRank) {
+        if (disi.denseRankPower != -1
+            && targetWordIndex - disi.wordIndex >= (1 << (disi.denseRankPower - 6))) {
           rankSkip(disi, targetInBlock);
         }
 
-        // at rank just before the target rank, read all longs of the target rank until the target
-        // word
         for (int i = disi.wordIndex + 1; i <= targetWordIndex; ++i) {
           disi.word = disi.slice.readLong();
           disi.numberOfOnes += Long.bitCount(disi.word);
         }
         disi.wordIndex = targetWordIndex;
 
-        // effectively leftBits = disi.word >>> (target % Long.SIZE);
         long leftBits = disi.word >>> target;
         if (leftBits != 0L) {
           disi.doc = target + Long.numberOfTrailingZeros(leftBits);
-          // get index by subtracting number of matching docs after the target doc
           disi.index = disi.numberOfOnes - Long.bitCount(leftBits);
           return true;
         }
 
         // There were no set bits at the wanted position. Move forward until one is reached
-        while (++disi.wordIndex < DENSE_BLOCK_LONGS) {
+        while (++disi.wordIndex < 1024) {
           // This could use the rank cache to skip empty spaces >= 512 bits, but it seems
           // unrealistic
           // that such blocks would be DENSE
@@ -681,10 +616,7 @@ public final class IndexedDISI extends DocIdSetIterator {
           if (disi.word != 0) {
             disi.index = disi.numberOfOnes;
             disi.numberOfOnes += Long.bitCount(disi.word);
-            disi.doc =
-                disi.block
-                    | (disi.wordIndex << DENSE_BLOCK_WORD_INDEX_CONVERSION_SHIFT)
-                    | Long.numberOfTrailingZeros(disi.word);
+            disi.doc = disi.block | (disi.wordIndex << 6) | Long.numberOfTrailingZeros(disi.word);
             return true;
           }
         }
@@ -693,53 +625,9 @@ public final class IndexedDISI extends DocIdSetIterator {
       }
 
       @Override
-      int peekNextNonMatchingDocWithinBlock(IndexedDISI disi) throws IOException {
-        // TODO not exercised by wikimedium10m benchmark
-        // find next non-matching doc in current word
-        long leftBits = disi.word >>> disi.doc;
-
-        if (leftBits == 0 || (leftBits & 1L) == 0) {
-          return disi.doc;
-        }
-
-        int n = Long.numberOfTrailingZeros(~leftBits);
-
-        // TODO is there a cleaner way to check if all bits after disi.doc in current word are
-        // set?
-        if (n + disi.doc % Long.SIZE <= Long.SIZE - Long.numberOfLeadingZeros(disi.word)) {
-          return disi.lastNonMatchingDoc = disi.doc + n;
-        }
-
-        // all docs match after disi.doc in this word
-        // find next non-matching docs in later words
-        int index = disi.wordIndex;
-        long lastPos = disi.slice.getFilePointer();
-        long currWord;
-
-        while (++index < DENSE_BLOCK_LONGS) {
-          currWord = disi.slice.readLong();
-
-          if (currWord == -1) { // all 1s
-            continue;
-          } else {
-            int cumulativeOffSet = index << DENSE_BLOCK_WORD_INDEX_CONVERSION_SHIFT;
-            // find first 0 bit in the word from right
-            int docIdWithinWord = Long.numberOfTrailingZeros(~currWord) + 1;
-
-            // restore buffer position
-            disi.slice.seek(lastPos);
-            return disi.lastNonMatchingDoc = disi.block | cumulativeOffSet | docIdWithinWord;
-          }
-        }
-
-        // consecutive matching docs, return next base doc of next block as best guess
-        return disi.lastNonMatchingDoc = disi.block + BLOCK_SIZE;
-      }
-
-      @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        final int targetWordIndex = targetInBlock >>> DENSE_BLOCK_WORD_INDEX_CONVERSION_SHIFT;
+        final int targetWordIndex = targetInBlock >>> 6;
 
         // If possible, skip ahead using the rank cache
         // If the distance between the current position and the target is < rank-longs
@@ -773,13 +661,6 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.index = target - disi.gap;
         return true;
       }
-
-      @Override
-      int peekNextNonMatchingDocWithinBlock(IndexedDISI disi) throws IOException {
-        // TODO not exercised by wikimedium10m benchmark
-        // all docs in this block match, use base doc of next block as best guess
-        return disi.lastNonMatchingDoc = disi.block + BLOCK_SIZE;
-      }
     };
 
     /**
@@ -793,8 +674,6 @@ public final class IndexedDISI extends DocIdSetIterator {
      * return whether this document exists.
      */
     abstract boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
-
-    abstract int peekNextNonMatchingDocWithinBlock(IndexedDISI disi) throws IOException;
   }
 
   /**

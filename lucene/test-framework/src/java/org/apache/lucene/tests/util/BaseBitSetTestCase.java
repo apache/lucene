@@ -309,12 +309,5 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       }
       return next;
     }
-
-    @Override
-    public int nextClearBit(int i) {
-      int next = bitSet.nextClearBit(i);
-      assert next >= i;
-      return next;
-    }
   }
 }
