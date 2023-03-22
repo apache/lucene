@@ -313,6 +313,9 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   public synchronized void close() {
     globalBufferLock.lock();
     try {
+      if (closed) {
+        throw new IllegalStateException("Double close is illegal on " + getClass().getSimpleName());
+      }
       if (anyChanges()) {
         throw new IllegalStateException("Can't close queue unless all changes are applied");
       }
@@ -541,8 +544,10 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   public long getNextSequenceNumber() {
+    ensureOpen();
     long seqNo = nextSeqNo.getAndIncrement();
-    assert seqNo <= maxSeqNo : "seqNo=" + seqNo + " vs maxSeqNo=" + maxSeqNo;
+    // Must be < to maxSeqNo since maxSeqNo is reserved for the close() operation.
+    assert seqNo < maxSeqNo : "seqNo=" + seqNo + " vs maxSeqNo=" + maxSeqNo;
     return seqNo;
   }
 
@@ -555,7 +560,8 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
    * in-flight threads get sequence numbers inside the gap
    */
   void skipSequenceNumbers(long jump) {
-    nextSeqNo.addAndGet(jump);
+    assert advanced == false;
+    nextSeqNo.getAndAdd(jump);
   }
 
   /** Returns the maximum completed seq no for this queue. */
@@ -594,6 +600,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
       throw new IllegalStateException("queue was already advanced");
     }
     advanced = true;
+    // Reserve maxNumPendingOps sequence numbers, plus one for the close operation.
     long seqNo = getLastSequenceNumber() + maxNumPendingOps + 1;
     maxSeqNo = seqNo;
     return new DocumentsWriterDeleteQueue(
@@ -606,8 +613,8 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   /**
-   * Returns the maximum sequence number for this queue. This value will change once this queue is
-   * advanced.
+   * Returns the maximum sequence number for this queue, inclusive. This value will change exactly
+   * once when this queue is advanced.
    */
   long getMaxSeqNo() {
     return maxSeqNo;
