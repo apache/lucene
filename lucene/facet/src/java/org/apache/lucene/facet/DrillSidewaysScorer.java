@@ -130,7 +130,7 @@ class DrillSidewaysScorer extends BulkScorer {
     }
 
     // Position all scorers to their first matching doc:
-    baseIterator.nextDoc();
+    baseApproximation.nextDoc();
     for (DocsAndCost dim : dims) {
       dim.approximation.nextDoc();
     }
