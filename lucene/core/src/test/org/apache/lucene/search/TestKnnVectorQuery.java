@@ -104,7 +104,7 @@ public class TestKnnVectorQuery extends LuceneTestCase {
   /**
    * Tests that a KnnVectorQuery whose topK &gt;= numDocs returns all the documents in score order
    */
-  public void testMultiVale() throws IOException {
+  public void testMultiValue() throws IOException {
     float[][] doc1Vectors = new float[][]{new float[] {1, 2.5f,1}, new float[] {1, 2.5f, 1}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 500,1}, new float[] {1, 1,4}};
     float[][] doc3Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 300,1}};
