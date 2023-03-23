@@ -15,70 +15,40 @@
  * limitations under the License.
  */
 
-// Produce an MR-JAR with Java 19 MemorySegment implementation for MMapDirectory
+// Produce an MR-JAR with Java 19+ MemorySegment implementation for MMapDirectory
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
-    sourceSets {
-      main19 {
+    for (jdkVersion : panamaJavaVersions) {
+      sourceSets.create("main${jdkVersion}") {
         java {
-          srcDirs = ['src/java19']
+          srcDirs = ["src/java${jdkVersion}"]
         }
       }
-    }
+      configurations["main${jdkVersion}Implementation"].extendsFrom(configurations['implementation'])
+      dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
-    configurations {
-      // Inherit any dependencies from the main source set.
-      main19Implementation.extendsFrom implementation
-    }
-    
-    dependencies {
-      // We need the main classes to compile our Java 19 pieces.
-      main19Implementation sourceSets.main.output
-    }
-
-    def patchClassFiles = { DirectoryProperty destinationDirectory, int expectedMajor ->
-      destinationDirectory.getAsFileTree().matching(new PatternSet().include('**/*.class')).visit{ details ->
-        if (!details.directory) {
-          logger.info("Patching: ${details.file}")
-          new RandomAccessFile(details.file, 'rw').withCloseable { f ->
-            int magic = f.readInt();
-            if (magic != (int)0xCAFEBABE) {
-              throw new GradleException("Invalid Java class file magic ${String.format("0x%08X", magic)}: ${details.file}")
-            }
-            f.seek(6L)
-            short major = f.readShort()
-            if (major != expectedMajor) {
-              throw new GradleException("Invalid Java class file version ${major}: ${details.file}")
-            }
-            // patch the minor version to 0 (remove preview flag):
-            f.seek(4L)
-            f.writeShort(0)
-          }
-        }
-      }
-    }
-
-    tasks.named('compileMain19Java').configure {
-      javaCompiler = javaToolchains.compilerFor {
-        languageVersion = JavaLanguageVersion.of(19)
-      }
-      
-      // undo alternative JDK support:
-      options.forkOptions.javaHome = null
-      
-      sourceCompatibility = 19
-      targetCompatibility = 19
-      options.compilerArgs += ["--release", 19 as String, "--enable-preview"]
-      
-      doLast {
-        patchClassFiles(destinationDirectory, 63)
+      tasks.named("compileMain${jdkVersion}Java").configure {
+        def apijar = new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar")
+        
+        inputs.file(apijar)
+        
+        int releaseIndex = options.compilerArgs.indexOf("--release")
+        options.compilerArgs.removeAt(releaseIndex)
+        options.compilerArgs.removeAt(releaseIndex)
+        options.compilerArgs += [
+          "-Xlint:-options",
+          "--patch-module", "java.base=${apijar}",
+          "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
+        ]
       }
     }
     
     tasks.named('jar').configure {
-      into('META-INF/versions/19') {
-        from sourceSets.main19.output
+      for (jdkVersion : panamaJavaVersions) {
+        into("META-INF/versions/${jdkVersion}") {
+          from sourceSets["main${jdkVersion}"].output
+        }
       }
 
       manifest.attributes(

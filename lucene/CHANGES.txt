@@ -29,6 +29,12 @@ New Features
 * GITHUB#12054: Introduce a new KeywordField for simple and efficient
   filtering, sorting and faceting. (Adrien Grand)
 
+* GITHUB#12188: Add support for Java 20 foreign memory API. If exactly Java 19
+  or 20 is used, MMapDirectory will mmap Lucene indexes in chunks of 16 GiB
+  (instead of 1 GiB) and indexes closed while queries are running can no longer
+  crash the JVM. To disable this feature, pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
 Improvements
 ---------------------
 
@@ -41,6 +47,9 @@ Improvements
   by default, but can be overridden through the constructor. (Greg Miller)
 
 * GITHUB#12175: Remove SortedSetDocValuesSetQuery in favor of TermInSetQuery with DocValuesRewriteMethod. (Greg Miller)
+
+* GITHUB#12126: Refactor part of IndexFileDeleter and ReplicaFileDeleter into a public common utility class
+  FileDeleter. (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -61,6 +70,8 @@ Optimizations
 
 * GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
 
+* GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
@@ -68,10 +79,18 @@ Bug Fixes
 
 * GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
 
+* GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
+
 Build
 ---------------------
 
 * GITHUB#12131: Generate gradle.properties from gradlew, if absent (Colvin Cowie, Uwe Schindler)
+
+* GITHUB#12188: Building the lucene-core MR-JAR file is now possible without installing
+  additionally required Java versions (Java 19, Java 20,...). For compilation, a special
+  JAR file with Panama-foreign API signatures of each supported Java version was added to
+  source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
+  (Uwe Schindler)
 
 Other
 ---------------------
