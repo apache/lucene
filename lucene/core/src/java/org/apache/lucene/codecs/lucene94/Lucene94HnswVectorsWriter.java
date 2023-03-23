@@ -17,6 +17,15 @@
 
 package org.apache.lucene.codecs.lucene94;
 
+import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -43,16 +52,6 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.apache.lucene.codecs.lucene94.Lucene94HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -390,15 +389,18 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     IndexInput vectorDataInput = null;
     boolean success = false;
     try {
+      int liveVectors;
       DocsWithFieldSet docsWithField;
       if(fieldInfo.isVectorMultiValued()){
         docsWithField =
                 writeVectorDataMultiValued(tempVectorData, vectors, fieldInfo.getVectorEncoding().byteSize);
+        liveVectors = Arrays.stream(docsWithField.getValuesPerDocument()).sum();
       }
       else {
         // write the vector data to a temporary file
         docsWithField =
                 writeVectorData(tempVectorData, vectors, fieldInfo.getVectorEncoding().byteSize);
+        liveVectors = docsWithField.cardinality();
       }
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -416,7 +418,6 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
       int byteSize = vectors.dimension() * fieldInfo.getVectorEncoding().byteSize;
-      int liveVectors = Arrays.stream(docsWithField.getValuesPerDocument()).sum();
       OffHeapVectorValues offHeapVectors =
           new OffHeapVectorValues.DenseOffHeapVectorValues(
               vectors.dimension(), liveVectors, vectorDataInput, byteSize);// se all deleted document, vector.size dovrebbe essere 0
@@ -581,7 +582,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       BytesRef binaryValue = vectors.binaryValue();
       assert binaryValue.length == vectors.dimension() * scalarSize;
       output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-      docsWithField.add(docID);
+      docsWithField.addMultiValue(docID);
     }
     return docsWithField;
   }
@@ -671,7 +672,12 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       if (!fieldInfo.isVectorMultiValued()) {
         assert docID > lastDocID;
       }
-      docsWithField.add(docID);
+      if(fieldInfo.isVectorMultiValued()){
+        docsWithField.addMultiValue(docID);
+      } else {
+        docsWithField.add(docID);
+      }
+      
       vectors.add(copyValue(vectorValue));
       if (node > 0) {
         // start at node 1! node 0 is added implicitly, in the constructor

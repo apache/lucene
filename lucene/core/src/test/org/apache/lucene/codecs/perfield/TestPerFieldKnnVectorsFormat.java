@@ -130,9 +130,7 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}, VectorSimilarityFunction.EUCLIDEAN,true));
-          doc.add(new KnnVectorField("field1", new float[] {2, 2, 7}, VectorSimilarityFunction.EUCLIDEAN,true));
-          doc.add(new KnnVectorField("field1", new float[] {3, 5, 3}, VectorSimilarityFunction.EUCLIDEAN,true));
+          doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}));
           doc.add(new KnnVectorField("field2", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();
@@ -141,20 +139,20 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
       WriteRecordingKnnVectorsFormat format1 =
-          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       WriteRecordingKnnVectorsFormat format2 =
-          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       newConfig.setCodec(
-          new AssertingCodec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              if ("field1".equals(field)) {
-                return format1;
-              } else {
-                return format2;
-              }
-            }
-          });
+              new AssertingCodec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  if ("field1".equals(field)) {
+                    return format1;
+                  } else {
+                    return format2;
+                  }
+                }
+              });
 
       try (IndexWriter iw = new IndexWriter(directory, newConfig)) {
         iw.forceMerge(1);

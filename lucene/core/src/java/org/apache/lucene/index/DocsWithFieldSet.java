@@ -35,7 +35,7 @@ public final class DocsWithFieldSet extends DocIdSet {
 
   private FixedBitSet set;
   private int cardinality = 0;
-  private int lastDocId = 0;
+  private int lastDocId = -1; // at a certain point in time this was changed to 0? why?
   
   private Stack<Integer> valuesPerDocuments;
   private int currentDocVectorsCount = 0;
@@ -49,13 +49,31 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param docID – document ID to be added
    */
   public void add(int docID) {
-    if (docID < lastDocId) {
+    if (docID <= lastDocId) {
       throw new IllegalArgumentException(
-          "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
+              "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
     }
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
-      if (!set.getAndSet(docID)) {
+      set.set(docID);
+    } else if (docID != cardinality) {
+      // migrate to a sparse encoding using a bit set
+      set = new FixedBitSet(docID + 1);
+      set.set(0, cardinality);
+      set.set(docID);
+    }
+    lastDocId = docID;
+    cardinality++;
+  }
+
+  public void addMultiValue(int docID) {
+    if (docID < lastDocId) {
+      throw new IllegalArgumentException(
+              "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
+    }
+    if (set != null) {
+      set = FixedBitSet.ensureCapacity(set, docID);
+      if (!set.getAndSet(docID)) { //this is the first vector for the docID
         cardinality++;
       }
     } else {
@@ -66,14 +84,14 @@ public final class DocsWithFieldSet extends DocIdSet {
       set.set(docID);
       cardinality++;
     }
-    if(docID!=lastDocId){
+    if(docID != lastDocId){
       valuesPerDocuments.push(currentDocVectorsCount);
       currentDocVectorsCount = 0;
     }
     currentDocVectorsCount++;
     lastDocId = docID;
   }
-
+  
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + (set == null ? 0 : set.ramBytesUsed());
@@ -90,14 +108,18 @@ public final class DocsWithFieldSet extends DocIdSet {
   }
 
   public int[] getValuesPerDocument() {
-    int[] valuesPerDocumentArray = new int[cardinality];
-    if (currentDocVectorsCount != 0) {
-      valuesPerDocuments.push(currentDocVectorsCount);
-      currentDocVectorsCount = 0;
+    if(valuesPerDocuments != null) {
+      int[] valuesPerDocumentArray = new int[cardinality];
+      if (currentDocVectorsCount != 0) {
+        valuesPerDocuments.push(currentDocVectorsCount);
+        currentDocVectorsCount = 0;
+      }
+      for (int i = valuesPerDocumentArray.length - 1; i > -1; i--) {
+        valuesPerDocumentArray[i] = valuesPerDocuments.pop();
+      }
+      return valuesPerDocumentArray;
+    } else {
+      return null;
     }
-    for (int i = valuesPerDocumentArray.length - 1; i > -1; i--) {
-      valuesPerDocumentArray[i] = valuesPerDocuments.pop();
-    }
-    return valuesPerDocumentArray;
   }
 }
