@@ -418,7 +418,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       int byteSize = vectors.dimension() * fieldInfo.getVectorEncoding().byteSize;
       OffHeapVectorValues offHeapVectors =
           new OffHeapVectorValues.DenseOffHeapVectorValues(
-              vectors.dimension(), vectors.size(), vectorDataInput, byteSize);// dovrebbe eessere ok dense
+              vectors.dimension(), vectors.size(), vectorDataInput, byteSize);// se all deleted document, vector.size dovrebbe essere 0
       OnHeapHnswGraph graph = null;
       if (offHeapVectors.size() != 0) {
         // build graph
