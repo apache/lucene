@@ -416,9 +416,10 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
       int byteSize = vectors.dimension() * fieldInfo.getVectorEncoding().byteSize;
+      int liveVectors = Arrays.stream(docsWithField.getValuesPerDocument()).sum();
       OffHeapVectorValues offHeapVectors =
           new OffHeapVectorValues.DenseOffHeapVectorValues(
-              vectors.dimension(), vectors.size(), vectorDataInput, byteSize);// se all deleted document, vector.size dovrebbe essere 0
+              vectors.dimension(), liveVectors, vectorDataInput, byteSize);// se all deleted document, vector.size dovrebbe essere 0
       OnHeapHnswGraph graph = null;
       if (offHeapVectors.size() != 0) {
         // build graph
@@ -443,7 +444,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexOffset,
           vectorIndexLength,
           docsWithField,
-          vectors.size(),
+          liveVectors,
           graph);
       success = true;
     } finally {
