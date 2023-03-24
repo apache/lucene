@@ -21,6 +21,7 @@ apply plugin: 'java-library'
 description = 'Faceted indexing and search capabilities'
 
 dependencies {
+  testImplementation project(path: ':lucene:analysis:common')
   moduleApi project(':lucene:core')
   moduleImplementation 'com.carrotsearch:hppc'
 
