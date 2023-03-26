@@ -52,6 +52,11 @@ public abstract class DocIdSetIterator {
       }
 
       @Override
+      public int peekNextNonMatchingDocID() {
+        return -1;
+      }
+
+      @Override
       public long cost() {
         return 0;
       }
@@ -129,6 +134,11 @@ public abstract class DocIdSetIterator {
           doc = target;
         }
         return doc;
+      }
+
+      @Override
+      public int peekNextNonMatchingDocID() {
+        return maxDoc;
       }
 
       @Override
