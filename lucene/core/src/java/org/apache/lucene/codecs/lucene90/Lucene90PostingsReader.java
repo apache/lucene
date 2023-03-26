@@ -305,6 +305,38 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     return new BlockImpactsEverythingEnum(fieldInfo, (IntBlockTermState) state, flags);
   }
 
+  private int doPeekNextNonMatchingDocID(
+      int doc, long[] docBuffer, int docBufferUpto, Lucene90SkipReader skipper) {
+    if (docBufferUpto >= BLOCK_SIZE
+        || docBufferUpto == BLOCK_SIZE - 1
+        || docBuffer[docBufferUpto] - doc > 1) {
+      return doc + 1;
+    }
+
+    int lastDocInBlock = (int) docBuffer[BLOCK_SIZE - 1];
+    if (BLOCK_SIZE - docBufferUpto == lastDocInBlock - docBuffer[docBufferUpto] + 1) {
+      // continuous match for the rest of block
+      if (skipper != null) {
+        int furthestSkipEntryDoc = skipper.furthestContinuousMatchingSkipEntry();
+        assert furthestSkipEntryDoc != DocIdSetIterator.NO_MORE_DOCS;
+
+        // docBuffer may contain doc ids beyond skipData's range, hence choosing the larger one
+        return Math.max(furthestSkipEntryDoc, lastDocInBlock) + 1;
+      } else {
+        return lastDocInBlock + 1;
+      }
+    }
+
+    for (int i = docBufferUpto; i < BLOCK_SIZE; i++) {
+      if (docBuffer[i] - docBuffer[i - 1] > 1) { // consecutive matching docs
+        return (int) docBuffer[i - 1] + 1;
+      }
+    }
+
+    // Technically speaking code should not reach here. Is there a better way to handle this?
+    return doc + 1;
+  }
+
   final class BlockDocsEnum extends PostingsEnum {
 
     final PForUtil pforUtil = new PForUtil(new ForUtil());
@@ -405,6 +437,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       nextSkipDoc = BLOCK_SIZE - 1; // we won't skip if target is found in first block
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      lastNonMatchingDoc = -1;
       return this;
     }
 
@@ -474,6 +507,9 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        // clear docBuffer to remove left-over doc ids in order to enable loop-free detection of
+        // continuous doc ids in the buffer
+        Arrays.fill(docBuffer, left + 1, BLOCK_SIZE, 0);
         blockUpto += left;
       }
       accum = docBuffer[BLOCK_SIZE - 1];
@@ -483,51 +519,28 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
     @Override
     public int peekNextNonMatchingDocID() throws IOException {
-      // exercised by src/python/example.py -source wikimedium10m via not queries
-      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        return lastNonMatchingDoc;
-      }
       if (doc < lastNonMatchingDoc) {
         return lastNonMatchingDoc;
+      } else {
+        return lastNonMatchingDoc =
+            doPeekNextNonMatchingDocID(doc, docBuffer, docBufferUpto, skipper);
       }
-
-      if (BLOCK_SIZE - docBufferUpto == docBuffer[BLOCK_SIZE - 1] - docBuffer[docBufferUpto] + 1) {
-        // continuous match for the rest of block
-        return lastNonMatchingDoc = (int) docBuffer[BLOCK_SIZE - 1] + 1;
-      }
-
-      if (docBufferUpto == BLOCK_SIZE || docBuffer[docBufferUpto] - doc > 1) {
-        // when at boundary, don't load buffer and only provide best-guess
-        return lastNonMatchingDoc = doc + 1;
-      }
-
-      for (int i = docBufferUpto; i < BLOCK_SIZE; i++) {
-        if (docBuffer[i] - docBuffer[i - 1] > 1) { // consecutive matching docs
-          return lastNonMatchingDoc = (int) docBuffer[i - 1] + 1;
-        }
-      }
-
-      // entire block contains consecutive matching docs, provide last doc + 1 as best-guess
-      return lastNonMatchingDoc = (int) docBuffer[BLOCK_SIZE - 1] + 1;
     }
 
     @Override
     public int nextDoc() throws IOException {
-      if (docBufferUpto == BLOCK_SIZE) {
-        refillDocs(); // we don't need to load freqBuffer for now (will be loaded later if
-        // necessary)
-      }
-
-      doc = (int) docBuffer[docBufferUpto];
-      docBufferUpto++;
-      return doc;
+      // needs to re-init skipData
+      return advance(doc + 1);
     }
 
     @Override
     public int advance(int target) throws IOException {
       // current skip docID < docIDs generated from current buffer <= next skip docID
       // we don't need to skip if target is buffered already
-      if (docFreq > BLOCK_SIZE && target > nextSkipDoc) {
+      // skipped might have been set to false due to reset() was called. Re-init skipper also when
+      // that's the case. This is needed for disi#oeekNextNonMatchingDocID() to leverage skipper
+      // data.
+      if (docFreq > BLOCK_SIZE && target > nextSkipDoc || (skipped == false && skipOffset != -1)) {
 
         if (skipper == null) {
           // Lazy init: first time this enum has ever been used for skipping
@@ -536,7 +549,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
                   docIn.clone(), MAX_SKIP_LEVELS, indexHasPos, indexHasOffsets, indexHasPayloads);
         }
 
-        if (!skipped) {
+        if (skipped == false) {
           assert skipOffset != -1;
           // This is the first time this enum has skipped
           // since reset() was called; load the skip data:
@@ -674,6 +687,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     private boolean needsOffsets; // true if we actually need offsets
     private boolean needsPayloads; // true if we actually need payloads
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
+    private int lastNonMatchingDoc;
 
     public EverythingEnum(FieldInfo fieldInfo) throws IOException {
       indexHasOffsets =
@@ -765,6 +779,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       }
       docBufferUpto = BLOCK_SIZE;
       skipped = false;
+      lastNonMatchingDoc = -1;
       return this;
     }
 
@@ -795,6 +810,9 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        // clear docBuffer to remove left-over doc ids in order to enable loop-free detection of
+        // continuous doc ids in the buffer
+        Arrays.fill(docBuffer, left + 1, BLOCK_SIZE, 0);
         blockUpto += left;
       }
       accum = docBuffer[BLOCK_SIZE - 1];
@@ -875,23 +893,16 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (docBufferUpto == BLOCK_SIZE) {
-        refillDocs();
-      }
-
-      doc = (int) docBuffer[docBufferUpto];
-      freq = (int) freqBuffer[docBufferUpto];
-      posPendingCount += freq;
-      docBufferUpto++;
-
-      position = 0;
-      lastStartOffset = 0;
-      return doc;
+      // needs to re-init skipData
+      return advance(doc + 1);
     }
 
     @Override
     public int advance(int target) throws IOException {
-      if (target > nextSkipDoc) {
+      // skipped might have been set to false due to reset() was called. Re-init skipper also when
+      // that's the case. This is needed for disi#oeekNextNonMatchingDocID() to leverage skipper
+      // data.
+      if (target > nextSkipDoc || (skipped == false && skipOffset != -1)) {
         if (skipper == null) {
           // Lazy init: first time this enum has ever been used for skipping
           skipper =
@@ -899,7 +910,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
                   docIn.clone(), MAX_SKIP_LEVELS, true, indexHasOffsets, indexHasPayloads);
         }
 
-        if (!skipped) {
+        if (skipped == false) {
           assert skipOffset != -1;
           // This is the first time this enum has skipped
           // since reset() was called; load the skip data:
@@ -1006,6 +1017,17 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     }
 
     @Override
+    public int peekNextNonMatchingDocID() throws IOException {
+      //      System.out.println("### doc: " + doc + " lastNonMatchingDoc: " + lastNonMatchingDoc);
+      if (doc < lastNonMatchingDoc) {
+        return lastNonMatchingDoc;
+      } else {
+        return lastNonMatchingDoc =
+            doPeekNextNonMatchingDocID(doc, docBuffer, docBufferUpto, skipper);
+      }
+    }
+
+    @Override
     public int nextPosition() throws IOException {
       assert posPendingCount > 0;
 
@@ -1105,6 +1127,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     // always true when we don't have freqBuffer (indexHasFreq=false) or don't need freqBuffer
     // (needsFreq=false)
     private boolean isFreqsRead;
+    private int lastNonMatchingDoc;
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1182,6 +1205,9 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreqs);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        // clear docBuffer to remove left-over doc ids in order to enable loop-free detection of
+        // continuous doc ids in the buffer
+        Arrays.fill(docBuffer, left + 1, BLOCK_SIZE, 0);
         blockUpto += left;
       }
       accum = docBuffer[BLOCK_SIZE - 1];
@@ -1242,6 +1268,16 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       this.doc = (int) docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
+    }
+
+    @Override
+    public int peekNextNonMatchingDocID() throws IOException {
+      if (doc < lastNonMatchingDoc) {
+        return lastNonMatchingDoc;
+      } else {
+        return lastNonMatchingDoc =
+            doPeekNextNonMatchingDocID(doc, docBuffer, docBufferUpto, skipper);
+      }
     }
 
     @Override
@@ -1323,6 +1359,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
     private int nextSkipDoc = -1;
 
     private long seekTo = -1;
+    private int lastNonMatchingDoc;
 
     public BlockImpactsPostingsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
@@ -1390,6 +1427,9 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, true);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        // clear docBuffer to remove left-over doc ids in order to enable loop-free detection of
+        // continuous doc ids in the buffer
+        Arrays.fill(docBuffer, left + 1, BLOCK_SIZE, 0);
       }
       accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
@@ -1512,6 +1552,16 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       }
 
       position = 0;
+    }
+
+    @Override
+    public int peekNextNonMatchingDocID() throws IOException {
+      if (doc < lastNonMatchingDoc) {
+        return lastNonMatchingDoc;
+      } else {
+        return lastNonMatchingDoc =
+            doPeekNextNonMatchingDocID(doc, docBuffer, docBufferUpto, skipper);
+      }
     }
 
     @Override
@@ -1642,6 +1692,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
         isFreqsRead; // shows if freqBuffer for the current doc block are read into freqBuffer
 
     private long seekTo = -1;
+    private int lastNonMatchingDoc;
 
     public BlockImpactsEverythingEnum(FieldInfo fieldInfo, IntBlockTermState termState, int flags)
         throws IOException {
@@ -1782,6 +1833,9 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
         readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq);
         prefixSum(docBuffer, left, accum);
         docBuffer[left] = NO_MORE_DOCS;
+        // clear docBuffer to remove left-over doc ids in order to enable loop-free detection of
+        // continuous doc ids in the buffer
+        Arrays.fill(docBuffer, left + 1, BLOCK_SIZE, 0);
       }
       accum = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
@@ -1988,6 +2042,16 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
       position = 0;
       lastStartOffset = 0;
+    }
+
+    @Override
+    public int peekNextNonMatchingDocID() throws IOException {
+      if (doc < lastNonMatchingDoc) {
+        return lastNonMatchingDoc;
+      } else {
+        return lastNonMatchingDoc =
+            doPeekNextNonMatchingDocID(doc, docBuffer, docBufferUpto, skipper);
+      }
     }
 
     @Override
