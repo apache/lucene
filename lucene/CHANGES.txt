@@ -78,6 +78,8 @@ Bug Fixes
 
 * GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
 
+* GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
+
 Build
 ---------------------
 
