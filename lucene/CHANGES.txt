@@ -192,7 +192,7 @@ Build
   source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
   (Uwe Schindler)
 
-* GITHUB#xxxx: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
+* GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
   printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
 
 Other
