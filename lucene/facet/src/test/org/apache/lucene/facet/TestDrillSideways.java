@@ -31,10 +31,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.LowerCaseFilter;
-import org.apache.lucene.analysis.ngram.NGramTokenizer;
-import org.apache.lucene.document.*;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.facet.DrillSideways.DrillSidewaysResult;
 import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
@@ -42,9 +45,40 @@ import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
-import org.apache.lucene.index.*;
-import org.apache.lucene.search.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryCachingPolicy;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -2015,42 +2049,22 @@ public class TestDrillSideways extends FacetTestCase {
 
   @Test
   public void testDrillSidewaysSearchUseCorrectIterator() throws Exception {
+    // This test reproduces an issue (see github #12211) where DrillSidewaysScorer would ultimately
+    // cause multiple consecutive calls to TwoPhaseIterator::matches, which results in a failed
+    // assert in the PostingsReaderBase implementation (or a failing to match a document that should
+    // have matched, if asserts are disabled).
     Directory dir = newDirectory();
-    var iwc = new IndexWriterConfig(new Analyzer() {
-      @Override
-      protected Analyzer.TokenStreamComponents createComponents(final String fieldName) {
-        var tokenizer = new NGramTokenizer(2, 2);
-        var ts = new LowerCaseFilter(tokenizer);
-        return new Analyzer.TokenStreamComponents(tokenizer::setReader, ts);
-      }
-    });
-
+    var iwc = new IndexWriterConfig(new StandardAnalyzer());
     var indexWriter = new IndexWriter(dir, iwc);
     var taxoDir = newDirectory();
     var taxonomyWriter = new DirectoryTaxonomyWriter(taxoDir);
     var facetsConfig = new FacetsConfig();
     facetsConfig.setRequireDimCount("dim1", true);
     facetsConfig.setDrillDownTermsIndexing("dim1", FacetsConfig.DrillDownTermsIndexing.ALL);
-    List.of("Doc btv1b10302599", "Doc btv1b8431298m", "Doc btv1b6935520q", "Doc btv1b53054324", "Doc btv1b52507950",
-            "Doc btv1b6935426v", "Doc btv1b6935464j", "Doc btv1b53086054", "Doc btv1b6935522j", "Doc btv1b6907954p",
-            "Doc btv1b6903305w", "Doc bpt6k1278125 ", "Doc btv1b8431767s", "Doc btv1b8490128z", "Doc btv1b7703265j",
-            "Doc btv1b10100104", "Doc btv1b7740541b", "Doc btv1b6902707s", "Doc btv1b7703284w", "Doc btv1b6937596g",
-            "Doc btv1b10508775", "Doc btv1b6934177t", "Doc btv1b6934442n", "Doc btv1b8431540f", "Doc btv1b69033388",
-            "Doc btv1b6945055g", "Doc btv1b8455737f", "Doc btv1b55009058", "Doc btv1b6904546t", "Doc btv1b10529237",
-            "Doc btv1b10533336", "Doc btv1b10302704", "Doc btv1b77402041", "Doc btv1b10544167", "Doc btv1b55003485",
-            "Doc btv1b84182134", "Doc btv1b84184058", "Doc btv1b10528857", "Doc btv1b6402207v", "Doc btv1b8559196q",
-            "Doc btv1b55003885", "Doc btv1b7741523q", "Doc btv1b84188596", "Doc btv1b6902725q", "Doc btv1b10100247",
-            "Doc btv1b10540957", "Doc btv1b8455832q", "Doc btv1b77413231", "Doc btv1b55009076", "Doc btv1b69029225",
-            "Doc btv1b8431644f", "Doc btv1b69076782", "Doc btv1b8427498w", "Doc btv1b8431169j", "Doc btv1b10508255",
-            "Doc btv1b10508254", "Doc btv1b69021655", "Doc btv1b10319311", "Doc btv1b10529542", "Doc btv1b6907568b",
-            "Doc btv1b10302461", "Doc btv1b6901627w", "Doc btv1b10457514", "Doc btv1b8582195z", "Doc btv1b52504383",
-            "Doc btv1b6402215d", "Doc btv1b69041592", "Doc btv1b10319388", "Doc btv1b10412831", "Doc btv1b84310807",
-            "Doc btv1b10545708", "Doc btv1b85839706", "Doc btv1b8583243w", "Doc btv1b10457669", "Doc btv1b69555401",
-            "Doc btv1b53020758", "Doc btv1b53054269", "Doc btv1b10407486", "Doc btv1b53013478", "Doc btv1b8409526t",
-            "Doc btv1b69543668", "Doc btv1b10412650", "Doc btv1b10411979", "Doc btv1b8540925b", "Doc btv1b69454108",
-            "Doc btv1b10322269", "Doc btv1b10322188", "Doc btv1b10404746", "Doc btv1b8527792p", "Doc btv1b53108333",
-            "Doc btv1b84133699", "Doc btv1b10408148", "Doc btv1b10459988", "Doc btv1b10458511", "Doc btv1b10406281",
-            "Doc btv1b54000603", "Doc btv1b8582644c", "Doc btv1b10336143", "Doc btv1b53054434").forEach(s -> {
+    List.of("content", "content", "content", "content", "content", "content", "content", "content",
+            "content", "content", "content", "content", "content", "content", "content", "content",
+            "bt tv v1 1b b1 10 04 40 08 81 14 48", "content", "content", "content", "content",
+            "content", "content", "content", "content").forEach(s -> {
       var doc = new Document();
       doc.add(new TextField("content", s, Field.Store.NO));
       doc.add(new FacetField("dim1", "dim1"));
@@ -2068,7 +2082,7 @@ public class TestDrillSideways extends FacetTestCase {
     var searcher = new IndexSearcher(indexReader);
     var drill = new DrillSideways(searcher, facetsConfig, taxonomyReader);
     var drillDownQuery = new DrillDownQuery(facetsConfig,
-            new PhraseQuery("content", "bt","tv","v1", "1b","b1","10","04","40","08","81","14", "48"));
+            new PhraseQuery("content", "bt", "tv", "v1", "1b", "b1", "10", "04", "40", "08", "81", "14", "48"));
     drillDownQuery.add("dim1", "dim1");
     var result = drill.search(drillDownQuery, 99);
     assertEquals(1, result.hits.totalHits.value);
