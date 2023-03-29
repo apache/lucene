@@ -27,18 +27,12 @@ import java.util.function.Predicate;
  */
 final class ConcurrentApproximatePriorityQueue<T> {
 
-  /**
-   * Used for testing.
-   *
-   * @lucene.internal
-   */
-  static final String CONCURRENCY_OVERRIDE_PROPERTY = "lucene.dwptpool.concurrency_override";
+  static Integer CONCURRENCY_OVERRIDE;
 
   private static final int getConcurrency() {
-    String value = System.getProperty(CONCURRENCY_OVERRIDE_PROPERTY);
     int concurrency;
-    if (value != null) {
-      concurrency = Integer.parseInt(value);
+    if (CONCURRENCY_OVERRIDE != null) {
+      concurrency = CONCURRENCY_OVERRIDE;
     } else {
       int coreCount = Runtime.getRuntime().availableProcessors();
       // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is

@@ -27,15 +27,12 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
 
   @BeforeClass
   public static void beforeClass() {
-    final int concurrency = TestUtil.nextInt(random(), 2, 8);
-    System.setProperty(
-        ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE_PROPERTY,
-        Integer.toString(concurrency));
+    ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE = TestUtil.nextInt(random(), 2, 8);
   }
 
   @AfterClass
   public static void afterClass() {
-    System.clearProperty(ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE_PROPERTY);
+    ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE = null;
   }
 
   public void testPollFromSameThread() {
