@@ -18,9 +18,25 @@ package org.apache.lucene.index;
 
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
+
+  @BeforeClass
+  public static void beforeClass() {
+    final int concurrency = TestUtil.nextInt(random(), 2, 8);
+    System.setProperty(
+        ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE_PROPERTY,
+        Integer.toString(concurrency));
+  }
+
+  @AfterClass
+  public static void afterClass() {
+    System.clearProperty(ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE_PROPERTY);
+  }
 
   public void testPollFromSameThread() {
     ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();

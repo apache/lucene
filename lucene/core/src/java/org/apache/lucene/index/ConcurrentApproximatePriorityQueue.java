@@ -22,25 +22,47 @@ import java.util.function.Predicate;
 
 /**
  * Concurrent version of {@link ApproximatePriorityQueue}, which trades a bit more of ordering for
- * better concurrency by maintaining 8 sub {@link ApproximatePriorityQueue}s that are locked
- * independently.
+ * better concurrency by maintaining multiple sub {@link ApproximatePriorityQueue}s that are locked
+ * independently. The number of subs is computed dynamically based on hardware concurrency.
  */
 final class ConcurrentApproximatePriorityQueue<T> {
 
-  /** Keeping 8 queues should already help a lot compared to a single one. */
-  static final int CONCURRENCY = 8;
+  /**
+   * Used for testing.
+   *
+   * @lucene.internal
+   */
+  static final String CONCURRENCY_OVERRIDE_PROPERTY = "lucene.dwptpool.concurrency_override";
 
-  private static final int MASK = 0x07;
+  private static final int getConcurrency() {
+    String value = System.getProperty(CONCURRENCY_OVERRIDE_PROPERTY);
+    if (value != null) {
+      try {
+        return Integer.parseInt(value);
+      } catch (
+          @SuppressWarnings("unused")
+          NumberFormatException e) {
+        // ignore
+      }
+    }
+    int coreCount = Runtime.getRuntime().availableProcessors();
+    // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is that
+    // if we set the concurrency too high then we'll completely lose the bias towards larger DWPTs.
+    // And if we set it too low then we risk seeing contention.
+    return Math.max(1, coreCount / 4);
+  }
 
+  final int concurrency;
   final Lock[] locks;
   final ApproximatePriorityQueue<T>[] queues;
 
   ConcurrentApproximatePriorityQueue() {
-    locks = new Lock[CONCURRENCY];
+    concurrency = getConcurrency();
+    locks = new Lock[concurrency];
     @SuppressWarnings({"rawtypes", "unchecked"})
-    ApproximatePriorityQueue<T>[] queues = new ApproximatePriorityQueue[CONCURRENCY];
+    ApproximatePriorityQueue<T>[] queues = new ApproximatePriorityQueue[concurrency];
     this.queues = queues;
-    for (int i = 0; i < CONCURRENCY; ++i) {
+    for (int i = 0; i < concurrency; ++i) {
       locks[i] = new ReentrantLock();
       queues[i] = new ApproximatePriorityQueue<>();
     }
@@ -51,8 +73,8 @@ final class ConcurrentApproximatePriorityQueue<T> {
     // entries across queues and gives a bit of thread affinity between entries and threads, which
     // can't hurt.
     final int threadHash = Thread.currentThread().hashCode();
-    for (int i = 0; i < CONCURRENCY; ++i) {
-      final int index = (threadHash + i) & MASK;
+    for (int i = 0; i < concurrency; ++i) {
+      final int index = Math.floorMod(threadHash + i, concurrency);
       final Lock lock = locks[index];
       final ApproximatePriorityQueue<T> queue = queues[index];
       if (lock.tryLock()) {
@@ -64,7 +86,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
         }
       }
     }
-    final int index = threadHash & MASK;
+    final int index = Math.floorMod(threadHash, concurrency);
     final Lock lock = locks[index];
     final ApproximatePriorityQueue<T> queue = queues[index];
     lock.lock();
@@ -77,8 +99,8 @@ final class ConcurrentApproximatePriorityQueue<T> {
 
   T poll(Predicate<T> predicate) {
     final int threadHash = Thread.currentThread().hashCode();
-    for (int i = 0; i < CONCURRENCY; ++i) {
-      final int index = (threadHash + i) & MASK;
+    for (int i = 0; i < concurrency; ++i) {
+      final int index = Math.floorMod(threadHash + i, concurrency);
       final Lock lock = locks[index];
       final ApproximatePriorityQueue<T> queue = queues[index];
       if (lock.tryLock()) {
@@ -92,8 +114,8 @@ final class ConcurrentApproximatePriorityQueue<T> {
         }
       }
     }
-    for (int i = 0; i < CONCURRENCY; ++i) {
-      final int index = (threadHash + i) & MASK;
+    for (int i = 0; i < concurrency; ++i) {
+      final int index = Math.floorMod(threadHash + i, concurrency);
       final Lock lock = locks[index];
       final ApproximatePriorityQueue<T> queue = queues[index];
       lock.lock();
@@ -117,7 +139,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
       throw new AssertionError("contains should only be used for assertions");
     }
 
-    for (int i = 0; i < CONCURRENCY; ++i) {
+    for (int i = 0; i < concurrency; ++i) {
       final Lock lock = locks[i];
       final ApproximatePriorityQueue<T> queue = queues[i];
       lock.lock();
@@ -133,7 +155,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
   }
 
   boolean remove(Object o) {
-    for (int i = 0; i < CONCURRENCY; ++i) {
+    for (int i = 0; i < concurrency; ++i) {
       final Lock lock = locks[i];
       final ApproximatePriorityQueue<T> queue = queues[i];
       lock.lock();
