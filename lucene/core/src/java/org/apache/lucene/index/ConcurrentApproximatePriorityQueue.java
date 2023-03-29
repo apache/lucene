@@ -41,9 +41,9 @@ final class ConcurrentApproximatePriorityQueue<T> {
       concurrency = Integer.parseInt(value);
     } else {
       int coreCount = Runtime.getRuntime().availableProcessors();
-      // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is that
-      // if we set the concurrency too high then we'll completely lose the bias towards larger DWPTs.
-      // And if we set it too low then we risk seeing contention.
+      // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is
+      // that if we set the concurrency too high then we'll completely lose the bias towards larger
+      // DWPTs. And if we set it too low then we risk seeing contention.
       concurrency = coreCount / 4;
     }
     concurrency = Math.max(1, concurrency);
