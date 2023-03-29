@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -2061,30 +2060,32 @@ public class TestDrillSideways extends FacetTestCase {
     var facetsConfig = new FacetsConfig();
     facetsConfig.setRequireDimCount("dim1", true);
     facetsConfig.setDrillDownTermsIndexing("dim1", FacetsConfig.DrillDownTermsIndexing.ALL);
-    List.of("content", "content", "content", "content", "content", "content", "content", "content",
-            "content", "content", "content", "content", "content", "content", "content", "content",
-            "bt tv v1 1b b1 10 04 40 08 81 14 48", "content", "content", "content", "content",
-            "content", "content", "content", "content").forEach(s -> {
-      var doc = new Document();
-      doc.add(new TextField("content", s, Field.Store.NO));
-      doc.add(new FacetField("dim1", "dim1"));
-      try {
-        indexWriter.addDocument(facetsConfig.build(taxonomyWriter, doc));
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    });
-
+    // Add a doc that we'll try to match
+    var doc = new Document();
+    doc.add(new TextField("content", "bt tv v1 1b b1 10 04 40 08 81 14 48", Field.Store.NO));
+    doc.add(new FacetField("dim1", "dim1"));
+    indexWriter.addDocument(facetsConfig.build(taxonomyWriter, doc));
+    // Add some more docs as filler in the index
+    for (int i = 0; i < 25; i++) {
+      var fillerDoc = new Document();
+      fillerDoc.add(new TextField("content", "content", Field.Store.NO));
+      fillerDoc.add(new FacetField("dim1", "dim1"));
+      indexWriter.addDocument(facetsConfig.build(taxonomyWriter, fillerDoc));
+    }
     taxonomyWriter.commit();
     indexWriter.commit();
     var taxonomyReader = new DirectoryTaxonomyReader(taxoDir);
     var indexReader = DirectoryReader.open(indexWriter);
     var searcher = new IndexSearcher(indexReader);
     var drill = new DrillSideways(searcher, facetsConfig, taxonomyReader);
-    var drillDownQuery = new DrillDownQuery(facetsConfig,
-            new PhraseQuery("content", "bt", "tv", "v1", "1b", "b1", "10", "04", "40", "08", "81", "14", "48"));
+    var drillDownQuery =
+        new DrillDownQuery(
+            facetsConfig,
+            new PhraseQuery(
+                "content", "bt", "tv", "v1", "1b", "b1", "10", "04", "40", "08", "81", "14", "48"));
     drillDownQuery.add("dim1", "dim1");
     var result = drill.search(drillDownQuery, 99);
+    // We expect to match exactly one document from the query above
     assertEquals(1, result.hits.totalHits.value);
 
     indexReader.close();
