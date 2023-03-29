@@ -36,14 +36,19 @@ final class ConcurrentApproximatePriorityQueue<T> {
 
   private static final int getConcurrency() {
     String value = System.getProperty(CONCURRENCY_OVERRIDE_PROPERTY);
+    int concurrency;
     if (value != null) {
-      return Integer.parseInt(value);
+      concurrency = Integer.parseInt(value);
+    } else {
+      int coreCount = Runtime.getRuntime().availableProcessors();
+      // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is that
+      // if we set the concurrency too high then we'll completely lose the bias towards larger DWPTs.
+      // And if we set it too low then we risk seeing contention.
+      concurrency = coreCount / 4;
     }
-    int coreCount = Runtime.getRuntime().availableProcessors();
-    // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is that
-    // if we set the concurrency too high then we'll completely lose the bias towards larger DWPTs.
-    // And if we set it too low then we risk seeing contention.
-    return Math.max(1, coreCount / 4);
+    concurrency = Math.max(1, concurrency);
+    concurrency = Math.min(256, concurrency);
+    return concurrency;
   }
 
   final int concurrency;
@@ -66,9 +71,9 @@ final class ConcurrentApproximatePriorityQueue<T> {
     // Seed the order in which to look at entries based on the current thread. This helps distribute
     // entries across queues and gives a bit of thread affinity between entries and threads, which
     // can't hurt.
-    final int threadHash = Thread.currentThread().hashCode();
+    final int threadHash = Thread.currentThread().hashCode() & 0xFFFF;
     for (int i = 0; i < concurrency; ++i) {
-      final int index = Math.floorMod(threadHash + i, concurrency);
+      final int index = (threadHash + i) % concurrency;
       final Lock lock = locks[index];
       final ApproximatePriorityQueue<T> queue = queues[index];
       if (lock.tryLock()) {
@@ -80,7 +85,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
         }
       }
     }
-    final int index = Math.floorMod(threadHash, concurrency);
+    final int index = threadHash % concurrency;
     final Lock lock = locks[index];
     final ApproximatePriorityQueue<T> queue = queues[index];
     lock.lock();
@@ -92,9 +97,9 @@ final class ConcurrentApproximatePriorityQueue<T> {
   }
 
   T poll(Predicate<T> predicate) {
-    final int threadHash = Thread.currentThread().hashCode();
+    final int threadHash = Thread.currentThread().hashCode() & 0xFFFF;
     for (int i = 0; i < concurrency; ++i) {
-      final int index = Math.floorMod(threadHash + i, concurrency);
+      final int index = (threadHash + i) % concurrency;
       final Lock lock = locks[index];
       final ApproximatePriorityQueue<T> queue = queues[index];
       if (lock.tryLock()) {
@@ -109,7 +114,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
       }
     }
     for (int i = 0; i < concurrency; ++i) {
-      final int index = Math.floorMod(threadHash + i, concurrency);
+      final int index = (threadHash + i) % concurrency;
       final Lock lock = locks[index];
       final ApproximatePriorityQueue<T> queue = queues[index];
       lock.lock();
