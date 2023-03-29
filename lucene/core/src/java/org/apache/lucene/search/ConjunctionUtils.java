@@ -32,9 +32,10 @@ public final class ConjunctionUtils {
    * the {@link TwoPhaseIterator} using {@link TwoPhaseIterator#unwrap}.
    */
   public static DocIdSetIterator intersectScorers(Collection<Scorer> scorers) {
-    if (scorers.size() < 2) {
-      throw new IllegalArgumentException("Cannot make a ConjunctionDISI of less than 2 iterators");
-    }
+    //    if (scorers.size() < 2) {
+    //      throw new IllegalArgumentException("Cannot make a ConjunctionDISI of less than 2
+    // iterators");
+    //    }
     final List<DocIdSetIterator> allIterators = new ArrayList<>();
     final List<TwoPhaseIterator> twoPhaseIterators = new ArrayList<>();
     for (Scorer scorer : scorers) {

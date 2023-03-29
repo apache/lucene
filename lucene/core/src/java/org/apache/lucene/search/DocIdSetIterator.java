@@ -53,7 +53,9 @@ public abstract class DocIdSetIterator {
 
       @Override
       public int peekNextNonMatchingDocID() {
-        return -1;
+        // need to return 0 here, as assertion may require peekNextNonMatchingDocID() > docID(), and
+        // docID() could return -1
+        return 0;
       }
 
       @Override

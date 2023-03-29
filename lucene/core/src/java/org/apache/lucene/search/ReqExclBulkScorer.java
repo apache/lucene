@@ -40,7 +40,7 @@ final class ReqExclBulkScorer extends BulkScorer {
       }
 
       if (exclDoc == upTo) {
-        upTo = excl.peekNextNonMatchingDocID();
+        upTo = Math.min(excl.peekNextNonMatchingDocID(), max);
       } else {
         upTo = req.score(collector, acceptDocs, upTo, Math.min(exclDoc, max));
       }

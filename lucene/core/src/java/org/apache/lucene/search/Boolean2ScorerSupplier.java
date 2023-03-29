@@ -138,7 +138,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
               subs.get(Occur.MUST_NOT),
               leadCost);
       Scorer opt = opt(subs.get(Occur.SHOULD), minShouldMatch, scoreMode, leadCost);
-      return new ConjunctionScorer(weight, Arrays.asList(req, opt), Arrays.asList(req, opt));
+      return new ConjunctionScorer(weight, Collections.emptyList(), Arrays.asList(req, opt));
     } else {
       assert scoreMode.needsScores();
       return new ReqOptSumScorer(
@@ -206,7 +206,6 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
         }
         scoringScorers = Collections.singletonList(blockMaxScorer);
       }
-      requiredScorers.addAll(scoringScorers);
       return new ConjunctionScorer(weight, requiredScorers, scoringScorers);
     }
   }

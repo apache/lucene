@@ -19,24 +19,93 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /** Scorer for conjunctions, sets of queries, all of which are required. */
 class ConjunctionScorer extends Scorer {
 
   final DocIdSetIterator disi;
-  final Scorer[] scorers;
-  final Collection<Scorer> required;
+  final Collection<Scorer> scoringScorers;
+  final Collection<Scorer> filterScorers;
+  final boolean twoPhase;
 
-  /**
-   * Create a new {@link ConjunctionScorer}, note that {@code scorers} must be a subset of {@code
-   * required}.
-   */
-  ConjunctionScorer(Weight weight, Collection<Scorer> required, Collection<Scorer> scorers) {
+  /** Create a new {@link ConjunctionScorer}. */
+  ConjunctionScorer(
+      Weight weight, Collection<Scorer> filteringScorers, Collection<Scorer> scoringScorers) {
     super(weight);
-    assert required.containsAll(scorers);
-    this.disi = ConjunctionUtils.intersectScorers(required);
-    this.scorers = scorers.toArray(new Scorer[scorers.size()]);
-    this.required = required;
+    twoPhase =
+        filteringScorers.stream().anyMatch(scorer -> scorer.twoPhaseIterator() != null)
+            || scoringScorers.stream().anyMatch(scorer -> scorer.twoPhaseIterator() != null);
+
+    if (twoPhase || filteringScorers.isEmpty()) {
+      // do not use peek next non matching doc id
+      List<Scorer> allScorers = new ArrayList<>();
+      allScorers.addAll(scoringScorers);
+      allScorers.addAll(filteringScorers);
+      this.disi = ConjunctionUtils.intersectScorers(allScorers);
+    } else {
+      // use wrapper disi for filtering scorers
+      final DocIdSetIterator filteringDisi = ConjunctionUtils.intersectScorers(filteringScorers);
+      final DocIdSetIterator scoringDisi;
+      if (scoringScorers.isEmpty()) {
+        this.disi = filteringDisi;
+      } else {
+        scoringDisi = ConjunctionUtils.intersectScorers(scoringScorers);
+        this.disi =
+            new DocIdSetIterator() {
+              @Override
+              public int docID() {
+                return scoringDisi.docID();
+              }
+
+              @Override
+              public int nextDoc() throws IOException {
+                return doNext(scoringDisi.nextDoc());
+              }
+
+              @Override
+              public int advance(int target) throws IOException {
+                return doNext(scoringDisi.advance(target));
+              }
+
+              private int doNext(int doc) throws IOException {
+                while (true) {
+                  assert doc == scoringDisi.docID();
+                  if (doc == NO_MORE_DOCS) {
+                    return NO_MORE_DOCS;
+                  }
+
+                  if (filteringDisi.docID() == NO_MORE_DOCS) {
+                    scoringDisi.advance(NO_MORE_DOCS);
+                    return NO_MORE_DOCS;
+                  }
+
+                  if (doc < filteringDisi.docID()) {
+                    doc = scoringDisi.advance(filteringDisi.docID());
+                  }
+
+                  if (doc == filteringDisi.docID()) {
+                    assert doc == scoringDisi.docID();
+                    return doc;
+                  } else if (doc < filteringDisi.peekNextNonMatchingDocID()) {
+                    return doc;
+                  } else {
+                    // filteringDisi.doc <= doc
+                    filteringDisi.advance(doc);
+                  }
+                }
+              }
+
+              @Override
+              public long cost() {
+                return Math.min(scoringDisi.cost(), filteringDisi.cost());
+              }
+            };
+      }
+    }
+
+    this.scoringScorers = scoringScorers;
+    this.filterScorers = filteringScorers;
   }
 
   @Override
@@ -57,7 +126,7 @@ class ConjunctionScorer extends Scorer {
   @Override
   public float score() throws IOException {
     double sum = 0.0d;
-    for (Scorer scorer : scorers) {
+    for (Scorer scorer : scoringScorers) {
       sum += scorer.score();
     }
     return (float) sum;
@@ -66,11 +135,11 @@ class ConjunctionScorer extends Scorer {
   @Override
   public float getMaxScore(int upTo) throws IOException {
     // This scorer is only used for TOP_SCORES when there is at most one scoring clause
-    switch (scorers.length) {
+    switch (scoringScorers.size()) {
       case 0:
         return 0;
       case 1:
-        return scorers[0].getMaxScore(upTo);
+        return scoringScorers.iterator().next().getMaxScore(upTo);
       default:
         return Float.POSITIVE_INFINITY;
     }
@@ -78,8 +147,8 @@ class ConjunctionScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    if (scorers.length == 1) {
-      return scorers[0].advanceShallow(target);
+    if (scoringScorers.size() == 1) {
+      return scoringScorers.iterator().next().advanceShallow(target);
     }
     return super.advanceShallow(target);
   }
@@ -87,15 +156,20 @@ class ConjunctionScorer extends Scorer {
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
     // This scorer is only used for TOP_SCORES when there is a single scoring clause
-    if (scorers.length == 1) {
-      scorers[0].setMinCompetitiveScore(minScore);
+    if (scoringScorers.size() == 1) {
+      scoringScorers.iterator().next().setMinCompetitiveScore(minScore);
     }
   }
 
   @Override
   public Collection<ChildScorable> getChildren() {
     ArrayList<ChildScorable> children = new ArrayList<>();
-    for (Scorer scorer : required) {
+    for (Scorer scorer : scoringScorers) {
+      children.add(new ChildScorable(scorer, "MUST"));
+    }
+    // Did the previous implementation contain a bug, as required scorers may contain non-scoring
+    // scorers?
+    for (Scorer scorer : filterScorers) {
       children.add(new ChildScorable(scorer, "MUST"));
     }
     return children;
