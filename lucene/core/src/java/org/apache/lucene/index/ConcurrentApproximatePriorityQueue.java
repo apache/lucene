@@ -37,13 +37,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
   private static final int getConcurrency() {
     String value = System.getProperty(CONCURRENCY_OVERRIDE_PROPERTY);
     if (value != null) {
-      try {
-        return Integer.parseInt(value);
-      } catch (
-          @SuppressWarnings("unused")
-          NumberFormatException e) {
-        // ignore
-      }
+      return Integer.parseInt(value);
     }
     int coreCount = Runtime.getRuntime().availableProcessors();
     // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is that
