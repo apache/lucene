@@ -181,6 +181,8 @@ Bug Fixes
 
 * GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
 
+* GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
 Build
 ---------------------
 
