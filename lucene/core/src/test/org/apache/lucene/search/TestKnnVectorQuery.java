@@ -1118,12 +1118,10 @@ public class TestKnnVectorQuery extends LuceneTestCase {
          IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       final int numDocs = atLeast(100);
       final int dim = 30;
-      int vectorDocs = 0;
       for (int i = 0; i < numDocs; ++i) {
         Document d = new Document();
         d.add(new StringField("index", String.valueOf(i), Field.Store.YES));
         if (frequently()) {
-          vectorDocs ++;
           for (int j = 0; j < i; j++) {
             d.add(new KnnVectorField("vector", randomVector(dim), EUCLIDEAN, true));
           }
@@ -1131,8 +1129,6 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         w.addDocument(d);
       }
       w.commit();
-      System.out.println(numDocs);
-      System.out.println("Vectors: "+vectorDocs);
 
       // Delete some documents at random, both those with and without vectors
       Set<Term> toDelete = new HashSet<>();
@@ -1186,6 +1182,32 @@ public class TestKnnVectorQuery extends LuceneTestCase {
     }
   }
 
+  public void testAllDeletes_multiValued() throws IOException {
+    try (Directory dir = newDirectory();
+         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      final int numDocs = atLeast(100);
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        for (int j = 0; j < i; j++) {
+          d.add(new KnnVectorField("vector", randomVector(dim), EUCLIDEAN, true));
+        }
+        w.addDocument(d);
+      }
+      w.commit();
+
+      w.deleteDocuments(new MatchAllDocsQuery());
+      w.commit();
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs, HnswGraphSearcher.Multivalued.MAX);
+        TopDocs topDocs = searcher.search(query, numDocs);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
   /**
    * Check that the query behaves reasonably when using a custom filter reader where there are no
    * live docs.
@@ -1208,6 +1230,32 @@ public class TestKnnVectorQuery extends LuceneTestCase {
         DirectoryReader wrappedReader = new NoLiveDocsDirectoryReader(reader);
         IndexSearcher searcher = new IndexSearcher(wrappedReader);
         KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs);
+        TopDocs topDocs = searcher.search(query, numDocs);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
+  public void testNoLiveDocsReader_multiValued() throws IOException {
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    try (Directory dir = newDirectory();
+         IndexWriter w = new IndexWriter(dir, iwc)) {
+      final int numDocs = 10;
+      final int dim = 30;
+      for (int i = 0; i < numDocs; ++i) {
+        Document d = new Document();
+        d.add(new StringField("index", String.valueOf(i), Field.Store.NO));
+        for (int j = 0; j < i; j++) {
+          d.add(new KnnVectorField("vector", randomVector(dim), EUCLIDEAN, true));
+        }
+        w.addDocument(d);
+      }
+      w.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        DirectoryReader wrappedReader = new NoLiveDocsDirectoryReader(reader);
+        IndexSearcher searcher = new IndexSearcher(wrappedReader);
+        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs, HnswGraphSearcher.Multivalued.MAX);
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.scoreDocs.length);
       }

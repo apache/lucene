@@ -39,6 +39,7 @@ public final class DocsWithFieldSet extends DocIdSet {
   
   private Stack<Integer> valuesPerDocuments;
   private int currentDocVectorsCount;
+  private int totalVectorsCount;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -74,6 +75,7 @@ public final class DocsWithFieldSet extends DocIdSet {
     if (set == null) { //first doc arrives
       valuesPerDocuments = new Stack<>();
       currentDocVectorsCount = 0;
+      totalVectorsCount = 0;
       set = new FixedBitSet(docID + 1);
       set.set(0, cardinality);
       set.set(docID);
@@ -89,6 +91,7 @@ public final class DocsWithFieldSet extends DocIdSet {
       currentDocVectorsCount = 0;
     }
     currentDocVectorsCount++;
+    totalVectorsCount++;
     lastDocId = docID;
   }
   
@@ -105,6 +108,10 @@ public final class DocsWithFieldSet extends DocIdSet {
   /** Return the number of documents of this set. */
   public int cardinality() {
     return cardinality;
+  }
+  /** Return the number of vectors of this set. */
+  public int getTotalVectorsCount() {
+    return totalVectorsCount;
   }
 
   public int[] getValuesPerDocument() {

@@ -232,6 +232,10 @@ public abstract class CodecReader extends LeafReader {
       // Field does not exist or does not index vectors
       return null;
     }
+    
+    if(fi.isVectorMultiValued() && strategy.equals(HnswGraphSearcher.Multivalued.NONE)){
+      throw new IllegalArgumentException("'" + field + "' is a multivalued vector field, please specify an appropriate query strategy among:["+ HnswGraphSearcher.Multivalued.MAX + ","+ HnswGraphSearcher.Multivalued.SUM +"]");
+    }
 
     return getVectorReader().search(field, target, k, acceptDocs, visitedLimit, strategy);
   }

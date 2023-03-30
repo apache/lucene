@@ -179,6 +179,10 @@ public class KnnVectorField extends Field {
     this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
+  public KnnVectorField(String name, float[] vector, boolean multiValued) {
+    this(name, vector, VectorSimilarityFunction.EUCLIDEAN, multiValued);
+  }
+
   /**
    * Creates a numeric vector field. Fields are single-valued: each document has either one value or
    * no value. Vectors of a single field share the same dimension and similarity function.

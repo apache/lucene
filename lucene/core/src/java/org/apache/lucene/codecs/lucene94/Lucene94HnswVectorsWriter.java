@@ -394,7 +394,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       if(fieldInfo.isVectorMultiValued()){
         docsWithField =
                 writeVectorDataMultiValued(tempVectorData, vectors, fieldInfo.getVectorEncoding().byteSize);
-        liveVectors = Arrays.stream(docsWithField.getValuesPerDocument()).sum();
+        liveVectors = docsWithField.getTotalVectorsCount();
       }
       else {
         // write the vector data to a temporary file
