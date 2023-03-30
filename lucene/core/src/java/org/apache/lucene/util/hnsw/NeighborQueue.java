@@ -146,13 +146,14 @@ public class NeighborQueue {
         heapIndex = heap.insertWithOverflow(encode(nodeId, nodeScore));
         if (heapIndex != -1) {
           nodeAdded = true;
+          this.updateHeapIndexesCache(full, nodeAdded, heapIndex, nodeId);
         }
       } else {
         float originalScore = decodeScore(heap.get(heapIndex));
         float updatedScore = strategy.updateScore(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
+        this.updateHeapIndexesCache(full, nodeAdded, heapIndex, nodeId);
       }
-      this.updateHeapIndexesCache(full, nodeAdded, heapIndex, nodeId);
       if (nodeAdded && full) {
         nodeIdToHeapIndex.remove(minNodeId);
       }

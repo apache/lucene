@@ -140,6 +140,22 @@ public class TestNeighborQueue extends LuceneTestCase {
     assertEquals(3l, nn.pop());
   }
 
+  public void testMinHeap_full_multiValuedSum() {
+    NeighborQueue nn = new NeighborQueue(3, false);
+
+    for (int i = 1; i < 6; i++) {
+      for (int j = 0; j < i; j++) {
+        nn.insertWithOverflow(i, 0.2f * j, HnswGraphSearcher.Multivalued.SUM);
+      }
+    }
+
+    HashMap<Integer, Integer> nodeIdToHeapIndex = nn.getNodeIdToHeapIndex();
+    assertEquals(3,nodeIdToHeapIndex.size());
+    assertEquals(3l, nn.pop());
+    assertEquals(4l, nn.pop());
+    assertEquals(5l, nn.pop());
+  }
+
   public void testMinHeap_notFull_multiValuedMax() {
     NeighborQueue nn = new NeighborQueue(3, false);
 
@@ -150,7 +166,7 @@ public class TestNeighborQueue extends LuceneTestCase {
         if(i==2 && j==0){
           score = 0.9f;
         }
-        nn.insertWithOverflow(i, score * j, HnswGraphSearcher.Multivalued.MAX);
+        nn.insertWithOverflow(i, score * (j+1), HnswGraphSearcher.Multivalued.MAX);
       }
     }
 
@@ -158,6 +174,31 @@ public class TestNeighborQueue extends LuceneTestCase {
     assertEquals(3,nodeIdToHeapIndex.size());
     assertEquals(1l, nn.pop());
     assertEquals(3l, nn.pop());
+    assertEquals(2l, nn.pop());
+  }
+
+  public void testMinHeap_full_multiValuedMax() {
+    NeighborQueue nn = new NeighborQueue(3, false);
+
+    for (int i = 1; i < 6; i++) {
+      for (int j = 0; j < i; j++) {
+        float score = 0.1f;
+        //node 2 has max score
+        if(i==2 && j==0){
+          score = 0.9f;
+        }
+
+        if(i==4 && j==0){
+          score = 0.8f;
+        }
+        nn.insertWithOverflow(i, score * (j+1), HnswGraphSearcher.Multivalued.MAX);
+      }
+    }
+
+    HashMap<Integer, Integer> nodeIdToHeapIndex = nn.getNodeIdToHeapIndex();
+    assertEquals(3,nodeIdToHeapIndex.size());
+    assertEquals(5l, nn.pop());
+    assertEquals(4l, nn.pop());
     assertEquals(2l, nn.pop());
   }
 
