@@ -35,10 +35,10 @@ public final class DocsWithFieldSet extends DocIdSet {
 
   private FixedBitSet set;
   private int cardinality = 0;
-  private int lastDocId = -1; // at a certain point in time this was changed to 0? why?
+  private int lastDocId = 0; // at a certain point in time this was changed to 0? why?
   
   private Stack<Integer> valuesPerDocuments;
-  private int currentDocVectorsCount = 0;
+  private int currentDocVectorsCount;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -49,7 +49,7 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param docID – document ID to be added
    */
   public void add(int docID) {
-    if (docID <= lastDocId) {
+    if (docID < lastDocId) {
       throw new IllegalArgumentException(
               "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
     }
@@ -71,20 +71,20 @@ public final class DocsWithFieldSet extends DocIdSet {
       throw new IllegalArgumentException(
               "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
     }
-    if (set != null) {
-      set = FixedBitSet.ensureCapacity(set, docID);
-      if (!set.getAndSet(docID)) { //this is the first vector for the docID
-        cardinality++;
-      }
-    } else {
-      // migrate to a sparse encoding using a bit set
+    if (set == null) { //first doc arrives
       valuesPerDocuments = new Stack<>();
+      currentDocVectorsCount = 0;
       set = new FixedBitSet(docID + 1);
       set.set(0, cardinality);
       set.set(docID);
       cardinality++;
+    } else {
+      set = FixedBitSet.ensureCapacity(set, docID);
+      if (!set.getAndSet(docID)) { 
+        cardinality++; //this is the first vector for the docID
+      }
     }
-    if(docID != lastDocId){
+    if(docID != lastDocId){//vector for lastDocId are finished
       valuesPerDocuments.push(currentDocVectorsCount);
       currentDocVectorsCount = 0;
     }

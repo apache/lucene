@@ -81,6 +81,10 @@ public class KnnVectorQuery extends Query {
     this(field, target, k, filter, HnswGraphSearcher.Multivalued.NONE);
   }
 
+  public KnnVectorQuery(String field, float[] target, int k, HnswGraphSearcher.Multivalued strategy) {
+    this(field, target, k, null, strategy);
+  }
+
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
    * given field. <code>target</code> vector.
@@ -242,7 +246,7 @@ public class KnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(k, strategy, docs, scores, segmentStarts, reader.getContext().id());
   }
 
   private int[] findSegmentStarts(IndexReader reader, int[] docs) {
@@ -265,7 +269,7 @@ public class KnnVectorQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
+    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]" + ((!strategy.equals(HnswGraphSearcher.Multivalued.NONE)) ? "[multiValued strategy: "+strategy+"]":"");
   }
 
   @Override
@@ -283,18 +287,20 @@ public class KnnVectorQuery extends Query {
     return ((KnnVectorQuery) obj).k == k
         && ((KnnVectorQuery) obj).field.equals(field)
         && Arrays.equals(((KnnVectorQuery) obj).target, target)
-        && Objects.equals(filter, ((KnnVectorQuery) obj).filter);
+        && Objects.equals(filter, ((KnnVectorQuery) obj).filter)
+        && ((KnnVectorQuery) obj).strategy.equals(strategy);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(classHash(), field, k, Arrays.hashCode(target), filter);
+    return Objects.hash(classHash(), field, k, Arrays.hashCode(target), filter, strategy);
   }
 
   /** Caches the results of a KnnVector search: a list of docs and their scores */
   static class DocAndScoreQuery extends Query {
 
     private final int k;
+    private final HnswGraphSearcher.Multivalued strategy;
     private final int[] docs;
     private final float[] scores;
     private final int[] segmentStarts;
@@ -314,8 +320,9 @@ public class KnnVectorQuery extends Query {
      *     query
      */
     DocAndScoreQuery(
-        int k, int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
+        int k, HnswGraphSearcher.Multivalued strategy, int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
       this.k = k;
+      this.strategy = strategy;
       this.docs = docs;
       this.scores = scores;
       this.segmentStarts = segmentStarts;
@@ -335,7 +342,7 @@ public class KnnVectorQuery extends Query {
           if (found < 0) {
             return Explanation.noMatch("not in top " + k);
           }
-          return Explanation.match(scores[found] * boost, "within top " + k);
+          return Explanation.match(scores[found] * boost, "within top " + k + ((strategy != HnswGraphSearcher.Multivalued.NONE) ? ", " + strategy.explainScore() : ""));
         }
 
         @Override

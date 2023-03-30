@@ -49,21 +49,39 @@ public class HnswGraphSearcher<T> {
       float updateScore(float originalScore, float newScore) {
         return originalScore;
       }
+
+      @Override
+      public String explainScore() {
+        return null;
+      }
     },
     MAX {
       @Override
       float updateScore(float originalScore, float newScore) {
         return Math.max(originalScore,newScore);
       }
+
+      @Override
+      public String explainScore() {
+        return "this is the max vector similarity between the query vector and each document vector.";
+      }
+
     },
     SUM {
       @Override
       float updateScore(float originalScore, float newScore) {
         return originalScore + newScore;
       }
-    };
 
+      @Override
+      public String explainScore() {
+        return "this is the sum of vector similarities of the document vectors closer to the query.";
+      }
+    };
+    
     abstract float updateScore(float originalScore, float newScore);
+
+    public abstract String explainScore();
   }
   
   /**

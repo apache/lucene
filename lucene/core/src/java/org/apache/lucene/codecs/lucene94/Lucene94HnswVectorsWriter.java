@@ -540,10 +540,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
           DirectMonotonicWriter.getInstance(meta, vectorData, vectorsSize, DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
       int[] valuesPerDocument = docsWithField.getValuesPerDocument();
+      int valuesIndex = 0;
       for (int doc = iterator.nextDoc();
            doc != DocIdSetIterator.NO_MORE_DOCS;
            doc = iterator.nextDoc()) {
-        int documentVectorsCount = field.isVectorMultiValued()?valuesPerDocument[doc]:1;
+        int documentVectorsCount = field.isVectorMultiValued()?valuesPerDocument[valuesIndex++]:1;
         for (int i = 0; i < documentVectorsCount; i++) {
           ordToDocWriter.add(doc);
         }

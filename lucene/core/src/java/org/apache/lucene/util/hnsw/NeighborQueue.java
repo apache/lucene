@@ -51,6 +51,11 @@ public class NeighborQueue {
   }
 
   private final LongHeap heap;
+
+  public HashMap<Integer, Integer> getNodeIdToHeapIndex() {
+    return nodeIdToHeapIndex;
+  }
+
   private final HashMap<Integer,Integer> nodeIdToHeapIndex;
   private final Order order;
 
@@ -90,18 +95,20 @@ public class NeighborQueue {
    * @param nodeScore the score of the neighbor, relative to some other node
    */
   public void add(int nodeId, float nodeScore, HnswGraphSearcher.Multivalued strategy) {
+    boolean nodeAdded = false;
     if(strategy.equals(HnswGraphSearcher.Multivalued.NONE)){
       this.add(nodeId,nodeScore);
     } else {
       Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
       if (heapIndex == null) {
+        nodeAdded = true;
         heapIndex = heap.push(encode(nodeId, nodeScore));
       } else {
         float originalScore = decodeScore(heap.get(heapIndex));
         float updatedScore = strategy.updateScore(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
       }
-      this.updateHeapIndexesCache(false, heapIndex, nodeId);
+      this.updateHeapIndexesCache(false, nodeAdded, heapIndex, nodeId);
     }
   }
 
@@ -145,8 +152,8 @@ public class NeighborQueue {
         float updatedScore = strategy.updateScore(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
       }
-      this.updateHeapIndexesCache(full, heapIndex, nodeId);
-      if (nodeAdded && size() == heap.maxSize()) {
+      this.updateHeapIndexesCache(full, nodeAdded, heapIndex, nodeId);
+      if (nodeAdded && full) {
         nodeIdToHeapIndex.remove(minNodeId);
       }
       
@@ -154,19 +161,25 @@ public class NeighborQueue {
     }
   }
 
-  private void updateHeapIndexesCache(boolean full, Integer heapIndex, int newNodeId) {
-    if (full) {
-      for (int i = heapIndex -1; i > 0; i--) {
+  /**
+   * This can be optimised if heap indexes have not changed, no update would be necessary
+   * @param full
+   * @param heapIndex
+   * @param nodeId
+   */
+  private void updateHeapIndexesCache(boolean full, boolean newNode, Integer heapIndex, int nodeId) {
+    if (full || !newNode) {
+      for (int i = heapIndex - 1; i > 0; i--) {
         int nodeIdToShift = decodeNodeId(heap.get(i));
-        nodeIdToHeapIndex.put(nodeIdToShift, i);//non e' necessario se l'heapindex e' lo stesso
+        nodeIdToHeapIndex.put(nodeIdToShift, i);
       }
     } else {
-      for (int i = heapIndex + 1; i <= heap.size(); i++) {
-        int nodeIdToShift = decodeNodeId(heap.get(i));
-        nodeIdToHeapIndex.put(nodeIdToShift, i);//non e' necessario se l'heapindex e' lo stesso
-      }
+        for (int i = heapIndex + 1; i <= heap.size(); i++) {
+          int nodeIdToShift = decodeNodeId(heap.get(i));
+          nodeIdToHeapIndex.put(nodeIdToShift, i);
+        }
     }
-    nodeIdToHeapIndex.put(newNodeId, heapIndex);//non e' necessario se l'heapindex e' lo stesso
+    nodeIdToHeapIndex.put(nodeId, heapIndex);
   }
 
   /**

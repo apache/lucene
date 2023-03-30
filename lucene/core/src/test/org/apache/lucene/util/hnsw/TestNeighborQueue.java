@@ -17,7 +17,19 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.tests.util.LuceneTestCase;
+
+import java.util.HashMap;
+import java.util.Set;
+import java.util.TreeSet;
+
+import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
+import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
 public class TestNeighborQueue extends LuceneTestCase {
 
@@ -110,6 +122,43 @@ public class TestNeighborQueue extends LuceneTestCase {
     }
     assertEquals(maxScore, nn.topScore(), 0);
     assertEquals(maxNode, nn.topNode());
+  }
+
+  public void testMinHeap_notFull_multiValuedSum() {
+    NeighborQueue nn = new NeighborQueue(3, false);
+
+    for (int i = 1; i < 4; i++) {
+        for (int j = 0; j < i; j++) {
+          nn.insertWithOverflow(i, 0.2f * j, HnswGraphSearcher.Multivalued.SUM);
+        }
+    }
+
+    HashMap<Integer, Integer> nodeIdToHeapIndex = nn.getNodeIdToHeapIndex();
+    assertEquals(3,nodeIdToHeapIndex.size());
+    assertEquals(1l, nn.pop());
+    assertEquals(2l, nn.pop());
+    assertEquals(3l, nn.pop());
+  }
+
+  public void testMinHeap_notFull_multiValuedMax() {
+    NeighborQueue nn = new NeighborQueue(3, false);
+
+    for (int i = 1; i < 4; i++) {
+      for (int j = 0; j < i; j++) {
+        float score = 0.2f;
+        //node 2 has max score
+        if(i==2 && j==0){
+          score = 0.9f;
+        }
+        nn.insertWithOverflow(i, score * j, HnswGraphSearcher.Multivalued.MAX);
+      }
+    }
+
+    HashMap<Integer, Integer> nodeIdToHeapIndex = nn.getNodeIdToHeapIndex();
+    assertEquals(3,nodeIdToHeapIndex.size());
+    assertEquals(1l, nn.pop());
+    assertEquals(3l, nn.pop());
+    assertEquals(2l, nn.pop());
   }
 
   public void testInvalidArguments() {
