@@ -92,8 +92,7 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
       BasicFileAttributes sourceAttr =
           Files.readAttributes(dir_1.resolve("foo.bar"), BasicFileAttributes.class);
       assertEquals(destAttr.fileKey(), sourceAttr.fileKey());
-      try (ChecksumIndexInput indexInput =
-          wrapper.openChecksumInput("bar.foo", IOContext.DEFAULT)) {
+      try (ChecksumIndexInput indexInput = wrapper.openChecksumInput("bar.foo")) {
         CodecUtil.checkHeader(indexInput, "foo", 0, 0);
         assertEquals("hey man, nice shot!", indexInput.readString());
         CodecUtil.checkFooter(indexInput);

@@ -32,7 +32,6 @@ import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -90,31 +89,33 @@ final class LatLonPointQuery extends SpatialQuery {
         GeoEncodingUtils.createComponentPredicate(queryComponent2D);
     // bounding box over all geometries, this can speed up tree intersection/cheaply improve
     // approximation for complex multi-geometries
-    final byte[] minLat = new byte[Integer.BYTES];
-    final byte[] maxLat = new byte[Integer.BYTES];
-    final byte[] minLon = new byte[Integer.BYTES];
-    final byte[] maxLon = new byte[Integer.BYTES];
-    NumericUtils.intToSortableBytes(encodeLatitude(queryComponent2D.getMinY()), minLat, 0);
-    NumericUtils.intToSortableBytes(encodeLatitude(queryComponent2D.getMaxY()), maxLat, 0);
-    NumericUtils.intToSortableBytes(encodeLongitude(queryComponent2D.getMinX()), minLon, 0);
-    NumericUtils.intToSortableBytes(encodeLongitude(queryComponent2D.getMaxX()), maxLon, 0);
+    final int minLat = encodeLatitude(queryComponent2D.getMinY());
+    final int maxLat = encodeLatitude(queryComponent2D.getMaxY());
+    final int minLon = encodeLongitude(queryComponent2D.getMinX());
+    final int maxLon = encodeLongitude(queryComponent2D.getMaxX());
 
     return new SpatialVisitor() {
 
       @Override
       protected Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
-        if (ArrayUtil.compareUnsigned4(minPackedValue, 0, maxLat, 0) > 0
-            || ArrayUtil.compareUnsigned4(maxPackedValue, 0, minLat, 0) < 0
-            || ArrayUtil.compareUnsigned4(minPackedValue, Integer.BYTES, maxLon, 0) > 0
-            || ArrayUtil.compareUnsigned4(maxPackedValue, Integer.BYTES, minLon, 0) < 0) {
+        int latLowerBound = NumericUtils.sortableBytesToInt(minPackedValue, 0);
+        int latUpperBound = NumericUtils.sortableBytesToInt(maxPackedValue, 0);
+        if (latLowerBound > maxLat || latUpperBound < minLat) {
           // outside of global bounding box range
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        double cellMinLat = decodeLatitude(minPackedValue, 0);
-        double cellMinLon = decodeLongitude(minPackedValue, Integer.BYTES);
-        double cellMaxLat = decodeLatitude(maxPackedValue, 0);
-        double cellMaxLon = decodeLongitude(maxPackedValue, Integer.BYTES);
+        int lonLowerBound = NumericUtils.sortableBytesToInt(minPackedValue, LatLonPoint.BYTES);
+        int lonUpperBound = NumericUtils.sortableBytesToInt(maxPackedValue, LatLonPoint.BYTES);
+        if (lonLowerBound > maxLon || lonUpperBound < minLon) {
+          // outside of global bounding box range
+          return Relation.CELL_OUTSIDE_QUERY;
+        }
+
+        double cellMinLat = decodeLatitude(latLowerBound);
+        double cellMinLon = decodeLongitude(lonLowerBound);
+        double cellMaxLat = decodeLatitude(latUpperBound);
+        double cellMaxLon = decodeLongitude(lonUpperBound);
 
         return queryComponent2D.relate(cellMinLon, cellMaxLon, cellMinLat, cellMaxLat);
       }

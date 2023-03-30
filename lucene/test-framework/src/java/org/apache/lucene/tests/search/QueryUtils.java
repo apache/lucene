@@ -24,8 +24,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -37,8 +38,9 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -224,13 +226,24 @@ public class QueryUtils {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return null;
       }
 
       @Override
       public TopDocs searchNearestVectors(
               String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+        return null;
+      }
+
+      @Override
+      public TopDocs searchNearestVectors(
+          String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 
@@ -255,8 +268,8 @@ public class QueryUtils {
       public void checkIntegrity() throws IOException {}
 
       @Override
-      public Fields getTermVectors(int docID) throws IOException {
-        return null;
+      public TermVectors termVectors() {
+        return TermVectors.EMPTY;
       }
 
       @Override
@@ -270,7 +283,12 @@ public class QueryUtils {
       }
 
       @Override
-      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+      public StoredFields storedFields() {
+        return new StoredFields() {
+          @Override
+          public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+        };
+      }
 
       @Override
       protected void doClose() throws IOException {}

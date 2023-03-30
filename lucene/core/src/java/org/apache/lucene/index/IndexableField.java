@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 import java.io.Reader;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.document.InvertableType;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.util.BytesRef;
 
 // TODO: how to handle versioning here...?
@@ -68,4 +70,16 @@ public interface IndexableField {
 
   /** Non-null if this field has a numeric value */
   public Number numericValue();
+
+  /**
+   * Stored value. This method is called to populate stored fields and must return a non-null value
+   * if the field stored.
+   */
+  public StoredValue storedValue();
+
+  /**
+   * Describes how this field should be inverted. This must return a non-null value if the field
+   * indexes terms and postings.
+   */
+  public InvertableType invertableType();
 }

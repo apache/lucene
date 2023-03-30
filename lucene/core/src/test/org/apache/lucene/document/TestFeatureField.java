@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -82,8 +83,8 @@ public class TestFeatureField extends LuceneTestCase {
     DirectoryReader reader = writer.getReader();
     writer.close();
 
-    IndexSearcher searcher = new IndexSearcher(reader);
-    LeafReaderContext context = reader.leaves().get(0);
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
 
     Query q = FeatureField.newLogQuery("features", "pagerank", 3f, 4.5f);
     Weight w = q.createWeight(searcher, ScoreMode.TOP_SCORES, 2);
@@ -208,7 +209,7 @@ public class TestFeatureField extends LuceneTestCase {
     DirectoryReader reader = writer.getReader();
     writer.close();
 
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
 
     QueryUtils.check(
         random(), FeatureField.newLogQuery("features", "pagerank", 1f, 4.5f), searcher);
@@ -341,7 +342,7 @@ public class TestFeatureField extends LuceneTestCase {
     // NOTE: If you need to make changes below, then you likely also need to
     // update javadocs of FeatureField.
 
-    IndexSearcher searcher = new IndexSearcher(reader);
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
     searcher.setSimilarity(new BM25Similarity());
     Query query =
         new BooleanQuery.Builder()
@@ -360,5 +361,89 @@ public class TestFeatureField extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  public void testBasicsNonScoringCase() throws IOException {
+    try (Directory dir = newDirectory()) {
+      DirectoryReader reader;
+      try (RandomIndexWriter writer =
+          new RandomIndexWriter(
+              random(),
+              dir,
+              newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())))) {
+        Document doc = new Document();
+        FeatureField pagerank = new FeatureField("features", "pagerank", 1);
+        FeatureField urlLength = new FeatureField("features", "urlLen", 1);
+        doc.add(pagerank);
+        doc.add(urlLength);
+
+        pagerank.setFeatureValue(10);
+        urlLength.setFeatureValue(1f / 24);
+        writer.addDocument(doc);
+
+        pagerank.setFeatureValue(100);
+        urlLength.setFeatureValue(1f / 20);
+        writer.addDocument(doc);
+
+        writer.addDocument(new Document()); // gap
+
+        pagerank.setFeatureValue(1);
+        urlLength.setFeatureValue(1f / 100);
+        writer.addDocument(doc);
+
+        pagerank.setFeatureValue(42);
+        urlLength.setFeatureValue(1f / 23);
+        writer.addDocument(doc);
+
+        Document urlLenDoc = new Document();
+        urlLenDoc.add(urlLength);
+        writer.addDocument(urlLenDoc);
+
+        Document pageRankDoc = new Document();
+        pageRankDoc.add(pagerank);
+        writer.addDocument(pageRankDoc);
+
+        writer.forceMerge(1);
+        reader = writer.getReader();
+      }
+
+      IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+      LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+      for (Query q :
+          List.of(
+              FeatureField.newLogQuery("features", "pagerank", 3f, 4.5f),
+              FeatureField.newLinearQuery("features", "pagerank", 2f),
+              FeatureField.newSaturationQuery("features", "pagerank", 3f, 4.5f),
+              FeatureField.newSigmoidQuery("features", "pagerank", 3f, 4.5f, 0.6f))) {
+        Weight w = q.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1);
+        Scorer s = w.scorer(context);
+
+        assertEquals(q.toString(), 0, s.iterator().nextDoc());
+        assertEquals(q.toString(), 1, s.iterator().nextDoc());
+        assertEquals(q.toString(), 3, s.iterator().nextDoc());
+        assertEquals(q.toString(), 4, s.iterator().nextDoc());
+        assertEquals(q.toString(), 6, s.iterator().nextDoc());
+        assertEquals(q.toString(), DocIdSetIterator.NO_MORE_DOCS, s.iterator().nextDoc());
+      }
+
+      for (Query q :
+          List.of(
+              FeatureField.newLogQuery("features", "urlLen", 3f, 4.5f),
+              FeatureField.newLinearQuery("features", "urlLen", 2f),
+              FeatureField.newSaturationQuery("features", "urlLen", 3f, 4.5f),
+              FeatureField.newSigmoidQuery("features", "urlLen", 3f, 4.5f, 0.6f))) {
+        Weight w = q.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1);
+        Scorer s = w.scorer(context);
+
+        assertEquals(q.toString(), 0, s.iterator().nextDoc());
+        assertEquals(q.toString(), 1, s.iterator().nextDoc());
+        assertEquals(q.toString(), 3, s.iterator().nextDoc());
+        assertEquals(q.toString(), 4, s.iterator().nextDoc());
+        assertEquals(q.toString(), 5, s.iterator().nextDoc());
+        assertEquals(q.toString(), DocIdSetIterator.NO_MORE_DOCS, s.iterator().nextDoc());
+      }
+      reader.close();
+    }
   }
 }

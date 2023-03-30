@@ -38,10 +38,12 @@ public class TestFixBrokenOffsetsFilter extends BaseTokenStreamTestCase {
     FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
     ft.setStoreTermVectors(true);
     ft.setStoreTermVectorOffsets(true);
-    Field field = new Field("foo", "", ft);
-    field.setTokenStream(
-        new FixBrokenOffsetsFilter(
-            new CannedTokenStream(new Token("bar", 5, 10), new Token("bar", 1, 4))));
+    Field field =
+        new Field(
+            "foo",
+            new FixBrokenOffsetsFilter(
+                new CannedTokenStream(new Token("bar", 5, 10), new Token("bar", 1, 4))),
+            ft);
     doc.add(field);
     iw.addDocument(doc);
     iw.close();

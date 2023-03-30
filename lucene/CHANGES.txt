@@ -8,6 +8,9 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 
+* LUCENE-12092: Remove deprecated UTF8TaxonomyWriterCache. Please use LruTaxonomyWriterCache
+  instead. (Vigya Sharma)
+
 * LUCENE-10010: AutomatonQuery, CompiledAutomaton, RunAutomaton, RegExp
   classes no longer determinize NFAs. Instead it is the responsibility
   of the caller to determinize.  (Robert Muir)
@@ -37,7 +40,12 @@ API Changes
 * GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
   rewriting. (Patrick Zhai)
 
+* GITHUB#11933: Remove IOContext from Directory#openChecksumInput. (Zach Chen)
+
 * GITHUB#11814: Support deletions in IndexRearranger. (Stefan Vodita)
+
+* GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
+  LeafReader#getVectorValues. (Luca Cavanna)
 
 New Features
 ---------------------
@@ -61,6 +69,8 @@ Optimizations
 ---------------------
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
+
+* GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
 
 Bug Fixes
 ---------------------
@@ -92,10 +102,117 @@ Other
 
 * GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
 
+======================== Lucene 9.6.0 =======================
+
+API Changes
+---------------------
+
+* GITHUB#12116: Introduce IndexableField#storedValue() to expose the value that
+  should be stored to IndexingChain without needing to guess the field's type.
+  (Adrien Grand, Robert Muir)
+
+* GITHUB#12129: Move DocValuesTermsQuery from sandbox to SortedDocValuesField#newSlowSetQuery
+  and SortedSetDocValuesField#newSlowSetQuery. (Robert Muir)
+
+* GITHUB#12173: TermInSetQuery#getTermData has been deprecated. This exposes internal implementation details that we
+  may want to change in the future, and users shouldn't rely on the encoding directly. (Greg Miller)
+
+* GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
+
+New Features
+---------------------
+
+* GITHUB#12054: Introduce a new KeywordField for simple and efficient
+  filtering, sorting and faceting. (Adrien Grand)
+
+* GITHUB#12188: Add support for Java 20 foreign memory API. If exactly Java 19
+  or 20 is used, MMapDirectory will mmap Lucene indexes in chunks of 16 GiB
+  (instead of 1 GiB) and indexes closed while queries are running can no longer
+  crash the JVM. To disable this feature, pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
+Improvements
+---------------------
+
+* GITHUB#12055: MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE rewrite method introduced and used as the new default
+  for multi-term queries with a FILTER rewrite (PrefixQuery, WildcardQuery, TermRangeQuery). This introduces better
+  skipping support for common use-cases. (Adrien Grand, Greg Miller)
+
+* GITHUB#12156: TermInSetQuery now extends MultiTermQuery instead of providing its own custom implementation (which
+  was essentially a clone of MultiTermQuery#CONSTANT_SCORE_REWRITE). It uses the new CONSTANT_SCORE_BLENDED_REWRITE
+  by default, but can be overridden through the constructor. (Greg Miller)
+
+* GITHUB#12175: Remove SortedSetDocValuesSetQuery in favor of TermInSetQuery with DocValuesRewriteMethod. (Greg Miller)
+
+* GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
+
+* GITHUB#12126: Refactor part of IndexFileDeleter and ReplicaFileDeleter into a public common utility class
+  FileDeleter. (Patrick Zhai)
+
+Optimizations
+---------------------
+
+* GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
+  in order to achieve the same false positive probability with less memory.
+  (Jean-François Boeuf)
+
+* GITHUB#12118: Optimize FeatureQuery to TermQuery & weight when scoring is not required. (Ben Trent, Robert Muir)
+
+* GITHUB#12128, GITHUB#12133: Speed up docvalues set query by making use of sortedness. (Robert Muir, Uwe Schindler)
+
+* GITHUB#12050: Reuse HNSW graph for intialization during merge (Jack Mazanec)
+
+* GITHUB#12155: Speed up DocValuesRewriteMethod by making use of sortedness. (Greg Miller)
+
+* GITHUB#12139: Faster indexing of string fields. (Adrien Grand)
+
+* GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
+
+* GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
+
+Bug Fixes
+---------------------
+
+* GITHUB#12158: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
+
+* GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
+
+* GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
+
+* GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
+
+* GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
+Build
+---------------------
+
+* GITHUB#12131: Generate gradle.properties from gradlew, if absent (Colvin Cowie, Uwe Schindler)
+
+* GITHUB#12188: Building the lucene-core MR-JAR file is now possible without installing
+  additionally required Java versions (Java 19, Java 20,...). For compilation, a special
+  JAR file with Panama-foreign API signatures of each supported Java version was added to
+  source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
+  (Uwe Schindler)
+
+* GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
+  printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
+
+Other
+---------------------
+
+* GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
+  IndexInput and IndexOutput classes (Marc D'Mello)
+
 ======================== Lucene 9.5.0 =======================
 
 API Changes
 ---------------------
+* GITHUB#11998: Add new stored fields and termvectors interfaces: IndexReader.storedFields()
+  and IndexReader.termVectors(). Deprecate IndexReader.document() and IndexReader.getTermVector().
+  The new APIs do not rely upon ThreadLocal storage for each index segment, which can greatly
+  reduce RAM requirements when there are many threads and/or segments.
+  (Adrien Grand, Robert Muir)
+
 * GITHUB#11742: MatchingFacetSetsCounts#getTopChildren now properly returns "top" children instead
   of all children. (Greg Miller)
 
@@ -107,7 +224,7 @@ API Changes
 * GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
 
-* GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
+* GITHUB#11822: Configure replicator PrimaryNode replica shutdown timeout. (Steven Schlansker)
 
 * GITHUB#11930: Added IOContext#LOAD for files that are a small fraction of the
   total index size and heavily accessed with a random access pattern. Some
@@ -126,6 +243,41 @@ API Changes
 * GITHUB#11962: VectorValues#cost() now delegates to VectorValues#size().
   (Adrien Grand)
 
+* GITHUB#11984: Improved TimeLimitBulkScorer to check the timeout at exponantial rate.
+  (Costin Leau)
+
+* GITHUB#12004: Add new KnnByteVectorQuery for querying vector fields that are encoded as BYTE. Removes the ability to
+  use KnnVectorQuery against fields encoded as BYTE (Ben Trent)
+
+* GITHUB#11997: Introduce IntField, LongField, FloatField and DoubleField.
+  These new fields index both 1D points and sorted numeric doc values and
+  provide best performance for filtering and sorting.
+  (Francisco Fernández Castaño, Adrien Grand)
+
+* GITHUB#12066: Retire/deprecate instance method MMapDirectory#setUseUnmap().
+  Like the new setting for MemorySegments, this feature is enabled by default and
+  can only be disabled globally by passing the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableUnmapHack=false" (Uwe Schindler)
+
+* GITHUB#12038: Deprecate non-NRT replication support.
+  Please migrate to org.apache.lucene.replicator.nrt instead. (Robert Muir)
+
+* GITHUB#12087: Move DocValuesNumbersQuery from sandbox to NumericDocValuesField#newSlowSetQuery
+  and SortedNumericDocValuesField#newSlowSetQuery. IntField, LongField, FloatField, and DoubleField
+  implement newSetQuery with best-practice use of IndexOrDocValuesQuery. (Robert Muir)
+
+* GITHUB#12064: Create new KnnByteVectorField, ByteVectorValues and KnnVectorsReader#getByteVectorValues(String)
+  that are specialized for byte-sized vectors, and clarify the public API by making a clear distinction
+  between classes that produce and read float vectors and those that produce and read byte vectors. (Ben Trent)
+
+* GITHUB#12101: Remove VectorValues#binaryValue(). Vectors should only be
+  accessed through their high-level representation, via
+  VectorValues#vectorValue(). (Adrien Grand)
+
+* GITHUB#12105: Deprecate KnnVectorField in favour of KnnFloatVectorField,
+  KnnVectoryQuery in favour of KnnFloatVectorQuery, and LeafReader#getVectorValues
+  in favour of LeafReader#getFloatVectorValues. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#11795: Add ByteWritesTrackingDirectoryWrapper to expose metrics for bytes merged, flushed, and overall
@@ -133,6 +285,22 @@ New Features
 
 * GITHUB#11929: MMapDirectory gives more granular control on which files to
   preload. (Adrien Grand, Uwe Schindler)
+
+* GITHUB#11999: MemoryIndex now supports stored fields. (Alan Woodward)
+
+* GITHUB#11997: Add IntField, LongField, FloatField and DoubleField: easy to
+  use numeric fields that perform well both for filtering and sorting.
+  (Francisco Fernández Castaño)
+
+* GITHUB#12033: Support for Java 19 foreign memory support is now enabled by default,
+  no need to pass "--enable-preview" on the command line. If exactly Java 19 is used,
+  MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and
+  indexes closed while queries are running can no longer crash the JVM.
+  To disable this feature, pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
+* GITHUB#11869: RangeOnRangeFacetCounts added, supporting numeric range "relationship" faceting over docvalue-stored
+  ranges. (Marc D'Mello)
 
 Improvements
 ---------------------
@@ -144,6 +312,23 @@ Improvements
 
 * GITHUB#687: speed up IndexSortSortedNumericDocValuesRangeQuery#BoundedDocIdSetIterator
   construction using bkd binary search. (Jianping Weng)
+
+* GITHUB#11985: ExitableTerms to override Terms#getMin and Terms#getMax in order to avoid
+  iterating through the terms when the wrapped implementation caches such values. (Luca Cavanna)
+
+* GITHUB#11860: Improve storage efficiency of connections in the HNSW graph that Lucene uses for
+  vector search. (Ben Trent)
+
+* GITHUB#12008: Clean up LongRange#verifyAndEncode logic to remove unnecessary NaN checks. (Greg Miller)
+
+* GITHUB#12003: Minor cleanup/improvements to IndexSortSortedNumericDocValuesRangeQuery. (Greg Miller)
+
+* GITHUB#12016: Upgrade lucene/expressions to use antlr 4.11.1 (Andriy Redko)
+
+* GITHUB#12034: Remove null check in IndexReaderContext#leaves() usages (Erik Pellizzon)
+
+* GITHUB#12070: Compound file creation is no longer subject to merge throttling.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -159,6 +344,33 @@ Bug Fixes
 * GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
 
 * GITHUB#11954: Remove QueryTimeout#isTimeoutEnabled method and move check to caller. (Shubham Chaudhary)
+
+* GITHUB#11950: Fix NPE in BinaryRangeFieldRangeQuery variants when the queried field doesn't exist
+  in a segment or is of the wrong type. (Greg Miller)
+
+* GITHUB#11990: PassageSelector now has a larger minimum size for its priority queue,
+  so that subsequent passage merges don't mean that we return too few passages in
+  total. (Alan Woodward, Dawid Weiss)
+
+* GITHUB#11986: Fix algorithm that chooses the bridge between a polygon and a hole when there is
+  common vertex. (Ignacio Vera)
+
+* GITHUB#12020: Fixes bug whereby very flat polygons can incorrectly contain intersecting geometries. (Craig Taverner)
+
+* GITHUB#12058: Fix detection of Hotspot in TestRamUsageEstimator so it works with OpenJ9.
+  (Uwe Schindler)
+
+* GITHUB#12046: Out of boundary in CombinedFieldQuery#addTerm. (Lu Xugang)
+
+* GITHUB#12072: Fix exponential runtime for nested BooleanQuery#rewrite when a
+  BooleanClause is non-scoring. (Ben Trent)
+
+* GITHUB#12088: WeightedSpanTermExtractor should not throw UnsupportedOperationException
+  when it encounters a FieldExistsQuery. (Alan Woodward)
+
+* GITHUB#12084: Same bound with fallbackQuery. (Lu Xugang)
+
+* GITHUB#12077: WordBreakSpellChecker now correctly respects maxEvaluations (hossman)
 
 Optimizations
 ---------------------
@@ -181,12 +393,31 @@ Optimizations
 * GITHUB#11876: Use ByteArrayComparator to speed up PointInSetQuery in single dimension case.
   (Guo Feng)
 
+* GITHUB#11880: Use ByteArrayComparator to speed up BinaryRangeFieldRangeQuery, RangeFieldQuery
+  LatLonPointDistanceFeatureQuery and CheckIndex. (Guo Feng)
+
 * GITHUB#11881: Further optimize drill-sideways scoring by specializing the single dimension case
   and borrowing some concepts from "min should match" scoring. (Greg Miller)
 
 * GITHUB#11884: Simplify the logic of matchAll() in IndexSortSortedNumericDocValuesRangeQuery. (Lu Xugang)
 
 * GITHUB#11895: count() in BooleanQuery could be early quit. (Lu Xugang)
+
+* GITHUB#11972: `IndexSortSortedNumericDocValuesRangeQuery` can now also
+  optimize query execution with points for descending sorts. (Adrien Grand)
+
+* GITHUB#12006: Do ints compare instead of ArrayUtil#compareUnsigned4 in LatlonPointQueries. (Guo Feng)
+
+* GITHUB#12011: Minor speedup to flushing long postings lists when an index
+  sort is configured. (Adrien Grand)
+
+* GITHUB#12017: Aggressive count in BooleanWeight. (Lu Xugang)
+
+* GITHUB#12079: Faster merging of 1D points. (Adrien Grand)
+
+* GITHUB#12081: Small merging speedup on sorted indexes. (Adrien Grand)
+
+* GITHUB#12078: Enhance XXXField#newRangeQuery. (Lu Xugang)
 
 Other
 ---------------------
@@ -202,6 +433,13 @@ Other
 * LUCENE-10635: Ensure test coverage for WANDScorer by using a test query. (Zach Chen, Adrien Grand)
 
 * GITHUB#11752: Added interface to relate a LatLonShape with another shape represented as Component2D. (Navneet Verma)
+
+* GITHUB#11983: Make constructors for OffsetFromPositions and OffsetsFromMatchIterator
+  public. (Alan Woodward)
+
+* LUCENE-10546: Update Faceting user guide. (Egor Potemkin)
+
+* GITHUB#12099: Introduce support in KnnVectorQuery for getters. (Alessandro Benedetti)
 
 Build
 ---------------------

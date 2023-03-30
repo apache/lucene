@@ -80,14 +80,11 @@ allprojects {
       // default excludes.
       exclude '**/build/**'
       exclude '**/.idea/**'
+      exclude '**/.gradle/**'
 
       if (project == rootProject) {
         // ourselves :-)
         exclude 'gradle/validation/validate-source-patterns.gradle'
-
-        // gradle and idea folders.
-        exclude '.gradle/**'
-        exclude '.idea/**'
       } else {
         // ignore txt files in source resources and tests.
         exclude 'src/**/*.txt'

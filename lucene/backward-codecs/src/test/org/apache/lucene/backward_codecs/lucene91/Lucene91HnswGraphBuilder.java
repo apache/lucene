@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
@@ -32,6 +31,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -53,7 +53,7 @@ public final class Lucene91HnswGraphBuilder {
   private final Lucene91NeighborArray scratch;
 
   private final VectorSimilarityFunction similarityFunction;
-  private final RandomAccessVectorValues vectorValues;
+  private final RandomAccessVectorValues<float[]> vectorValues;
   private final SplittableRandom random;
   private final Lucene91BoundsChecker bound;
   private final HnswGraphSearcher<float[]> graphSearcher;
@@ -64,10 +64,10 @@ public final class Lucene91HnswGraphBuilder {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private RandomAccessVectorValues buildVectors;
+  private RandomAccessVectorValues<float[]> buildVectors;
 
   /**
-   * Reads all the vectors from a VectorValues, builds a graph connecting them by their dense
+   * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
    * @param vectors the vectors whose relations are represented by the graph - must provide a
@@ -79,7 +79,7 @@ public final class Lucene91HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   public Lucene91HnswGraphBuilder(
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorSimilarityFunction similarityFunction,
       int maxConn,
       int beamWidth,
@@ -112,14 +112,15 @@ public final class Lucene91HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a random access VectorValues. Providing two copies
-   * enables efficient retrieval without extra data copying, while avoiding collision of the
+   * Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
+   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
    * returned values.
    *
    * @param vectors the vectors for which to build a nearest neighbors graph. Must be an independet
    *     accessor for the vectors
    */
-  public Lucene91OnHeapHnswGraph build(RandomAccessVectorValues vectors) throws IOException {
+  public Lucene91OnHeapHnswGraph build(RandomAccessVectorValues<float[]> vectors)
+      throws IOException {
     if (vectors == vectorValues) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -250,7 +251,7 @@ public final class Lucene91HnswGraphBuilder {
       float[] candidate,
       float score,
       Lucene91NeighborArray neighbors,
-      RandomAccessVectorValues vectorValues)
+      RandomAccessVectorValues<float[]> vectorValues)
       throws IOException {
     bound.set(score);
     for (int i = 0; i < neighbors.size(); i++) {

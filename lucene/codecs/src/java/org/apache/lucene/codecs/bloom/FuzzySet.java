@@ -44,21 +44,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public class FuzzySet implements Accountable {
 
-  public static final int VERSION_SPI = 1; // HashFunction used to be loaded through a SPI
-  public static final int VERSION_START = VERSION_SPI;
-  public static final int VERSION_CURRENT = 2;
-
-  public static HashFunction hashFunctionForVersion(int version) {
-    if (version < VERSION_START) {
-      throw new IllegalArgumentException(
-          "Version " + version + " is too old, expected at least " + VERSION_START);
-    } else if (version > VERSION_CURRENT) {
-      throw new IllegalArgumentException(
-          "Version " + version + " is too new, expected at most " + VERSION_CURRENT);
-    }
-    return MurmurHash2.INSTANCE;
-  }
-
   /**
    * Result from {@link FuzzySet#contains(BytesRef)}: can never return definitively YES (always
    * MAYBE), but can sometimes definitely return NO.
@@ -71,6 +56,7 @@ public class FuzzySet implements Accountable {
   private HashFunction hashFunction;
   private FixedBitSet filter;
   private int bloomSize;
+  private final int hashCount;
 
   // The sizes of BitSet used are all numbers that, when expressed in binary form,
   // are all ones. This is to enable fast downsizing from one bitset to another
@@ -82,12 +68,9 @@ public class FuzzySet implements Accountable {
   static final int[] usableBitSetSizes;
 
   static {
-    usableBitSetSizes = new int[30];
-    int mask = 1;
-    int size = mask;
+    usableBitSetSizes = new int[26];
     for (int i = 0; i < usableBitSetSizes.length; i++) {
-      size = (size << 1) | mask;
-      usableBitSetSizes[i] = size;
+      usableBitSetSizes[i] = (1 << (i + 6)) - 1;
     }
   }
 
@@ -131,48 +114,60 @@ public class FuzzySet implements Accountable {
 
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
     int setSize = getNearestSetSize(maxNumBytes);
-    return new FuzzySet(
-        new FixedBitSet(setSize + 1), setSize, hashFunctionForVersion(VERSION_CURRENT));
+    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
   public static FuzzySet createSetBasedOnQuality(
-      int maxNumUniqueValues, float desiredMaxSaturation) {
+      int maxNumUniqueValues, float desiredMaxSaturation, int version) {
     int setSize = getNearestSetSize(maxNumUniqueValues, desiredMaxSaturation);
-    return new FuzzySet(
-        new FixedBitSet(setSize + 1), setSize, hashFunctionForVersion(VERSION_CURRENT));
+    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
-  private FuzzySet(FixedBitSet filter, int bloomSize, HashFunction hashFunction) {
+  public static FuzzySet createOptimalSet(int maxNumUniqueValues, float targetMaxFpp) {
+    int setSize =
+        (int)
+            Math.ceil(
+                (maxNumUniqueValues * Math.log(targetMaxFpp))
+                    / Math.log(1 / Math.pow(2, Math.log(2))));
+    setSize = getNearestSetSize(2 * setSize);
+    int optimalK = (int) Math.round(((double) setSize / maxNumUniqueValues) * Math.log(2));
+    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, optimalK);
+  }
+
+  private FuzzySet(FixedBitSet filter, int bloomSize, int hashCount) {
     super();
     this.filter = filter;
     this.bloomSize = bloomSize;
-    this.hashFunction = hashFunction;
+    this.hashFunction = MurmurHash64.INSTANCE;
+    this.hashCount = hashCount;
   }
 
   /**
    * The main method required for a Bloom filter which, given a value determines set membership.
-   * Unlike a conventional set, the fuzzy set returns NO or MAYBE rather than true or false.
+   * Unlike a conventional set, the fuzzy set returns NO or MAYBE rather than true or false. Hash
+   * generation follows the same principles as {@link #addValue(BytesRef)}
    *
    * @return NO or MAYBE
    */
   public ContainsResult contains(BytesRef value) {
-    int hash = hashFunction.hash(value);
-    if (hash < 0) {
-      hash = hash * -1;
+    long hash = hashFunction.hash(value);
+    int msb = (int) (hash >>> Integer.SIZE);
+    int lsb = (int) hash;
+    for (int i = 0; i < hashCount; i++) {
+      int bloomPos = (lsb + i * msb);
+      if (!mayContainValue(bloomPos)) {
+        return ContainsResult.NO;
+      }
     }
-    return mayContainValue(hash);
+    return ContainsResult.MAYBE;
   }
 
   /**
    * Serializes the data set to file using the following format:
    *
    * <ul>
-   *   <li>FuzzySet --&gt;FuzzySetVersion,HashFunctionName,BloomSize,
-   *       NumBitSetWords,BitSetWord<sup>NumBitSetWords</sup>
-   *   <li>HashFunctionName --&gt; {@link DataOutput#writeString(String) String} The name of a
-   *       ServiceProvider registered {@link HashFunction}
-   *   <li>FuzzySetVersion --&gt; {@link DataOutput#writeInt Uint32} The version number of the
-   *       {@link FuzzySet} class
+   *   <li>FuzzySet --&gt;hashCount,BloomSize, NumBitSetWords,BitSetWord<sup>NumBitSetWords</sup>
+   *   <li>hashCount --&gt; {@link DataOutput#writeVInt Uint32} The number of hash functions (k).
    *   <li>BloomSize --&gt; {@link DataOutput#writeInt Uint32} The modulo value used to project
    *       hashes into the field's Bitset
    *   <li>NumBitSetWords --&gt; {@link DataOutput#writeInt Uint32} The number of longs (as returned
@@ -185,7 +180,7 @@ public class FuzzySet implements Accountable {
    * @throws IOException If there is a low-level I/O error
    */
   public void serialize(DataOutput out) throws IOException {
-    out.writeInt(VERSION_CURRENT);
+    out.writeVInt(hashCount);
     out.writeInt(bloomSize);
     long[] bits = filter.getBits();
     out.writeInt(bits.length);
@@ -197,11 +192,7 @@ public class FuzzySet implements Accountable {
   }
 
   public static FuzzySet deserialize(DataInput in) throws IOException {
-    int version = in.readInt();
-    if (version == VERSION_SPI) {
-      in.readString();
-    }
-    final HashFunction hashFunction = hashFunctionForVersion(version);
+    int hashCount = in.readVInt();
     int bloomSize = in.readInt();
     int numLongs = in.readInt();
     long[] longs = new long[numLongs];
@@ -209,36 +200,33 @@ public class FuzzySet implements Accountable {
       longs[i] = in.readLong();
     }
     FixedBitSet bits = new FixedBitSet(longs, bloomSize + 1);
-    return new FuzzySet(bits, bloomSize, hashFunction);
+    return new FuzzySet(bits, bloomSize, hashCount);
   }
 
-  private ContainsResult mayContainValue(int positiveHash) {
-    assert positiveHash >= 0;
+  private boolean mayContainValue(int aHash) {
     // Bloom sizes are always base 2 and so can be ANDed for a fast modulo
-    int pos = positiveHash & bloomSize;
-    if (filter.get(pos)) {
-      // This term may be recorded in this index (but could be a collision)
-      return ContainsResult.MAYBE;
-    }
-    // definitely NOT in this segment
-    return ContainsResult.NO;
+    int pos = aHash & bloomSize;
+    return filter.get(pos);
   }
 
   /**
-   * Records a value in the set. The referenced bytes are hashed and then modulo n'd where n is the
-   * chosen size of the internal bitset.
+   * Records a value in the set. The referenced bytes are hashed. From the 64-bit generated hash,
+   * two 32-bit hashes are derived from the msb and lsb which can be used to derive more hashes (see
+   * https://www.eecs.harvard.edu/~michaelm/postscripts/rsa2008.pdf). Finally, each generated hash
+   * is modulo n'd where n is the chosen size of the internal bitset.
    *
    * @param value the key value to be hashed
    * @throws IOException If there is a low-level I/O error
    */
   public void addValue(BytesRef value) throws IOException {
-    int hash = hashFunction.hash(value);
-    if (hash < 0) {
-      hash = hash * -1;
+    long hash = hashFunction.hash(value);
+    int msb = (int) (hash >>> Integer.SIZE);
+    int lsb = (int) hash;
+    for (int i = 0; i < hashCount; i++) {
+      // Bitmasking using bloomSize is effectively a modulo operation.
+      int bloomPos = (lsb + i * msb) & bloomSize;
+      filter.set(bloomPos);
     }
-    // Bitmasking using bloomSize is effectively a modulo operation.
-    int bloomPos = hash & bloomSize;
-    filter.set(bloomPos);
   }
 
   /**
@@ -279,7 +267,7 @@ public class FuzzySet implements Accountable {
     } else {
       return null;
     }
-    return new FuzzySet(rightSizedBitSet, rightSizedBitSetSize, hashFunction);
+    return new FuzzySet(rightSizedBitSet, rightSizedBitSetSize, hashCount);
   }
 
   public int getEstimatedUniqueValues() {
@@ -297,6 +285,10 @@ public class FuzzySet implements Accountable {
     return (int) (setSizeAsDouble * logInverseSaturation);
   }
 
+  public float getTargetMaxSaturation() {
+    return 0.5f;
+  }
+
   public float getSaturation() {
     int numBitsSet = filter.cardinality();
     return (float) numBitsSet / (float) bloomSize;
@@ -309,6 +301,15 @@ public class FuzzySet implements Accountable {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + "(hash=" + hashFunction + ")";
+    return getClass().getSimpleName()
+        + "(hash="
+        + hashFunction
+        + ", k="
+        + hashCount
+        + ", bits="
+        + filter.cardinality()
+        + "/"
+        + filter.length()
+        + ")";
   }
 }

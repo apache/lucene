@@ -252,17 +252,21 @@ public class WordBreakSpellChecker {
     if (useMinBreakWordLength < 1) {
       useMinBreakWordLength = 1;
     }
+
     if (termLength < (useMinBreakWordLength * 2)) {
-      return 0;
+      return totalEvaluations;
     }
 
-    int thisTimeEvaluations = 0;
     for (int i = useMinBreakWordLength; i <= (termLength - useMinBreakWordLength); i++) {
+      if (totalEvaluations >= maxEvaluations) {
+        break;
+      }
+      totalEvaluations++;
+
       int end = termText.offsetByCodePoints(0, i);
       String leftText = termText.substring(0, end);
       String rightText = termText.substring(end);
       SuggestWord leftWord = generateSuggestWord(ir, term.field(), leftText);
-
       if (leftWord.freq >= useMinSuggestionFrequency) {
         SuggestWord rightWord = generateSuggestWord(ir, term.field(), rightText);
         if (rightWord.freq >= useMinSuggestionFrequency) {
@@ -275,7 +279,7 @@ public class WordBreakSpellChecker {
         }
         int newNumberBreaks = numberBreaks + 1;
         if (newNumberBreaks <= maxChanges) {
-          int evaluations =
+          totalEvaluations =
               generateBreakUpSuggestions(
                   new Term(term.field(), rightWord.string),
                   ir,
@@ -286,17 +290,11 @@ public class WordBreakSpellChecker {
                   suggestions,
                   totalEvaluations,
                   sortMethod);
-          totalEvaluations += evaluations;
         }
       }
-
-      thisTimeEvaluations++;
-      totalEvaluations++;
-      if (totalEvaluations >= maxEvaluations) {
-        break;
-      }
     }
-    return thisTimeEvaluations;
+
+    return totalEvaluations;
   }
 
   private SuggestWord[] newPrefix(SuggestWord[] oldPrefix, SuggestWord append) {

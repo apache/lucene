@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -66,6 +67,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -375,7 +378,7 @@ public final class CheckIndex implements Closeable {
       public Throwable error;
     }
 
-    /** Status from testing VectorValues */
+    /** Status from testing vector values */
     public static final class VectorValuesStatus {
 
       VectorValuesStatus() {}
@@ -1013,7 +1016,7 @@ public final class CheckIndex implements Closeable {
         // Test PointValues
         segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
 
-        // Test VectorValues
+        // Test FloatVectorValues and ByteVectorValues
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
         // Test Index Sort
@@ -2587,55 +2590,37 @@ public final class CheckIndex implements Closeable {
                       + "\" has vector values but dimension is "
                       + dimension);
             }
-            VectorValues values = reader.getVectorValues(fieldInfo.name);
-            if (values == null) {
+            if (reader.getFloatVectorValues(fieldInfo.name) == null
+                && reader.getByteVectorValues(fieldInfo.name) == null) {
               continue;
             }
 
             status.totalKnnVectorFields++;
-
-            int docCount = 0;
-            int everyNdoc = Math.max(values.size() / 64, 1);
-            while (values.nextDoc() != NO_MORE_DOCS) {
-              float[] vectorValue = values.vectorValue();
-              // search the first maxNumSearches vectors to exercise the graph
-              if (values.docID() % everyNdoc == 0) {
-                TopDocs docs =
-                    reader
-                        .getVectorReader()
-                        .search(fieldInfo.name, vectorValue, 10, null, Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
-                if (docs.scoreDocs.length == 0) {
-                  throw new CheckIndexException(
-                      "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
-                }
-              }
-              int valueLength = vectorValue.length;
-              if (valueLength != dimension) {
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE:
+                checkByteVectorValues(
+                    Objects.requireNonNull(reader.getByteVectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
+              case FLOAT32:
+                checkFloatVectorValues(
+                    Objects.requireNonNull(reader.getFloatVectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
+              default:
                 throw new CheckIndexException(
                     "Field \""
                         + fieldInfo.name
-                        + "\" has a value whose dimension="
-                        + valueLength
-                        + " not matching the field's dimension="
-                        + dimension);
-              }
-              ++docCount;
+                        + "\" has unexpected vector encoding: "
+                        + fieldInfo.getVectorEncoding());
             }
-            if (docCount != values.size() && !fieldInfo.isVectorMultiValued()) {
-              throw new CheckIndexException(
-                  "Field \""
-                      + fieldInfo.name
-                      + "\" has size="
-                      + values.size()
-                      + " but when iterated, returns "
-                      + docCount
-                      + " docs with values");
-            }
-            status.totalVectorValues += docCount;
           }
         }
       }
-
       msg(
           infoStream,
           String.format(
@@ -2659,6 +2644,96 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static void checkFloatVectorValues(
+      FloatVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int docCount = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    while (values.nextDoc() != NO_MORE_DOCS) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (values.docID() % everyNdoc == 0) {
+        TopDocs docs =
+            codecReader
+                .getVectorReader()
+                .search(fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+        if (docs.scoreDocs.length == 0) {
+          throw new CheckIndexException(
+              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        }
+      }
+      int valueLength = values.vectorValue().length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++docCount;
+    }
+    if (docCount != values.size() && !fieldInfo.isVectorMultiValued()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + docCount
+              + " docs with values");
+    }
+    status.totalVectorValues += docCount;
+  }
+
+  private static void checkByteVectorValues(
+      ByteVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int docCount = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    while (values.nextDoc() != NO_MORE_DOCS) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (values.docID() % everyNdoc == 0) {
+        TopDocs docs =
+            codecReader
+                .getVectorReader()
+                .search(fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+        if (docs.scoreDocs.length == 0) {
+          throw new CheckIndexException(
+              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        }
+      }
+      int valueLength = values.vectorValue().length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++docCount;
+    }
+    if (docCount != values.size() && !fieldInfo.isVectorMultiValued()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + docCount
+              + " docs with values");
+    }
+    status.totalVectorValues += docCount;
+  }
+
   /**
    * Walks the entire N-dimensional points space, verifying that all points fall within the last
    * cell's boundaries.
@@ -2679,6 +2754,7 @@ public final class CheckIndex implements Closeable {
     private final int numDataDims;
     private final int numIndexDims;
     private final int bytesPerDim;
+    private final ByteArrayComparator comparator;
     private final String fieldName;
 
     /** Sole constructor */
@@ -2688,6 +2764,7 @@ public final class CheckIndex implements Closeable {
       numDataDims = values.getNumDimensions();
       numIndexDims = values.getNumIndexDimensions();
       bytesPerDim = values.getBytesPerDimension();
+      comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       packedBytesCount = numDataDims * bytesPerDim;
       packedIndexBytesCount = numIndexDims * bytesPerDim;
       globalMinPackedValue = values.getMinPackedValue();
@@ -2779,14 +2856,7 @@ public final class CheckIndex implements Closeable {
         int offset = bytesPerDim * dim;
 
         // Compare to last cell:
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + bytesPerDim,
-                lastMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(packedValue, offset, lastMinPackedValue, offset) < 0) {
           // This doc's point, in this dimension, is lower than the minimum value of the last cell
           // checked:
           throw new CheckIndexException(
@@ -2804,14 +2874,7 @@ public final class CheckIndex implements Closeable {
                   + dim);
         }
 
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + bytesPerDim,
-                lastMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(packedValue, offset, lastMaxPackedValue, offset) > 0) {
           // This doc's point, in this dimension, is greater than the maximum value of the last cell
           // checked:
           throw new CheckIndexException(
@@ -2836,8 +2899,7 @@ public final class CheckIndex implements Closeable {
       // for data dimension > 1, leaves are sorted by the dimension with the lowest cardinality to
       // improve block compression
       if (numDataDims == 1) {
-        int cmp =
-            Arrays.compareUnsigned(lastPackedValue, 0, bytesPerDim, packedValue, 0, bytesPerDim);
+        int cmp = comparator.compare(lastPackedValue, 0, packedValue, 0);
         if (cmp > 0) {
           throw new CheckIndexException(
               "packed points value "
@@ -2875,14 +2937,7 @@ public final class CheckIndex implements Closeable {
       for (int dim = 0; dim < numIndexDims; dim++) {
         int offset = bytesPerDim * dim;
 
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(minPackedValue, offset, maxPackedValue, offset) > 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2896,14 +2951,7 @@ public final class CheckIndex implements Closeable {
         }
 
         // Make sure this cell is not outside of the global min/max:
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(minPackedValue, offset, globalMinPackedValue, offset) < 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2916,14 +2964,7 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(maxPackedValue, offset, globalMinPackedValue, offset) < 0) {
           throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
@@ -2936,14 +2977,7 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(minPackedValue, offset, globalMaxPackedValue, offset) > 0) {
           throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
@@ -2955,14 +2989,7 @@ public final class CheckIndex implements Closeable {
                   + fieldName
                   + "\"");
         }
-        if (Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(maxPackedValue, offset, globalMaxPackedValue, offset) > 0) {
           throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
@@ -3048,7 +3075,7 @@ public final class CheckIndex implements Closeable {
         // Intentionally pull even deleted documents to
         // make sure they too are not corrupt:
         DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
-        storedFields.visitDocument(j, visitor);
+        storedFields.document(j, visitor);
         Document doc = visitor.getDocument();
         if (liveDocs == null || liveDocs.get(j)) {
           status.docCount++;

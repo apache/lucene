@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -163,14 +164,25 @@ public final class SlowCodecReaderWrapper {
   private static KnnVectorsReader readerToVectorReader(LeafReader reader) {
     return new KnnVectorsReader() {
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
-        return reader.getVectorValues(field);
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+        return reader.getFloatVectorValues(field);
+      }
+
+      @Override
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
+        return reader.getByteVectorValues(field);
       }
 
       @Override
       public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
           throws IOException {
         return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit, strategy);
+      }
+
+      @Override
+      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+          throws IOException {
+        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
       }
 
       @Override
@@ -245,10 +257,16 @@ public final class SlowCodecReaderWrapper {
   }
 
   private static StoredFieldsReader readerToStoredFieldsReader(final LeafReader reader) {
+    final StoredFields storedFields;
+    try {
+      storedFields = reader.storedFields();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     return new StoredFieldsReader() {
       @Override
-      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
-        reader.document(docID, visitor);
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        storedFields.document(docID, visitor);
       }
 
       @Override
@@ -267,10 +285,16 @@ public final class SlowCodecReaderWrapper {
   }
 
   private static TermVectorsReader readerToTermVectorsReader(final LeafReader reader) {
+    final TermVectors termVectors;
+    try {
+      termVectors = reader.termVectors();
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     return new TermVectorsReader() {
       @Override
       public Fields get(int docID) throws IOException {
-        return reader.getTermVectors(docID);
+        return termVectors.get(docID);
       }
 
       @Override

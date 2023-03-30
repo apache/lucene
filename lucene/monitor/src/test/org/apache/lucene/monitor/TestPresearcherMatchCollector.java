@@ -46,8 +46,8 @@ public class TestPresearcherMatchCollector extends MonitorTestBase {
 
       assertNotNull(matches.match("2", 0));
       String pm = matches.match("2", 0).presearcherMatches;
-      assertThat(pm, containsString("field:foo"));
-      assertThat(pm, containsString("f2:quuz"));
+      assertThat(pm, containsString("field:(foo test)"));
+      assertThat(pm, containsString("f2:(quuz)"));
 
       assertNotNull(matches.match("3", 0));
       assertEquals(" field:foo", matches.match("3", 0).presearcherMatches);

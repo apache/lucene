@@ -24,14 +24,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
@@ -39,7 +37,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -379,30 +377,28 @@ public class IndexSearcher {
   }
 
   /**
-   * Sugar for <code>.getIndexReader().document(docID)</code>
+   * Returns a {@link StoredFields} reader for the stored fields of this index.
    *
-   * @see IndexReader#document(int)
-   */
-  public Document doc(int docID) throws IOException {
-    return reader.document(docID);
-  }
-
-  /**
-   * Sugar for <code>.getIndexReader().document(docID, fieldVisitor)</code>
+   * <p>Sugar for <code>.getIndexReader().storedFields()</code>
    *
-   * @see IndexReader#document(int, StoredFieldVisitor)
-   */
-  public void doc(int docID, StoredFieldVisitor fieldVisitor) throws IOException {
-    reader.document(docID, fieldVisitor);
-  }
-
-  /**
-   * Sugar for <code>.getIndexReader().document(docID, fieldsToLoad)</code>
+   * <p>This call never returns {@code null}, even if no stored fields were indexed. The returned
+   * instance should only be used by a single thread.
    *
-   * @see IndexReader#document(int, Set)
+   * <p>Example:
+   *
+   * <pre class="prettyprint">
+   * TopDocs hits = searcher.search(query, 10);
+   * StoredFields storedFields = searcher.storedFields();
+   * for (ScoreDoc hit : hits.scoreDocs) {
+   *   Document doc = storedFields.document(hit.doc);
+   * }
+   * </pre>
+   *
+   * @throws IOException If there is a low-level IO error
+   * @see IndexReader#storedFields()
    */
-  public Document doc(int docID, Set<String> fieldsToLoad) throws IOException {
-    return reader.document(docID, fieldsToLoad);
+  public StoredFields storedFields() throws IOException {
+    return reader.storedFields();
   }
 
   /** Expert: Set the Similarity implementation used by this IndexSearcher. */

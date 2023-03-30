@@ -49,13 +49,24 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public final ByteVectorValues getByteVectorValues(String field) throws IOException {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TopDocs searchNearestVectors(
           String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TopDocs searchNearestVectors(
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -70,7 +81,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final Fields getTermVectors(int docID) throws IOException {
+  public final TermVectors termVectors() throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -85,7 +96,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public final StoredFields storedFields() throws IOException {
     throw new UnsupportedOperationException();
   }
 

@@ -38,7 +38,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -697,17 +699,20 @@ final class IndexingChain implements Accountable {
 
     // Add stored fields
     if (fieldType.stored()) {
-      String value = field.stringValue();
-      if (value != null && value.length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
+      StoredValue storedValue = field.storedValue();
+      if (storedValue == null) {
+        throw new IllegalArgumentException("Cannot store a null value");
+      } else if (storedValue.getType() == StoredValue.Type.STRING
+          && storedValue.getStringValue().length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
         throw new IllegalArgumentException(
             "stored field \""
                 + field.name()
                 + "\" is too large ("
-                + value.length()
+                + storedValue.getStringValue().length()
                 + " characters) to store");
       }
       try {
-        storedFieldsConsumer.writeField(pf.fieldInfo, field);
+        storedFieldsConsumer.writeField(pf.fieldInfo, storedValue);
       } catch (Throwable th) {
         onAbortingException(th);
         throw th;
@@ -722,11 +727,7 @@ final class IndexingChain implements Accountable {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
     if (fieldType.vectorDimension() != 0) {
-      switch (fieldType.vectorEncoding()) {
-        case BYTE -> pf.knnFieldVectorsWriter.addValue(docID, field.binaryValue());
-        case FLOAT32 -> pf.knnFieldVectorsWriter.addValue(
-            docID, ((KnnVectorField) field).vectorValue());
-      }
+      indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
     return indexedField;
   }
@@ -960,6 +961,18 @@ final class IndexingChain implements Accountable {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private void indexVectorValue(
+      int docID, PerField pf, VectorEncoding vectorEncoding, IndexableField field)
+      throws IOException {
+    switch (vectorEncoding) {
+      case BYTE -> ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnByteVectorField) field).vectorValue());
+      case FLOAT32 -> ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
+          .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+    }
+  }
+
   /** Returns a previously created {@link PerField}, or null if this field name wasn't seen yet. */
   private PerField getPerField(String name) {
     final int hashPos = name.hashCode() & hashMask;
@@ -1093,11 +1106,27 @@ final class IndexingChain implements Accountable {
      * this field name in this document.
      */
     public void invert(int docID, IndexableField field, boolean first) throws IOException {
+      assert field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0;
+
       if (first) {
         // First time we're seeing this field (indexed) in this document
         invertState.reset();
       }
 
+      switch (field.invertableType()) {
+        case BINARY:
+          invertTerm(docID, field, first);
+          break;
+        case TOKEN_STREAM:
+          invertTokenStream(docID, field, first);
+          break;
+        default:
+          throw new AssertionError();
+      }
+    }
+
+    private void invertTokenStream(int docID, IndexableField field, boolean first)
+        throws IOException {
       final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
       /*
        * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
@@ -1238,6 +1267,50 @@ final class IndexingChain implements Accountable {
       if (analyzed) {
         invertState.position += analyzer.getPositionIncrementGap(fieldInfo.name);
         invertState.offset += analyzer.getOffsetGap(fieldInfo.name);
+      }
+    }
+
+    private void invertTerm(int docID, IndexableField field, boolean first) throws IOException {
+      BytesRef binaryValue = field.binaryValue();
+      if (binaryValue == null) {
+        throw new IllegalArgumentException(
+            "Field "
+                + field.name()
+                + " returns TERM for invertableType() and null for binaryValue(), which is illegal");
+      }
+      final IndexableFieldType fieldType = field.fieldType();
+      if (fieldType.tokenized()
+          || fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) > 0
+          || fieldType.storeTermVectorPositions()
+          || fieldType.storeTermVectorOffsets()
+          || fieldType.storeTermVectorPayloads()) {
+        throw new IllegalArgumentException(
+            "Fields that are tokenized or index proximity data must produce a non-null TokenStream, but "
+                + field.name()
+                + " did not");
+      }
+      invertState.setAttributeSource(null);
+      invertState.position++;
+      invertState.length++;
+      termsHashPerField.start(field, first);
+      invertState.length = Math.addExact(invertState.length, 1);
+      try {
+        termsHashPerField.add(binaryValue, docID);
+      } catch (MaxBytesLengthExceededException e) {
+        byte[] prefix = new byte[30];
+        System.arraycopy(binaryValue.bytes, binaryValue.offset, prefix, 0, 30);
+        String msg =
+            "Document contains at least one immense term in field=\""
+                + fieldInfo.name
+                + "\" (whose length is longer than the max length "
+                + IndexWriter.MAX_TERM_LENGTH
+                + "), all of which were skipped. The prefix of the first immense term is: '"
+                + Arrays.toString(prefix)
+                + "...'";
+        if (infoStream.isEnabled("IW")) {
+          infoStream.message("IW", "ERROR: " + msg);
+        }
+        throw new IllegalArgumentException(msg, e);
       }
     }
   }

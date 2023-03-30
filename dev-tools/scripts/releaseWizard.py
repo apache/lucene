@@ -1131,14 +1131,14 @@ def configure_pgp(gpg_todo):
         res = run("gpg --list-secret-keys %s" % gpg_fingerprint)
         print("Found key %s on your private gpg keychain" % gpg_id)
         # Check rsa and key length >= 4096
-        match = re.search(r'^sec +((rsa|dsa)(\d{4})) ', res)
+        match = re.search(r'^sec#? +((rsa|dsa)(\d{4})) ', res)
         type = "(unknown)"
         length = -1
         if match:
             type = match.group(2)
             length = int(match.group(3))
         else:
-            match = re.search(r'^sec +((\d{4})([DR])/.*?) ', res)
+            match = re.search(r'^sec#? +((\d{4})([DR])/.*?) ', res)
             if match:
                 type = 'rsa' if match.group(3) == 'R' else 'dsa'
                 length = int(match.group(2))

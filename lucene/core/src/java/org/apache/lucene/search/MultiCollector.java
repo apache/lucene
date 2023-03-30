@@ -108,7 +108,13 @@ public class MultiCollector implements Collector {
       if (scoreMode == null) {
         scoreMode = collector.scoreMode();
       } else if (scoreMode != collector.scoreMode()) {
-        return ScoreMode.COMPLETE;
+        // If score modes disagree, we don't try to be smart and just use one of the COMPLETE score
+        // modes depending on whether scores are needed or not.
+        if (scoreMode.needsScores() || collector.scoreMode().needsScores()) {
+          scoreMode = ScoreMode.COMPLETE;
+        } else {
+          scoreMode = ScoreMode.COMPLETE_NO_SCORES;
+        }
       }
     }
     return scoreMode;
