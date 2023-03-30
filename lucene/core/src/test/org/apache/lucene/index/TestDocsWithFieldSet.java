@@ -60,6 +60,34 @@ public class TestDocsWithFieldSet extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
   }
 
+  public void testSparse_multiValued() throws IOException {
+    DocsWithFieldSet set = new DocsWithFieldSet();
+    int doc1 = random().nextInt(10000);
+    int doc1Vectors = 3;
+    for(int i=0; i<doc1Vectors; i++){
+    set.addMultiValue(doc1);
+    }
+
+    DocIdSetIterator it = set.iterator();
+    assertEquals(doc1, it.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+    assertEquals(doc1Vectors, set.getTotalVectorsCount());
+    
+    int doc2 = doc1 + TestUtil.nextInt(random(), 1, 100);
+    int doc2Vectors = 5;
+    for(int i=0; i<doc2Vectors; i++){
+      set.addMultiValue(doc2);
+    }
+    it = set.iterator();
+    assertEquals(doc1, it.nextDoc());
+    assertEquals(doc2, it.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+    assertEquals(doc1Vectors + doc2Vectors, set.getTotalVectorsCount());
+    int[] valuesPerDocument = set.getValuesPerDocument();
+    assertEquals(doc1Vectors, valuesPerDocument[0]);
+    assertEquals(doc2Vectors, valuesPerDocument[1]);
+  }
+
   public void testDenseThenSparse() throws IOException {
     int denseCount = random().nextInt(10000);
     int nextDoc = denseCount + random().nextInt(10000);
