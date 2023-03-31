@@ -505,8 +505,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
-        throw new UnsupportedOperationException();
+      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+        return null;
       }
 
       @Override

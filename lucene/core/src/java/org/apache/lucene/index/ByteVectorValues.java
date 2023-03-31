@@ -57,4 +57,22 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
    * @return the vector value
    */
   public abstract byte[] vectorValue() throws IOException;
+
+  /**
+   * Return the document ID corresponding to the input vector id(ordinal)
+   * @param ord vector ID(ordinal)
+   * @return the document ID
+   */
+  public int ordToDoc(int ord){
+    return ord;
+  }
+
+  /**
+   * Return the next vector ID(ordinal)
+   *
+   * @return the vector ID(ordinal)
+   */
+  public int nextOrd() throws IOException {
+    return nextDoc();
+  }
 }

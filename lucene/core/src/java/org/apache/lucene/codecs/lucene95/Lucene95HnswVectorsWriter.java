@@ -815,7 +815,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             meta.writeVInt(n);
           }
         } else {
-          assert nodesOnLevel.size() == count : "Level 0 expects to have all nodes";
+          assert nodesOnLevel.size() == vectorsSize : "Level 0 expects to have all nodes";
         }
       }
       long start = vectorIndex.getFilePointer();

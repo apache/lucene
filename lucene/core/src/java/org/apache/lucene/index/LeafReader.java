@@ -270,7 +270,7 @@ public abstract class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.
