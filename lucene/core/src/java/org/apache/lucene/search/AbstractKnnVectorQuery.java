@@ -164,7 +164,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), strategy);
     }
 
     // Perform the approximate kNN search
@@ -173,7 +173,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), strategy);
     }
   }
 
@@ -202,7 +202,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       throws IOException;
 
   // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
+  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {

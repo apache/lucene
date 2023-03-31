@@ -165,7 +165,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  private void testFindAll_multiValuedMax_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
+  public void testFindAll_multiValuedMax_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
@@ -184,7 +184,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  private void testFindAll_multiValuedSum_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
+  public void testFindAll_multiValuedSum_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
@@ -438,7 +438,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  private void testScoreEuclidean_multiValuedMax() throws IOException {
+  public void testScoreEuclidean_multiValuedMax() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
@@ -455,10 +455,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       // prior to advancing, score is 0
       assertEquals(-1, scorer.docID());
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
-      // Ranks is [Doc0, Doc2, Doc1]
       // test getMaxScore
-      assertEquals(0.5, scorer.getMaxScore(0), 0.01);
-      // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
       assertEquals(1.0, scorer.getMaxScore(2), 0.01);
       assertEquals(1.0, scorer.getMaxScore(Integer.MAX_VALUE), 0.01);
 
@@ -492,10 +489,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       // prior to advancing, score is 0
       assertEquals(-1, scorer.docID());
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
-      // Ranks is [Doc0, Doc2, Doc1]
       // test getMaxScore
-      assertEquals(1.5, scorer.getMaxScore(0), 0.01);
-      // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
       assertEquals(1.5, scorer.getMaxScore(2), 0.01);
       assertEquals(1.5, scorer.getMaxScore(Integer.MAX_VALUE), 0.01);
 

@@ -27,7 +27,6 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -252,7 +251,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator, HnswGraphSearcher.Multivalued strategy) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 
