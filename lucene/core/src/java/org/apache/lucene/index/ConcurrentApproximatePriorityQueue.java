@@ -36,8 +36,8 @@ final class ConcurrentApproximatePriorityQueue<T> {
     // that if we set the concurrency too high then we'll completely lose the bias towards larger
     // DWPTs. And if we set it too low then we risk seeing contention.
     int concurrency = coreCount / 4;
-    concurrency = Math.max(1, concurrency);
-    concurrency = Math.min(256, concurrency);
+    concurrency = Math.max(MIN_CONCURRENCY, concurrency);
+    concurrency = Math.min(MAX_CONCURRENCY, concurrency);
     return concurrency;
   }
 
