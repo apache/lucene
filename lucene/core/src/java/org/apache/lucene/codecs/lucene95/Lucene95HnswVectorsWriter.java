@@ -184,6 +184,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         fieldData.docsWithField,
+        fieldData.vectors.size(),
         graph,
         graphLevelNodeOffsets);
   }
@@ -253,6 +254,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         newDocsWithField,
+        fieldData.vectors.size(),
         mockGraph,
         graphLevelNodeOffsets);
   }
@@ -400,15 +402,33 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     IndexInput vectorDataInput = null;
     boolean success = false;
     try {
-      // write the vector data to a temporary file
-      // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> writeByteVectorData(
-                tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-            case FLOAT32 -> writeVectorData(
-                tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
-          };
+      int liveVectors;
+      DocsWithFieldSet docsWithField;
+      if(fieldInfo.isVectorMultiValued()){
+        docsWithField =
+                switch (fieldInfo.getVectorEncoding()) {
+                  case BYTE ->
+                          writeByteVectorMultiValuedData(
+                                  tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+                  case FLOAT32 -> writeVectorMultiValuedData(
+                          tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+                };
+        liveVectors = docsWithField.getTotalVectorsCount();
+      }
+      else {
+        // write the vector data to a temporary file
+        docsWithField =
+                switch (fieldInfo.getVectorEncoding()) {
+                  case BYTE ->
+                          writeByteVectorData(
+                                  tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+                  case FLOAT32 -> writeVectorData(
+                          tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+                };
+        liveVectors = docsWithField.cardinality();
+      }
+      
+          
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -436,7 +456,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
+                        liveVectors,
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<byte[]> hnswGraphBuilder =
@@ -448,7 +468,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
+                        liveVectors,
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<float[]> hnswGraphBuilder =
@@ -468,6 +488,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexOffset,
           vectorIndexLength,
           docsWithField,
+          liveVectors,
           graph,
           vectorIndexNodeOffsets);
       success = true;
@@ -714,6 +735,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
+      int vectorsSize,
       HnswGraph graph,
       int[][] graphLevelNodeOffsets)
       throws IOException {
@@ -727,14 +749,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVInt(field.getVectorDimension());
 
     // write docIDs
-    int count = docsWithField.cardinality();
-    meta.writeInt(count);
-    if (count == 0) {
+    meta.writeInt(vectorsSize);
+    if (vectorsSize == 0) {
       meta.writeLong(-2); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
       meta.writeByte((byte) -1); // denseRankPower
-    } else if (count == maxDoc) {
+    } else if (!field.isVectorMultiValued() && vectorsSize == maxDoc ) {
       meta.writeLong(-1); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
@@ -755,13 +776,18 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
       // dense case and empty case do not need to store ordToMap mapping
       final DirectMonotonicWriter ordToDocWriter =
-          DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
+          DirectMonotonicWriter.getInstance(meta, vectorData, vectorsSize, DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
+      int[] valuesPerDocument = docsWithField.getValuesPerDocument();
+      int valuesIndex = 0;
       for (int doc = iterator.nextDoc();
           doc != DocIdSetIterator.NO_MORE_DOCS;
           doc = iterator.nextDoc()) {
+                int documentVectorsCount = field.isVectorMultiValued() ? valuesPerDocument[valuesIndex++]:1;
+                for (int i = 0; i < documentVectorsCount; i++) {
         ordToDocWriter.add(doc);
       }
+            }
       ordToDocWriter.finish();
       meta.writeLong(vectorData.getFilePointer() - start);
     }
@@ -830,6 +856,23 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
+   * Writes the byte vector values to the output and returns a set of documents that contains
+   * vectors.
+   */
+  private static DocsWithFieldSet writeByteVectorMultiValuedData(
+          IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    for (int vectorId = byteVectorValues.nextOrd(); vectorId != NO_MORE_DOCS; vectorId = byteVectorValues.nextOrd()) {
+      int docID = byteVectorValues.ordToDoc(vectorId);
+      byte[] binaryValue = byteVectorValues.vectorValue();
+      assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
+      output.writeBytes(binaryValue, binaryValue.length);
+      docsWithField.addMultiValue(docID);
+    }
+    return docsWithField;
+  }
+
+  /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
   private static DocsWithFieldSet writeVectorData(
@@ -846,6 +889,26 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       buffer.asFloatBuffer().put(value);
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);
+    }
+    return docsWithField;
+  }
+
+  /**
+   * Writes the vector values to the output and returns a set of documents that contains vectors.
+   */
+  private static DocsWithFieldSet writeVectorMultiValuedData(
+          IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    ByteBuffer buffer =
+            ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
+                    .order(ByteOrder.LITTLE_ENDIAN);
+
+    for (int vectorId = floatVectorValues.nextOrd(); vectorId != NO_MORE_DOCS; vectorId = floatVectorValues.nextOrd()) {
+      int docID = floatVectorValues.ordToDoc(vectorId);
+      float[] value = floatVectorValues.vectorValue();
+      buffer.asFloatBuffer().put(value);
+      output.writeBytes(buffer.array(), buffer.limit());
+      docsWithField.addMultiValue(docID);
     }
     return docsWithField;
   }
@@ -903,14 +966,20 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
-      if (docID == lastDocID) {
+      if (!fieldInfo.isVectorMultiValued() && docID == lastDocID) {
         throw new IllegalArgumentException(
             "VectorValuesField \""
                 + fieldInfo.name
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
-      assert docID > lastDocID;
-      docsWithField.add(docID);
+      if (!fieldInfo.isVectorMultiValued()) {
+        assert docID > lastDocID;
+      }
+      if(fieldInfo.isVectorMultiValued()){
+        docsWithField.addMultiValue(docID);
+      } else {
+        docsWithField.add(docID);
+      }
       vectors.add(copyValue(vectorValue));
       hnswGraphBuilder.addGraphNode(node, vectorValue);
       node++;

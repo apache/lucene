@@ -117,7 +117,7 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public abstract TopDocs search(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
    * that called {@link #getMergeInstance()}.

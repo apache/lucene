@@ -266,7 +266,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -290,15 +290,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            visitedLimit, 
+            strategy);
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
-      int node = results.topNode();
+      int docId = results.topNode();
       float score = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(docId, score);
     }
 
     TotalHits.Relation relation =
@@ -309,7 +310,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -333,15 +334,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            visitedLimit,
+            strategy);
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
-      int node = results.topNode();
+      int docId = results.topNode();
       float score = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(docId, score);
     }
 
     TotalHits.Relation relation =
