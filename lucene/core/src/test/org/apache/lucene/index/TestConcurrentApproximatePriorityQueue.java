@@ -20,23 +20,16 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 
 public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
 
-  @BeforeClass
-  public static void beforeClass() {
-    ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE = TestUtil.nextInt(random(), 2, 8);
-  }
-
-  @AfterClass
-  public static void afterClass() {
-    ConcurrentApproximatePriorityQueue.CONCURRENCY_OVERRIDE = null;
-  }
-
   public void testPollFromSameThread() {
-    ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();
+    ConcurrentApproximatePriorityQueue<Integer> pq =
+        new ConcurrentApproximatePriorityQueue<>(
+            TestUtil.nextInt(
+                random(),
+                ConcurrentApproximatePriorityQueue.MIN_CONCURRENCY,
+                ConcurrentApproximatePriorityQueue.MAX_CONCURRENCY));
     pq.add(3, 3);
     pq.add(10, 10);
     pq.add(7, 7);
@@ -47,7 +40,12 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
   }
 
   public void testPollFromDifferentThread() throws Exception {
-    ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();
+    ConcurrentApproximatePriorityQueue<Integer> pq =
+        new ConcurrentApproximatePriorityQueue<>(
+            TestUtil.nextInt(
+                random(),
+                ConcurrentApproximatePriorityQueue.MIN_CONCURRENCY,
+                ConcurrentApproximatePriorityQueue.MAX_CONCURRENCY));
     pq.add(3, 3);
     pq.add(10, 10);
     pq.add(7, 7);
@@ -66,7 +64,10 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
   }
 
   public void testCurrentLockIsBusy() throws Exception {
-    ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();
+    // This test needs a concurrency of 2 or more.
+    ConcurrentApproximatePriorityQueue<Integer> pq =
+        new ConcurrentApproximatePriorityQueue<>(
+            TestUtil.nextInt(random(), 2, ConcurrentApproximatePriorityQueue.MAX_CONCURRENCY));
     pq.add(3, 3);
     CountDownLatch takeLock = new CountDownLatch(1);
     CountDownLatch releaseLock = new CountDownLatch(1);

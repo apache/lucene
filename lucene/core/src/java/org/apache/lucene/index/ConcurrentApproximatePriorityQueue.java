@@ -27,19 +27,15 @@ import java.util.function.Predicate;
  */
 final class ConcurrentApproximatePriorityQueue<T> {
 
-  static Integer CONCURRENCY_OVERRIDE;
+  static final int MIN_CONCURRENCY = 1;
+  static final int MAX_CONCURRENCY = 256;
 
   private static final int getConcurrency() {
-    int concurrency;
-    if (CONCURRENCY_OVERRIDE != null) {
-      concurrency = CONCURRENCY_OVERRIDE;
-    } else {
-      int coreCount = Runtime.getRuntime().availableProcessors();
-      // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is
-      // that if we set the concurrency too high then we'll completely lose the bias towards larger
-      // DWPTs. And if we set it too low then we risk seeing contention.
-      concurrency = coreCount / 4;
-    }
+    int coreCount = Runtime.getRuntime().availableProcessors();
+    // Aim for ~4 entries per slot when indexing with one thread per CPU core. The trade-off is
+    // that if we set the concurrency too high then we'll completely lose the bias towards larger
+    // DWPTs. And if we set it too low then we risk seeing contention.
+    int concurrency = coreCount / 4;
     concurrency = Math.max(1, concurrency);
     concurrency = Math.min(256, concurrency);
     return concurrency;
@@ -50,7 +46,20 @@ final class ConcurrentApproximatePriorityQueue<T> {
   final ApproximatePriorityQueue<T>[] queues;
 
   ConcurrentApproximatePriorityQueue() {
-    concurrency = getConcurrency();
+    this(getConcurrency());
+  }
+
+  ConcurrentApproximatePriorityQueue(int concurrency) {
+    if (concurrency < MIN_CONCURRENCY || concurrency > MAX_CONCURRENCY) {
+      throw new IllegalArgumentException(
+          "concurrency must be in ["
+              + MIN_CONCURRENCY
+              + ", "
+              + MAX_CONCURRENCY
+              + "], got "
+              + concurrency);
+    }
+    this.concurrency = concurrency;
     locks = new Lock[concurrency];
     @SuppressWarnings({"rawtypes", "unchecked"})
     ApproximatePriorityQueue<T>[] queues = new ApproximatePriorityQueue[concurrency];
