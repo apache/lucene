@@ -25,16 +25,17 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
+  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter, HnswGraphSearcher.Multivalued strategy) {
+    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter, strategy);
   }
 
   @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
+  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query, HnswGraphSearcher.Multivalued strategy) {
+    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, strategy);
   }
 
   @Override
@@ -50,13 +51,18 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnByteVectorField(name, floatToBytes(vector), similarityFunction);
+      String name, float[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction) {
+    return new KnnByteVectorField(name, floatToBytes(vector), multiValued, similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
-    return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
+    return new KnnByteVectorField(name, floatToBytes(vector), false, VectorSimilarityFunction.EUCLIDEAN);
+  }
+
+  @Override
+  Field getKnnVectorField(String name, float[] vector, boolean multiValued) {
+    return new KnnByteVectorField(name, floatToBytes(vector), multiValued, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   private static byte[] floatToBytes(float[] query) {
@@ -90,8 +96,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
-      super(field, target, k, filter);
+    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
+      super(field, target, k, filter, strategy);
     }
 
     @Override

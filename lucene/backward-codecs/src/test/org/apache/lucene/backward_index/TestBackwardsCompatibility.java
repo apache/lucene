@@ -167,7 +167,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, false, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public void testCreateCFS() throws IOException {

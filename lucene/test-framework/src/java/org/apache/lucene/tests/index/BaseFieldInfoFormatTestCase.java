@@ -357,7 +357,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
-      type.setVectorAttributes(dimension, encoding, similarityFunction, false);
+      type.setVectorAttributes(dimension, false, encoding, similarityFunction);
     }
 
     return type;

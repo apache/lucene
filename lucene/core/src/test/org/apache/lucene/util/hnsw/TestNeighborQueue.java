@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.tests.util.LuceneTestCase;
 

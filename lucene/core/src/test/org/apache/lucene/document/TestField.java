@@ -698,7 +698,7 @@ public class TestField extends LuceneTestCase {
       Document doc = new Document();
       byte[] b = new byte[5];
       KnnByteVectorField field =
-          new KnnByteVectorField("binary", b, VectorSimilarityFunction.EUCLIDEAN);
+          new KnnByteVectorField("binary", b, false, VectorSimilarityFunction.EUCLIDEAN);
       assertNull(field.binaryValue());
       assertArrayEquals(b, field.vectorValue());
       expectThrows(

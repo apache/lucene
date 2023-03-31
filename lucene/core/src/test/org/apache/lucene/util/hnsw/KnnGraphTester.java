@@ -377,9 +377,9 @@ public class KnnGraphTester {
           // warm up
           float[] target = targetReader.next();
           if (prefilter) {
-            doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout, bitSetQuery);
+            doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout, bitSetQuery, HnswGraphSearcher.Multivalued.NONE);
           } else {
-            doKnnVectorQuery(searcher, KNN_FIELD, target, (int) (topK / selectivity), fanout, null);
+            doKnnVectorQuery(searcher, KNN_FIELD, target, (int) (topK / selectivity), fanout, null, HnswGraphSearcher.Multivalued.NONE);
           }
         }
         targetReader.reset();
@@ -388,11 +388,11 @@ public class KnnGraphTester {
         for (int i = 0; i < numIters; i++) {
           float[] target = targetReader.next();
           if (prefilter) {
-            results[i] = doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout, bitSetQuery);
+            results[i] = doKnnVectorQuery(searcher, KNN_FIELD, target, topK, fanout, bitSetQuery, HnswGraphSearcher.Multivalued.NONE);
           } else {
             results[i] =
                 doKnnVectorQuery(
-                    searcher, KNN_FIELD, target, (int) (topK / selectivity), fanout, null);
+                    searcher, KNN_FIELD, target, (int) (topK / selectivity), fanout, null, HnswGraphSearcher.Multivalued.NONE);
 
             if (matchDocs != null) {
               results[i].scoreDocs =
@@ -538,9 +538,9 @@ public class KnnGraphTester {
   }
 
   private static TopDocs doKnnVectorQuery(
-      IndexSearcher searcher, String field, float[] vector, int k, int fanout, Query filter)
+          IndexSearcher searcher, String field, float[] vector, int k, int fanout, Query filter, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
-    return searcher.search(new KnnFloatVectorQuery(field, vector, k + fanout, filter), k);
+    return searcher.search(new KnnFloatVectorQuery(field, vector, k + fanout, filter, strategy), k);
   }
 
   private float checkResults(TopDocs[] results, int[][] nn) {
@@ -688,6 +688,7 @@ public class KnnGraphTester {
   }
 
   private int createIndex(Path docsPath, Path indexPath) throws IOException {
+    boolean multiValued = false;
     IndexWriterConfig iwc = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.CREATE);
     iwc.setCodec(
         new Lucene95Codec() {
@@ -703,8 +704,8 @@ public class KnnGraphTester {
 
     FieldType fieldType =
         switch (vectorEncoding) {
-          case BYTE -> KnnByteVectorField.createFieldType(dim, similarityFunction);
-          case FLOAT32 -> KnnFloatVectorField.createFieldType(dim, similarityFunction);
+          case BYTE -> KnnByteVectorField.createFieldType(dim, multiValued, similarityFunction);
+          case FLOAT32 -> KnnFloatVectorField.createFieldType(dim, multiValued, similarityFunction);
         };
     if (quiet == false) {
       iwc.setInfoStream(new PrintStreamInfoStream(System.out));

@@ -38,7 +38,7 @@ import org.apache.lucene.util.VectorUtil;
  */
 public class KnnFloatVectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction, boolean multiValued)) {
+  private static FieldType createType(float[] v, boolean multiValued, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -67,7 +67,7 @@ public class KnnFloatVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or has dimension &gt; 1024.
    */
   public static FieldType createFieldType(
-      int dimension, VectorSimilarityFunction similarityFunction, boolean multiValued)) {
+      int dimension, boolean multiValued, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
     type.setVectorAttributes(dimension, multiValued, VectorEncoding.FLOAT32, similarityFunction);
     type.freeze();
@@ -99,8 +99,8 @@ public class KnnFloatVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    super(name, createType(vector, similarityFunction));
+      String name, float[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction) {
+    super(name, createType(vector,multiValued, similarityFunction));
     fieldsData = vector;
   }
 
@@ -115,7 +115,11 @@ public class KnnFloatVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnFloatVectorField(String name, float[] vector) {
-    this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
+    this(name, vector, false, VectorSimilarityFunction.EUCLIDEAN);
+  }
+
+  public KnnFloatVectorField(String name, float[] vector, boolean multiValued) {
+    this(name, vector, multiValued, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   /**

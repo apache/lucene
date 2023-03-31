@@ -246,7 +246,8 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            visitedLimit,
+            HnswGraphSearcher.Multivalued.NONE);
 
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
@@ -265,7 +266,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     throw new UnsupportedOperationException();
   }

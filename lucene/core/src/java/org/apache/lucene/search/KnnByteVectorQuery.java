@@ -26,9 +26,10 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, byte[], int, Bits, int)} to perform nearest neighbour
+ * Uses {@link KnnVectorsReader#search(String, byte[], int, Bits, int, HnswGraphSearcher.Multivalued)}  to perform nearest neighbour
  * search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
@@ -56,7 +57,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnByteVectorQuery(String field, byte[] target, int k) {
-    this(field, target, k, null);
+    this(field, target, k, null, HnswGraphSearcher.Multivalued.NONE);
   }
 
   /**
@@ -69,16 +70,16 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    * @param filter a filter applied before the vector search
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
-    super(field, k, filter);
+  public KnnByteVectorQuery(String field, byte[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
+    super(field, k, filter, strategy);
     this.target = target;
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
       throws IOException {
     TopDocs results =
-        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+        context.reader().searchNearestVectors(field, target, k, acceptDocs, visitedLimit, strategy);
     return results != null ? results : NO_RESULTS;
   }
 

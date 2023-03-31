@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -40,16 +41,17 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnFloatVectorQuery(field, query, k, queryFilter);
+  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter, HnswGraphSearcher.Multivalued strategy) {
+    return new KnnFloatVectorQuery(field, query, k, queryFilter, strategy);
   }
 
   @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, vec, k, query);
+  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query, HnswGraphSearcher.Multivalued strategy) {
+    return new ThrowingKnnVectorQuery(field, vec, k, query, strategy);
   }
 
   @Override
@@ -59,13 +61,18 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnFloatVectorField(name, vector, similarityFunction);
+      String name, float[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction) {
+    return new KnnFloatVectorField(name, vector, multiValued, similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
     return new KnnFloatVectorField(name, vector);
+  }
+
+  @Override
+  Field getKnnVectorField(String name, float[] vector, boolean multiValued) {
+    return new KnnFloatVectorField(name, vector, multiValued, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   public void testToString() throws IOException {
@@ -92,10 +99,10 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {-1, 0}, DOT_PRODUCT));
+        doc.add(getKnnVectorField("field", new float[] {-1, 0}, false,  DOT_PRODUCT));
         w.addDocument(doc);
         doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 0}, DOT_PRODUCT));
+        doc.add(getKnnVectorField("field", new float[] {1, 0}, false, DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
@@ -124,7 +131,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           Document doc = new Document();
           doc.add(
               getKnnVectorField(
-                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), DOT_PRODUCT));
+                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), false, DOT_PRODUCT));
           w.addDocument(doc);
         }
       }
@@ -205,7 +212,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader, docs);
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
-            new AbstractKnnVectorQuery.DocAndScoreQuery(
+            new AbstractKnnVectorQuery.DocAndScoreQuery(HnswGraphSearcher.Multivalued.NONE,
                 docs, scores, maxScore, segments, indexReader.getContext().id());
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
@@ -240,8 +247,8 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
-      super(field, target, k, filter);
+    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
+      super(field, target, k, filter, strategy);
     }
 
     @Override

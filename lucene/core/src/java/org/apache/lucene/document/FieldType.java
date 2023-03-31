@@ -375,7 +375,7 @@ public class FieldType implements IndexableFieldType {
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
   public void setVectorAttributes(
-      int numDimensions, VectorEncoding encoding, VectorSimilarityFunction similarity, boolean multiValued) {
+      int numDimensions, boolean multiValued, VectorEncoding encoding, VectorSimilarityFunction similarity) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);

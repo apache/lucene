@@ -112,7 +112,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public TopDocs search(
-                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
               throw new UnsupportedOperationException();
             }
 

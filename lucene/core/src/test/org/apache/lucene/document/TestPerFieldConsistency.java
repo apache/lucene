@@ -94,7 +94,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();
     }
-    return new KnnFloatVectorField(fieldName, values, similarityFunction);
+    return new KnnFloatVectorField(fieldName, values, false,  similarityFunction);
   }
 
   private static Field[] randomFieldsWithTheSameName(String fieldName) {

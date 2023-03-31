@@ -110,7 +110,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Override
   Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnFloatVectorField(name, vector, similarityFunction);
+    return new KnnFloatVectorField(name, vector, false, similarityFunction);
   }
 
   @Override
@@ -146,7 +146,8 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
             similarityFunction,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE);
+            Integer.MAX_VALUE,
+            HnswGraphSearcher.Multivalued.NONE);
 
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);

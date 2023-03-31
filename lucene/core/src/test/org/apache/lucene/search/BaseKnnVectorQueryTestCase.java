@@ -47,28 +47,33 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /** Test cases for AbstractKnnVectorQuery objects. */
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter);
+          String field, float[] query, int k, Query queryFilter, HnswGraphSearcher.Multivalued strategy);
 
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter);
+      String field, float[] query, int k, Query queryFilter, HnswGraphSearcher.Multivalued strategy);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
-    return getKnnVectorQuery(field, query, k, null);
+    return getKnnVectorQuery(field, query, k, null, HnswGraphSearcher.Multivalued.NONE);
+  }
+
+  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return getKnnVectorQuery(field, query, k, queryFilter, HnswGraphSearcher.Multivalued.NONE);
   }
 
   abstract float[] randomVector(int dim);
 
   abstract Field getKnnVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction);
+      String name, float[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction);
 
   abstract Field getKnnVectorField(String name, float[] vector);
+
+  abstract Field getKnnVectorField(String name, float[] vector, boolean multiValued);
 
   public void testEquals() {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
@@ -94,8 +99,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 2));
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0}, 10));
 
-    assertEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 10, HnswGraphSearcher.Multivalued.NONE));
-    assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 10, HnswGraphSearcher.Multivalued.SUM));
+    assertEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 10, null, HnswGraphSearcher.Multivalued.NONE));
+    assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 10, null, HnswGraphSearcher.Multivalued.SUM));
     assertNotEquals(q1, q3);
     assertEquals(q3, getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter1, HnswGraphSearcher.Multivalued.MAX));
   }
@@ -160,28 +165,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  /**
-   * Tests that a KnnVectorQuery whose topK &gt;= numDocs returns all the documents in score order
-   */
-  public void testFindAll_floatMultiValuedMax_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
-    findAll_euclidean_max(VectorEncoding.FLOAT32);
-  }
-
-  public void testFindAll_byteMultiValuedMax_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
-    findAll_euclidean_max(VectorEncoding.BYTE);
-  }
-
-  private void findAll_euclidean_max(VectorEncoding encoding) throws IOException {
+  private void testFindAll_multiValuedMax_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, true, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.MAX);
 
-      KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, HnswGraphSearcher.Multivalued.MAX);
       assertMatches(searcher, kvq, 3);
       ScoreDoc[] scoreDocs2 = searcher.search(kvq, 3).scoreDocs;
       assertIdMatches(reader, "id2", scoreDocs2[0]);
@@ -190,25 +184,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testFindAll_floatMultiValuedSum_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
-    findAll_euclidean_sum(VectorEncoding.FLOAT32);
-  }
-
-  public void testFindAll_byteMultiValuedSum_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
-    findAll_euclidean_sum(VectorEncoding.BYTE);
-  }
-  
-  private void findAll_euclidean_sum(VectorEncoding encoding) throws IOException {
+  private void testFindAll_multiValuedSum_shouldScoreClosestVectorPerDocumentOnly() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, true, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, null, HnswGraphSearcher.Multivalued.SUM);
 
-      KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, HnswGraphSearcher.Multivalued.SUM);
       assertMatches(searcher, kvq, 3);
       ScoreDoc[] scoreDocs2 = searcher.search(kvq, 3).scoreDocs;
       assertIdMatches(reader, "id0", scoreDocs2[0]);
@@ -242,26 +228,18 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
     }
   }
-
-  public void testSearchBoost_floatMultiValuedMax_shouldMultiplyBoostToVectorScore() throws IOException {
-    multiValuedMax_shouldMultiplyBoostToVectorScore(VectorEncoding.FLOAT32);
-  }
-
-  public void testSearchBoost_byteMultiValuedMax_shouldMultiplyBoostToVectorScore() throws IOException {
-    multiValuedMax_shouldMultiplyBoostToVectorScore(VectorEncoding.BYTE);
-  }
-
-  public void multiValuedMax_shouldMultiplyBoostToVectorScore(VectorEncoding encoding) throws IOException {
+  
+  public void testSearchBoost_multiValuedMax_shouldMultiplyBoostToVectorScore() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, true, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      KnnVectorQuery vectorQuery = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, HnswGraphSearcher.Multivalued.MAX);
+      Query vectorQuery = getKnnVectorQuery("vector3D", new float[] {0, 0, 0}, 10, null, HnswGraphSearcher.Multivalued.MAX);
       ScoreDoc[] scoreDocs = searcher.search(vectorQuery, 3).scoreDocs;
 
       Query boostQuery = new BoostQuery(vectorQuery, 3.0f);
@@ -278,25 +256,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testSearchBoost_floatMultiValuedSum_shouldMultiplyBoostToVectorScore() throws IOException {
-    multiValuedSum_shouldMultiplyBoostToVectorScore(VectorEncoding.FLOAT32);
-  }
-
-  public void testSearchBoost_byteMultiValuedSum_shouldMultiplyBoostToVectorScore() throws IOException {
-    multiValuedSum_shouldMultiplyBoostToVectorScore(VectorEncoding.BYTE);
-  }
-  
-  public void multiValuedSum_shouldMultiplyBoostToVectorScore(VectorEncoding encoding) throws IOException {
+  public void testSearchBoost_multiValuedSum_shouldMultiplyBoostToVectorScore() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, true, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      KnnVectorQuery vectorQuery = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, HnswGraphSearcher.Multivalued.SUM);
+      Query vectorQuery = getKnnVectorQuery("vector3D", new float[] {0, 0, 0}, 10, null, HnswGraphSearcher.Multivalued.SUM);
       ScoreDoc[] scoreDocs = searcher.search(vectorQuery, 3).scoreDocs;
 
       Query boostQuery = new BoostQuery(vectorQuery, 3.0f);
@@ -327,33 +297,26 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testSimpleFilter_floatMultiValuedMax_shouldApplyFilter() throws IOException {
-    multiValued_shouldApplyFilter(VectorEncoding.FLOAT32, HnswGraphSearcher.Multivalued.MAX);
+  public void testSimpleFilter_multiValuedMax_shouldApplyFilter() throws IOException {
+    multiValued_shouldApplyFilter(HnswGraphSearcher.Multivalued.MAX);
   }
 
-  public void testSimpleFilter_byteMultiValuedMax_shouldApplyFilter() throws IOException {
-    multiValued_shouldApplyFilter(VectorEncoding.BYTE, HnswGraphSearcher.Multivalued.MAX);
-  }
 
-  public void testSimpleFilter_floatMultiValuedSum_shouldApplyFilter() throws IOException {
-    multiValued_shouldApplyFilter(VectorEncoding.FLOAT32, HnswGraphSearcher.Multivalued.SUM);
-  }
-
-  public void testSimpleFilter_byteMultiValuedSum_shouldApplyFilter() throws IOException {
-    multiValued_shouldApplyFilter(VectorEncoding.BYTE, HnswGraphSearcher.Multivalued.SUM);
+  public void testSimpleFilter_multiValuedSum_shouldApplyFilter() throws IOException {
+    multiValued_shouldApplyFilter(HnswGraphSearcher.Multivalued.SUM);
   }
   
-  public void multiValued_shouldApplyFilter(VectorEncoding encoding, HnswGraphSearcher.Multivalued strategy) throws IOException {
+  public void multiValued_shouldApplyFilter(HnswGraphSearcher.Multivalued strategy) throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, true, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       Query filter = new TermQuery(new Term("id", "id2"));
-      KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, filter, strategy);
+      Query kvq = getKnnVectorQuery("vector3D", new float[] {0, 0, 0}, 10, filter, strategy);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(1, topDocs.totalHits.value);
       assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);
@@ -373,33 +336,25 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testNoResultsFilter_floatMultiValuedMax_shouldReturnNoResults() throws IOException {
-    multiValued_noResultsFilter(VectorEncoding.FLOAT32, HnswGraphSearcher.Multivalued.MAX);
+  public void testNoResultsFilter_multiValuedMax_shouldReturnNoResults() throws IOException {
+    multiValued_noResultsFilter(HnswGraphSearcher.Multivalued.MAX);
   }
 
-  public void testNoResultsFilter_byteMultiValuedMax_shouldReturnNoResults() throws IOException {
-    multiValued_noResultsFilter(VectorEncoding.BYTE, HnswGraphSearcher.Multivalued.MAX);
+  public void testNoResultsFilter_multiValuedSum_shouldReturnNoResults() throws IOException {
+    multiValued_noResultsFilter(HnswGraphSearcher.Multivalued.SUM);
   }
 
-  public void testNoResultsFilter_floatMultiValuedSum_shouldReturnNoResults() throws IOException {
-    multiValued_noResultsFilter(VectorEncoding.FLOAT32, HnswGraphSearcher.Multivalued.SUM);
-  }
-
-  public void testNoResultsFilter_byteMultiValuedSum_shouldReturnNoResults() throws IOException {
-    multiValued_noResultsFilter(VectorEncoding.BYTE, HnswGraphSearcher.Multivalued.SUM);
-  }
-
-  public void multiValued_noResultsFilter(VectorEncoding encoding, HnswGraphSearcher.Multivalued strategy) throws IOException {
+  public void multiValued_noResultsFilter(HnswGraphSearcher.Multivalued strategy) throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, true, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       Query filter = new TermQuery(new Term("other", "value"));
-      KnnVectorQuery kvq = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 10, filter, strategy);
+      Query kvq = getKnnVectorQuery("vector3D", new float[] {0, 0, 0}, 10, filter, strategy);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(0, topDocs.totalHits.value);
     }
@@ -483,34 +438,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testScoreEuclidean_float_multiValuedSum() throws IOException {
-    assertMultiValuedScoreEuclideanSum(VectorEncoding.FLOAT32);
-
-  }
-
-  public void testScoreEuclidean_byte_multiValuedSum() throws IOException {
-    assertMultiValuedScoreEuclideanSum(VectorEncoding.BYTE);
-  }
-
-  public void testScoreEuclidean_float_multiValuedMax() throws IOException {
-    assertMultiValuedScoreEuclideanMax(VectorEncoding.FLOAT32);
-
-  }
-
-  public void testScoreEuclidean_byte_multiValuedMax() throws IOException {
-    assertMultiValuedScoreEuclideanMax(VectorEncoding.BYTE);
-  }
-
-  private void assertMultiValuedScoreEuclideanSum(VectorEncoding encoding) throws IOException {
+  private void testScoreEuclidean_multiValuedMax() throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
 
     try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding, false, doc0Vectors,doc1Vectors,doc2Vectors);
+                 getMultiValuedStableIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
          IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = new IndexSearcher(reader);
-      KnnVectorQuery query = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 3, HnswGraphSearcher.Multivalued.SUM);
+      AbstractKnnVectorQuery query = getKnnVectorQuery("vector3D", new float[] {1, 1, 1}, 3, null, HnswGraphSearcher.Multivalued.MAX);
       Query rewritten = query.rewrite(searcher);
       Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
       Scorer scorer = weight.scorer(reader.leaves().get(0));
@@ -520,45 +457,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
       // Ranks is [Doc0, Doc2, Doc1]
       // test getMaxScore
-      assertEquals(0, scorer.getMaxScore(-1), 0);
-      assertEquals(1.5, scorer.getMaxScore(0), 0.01);
-      // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
-      assertEquals(1.5, scorer.getMaxScore(2), 0.01);
-      assertEquals(1.5, scorer.getMaxScore(Integer.MAX_VALUE), 0.01);
-
-      DocIdSetIterator it = scorer.iterator();
-      assertEquals(3, it.cost());
-      assertEquals(0, it.nextDoc());
-      assertEquals(1.5, scorer.score(), 0.01);
-      assertEquals(1, it.advance(1));
-      assertEquals(0.2, scorer.score(), 0.01);
-      assertEquals(2, it.advance(2));
-      assertEquals(1.0, scorer.score(), 0.01);
-      assertEquals(NO_MORE_DOCS, it.advance(3));
-      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
-    }
-  }
-
-  private void assertMultiValuedScoreEuclideanMax(VectorEncoding encoding) throws IOException {
-    float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
-    float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
-    float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
-
-    try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", encoding,false, doc0Vectors,doc1Vectors,doc2Vectors);
-         IndexReader reader = DirectoryReader.open(indexStore)) {
-      IndexSearcher searcher = new IndexSearcher(reader);
-      KnnVectorQuery query = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 3, HnswGraphSearcher.Multivalued.MAX);
-      Query rewritten = query.rewrite(searcher);
-      Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-      Scorer scorer = weight.scorer(reader.leaves().get(0));
-
-      // prior to advancing, score is 0
-      assertEquals(-1, scorer.docID());
-      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
-      // Ranks is [Doc0, Doc2, Doc1]
-      // test getMaxScore
-      assertEquals(0, scorer.getMaxScore(-1), 0);
       assertEquals(0.5, scorer.getMaxScore(0), 0.01);
       // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
       assertEquals(1.0, scorer.getMaxScore(2), 0.01);
@@ -577,12 +475,49 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testScoreEuclidean_multiValuedSum() throws IOException {
+    float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
+    float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
+    float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
+
+    try (Directory indexStore =
+                 getMultiValuedStableIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
+         IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      AbstractKnnVectorQuery query = getKnnVectorQuery("vector3D", new float[] {1, 1, 1}, 3, null, HnswGraphSearcher.Multivalued.SUM);
+      Query rewritten = query.rewrite(searcher);
+      Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+      Scorer scorer = weight.scorer(reader.leaves().get(0));
+
+      // prior to advancing, score is 0
+      assertEquals(-1, scorer.docID());
+      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+      // Ranks is [Doc0, Doc2, Doc1]
+      // test getMaxScore
+      assertEquals(1.5, scorer.getMaxScore(0), 0.01);
+      // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
+      assertEquals(1.5, scorer.getMaxScore(2), 0.01);
+      assertEquals(1.5, scorer.getMaxScore(Integer.MAX_VALUE), 0.01);
+
+      DocIdSetIterator it = scorer.iterator();
+      assertEquals(3, it.cost());
+      assertEquals(0, it.nextDoc());
+      assertEquals(1.5, scorer.score(), 0.01);
+      assertEquals(1, it.advance(1));
+      assertEquals(0.2, scorer.score(), 0.01);
+      assertEquals(2, it.advance(2));
+      assertEquals(1.0, scorer.score(), 0.01);
+      assertEquals(NO_MORE_DOCS, it.advance(3));
+      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+    }
+  }
+
   public void testScoreCosine() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          doc.add(getKnnVectorField("field", new float[] {j, j * j}, false, COSINE));
           w.addDocument(doc);
         }
       }
@@ -656,70 +591,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testExplain_multiValuedSum_shouldExplainMultiValuedStrategy() throws IOException {
-    multiValuedSum_shouldExplainMultiValuedStrategy(false);
-  }
-
-  public void testExplain_multiValuedSumMultiSegment_shouldExplainMultiValuedStrategy() throws IOException {
-    multiValuedSum_shouldExplainMultiValuedStrategy(true);
-  }
-
-  public void multiValuedSum_shouldExplainMultiValuedStrategy(boolean multiSegment) throws IOException {
-    float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
-    float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
-    float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
-
-    try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", VectorEncoding.FLOAT32, multiSegment, doc0Vectors,doc1Vectors,doc2Vectors);
-         IndexReader reader = DirectoryReader.open(indexStore)) {
-      IndexSearcher searcher = new IndexSearcher(reader);
-      KnnVectorQuery query = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 2, HnswGraphSearcher.Multivalued.SUM);
-      Explanation matched = searcher.explain(query, 0);
-      assertTrue(matched.isMatch());
-      assertEquals(1.5f, matched.getValue());
-      assertEquals(0, matched.getDetails().length);
-      assertEquals("within top 2, this is the sum of vector similarities of the document vectors closer to the query.", matched.getDescription());
-
-      Explanation nomatch = searcher.explain(query, 1);
-      assertFalse(nomatch.isMatch());
-      assertEquals(0f, nomatch.getValue());
-      assertEquals(0, matched.getDetails().length);
-      assertEquals("not in top 2", nomatch.getDescription());
-    }
-  }
-
-  public void testExplain_multiValuedMax_shouldExplainMultiValuedStrategy() throws IOException {
-    multiValuedMax_shouldExplainMultiValuedStrategy(false);
-  }
-
-  public void testExplain_multiValuedMaxMultiSegment_shouldExplainMultiValuedStrategy() throws IOException {
-    multiValuedMax_shouldExplainMultiValuedStrategy(true);
-  }
-
-  public void multiValuedMax_shouldExplainMultiValuedStrategy(boolean multiSegment) throws IOException {
-    float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
-    float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
-    float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
-
-    try (Directory indexStore =
-                 getStableMultiValuedIndexStore("vector3D", VectorEncoding.FLOAT32, multiSegment, doc0Vectors,doc1Vectors,doc2Vectors);
-         IndexReader reader = DirectoryReader.open(indexStore)) {
-      IndexSearcher searcher = new IndexSearcher(reader);
-      KnnVectorQuery query = new KnnVectorQuery("vector3D", new float[] {1, 1, 1}, 2, HnswGraphSearcher.Multivalued.MAX);
-      Explanation matched = searcher.explain(query, 2);
-      assertTrue(matched.isMatch());
-      assertEquals(1f, matched.getValue());
-      assertEquals(0, matched.getDetails().length);
-      assertEquals("within top 2, this is the max vector similarity between the query vector and each document vector.", matched.getDescription());
-
-      Explanation nomatch = searcher.explain(query, 1);
-      assertFalse(nomatch.isMatch());
-      assertEquals(0f, nomatch.getValue());
-      assertEquals(0, matched.getDetails().length);
-      assertEquals("not in top 2", nomatch.getDescription());
-    }
-  }
-
   public void testExplainMultipleSegments() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
@@ -745,6 +616,70 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(0, matched.getDetails().length);
         assertEquals("not in top 3 docs", nomatch.getDescription());
       }
+    }
+  }
+
+  public void testExplain_multiValuedMax_shouldExplainMultiValuedStrategy() throws IOException {
+    multiValuedMax_shouldExplainMultiValuedStrategy(false);
+  }
+
+  public void testExplainMultipleSegments_multiValuedMax_shouldExplainMultiValuedStrategy() throws IOException {
+    multiValuedMax_shouldExplainMultiValuedStrategy(true);
+  }
+
+  public void multiValuedMax_shouldExplainMultiValuedStrategy(boolean multiSegment) throws IOException {
+    float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
+    float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
+    float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
+
+    try (Directory indexStore =
+                 getMultiValuedStableIndexStore("vector3D", multiSegment, doc0Vectors,doc1Vectors,doc2Vectors);
+         IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      AbstractKnnVectorQuery query = getKnnVectorQuery("vector3D", new float[] {1, 1, 1}, 2, null, HnswGraphSearcher.Multivalued.MAX);
+      Explanation matched = searcher.explain(query, 2);
+      assertTrue(matched.isMatch());
+      assertEquals(1f, matched.getValue());
+      assertEquals(0, matched.getDetails().length);
+      assertEquals("within top 2 docs, this is the max vector similarity between the query vector and each document vector.", matched.getDescription());
+
+      Explanation nomatch = searcher.explain(query, 1);
+      assertFalse(nomatch.isMatch());
+      assertEquals(0f, nomatch.getValue());
+      assertEquals(0, matched.getDetails().length);
+      assertEquals("not in top 2 docs", nomatch.getDescription());
+    }
+  }
+
+  public void testExplain_multiValuedSum_shouldExplainMultiValuedStrategy() throws IOException {
+    multiValuedSum_shouldExplainMultiValuedStrategy(false);
+  }
+
+  public void testExplainMultipleSegments_multiValuedSum_shouldExplainMultiValuedStrategy() throws IOException {
+    multiValuedSum_shouldExplainMultiValuedStrategy(true);
+  }
+
+  public void multiValuedSum_shouldExplainMultiValuedStrategy(boolean multiSegment) throws IOException {
+    float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
+    float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
+    float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
+
+    try (Directory indexStore =
+                 getMultiValuedStableIndexStore("vector3D", multiSegment, doc0Vectors,doc1Vectors,doc2Vectors);
+         IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      AbstractKnnVectorQuery query = getKnnVectorQuery("vector3D", new float[] {1, 1, 1}, 2, null, HnswGraphSearcher.Multivalued.SUM);
+      Explanation matched = searcher.explain(query, 0);
+      assertTrue(matched.isMatch());
+      assertEquals(1.5f, matched.getValue());
+      assertEquals(0, matched.getDetails().length);
+      assertEquals("within top 2 docs, this is the sum of vector similarities of the document vectors closer to the query.", matched.getDescription());
+
+      Explanation nomatch = searcher.explain(query, 1);
+      assertFalse(nomatch.isMatch());
+      assertEquals(0f, nomatch.getValue());
+      assertEquals(0, matched.getDetails().length);
+      assertEquals("not in top 2 docs", nomatch.getDescription());
     }
   }
 
@@ -863,7 +798,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
+                      getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1, HnswGraphSearcher.Multivalued.NONE),
                       numDocs));
 
           // Test a restrictive filter and check we use exact search
@@ -878,14 +813,14 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
+                      getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2, HnswGraphSearcher.Multivalued.NONE),
                       numDocs));
 
           // Test an unrestrictive filter and check we use approximate search
           Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
           results =
               searcher.search(
-                  getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3),
+                  getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter3, HnswGraphSearcher.Multivalued.NONE),
                   numDocs,
                   new Sort(new SortField("tag", SortField.Type.INT)));
           assertEquals(5, results.totalHits.value);
@@ -906,7 +841,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
+                      getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4, HnswGraphSearcher.Multivalued.NONE),
                       numDocs));
         }
       }
@@ -1011,7 +946,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         d.add(new StringField("index", String.valueOf(i), Field.Store.YES));
         if (frequently()) {
           for (int j = 0; j < i; j++) {
-            d.add(new KnnVectorField("vector", randomVector(dim), EUCLIDEAN, true));
+            d.add(getKnnVectorField("vector", randomVector(dim), true));
           }
         }
         w.addDocument(d);
@@ -1031,10 +966,12 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         Set<String> allIds = new HashSet<>();
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), hits, HnswGraphSearcher.Multivalued.MAX);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("vector", randomVector(dim), hits, null, HnswGraphSearcher.Multivalued.MAX);
+
         TopDocs topDocs = searcher.search(query, numDocs);
+        StoredFields storedFields = reader.storedFields();
         for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-          Document doc = reader.document(scoreDoc.doc, Set.of("index"));
+          Document doc = storedFields.document(scoreDoc.doc, Set.of("index"));
           String index = doc.get("index");
           assertFalse(
                   "search returned a deleted document: " + index,
@@ -1078,7 +1015,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       for (int i = 0; i < numDocs; ++i) {
         Document d = new Document();
         for (int j = 0; j < i; j++) {
-          d.add(new KnnVectorField("vector", randomVector(dim), EUCLIDEAN, true));
+          d.add(getKnnVectorField("vector", randomVector(dim), true));
         }
         w.addDocument(d);
       }
@@ -1089,7 +1026,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs, HnswGraphSearcher.Multivalued.MAX);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("vector", randomVector(dim), numDocs, null, HnswGraphSearcher.Multivalued.MAX);
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.scoreDocs.length);
       }
@@ -1134,7 +1071,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         Document d = new Document();
         d.add(new StringField("index", String.valueOf(i), Field.Store.NO));
         for (int j = 0; j < i; j++) {
-          d.add(new KnnVectorField("vector", randomVector(dim), EUCLIDEAN, true));
+          d.add(getKnnVectorField("vector", randomVector(dim), true));
         }
         w.addDocument(d);
       }
@@ -1143,7 +1080,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         DirectoryReader wrappedReader = new NoLiveDocsDirectoryReader(reader);
         IndexSearcher searcher = new IndexSearcher(wrappedReader);
-        KnnVectorQuery query = new KnnVectorQuery("vector", randomVector(dim), numDocs, HnswGraphSearcher.Multivalued.MAX);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("vector", randomVector(dim), numDocs, null, HnswGraphSearcher.Multivalued.MAX);
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.scoreDocs.length);
       }
@@ -1184,20 +1121,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   Directory getIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
-    for (int i = 0; i < contents.length; ++i) {
-      Document doc = new Document();
-      doc.add(getKnnVectorField(field, contents[i]));
-      doc.add(new StringField("id", "id" + i, Field.Store.YES));
-      writer.addDocument(doc);
-    }
-    // Add some documents without a vector
-    for (int i = 0; i < 5; i++) {
-      Document doc = new Document();
-      doc.add(new StringField("other", "value", Field.Store.NO));
-      writer.addDocument(doc);
-    }
-    writer.close();
+    RandomIndexWriter randomWriter = new RandomIndexWriter(random(), indexStore);
+    writeDocs(field, randomWriter, null, contents);
+    randomWriter.close();
     return indexStore;
   }
 
@@ -1208,19 +1134,39 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
     Directory indexStore = newDirectory();
     try (IndexWriter writer = new IndexWriter(indexStore, new IndexWriterConfig())) {
-      for (int i = 0; i < contents.length; ++i) {
-        Document doc = new Document();
-        doc.add(getKnnVectorField(field, contents[i]));
-        doc.add(new StringField("id", "id" + i, Field.Store.YES));
-        writer.addDocument(doc);
-      }
-      // Add some documents without a vector
-      for (int i = 0; i < 5; i++) {
-        Document doc = new Document();
-        doc.add(new StringField("other", "value", Field.Store.NO));
+      writeDocs(field, null, writer, contents);
+    }
+    return indexStore;
+  }
+
+  private void writeDocs(String field, RandomIndexWriter randomWriter, IndexWriter writer, float[][] contents) throws IOException {
+    for (int i = 0; i < contents.length; ++i) {
+      Document doc = new Document();
+      doc.add(getKnnVectorField(field, contents[i]));
+      doc.add(new StringField("id", "id" + i, Field.Store.YES));
+      if(randomWriter != null) {
+        randomWriter.addDocument(doc);
+      } else {
         writer.addDocument(doc);
       }
     }
+    // Add some documents without a vector
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      if(randomWriter != null) {
+        randomWriter.addDocument(doc);
+      } else {
+        writer.addDocument(doc);
+      }
+    }
+  }
+
+  Directory getMultiValuedIndexStore(String field, boolean multiSegment, float[][]... contents) throws IOException {
+    Directory indexStore = newDirectory();
+    RandomIndexWriter randomWriter = new RandomIndexWriter(random(), indexStore);
+    writeMultiValuedDocs(field, randomWriter, null, multiSegment, contents);
+    randomWriter.close();
     return indexStore;
   }
 
@@ -1228,37 +1174,53 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    * Creates a new directory and adds documents with the given vectors as kNN vector fields,
    * preserving the order of the added documents.
    */
-  private Directory getStableMultiValuedIndexStore(String field, VectorEncoding encoding, boolean commitEachDocument, float[][]... documents) throws IOException {
+  private Directory getMultiValuedStableIndexStore(String field, boolean multiSegment, float[][]... contents) throws IOException {
     Directory indexStore = newDirectory();
     try (IndexWriter writer = new IndexWriter(indexStore, new IndexWriterConfig())) {
-      for (int i = 0; i < documents.length; ++i) {
-        Document doc = new Document();
-        float[][] vectors = documents[i];
-        for (int j = 0; j < vectors.length; ++j) {
-          if (encoding == VectorEncoding.BYTE) {
-            BytesRef v = new BytesRef(new byte[vectors[j].length]);
-            for (int z = 0; z < v.length; z++) {
-              v.bytes[z] = (byte) vectors[j][z];
-            }
-            doc.add(new KnnVectorField(field, v, EUCLIDEAN, true));
-          } else {
-            doc.add(new KnnVectorField(field, vectors[j],EUCLIDEAN,true));
-          }
+      writeMultiValuedDocs(field, null, writer, multiSegment, contents);
+    }
+    return indexStore;
+  }
+  
+  private void writeMultiValuedDocs(String field, RandomIndexWriter randomWriter, IndexWriter writer, boolean multiSegment, float[][]... contents) throws IOException {
+    for (int i = 0; i < contents.length; ++i) {
+      Document doc = new Document();
+      float[][] vectors = contents[i];
+      for (int j = 0; j < vectors.length; ++j) {
+        doc.add(getKnnVectorField(field, vectors[j], true));
+      }
+      doc.add(new StringField("id", "id" + i, Field.Store.YES));
+      if (randomWriter != null) {
+        randomWriter.addDocument(doc);
+        if (multiSegment) {
+          randomWriter.commit();
         }
-        doc.add(new StringField("id", "id" + i, Field.Store.YES));
+
+      } else {
         writer.addDocument(doc);
-        if(commitEachDocument){
+        if (multiSegment) {
           writer.commit();
         }
       }
-      // Add some documents without a vector
-      for (int i = 0; i < 5; i++) {
-        Document doc = new Document();
-        doc.add(new StringField("other", "value", Field.Store.NO));
+   
+    }
+    // Add some documents without a vector
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      if (randomWriter != null) {
+        randomWriter.addDocument(doc);
+        if (multiSegment) {
+          randomWriter.commit();
+        }
+
+      } else {
         writer.addDocument(doc);
+        if (multiSegment) {
+          writer.commit();
+        }
       }
     }
-    return indexStore;
   }
 
   private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)

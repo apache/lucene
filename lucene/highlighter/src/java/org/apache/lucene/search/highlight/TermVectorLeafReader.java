@@ -180,7 +180,7 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+          String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
     return null;
   }
 

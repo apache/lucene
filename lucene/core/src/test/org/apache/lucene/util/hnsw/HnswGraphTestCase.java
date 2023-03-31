@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
+import static org.apache.lucene.util.hnsw.HnswGraphSearcher.Multivalued.NONE;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
@@ -315,7 +316,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               null,
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              NONE);
           case FLOAT32 -> HnswGraphSearcher.search(
               (float[]) getTargetVector(),
               10,
@@ -324,7 +326,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               null,
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              NONE);
         };
 
     int[] nodes = nn.nodes();
@@ -368,7 +371,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               acceptOrds,
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              NONE);
           case FLOAT32 -> HnswGraphSearcher.search(
               (float[]) getTargetVector(),
               10,
@@ -377,7 +381,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               acceptOrds,
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              NONE);
         };
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
@@ -418,7 +423,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               acceptOrds,
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              NONE);
           case BYTE -> HnswGraphSearcher.search(
               (byte[]) getTargetVector(),
               numAccepted,
@@ -427,7 +433,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               acceptOrds,
-              Integer.MAX_VALUE);
+              Integer.MAX_VALUE,
+              NONE);
         };
 
     int[] nodes = nn.nodes();
@@ -691,7 +698,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               createRandomAcceptOrds(0, nDoc),
-              visitedLimit);
+              visitedLimit,
+              NONE);
           case BYTE -> HnswGraphSearcher.search(
               (byte[]) getTargetVector(),
               topK,
@@ -700,7 +708,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               similarityFunction,
               hnsw,
               createRandomAcceptOrds(0, nDoc),
-              visitedLimit);
+              visitedLimit,
+              NONE);
         };
 
     assertTrue(nn.incomplete());
@@ -915,7 +924,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 similarityFunction,
                 hnsw,
                 acceptOrds,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                NONE);
             case FLOAT32 -> HnswGraphSearcher.search(
                 (float[]) query,
                 100,
@@ -924,7 +934,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 similarityFunction,
                 hnsw,
                 acceptOrds,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                NONE);
           };
 
       while (actual.size() > topK) {

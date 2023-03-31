@@ -180,9 +180,9 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
           throws IOException {
-        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit, strategy);
       }
 
       @Override
