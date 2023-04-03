@@ -51,5 +51,4 @@ public class TestBaseFragmentsBuilder extends AbstractTestCase {
     assertEquals("First text to <b>highlight</b>", result[0]);
     assertEquals("Second text to <b>highlight</b> in a text field", result[1]);
   }
-
 }
