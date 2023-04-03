@@ -78,6 +78,8 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+
 Other
 ---------------------
 
