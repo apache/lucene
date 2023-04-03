@@ -17,11 +17,22 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOUtils;
 
 public class TestReqExclBulkScorer extends LuceneTestCase {
 
@@ -120,5 +131,63 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
     expectedMatches.andNot(excludedSet);
 
     assertArrayEquals(expectedMatches.getBits(), actualMatches.getBits());
+  }
+
+  public void testRandomWithPostings() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      doTestRandomWithPostings();
+    }
+  }
+
+  private void doTestRandomWithPostings() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    int maxDoc = random().nextInt(1000);
+    int requiredDocCount = random().nextInt(maxDoc);
+    int excludedDocCount = random().nextInt(maxDoc);
+    Set<Integer> requiredDocSet = new HashSet<>();
+    for (int i = 0; i < requiredDocCount; i++) {
+      // the set may contain less than requiredDocCount number of doc, but it's ok
+      requiredDocSet.add(random().nextInt(maxDoc));
+    }
+    Set<Integer> excludedDocSet = new HashSet<>();
+    for (int i = 0; i < excludedDocCount; i++) {
+      // the set may contain less than excludedDocCount number of doc, but it's ok
+      excludedDocSet.add(random().nextInt(maxDoc));
+    }
+
+    for (int i = 0; i < maxDoc; i++) {
+      Document doc = new Document();
+
+      if (requiredDocSet.contains(i)) {
+        doc.add(newTextField("requiredField", "a " + i, Field.Store.NO));
+      }
+      if (excludedDocSet.contains(i)) {
+        doc.add(newTextField("excludedField", "b " + i, Field.Store.NO));
+      }
+      doc.add(newTextField("otherField", "c", Field.Store.NO));
+      w.addDocument(doc);
+    }
+    w.commit();
+
+    BooleanQuery.Builder b = new BooleanQuery.Builder();
+    b.add(new TermQuery(new Term("requiredField", "a")), BooleanClause.Occur.MUST);
+    b.add(new TermQuery(new Term("excludedField", "b")), BooleanClause.Occur.MUST_NOT);
+    Query q = b.build();
+
+    IndexReader r = DirectoryReader.open(dir);
+    IndexSearcher s = new IndexSearcher(r);
+    TopDocs topDocs = s.search(q, maxDoc);
+
+    Set<Integer> expectedResult = new HashSet<>(requiredDocSet);
+    expectedResult.removeAll(excludedDocSet);
+
+    assertEquals(topDocs.scoreDocs.length, expectedResult.size());
+    assertTrue(
+        Arrays.stream(topDocs.scoreDocs)
+            .allMatch(scoreDoc -> expectedResult.contains(scoreDoc.doc)));
+
+    IOUtils.close(r, w, dir);
   }
 }

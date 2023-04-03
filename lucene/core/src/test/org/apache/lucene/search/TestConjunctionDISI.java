@@ -71,6 +71,11 @@ public class TestConjunctionDISI extends LuceneTestCase {
       }
 
       @Override
+      public int peekNextNonMatchingDocID() throws IOException {
+        return it.peekNextNonMatchingDocID();
+      }
+
+      @Override
       public long cost() {
         return it.docID();
       }
