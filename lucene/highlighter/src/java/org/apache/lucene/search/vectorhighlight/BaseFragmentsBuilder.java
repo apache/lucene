@@ -369,7 +369,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
           }
         }
         WeightedFragInfo weightedFragInfo =
-            new WeightedFragInfo(fragStart, fragEnd, subInfos, boost);
+            new WeightedFragInfo(fragStart, fragEnd - 1, subInfos, boost);
         fieldNameToFragInfos.get(field.name()).add(weightedFragInfo);
       }
     }
