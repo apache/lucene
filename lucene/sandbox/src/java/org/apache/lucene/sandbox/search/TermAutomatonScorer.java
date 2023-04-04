@@ -66,6 +66,7 @@ class TermAutomatonScorer extends Scorer {
     this.anyTermID = anyTermID;
     this.subsOnDoc = new EnumAndScorer[subs.length];
     this.positions = new PosState[4];
+    this.enums = subs;
     for (int i = 0; i < this.positions.length; i++) {
       this.positions[i] = new PosState();
     }
