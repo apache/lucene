@@ -454,10 +454,10 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
       float score = scorer.score();
       LeafSimScorer leafSimScorer = ((TermAutomatonScorer) scorer).getLeafSimScorer();
-      EnumAndScorer[] enums = ((TermAutomatonScorer) scorer).getEnums();
+      EnumAndScorer[] originalSubsOnDoc = ((TermAutomatonScorer) scorer).getOriginalSubsOnDoc();
 
       List<Explanation> termExplanations = new ArrayList<>();
-      for (EnumAndScorer enumAndScorer : enums) {
+      for (EnumAndScorer enumAndScorer : originalSubsOnDoc) {
         if (enumAndScorer != null) {
           PostingsEnum postingsEnum = enumAndScorer.posEnum;
           if (postingsEnum.docID() == doc) {

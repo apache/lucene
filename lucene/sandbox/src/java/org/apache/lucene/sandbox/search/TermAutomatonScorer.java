@@ -52,7 +52,12 @@ class TermAutomatonScorer extends Scorer {
 
   private int docID = -1;
   private int freq;
-  private EnumAndScorer[] enums;
+
+  /**
+   * originalSubsOnDoc is an array of EnumAndScorer instances used to create this TermAutomatonScorer.
+   * This field is only for explain purposes and should not be used for scoring/matching.
+   */
+  private final EnumAndScorer[] originalSubsOnDoc;
 
   public TermAutomatonScorer(
       TermAutomatonWeight weight, EnumAndScorer[] subs, int anyTermID, LeafSimScorer docScorer)
@@ -66,7 +71,7 @@ class TermAutomatonScorer extends Scorer {
     this.anyTermID = anyTermID;
     this.subsOnDoc = new EnumAndScorer[subs.length];
     this.positions = new PosState[4];
-    this.enums = subs;
+    this.originalSubsOnDoc = subs;
     for (int i = 0; i < this.positions.length; i++) {
       this.positions[i] = new PosState();
     }
@@ -347,8 +352,8 @@ class TermAutomatonScorer extends Scorer {
     }
   }
 
-  EnumAndScorer[] getEnums() {
-    return enums;
+  EnumAndScorer[] getOriginalSubsOnDoc() {
+    return originalSubsOnDoc;
   }
 
   LeafSimScorer getLeafSimScorer() {
