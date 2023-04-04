@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -140,6 +141,70 @@ public class TestConjunctions extends LuceneTestCase {
             return null;
           }
         });
+    IOUtils.close(r, w, dir);
+  }
+
+  public void testRandomWithPostings() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      doTestRandomWithPostings();
+    }
+  }
+
+  private void doTestRandomWithPostings() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    int maxDoc = random().nextInt(1000);
+    int requiredDocCount = random().nextInt(maxDoc);
+    int filteredOrRequiredDocCount = random().nextInt(maxDoc);
+    Set<Integer> requiredDocSet = new HashSet<>();
+    for (int i = 0; i < requiredDocCount; i++) {
+      // the set may contain less than requiredDocCount number of doc, but it's ok
+      requiredDocSet.add(random().nextInt(maxDoc));
+    }
+    Set<Integer> filteredOrRequiredDocSet = new HashSet<>();
+    for (int i = 0; i < filteredOrRequiredDocCount; i++) {
+      // the set may contain less than filteredOrRequiredDocCount number of doc, but it's ok
+      filteredOrRequiredDocSet.add(random().nextInt(maxDoc));
+    }
+
+    for (int i = 0; i < maxDoc; i++) {
+      Document doc = new Document();
+
+      if (requiredDocSet.contains(i)) {
+        doc.add(newTextField("requiredField", "a " + i, Field.Store.NO));
+      }
+      if (filteredOrRequiredDocSet.contains(i)) {
+        doc.add(newTextField("filteredOrRequiredField", "b " + i, Field.Store.NO));
+      }
+      doc.add(newTextField("otherField", "c", Field.Store.NO));
+      w.addDocument(doc);
+    }
+    w.commit();
+
+    boolean testFilter = random().nextBoolean();
+
+    BooleanQuery.Builder b = new BooleanQuery.Builder();
+    b.add(new TermQuery(new Term("requiredField", "a")), BooleanClause.Occur.MUST);
+    if (testFilter) {
+      b.add(new TermQuery(new Term("filteredOrRequiredField", "b")), BooleanClause.Occur.FILTER);
+    } else {
+      b.add(new TermQuery(new Term("filteredOrRequiredField", "b")), BooleanClause.Occur.MUST);
+    }
+    Query q = b.build();
+
+    IndexReader r = DirectoryReader.open(dir);
+    IndexSearcher s = new IndexSearcher(r);
+    TopDocs topDocs = s.search(q, maxDoc);
+
+    Set<Integer> expectedResult = new HashSet<>(requiredDocSet);
+    expectedResult.retainAll(filteredOrRequiredDocSet);
+
+    assertEquals(topDocs.scoreDocs.length, expectedResult.size());
+    assertTrue(
+        Arrays.stream(topDocs.scoreDocs)
+            .allMatch(scoreDoc -> expectedResult.contains(scoreDoc.doc)));
+
     IOUtils.close(r, w, dir);
   }
 
