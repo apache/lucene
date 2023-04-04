@@ -21,7 +21,11 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -29,6 +33,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -62,9 +67,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
-    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
-    Weight filterWeight = null;
+    final Weight filterWeight;
     if (filter != null) {
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
@@ -73,17 +77,16 @@ abstract class AbstractKnnVectorQuery extends Query {
               .build();
       Query rewritten = indexSearcher.rewrite(booleanQuery);
       filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    } else {
+      filterWeight = null;
     }
 
-    for (LeafReaderContext ctx : reader.leaves()) {
-      TopDocs results = searchLeaf(ctx, filterWeight);
-      if (ctx.docBase > 0) {
-        for (ScoreDoc scoreDoc : results.scoreDocs) {
-          scoreDoc.doc += ctx.docBase;
-        }
-      }
-      perLeafResults[ctx.ord] = results;
-    }
+    Executor executor = indexSearcher.getExecutor();
+    TopDocs[] perLeafResults =
+        (executor == null)
+            ? sequentialSearch(reader.leaves(), filterWeight)
+            : parallelSearch(reader.leaves(), filterWeight, executor);
+
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
     if (topK.scoreDocs.length == 0) {
@@ -92,7 +95,54 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
+  private TopDocs[] sequentialSearch(
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) {
+    try {
+      TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+      for (LeafReaderContext ctx : leafReaderContexts) {
+        perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
+      }
+      return perLeafResults;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private TopDocs[] parallelSearch(
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, Executor executor) {
+    List<FutureTask<TopDocs>> tasks =
+        leafReaderContexts.stream()
+            .map(ctx -> new FutureTask<>(() -> searchLeaf(ctx, filterWeight)))
+            .toList();
+
+    SliceExecutor sliceExecutor = new SliceExecutor(executor);
+    sliceExecutor.invokeAll(tasks);
+
+    return tasks.stream()
+        .map(
+            task -> {
+              try {
+                return task.get();
+              } catch (ExecutionException e) {
+                throw new RuntimeException(e.getCause());
+              } catch (InterruptedException e) {
+                throw new ThreadInterruptedException(e);
+              }
+            })
+        .toArray(TopDocs[]::new);
+  }
+
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+    TopDocs results = getLeafResults(ctx, filterWeight);
+    if (ctx.docBase > 0) {
+      for (ScoreDoc scoreDoc : results.scoreDocs) {
+        scoreDoc.doc += ctx.docBase;
+      }
+    }
+    return results;
+  }
+
+  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 

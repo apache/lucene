@@ -25,13 +25,11 @@ allprojects {
       test.resources.srcDirs = ['src/test-files']
     }
 
-    task copyTestResources(type: Copy) {
+    tasks.named('processTestResources').configure {
       from('src/test') {
         exclude '**/*.java'
       }
-      into sourceSets.test.java.classesDirectory
     }
-    processTestResources.dependsOn copyTestResources
 
     // if 'src/tools' exists, add it as a separate sourceSet.
     if (file('src/tools/java').exists()) {

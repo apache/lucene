@@ -181,10 +181,17 @@ subprojects {
   // where 'jar-or-prefix' can be any '-'-delimited prefix of the dependency JAR's name.
   // So for 'commons-io' it can be 'commons-io-LICENSE-foo.txt' or
   // 'commons-LICENSE.txt'
-  task validateJarLicenses() {
+  tasks.register('validateJarLicenses') {
     group = 'Dependency validation'
     description = "Validate license and notice files of dependencies"
     dependsOn collectJarInfos
+
+    def outputFileName = 'validateJarLicenses'
+    inputs.dir(file(project.rootDir.path + '/lucene/licenses'))
+        .withPropertyName('licenses')
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(layout.buildDirectory.file(outputFileName))
+        .withPropertyName('validateJarLicensesResult')
 
     doLast {
       def errors = []
@@ -231,7 +238,9 @@ subprojects {
           }
         }
       }
-
+      // Required to take advantage of incremental building and the build cache
+      def f = new File(project.buildDir.path + "/" + outputFileName)
+      f.write(errors.toString(), "UTF-8")
       if (errors) {
         def msg = "Certain license/ notice files are missing:\n  - " + errors.join("\n  - ")
         if (failOnError) {

@@ -34,7 +34,7 @@ allprojects {
           // asserts, debug output.
           [propName: 'tests.verbose', value: false, description: "Enables verbose mode (emits full test outputs immediately)."],
           [propName: 'tests.workDir',
-           value: { -> file("${buildDir}/tmp/tests-tmp") },
+           value: { -> project.relativePath(file("${buildDir}/tmp/tests-tmp")) },
            description: "Working directory for forked test JVMs",
            includeInReproLine: false
           ],
@@ -124,7 +124,15 @@ allprojects {
       // (if the runner JVM does not support them, it will fail tests):
       jvmArgs '--add-modules', 'jdk.unsupported,jdk.management'
 
-      systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
+      def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
+      def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
+      jvmArgumentProviders.add(
+          new LoggingFileArgumentProvider(
+              loggingConfigFile: loggingConfigFile,
+              tempDir: tempDir
+          )
+      )
+
       systemProperty 'java.awt.headless', 'true'
       systemProperty 'jdk.map.althashing.threshold', '0'
 
@@ -145,7 +153,6 @@ allprojects {
 
       // Set up cwd and temp locations.
       systemProperty("java.io.tmpdir", testsTmpDir)
-      systemProperty("tempDir", testsTmpDir)
       doFirst {
         testsCwd.mkdirs()
         testsTmpDir.mkdirs()
@@ -187,5 +194,22 @@ allprojects {
         logger.info("Test folders for {}: cwd={}, tmp={}", project.path, testsCwd, testsTmpDir)
       }
     }
+  }
+}
+
+class LoggingFileArgumentProvider implements CommandLineArgumentProvider {
+  @InputFile
+  @PathSensitive(PathSensitivity.RELATIVE)
+  RegularFile loggingConfigFile
+
+  @Internal
+  Directory tempDir
+
+  @Override
+  Iterable<String> asArguments() {
+    [
+        "-Djava.util.logging.config.file=${loggingConfigFile.getAsFile()}",
+        "-DtempDir=${tempDir.getAsFile()}"
+    ]
   }
 }

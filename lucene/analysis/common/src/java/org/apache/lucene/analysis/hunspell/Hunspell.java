@@ -164,7 +164,7 @@ public class Hunspell {
   Root<CharsRef> findStem(
       char[] wordChars, int offset, int length, WordCase originalCase, WordContext context) {
     checkCanceled.run();
-    boolean checkCase = context != COMPOUND_MIDDLE && context != COMPOUND_END;
+    WordCase toCheck = context != COMPOUND_MIDDLE && context != COMPOUND_END ? originalCase : null;
     @SuppressWarnings({"rawtypes", "unchecked"})
     Root<CharsRef>[] result = new Root[1];
     stemmer.doStem(
@@ -173,7 +173,7 @@ public class Hunspell {
         length,
         context,
         (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
-          if (checkCase && !acceptCase(originalCase, formID, stem)) {
+          if (!acceptCase(toCheck, formID, stem)) {
             return dictionary.hasFlag(formID, Dictionary.HIDDEN_FLAG);
           }
           if (acceptsStem(formID)) {

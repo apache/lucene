@@ -70,6 +70,8 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
+* GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
+
 Bug Fixes
 ---------------------
 
@@ -112,15 +114,40 @@ API Changes
 * GITHUB#12129: Move DocValuesTermsQuery from sandbox to SortedDocValuesField#newSlowSetQuery
   and SortedSetDocValuesField#newSlowSetQuery. (Robert Muir)
 
+* GITHUB#12173: TermInSetQuery#getTermData has been deprecated. This exposes internal implementation details that we
+  may want to change in the future, and users shouldn't rely on the encoding directly. (Greg Miller)
+
+* GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
+
 New Features
 ---------------------
 
 * GITHUB#12054: Introduce a new KeywordField for simple and efficient
   filtering, sorting and faceting. (Adrien Grand)
 
+* GITHUB#12188: Add support for Java 20 foreign memory API. If exactly Java 19
+  or 20 is used, MMapDirectory will mmap Lucene indexes in chunks of 16 GiB
+  (instead of 1 GiB) and indexes closed while queries are running can no longer
+  crash the JVM. To disable this feature, pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#12055: MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE rewrite method introduced and used as the new default
+  for multi-term queries with a FILTER rewrite (PrefixQuery, WildcardQuery, TermRangeQuery). This introduces better
+  skipping support for common use-cases. (Adrien Grand, Greg Miller)
+
+* GITHUB#12156: TermInSetQuery now extends MultiTermQuery instead of providing its own custom implementation (which
+  was essentially a clone of MultiTermQuery#CONSTANT_SCORE_REWRITE). It uses the new CONSTANT_SCORE_BLENDED_REWRITE
+  by default, but can be overridden through the constructor. (Greg Miller)
+
+* GITHUB#12175: Remove SortedSetDocValuesSetQuery in favor of TermInSetQuery with DocValuesRewriteMethod. (Greg Miller)
+
+* GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
+
+* GITHUB#12126: Refactor part of IndexFileDeleter and ReplicaFileDeleter into a public common utility class
+  FileDeleter. (Patrick Zhai)
 
 Optimizations
 ---------------------
@@ -128,7 +155,7 @@ Optimizations
 * GITHUB#11900: BloomFilteringPostingsFormat now uses multiple hash functions
   in order to achieve the same false positive probability with less memory.
   (Jean-François Boeuf)
-  
+
 * GITHUB#12118: Optimize FeatureQuery to TermQuery & weight when scoring is not required. (Ben Trent, Robert Muir)
 
 * GITHUB#12128, GITHUB#12133: Speed up docvalues set query by making use of sortedness. (Robert Muir, Uwe Schindler)
@@ -139,14 +166,36 @@ Optimizations
 
 * GITHUB#12139: Faster indexing of string fields. (Adrien Grand)
 
+* GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
+
+* GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12158: KeywordField#newSetQuery should clone input BytesRef[] to avoid modifying provided array. (Greg Miller)
+
+* GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
+
+* GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
+
+* GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
+
+* GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
 
 Build
 ---------------------
 
 * GITHUB#12131: Generate gradle.properties from gradlew, if absent (Colvin Cowie, Uwe Schindler)
+
+* GITHUB#12188: Building the lucene-core MR-JAR file is now possible without installing
+  additionally required Java versions (Java 19, Java 20,...). For compilation, a special
+  JAR file with Panama-foreign API signatures of each supported Java version was added to
+  source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
+  (Uwe Schindler)
+
+* GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
+  printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
 
 Other
 ---------------------
