@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -30,31 +29,9 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.ThreadInterruptedException;
-import org.junit.Ignore;
 
 /** Unit test for {@link DocumentsWriterDeleteQueue} */
 public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
-
-  /* Ignored because System.gc() is not reliable */
-  @Ignore
-  public void testAdvanceReferencesOriginal() {
-    WeakAndNext weakAndNext = new WeakAndNext();
-    DocumentsWriterDeleteQueue next = weakAndNext.next;
-    assertNotNull(next);
-    System.gc();
-    assertNull(weakAndNext.weak.get());
-  }
-
-  class WeakAndNext {
-    final WeakReference<DocumentsWriterDeleteQueue> weak;
-    final DocumentsWriterDeleteQueue next;
-
-    WeakAndNext() {
-      DocumentsWriterDeleteQueue deleteQueue = new DocumentsWriterDeleteQueue(null);
-      weak = new WeakReference<>(deleteQueue);
-      next = deleteQueue.advanceQueue(2);
-    }
-  }
 
   public void testUpdateDeleteSlices() throws Exception {
     DocumentsWriterDeleteQueue queue = new DocumentsWriterDeleteQueue(null);
