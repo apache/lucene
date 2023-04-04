@@ -30,10 +30,13 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.ThreadInterruptedException;
+import org.junit.Ignore;
 
 /** Unit test for {@link DocumentsWriterDeleteQueue} */
 public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
 
+  /* Ignored because System.gc() is not reliable */
+  @Ignore
   public void testAdvanceReferencesOriginal() {
     WeakAndNext weakAndNext = new WeakAndNext();
     DocumentsWriterDeleteQueue next = weakAndNext.next;
@@ -53,7 +56,7 @@ public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
     }
   }
 
-  public void testUpdateDelteSlices() throws Exception {
+  public void testUpdateDeleteSlices() throws Exception {
     DocumentsWriterDeleteQueue queue = new DocumentsWriterDeleteQueue(null);
     final int size = 200 + random().nextInt(500) * RANDOM_MULTIPLIER;
     Integer[] ids = new Integer[size];
