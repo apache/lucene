@@ -478,7 +478,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
       }
 
       Explanation freqExplanation =
-          Explanation.match(score, "TermAutomatonQuery, product of:", termExplanations);
+          Explanation.match(score, "TermAutomatonQuery, sum of:", termExplanations);
       return leafSimScorer.explain(doc, freqExplanation);
     }
   }
