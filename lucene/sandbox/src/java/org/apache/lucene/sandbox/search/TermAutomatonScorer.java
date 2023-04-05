@@ -54,8 +54,9 @@ class TermAutomatonScorer extends Scorer {
   private int freq;
 
   /**
-   * originalSubsOnDoc is an array of EnumAndScorer instances used to create this TermAutomatonScorer.
-   * This field is only for explain purposes and should not be used for scoring/matching.
+   * originalSubsOnDoc is an array of EnumAndScorer instances used to create this
+   * TermAutomatonScorer. This field is only for explain purposes and should not be used for
+   * scoring/matching.
    */
   private final EnumAndScorer[] originalSubsOnDoc;
 
