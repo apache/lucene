@@ -81,6 +81,10 @@ Bug Fixes
 
 * GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
 
+* GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
+
+* GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
 Build
 ---------------------
 
@@ -91,6 +95,9 @@ Build
   JAR file with Panama-foreign API signatures of each supported Java version was added to
   source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
   (Uwe Schindler)
+
+* GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
+  printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
 
 Other
 ---------------------
