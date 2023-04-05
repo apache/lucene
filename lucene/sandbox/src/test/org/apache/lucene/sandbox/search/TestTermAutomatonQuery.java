@@ -62,7 +62,6 @@ import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeSource;
@@ -845,9 +844,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
   }
 
   /* Implement a custom term automaton query to ensure that rewritten queries
-  *  do not get rewritten to primitive queries. The custom extension will allow
-  *  the following explain tests to evaluate Explain.
-  * */
+   *  do not get rewritten to primitive queries. The custom extension will allow
+   *  the following explain tests to evaluate Explain.
+   * */
   public class CustomTermAutomatonQuery extends TermAutomatonQuery {
     public CustomTermAutomatonQuery(String field) {
       super(field);
@@ -914,7 +913,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IndexReader r = w.getReader();
     IndexSearcher searcher = newSearcher(r);
     Query rewrittenQuery = q.rewrite(searcher);
-    assertTrue("Rewritten query should be an instance of TermAutomatonQuery", rewrittenQuery instanceof TermAutomatonQuery);
+    assertTrue(
+        "Rewritten query should be an instance of TermAutomatonQuery",
+        rewrittenQuery instanceof TermAutomatonQuery);
     TopDocs topDocs = searcher.search(q, 10);
     assertEquals(2, topDocs.totalHits.value);
 
