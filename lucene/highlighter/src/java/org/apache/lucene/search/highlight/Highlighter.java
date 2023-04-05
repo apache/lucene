@@ -164,7 +164,7 @@ public class Highlighter {
 
     CharTermAttribute termAtt = tokenStream.addAttribute(CharTermAttribute.class);
     OffsetAttribute offsetAtt = tokenStream.addAttribute(OffsetAttribute.class);
-    TextFragment currentFrag = new TextFragment(newText, newText.length(), docFrags.size());
+    TextFragment currentFrag = new TextFragment(newText, newText.length(), -1, docFrags.size());
 
     if (fragmentScorer instanceof QueryScorer) {
       ((QueryScorer) fragmentScorer).setMaxDocCharsToAnalyze(maxDocCharsToAnalyze);
@@ -219,7 +219,12 @@ public class Highlighter {
             currentFrag.setScore(fragmentScorer.getFragmentScore());
             // record stats for a new fragment
             currentFrag.textEndPos = newText.length();
-            currentFrag = new TextFragment(newText, newText.length(), docFrags.size());
+            currentFrag =
+                new TextFragment(
+                    newText,
+                    newText.length() + offsetAtt.startOffset() - endOffset,
+                    newText.length(),
+                    docFrags.size());
             fragmentScorer.startFragment(currentFrag);
             docFrags.add(currentFrag);
           }

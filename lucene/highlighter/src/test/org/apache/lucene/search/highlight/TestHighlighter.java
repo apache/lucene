@@ -2210,6 +2210,72 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
     }
   }
 
+  /** Tests Highlighter fragments don't start with un-analyzed chars (e.g. punctuation here) */
+  public void testForIssue2587() throws Exception {
+    TestHighlightRunner helper =
+        new TestHighlightRunner() {
+          @Override
+          void run() throws Exception {
+            TermQuery query = new TermQuery(new Term("data", "g"));
+            Highlighter hg = new Highlighter(new SimpleHTMLFormatter(), new QueryTermScorer(query));
+
+            hg.setTextFragmenter(
+                new Fragmenter() {
+                  private CharTermAttribute termAtt;
+
+                  @Override
+                  public void start(String originalText, TokenStream tokenStream) {
+                    termAtt = tokenStream.addAttribute(CharTermAttribute.class);
+                  }
+
+                  @Override
+                  public boolean isNewFragment() {
+                    return (termAtt.toString().equals("f") || termAtt.toString().equals("k"));
+                  }
+                });
+
+            String match =
+                hg.getBestFragment(analyzer, "data", "A b c d e... F g h i j! K l m n o. ");
+
+            assertEquals("F <B>g</B> h i j", match);
+          }
+        };
+    helper.start();
+  }
+
+  /** Tests that Highlighter merges adjacent fragments, including chars not analyzed. */
+  public void testForIssue2587AdjacentFragments() throws Exception {
+    TestHighlightRunner helper =
+        new TestHighlightRunner() {
+          @Override
+          void run() throws Exception {
+            TermQuery query = new TermQuery(new Term("data", "g"));
+            Highlighter hg = new Highlighter(new SimpleHTMLFormatter(), new QueryTermScorer(query));
+
+            hg.setTextFragmenter(
+                new Fragmenter() {
+                  private CharTermAttribute termAtt;
+
+                  @Override
+                  public void start(String originalText, TokenStream tokenStream) {
+                    termAtt = tokenStream.addAttribute(CharTermAttribute.class);
+                  }
+
+                  @Override
+                  public boolean isNewFragment() {
+                    return (termAtt.toString().equals("f") || termAtt.toString().equals("k"));
+                  }
+                });
+
+            String[] matches =
+                hg.getBestFragments(analyzer, "data", "A b c d e... F g h i j! K l m n o. ", 2);
+
+            assertArrayEquals(new String[] {"A b c d e... F <B>g</B> h i j"}, matches);
+          }
+        };
+    helper.start();
+  }
+
   @Override
   public String highlightTerm(String originalText, TokenGroup group) {
     if (group.getTotalScore() <= 0) {
