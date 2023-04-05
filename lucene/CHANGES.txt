@@ -78,7 +78,7 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
-* GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Robert Muir and Mikhail Khludnev)
+* GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Patrick Zhai, Mike McCandless, Robert Muir, Mikhail Khludnev)
 
 Other
 ---------------------
