@@ -844,14 +844,12 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IOUtils.close(w, r, dir);
   }
 
-  public void testExplainNonMatchingDocument() throws Exception {
+  public void testExplainNoMatchingDocument() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int initState = q.createState();
     int s1 = q.createState();
-    int s2 = q.createState();
     q.addTransition(initState, s1, "xml");
-    q.addTransition(s1, s2, "json");
-    q.setAccept(s2, true);
+    q.setAccept(s1, true);
     q.finish();
 
     Directory dir = newDirectory();
@@ -863,24 +861,14 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IndexReader r = w.getReader();
     IndexSearcher searcher = newSearcher(r);
     Query rewrite = q.rewrite(searcher);
-    assertTrue(rewrite instanceof PhraseQuery);
+    assertTrue(rewrite instanceof TermQuery);
 
     TopDocs topDocs = searcher.search(rewrite, 10);
     assertEquals(0, topDocs.totalHits.value);
-
-    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-      Explanation explanation = searcher.explain(rewrite, scoreDoc.doc);
-      assertNotNull("Explanation should not be null", explanation);
-      assertTrue(
-          "Explanation score should match the actual score",
-          Float.compare(scoreDoc.score, (Float) explanation.getValue()) == 0);
-    }
-
     IOUtils.close(w, r, dir);
   }
 
   // TODO: improve experience of working with explain
-
   public void testExplainMatchingDocuments() throws Exception {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
 
