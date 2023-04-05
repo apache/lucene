@@ -848,11 +848,10 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
    *  the following explain tests to evaluate Explain.
    * */
 
-
-    private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
-      public CustomTermAutomatonQuery(String field) {
-        super(field);
-      }
+  private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
+    public CustomTermAutomatonQuery(String field) {
+      super(field);
+    }
 
     @Override
     public Query rewrite(IndexSearcher searcher) throws IOException {
