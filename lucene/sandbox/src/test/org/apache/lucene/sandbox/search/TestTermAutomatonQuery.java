@@ -894,8 +894,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     IndexReader r = w.getReader();
     IndexSearcher searcher = newSearcher(r);
-
     QueryUtils.check(random(), q, searcher);
+    Query rewrite = q.rewrite(newSearcher(r));
+    assertTrue(rewrite instanceof PhraseQuery);
     TopDocs topDocs = searcher.search(q, 10);
     // Verify that the docs matched fasho
     assertEquals(2, topDocs.totalHits.value);
