@@ -18,9 +18,8 @@
 package org.apache.lucene.analysis.synonym.word2vec;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.TermAndVector;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
@@ -35,21 +34,18 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   private final int dictionarySize;
   private final int vectorDimension;
   private final TermAndVector[] data;
-  private final Map<BytesRef, TermAndVector> word2Vec;
+  private final BytesRefHash word2Vec;
   private int loadedCount = 0;
 
   public Word2VecModel(int dictionarySize, int vectorDimension) {
     this.dictionarySize = dictionarySize;
     this.vectorDimension = vectorDimension;
     this.data = new TermAndVector[dictionarySize];
-    this.word2Vec = new HashMap<>();
+    this.word2Vec = new BytesRefHash();
   }
 
   private Word2VecModel(
-      int dictionarySize,
-      int vectorDimension,
-      TermAndVector[] data,
-      Map<BytesRef, TermAndVector> word2Vec) {
+      int dictionarySize, int vectorDimension, TermAndVector[] data, BytesRefHash word2Vec) {
     this.dictionarySize = dictionarySize;
     this.vectorDimension = vectorDimension;
     this.data = data;
@@ -59,7 +55,7 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   public void addTermAndVector(TermAndVector modelEntry) {
     modelEntry.normalizeVector();
     this.data[loadedCount++] = modelEntry;
-    this.word2Vec.put(modelEntry.getTerm(), modelEntry);
+    this.word2Vec.add(modelEntry.getTerm());
   }
 
   @Override
@@ -68,11 +64,13 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   }
 
   public float[] vectorValue(BytesRef term) {
-    TermAndVector entry = word2Vec.get(term);
+    int id = this.word2Vec.find(term);
+    if (id < 0) return null;
+    TermAndVector entry = this.data[id];
     return (entry == null) ? null : entry.getVector();
   }
 
-  public BytesRef binaryValue(int targetOrd) throws IOException {
+  public BytesRef termValue(int targetOrd) throws IOException {
     return data[targetOrd].getTerm();
   }
 

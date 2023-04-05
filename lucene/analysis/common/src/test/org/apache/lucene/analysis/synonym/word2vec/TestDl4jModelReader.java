@@ -34,7 +34,6 @@
 package org.apache.lucene.analysis.synonym.word2vec;
 
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -69,7 +68,7 @@ public class TestDl4jModelReader extends LuceneTestCase {
   public void read_zipFile_shouldReturnDecodedTerm() throws Exception {
     Word2VecModel model = unit.read();
     BytesRef expectedDecodedFirstTerm = new BytesRef("it");
-    assertEquals(expectedDecodedFirstTerm, model.binaryValue(0));
+    assertEquals(expectedDecodedFirstTerm, model.termValue(0));
   }
 
   @Test
@@ -77,14 +76,14 @@ public class TestDl4jModelReader extends LuceneTestCase {
     byte[] originalInput = "lucene".getBytes(StandardCharsets.UTF_8);
     String B64encodedLuceneTerm = Base64.getEncoder().encodeToString(originalInput);
     String word2vecEncodedLuceneTerm = "B64:" + B64encodedLuceneTerm;
-    assertEquals(new BytesRef("lucene"), Dl4jModelReader.decodeTerm(word2vecEncodedLuceneTerm));
+    assertEquals(new BytesRef("lucene"), Dl4jModelReader.decodeB64Term(word2vecEncodedLuceneTerm));
   }
 
   @Test
   public void read_EmptyZipFile_shouldThrowException() throws Exception {
     try (InputStream stream = TestDl4jModelReader.class.getResourceAsStream(MODEL_EMPTY_FILE)) {
       Dl4jModelReader unit = new Dl4jModelReader(MODEL_EMPTY_FILE, stream);
-      expectThrows(UnsupportedEncodingException.class, unit::read);
+      expectThrows(IllegalArgumentException.class, unit::read);
     }
   }
 

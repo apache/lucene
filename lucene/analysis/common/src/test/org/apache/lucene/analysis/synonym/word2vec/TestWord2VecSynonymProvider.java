@@ -56,7 +56,7 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
     model.addTermAndVector(new TermAndVector(new BytesRef("e"), new float[] {99, 101}));
     model.addTermAndVector(new TermAndVector(new BytesRef("f"), new float[] {-1, 10}));
 
-    SynonymProvider unit = new Word2VecSynonymProvider(model);
+    Word2VecSynonymProvider unit = new Word2VecSynonymProvider(model);
 
     BytesRef inputTerm = new BytesRef("a");
     String[] expectedSynonyms = {"d", "e", "c", "b"};
@@ -76,7 +76,7 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
     model.addTermAndVector(new TermAndVector(new BytesRef("b"), new float[] {1, 1}));
     model.addTermAndVector(new TermAndVector(new BytesRef("c"), new float[] {99, 101}));
 
-    SynonymProvider unit = new Word2VecSynonymProvider(model);
+    Word2VecSynonymProvider unit = new Word2VecSynonymProvider(model);
 
     BytesRef inputTerm = new BytesRef("a");
     List<TermAndBoost> actualSynonymsResults =
@@ -96,7 +96,7 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
     model.addTermAndVector(new TermAndVector(new BytesRef("c"), new float[] {-9, -10}));
     model.addTermAndVector(new TermAndVector(new BytesRef("d"), new float[] {6, -6}));
 
-    SynonymProvider unit = new Word2VecSynonymProvider(model);
+    Word2VecSynonymProvider unit = new Word2VecSynonymProvider(model);
 
     BytesRef inputTerm = newBytesRef("a");
     List<TermAndBoost> actualSynonymsResults =

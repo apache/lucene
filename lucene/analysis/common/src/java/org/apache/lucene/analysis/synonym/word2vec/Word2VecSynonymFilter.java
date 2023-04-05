@@ -27,7 +27,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
-import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.TermAndBoost;
@@ -43,10 +42,9 @@ public final class Word2VecSynonymFilter extends TokenFilter {
   private final PositionIncrementAttribute posIncrementAtt =
       addAttribute(PositionIncrementAttribute.class);
   private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
-  private final BoostAttribute boostAtt = addAttribute(BoostAttribute.class);
   private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 
-  private final SynonymProvider synonymProvider;
+  private final Word2VecSynonymProvider synonymProvider;
   private final int maxSynonymsPerTerm;
   private final float minAcceptedSimilarity;
   private final LinkedList<TermAndBoost> synonymBuffer = new LinkedList<>();
@@ -63,7 +61,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
    */
   public Word2VecSynonymFilter(
       TokenStream input,
-      SynonymProvider synonymProvider,
+      Word2VecSynonymProvider synonymProvider,
       int maxSynonymsPerTerm,
       float minAcceptedSimilarity) {
     super(input);
@@ -81,7 +79,6 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       restoreState(this.lastState);
       termAtt.setEmpty();
       termAtt.append(synonym.term.utf8ToString());
-      boostAtt.setBoost(synonym.boost);
       typeAtt.setType(SynonymGraphFilter.TYPE_SYNONYM);
       posLenAtt.setPositionLength(1);
       posIncrementAtt.setPositionIncrement(0);

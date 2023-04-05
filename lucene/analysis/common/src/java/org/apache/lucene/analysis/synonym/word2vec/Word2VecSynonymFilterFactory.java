@@ -46,7 +46,7 @@ public class Word2VecSynonymFilterFactory extends TokenFilterFactory
   private final Word2VecSupportedFormats format;
   private final String word2vecModelFileName;
 
-  private SynonymProvider synonymProvider;
+  private Word2VecSynonymProvider synonymProvider;
 
   public Word2VecSynonymFilterFactory(Map<String, String> args) {
     super(args);
@@ -81,7 +81,7 @@ public class Word2VecSynonymFilterFactory extends TokenFilterFactory
     throw defaultCtorException();
   }
 
-  SynonymProvider getSynonymProvider() {
+  Word2VecSynonymProvider getSynonymProvider() {
     return this.synonymProvider;
   }
 

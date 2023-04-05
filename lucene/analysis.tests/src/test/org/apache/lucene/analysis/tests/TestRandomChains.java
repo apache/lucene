@@ -89,7 +89,6 @@ import org.apache.lucene.analysis.shingle.ShingleFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.stempel.StempelStemmer;
 import org.apache.lucene.analysis.synonym.SynonymMap;
-import org.apache.lucene.analysis.synonym.word2vec.SynonymProvider;
 import org.apache.lucene.analysis.synonym.word2vec.Word2VecModel;
 import org.apache.lucene.analysis.synonym.word2vec.Word2VecSynonymProvider;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -421,7 +420,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     }
                   });
               put(
-                  SynonymProvider.class,
+                  Word2VecSynonymProvider.class,
                   random -> {
                     final int numEntries = atLeast(10);
                     final int vectorDimension = random.nextInt(99) + 1;

@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.util.ResourceLoader;
 
 /**
- * Supply Word2Vec SynonymProvider cache avoiding that multiple instances of
+ * Supply Word2Vec Word2VecSynonymProvider cache avoiding that multiple instances of
  * Word2VecSynonymFilterFactory will instantiate multiple instances of the same SynonymProvider.
  * Assumes synonymProvider implementations are thread-safe.
  */
@@ -34,15 +34,16 @@ public class Word2VecSynonymProviderFactory {
     DL4J
   }
 
-  private static Map<String, SynonymProvider> word2vecSynonymProviders = new ConcurrentHashMap<>();
+  private static Map<String, Word2VecSynonymProvider> word2vecSynonymProviders =
+      new ConcurrentHashMap<>();
 
-  public static SynonymProvider getSynonymProvider(
+  public static Word2VecSynonymProvider getSynonymProvider(
       ResourceLoader loader, String modelFileName, Word2VecSupportedFormats format)
       throws IOException {
-    SynonymProvider synonymProvider = word2vecSynonymProviders.get(modelFileName);
+    Word2VecSynonymProvider synonymProvider = word2vecSynonymProviders.get(modelFileName);
     if (synonymProvider == null) {
       try (InputStream stream = loader.openResource(modelFileName)) {
-        try (Word2VecModelReader reader = getModelReader(modelFileName, format, stream)) {
+        try (Dl4jModelReader reader = getModelReader(modelFileName, format, stream)) {
           synonymProvider = new Word2VecSynonymProvider(reader.read());
         }
       }
@@ -51,7 +52,7 @@ public class Word2VecSynonymProviderFactory {
     return synonymProvider;
   }
 
-  private static Word2VecModelReader getModelReader(
+  private static Dl4jModelReader getModelReader(
       String modelFileName, Word2VecSupportedFormats format, InputStream stream) {
     switch (format) {
       case DL4J:

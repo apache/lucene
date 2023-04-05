@@ -33,11 +33,11 @@ import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
- * Implementation of a {@link SynonymProvider} using vector similarity technique
+ * The Word2VecSynonymProvider generates the list of sysnonyms of a term.
  *
  * @lucene.experimental
  */
-public class Word2VecSynonymProvider implements SynonymProvider {
+public class Word2VecSynonymProvider {
 
   private static final VectorSimilarityFunction SIMILARITY_FUNCTION =
       VectorSimilarityFunction.DOT_PRODUCT;
@@ -46,7 +46,7 @@ public class Word2VecSynonymProvider implements SynonymProvider {
   private final HnswGraph hnswGraph;
 
   /**
-   * SynonymProvider constructor
+   * Word2VecSynonymProvider constructor
    *
    * @param model containing the set of TermAndVector entries
    */
@@ -64,7 +64,6 @@ public class Word2VecSynonymProvider implements SynonymProvider {
     this.hnswGraph = builder.build(word2VecModel.copy());
   }
 
-  @Override
   public List<TermAndBoost> getSynonyms(
       BytesRef term, int maxSynonymsPerTerm, float minAcceptedSimilarity) throws IOException {
 
@@ -93,7 +92,7 @@ public class Word2VecSynonymProvider implements SynonymProvider {
         float similarity = synonyms.topScore();
         int id = synonyms.pop();
 
-        BytesRef synonym = word2VecModel.binaryValue(id);
+        BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term
         if (!synonym.equals(term) && similarity >= minAcceptedSimilarity) {
           result.addFirst(new TermAndBoost(synonym, similarity));

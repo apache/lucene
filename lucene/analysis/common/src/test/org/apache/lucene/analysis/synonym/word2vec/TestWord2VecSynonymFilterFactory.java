@@ -36,7 +36,7 @@ public class TestWord2VecSynonymFilterFactory extends BaseTokenStreamFactoryTest
             tokenFilterFactory(
                 FACTORY_NAME, "model", WORD2VEC_MODEL_FILE, "minAcceptedSimilarity", "0.7");
 
-    SynonymProvider synonymProvider = factory.getSynonymProvider();
+    Word2VecSynonymProvider synonymProvider = factory.getSynonymProvider();
     assertNotEquals(null, synonymProvider);
   }
 
