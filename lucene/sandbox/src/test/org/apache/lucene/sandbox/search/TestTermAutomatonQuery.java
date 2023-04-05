@@ -847,10 +847,12 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
    *  do not get rewritten to primitive queries. The custom extension will allow
    *  the following explain tests to evaluate Explain.
    * */
-  public class CustomTermAutomatonQuery extends TermAutomatonQuery {
-    public CustomTermAutomatonQuery(String field) {
-      super(field);
-    }
+
+
+    private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
+      public CustomTermAutomatonQuery(String field) {
+        super(field);
+      }
 
     @Override
     public Query rewrite(IndexSearcher searcher) throws IOException {
