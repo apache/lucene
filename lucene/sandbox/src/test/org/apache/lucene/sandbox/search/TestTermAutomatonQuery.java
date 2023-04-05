@@ -890,9 +890,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     int initState = q.createState();
     int s1 = q.createState();
     int s2 = q.createState();
-    q.addTransition(initState, s1, "foo");
-    q.addTransition(s1, s2, "bar");
-    q.addTransition(s1, s2, "baz");
+    q.addTransition(initState, s1, "xml");
+    q.addTransition(s1, s2, "json");
+    q.addTransition(s1, s2, "protobuf");
     q.setAccept(s2, true);
     q.finish();
 
@@ -900,15 +900,15 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
 
     Document doc1 = new Document();
-    doc1.add(newTextField("field", "foo bar", Field.Store.NO));
+    doc1.add(newTextField("field", "xml json", Field.Store.NO));
     w.addDocument(doc1);
 
     Document doc2 = new Document();
-    doc2.add(newTextField("field", "foo baz", Field.Store.NO));
+    doc2.add(newTextField("field", "xml protobuf", Field.Store.NO));
     w.addDocument(doc2);
 
     Document doc3 = new Document();
-    doc3.add(newTextField("field", "foo qux", Field.Store.NO));
+    doc3.add(newTextField("field", "xml qux", Field.Store.NO));
     w.addDocument(doc3);
 
     IndexReader r = w.getReader();
