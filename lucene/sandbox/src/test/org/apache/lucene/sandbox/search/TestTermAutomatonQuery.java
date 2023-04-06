@@ -875,11 +875,18 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     IndexReader r = w.getReader();
     IndexSearcher searcher = newSearcher(r);
-    Query rewrite = q.rewrite(searcher);
-    assertTrue(rewrite instanceof TermAutomatonQuery);
+    Query rewrittenQuery = q.rewrite(searcher);
+    assertTrue(rewrittenQuery instanceof TermAutomatonQuery);
 
-    TopDocs topDocs = searcher.search(rewrite, 10);
+    TopDocs topDocs = searcher.search(rewrittenQuery, 10);
     assertEquals(0, topDocs.totalHits.value);
+
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      int docId = scoreDoc.doc;
+      Explanation explanation = searcher.explain(rewrittenQuery, docId);
+      assertFalse("Explanation should indicate no match", explanation.isMatch());
+    }
+
     IOUtils.close(w, r, dir);
   }
 
