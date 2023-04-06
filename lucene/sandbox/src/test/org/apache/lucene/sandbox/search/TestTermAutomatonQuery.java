@@ -881,11 +881,8 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     TopDocs topDocs = searcher.search(rewrittenQuery, 10);
     assertEquals(0, topDocs.totalHits.value);
 
-    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-      int docId = scoreDoc.doc;
-      Explanation explanation = searcher.explain(rewrittenQuery, docId);
-      assertFalse("Explanation should indicate no match", explanation.isMatch());
-    }
+    Explanation explanation = searcher.explain(rewrittenQuery, 0);
+    assertFalse("Explanation should indicate no match", explanation.isMatch());
 
     IOUtils.close(w, r, dir);
   }
