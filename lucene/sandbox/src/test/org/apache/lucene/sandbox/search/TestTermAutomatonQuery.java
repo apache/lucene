@@ -845,7 +845,8 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   /* Implement a custom term automaton query to ensure that rewritten queries
    *  do not get rewritten to primitive queries. The custom extension will allow
-   *  the following explain tests to evaluate Explain.
+   *  the following explain tests to evaluate Explain for the query we intend to
+   *  test, TermAutomatonQuery.
    * */
 
   private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
