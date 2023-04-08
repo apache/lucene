@@ -443,8 +443,44 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      // TODO
-      return null;
+      Scorer scorer = scorer(context);
+      if (scorer == null) {
+        return Explanation.noMatch("No matching terms in the document");
+      }
+
+      int advancedDoc = scorer.iterator().advance(doc);
+      if (advancedDoc != doc) {
+        return Explanation.noMatch("No matching terms in the document");
+      }
+
+      float score = scorer.score();
+      LeafSimScorer leafSimScorer = ((TermAutomatonScorer) scorer).getLeafSimScorer();
+      EnumAndScorer[] originalSubsOnDoc = ((TermAutomatonScorer) scorer).getOriginalSubsOnDoc();
+
+      List<Explanation> termExplanations = new ArrayList<>();
+      for (EnumAndScorer enumAndScorer : originalSubsOnDoc) {
+        if (enumAndScorer != null) {
+          PostingsEnum postingsEnum = enumAndScorer.posEnum;
+          if (postingsEnum.docID() == doc) {
+            float termScore = leafSimScorer.score(doc, postingsEnum.freq());
+            termExplanations.add(
+                Explanation.match(
+                    postingsEnum.freq(),
+                    "term frequency in the document",
+                    Explanation.match(
+                        termScore,
+                        "score for term: " + idToTerm.get(enumAndScorer.termID).utf8ToString())));
+          }
+        }
+      }
+
+      if (termExplanations.isEmpty()) {
+        return Explanation.noMatch("No matching terms in the document");
+      }
+
+      Explanation freqExplanation =
+          Explanation.match(score, "TermAutomatonQuery, sum of:", termExplanations);
+      return leafSimScorer.explain(doc, freqExplanation);
     }
   }
 
