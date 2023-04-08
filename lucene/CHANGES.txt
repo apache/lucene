@@ -146,6 +146,9 @@ Improvements
 
 * GITHUB#12166: Remove the now unused class pointInPolygon. (Marcus Eagan via Christine Poerschke and Nick Knize)
 
+* GITHUB#12126: Refactor part of IndexFileDeleter and ReplicaFileDeleter into a public common utility class
+  FileDeleter. (Patrick Zhai)
+
 Optimizations
 ---------------------
 
@@ -165,6 +168,8 @@ Optimizations
 
 * GITHUB#12179: Better PostingsEnum reuse in MultiTermQueryConstantScoreBlendedWrapper. (Greg Miller)
 
+* GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
@@ -176,6 +181,10 @@ Bug Fixes
 
 * GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Patrick Zhai, Mike McCandless, Robert Muir, Mikhail Khludnev)
 
+* GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
+
+* GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
 Build
 ---------------------
 
@@ -186,6 +195,9 @@ Build
   JAR file with Panama-foreign API signatures of each supported Java version was added to
   source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
   (Uwe Schindler)
+
+* GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
+  printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
 
 Other
 ---------------------
