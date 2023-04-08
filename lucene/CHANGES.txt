@@ -78,8 +78,6 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
-* GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Patrick Zhai, Mike McCandless, Robert Muir, Mikhail Khludnev)
-
 Other
 ---------------------
 
@@ -175,6 +173,8 @@ Bug Fixes
 * GITHUB#12196: Fix MultiFieldQueryParser to handle both query boost and phrase slop at the same time.  (Jasir KT)
 
 * GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
+
+* GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Patrick Zhai, Mike McCandless, Robert Muir, Mikhail Khludnev)
 
 Build
 ---------------------
