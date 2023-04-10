@@ -149,10 +149,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // To generate backcompat indexes with the current default codec, run the following gradle
   // command:
-  //  gradlew test -Dtestcase=TestBackwardsCompatibility -Dtests.bwcdir=/path/to/store/indexes
-  //               -Dtests.codec=default -Dtests.useSecurityManager=false
+  //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
+  //               -Ptests.useSecurityManager=false --tests TestBackwardsCompatibility
   // Also add testmethod with one of the index creation methods below, for example:
-  //    -Dtestmethod=testCreateCFS
+  //    -Ptestmethod=testCreateCFS
   //
   // Zip up the generated indexes:
   //
