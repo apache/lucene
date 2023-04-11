@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,6 +25,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -33,6 +33,7 @@ import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
@@ -170,6 +171,7 @@ public class TestConjunctions extends LuceneTestCase {
 
     for (int i = 0; i < maxDoc; i++) {
       Document doc = new Document();
+      doc.add(new KeywordField("id", i + "", Field.Store.YES));
 
       if (requiredDocSet.contains(i)) {
         doc.add(newTextField("requiredField", "a " + i, Field.Store.NO));
@@ -200,10 +202,14 @@ public class TestConjunctions extends LuceneTestCase {
     Set<Integer> expectedResult = new HashSet<>(requiredDocSet);
     expectedResult.retainAll(filteredOrRequiredDocSet);
 
-    assertEquals(topDocs.scoreDocs.length, expectedResult.size());
-    assertTrue(
-        Arrays.stream(topDocs.scoreDocs)
-            .allMatch(scoreDoc -> expectedResult.contains(scoreDoc.doc)));
+    StoredFields sf = r.storedFields();
+    Set<Integer> actualResult = new HashSet<>();
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      actualResult.add(Integer.parseInt(sf.document(scoreDoc.doc).get("id")));
+    }
+
+    assertEquals(expectedResult.size(), actualResult.size());
+    assertTrue(expectedResult.containsAll(actualResult));
 
     IOUtils.close(r, w, dir);
   }

@@ -17,14 +17,15 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -159,6 +160,7 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
 
     for (int i = 0; i < maxDoc; i++) {
       Document doc = new Document();
+      doc.add(new KeywordField("id", i + "", Field.Store.YES));
 
       if (requiredDocSet.contains(i)) {
         doc.add(newTextField("requiredField", "a " + i, Field.Store.NO));
@@ -183,10 +185,14 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
     Set<Integer> expectedResult = new HashSet<>(requiredDocSet);
     expectedResult.removeAll(excludedDocSet);
 
-    assertEquals(topDocs.scoreDocs.length, expectedResult.size());
-    assertTrue(
-        Arrays.stream(topDocs.scoreDocs)
-            .allMatch(scoreDoc -> expectedResult.contains(scoreDoc.doc)));
+    StoredFields sf = r.storedFields();
+    Set<Integer> actualResult = new HashSet<>();
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      actualResult.add(Integer.parseInt(sf.document(scoreDoc.doc).get("id")));
+    }
+
+    assertEquals(expectedResult.size(), actualResult.size());
+    assertTrue(expectedResult.containsAll(actualResult));
 
     IOUtils.close(r, w, dir);
   }
