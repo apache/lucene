@@ -228,8 +228,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     Thread.sleep(100000);
   }
 
-  // gradlew test -Dtestcase=TestBackwardsCompatibility -Dtestmethod=testCreateSortedIndex
-  // -Dtests.codec=default -Dtests.useSecurityManager=false -Dtests.bwcdir=/tmp/sorted
+  // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
+  // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
   public void testCreateSortedIndex() throws Exception {
 
     Path indexDir = getIndexDir().resolve("sorted");
