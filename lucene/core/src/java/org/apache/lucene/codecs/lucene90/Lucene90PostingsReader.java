@@ -333,8 +333,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       }
     }
 
-    // Technically speaking code should not reach here. Is there a better way to handle this?
-    return doc + 1;
+    throw new IllegalStateException("Doc buffer or skip data does not contain valid data.");
   }
 
   final class BlockDocsEnum extends PostingsEnum {

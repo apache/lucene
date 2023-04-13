@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 /** Scorer for conjunctions, sets of queries, all of which are required. */
@@ -27,13 +28,20 @@ class ConjunctionScorer extends Scorer {
   final DocIdSetIterator disi;
   final Collection<Scorer> scoringScorers;
   final Collection<Scorer> filterScorers;
-  final boolean twoPhase;
 
-  /** Create a new {@link ConjunctionScorer}. */
+  /**
+   * Create a new {@link ConjunctionScorer} with provided filterScorers and scoringScorers. Note
+   * that these two set of scorers should not have overlap now.
+   */
   ConjunctionScorer(
       Weight weight, Collection<Scorer> filteringScorers, Collection<Scorer> scoringScorers) {
     super(weight);
-    twoPhase =
+
+    if (Collections.disjoint(filteringScorers, scoringScorers) == false) {
+      throw new IllegalArgumentException(
+          "filteringScorers and scoringScorers should not contain common elements.");
+    }
+    final boolean twoPhase =
         filteringScorers.stream().anyMatch(scorer -> scorer.twoPhaseIterator() != null)
             || scoringScorers.stream().anyMatch(scorer -> scorer.twoPhaseIterator() != null);
 

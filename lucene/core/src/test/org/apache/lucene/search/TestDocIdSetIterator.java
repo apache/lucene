@@ -24,10 +24,12 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -91,6 +93,7 @@ public class TestDocIdSetIterator extends LuceneTestCase {
 
     for (int i = 0; i < maxDoc; i++) {
       Document doc = new Document();
+      doc.add(new KeywordField("id", i + "", Field.Store.YES));
 
       if (requiredDocSet.contains(i)) {
         doc.add(newTextField("requiredField", "a " + i, Field.Store.NO));
@@ -108,6 +111,7 @@ public class TestDocIdSetIterator extends LuceneTestCase {
     Query q = b.build();
 
     IndexReader r = DirectoryReader.open(dir);
+    StoredFields sf = r.storedFields();
     IndexSearcher s = new IndexSearcher(r);
     Weight weight = s.createWeight(q, ScoreMode.TOP_SCORES, 1);
     LeafReaderContext context = s.getIndexReader().leaves().get(0);
@@ -118,7 +122,7 @@ public class TestDocIdSetIterator extends LuceneTestCase {
     int lastNonMatchingDocID = disi.peekNextNonMatchingDocID();
 
     while (doc != NO_MORE_DOCS) {
-      assertTrue(requiredDocSet.contains(doc));
+      assertTrue(requiredDocSet.contains(Integer.parseInt(sf.document(doc).get("id"))));
 
       if (lastDoc == -1) {
         assertTrue(lastNonMatchingDocID > doc);

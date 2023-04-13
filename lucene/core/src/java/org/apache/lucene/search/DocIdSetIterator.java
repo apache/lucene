@@ -230,8 +230,8 @@ public abstract class DocIdSetIterator {
   public abstract long cost();
 
   /**
-   * Returns the next doc ID that may not be a match. Note that this API will essentially provide
-   * the following two guarantees:
+   * Returns the next doc ID that may not be a match. This API will essentially provide the
+   * following two guarantees:
    *
    * <ol>
    *   <li>The returned doc may pass the next matching docs after {@link #docID()}, and will require
@@ -239,7 +239,10 @@ public abstract class DocIdSetIterator {
    *   <li>peekNextNonMatchingDocID() - 1 would either be the current doc ID, or a match.
    * </ol>
    *
-   * TODO update version number
+   * <b>NOTE:</b> after the iterator has exhausted you should not call this method, as it may result
+   * in unpredicted behavior.
+   *
+   * <p>TODO update version number
    *
    * @since X
    */
