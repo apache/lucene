@@ -2129,6 +2129,11 @@ Bug Fixes
 ---------------------
 (No changes)
 
+Documentation
+---------------------
+
+* GITHUB#10633: Update javadocs in TestBackwardsCompatibility to use gradle and not ant. (Usman Shaikh)
+
 ======================= Lucene 8.6.2 =======================
 
 Bug Fixes
