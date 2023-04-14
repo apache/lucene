@@ -43,8 +43,6 @@ import org.apache.lucene.util.LongValues;
  * Compute facets counts from previously indexed {@link SortedSetDocValuesFacetField}, without
  * require a separate taxonomy index. Faceting is a bit slower (~25%), and there is added cost on
  * every {@link IndexReader} open to create a new {@link SortedSetDocValuesReaderState}.
- * Furthermore, this does not support hierarchical facets; only flat (dimension + label) facets, but
- * it uses quite a bit less RAM to do so.
  *
  * <p><b>NOTE</b>: this class should be instantiated and then used from a single thread, because it
  * holds a thread-private instance of {@link SortedSetDocValues}.
