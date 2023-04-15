@@ -205,6 +205,10 @@ public class TestSpellChecking extends LuceneTestCase {
     doTest("germancompounding");
   }
 
+  public void testGermanManualCase() throws Exception {
+    doTest("germanManualCase");
+  }
+
   public void testApplyOconvToSuggestions() throws Exception {
     doTest("oconv");
   }

@@ -1439,21 +1439,6 @@ public final class Tessellator {
   }
 
   /**
-   * Brute force compute if a point is in the polygon by traversing entire triangulation todo: speed
-   * this up using either binary tree or prefix coding (filtering by bounding box of triangle)
-   */
-  public static final boolean pointInPolygon(
-      final List<Triangle> tessellation, double lat, double lon) {
-    // each triangle
-    for (int i = 0; i < tessellation.size(); ++i) {
-      if (tessellation.get(i).containsPoint(lat, lon)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Implementation of this interface will receive calls with internal data at each step of the
    * triangulation algorithm. This is of use for debugging complex cases, as well as gaining insight
    * into the way the algorithm works. Data provided includes a status string containing the current

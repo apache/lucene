@@ -55,10 +55,10 @@ public final class ByteBuffersDataInput extends DataInput
   public ByteBuffersDataInput(List<ByteBuffer> buffers) {
     ensureAssumptions(buffers);
 
-    this.blocks =
-        buffers.stream()
-            .map(buf -> buf.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN))
-            .toArray(ByteBuffer[]::new);
+    this.blocks = buffers.toArray(ByteBuffer[]::new);
+    for (int i = 0; i < blocks.length; ++i) {
+      blocks[i] = blocks[i].asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+    }
     // pre-allocate these arrays and create the view buffers lazily
     this.floatBuffers = new FloatBuffer[blocks.length * Float.BYTES];
     this.longBuffers = new LongBuffer[blocks.length * Long.BYTES];
@@ -71,7 +71,11 @@ public final class ByteBuffersDataInput extends DataInput
       this.blockMask = (1 << blockBits) - 1;
     }
 
-    this.size = Arrays.stream(blocks).mapToLong(block -> block.remaining()).sum();
+    long size = 0;
+    for (ByteBuffer block : blocks) {
+      size += block.remaining();
+    }
+    this.size = size;
 
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();

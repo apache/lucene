@@ -17,9 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.Closeable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,7 +33,7 @@ import java.util.regex.Matcher;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.CollectionUtil;
-import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.FileDeleter;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
@@ -66,11 +64,6 @@ import org.apache.lucene.util.InfoStream;
  */
 final class IndexFileDeleter implements Closeable {
 
-  /* Reference count for all files in the index.
-   * Counts how many existing commits reference a file.
-   **/
-  private Map<String, RefCount> refCounts = new HashMap<>();
-
   /* Holds all commits (segments_N) currently in the index.
    * This will have just 1 commit if you are using the
    * default delete policy (KeepOnlyLastCommitDeletionPolicy).
@@ -95,6 +88,8 @@ final class IndexFileDeleter implements Closeable {
 
   /** Change to true to see details of reference counts when infoStream is enabled */
   public static boolean VERBOSE_REF_COUNTS = false;
+
+  private final FileDeleter fileDeleter;
 
   private final IndexWriter writer;
 
@@ -140,6 +135,8 @@ final class IndexFileDeleter implements Closeable {
     this.directoryOrig = directoryOrig;
     this.directory = directory;
 
+    this.fileDeleter = new FileDeleter(directory, this::logInfo);
+
     // First pass: walk the files and initialize our ref
     // counts:
     CommitPoint currentCommitPoint = null;
@@ -154,7 +151,7 @@ final class IndexFileDeleter implements Closeable {
                 || fileName.startsWith(IndexFileNames.PENDING_SEGMENTS))) {
 
           // Add this file to refCounts with initial count 0:
-          getRefCount(fileName);
+          fileDeleter.initRefCount(fileName);
 
           if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
 
@@ -214,7 +211,7 @@ final class IndexFileDeleter implements Closeable {
 
     // We keep commits list in sorted order (oldest to newest):
     CollectionUtil.timSort(commits);
-    Collection<String> relevantFiles = new HashSet<>(refCounts.keySet());
+    Collection<String> relevantFiles = new HashSet<>(fileDeleter.getAllFiles());
     Set<String> pendingDeletions = directoryOrig.getPendingDeletions();
     if (pendingDeletions.isEmpty() == false) {
       relevantFiles.addAll(pendingDeletions);
@@ -225,24 +222,18 @@ final class IndexFileDeleter implements Closeable {
     // Now delete anything with ref count at 0.  These are
     // presumably abandoned files eg due to crash of
     // IndexWriter.
-    Set<String> toDelete = new HashSet<>();
-    for (Map.Entry<String, RefCount> entry : refCounts.entrySet()) {
-      RefCount rc = entry.getValue();
-      final String fileName = entry.getKey();
-      if (0 == rc.count) {
-        // A segments_N file should never have ref count 0 on init:
-        if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
-          throw new IllegalStateException(
-              "file \"" + fileName + "\" has refCount=0, which should never happen on init");
-        }
-        if (infoStream.isEnabled("IFD")) {
-          infoStream.message("IFD", "init: removing unreferenced file \"" + fileName + "\"");
-        }
-        toDelete.add(fileName);
+    Set<String> toDelete = fileDeleter.getUnrefedFiles();
+    for (String fileName : toDelete) {
+      if (fileName.startsWith(IndexFileNames.SEGMENTS)) {
+        throw new IllegalStateException(
+            "file \"" + fileName + "\" has refCount=0, which should never happen on init");
+      }
+      if (infoStream.isEnabled("IFD")) {
+        infoStream.message("IFD", "init: removing unreferenced file \"" + fileName + "\"");
       }
     }
 
-    deleteFiles(toDelete);
+    fileDeleter.deleteFilesIfNoRef(toDelete);
 
     // Finally, give policy a chance to remove things on
     // startup:
@@ -484,7 +475,7 @@ final class IndexFileDeleter implements Closeable {
       String fileName = files[i];
       m.reset(fileName);
       if (!fileName.endsWith("write.lock")
-          && !refCounts.containsKey(fileName)
+          && fileDeleter.exists(fileName) == false
           && (m.matches()
               || fileName.startsWith(IndexFileNames.SEGMENTS)
               // we only try to clear out pending_segments_N during rollback(), because we don't
@@ -502,7 +493,7 @@ final class IndexFileDeleter implements Closeable {
       }
     }
 
-    deleteFiles(toDelete);
+    fileDeleter.deleteFilesIfNoRef(toDelete);
   }
 
   @Override
@@ -610,76 +601,34 @@ final class IndexFileDeleter implements Closeable {
     }
   }
 
+  private void logInfo(FileDeleter.MsgType msgType, String msg) {
+    if (msgType == FileDeleter.MsgType.REF && VERBOSE_REF_COUNTS == false) {
+      // do not log anything
+    } else {
+      if (infoStream.isEnabled("IFD")) {
+        infoStream.message("IFD", msg);
+      }
+    }
+  }
+
   void incRef(SegmentInfos segmentInfos, boolean isCommit) throws IOException {
     assert locked();
     // If this is a commit point, also incRef the
     // segments_N file:
     for (final String fileName : segmentInfos.files(isCommit)) {
-      incRef(fileName);
+      fileDeleter.incRef(fileName);
     }
   }
 
   void incRef(Collection<String> files) {
     assert locked();
-    for (final String file : files) {
-      incRef(file);
-    }
-  }
-
-  void incRef(String fileName) {
-    assert locked();
-    RefCount rc = getRefCount(fileName);
-    if (infoStream.isEnabled("IFD")) {
-      if (VERBOSE_REF_COUNTS) {
-        infoStream.message("IFD", "  IncRef \"" + fileName + "\": pre-incr count is " + rc.count);
-      }
-    }
-    rc.IncRef();
+    fileDeleter.incRef(files);
   }
 
   /** Decrefs all provided files, even on exception; throws first exception hit, if any. */
   void decRef(Collection<String> files) throws IOException {
     assert locked();
-    Set<String> toDelete = new HashSet<>();
-    Throwable firstThrowable = null;
-    for (final String file : files) {
-      try {
-        if (decRef(file)) {
-          toDelete.add(file);
-        }
-      } catch (Throwable t) {
-        firstThrowable = IOUtils.useOrSuppress(firstThrowable, t);
-      }
-    }
-
-    try {
-      deleteFiles(toDelete);
-    } catch (Throwable t) {
-      firstThrowable = IOUtils.useOrSuppress(firstThrowable, t);
-    }
-
-    if (firstThrowable != null) {
-      throw IOUtils.rethrowAlways(firstThrowable);
-    }
-  }
-
-  /** Returns true if the file should now be deleted. */
-  private boolean decRef(String fileName) {
-    assert locked();
-    RefCount rc = getRefCount(fileName);
-    if (infoStream.isEnabled("IFD")) {
-      if (VERBOSE_REF_COUNTS) {
-        infoStream.message("IFD", "  DecRef \"" + fileName + "\": pre-decr count is " + rc.count);
-      }
-    }
-    if (rc.DecRef() == 0) {
-      // This file is no longer referenced by any past
-      // commit points nor by the in-memory SegmentInfos:
-      refCounts.remove(fileName);
-      return true;
-    } else {
-      return false;
-    }
+    fileDeleter.decRef(files);
   }
 
   void decRef(SegmentInfos segmentInfos) throws IOException {
@@ -689,128 +638,13 @@ final class IndexFileDeleter implements Closeable {
 
   public boolean exists(String fileName) {
     assert locked();
-    if (!refCounts.containsKey(fileName)) {
-      return false;
-    } else {
-      return getRefCount(fileName).count > 0;
-    }
-  }
-
-  private RefCount getRefCount(String fileName) {
-    assert locked();
-    RefCount rc;
-    if (!refCounts.containsKey(fileName)) {
-      rc = new RefCount(fileName);
-      refCounts.put(fileName, rc);
-    } else {
-      rc = refCounts.get(fileName);
-    }
-    return rc;
+    return fileDeleter.exists(fileName);
   }
 
   /** Deletes the specified files, but only if they are new (have not yet been incref'd). */
   void deleteNewFiles(Collection<String> files) throws IOException {
     assert locked();
-    Set<String> toDelete = new HashSet<>();
-    for (final String fileName : files) {
-      // NOTE: it's very unusual yet possible for the
-      // refCount to be present and 0: it can happen if you
-      // open IW on a crashed index, and it removes a bunch
-      // of unref'd files, and then you add new docs / do
-      // merging, and it reuses that segment name.
-      // TestCrash.testCrashAfterReopen can hit this:
-      if (!refCounts.containsKey(fileName) || refCounts.get(fileName).count == 0) {
-        if (infoStream.isEnabled("IFD")) {
-          infoStream.message("IFD", "will delete new file \"" + fileName + "\"");
-        }
-        toDelete.add(fileName);
-      }
-    }
-
-    deleteFiles(toDelete);
-  }
-
-  private void deleteFiles(Collection<String> names) throws IOException {
-    assert locked();
-    ensureOpen();
-
-    if (infoStream.isEnabled("IFD")) {
-      if (names.size() > 0) {
-        infoStream.message("IFD", "delete " + names + "");
-      }
-    }
-
-    // We make two passes, first deleting any segments_N files, second deleting the rest.  We do
-    // this so that if we throw exc or JVM
-    // crashes during deletions, even when not on Windows, we don't leave the index in an
-    // "apparently corrupt" state:
-    for (String name : names) {
-      if (name.startsWith(IndexFileNames.SEGMENTS) == false) {
-        continue;
-      }
-      deleteFile(name);
-    }
-
-    for (String name : names) {
-      if (name.startsWith(IndexFileNames.SEGMENTS) == true) {
-        continue;
-      }
-      deleteFile(name);
-    }
-  }
-
-  private void deleteFile(String fileName) throws IOException {
-    try {
-      directory.deleteFile(fileName);
-    } catch (NoSuchFileException | FileNotFoundException e) {
-      if (Constants.WINDOWS) {
-        // TODO: can we remove this OS-specific hacky logic?  If windows deleteFile is buggy, we
-        // should instead contain this workaround in
-        // a WindowsFSDirectory ...
-        // LUCENE-6684: we suppress this assert for Windows, since a file could be in a confusing
-        // "pending delete" state, where we already
-        // deleted it once, yet it still shows up in directory listings, and if you try to delete it
-        // again you'll hit NSFE/FNFE:
-      } else {
-        throw e;
-      }
-    }
-  }
-
-  /** Tracks the reference count for a single index file: */
-  private static final class RefCount {
-
-    // fileName used only for better assert error messages
-    final String fileName;
-    boolean initDone;
-
-    RefCount(String fileName) {
-      this.fileName = fileName;
-    }
-
-    int count;
-
-    public int IncRef() {
-      if (!initDone) {
-        initDone = true;
-      } else {
-        assert count > 0
-            : Thread.currentThread().getName()
-                + ": RefCount is 0 pre-increment for file \""
-                + fileName
-                + "\"";
-      }
-      return ++count;
-    }
-
-    public int DecRef() {
-      assert count > 0
-          : Thread.currentThread().getName()
-              + ": RefCount is 0 pre-decrement for file \""
-              + fileName
-              + "\"";
-      return --count;
-    }
+    fileDeleter.deleteFilesIfNoRef(files);
   }
 
   /**
