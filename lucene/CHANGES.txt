@@ -181,6 +181,11 @@ Build
   source tree. Those can be regenerated an demand with "gradlew :lucene:core:regenerate".
   (Uwe Schindler)
 
+Documentation
+---------------------
+
+* GITHUB#10633: Update javadocs in TestBackwardsCompatibility to use gradle and not ant. (Usman Shaikh)
+
 Other
 ---------------------
 
@@ -2128,11 +2133,6 @@ Build
 Bug Fixes
 ---------------------
 (No changes)
-
-Documentation
----------------------
-
-* GITHUB#10633: Update javadocs in TestBackwardsCompatibility to use gradle and not ant. (Usman Shaikh)
 
 ======================= Lucene 8.6.2 =======================
 
