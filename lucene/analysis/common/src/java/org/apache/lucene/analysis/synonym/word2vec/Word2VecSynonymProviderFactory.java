@@ -43,7 +43,7 @@ public class Word2VecSynonymProviderFactory {
     Word2VecSynonymProvider synonymProvider = word2vecSynonymProviders.get(modelFileName);
     if (synonymProvider == null) {
       try (InputStream stream = loader.openResource(modelFileName)) {
-        try (Dl4jModelReader reader = getModelReader(modelFileName, format, stream)) {
+        try (Dl4jModelReader reader = getModelReader(format, stream)) {
           synonymProvider = new Word2VecSynonymProvider(reader.read());
         }
       }
@@ -53,10 +53,10 @@ public class Word2VecSynonymProviderFactory {
   }
 
   private static Dl4jModelReader getModelReader(
-      String modelFileName, Word2VecSupportedFormats format, InputStream stream) {
+      Word2VecSupportedFormats format, InputStream stream) {
     switch (format) {
       case DL4J:
-        return new Dl4jModelReader(modelFileName, stream);
+        return new Dl4jModelReader(stream);
     }
     return null;
   }

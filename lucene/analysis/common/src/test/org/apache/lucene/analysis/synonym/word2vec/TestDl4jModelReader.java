@@ -48,7 +48,7 @@ public class TestDl4jModelReader extends LuceneTestCase {
       "word2vec-corrupted-vector-dimension-model.zip";
 
   InputStream stream = TestDl4jModelReader.class.getResourceAsStream(MODEL_FILE);
-  Dl4jModelReader unit = new Dl4jModelReader(MODEL_FILE, stream);
+  Dl4jModelReader unit = new Dl4jModelReader(stream);
 
   @Test
   public void read_zipFileWithMetadata_shouldReturnDictionarySize() throws Exception {
@@ -82,7 +82,7 @@ public class TestDl4jModelReader extends LuceneTestCase {
   @Test
   public void read_EmptyZipFile_shouldThrowException() throws Exception {
     try (InputStream stream = TestDl4jModelReader.class.getResourceAsStream(MODEL_EMPTY_FILE)) {
-      Dl4jModelReader unit = new Dl4jModelReader(MODEL_EMPTY_FILE, stream);
+      Dl4jModelReader unit = new Dl4jModelReader(stream);
       expectThrows(IllegalArgumentException.class, unit::read);
     }
   }
@@ -91,7 +91,7 @@ public class TestDl4jModelReader extends LuceneTestCase {
   public void read_corruptedVectorDimensionModelFile_shouldThrowException() throws Exception {
     try (InputStream stream =
         TestDl4jModelReader.class.getResourceAsStream(CORRUPTED_VECTOR_DIMENSION_MODEL_FILE)) {
-      Dl4jModelReader unit = new Dl4jModelReader(CORRUPTED_VECTOR_DIMENSION_MODEL_FILE, stream);
+      Dl4jModelReader unit = new Dl4jModelReader(stream);
       expectThrows(RuntimeException.class, unit::read);
     }
   }
