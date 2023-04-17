@@ -33,45 +33,48 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
 
   private final int dictionarySize;
   private final int vectorDimension;
-  private final TermAndVector[] data;
+  private final TermAndVector[] termsAndVectors;
   private final BytesRefHash word2Vec;
   private int loadedCount = 0;
 
   public Word2VecModel(int dictionarySize, int vectorDimension) {
     this.dictionarySize = dictionarySize;
     this.vectorDimension = vectorDimension;
-    this.data = new TermAndVector[dictionarySize];
+    this.termsAndVectors = new TermAndVector[dictionarySize];
     this.word2Vec = new BytesRefHash();
   }
 
   private Word2VecModel(
-      int dictionarySize, int vectorDimension, TermAndVector[] data, BytesRefHash word2Vec) {
+      int dictionarySize,
+      int vectorDimension,
+      TermAndVector[] termsAndVectors,
+      BytesRefHash word2Vec) {
     this.dictionarySize = dictionarySize;
     this.vectorDimension = vectorDimension;
-    this.data = data;
+    this.termsAndVectors = termsAndVectors;
     this.word2Vec = word2Vec;
   }
 
   public void addTermAndVector(TermAndVector modelEntry) {
     modelEntry.normalizeVector();
-    this.data[loadedCount++] = modelEntry;
+    this.termsAndVectors[loadedCount++] = modelEntry;
     this.word2Vec.add(modelEntry.getTerm());
   }
 
   @Override
-  public float[] vectorValue(int ord) throws IOException {
-    return data[ord].getVector();
+  public float[] vectorValue(int targetOrd) {
+    return termsAndVectors[targetOrd].getVector();
   }
 
   public float[] vectorValue(BytesRef term) {
-    int id = this.word2Vec.find(term);
-    if (id < 0) return null;
-    TermAndVector entry = this.data[id];
+    int termOrd = this.word2Vec.find(term);
+    if (termOrd < 0) return null;
+    TermAndVector entry = this.termsAndVectors[termOrd];
     return (entry == null) ? null : entry.getVector();
   }
 
-  public BytesRef termValue(int targetOrd) throws IOException {
-    return data[targetOrd].getTerm();
+  public BytesRef termValue(int targetOrd) {
+    return termsAndVectors[targetOrd].getTerm();
   }
 
   @Override
@@ -86,6 +89,7 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
 
   @Override
   public RandomAccessVectorValues<float[]> copy() throws IOException {
-    return new Word2VecModel(this.dictionarySize, this.vectorDimension, this.data, this.word2Vec);
+    return new Word2VecModel(
+        this.dictionarySize, this.vectorDimension, this.termsAndVectors, this.word2Vec);
   }
 }
