@@ -6,7 +6,6 @@ The Apache Software Foundation (http://www.apache.org/).
 
 Includes software from other Apache Software Foundation projects,
 including, but not limited to:
- - Apache Ant
  - Apache Jakarta Regexp
  - Apache Commons
  - Apache Xerces
@@ -37,9 +36,6 @@ under the 2-clause BSD license.
 
 The Google Code Prettify is Apache License 2.0.
 See http://code.google.com/p/google-code-prettify/
-
-JUnit (junit-4.10) is licensed under the Common Public License v. 1.0
-See http://junit.sourceforge.net/cpl-v10.html
 
 This product includes code (JaspellTernarySearchTrie) from Java Spelling Checkin
 g Package (jaspell): http://jaspell.sourceforge.net/
@@ -203,5 +199,3 @@ which can be obtained from
 
   https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.0.3-20170922.tar.gz
 
-The floating point precision conversion in NumericUtils.Float16Converter is derived from work by
-Jeroen van der Zijp, granted for use under the Apache license.
