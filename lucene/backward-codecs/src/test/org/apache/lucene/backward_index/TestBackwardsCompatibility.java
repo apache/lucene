@@ -2269,4 +2269,18 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       }
     }
   }
+
+  @Nightly
+  public void testReadNMinusTwoSegmentInfos() throws IOException {
+    for (String name : binarySupportedNames) {
+      Path oldIndexDir = createTempDir(name);
+      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+        expectThrows(
+            IndexFormatTooOldException.class,
+            () -> SegmentInfos.readLatestCommit(dir, Version.MIN_SUPPORTED_MAJOR));
+        SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
+      }
+    }
+  }
 }
