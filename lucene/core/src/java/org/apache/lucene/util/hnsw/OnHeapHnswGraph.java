@@ -17,16 +17,15 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.NeighborArray.UNCHECKED_NODE_INIT_SIZE;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.NeighborArray.UNCHECKED_NODE_INIT_SIZE;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
