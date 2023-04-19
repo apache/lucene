@@ -218,7 +218,9 @@ public final class HnswGraphBuilder<T> {
                 case BYTE -> this.similarityFunction.compare(
                     binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
               };
-          newNeighbors.insertSorted(newNeighbor, score);
+          // we are not sure whether the previous graph contains
+          // unchecked nodes, so we have to assume they're all unchecked
+          newNeighbors.insertSorted(newNeighbor, score, true);
         }
       }
     }
