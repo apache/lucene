@@ -110,7 +110,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         entryNode = node;
       }
 
-      graphUpperLevels.get(level).put(node, new NeighborArray(nsize, true));
+      graphUpperLevels.get(level).put(node, new NeighborArray(nsize, true, true));
     } else {
       // Add nodes all the way up to and including "node" in the new graph on level 0. This will
       // cause the size of the
@@ -118,7 +118,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       // number of nodes
       // added will only be in sync once all nodes from 0...last_node are added into the graph.
       while (node >= graphLevel0.size()) {
-        graphLevel0.add(new NeighborArray(nsize0, true));
+        graphLevel0.add(new NeighborArray(nsize0, true, true));
       }
     }
   }

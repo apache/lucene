@@ -29,16 +29,27 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.internal
  */
 public class NeighborArray {
+  private static final int UNCHECKED_NODE_INIT_SIZE = 4;
   private final boolean scoresDescOrder;
   private int size;
 
   float[] score;
   int[] node;
+  final NeighborArray uncheckedNodes;
 
   public NeighborArray(int maxSize, boolean descOrder) {
+    this(maxSize, descOrder, false);
+  }
+
+  public NeighborArray(int maxSize, boolean descOrder, boolean tracUncheckedNodes) {
     node = new int[maxSize];
     score = new float[maxSize];
     this.scoresDescOrder = descOrder;
+    if (tracUncheckedNodes) {
+      uncheckedNodes = new NeighborArray(UNCHECKED_NODE_INIT_SIZE, descOrder);
+    } else {
+      uncheckedNodes = null;
+    }
   }
 
   /**
@@ -62,7 +73,7 @@ public class NeighborArray {
   }
 
   /** Add a new node to the NeighborArray into a correct sort position according to its score. */
-  public void insertSorted(int newNode, float newScore) {
+  public void insertSorted(int newNode, float newScore, boolean setUncheck) {
     if (size == node.length) {
       node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
@@ -76,6 +87,18 @@ public class NeighborArray {
     node[insertionPoint] = newNode;
     score[insertionPoint] = newScore;
     ++size;
+    if (setUncheck) {
+      assert uncheckedNodes != null;
+      if (uncheckedNodes.size() == 0) {
+        uncheckedNodes.add(newNode, newScore);
+      } else {
+        uncheckedNodes.insertSorted(newNode, newScore);
+      }
+    }
+  }
+
+  public void insertSorted(int newNode, float newScore) {
+    insertSorted(newNode, newScore, false);
   }
 
   public int size() {

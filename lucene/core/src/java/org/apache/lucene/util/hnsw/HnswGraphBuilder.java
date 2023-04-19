@@ -315,7 +315,7 @@ public final class HnswGraphBuilder<T> {
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
       NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
-      nbrNbr.insertSorted(node, neighbors.score[i]);
+      nbrNbr.insertSorted(node, neighbors.score[i], true);
       if (nbrNbr.size() > maxConnOnLevel) {
         int indexToRemove = findWorstNonDiverse(nbrNbr);
         nbrNbr.removeIndex(indexToRemove);
@@ -401,6 +401,11 @@ public final class HnswGraphBuilder<T> {
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
     for (int i = neighbors.size() - 1; i > 0; i--) {
+      assert neighbors.uncheckedNodes != null;
+      if (neighbors.uncheckedNodes.size() == 0) {
+        // all nodes are checked, we will directly return the most distant one
+        break;
+      }
       if (isWorstNonDiverse(i, neighbors)) {
         return i;
       }
@@ -413,37 +418,75 @@ public final class HnswGraphBuilder<T> {
     int candidateNode = neighbors.node[candidateIndex];
     return switch (vectorEncoding) {
       case BYTE -> isWorstNonDiverse(
-          candidateIndex, (byte[]) vectors.vectorValue(candidateNode), neighbors);
+          candidateIndex, candidateNode, (byte[]) vectors.vectorValue(candidateNode), neighbors);
       case FLOAT32 -> isWorstNonDiverse(
-          candidateIndex, (float[]) vectors.vectorValue(candidateNode), neighbors);
+          candidateIndex, candidateNode, (float[]) vectors.vectorValue(candidateNode), neighbors);
     };
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, float[] candidateVector, NeighborArray neighbors) throws IOException {
+      int candidateIndex, int candidateNode, float[] candidateVector, NeighborArray neighbors)
+      throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    for (int i = candidateIndex - 1; i >= 0; i--) {
-      float neighborSimilarity =
-          similarityFunction.compare(
-              candidateVector, (float[]) vectorsCopy.vectorValue(neighbors.node[i]));
-      // candidate node is too similar to node i given its score relative to the base node
-      if (neighborSimilarity >= minAcceptedSimilarity) {
-        return true;
+    NeighborArray uncheckedNodes = neighbors.uncheckedNodes;
+    if (candidateNode == uncheckedNodes.node[uncheckedNodes.size() - 1]) {
+      // if the candidate itself is unchecked: we check it against all more similar nodes
+      for (int i = candidateIndex - 1; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector, (float[]) vectorsCopy.vectorValue(neighbors.node[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          uncheckedNodes.removeLast();
+          return true;
+        }
+      }
+      uncheckedNodes.removeLast();
+    } else {
+      // else we just need to make sure candidate does not violate diversity with the (newly
+      // inserted) unchecked nodes
+      for (int i = uncheckedNodes.size() - 1; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector, (float[]) vectorsCopy.vectorValue(uncheckedNodes.node[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
       }
     }
     return false;
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, byte[] candidateVector, NeighborArray neighbors) throws IOException {
+      int candidateIndex, int candidateNode, byte[] candidateVector, NeighborArray neighbors)
+      throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    for (int i = candidateIndex - 1; i >= 0; i--) {
-      float neighborSimilarity =
-          similarityFunction.compare(
-              candidateVector, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
-      // candidate node is too similar to node i given its score relative to the base node
-      if (neighborSimilarity >= minAcceptedSimilarity) {
-        return true;
+    NeighborArray uncheckedNodes = neighbors.uncheckedNodes;
+    if (candidateNode == uncheckedNodes.node[uncheckedNodes.size() - 1]) {
+      // if the candidate itself is unchecked: we check it against all more similar nodes
+      for (int i = candidateIndex - 1; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          uncheckedNodes.removeLast();
+          return true;
+        }
+      }
+      uncheckedNodes.removeLast();
+    } else {
+      // else we just need to make sure candidate does not violate diversity with the (newly
+      // inserted) unchecked nodes
+      for (int i = uncheckedNodes.size() - 1; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector, (byte[]) vectorsCopy.vectorValue(uncheckedNodes.node[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
       }
     }
     return false;
