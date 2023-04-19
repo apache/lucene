@@ -29,7 +29,7 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.internal
  */
 public class NeighborArray {
-  private static final int UNCHECKED_NODE_INIT_SIZE = 4;
+  static final int UNCHECKED_NODE_INIT_SIZE = 4;
   private final boolean scoresDescOrder;
   private int size;
 

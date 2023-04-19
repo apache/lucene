@@ -17,14 +17,16 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.NeighborArray.UNCHECKED_NODE_INIT_SIZE;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
@@ -169,15 +171,23 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public long ramBytesUsed() {
+    // this is the lower bound estimation based on initial size
+    long uncheckedNeighborArrayBytes =
+        UNCHECKED_NODE_INIT_SIZE * (Integer.BYTES + Float.BYTES)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + Integer.BYTES * 2;
     long neighborArrayBytes0 =
         nsize0 * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + uncheckedNeighborArrayBytes
             + Integer.BYTES * 2;
     long neighborArrayBytes =
         nsize * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + uncheckedNeighborArrayBytes
             + Integer.BYTES * 2;
     long total = 0;
     for (int l = 0; l < numLevels; l++) {
