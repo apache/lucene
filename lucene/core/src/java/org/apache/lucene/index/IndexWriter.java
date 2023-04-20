@@ -3532,6 +3532,10 @@ public class IndexWriter
    */
   protected void doBeforeFlush() throws IOException {}
 
+  protected void doBeforeCommit() throws IOException {}
+
+  protected void doAfterCommit() throws IOException {}
+
   /**
    * Expert: prepare for commit. This does the first phase of 2-phase commit. This method does all
    * steps necessary to commit changes since this writer was opened: flushes pending added and
@@ -4046,6 +4050,7 @@ public class IndexWriter
 
     long seqNo;
 
+    doBeforeCommit();
     synchronized (commitLock) {
       ensureOpen(false);
 
@@ -4067,6 +4072,7 @@ public class IndexWriter
 
       finishCommit();
     }
+    doAfterCommit();
 
     // we must do this outside of the commitLock else we can deadlock:
     if (maybeMerge.getAndSet(false)) {

@@ -7,17 +7,17 @@ import org.apache.lucene.search.Weight;
 import java.io.IOException;
 import java.util.List;
 
-public class PIMScorer extends Scorer {
+public class PimScorer extends Scorer {
 
-  private final List<PIMMatch> matches;
+  private final List<PimMatch> matches;
   private int index;
-  private PIMMatch current;
+  private PimMatch current;
   private float minCompetitiveScore;
 
-  public PIMScorer(Weight weight, List<PIMMatch> matches) {
+  public PimScorer(Weight weight, List<PimMatch> matches) {
     super(weight);
     this.matches = matches;
-    current = PIMMatch.UNSET;
+    current = PimMatch.UNSET;
   }
 
   @Override
@@ -42,7 +42,7 @@ public class PIMScorer extends Scorer {
       public int nextDoc() {
         do {
           if (index >= matches.size()) {
-            current = PIMMatch.NO_MORE_RESULTS;
+            current = PimMatch.NO_MORE_RESULTS;
             break;
           }
           current = matches.get(index++);

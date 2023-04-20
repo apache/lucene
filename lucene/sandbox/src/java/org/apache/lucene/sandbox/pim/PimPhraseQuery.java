@@ -23,42 +23,42 @@ import java.io.IOException;
  * Supports only {@link BM25Similarity}. If another similarity is required by the
  * {@link IndexSearcher}, then this query is rewritten to a regular {@link PhraseQuery}.
  */
-public class PIMPhraseQuery extends PhraseQuery {
+public class PimPhraseQuery extends PhraseQuery {
 
   public static class Builder extends PhraseQuery.Builder {
 
     @Override
-    public PIMPhraseQuery build() {
+    public PimPhraseQuery build() {
       PhraseQuery query = super.build();
-      return new PIMPhraseQuery(query.getSlop(), query.getTerms(), query.getPositions());
+      return new PimPhraseQuery(query.getSlop(), query.getTerms(), query.getPositions());
     }
   }
 
-  public PIMPhraseQuery(String field, String... terms) {
+  public PimPhraseQuery(String field, String... terms) {
     super(field, terms);
   }
 
-  public PIMPhraseQuery(int slop, String field, String... terms) {
+  public PimPhraseQuery(int slop, String field, String... terms) {
     super(slop, field, terms);
   }
 
-  private PIMPhraseQuery(int slop, Term[] terms, int[] positions) {
+  private PimPhraseQuery(int slop, Term[] terms, int[] positions) {
     super(slop, terms, positions);
   }
 
   @Override
   public Query rewrite(IndexSearcher searcher) throws IOException {
     Query query = super.rewrite(searcher);
-    if (query instanceof PhraseQuery) {
+    if (query instanceof PhraseQuery pq) {
       if (!(searcher.getSimilarity() instanceof BM25Similarity)) {
         PhraseQuery.Builder builder = new PhraseQuery.Builder()
-          .setSlop(getSlop());
-        for (int i = 0; i < getTerms().length; i++) {
-          builder.add(getTerms()[i], getPositions()[i]);
+          .setSlop(pq.getSlop());
+        for (int i = 0; i < pq.getTerms().length; i++) {
+          builder.add(pq.getTerms()[i], pq.getPositions()[i]);
         }
         query = builder.build();
       } else if (query != this) {
-        query = new PIMPhraseQuery(getSlop(), getTerms(), getPositions());
+        query = new PimPhraseQuery(pq.getSlop(), pq.getTerms(), pq.getPositions());
       }
     }
     return query;
@@ -78,12 +78,12 @@ public class PIMPhraseQuery extends PhraseQuery {
         getClass().getSimpleName() + " supports only " + BM25Similarity.class.getSimpleName()
           + ", call rewrite first");
     }
-    PIMPhraseScoreStats scoreStats = buildScoreStats(searcher, scoreMode, boost);
+    PimPhraseScoreStats scoreStats = buildScoreStats(searcher, scoreMode, boost);
     return scoreStats == null ? noMatchWeight()
-      : new PIMPhraseWeight(this, scoreStats);
+      : new PimPhraseWeight(this, scoreStats);
   }
 
-  private PIMPhraseScoreStats buildScoreStats(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+  private PimPhraseScoreStats buildScoreStats(IndexSearcher searcher, ScoreMode scoreMode, float boost)
     throws IOException {
     IndexReaderContext context = searcher.getTopReaderContext();
     TermStatistics[] termStats = new TermStatistics[getTerms().length];
@@ -100,7 +100,7 @@ public class PIMPhraseQuery extends PhraseQuery {
     if (termUpTo == 0) {
       return null; // No terms at all, no score.
     }
-    return new PIMPhraseScoreStats(
+    return new PimPhraseScoreStats(
       searcher,
       searcher.getSimilarity(),
       scoreMode,

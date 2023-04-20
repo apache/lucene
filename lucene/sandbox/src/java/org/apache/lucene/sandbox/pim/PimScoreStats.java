@@ -5,7 +5,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.similarities.Similarity;
 
-public class PIMScoreStats {
+public class PimScoreStats {
 
   public final IndexSearcher searcher;
   public final Similarity similarity;
@@ -13,7 +13,7 @@ public class PIMScoreStats {
   public final float boost;
   public final CollectionStatistics collectionStats;
 
-  public PIMScoreStats(IndexSearcher searcher,
+  public PimScoreStats(IndexSearcher searcher,
                        Similarity similarity,
                        ScoreMode scoreMode,
                        float boost,

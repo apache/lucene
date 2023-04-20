@@ -8,11 +8,11 @@ import org.apache.lucene.util.Bits;
 
 import java.io.IOException;
 
-public class PIMBulkScorer extends BulkScorer {
+public class PimBulkScorer extends BulkScorer {
 
   private final Scorer scorer;
 
-  public PIMBulkScorer(Scorer scorer) {
+  public PimBulkScorer(Scorer scorer) {
     this.scorer = scorer;
   }
 

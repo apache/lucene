@@ -14,23 +14,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class PIMPhraseWeight extends Weight {
+public class PimPhraseWeight extends Weight {
 
-  private final PIMPhraseScoreStats scoreStats;
+  private final PimPhraseScoreStats scoreStats;
 
-  protected PIMPhraseWeight(PIMPhraseQuery query, PIMPhraseScoreStats scoreStats) {
+  protected PimPhraseWeight(PimPhraseQuery query, PimPhraseScoreStats scoreStats) {
     super(query);
     this.scoreStats = scoreStats;
   }
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    return new PIMBulkScorer(scorer(context));
+    return new PimBulkScorer(scorer(context));
   }
 
   @Override
   public Scorer scorer(LeafReaderContext context) throws IOException {
-    return new PIMScorer(this, matchPhrase(context));
+    return new PimScorer(this, matchPhrase(context));
   }
 
   @Override
@@ -49,21 +49,21 @@ public class PIMPhraseWeight extends Weight {
     return true;
   }
 
-  private List<PIMMatch> matchPhrase(LeafReaderContext context) throws IOException {
+  private List<PimMatch> matchPhrase(LeafReaderContext context) throws IOException {
     //PIMMatcher pimMatcher = context.reader().pimMatcher(field);
     //The score can be computed in the DPUs, but it needs to store the table doc->norm (see LeafSimScorer.getNormValue())
     // this table can be an array: n bits per norm value, with n determined based on [min,max] value.
     return matchWithPhraseQuery(context);
   }
 
-  private List<PIMMatch> matchWithPhraseQuery(LeafReaderContext context) throws IOException {
+  private List<PimMatch> matchWithPhraseQuery(LeafReaderContext context) throws IOException {
     PhraseQuery query = buildPhraseQuery();
     Weight weight = query.createWeight(scoreStats.searcher, scoreStats.scoreMode, scoreStats.boost);
     BulkScorer bulkScorer = weight.bulkScorer(context);
     if (bulkScorer == null) {
       return Collections.emptyList();
     }
-    List<PIMMatch> matches = new ArrayList<>();
+    List<PimMatch> matches = new ArrayList<>();
     LeafCollector collector = new LeafCollector() {
 
       Scorable scorer;
@@ -75,7 +75,7 @@ public class PIMPhraseWeight extends Weight {
 
       @Override
       public void collect(int doc) throws IOException {
-        matches.add(new PIMMatch(doc, scorer.score()));
+        matches.add(new PimMatch(doc, scorer.score()));
       }
     };
     bulkScorer.score(collector, null);
@@ -83,7 +83,7 @@ public class PIMPhraseWeight extends Weight {
   }
 
   private PhraseQuery buildPhraseQuery() {
-    PIMPhraseQuery query = (PIMPhraseQuery) getQuery();
+    PimPhraseQuery query = (PimPhraseQuery) getQuery();
     PhraseQuery.Builder builder = new PhraseQuery.Builder()
       .setSlop(query.getSlop());
     for (int i = 0; i < query.getTerms().length; i++) {

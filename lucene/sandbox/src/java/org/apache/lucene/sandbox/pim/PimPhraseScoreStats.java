@@ -6,11 +6,11 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
 
-public class PIMPhraseScoreStats extends PIMScoreStats {
+public class PimPhraseScoreStats extends PimScoreStats {
 
   public final TermStatistics[] termStats;
 
-  public PIMPhraseScoreStats(IndexSearcher searcher,
+  public PimPhraseScoreStats(IndexSearcher searcher,
                              Similarity similarity,
                              ScoreMode scoreMode,
                              float boost,

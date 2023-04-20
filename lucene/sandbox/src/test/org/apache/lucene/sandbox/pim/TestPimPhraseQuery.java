@@ -1,10 +1,9 @@
-package org.apache.lucene.sandbox.search;
+package org.apache.lucene.sandbox.pim;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.sandbox.pim.PIMPhraseQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -17,9 +16,9 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 /**
- * Tests {@link PIMPhraseQuery}.
+ * Tests {@link PimPhraseQuery}.
  */
-public class TestPIMPhraseQuery extends LuceneTestCase {
+public class TestPimPhraseQuery extends LuceneTestCase {
 
   private static IndexSearcher searcher;
   private static IndexReader reader;
@@ -81,14 +80,14 @@ public class TestPIMPhraseQuery extends LuceneTestCase {
   }
 
   public void testNotCloseEnough() throws Exception {
-    query = new PIMPhraseQuery(2, "field", "one", "five");
+    query = new PimPhraseQuery(2, "field", "one", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(0, hits.length);
     QueryUtils.check(random(), query, searcher);
   }
 
   public void testBarelyCloseEnough() throws Exception {
-    query = new PIMPhraseQuery(3, "field", "one", "five");
+    query = new PimPhraseQuery(3, "field", "one", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(1, hits.length);
     QueryUtils.check(random(), query, searcher);
@@ -97,12 +96,12 @@ public class TestPIMPhraseQuery extends LuceneTestCase {
   /** Ensures slop of 0 works for exact matches, but not reversed */
   public void testExact() throws Exception {
     // slop is zero by default
-    query = new PIMPhraseQuery("field", "four", "five");
+    query = new PimPhraseQuery("field", "four", "five");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals("exact match", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
-    query = new PIMPhraseQuery("field", "two", "one");
+    query = new PimPhraseQuery("field", "two", "one");
     hits = searcher.search(query, 1000).scoreDocs;
     assertEquals("reverse not exact", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
@@ -110,14 +109,14 @@ public class TestPIMPhraseQuery extends LuceneTestCase {
 
   public void testSlop1() throws Exception {
     // Ensures slop of 1 works with terms in order.
-    query = new PIMPhraseQuery(1, "field", "one", "two");
+    query = new PimPhraseQuery(1, "field", "one", "two");
     ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
     assertEquals("in order", 1, hits.length);
     QueryUtils.check(random(), query, searcher);
 
     // Ensures slop of 1 does not work for phrases out of order;
     // must be at least 2.
-    query = new PIMPhraseQuery(1, "field", "two", "one");
+    query = new PimPhraseQuery(1, "field", "two", "one");
     hits = searcher.search(query, 1000).scoreDocs;
     assertEquals("reversed, slop not 2 or more", 0, hits.length);
     QueryUtils.check(random(), query, searcher);
