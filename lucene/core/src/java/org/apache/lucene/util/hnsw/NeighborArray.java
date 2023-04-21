@@ -29,34 +29,25 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.internal
  */
 public class NeighborArray {
-  static final int UNCHECKED_NODE_INIT_SIZE = 4;
   private final boolean scoresDescOrder;
   private int size;
 
   float[] score;
   int[] node;
-  final NeighborArray uncheckedNodes;
+  private int sortedNodeSize;
 
   public NeighborArray(int maxSize, boolean descOrder) {
-    this(maxSize, descOrder, false);
-  }
-
-  public NeighborArray(int maxSize, boolean descOrder, boolean tracUncheckedNodes) {
     node = new int[maxSize];
     score = new float[maxSize];
     this.scoresDescOrder = descOrder;
-    if (tracUncheckedNodes) {
-      uncheckedNodes = new NeighborArray(UNCHECKED_NODE_INIT_SIZE, descOrder);
-    } else {
-      uncheckedNodes = null;
-    }
   }
 
   /**
    * Add a new node to the NeighborArray. The new node must be worse than all previously stored
-   * nodes.
+   * nodes. This cannot be called after {@link #addOutOfOrder(int, float)}
    */
-  public void add(int newNode, float newScore) {
+  public void addInOrder(int newNode, float newScore) {
+    assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
     if (size == node.length) {
       node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
@@ -70,35 +61,72 @@ public class NeighborArray {
     node[size] = newNode;
     score[size] = newScore;
     ++size;
+    ++sortedNodeSize;
   }
 
-  /** Add a new node to the NeighborArray into a correct sort position according to its score. */
-  public void insertSorted(int newNode, float newScore, boolean setUncheck) {
+  /** Add node and score but do not insert as sorted */
+  public void addOutOfOrder(int newNode, float newScore) {
     if (size == node.length) {
       node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
     }
-    int insertionPoint =
-        scoresDescOrder
-            ? descSortFindRightMostInsertionPoint(newScore)
-            : ascSortFindRightMostInsertionPoint(newScore);
-    System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
-    System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
-    node[insertionPoint] = newNode;
-    score[insertionPoint] = newScore;
-    ++size;
-    if (setUncheck) {
-      assert uncheckedNodes != null;
-      if (uncheckedNodes.size() == 0) {
-        uncheckedNodes.add(newNode, newScore);
-      } else {
-        uncheckedNodes.insertSorted(newNode, newScore);
-      }
-    }
+    node[size] = newNode;
+    score[size] = newScore;
+    size++;
   }
 
-  public void insertSorted(int newNode, float newScore) {
-    insertSorted(newNode, newScore, false);
+  /**
+   * Sort the array according to scores, and return the sorted indexes of previous unsorted nodes
+   * (unchecked nodes)
+   *
+   * @return indexes of newly sorted (unchecked) nodes, in ascending order, or null if the array is
+   *     already fully sorted
+   */
+  public int[] sort() {
+    if (size == sortedNodeSize) {
+      // all nodes checked and sorted
+      return null;
+    }
+    assert sortedNodeSize < size;
+    int[] uncheckedIndexes = new int[size - sortedNodeSize];
+    int count = 0;
+    while (sortedNodeSize != size) {
+      uncheckedIndexes[count] = insertSortedInternal(); // sortedNodeSize is increased inside
+      for (int i = 0; i < count; i++) {
+        if (uncheckedIndexes[i] >= uncheckedIndexes[count]) {
+          // the previous inserted nodes has been shifted
+          uncheckedIndexes[i]++;
+        }
+      }
+      count++;
+    }
+    Arrays.sort(uncheckedIndexes);
+    return uncheckedIndexes;
+  }
+
+  /** insert the first unsorted node into its sorted position */
+  private int insertSortedInternal() {
+    assert sortedNodeSize < size : "Call this method only when there's unsorted node";
+    int tmpNode = node[sortedNodeSize];
+    float tmpScore = score[sortedNodeSize];
+    int insertionPoint =
+        scoresDescOrder
+            ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
+            : ascSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize);
+    System.arraycopy(
+        node, insertionPoint, node, insertionPoint + 1, sortedNodeSize - insertionPoint);
+    System.arraycopy(
+        score, insertionPoint, score, insertionPoint + 1, sortedNodeSize - insertionPoint);
+    node[insertionPoint] = tmpNode;
+    score[insertionPoint] = tmpScore;
+    ++sortedNodeSize;
+    return insertionPoint;
+  }
+
+  /** This method is for test only. */
+  void insertSorted(int newNode, float newScore) {
+    addOutOfOrder(newNode, newScore);
+    insertSortedInternal();
   }
 
   public int size() {
@@ -120,15 +148,20 @@ public class NeighborArray {
 
   public void clear() {
     size = 0;
+    sortedNodeSize = 0;
   }
 
   public void removeLast() {
     size--;
+    sortedNodeSize = Math.min(sortedNodeSize, size);
   }
 
   public void removeIndex(int idx) {
     System.arraycopy(node, idx + 1, node, idx, size - idx - 1);
     System.arraycopy(score, idx + 1, score, idx, size - idx - 1);
+    if (idx < sortedNodeSize) {
+      sortedNodeSize--;
+    }
     size--;
   }
 
@@ -137,11 +170,11 @@ public class NeighborArray {
     return "NeighborArray[" + size + "]";
   }
 
-  private int ascSortFindRightMostInsertionPoint(float newScore) {
-    int insertionPoint = Arrays.binarySearch(score, 0, size, newScore);
+  private int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
+    int insertionPoint = Arrays.binarySearch(score, 0, bound, newScore);
     if (insertionPoint >= 0) {
       // find the right most position with the same score
-      while ((insertionPoint < size - 1) && (score[insertionPoint + 1] == score[insertionPoint])) {
+      while ((insertionPoint < bound - 1) && (score[insertionPoint + 1] == score[insertionPoint])) {
         insertionPoint++;
       }
       insertionPoint++;
@@ -151,9 +184,9 @@ public class NeighborArray {
     return insertionPoint;
   }
 
-  private int descSortFindRightMostInsertionPoint(float newScore) {
+  private int descSortFindRightMostInsertionPoint(float newScore, int bound) {
     int start = 0;
-    int end = size - 1;
+    int end = bound - 1;
     while (start <= end) {
       int mid = (start + end) / 2;
       if (score[mid] < newScore) end = mid - 1;

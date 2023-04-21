@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.NeighborArray.UNCHECKED_NODE_INIT_SIZE;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -111,7 +110,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         entryNode = node;
       }
 
-      graphUpperLevels.get(level).put(node, new NeighborArray(nsize, true, true));
+      graphUpperLevels.get(level).put(node, new NeighborArray(nsize, true));
     } else {
       // Add nodes all the way up to and including "node" in the new graph on level 0. This will
       // cause the size of the
@@ -119,7 +118,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       // number of nodes
       // added will only be in sync once all nodes from 0...last_node are added into the graph.
       while (node >= graphLevel0.size()) {
-        graphLevel0.add(new NeighborArray(nsize0, true, true));
+        graphLevel0.add(new NeighborArray(nsize0, true));
       }
     }
   }
@@ -170,24 +169,16 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public long ramBytesUsed() {
-    // this is the lower bound estimation based on initial size
-    long uncheckedNeighborArrayBytes =
-        UNCHECKED_NODE_INIT_SIZE * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
-            + Integer.BYTES * 2;
     long neighborArrayBytes0 =
         nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
-            + uncheckedNeighborArrayBytes
-            + Integer.BYTES * 2;
+            + Integer.BYTES * 3;
     long neighborArrayBytes =
         nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
-            + uncheckedNeighborArrayBytes
-            + Integer.BYTES * 2;
+            + Integer.BYTES * 3;
     long total = 0;
     for (int l = 0; l < numLevels; l++) {
       if (l == 0) {
