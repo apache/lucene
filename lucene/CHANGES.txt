@@ -84,6 +84,8 @@ Bug Fixes
 
 * GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
 
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+
 Build
 ---------------------
 
@@ -102,8 +104,6 @@ Documentation
 ---------------------
 
 * GITHUB#10633: Update javadocs in TestBackwardsCompatibility to use gradle and not ant. (Usman Shaikh)
-
-* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
 Other
 ---------------------
