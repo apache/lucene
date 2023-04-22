@@ -120,9 +120,8 @@ class GeneratingSuggester {
   }
 
   private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
-    return
-        score < root.score ||
-            score == root.score && CharSequence.compare(candidate, root.word.word) > 0;
+    return score < root.score
+        || score == root.score && CharSequence.compare(candidate, root.word.word) > 0;
   }
 
   private void processSuggestibleWords(

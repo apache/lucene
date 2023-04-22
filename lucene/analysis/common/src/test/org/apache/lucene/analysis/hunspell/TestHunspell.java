@@ -253,11 +253,13 @@ public class TestHunspell extends LuceneTestCase {
     String smallDict = "1\n" + String.join("\n", words.subList(0, words.size() / 4));
     String largerDict = "1\n" + String.join("\n", words);
     Dictionary small =
-        loadDictionary(false,
+        loadDictionary(
+            false,
             new ByteArrayInputStream(new byte[0]),
             new ByteArrayInputStream(smallDict.getBytes(StandardCharsets.UTF_8)));
     Dictionary larger =
-        loadDictionary(false,
+        loadDictionary(
+            false,
             new ByteArrayInputStream(new byte[0]),
             new ByteArrayInputStream(largerDict.getBytes(StandardCharsets.UTF_8)));
 
