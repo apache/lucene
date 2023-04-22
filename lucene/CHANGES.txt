@@ -104,6 +104,8 @@ Other
 
 * GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
 
+* GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
+
 ======================== Lucene 9.6.0 =======================
 
 API Changes
