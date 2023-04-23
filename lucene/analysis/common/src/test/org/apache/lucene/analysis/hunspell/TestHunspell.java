@@ -170,7 +170,10 @@ public class TestHunspell extends LuceneTestCase {
   }
 
   private Hunspell loadNoTimeout(String name) throws Exception {
-    Dictionary dictionary = loadDictionary(false, name + ".aff", name + ".dic");
+    return loadNoTimeout(loadDictionary(false, name + ".aff", name + ".dic"));
+  }
+
+  private static Hunspell loadNoTimeout(Dictionary dictionary) {
     return new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
   }
 
@@ -269,8 +272,8 @@ public class TestHunspell extends LuceneTestCase {
 
     assertFalse(new Hunspell(small).spell(original));
 
-    List<String> smallSug = new Hunspell(small).suggest(original);
-    List<String> largerSug = new Hunspell(larger).suggest(original);
+    List<String> smallSug = loadNoTimeout(small).suggest(original);
+    List<String> largerSug = loadNoTimeout(larger).suggest(original);
     assertEquals(smallSug.toString(), 4, smallSug.size());
     assertEquals(smallSug, largerSug);
   }
