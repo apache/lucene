@@ -111,6 +111,8 @@ Other
 * GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
   IndexInput and IndexOutput classes (Marc D'Mello)
 
+* GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
+
 ======================== Lucene 9.5.0 =======================
 
 API Changes
