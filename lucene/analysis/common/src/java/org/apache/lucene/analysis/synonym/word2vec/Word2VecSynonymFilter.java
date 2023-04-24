@@ -65,6 +65,9 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       int maxSynonymsPerTerm,
       float minAcceptedSimilarity) {
     super(input);
+    if (synonymProvider == null) {
+      throw new IllegalArgumentException("The SynonymProvider must be non-null");
+    }
     this.synonymProvider = synonymProvider;
     this.maxSynonymsPerTerm = maxSynonymsPerTerm;
     this.minAcceptedSimilarity = minAcceptedSimilarity;
