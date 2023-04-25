@@ -20,8 +20,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
@@ -30,14 +29,12 @@ import org.apache.lucene.search.Weight;
  * Weight wrapper that will compute how much time it takes to build the {@link Scorer} and then
  * return a {@link Scorer} that is wrapped in order to compute timings as well.
  */
-class QueryProfilerWeight extends Weight {
+class QueryProfilerWeight extends FilterWeight {
 
-  private final Weight subQueryWeight;
   private final QueryProfilerBreakdown profile;
 
-  public QueryProfilerWeight(Query query, Weight subQueryWeight, QueryProfilerBreakdown profile) {
-    super(query);
-    this.subQueryWeight = subQueryWeight;
+  public QueryProfilerWeight(Weight subQueryWeight, QueryProfilerBreakdown profile) {
+    super(subQueryWeight);
     this.profile = profile;
   }
 
@@ -46,7 +43,7 @@ class QueryProfilerWeight extends Weight {
     QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.COUNT);
     timer.start();
     try {
-      return subQueryWeight.count(context);
+      return in.count(context);
     } finally {
       timer.stop();
     }
@@ -67,7 +64,7 @@ class QueryProfilerWeight extends Weight {
     timer.start();
     final ScorerSupplier subQueryScorerSupplier;
     try {
-      subQueryScorerSupplier = subQueryWeight.scorerSupplier(context);
+      subQueryScorerSupplier = in.scorerSupplier(context);
     } finally {
       timer.stop();
     }
@@ -110,11 +107,6 @@ class QueryProfilerWeight extends Weight {
     // this might be a significantly different execution path for some queries
     // like disjunctions, but in general this is what is done anyway
     return super.bulkScorer(context);
-  }
-
-  @Override
-  public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-    return subQueryWeight.explain(context, doc);
   }
 
   @Override
