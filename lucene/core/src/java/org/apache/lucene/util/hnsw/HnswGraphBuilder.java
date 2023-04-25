@@ -316,11 +316,11 @@ public final class HnswGraphBuilder<T> {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
-      NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
-      nbrNbr.addOutOfOrder(node, neighbors.score[i]);
-      if (nbrNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrNbr);
-        nbrNbr.removeIndex(indexToRemove);
+      NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
+      nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
+      if (nbrsOfNbr.size() > maxConnOnLevel) {
+        int indexToRemove = findWorstNonDiverse(nbrsOfNbr);
+        nbrsOfNbr.removeIndex(indexToRemove);
       }
     }
   }
