@@ -100,7 +100,7 @@ class QueryProfilerWeight extends FilterWeight {
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
     // We use the default bulk scorer instead of the specialized one. The reason
-    // is that Lucene's BulkScorers do everything at once: finding matches,
+    // is that BulkScorers do everything at once: finding matches,
     // scoring them and calling the collector, so they make it impossible to
     // see where time is spent, which is the purpose of query profiling.
     // The default bulk scorer will pull a scorer and iterate over matches,
