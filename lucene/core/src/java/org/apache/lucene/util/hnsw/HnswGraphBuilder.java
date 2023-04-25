@@ -41,17 +41,8 @@ import org.apache.lucene.util.InfoStream;
  */
 public final class HnswGraphBuilder<T> {
 
-  /** Default number of maximum connections per node */
-  public static final int DEFAULT_MAX_CONN = 16;
-
-  /**
-   * Default number of the size of the queue maintained while searching during a graph construction.
-   */
-  public static final int DEFAULT_BEAM_WIDTH = 100;
-
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
-
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
