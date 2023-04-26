@@ -104,10 +104,10 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   }
 
   private static class SizedFile {
-    String name;
-    long length;
+    private final String name;
+    private final long length;
 
-    SizedFile(String name, long length) {
+    private SizedFile(String name, long length) {
       this.name = name;
       this.length = length;
     }
