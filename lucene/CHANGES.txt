@@ -170,6 +170,8 @@ Optimizations
 
 * GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
 
+* GITHUB#12241: Add ordering of files in compound files. (Christoph Büscher)
+
 Bug Fixes
 ---------------------
 
