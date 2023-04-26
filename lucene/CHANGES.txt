@@ -106,6 +106,32 @@ Other
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
+======================== Lucene 9.7.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.6.0 =======================
 
 API Changes
