@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
@@ -44,16 +45,18 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     int chunk = 1024; // internal buffer size used by the stream
     SegmentInfo si = newSegmentInfo(dir, segment);
     byte[] segId = si.getId();
-    List<String> files = new ArrayList<>();
+    List<String> orderedFiles = new ArrayList<>();
     int randomFileSize = random().nextInt(0, chunk);
     for (int i = 0; i < 10; i++) {
       String filename = segment + "." + i;
       createRandomFile(dir, filename, randomFileSize, segId);
       // increase the next files size by a random amount
       randomFileSize += random().nextInt(1, 100);
-      files.add(filename);
+      orderedFiles.add(filename);
     }
-    si.setFiles(files);
+    List<String> shuffledFiles = new ArrayList<>(orderedFiles);
+    Collections.shuffle(shuffledFiles, random());
+    si.setFiles(shuffledFiles);
     si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
 
     // entries file should contain files ordered by their size
@@ -74,7 +77,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
         long lastLength = 0;
         for (int i = 0; i < numEntries; i++) {
           final String id = entriesStream.readString();
-          assertEquals(files.get(i), segment + id);
+          assertEquals(orderedFiles.get(i), segment + id);
           long offset = entriesStream.readLong();
           assertTrue(offset > lastOffset);
           lastOffset = offset;
