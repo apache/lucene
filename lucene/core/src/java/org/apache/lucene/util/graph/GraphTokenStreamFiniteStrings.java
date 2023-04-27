@@ -18,6 +18,7 @@
 package org.apache.lucene.util.graph;
 
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
+import static org.apache.lucene.util.automaton.Operations.MAX_RECURSION_LEVEL;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,7 +47,6 @@ import org.apache.lucene.util.automaton.Transition;
  */
 public final class GraphTokenStreamFiniteStrings {
 
-  private static final int MAX_RECURSION_DEPTH = 1024;
   private AttributeSource[] tokens = new AttributeSource[4];
   private final Automaton det;
   private final Transition transition = new Transition();
@@ -270,9 +270,13 @@ public final class GraphTokenStreamFiniteStrings {
     int numT = a.initTransition(state, t);
     for (int i = 0; i < numT; i++) {
       a.getNextTransition(t);
-      if (visited.get(t.dest) == false && d < MAX_RECURSION_DEPTH) {
+      if (visited.get(t.dest) == false) {
         parent[t.dest] = state;
-        articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
+        if (d < MAX_RECURSION_LEVEL) {
+          articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
+        } else {
+          continue;
+        }
         childCount++;
         if (low[t.dest] >= depth[state]) {
           isArticulation = true;
