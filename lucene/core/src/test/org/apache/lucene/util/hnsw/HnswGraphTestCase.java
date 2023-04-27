@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -265,19 +266,50 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
+  List<Integer> sortedNodesOnLevel(HnswGraph h, int level) throws IOException {
+    NodesIterator nodesOnLevel = h.getNodesOnLevel(level);
+    List<Integer> nodes = new ArrayList<>();
+    while (nodesOnLevel.hasNext()) {
+      nodes.add(nodesOnLevel.next());
+    }
+    Collections.sort(nodes);
+    return nodes;
+  }
+
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
-    assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
-    assertEquals("the number of nodes in the graphs are different!", g.size(), h.size());
+    // construct these up front since they call seek which will mess up our test loop
+    String prettyG = prettyPrint(g);
+    String prettyH = prettyPrint(h);
+    assertEquals(
+        String.format(
+            Locale.ROOT,
+            "the number of levels in the graphs are different:%n%s%n%s",
+            prettyG,
+            prettyH),
+        g.numLevels(),
+        h.numLevels());
+    assertEquals(
+        String.format(
+            Locale.ROOT,
+            "the number of nodes in the graphs are different:%n%s%n%s",
+            prettyG,
+            prettyH),
+        g.size(),
+        h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
-      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
-      NodesIterator nodesOnLevel2 = h.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
-        int node = nodesOnLevel.nextInt();
-        int node2 = nodesOnLevel2.nextInt();
-        assertEquals("nodes in the graphs are different", node, node2);
-      }
+      List<Integer> hNodes = sortedNodesOnLevel(h, level);
+      List<Integer> gNodes = sortedNodesOnLevel(g, level);
+      assertEquals(
+          String.format(
+              Locale.ROOT,
+              "nodes in the graphs are different on level %d:%n%s%n%s",
+              level,
+              prettyG,
+              prettyH),
+          gNodes,
+          hNodes);
     }
 
     // assert equal nodes' neighbours on each level
@@ -287,7 +319,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
-        assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
+        assertEquals(
+            String.format(
+                Locale.ROOT,
+                "arcs differ for node %d on level %d:%n%s%n%s",
+                node,
+                level,
+                prettyG,
+                prettyH),
+            getNeighborNodes(g),
+            getNeighborNodes(h));
       }
     }
   }
@@ -495,14 +536,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     for (int currLevel = 1; currLevel < numLevels; currLevel++) {
-      NodesIterator nodesIterator = bottomUpExpectedHnsw.getNodesOnLevel(currLevel);
       List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
-      assertEquals(expectedNodesOnLevel.size(), nodesIterator.size());
-      for (Integer expectedNode : expectedNodesOnLevel) {
-        int currentNode = nodesIterator.nextInt();
-        assertEquals(expectedNode.intValue(), currentNode);
-        assertEquals(0, bottomUpExpectedHnsw.getNeighbors(currLevel, currentNode).size());
-      }
+      List<Integer> sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
+      assertEquals(
+          String.format(Locale.ROOT, "Nodes on level %d do not match", currLevel),
+          expectedNodesOnLevel,
+          sortedNodes);
     }
 
     assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
@@ -607,13 +646,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
     for (int level = 1; level < g.numLevels(); level++) {
-      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
-      NodesIterator nodesOnLevel2 = h.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
-        int node = nodesOnLevel.nextInt();
-        int node2 = oldToNewOrdMap.get(nodesOnLevel2.nextInt());
-        assertEquals("nodes in the graphs are different", node, node2);
-      }
+      List<Integer> nodesOnLevel = sortedNodesOnLevel(g, level);
+      List<Integer> nodesOnLevel2 =
+          sortedNodesOnLevel(h, level).stream().map(oldToNewOrdMap::get).toList();
+      assertEquals(nodesOnLevel, nodesOnLevel2);
     }
 
     // assert that the neighbors from the old graph are successfully transferred to the new graph
@@ -1195,5 +1231,35 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       bvec[i] = (byte) (fvec[i] * 127);
     }
     return bvec;
+  }
+
+  static String prettyPrint(HnswGraph hnsw) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(hnsw);
+    sb.append("\n");
+
+    try {
+      for (int level = 0; level < hnsw.numLevels(); level++) {
+        sb.append("# Level ").append(level).append("\n");
+        NodesIterator it = hnsw.getNodesOnLevel(level);
+        while (it.hasNext()) {
+          int node = it.nextInt();
+          sb.append("  ").append(node).append(" -> ");
+          hnsw.seek(level, node);
+          while (true) {
+            int neighbor = hnsw.nextNeighbor();
+            if (neighbor == NO_MORE_DOCS) {
+              break;
+            }
+            sb.append(" ").append(neighbor);
+          }
+          sb.append("\n");
+        }
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    return sb.toString();
   }
 }
