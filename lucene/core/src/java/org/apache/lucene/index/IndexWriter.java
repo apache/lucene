@@ -4761,7 +4761,11 @@ public class IndexWriter
                   + segString(info)
                   + " does not exist in live infos");
         }
-        return false;
+        throw new MergePolicy.MergeException(
+            "MergePolicy selected a segment ("
+                + info.info.name
+                + ") that is not in the current index "
+                + segString());
       }
       if (info.info.dir != directoryOrig) {
         isExternal = true;

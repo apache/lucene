@@ -454,7 +454,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
             // return many merges.
             MergeSpecification spec = new MergeSpecification();
             List<SegmentCommitInfo> oneMerge = new ArrayList<>();
-            for (SegmentCommitInfo sci : segmentsToMerge.keySet()) {
+            for (SegmentCommitInfo sci : segmentInfos) {
               oneMerge.add(sci);
               if (oneMerge.size() >= 10) {
                 spec.add(new OneMerge(new ArrayList<>(oneMerge)));
