@@ -896,7 +896,7 @@ public class TestBlockJoin extends LuceneTestCase {
           assertEquals(hit.score, explanation.getValue().doubleValue(), 0.0f);
           Matcher m =
               Pattern.compile(
-                      "Score based on ([0-9]+) child docs in range from ([0-9]+) to ([0-9]+), best match:")
+                      "Score based on ([0-9]+) child docs in range from ([0-9]+) to ([0-9]+), using score mode %s:")
                   .matcher(explanation.getDescription());
           assertTrue("Block Join description not matches", m.matches());
           assertTrue("Matched children not positive", Integer.parseInt(m.group(1)) > 0);
