@@ -428,6 +428,7 @@ public class ToParentBlockJoinQuery extends Query {
                 aggregatedScore = childScore;
                 aggregateExplanation = Explanation.match(aggregatedScore, scoreDescription, child);
               }
+              break;
             case Min:
               if (matches == 1 || childScore < aggregatedScore) {
                 aggregatedScore = childScore;
