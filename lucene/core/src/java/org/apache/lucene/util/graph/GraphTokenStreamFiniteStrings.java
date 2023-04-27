@@ -46,6 +46,7 @@ import org.apache.lucene.util.automaton.Transition;
  */
 public final class GraphTokenStreamFiniteStrings {
 
+  private static final int MAX_RECURSION_DEPTH = 1024;
   private AttributeSource[] tokens = new AttributeSource[4];
   private final Automaton det;
   private final Transition transition = new Transition();
@@ -269,7 +270,7 @@ public final class GraphTokenStreamFiniteStrings {
     int numT = a.initTransition(state, t);
     for (int i = 0; i < numT; i++) {
       a.getNextTransition(t);
-      if (visited.get(t.dest) == false) {
+      if (visited.get(t.dest) == false && d < MAX_RECURSION_DEPTH) {
         parent[t.dest] = state;
         articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
         childCount++;
