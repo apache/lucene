@@ -417,17 +417,24 @@ public class ToParentBlockJoinQuery extends Query {
             case Avg:
             case Total:
               aggregatedScore += childScore;
-              aggregateExplanation = Explanation.match(aggregatedScore, "Aggregated score", aggregateExplanation, child);
+              aggregateExplanation =
+                  Explanation.match(
+                      aggregatedScore, "Aggregated score", aggregateExplanation, child);
               break;
             case Max:
-              if (aggregateExplanation == null || childScore > aggregateExplanation.getValue().floatValue()) {
+              if (aggregateExplanation == null
+                  || childScore > aggregateExplanation.getValue().floatValue()) {
                 aggregatedScore = childScore;
-                aggregateExplanation = Explanation.match(aggregatedScore, "Aggregated score", aggregateExplanation, child);
+                aggregateExplanation =
+                    Explanation.match(
+                        aggregatedScore, "Aggregated score", aggregateExplanation, child);
               }
             case Min:
               if (matches == 1 || childScore < aggregatedScore) {
                 aggregatedScore = childScore;
-                aggregateExplanation = Explanation.match(aggregatedScore, "Aggregated score", aggregateExplanation, child);
+                aggregateExplanation =
+                    Explanation.match(
+                        aggregatedScore, "Aggregated score", aggregateExplanation, child);
               }
               break;
           }
@@ -436,7 +443,8 @@ public class ToParentBlockJoinQuery extends Query {
       // Calculate the average if scoreMode is Avg
       if (scoreMode == ScoreMode.Avg && matches > 0) {
         aggregatedScore /= matches;
-        aggregateExplanation = Explanation.match(aggregatedScore, "Aggregated score", aggregateExplanation);
+        aggregateExplanation =
+            Explanation.match(aggregatedScore, "Aggregated score", aggregateExplanation);
       }
       return Explanation.match(
           score(),
@@ -445,8 +453,9 @@ public class ToParentBlockJoinQuery extends Query {
               "Score based on %d child docs in range from %d to %d, using score mode :%s, best match:",
               matches,
               start,
-              end, scoreMode.toString()),
-              aggregateExplanation);
+              end,
+              scoreMode.toString()),
+          aggregateExplanation);
     }
   }
 
