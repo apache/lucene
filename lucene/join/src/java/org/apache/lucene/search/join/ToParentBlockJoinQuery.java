@@ -412,7 +412,7 @@ public class ToParentBlockJoinQuery extends Query {
           float childScore = child.getValue().floatValue();
           String scoreDescription =
               String.format(
-                  "Score based on %d child docs in range from %d to %d, using score mode :%s, best match:",
+                  "Score based on %d child docs in range from %d to %d, using score mode :%s",
                   matches, start, end, scoreMode.toString());
           switch (scoreMode) {
             case None:
