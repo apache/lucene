@@ -72,8 +72,6 @@ Optimizations
 
 * GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
 
-* GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
-
 Bug Fixes
 ---------------------
 
@@ -127,6 +125,8 @@ Optimizations
 ---------------------
 
 * GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
+
+* GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
 
 Bug Fixes
 ---------------------
