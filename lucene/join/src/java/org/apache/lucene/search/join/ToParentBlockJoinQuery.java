@@ -170,11 +170,11 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-        BlockJoinScorer scorer = (BlockJoinScorer) scorer(context);
-        if (scorer != null && scorer.iterator().advance(doc) == doc) {
-          return scorer.explain(context, in, scoreMode);
-        }
-        return Explanation.noMatch("Not a match");
+      BlockJoinScorer scorer = (BlockJoinScorer) scorer(context);
+      if (scorer != null && scorer.iterator().advance(doc) == doc) {
+        return scorer.explain(context, in, scoreMode);
+      }
+      return Explanation.noMatch("Not a match");
     }
 
     @Override
@@ -392,10 +392,11 @@ public class ToParentBlockJoinQuery extends Query {
       this.score = (float) score;
     }
     /*
-    * This instance of Explanation requires three parameters, context, childWeight, and scoreMode.
-    * The scoreMode parameter considers Avg, Total, Min, Max, and None.
-    * */
-    public Explanation explain(LeafReaderContext context, Weight childWeight, ScoreMode scoreMode) throws IOException {
+     * This instance of Explanation requires three parameters, context, childWeight, and scoreMode.
+     * The scoreMode parameter considers Avg, Total, Min, Max, and None.
+     * */
+    public Explanation explain(LeafReaderContext context, Weight childWeight, ScoreMode scoreMode)
+        throws IOException {
       int prevParentDoc = parentBits.prevSetBit(parentApproximation.docID() - 1);
       int start =
           context.docBase + prevParentDoc + 1; // +1 b/c prevParentDoc is previous parent doc
@@ -441,7 +442,7 @@ public class ToParentBlockJoinQuery extends Query {
               matches,
               start,
               end,
-          scoreMode.toString()));
+              scoreMode.toString()));
     }
   }
 

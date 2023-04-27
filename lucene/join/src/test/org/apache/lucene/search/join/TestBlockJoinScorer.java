@@ -105,15 +105,14 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     reader.close();
     dir.close();
   }
+
   public void testExplainScoreModeSum() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w =
-            new RandomIndexWriter(
-                    random(),
-                    dir,
-                    newIndexWriterConfig()
-                            .setMergePolicy(
-                                    newLogMergePolicy(random().nextBoolean())));
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     List<Document> docs = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       docs.clear();
@@ -136,14 +135,13 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     BitSetProducer parentsFilter =
-            new QueryBitSetProducer(new TermQuery(new Term("docType", "parent")));
+        new QueryBitSetProducer(new TermQuery(new Term("docType", "parent")));
     CheckJoinIndex.check(reader, parentsFilter);
 
     Query childQuery = new TermQuery(new Term("docType", "child"));
     ToParentBlockJoinQuery query =
-            new ToParentBlockJoinQuery(
-                    childQuery, parentsFilter, org.apache.lucene.search.join.ScoreMode.Total);
-
+        new ToParentBlockJoinQuery(
+            childQuery, parentsFilter, org.apache.lucene.search.join.ScoreMode.Total);
 
     TopDocs topDocs = searcher.search(query, 10);
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
