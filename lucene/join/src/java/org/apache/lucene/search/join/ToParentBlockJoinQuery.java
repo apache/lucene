@@ -170,11 +170,11 @@ public class ToParentBlockJoinQuery extends Query {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      BlockJoinScorer scorer = (BlockJoinScorer) scorer(context);
-      if (scorer != null && scorer.iterator().advance(doc) == doc) {
-        return scorer.explain(context, in);
-      }
-      return Explanation.noMatch("Not a match");
+        BlockJoinScorer scorer = (BlockJoinScorer) scorer(context);
+        if (scorer != null && scorer.iterator().advance(doc) == doc) {
+          return scorer.explain(context, in, scoreMode);
+        }
+        return Explanation.noMatch("Not a match");
     }
 
     @Override
@@ -391,35 +391,57 @@ public class ToParentBlockJoinQuery extends Query {
       }
       this.score = (float) score;
     }
-
-    public Explanation explain(LeafReaderContext context, Weight childWeight) throws IOException {
+    /*
+    * This instance of Explanation requires three parameters, context, childWeight, and scoreMode.
+    * The scoreMode parameter considers Avg, Total, Min, Max, and None.
+    * */
+    public Explanation explain(LeafReaderContext context, Weight childWeight, ScoreMode scoreMode) throws IOException {
       int prevParentDoc = parentBits.prevSetBit(parentApproximation.docID() - 1);
       int start =
           context.docBase + prevParentDoc + 1; // +1 b/c prevParentDoc is previous parent doc
       int end = context.docBase + parentApproximation.docID() - 1; // -1 b/c parentDoc is parent doc
 
-      Explanation bestChild = null;
+      float aggregatedScore;
+      aggregatedScore = 0;
       int matches = 0;
       for (int childDoc = start; childDoc <= end; childDoc++) {
         Explanation child = childWeight.explain(context, childDoc - context.docBase);
         if (child.isMatch()) {
           matches++;
-          if (bestChild == null
-              || child.getValue().floatValue() > bestChild.getValue().floatValue()) {
-            bestChild = child;
+          float childScore = child.getValue().floatValue();
+          switch (scoreMode) {
+            case None:
+              break;
+            case Avg:
+            case Total:
+              aggregatedScore += childScore;
+              break;
+            case Max:
+              aggregatedScore = Math.max(aggregatedScore, childScore);
+              break;
+            case Min:
+              if (matches == 1 || childScore < aggregatedScore) {
+                aggregatedScore = childScore;
+              }
+              break;
           }
         }
+      }
+
+      // Calculate the average if scoreMode is Avg
+      if (scoreMode == ScoreMode.Avg && matches > 0) {
+        aggregatedScore /= matches;
       }
 
       return Explanation.match(
           score(),
           String.format(
               Locale.ROOT,
-              "Score based on %d child docs in range from %d to %d, best match:",
+              "Score based on %d child docs in range from %d to %d, using score mode %s:",
               matches,
               start,
-              end),
-          bestChild);
+              end,
+          scoreMode.toString()));
     }
   }
 

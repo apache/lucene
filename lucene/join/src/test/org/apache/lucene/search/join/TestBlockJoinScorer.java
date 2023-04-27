@@ -24,14 +24,8 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.*;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -107,6 +101,55 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     assertEquals(2, scorer.iterator().nextDoc());
     scorer.setMinCompetitiveScore(Math.nextUp(0f));
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
+
+    reader.close();
+    dir.close();
+  }
+  public void testExplainScoreModeSum() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+            new RandomIndexWriter(
+                    random(),
+                    dir,
+                    newIndexWriterConfig()
+                            .setMergePolicy(
+                                    newLogMergePolicy(random().nextBoolean())));
+    List<Document> docs = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      docs.clear();
+      for (int j = 0; j < i; j++) {
+        Document child = new Document();
+        child.add(newStringField("value", Integer.toString(j), Field.Store.YES));
+        child.add(newStringField("docType", "child", Field.Store.NO));
+        docs.add(child);
+      }
+      Document parent = new Document();
+      parent.add(newStringField("value", Integer.toString(i), Field.Store.YES));
+      parent.add(newStringField("docType", "parent", Field.Store.NO));
+      docs.add(parent);
+      w.addDocuments(docs);
+    }
+    w.forceMerge(1);
+
+    IndexReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    BitSetProducer parentsFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "parent")));
+    CheckJoinIndex.check(reader, parentsFilter);
+
+    Query childQuery = new TermQuery(new Term("docType", "child"));
+    ToParentBlockJoinQuery query =
+            new ToParentBlockJoinQuery(
+                    childQuery, parentsFilter, org.apache.lucene.search.join.ScoreMode.Total);
+
+
+    TopDocs topDocs = searcher.search(query, 10);
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      Explanation explanation = searcher.explain(query, scoreDoc.doc);
+      assertEquals(scoreDoc.score, explanation.getValue().floatValue(), 0.001f);
+    }
 
     reader.close();
     dir.close();
