@@ -81,3 +81,6 @@ tomter	tomt
 tomtar	tomt
 änderna	änd
 ändar	änd
+reaktion	reaktion
+kommunikation	kommunikation
+inflation	inflation
