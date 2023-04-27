@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
@@ -495,11 +497,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     for (int currLevel = 1; currLevel < numLevels; currLevel++) {
-      NodesIterator nodesIterator = bottomUpExpectedHnsw.getNodesOnLevel(currLevel);
+      var nodesIterator = bottomUpExpectedHnsw.getNodesOnLevel(currLevel);
       List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
       assertEquals(expectedNodesOnLevel.size(), nodesIterator.size());
+      var sortedNodes = IntStream.iterate(0, i -> nodesIterator.hasNext(), i -> nodesIterator.next())
+              .sorted().iterator();
       for (Integer expectedNode : expectedNodesOnLevel) {
-        int currentNode = nodesIterator.nextInt();
+        int currentNode = sortedNodes.nextInt();
         assertEquals(expectedNode.intValue(), currentNode);
         assertEquals(0, bottomUpExpectedHnsw.getNeighbors(currLevel, currentNode).size());
       }
