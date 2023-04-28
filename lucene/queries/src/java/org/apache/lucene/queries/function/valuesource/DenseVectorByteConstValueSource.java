@@ -16,57 +16,59 @@
  */
 package org.apache.lucene.queries.function.valuesource;
 
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.queries.function.FunctionValues;
-import org.apache.lucene.queries.function.ValueSource;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.queries.function.FunctionValues;
+import org.apache.lucene.queries.function.ValueSource;
 
 public class DenseVectorByteConstValueSource extends ValueSource {
-    byte[] vector;
-    public DenseVectorByteConstValueSource(List<Number> constVector) {
-        this.vector = new byte[constVector.size()];
-        for (int i = 0; i < constVector.size(); i++) {
-            vector[i] = constVector.get(i).byteValue();
-        }
-    }
+  byte[] vector;
 
-    @Override
-    public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext) throws IOException {
-        return new FunctionValues() {
-            @Override
-            public byte[] byteVectorVal(int doc) {
-                return vector;
-            }
-            @Override
-            public String strVal(int doc) {
-                return Arrays.toString(vector);
-            }
-
-            @Override
-            public String toString(int doc) throws IOException {
-                return description() + '=' + strVal(doc);
-            }
-        };
+  public DenseVectorByteConstValueSource(List<Number> constVector) {
+    this.vector = new byte[constVector.size()];
+    for (int i = 0; i < constVector.size(); i++) {
+      vector[i] = constVector.get(i).byteValue();
     }
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof DenseVectorByteConstValueSource)) return false;
-        DenseVectorByteConstValueSource other = (DenseVectorByteConstValueSource) o;
-        return Arrays.equals(vector, other.vector);
-    }
+  @Override
+  public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
+      throws IOException {
+    return new FunctionValues() {
+      @Override
+      public byte[] byteVectorVal(int doc) {
+        return vector;
+      }
 
-    @Override
-    public int hashCode() {
-        return getClass().hashCode() * 31 + Arrays.hashCode(vector);
-    }
+      @Override
+      public String strVal(int doc) {
+        return Arrays.toString(vector);
+      }
 
-    @Override
-    public String description() {
-        return "denseVectorConst(" + Arrays.toString(vector) + ')';
-    }
+      @Override
+      public String toString(int doc) throws IOException {
+        return description() + '=' + strVal(doc);
+      }
+    };
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof DenseVectorByteConstValueSource)) return false;
+    DenseVectorByteConstValueSource other = (DenseVectorByteConstValueSource) o;
+    return Arrays.equals(vector, other.vector);
+  }
+
+  @Override
+  public int hashCode() {
+    return getClass().hashCode() * 31 + Arrays.hashCode(vector);
+  }
+
+  @Override
+  public String description() {
+    return "denseVectorConst(" + Arrays.toString(vector) + ')';
+  }
 }

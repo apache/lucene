@@ -16,20 +16,20 @@
  */
 package org.apache.lucene.queries.function.valuesource;
 
+import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
-import java.io.IOException;
-
 public class FloatDenseVectorSimilarityFunction extends DenseVectorSimilarityFunction {
-    public FloatDenseVectorSimilarityFunction(VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
-        super(similarityFunction, vector1, vector2);
-    }
+  public FloatDenseVectorSimilarityFunction(
+      VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+    super(similarityFunction, vector1, vector2);
+  }
 
-    @Override
-    protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-        checkSize(f1.floatVectorVal(doc).length, f2.floatVectorVal(doc).length);
-        return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
-    }
+  @Override
+  protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
+    checkSize(f1.floatVectorVal(doc).length, f2.floatVectorVal(doc).length);
+    return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
+  }
 }

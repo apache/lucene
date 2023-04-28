@@ -16,57 +16,59 @@
  */
 package org.apache.lucene.queries.function.valuesource;
 
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.queries.function.FunctionValues;
-import org.apache.lucene.queries.function.ValueSource;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.queries.function.FunctionValues;
+import org.apache.lucene.queries.function.ValueSource;
 
 public class DenseVectorFloatConstValueSource extends ValueSource {
-    float[] vector;
-    public DenseVectorFloatConstValueSource(List<Number> constVector) {
-        this.vector = new float[constVector.size()];
-        for (int i = 0; i < constVector.size(); i++) {
-            vector[i] = constVector.get(i).floatValue();
-        }
-    }
+  float[] vector;
 
-    @Override
-    public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext) throws IOException {
-        return new FunctionValues() {
-            @Override
-            public float[] floatVectorVal(int doc) {
-                return vector;
-            }
-            @Override
-            public String strVal(int doc) {
-                return Arrays.toString(vector);
-            }
-
-            @Override
-            public String toString(int doc) throws IOException {
-                return description() + '=' + strVal(doc);
-            }
-        };
+  public DenseVectorFloatConstValueSource(List<Number> constVector) {
+    this.vector = new float[constVector.size()];
+    for (int i = 0; i < constVector.size(); i++) {
+      vector[i] = constVector.get(i).floatValue();
     }
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof DenseVectorFloatConstValueSource)) return false;
-        DenseVectorFloatConstValueSource other = (DenseVectorFloatConstValueSource) o;
-        return Arrays.equals(vector, other.vector);
-    }
+  @Override
+  public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
+      throws IOException {
+    return new FunctionValues() {
+      @Override
+      public float[] floatVectorVal(int doc) {
+        return vector;
+      }
 
-    @Override
-    public int hashCode() {
-        return getClass().hashCode() * 31 + Arrays.hashCode(vector);
-    }
+      @Override
+      public String strVal(int doc) {
+        return Arrays.toString(vector);
+      }
 
-    @Override
-    public String description() {
-        return "denseVectorConst(" + Arrays.toString(vector) + ')';
-    }
+      @Override
+      public String toString(int doc) throws IOException {
+        return description() + '=' + strVal(doc);
+      }
+    };
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof DenseVectorFloatConstValueSource)) return false;
+    DenseVectorFloatConstValueSource other = (DenseVectorFloatConstValueSource) o;
+    return Arrays.equals(vector, other.vector);
+  }
+
+  @Override
+  public int hashCode() {
+    return getClass().hashCode() * 31 + Arrays.hashCode(vector);
+  }
+
+  @Override
+  public String description() {
+    return "denseVectorConst(" + Arrays.toString(vector) + ')';
+  }
 }

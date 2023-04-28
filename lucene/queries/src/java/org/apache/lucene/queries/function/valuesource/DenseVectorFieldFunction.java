@@ -16,39 +16,38 @@
  */
 package org.apache.lucene.queries.function.valuesource;
 
+import java.io.IOException;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
-import java.io.IOException;
-
 public abstract class DenseVectorFieldFunction extends FunctionValues {
 
-    protected final ValueSource vs;
-    int lastDocID;
+  protected final ValueSource vs;
+  int lastDocID;
 
-    protected DenseVectorFieldFunction(ValueSource vs) {
-        this.vs = vs;
+  protected DenseVectorFieldFunction(ValueSource vs) {
+    this.vs = vs;
+  }
+
+  protected abstract DocIdSetIterator getVectorIterator();
+
+  @Override
+  public String toString(int doc) throws IOException {
+    return vs.description() + strVal(doc);
+  }
+
+  @Override
+  public boolean exists(int doc) throws IOException {
+    if (doc < lastDocID) {
+      throw new IllegalArgumentException(
+          "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
     }
-
-    abstract protected DocIdSetIterator getVectorIterator();
-
-    @Override
-    public String toString(int doc) throws IOException {
-        return vs.description() + strVal(doc);
+    lastDocID = doc;
+    int curDocID = getVectorIterator().docID();
+    if (doc > curDocID) {
+      curDocID = getVectorIterator().advance(doc);
     }
-
-    @Override
-    public boolean exists(int doc) throws IOException {
-        if (doc < lastDocID) {
-            throw new IllegalArgumentException(
-                    "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
-        }
-        lastDocID = doc;
-        int curDocID = getVectorIterator().docID();
-        if (doc > curDocID) {
-            curDocID = getVectorIterator().advance(doc);
-        }
-        return doc == curDocID;
-    }
+    return doc == curDocID;
+  }
 }

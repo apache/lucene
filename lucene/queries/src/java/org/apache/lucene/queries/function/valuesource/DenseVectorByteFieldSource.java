@@ -16,67 +16,68 @@
  */
 package org.apache.lucene.queries.function.valuesource;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Map;
-
 public class DenseVectorByteFieldSource extends ValueSource {
-    private final String fieldName;
-    public DenseVectorByteFieldSource(String fieldName) {
-        this.fieldName = fieldName;
-    }
+  private final String fieldName;
 
-    @Override
-    public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext) throws IOException {
+  public DenseVectorByteFieldSource(String fieldName) {
+    this.fieldName = fieldName;
+  }
 
-        final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
-        return new DenseVectorFieldFunction(this){
-            byte[] defaultVector = null;
+  @Override
+  public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
+      throws IOException {
 
-            @Override
-            public byte[] byteVectorVal(int doc) throws IOException {
-                if (exists(doc)){
-                    return vectorValues.vectorValue();
-                } else {
-                    return defaultVector();
-                }
-            }
+    final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
+    return new DenseVectorFieldFunction(this) {
+      byte[] defaultVector = null;
 
-            @Override
-            protected DocIdSetIterator getVectorIterator() {
-                return vectorValues;
-            }
+      @Override
+      public byte[] byteVectorVal(int doc) throws IOException {
+        if (exists(doc)) {
+          return vectorValues.vectorValue();
+        } else {
+          return defaultVector();
+        }
+      }
 
-            private byte[] defaultVector(){
-                if (defaultVector == null){
-                    defaultVector = new byte[vectorValues.dimension()];
-                    Arrays.fill(defaultVector, (byte) 0);
-                }
-                return defaultVector;
-            }
-        };
-    }
+      @Override
+      protected DocIdSetIterator getVectorIterator() {
+        return vectorValues;
+      }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o.getClass() != DenseVectorByteFieldSource.class) return false;
-        DenseVectorByteFieldSource other = (DenseVectorByteFieldSource) o;
-        return fieldName.equals(other.fieldName);
-    }
+      private byte[] defaultVector() {
+        if (defaultVector == null) {
+          defaultVector = new byte[vectorValues.dimension()];
+          Arrays.fill(defaultVector, (byte) 0);
+        }
+        return defaultVector;
+      }
+    };
+  }
 
-    @Override
-    public int hashCode() {
-        return getClass().hashCode() * 31 + fieldName.getClass().hashCode();
-    }
+  @Override
+  public boolean equals(Object o) {
+    if (o.getClass() != DenseVectorByteFieldSource.class) return false;
+    DenseVectorByteFieldSource other = (DenseVectorByteFieldSource) o;
+    return fieldName.equals(other.fieldName);
+  }
 
-    @Override
-    public String description() {
-        return "denseByteVectorField(" + fieldName + ")";
-    }
+  @Override
+  public int hashCode() {
+    return getClass().hashCode() * 31 + fieldName.getClass().hashCode();
+  }
+
+  @Override
+  public String description() {
+    return "denseByteVectorField(" + fieldName + ")";
+  }
 }

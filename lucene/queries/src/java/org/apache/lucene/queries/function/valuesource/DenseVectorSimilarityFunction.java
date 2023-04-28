@@ -16,77 +16,82 @@
  */
 package org.apache.lucene.queries.function.valuesource;
 
+import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
-import java.io.IOException;
-import java.util.Map;
-
 public abstract class DenseVectorSimilarityFunction extends ValueSource {
 
-    protected final VectorSimilarityFunction similarityFunction;
-    protected final ValueSource vector1;
-    protected final ValueSource vector2;
+  protected final VectorSimilarityFunction similarityFunction;
+  protected final ValueSource vector1;
+  protected final ValueSource vector2;
 
-    public DenseVectorSimilarityFunction(VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+  public DenseVectorSimilarityFunction(
+      VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
 
-        this.similarityFunction = similarityFunction;
-        this.vector1 = vector1;
-        this.vector2 = vector2;
+    this.similarityFunction = similarityFunction;
+    this.vector1 = vector1;
+    this.vector2 = vector2;
+  }
+
+  @Override
+  public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
+      throws IOException {
+
+    final FunctionValues vector1Vals = vector1.getValues(context, readerContext);
+    final FunctionValues vector2Vals = vector2.getValues(context, readerContext);
+    return new FunctionValues() {
+      @Override
+      public float floatVal(int doc) throws IOException {
+        return func(doc, vector1Vals, vector2Vals);
+      }
+
+      @Override
+      public boolean exists(int doc) throws IOException {
+        return MultiFunction.allExists(doc, vector1Vals, vector2Vals);
+      }
+
+      @Override
+      public String toString(int doc) throws IOException {
+        return null;
+      }
+    };
+  }
+
+  protected void checkSize(int sizeVector1, int sizeVector2) throws IOException {
+    if (sizeVector1 != sizeVector2) {
+      throw new UnsupportedOperationException("Vectors must have the same size");
     }
+  }
 
-    @Override
-    public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
-            throws IOException {
+  protected abstract float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException;
 
-        final FunctionValues vector1Vals = vector1.getValues(context, readerContext);
-        final FunctionValues vector2Vals = vector2.getValues(context, readerContext);
-        return new FunctionValues() {
-            @Override
-            public float floatVal(int doc) throws IOException {
-                return func(doc, vector1Vals, vector2Vals);
-            }
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof DenseVectorSimilarityFunction
+        && similarityFunction.equals(((DenseVectorSimilarityFunction) o).similarityFunction)
+        && vector1.equals(((DenseVectorSimilarityFunction) o).vector1)
+        && vector2.equals(((DenseVectorSimilarityFunction) o).vector2);
+  }
 
-            @Override
-            public boolean exists(int doc) throws IOException {
-                return MultiFunction.allExists(doc, vector1Vals, vector2Vals);
-            }
+  @Override
+  public int hashCode() {
+    int h = similarityFunction.hashCode();
+    h = 31 * h + vector1.hashCode();
+    h = 31 * h + vector2.hashCode();
+    return h;
+  }
 
-            @Override
-            public String toString(int doc) throws IOException {
-                return null;
-            }
-        };
-    }
-
-    protected void checkSize(int sizeVector1, int sizeVector2) throws IOException {
-        if (sizeVector1 != sizeVector2){
-            throw new UnsupportedOperationException("Vectors must have the same size");
-        }
-    }
-
-    protected abstract float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException;
-
-    @Override
-    public boolean equals(Object o) {
-        return o instanceof DenseVectorSimilarityFunction &&
-                similarityFunction.equals(((DenseVectorSimilarityFunction) o).similarityFunction) &&
-                vector1.equals(((DenseVectorSimilarityFunction) o).vector1) &&
-                vector2.equals(((DenseVectorSimilarityFunction) o).vector2);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = similarityFunction.hashCode();
-        h = 31 * h + vector1.hashCode();
-        h = 31 * h + vector2.hashCode();
-        return h;
-    }
-
-    @Override
-    public String description() {
-        return similarityFunction.name() + "(" + vector1.description() + ", " + vector2.description() + ")";
-    }
+  @Override
+  public String description() {
+    return similarityFunction.name()
+        + "("
+        + vector1.description()
+        + ", "
+        + vector2.description()
+        + ")";
+  }
 }
