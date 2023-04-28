@@ -205,4 +205,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     }
     return total;
   }
+
+  @Override
+  public String toString() {
+    return "OnHeapHnswGraph(size=%d, numLevels=%d, entryNode=%d)"
+        .formatted(size(), numLevels, entryNode);
+  }
 }

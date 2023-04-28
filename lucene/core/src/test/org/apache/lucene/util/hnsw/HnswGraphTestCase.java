@@ -267,8 +267,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
-    assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
-    assertEquals("the number of nodes in the graphs are different!", g.size(), h.size());
+    var m1 =
+        "the number of levels in the graphs are different:%n%s%n%s"
+            .formatted(g.prettyPrint(), h.prettyPrint());
+    assertEquals(m1, g.numLevels(), h.numLevels());
+    var m2 =
+        "the number of nodes in the graphs are different:%n%s%n%s"
+            .formatted(g.prettyPrint(), h.prettyPrint());
+    assertEquals(m2, g.size(), h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
@@ -277,7 +283,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
         int node = nodesOnLevel.nextInt();
         int node2 = nodesOnLevel2.nextInt();
-        assertEquals("nodes in the graphs are different", node, node2);
+        var m3 =
+            "nodes in the graphs are different on level %d:%n%s%n%s"
+                .formatted(level, g.prettyPrint(), h.prettyPrint());
+        assertEquals(m3, node, node2);
       }
     }
 
@@ -288,7 +297,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
-        assertEquals("arcs differ for node " + node, getNeighborNodes(g), getNeighborNodes(h));
+        var m4 =
+            "arcs differ for node %d on level %d:%n%s%n%s"
+                .formatted(node, level, g.prettyPrint(), h.prettyPrint());
+        assertEquals(m4, getNeighborNodes(g), getNeighborNodes(h));
       }
     }
   }
