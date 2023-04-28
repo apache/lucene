@@ -50,7 +50,7 @@ public abstract class DenseVectorSimilarityFunction extends ValueSource {
       }
 
       @Override
-      String strVal(int doc) throws IOException {
+      public String strVal(int doc) throws IOException {
         return Float.toString(floatVal(doc));
       }
 
