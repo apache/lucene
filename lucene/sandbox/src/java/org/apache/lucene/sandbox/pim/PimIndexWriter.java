@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
 
 /**
  * Extends {@link IndexWriter} to build the term indexes for each DPU after each commit.
@@ -91,6 +92,7 @@ public class PimIndexWriter extends IndexWriter {
     private PostingsEnum postingsEnum;
     private final ByteBuffersDataOutput posBuffer;
     private FieldInfo fieldInfo;
+    static final int blockSize = 32;
 
     DpuTermIndexes(SegmentCommitInfo segmentCommitInfo, int numFields) throws IOException {
       //TODO: The num docs per DPU could be
@@ -117,7 +119,7 @@ public class PimIndexWriter extends IndexWriter {
           getDirectory().deleteFile(indexName);
         }
         IndexOutput indexOutput = getDirectory().createOutput(indexName, IOContext.DEFAULT);
-        termIndexes[i] = new DpuTermIndex(i, indexOutput, numFields);
+        termIndexes[i] = new DpuTermBlockIndex(i, indexOutput, numFields, blockSize);
       }
       posBuffer = ByteBuffersDataOutput.newResettableInstance();
     }
@@ -244,6 +246,125 @@ public class PimIndexWriter extends IndexWriter {
         posBuffer.copyTo(indexOutput);
         posBuffer.reset();
         System.out.println();
+      }
+    }
+
+    /**
+     * @class DpuTermBlockIndex
+     * Specialization of class DpuTermIndex where terms and their
+     * posting lists are stored in blocks of fixed size. A block table
+     * contains the first term of each block and the address to jump to
+     * the block. Hence, for search it is sufficient to find the right block
+     * from the block table and to scan the block to find the term.
+     **/
+    private class DpuTermBlockIndex extends DpuTermIndex {
+
+      /** number of terms stored in one block of the index.
+       *  each block is scanned linearly for searching a term.
+       */
+      int blockCapacity;
+
+      int currBlockSz;
+      ArrayList<BytesRef> blockTermList;
+      ArrayList<Long> blockAddressList;
+
+      DpuTermBlockIndex(int dpuIndex, IndexOutput indexOutput, int numFields, int blockCapacity) {
+        super(dpuIndex, indexOutput, numFields);
+        this.blockCapacity = blockCapacity;
+        this.currBlockSz = 0;
+        this.blockTermList = new ArrayList<>();
+        this.blockAddressList = new ArrayList<>();
+      }
+
+      @Override
+      void writeTermIfAbsent(BytesRef term) throws IOException {
+
+        // Do not write the bytes of the first term of a block
+        // since they are already written in the block table
+        if(currBlockSz != 0) {
+          // call parent method
+          if(!termWritten) {
+            // first check if the current block exceeds its capacity
+            // if yes, start a new block
+            if(currBlockSz == blockCapacity) {
+              blockTermList.add(term);
+              blockAddressList.add(indexOutput.getFilePointer());
+              currBlockSz = 0;
+            }
+            super.writeTermIfAbsent(term);
+            currBlockSz++;
+          }
+        }
+        else {
+          // Do not write the first term
+          // but the parent method should act as if it was written
+          termWritten = true;
+          currBlockSz++;
+          if(blockTermList.size() == 0) {
+            // this is the first term of the first block
+            // save the address and term
+            blockTermList.add(term);
+            blockAddressList.add(indexOutput.getFilePointer());
+          }
+        }
+      }
+
+      void writeBlockTable() throws IOException {
+
+        assert blockTermList.size() == blockAddressList.size();
+
+        int numBlocks = blockTermList.size();
+        if(numBlocks == 0)
+          return;
+
+        // 1) write the number of blocks
+        indexOutput.writeInt(numBlocks);
+
+        // 2) write the N/2 block first (for binary search)
+        BytesRef middleTerm = blockTermList.get(blockTermList.size() / 2);
+        indexOutput.writeBytes(middleTerm.bytes, middleTerm.offset, middleTerm.length);
+        // Note: the memory of a DPU is 64M, so the address must fit on 4 bytes integer
+        indexOutput.writeVInt((int) blockAddressList.get(blockAddressList.size() / 2).longValue());
+
+        // 3) write the remaining blocks
+        for (int i = 0; i < blockTermList.size(); ++i) {
+          if (i == blockTermList.size() / 2)
+            continue;
+          BytesRef term = blockTermList.get(i);
+          indexOutput.writeBytes(term.bytes, term.offset, term.length);
+          indexOutput.writeVInt((int) blockAddressList.get(i).longValue());
+        }
+
+        // reset internal parameters
+        currBlockSz = 0;
+        numBlocks = 0;
+        blockTermList = new ArrayList<>();
+        blockAddressList = new ArrayList<>();
+      }
+
+      @Override
+      void resetForNextField() {
+
+        super.resetForNextField();
+
+        // at the start of a new field,
+        // write the block table of the previous field
+        try {
+          writeBlockTable();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      @Override
+      void close() throws IOException {
+
+        // write the block table at the end of this file
+        // TODO should probably be written at the beginning of the file instead
+        writeBlockTable();
+
+        // call parent method
+        super.close();
       }
     }
   }
