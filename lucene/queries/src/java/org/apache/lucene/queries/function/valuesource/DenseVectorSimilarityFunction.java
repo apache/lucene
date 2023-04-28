@@ -50,13 +50,18 @@ public abstract class DenseVectorSimilarityFunction extends ValueSource {
       }
 
       @Override
+      String strVal(int doc) throws IOException {
+        return Float.toString(floatVal(doc));
+      }
+
+      @Override
       public boolean exists(int doc) throws IOException {
         return MultiFunction.allExists(doc, vector1Vals, vector2Vals);
       }
 
       @Override
       public String toString(int doc) throws IOException {
-        return null;
+        return description() + " = " + strVal(doc);
       }
     };
   }
