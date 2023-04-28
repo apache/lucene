@@ -23,17 +23,8 @@ import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
@@ -266,28 +257,34 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
+  List<Integer> sortedNodesOnLevel(HnswGraph h, int level) throws IOException {
+    NodesIterator nodesOnLevel = h.getNodesOnLevel(level);
+    List<Integer> nodes = new ArrayList<>();
+    while (nodesOnLevel.hasNext()) {
+      nodes.add(nodesOnLevel.next());
+    }
+    Collections.sort(nodes);
+    return nodes;
+  }
+
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
+    // construct these up front since they call seek which will mess up our test loop
+    var prettyG = g.prettyPrint();
+    var prettyH = h.prettyPrint();
     var m1 =
-        "the number of levels in the graphs are different:%n%s%n%s"
-            .formatted(g.prettyPrint(), h.prettyPrint());
+        "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m1, g.numLevels(), h.numLevels());
-    var m2 =
-        "the number of nodes in the graphs are different:%n%s%n%s"
-            .formatted(g.prettyPrint(), h.prettyPrint());
+    var m2 = "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m2, g.size(), h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
-      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
-      NodesIterator nodesOnLevel2 = h.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
-        int node = nodesOnLevel.nextInt();
-        int node2 = nodesOnLevel2.nextInt();
-        var m3 =
-            "nodes in the graphs are different on level %d:%n%s%n%s"
-                .formatted(level, g.prettyPrint(), h.prettyPrint());
-        assertEquals(m3, node, node2);
-      }
+      var hNodes = sortedNodesOnLevel(h, level);
+      var gNodes = sortedNodesOnLevel(g, level);
+      var m3 =
+          "nodes in the graphs are different on level %d:%n%s%n%s"
+              .formatted(level, prettyG, prettyH);
+      assertEquals(m3, gNodes, hNodes);
     }
 
     // assert equal nodes' neighbours on each level
@@ -298,8 +295,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         g.seek(level, node);
         h.seek(level, node);
         var m4 =
-            "arcs differ for node %d on level %d:%n%s%n%s"
-                .formatted(node, level, g.prettyPrint(), h.prettyPrint());
+            "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH);
         assertEquals(m4, getNeighborNodes(g), getNeighborNodes(h));
       }
     }
@@ -508,18 +504,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     for (int currLevel = 1; currLevel < numLevels; currLevel++) {
-      var nodesIterator = bottomUpExpectedHnsw.getNodesOnLevel(currLevel);
       List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
-      assertEquals(expectedNodesOnLevel.size(), nodesIterator.size());
-      var sortedNodes =
-          IntStream.iterate(0, i -> nodesIterator.hasNext(), i -> nodesIterator.next())
-              .sorted()
-              .iterator();
-      for (Integer expectedNode : expectedNodesOnLevel) {
-        int currentNode = sortedNodes.nextInt();
-        assertEquals(expectedNode.intValue(), currentNode);
-        assertEquals(0, bottomUpExpectedHnsw.getNeighbors(currLevel, currentNode).size());
-      }
+      var sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
+      assertEquals(
+          "Nodes on level %d do not match".formatted(currLevel), expectedNodesOnLevel, sortedNodes);
     }
 
     assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
