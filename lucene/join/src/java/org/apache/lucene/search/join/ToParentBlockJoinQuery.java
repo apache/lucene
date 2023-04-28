@@ -21,6 +21,7 @@ import static org.apache.lucene.search.ScoreMode.COMPLETE;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Locale;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreQuery;
@@ -401,48 +402,62 @@ public class ToParentBlockJoinQuery extends Query {
           context.docBase + prevParentDoc + 1; // +1 b/c prevParentDoc is previous parent doc
       int end = context.docBase + parentApproximation.docID() - 1; // -1 b/c parentDoc is parent doc
 
-      float aggregatedScore;
-      aggregatedScore = 0;
+      Explanation bestChild = null;
+      double childScoreSum = 0;
       int matches = 0;
-      Explanation aggregateExplanation = null;
       for (int childDoc = start; childDoc <= end; childDoc++) {
         Explanation child = childWeight.explain(context, childDoc - context.docBase);
         if (child.isMatch()) {
           matches++;
-          float childScore = child.getValue().floatValue();
-          String scoreDescription =
-              String.format(
-                  "Score based on %d child docs in range from %d to %d, using score mode :%s",
-                  matches, start, end, scoreMode.toString());
-          switch (scoreMode) {
-            case None:
-              break;
-            case Avg:
-            case Total:
-              aggregatedScore += childScore;
-              aggregateExplanation = Explanation.match(aggregatedScore, scoreDescription, child);
-              break;
-            case Max:
-              if (aggregateExplanation == null
-                  || childScore > aggregateExplanation.getValue().floatValue()) {
-                aggregatedScore = childScore;
-                aggregateExplanation = Explanation.match(aggregatedScore, scoreDescription, child);
-              }
-              break;
-            case Min:
-              if (matches == 1 || childScore < aggregatedScore) {
-                aggregatedScore = childScore;
-                aggregateExplanation = Explanation.match(aggregatedScore, scoreDescription, child);
-              }
-              break;
+          childScoreSum += child.getValue().doubleValue();
+
+          if (scoreMode == ScoreMode.Total) {
+            continue;
+          }
+
+          if (bestChild == null
+              || child.getValue().doubleValue() > bestChild.getValue().doubleValue()) {
+            bestChild = child;
           }
         }
       }
-      // Calculate the average if scoreMode is Avg
-      if (scoreMode == ScoreMode.Avg && matches > 0) {
-        aggregatedScore /= matches;
+
+      if (bestChild == null) {
+        return Explanation.match(
+            score(),
+            String.format(
+                Locale.ROOT,
+                "Score based on 0 child docs in range from %d to %d, best match according to %s:",
+                matches,
+                start,
+                end,
+                scoreMode));
       }
-      return aggregateExplanation;
+
+      if (scoreMode == ScoreMode.Avg) {
+        double avgScore = matches > 0 ? childScoreSum / (double) matches : 0;
+        return Explanation.match(
+            avgScore,
+            String.format(
+                Locale.ROOT,
+                "Score based on %d child docs in range from %d to %d, best match according to %s:",
+                matches,
+                start,
+                end,
+                scoreMode),
+            bestChild);
+      } else {
+        return Explanation.match(
+            score(),
+            String.format(
+                Locale.ROOT,
+                "Score based on %d child docs in range from %d to %d, best match according to %s:",
+                matches,
+                start,
+                end,
+                scoreMode),
+            bestChild);
+      }
     }
   }
 
