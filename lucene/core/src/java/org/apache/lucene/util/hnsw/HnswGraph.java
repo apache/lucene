@@ -44,9 +44,8 @@ import org.apache.lucene.index.FloatVectorValues;
  *       many of the <code>efConst</code> neighbors are connected to the new node
  * </ul>
  *
- * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
- * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
- * exclude deleted documents.
+ * <p>Note: The search method optionally takes a set of "accepted nodes", which can be used to
+ * exclude deleted documents. Thread safety of searches depends on the implementation.
  */
 public abstract class HnswGraph {
 

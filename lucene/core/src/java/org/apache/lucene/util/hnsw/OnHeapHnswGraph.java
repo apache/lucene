@@ -29,6 +29,8 @@ import org.apache.lucene.util.RamUsageEstimator;
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
  * construct the HNSW graph before it's written to the index.
+ *
+ * <p>This implementation is NOT threadsafe for insertion or for searching.
  */
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 

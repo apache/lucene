@@ -224,7 +224,6 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
     prepareScratchState(vectors.size());
 
@@ -261,7 +260,6 @@ public class HnswGraphSearcher<T> {
       graph.seek(level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
         }
