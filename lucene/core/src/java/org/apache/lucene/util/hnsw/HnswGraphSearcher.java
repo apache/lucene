@@ -208,6 +208,12 @@ public class HnswGraphSearcher<T> {
     return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
   }
 
+  /**
+   * @return a priority queue (heap) holding the closest neighbors found. These are returned in
+   *     REVERSE proximity order -- the most distant neighbor of the topK found, i.e. the one with
+   *     the lowest score/comparison value, will be at the top of the heap, while the closest
+   *     neighbor will be the last to be popped.
+   */
   private NeighborQueue searchLevel(
       T query,
       int topK,
