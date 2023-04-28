@@ -242,34 +242,4 @@ public abstract class HnswGraph {
       return nodes.hasNext();
     }
   }
-
-  public String prettyPrint() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(this);
-    sb.append("\n");
-
-    try {
-      for (int level = 0; level < numLevels(); level++) {
-        sb.append("# Level ").append(level).append("\n");
-        var it = getNodesOnLevel(level);
-        while (it.hasNext()) {
-          int node = it.nextInt();
-          sb.append("  ").append(node).append(" -> ");
-          seek(level, node);
-          while (true) {
-            int neighbor = nextNeighbor();
-            if (neighbor == NO_MORE_DOCS) {
-              break;
-            }
-            sb.append(" ").append(neighbor);
-          }
-          sb.append("\n");
-        }
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return sb.toString();
-  }
 }

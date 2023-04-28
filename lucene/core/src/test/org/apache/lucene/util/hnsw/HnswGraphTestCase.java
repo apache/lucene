@@ -269,8 +269,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     // construct these up front since they call seek which will mess up our test loop
-    var prettyG = g.prettyPrint();
-    var prettyH = h.prettyPrint();
+    var prettyG = prettyPrint(g);
+    var prettyH = prettyPrint(h);
     var m1 =
         "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m1, g.numLevels(), h.numLevels());
@@ -1200,5 +1200,35 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       bvec[i] = (byte) (fvec[i] * 127);
     }
     return bvec;
+  }
+
+  static String prettyPrint(HnswGraph hnsw) {
+    StringBuilder sb = new StringBuilder();
+    sb.append(hnsw);
+    sb.append("\n");
+
+    try {
+      for (int level = 0; level < hnsw.numLevels(); level++) {
+        sb.append("# Level ").append(level).append("\n");
+        var it = hnsw.getNodesOnLevel(level);
+        while (it.hasNext()) {
+          int node = it.nextInt();
+          sb.append("  ").append(node).append(" -> ");
+          hnsw.seek(level, node);
+          while (true) {
+            int neighbor = hnsw.nextNeighbor();
+            if (neighbor == NO_MORE_DOCS) {
+              break;
+            }
+            sb.append(" ").append(neighbor);
+          }
+          sb.append("\n");
+        }
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    return sb.toString();
   }
 }
