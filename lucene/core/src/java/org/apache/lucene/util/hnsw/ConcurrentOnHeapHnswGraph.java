@@ -49,23 +49,21 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   // lists,
   // a ConcurrentHashMap.  While the ArrayList used for L0 in OHHG is faster for single-threaded
   // workloads, it imposes an unacceptable contention burden for concurrent workloads.
-  private final ConcurrentMap<Integer, ConcurrentNeighborSet> graphLevel0;
   private final ConcurrentMap<Integer, ConcurrentMap<Integer, ConcurrentNeighborSet>>
-      graphUpperLevels;
+  graphLevels;
 
   // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
   private final int nsize;
   private final int nsize0;
 
   ConcurrentOnHeapHnswGraph(int M) {
-    this.graphLevel0 = new ConcurrentHashMap<>();
     this.entryPoint =
         new AtomicReference<>(
             new NodeAtLevel(0, -1)); // Entry node should be negative until a node is added
     this.nsize = M;
     this.nsize0 = 2 * M;
 
-    this.graphUpperLevels = new ConcurrentHashMap<>();
+    this.graphLevels = new ConcurrentHashMap<>();
   }
 
   /**
@@ -75,13 +73,12 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
    */
   public ConcurrentNeighborSet getNeighbors(int level, int node) {
-    if (level == 0) return graphLevel0.get(node);
-    return graphUpperLevels.get(level).get(node);
+    return graphLevels.get(level).get(node);
   }
 
   @Override
   public synchronized int size() {
-    return graphLevel0.size(); // all nodes are located on the 0th level
+    return graphLevels.get(0).size(); // all nodes are located on the 0th level
   }
 
   /**
@@ -97,26 +94,13 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
    * @param node the node to add, represented as an ordinal on the level 0.
    */
   public void addNode(int level, int node) {
-    if (level > 0) {
-      if (level >= graphUpperLevels.size()) {
-        for (int i = graphUpperLevels.size(); i <= level; i++) {
-          graphUpperLevels.putIfAbsent(i, new ConcurrentHashMap<>());
-        }
-      }
-
-      graphUpperLevels.get(level).put(node, new ConcurrentNeighborSet(connectionsOnLevel(level)));
-    } else {
-      // Add nodes all the way up to and including "node" in the new graph on level 0. This will
-      // cause the size of the
-      // graph to differ from the number of nodes added to the graph. The size of the graph and the
-      // number of nodes
-      // added will only be in sync once all nodes from 0...last_node are added into the graph.
-      if (node >= graphLevel0.size()) {
-        for (int i = graphLevel0.size(); i <= node; i++) {
-          graphLevel0.putIfAbsent(i, new ConcurrentNeighborSet(nsize0));
-        }
+    if (level >= graphLevels.size()) {
+      for (int i = graphLevels.size(); i <= level; i++) {
+        graphLevels.putIfAbsent(i, new ConcurrentHashMap<>());
       }
     }
+
+    graphLevels.get(level).put(node, new ConcurrentNeighborSet(connectionsOnLevel(level)));
   }
 
   /**
@@ -174,7 +158,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     if (level == 0) {
       return new ArrayNodesIterator(size());
     } else {
-      return new CollectionNodesIterator(graphUpperLevels.get(level).keySet());
+      return new CollectionNodesIterator(graphLevels.get(level).keySet());
     }
   }
 
@@ -196,7 +180,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
         total +=
             size() * neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
       } else {
-        long numNodesOnLevel = graphUpperLevels.get(l).size();
+        long numNodesOnLevel = graphLevels.get(l).size();
 
         // For levels > 0, we represent the graph structure with a tree map.
         // A single node in the tree contains 3 references (left root, right root, value) as well
