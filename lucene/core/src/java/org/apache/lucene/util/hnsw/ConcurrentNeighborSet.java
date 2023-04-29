@@ -34,7 +34,18 @@ public class ConcurrentNeighborSet {
   }
 
   public Iterator<Integer> nodeIterator() {
-    return neighbors.stream().map(ConcurrentNeighborSet::decodeNodeId).iterator();
+    // don't use a stream here. stream's implementation of iterator buffers
+    // very aggressively, which is a big waste for a lot of searches
+    var it = neighbors.iterator();
+    return new Iterator<>() {
+      public boolean hasNext() {
+        return it.hasNext();
+      }
+
+      public Integer next() {
+        return decodeNodeId(it.next());
+      }
+    };
   }
 
   public int size() {
