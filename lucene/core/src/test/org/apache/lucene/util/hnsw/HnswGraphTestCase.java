@@ -271,21 +271,24 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // construct these up front since they call seek which will mess up our test loop
     String prettyG = prettyPrint(g);
     String prettyH = prettyPrint(h);
-    String m1 =
-        "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
-    assertEquals(m1, g.numLevels(), h.numLevels());
-    String m2 =
-        "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
-    assertEquals(m2, g.size(), h.size());
+    assertEquals(
+        "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH),
+        g.numLevels(),
+        h.numLevels());
+    assertEquals(
+        "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH),
+        g.size(),
+        h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
       List<Integer> hNodes = sortedNodesOnLevel(h, level);
       List<Integer> gNodes = sortedNodesOnLevel(g, level);
-      String m3 =
+      assertEquals(
           "nodes in the graphs are different on level %d:%n%s%n%s"
-              .formatted(level, prettyG, prettyH);
-      assertEquals(m3, gNodes, hNodes);
+              .formatted(level, prettyG, prettyH),
+          gNodes,
+          hNodes);
     }
 
     // assert equal nodes' neighbours on each level
@@ -295,9 +298,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
-        String m4 =
-            "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH);
-        assertEquals(m4, getNeighborNodes(g), getNeighborNodes(h));
+        assertEquals(
+            "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH),
+            getNeighborNodes(g),
+            getNeighborNodes(h));
       }
     }
   }
