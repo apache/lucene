@@ -676,16 +676,10 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
     for (int level = 0; level < graph.numLevels(); level++) {
-      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-      int[] sortedNodes = new int[nodesOnLevel.size()];
-      for (int n = 0; nodesOnLevel.hasNext(); n++) {
-        sortedNodes[n] = nodesOnLevel.nextInt();
-      }
-      Arrays.sort(sortedNodes);
-      offsets[level] = new int[nodesOnLevel.size()];
+      int[] sortedNodes = getSortedNodes(graph.getNodesOnLevel(level));
+      offsets[level] = new int[sortedNodes.length];
       int nodeOffsetId = 0;
-      for (int n = 0; n < sortedNodes.length; n++) {
-        int node = sortedNodes[n];
+      for (int node : sortedNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
@@ -708,6 +702,15 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return offsets;
+  }
+
+  public static int[] getSortedNodes(NodesIterator nodesOnLevel) {
+    int[] sortedNodes = new int[nodesOnLevel.size()];
+    for (int n = 0; nodesOnLevel.hasNext(); n++) {
+      sortedNodes[n] = nodesOnLevel.nextInt();
+    }
+    Arrays.sort(sortedNodes);
+    return sortedNodes;
   }
 
   private void writeMeta(
