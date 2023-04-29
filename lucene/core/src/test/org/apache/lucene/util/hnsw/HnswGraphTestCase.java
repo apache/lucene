@@ -269,19 +269,20 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     // construct these up front since they call seek which will mess up our test loop
-    var prettyG = prettyPrint(g);
-    var prettyH = prettyPrint(h);
-    var m1 =
+    String prettyG = prettyPrint(g);
+    String prettyH = prettyPrint(h);
+    String m1 =
         "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m1, g.numLevels(), h.numLevels());
-    var m2 = "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
+    String m2 =
+        "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m2, g.size(), h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
-      var hNodes = sortedNodesOnLevel(h, level);
-      var gNodes = sortedNodesOnLevel(g, level);
-      var m3 =
+      List<Integer> hNodes = sortedNodesOnLevel(h, level);
+      List<Integer> gNodes = sortedNodesOnLevel(g, level);
+      String m3 =
           "nodes in the graphs are different on level %d:%n%s%n%s"
               .formatted(level, prettyG, prettyH);
       assertEquals(m3, gNodes, hNodes);
@@ -294,7 +295,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
-        var m4 =
+        String m4 =
             "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH);
         assertEquals(m4, getNeighborNodes(g), getNeighborNodes(h));
       }
@@ -505,7 +506,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     for (int currLevel = 1; currLevel < numLevels; currLevel++) {
       List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
-      var sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
+      List<Integer> sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
       assertEquals(
           "Nodes on level %d do not match".formatted(currLevel), expectedNodesOnLevel, sortedNodes);
     }
@@ -612,8 +613,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
     for (int level = 1; level < g.numLevels(); level++) {
-      var nodesOnLevel = sortedNodesOnLevel(g, level);
-      var nodesOnLevel2 = sortedNodesOnLevel(h, level).stream().map(oldToNewOrdMap::get).toList();
+      List<Integer> nodesOnLevel = sortedNodesOnLevel(g, level);
+      List<Integer> nodesOnLevel2 =
+          sortedNodesOnLevel(h, level).stream().map(oldToNewOrdMap::get).toList();
       assertEquals(nodesOnLevel, nodesOnLevel2);
     }
 
@@ -1206,7 +1208,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     try {
       for (int level = 0; level < hnsw.numLevels(); level++) {
         sb.append("# Level ").append(level).append("\n");
-        var it = hnsw.getNodesOnLevel(level);
+        NodesIterator it = hnsw.getNodesOnLevel(level);
         while (it.hasNext()) {
           int node = it.nextInt();
           sb.append("  ").append(node).append(" -> ");
