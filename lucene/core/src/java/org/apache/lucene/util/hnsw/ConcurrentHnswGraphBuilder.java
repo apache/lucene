@@ -279,18 +279,15 @@ public final class ConcurrentHnswGraphBuilder<T> {
   }
 
   private void addDiverseNeighbors(int level, int newNode, NeighborQueue candidates) {
-    // Add links from new node -> candidates. See ConcurrentNeighborSet for an explanation of
-    // "diverse."
+    // Add links from new node -> candidates.
+    // See ConcurrentNeighborSet for an explanation of "diverse."
     var neighbors = hnsw.getNeighbors(level, newNode);
     var scratch = popToScratch(candidates);
     neighbors.insertDiverse(scratch, this::scoreBetween);
 
     // Add links from candidates -> new node (again applying diversity heuristic)
-    neighbors.stream()
-        .forEach(
-            entry -> {
-              var nbr = entry.getValue();
-              var nbrScore = entry.getKey();
+    neighbors.forEach(
+            (nbr, nbrScore) -> {
               var nbrNbr = hnsw.getNeighbors(level, nbr);
               nbrNbr.insert(newNode, nbrScore, this::scoreBetween);
             });

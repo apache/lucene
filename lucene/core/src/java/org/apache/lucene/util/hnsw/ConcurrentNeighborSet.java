@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 import org.apache.lucene.util.NumericUtils;
@@ -52,9 +53,8 @@ public class ConcurrentNeighborSet {
     return size.get();
   }
 
-  public Stream<Entry<Float, Integer>> stream() {
-    return neighbors.stream()
-        .map(encoded -> Map.entry(decodeScore(encoded), decodeNodeId(encoded)));
+  public void forEach(BiConsumer<Integer, Float> consumer) {
+    neighbors.forEach(encoded -> consumer.accept(decodeNodeId(encoded), decodeScore(encoded)));
   }
 
   /**
@@ -95,8 +95,13 @@ public class ConcurrentNeighborSet {
   // is the candidate node with the given score closer to the base node than it is to any of the
   // existing neighbors
   private boolean isDiverse(
-      int node, float score, BiFunction<Integer, Integer, Float> scoreBetween) {
-    return stream().noneMatch(e -> scoreBetween.apply(e.getValue(), node) > score);
+          int node, float score, BiFunction<Integer, Integer, Float> scoreBetween) {
+    for (Long encoded : neighbors) {
+      if (scoreBetween.apply(decodeNodeId(encoded), node) > score) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**
