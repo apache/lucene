@@ -281,11 +281,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     String prettyG = prettyPrint(g);
     String prettyH = prettyPrint(h);
     assertEquals(
-        "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH),
+        "the number of levels in the graphs are different:%n" + prettyG + "%n" + prettyH,
         g.numLevels(),
         h.numLevels());
     assertEquals(
-        "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH),
+        "the number of nodes in the graphs are different:%n" + prettyG + "%n" + prettyH,
         g.size(),
         h.size());
 
@@ -294,10 +294,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       List<Integer> hNodes = sortedNodesOnLevel(h, level);
       List<Integer> gNodes = sortedNodesOnLevel(g, level);
       assertEquals(
-          "nodes in the graphs are different on level %d:%n%s%n%s"
-              .formatted(level, prettyG, prettyH),
-          gNodes,
-          hNodes);
+              "nodes in the graphs are different on level " + level + ":%n" + prettyG + "%n" + prettyH,
+              getNeighborNodes(g),
+              getNeighborNodes(h));
     }
 
     // assert equal nodes' neighbours on each level
@@ -308,7 +307,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         g.seek(level, node);
         h.seek(level, node);
         assertEquals(
-            "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH),
+            "arcs differ for node " + node + " on level " + level + ":%n" + prettyG + "%n" + prettyH,
             getNeighborNodes(g),
             getNeighborNodes(h));
       }
