@@ -50,11 +50,7 @@ public class AtomicBitSet extends BitSet {
     }
     int idx = index(i);
     long mask = mask(i);
-    long prev, next;
-    do {
-      prev = storage.get(idx);
-      next = prev | mask;
-    } while (!storage.compareAndSet(idx, prev, next));
+    storage.getAndAccumulate(idx, mask, (prev, m) -> prev | m);
   }
 
   @Override
@@ -75,11 +71,7 @@ public class AtomicBitSet extends BitSet {
     }
     int idx = index(i);
     long mask = mask(i);
-    long prev, next;
-    do {
-      prev = storage.get(idx);
-      next = prev | mask;
-    } while (!storage.compareAndSet(idx, prev, next));
+    long prev = storage.getAndAccumulate(idx, mask, (p, m) -> p | m);
     return (prev & mask) != 0;
   }
 
@@ -90,11 +82,7 @@ public class AtomicBitSet extends BitSet {
     }
     int idx = index(i);
     long mask = mask(i);
-    long prev, next;
-    do {
-      prev = storage.get(idx);
-      next = prev & ~mask;
-    } while (!storage.compareAndSet(idx, prev, next));
+    storage.getAndAccumulate(idx, mask, (prev, m) -> prev & ~m);
   }
 
   @Override
@@ -102,12 +90,10 @@ public class AtomicBitSet extends BitSet {
     int startIdx = index(startIndex);
     int endIdx = index(endIndex - 1);
     for (int i = startIdx; i <= endIdx; i++) {
-      long prev, next;
-      do {
-        prev = storage.get(i);
-        next = (i == startIdx) ? prev & ~(-1L << (startIndex & 63)) : prev;
-        next = (i == endIdx) ? next & (-1L << (endIndex & 63)) : next;
-      } while (!storage.compareAndSet(i, prev, next));
+      long startMask = (i == startIdx) ? (-1L << (startIndex & 63)) : -1L;
+      long endMask = (i == endIdx) ? (-1L << (endIndex & 63)) : 0L;
+      long mask = startMask | endMask;
+      storage.getAndAccumulate(i, mask, (prev, m) -> prev & ~m);
     }
   }
 
