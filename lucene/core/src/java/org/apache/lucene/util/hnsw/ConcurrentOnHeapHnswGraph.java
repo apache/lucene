@@ -201,7 +201,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
   @Override
   public String toString() {
-    return "ConcurrentOnHeapHnswGraph(size=%d, entryPoint=%s)".formatted(size(), entryPoint.get());
+    return "ConcurrentOnHeapHnswGraph(size=" + size() + ", entryPoint=" + entryPoint.get();
   }
 
   /**
@@ -268,7 +268,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
     @Override
     public String toString() {
-      return "NodeAtLevel [level=%d, node=%d]".formatted(level, node);
+      return "NodeAtLevel(level=" + level + ", node=" + node + ")";
     }
   }
 }

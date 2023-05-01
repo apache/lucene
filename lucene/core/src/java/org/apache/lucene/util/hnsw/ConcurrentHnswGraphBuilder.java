@@ -33,6 +33,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.hnsw.ConcurrentOnHeapHnswGraph.NodeAtLevel;
 
 /**
@@ -163,9 +164,14 @@ public final class ConcurrentHnswGraphBuilder<T> {
       RandomAccessVectorValues<T> vectorsToAdd, boolean autoParallel) throws IOException {
     if (autoParallel) {
       return build(
-          vectorsToAdd, Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
+          vectorsToAdd,
+          Executors.newFixedThreadPool(
+              Runtime.getRuntime().availableProcessors(),
+              new NamedThreadFactory("Concurrent HNSW builder")));
     } else {
-      return build(vectorsToAdd, Executors.newSingleThreadExecutor());
+      return build(
+          vectorsToAdd,
+          Executors.newSingleThreadExecutor(new NamedThreadFactory("Concurrent HNSW builder")));
     }
   }
 
