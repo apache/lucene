@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
@@ -280,20 +281,36 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // construct these up front since they call seek which will mess up our test loop
     String prettyG = prettyPrint(g);
     String prettyH = prettyPrint(h);
-    String m1 =
-        "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
-    assertEquals(m1, g.numLevels(), h.numLevels());
-    String m2 = "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
-    assertEquals(m2, g.size(), h.size());
+    assertEquals(
+        String.format(
+            Locale.ROOT,
+            "the number of levels in the graphs are different:%n%s%n%s",
+            prettyG,
+            prettyH),
+        g.numLevels(),
+        h.numLevels());
+    assertEquals(
+        String.format(
+            Locale.ROOT,
+            "the number of nodes in the graphs are different:%n%s%n%s",
+            prettyG,
+            prettyH),
+        g.size(),
+        h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
       List<Integer> hNodes = sortedNodesOnLevel(h, level);
       List<Integer> gNodes = sortedNodesOnLevel(g, level);
-      String m3 =
-          "nodes in the graphs are different on level %d:%n%s%n%s"
-              .formatted(level, prettyG, prettyH);
-      assertEquals(m3, gNodes, hNodes);
+      assertEquals(
+          String.format(
+              Locale.ROOT,
+              "nodes in the graphs are different on level %d:%n%s%n%s",
+              level,
+              prettyG,
+              prettyH),
+          gNodes,
+          hNodes);
     }
 
     // assert equal nodes' neighbours on each level
@@ -303,9 +320,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
-        String m4 =
-            "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH);
-        assertEquals(m4, getNeighborNodes(g), getNeighborNodes(h));
+        assertEquals(
+            String.format(
+                Locale.ROOT,
+                "arcs differ for node %d on level %d:%n%s%n%s",
+                node,
+                level,
+                prettyG,
+                prettyH),
+            getNeighborNodes(g),
+            getNeighborNodes(h));
       }
     }
   }
@@ -516,7 +540,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
       List<Integer> sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
       assertEquals(
-          "Nodes on level %d do not match".formatted(currLevel), expectedNodesOnLevel, sortedNodes);
+          String.format(Locale.ROOT, "Nodes on level %d do not match", currLevel),
+          expectedNodesOnLevel,
+          sortedNodes);
     }
 
     assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
@@ -621,13 +647,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
     for (int level = 1; level < g.numLevels(); level++) {
-      NodesIterator nodesOnLevel = g.getNodesOnLevel(level);
-      NodesIterator nodesOnLevel2 = h.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext() && nodesOnLevel2.hasNext()) {
-        int node = nodesOnLevel.nextInt();
-        int node2 = oldToNewOrdMap.get(nodesOnLevel2.nextInt());
-        assertEquals("nodes in the graphs are different", node, node2);
-      }
+      List<Integer> nodesOnLevel = sortedNodesOnLevel(g, level);
+      List<Integer> nodesOnLevel2 =
+          sortedNodesOnLevel(h, level).stream().map(oldToNewOrdMap::get).toList();
+      assertEquals(nodesOnLevel, nodesOnLevel2);
     }
 
     // assert that the neighbors from the old graph are successfully transferred to the new graph
