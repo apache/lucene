@@ -37,7 +37,8 @@ import org.apache.lucene.index.FloatVectorValues;
  * <h2>Hyperparameters</h2>
  *
  * <ul>
- *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
+ *   <li><code>beamWidth</code> in {@link OnHeapHnswGraphBuilder} has the same meaning as <code>
+ *       efConst
  *       </code> in the paper. It is the number of nearest neighbor candidates to track while
  *       searching the graph for each newly inserted node.
  *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the paper; it controls how
@@ -120,6 +121,23 @@ public abstract class HnswGraph {
           return ArrayNodesIterator.EMPTY;
         }
       };
+
+  /**
+   * Add node on the given level with an empty set of neighbors.
+   *
+   * <p>Nodes can be inserted out of order, but it requires that the nodes preceded by the node
+   * inserted out of order are eventually added.Nodes can be inserted out of order, but it requires
+   * that the nodes
+   *
+   * <p>Actually populating the neighbors, and establishing bidirectional links, is the
+   * responsibility of the caller.
+   *
+   * @param level level to add a node on
+   * @param node the node to add, represented as an ordinal on the level 0.
+   */
+  public void addNode(int level, int node) {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total

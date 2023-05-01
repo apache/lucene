@@ -18,23 +18,28 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
 
-/** A builder for HnswGraphs. */
-public interface HnswGraphBuilder<T> {
-  /** Builds a graph from the given vectors */
-  public HnswGraph build(RandomAccessVectorValues<T> vectorsToAdd) throws IOException;
+/** A factory that creates ConcurrentHnswGraphs. */
+public class ConcurrentHnswGraphFactory implements HnswGraphFactory {
+  public static ConcurrentHnswGraphFactory instance = new ConcurrentHnswGraphFactory();
 
-  /** Inserts a single doc with vector value to the graph. */
-  public void addGraphNode(int node, T value) throws IOException;
-
-  /** Inserts a single doc with vector value retrieved from the given supplier. */
-  default void addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
-    addGraphNode(node, values.vectorValue(node));
+  @Override
+  public <T> ConcurrentHnswGraphBuilder<T> createBuilder(
+      RandomAccessVectorValues<T> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed)
+      throws IOException {
+    return new ConcurrentHnswGraphBuilder<>(
+        vectors, vectorEncoding, similarityFunction, M, beamWidth);
   }
 
-  /**
-   * @return the graph built. It is okay to continue to add nodes after calling this; the reference
-   *     will continue to be valid.
-   */
-  public HnswGraph getGraph();
+  @Override
+  public HnswGraph create(int maxConnections) {
+    return new ConcurrentOnHeapHnswGraph(maxConnections);
+  }
 }

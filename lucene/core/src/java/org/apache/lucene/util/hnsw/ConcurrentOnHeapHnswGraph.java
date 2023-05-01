@@ -80,18 +80,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     return graphLevels.get(0).size(); // all nodes are located on the 0th level
   }
 
-  /**
-   * Add node on the given level with an empty set of neighbors.
-   *
-   * <p>Nodes can be inserted out of order, but it requires that the nodes preceded by the node
-   * inserted out of order are eventually added.
-   *
-   * <p>Actually populating the neighbors, and establishing bidirectional links, is the
-   * responsibility of the caller.
-   *
-   * @param level level to add a node on
-   * @param node the node to add, represented as an ordinal on the level 0.
-   */
+  @Override
   public void addNode(int level, int node) {
     if (level >= graphLevels.size()) {
       for (int i = graphLevels.size(); i <= level; i++) {

@@ -33,7 +33,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.junit.Before;
 
 /** Tests HNSW KNN graphs */
-public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
+public abstract class ByteVectorHnswGraphTestCase extends HnswGraphTestCase<byte[]> {
 
   @Before
   public void setup() {
@@ -41,7 +41,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  VectorEncoding getVectorEncoding() {
+  public VectorEncoding getVectorEncoding() {
     return VectorEncoding.BYTE;
   }
 
@@ -56,7 +56,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(int size, int dimension) {
+  public AbstractMockVectorValues<byte[]> vectorValues(int size, int dimension) {
     return MockByteVectorValues.fromValues(createRandomByteVectors(size, dimension, random()));
   }
 
@@ -65,7 +65,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(float[][] values) {
+  public AbstractMockVectorValues<byte[]> vectorValues(float[][] values) {
     byte[][] bValues = new byte[values.length][];
     // The case when all floats fit within a byte already.
     boolean scaleSimple = fitsInByte(values[0][0]);
@@ -86,7 +86,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(
+  public AbstractMockVectorValues<byte[]> vectorValues(
       int size,
       int dimension,
       AbstractMockVectorValues<byte[]> pregeneratedVectorValues,
@@ -114,7 +114,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(LeafReader reader, String fieldName)
+  public AbstractMockVectorValues<byte[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
     ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);
     byte[][] vectors = new byte[reader.maxDoc()][];
@@ -127,7 +127,8 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  Field knnVectorField(String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
+  public Field knnVectorField(
+      String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
     return new KnnByteVectorField(name, vector, similarityFunction);
   }
 

@@ -17,24 +17,13 @@
 
 package org.apache.lucene.util.hnsw;
 
-import java.io.IOException;
+import org.junit.Before;
 
-/** A builder for HnswGraphs. */
-public interface HnswGraphBuilder<T> {
-  /** Builds a graph from the given vectors */
-  public HnswGraph build(RandomAccessVectorValues<T> vectorsToAdd) throws IOException;
-
-  /** Inserts a single doc with vector value to the graph. */
-  public void addGraphNode(int node, T value) throws IOException;
-
-  /** Inserts a single doc with vector value retrieved from the given supplier. */
-  default void addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
-    addGraphNode(node, values.vectorValue(node));
+public class TestConcurrentFloatHnswGraph extends FloatVectorHnswGraphTestCase {
+  @Before
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    this.factory = ConcurrentHnswGraphFactory.instance;
   }
-
-  /**
-   * @return the graph built. It is okay to continue to add nodes after calling this; the reference
-   *     will continue to be valid.
-   */
-  public HnswGraph getGraph();
 }
