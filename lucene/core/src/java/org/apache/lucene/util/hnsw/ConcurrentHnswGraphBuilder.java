@@ -23,9 +23,12 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
@@ -57,7 +60,6 @@ public final class ConcurrentHnswGraphBuilder<T> {
   private final ThreadLocal<NeighborArray> scratchNeighbors;
 
   private final VectorSimilarityFunction similarityFunction;
-  private final boolean parallelBuild;
   private final VectorEncoding vectorEncoding;
   private final RandomAccessVectorValues<T> vectors;
   private final ThreadLocal<HnswGraphSearcher<T>> graphSearcher;
@@ -86,7 +88,7 @@ public final class ConcurrentHnswGraphBuilder<T> {
       long _seed)
       throws IOException {
     return new ConcurrentHnswGraphBuilder<>(
-        vectors, vectorEncoding, similarityFunction, M, beamWidth, true);
+        vectors, vectorEncoding, similarityFunction, M, beamWidth);
   }
 
   /** This is the "native" factory for ConcurrentHnswGraphBuilder. */
@@ -95,11 +97,10 @@ public final class ConcurrentHnswGraphBuilder<T> {
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
-      int beamWidth,
-      boolean parallelize)
+      int beamWidth)
       throws IOException {
     return new ConcurrentHnswGraphBuilder<>(
-        vectors, vectorEncoding, similarityFunction, M, beamWidth, parallelize);
+        vectors, vectorEncoding, similarityFunction, M, beamWidth);
   }
 
   /**
@@ -111,21 +112,18 @@ public final class ConcurrentHnswGraphBuilder<T> {
    * @param M – graph fanout parameter used to calculate the maximum number of connections a node
    *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
-   * @param parallelize use multiple threads to build the graph.
    */
   private ConcurrentHnswGraphBuilder(
       RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
-      int beamWidth,
-      boolean parallelize)
+      int beamWidth)
       throws IOException {
     this.vectors = vectors;
     this.vectorsCopy = vectors.copy();
     this.vectorEncoding = Objects.requireNonNull(vectorEncoding);
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
-    this.parallelBuild = parallelize;
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -158,9 +156,27 @@ public final class ConcurrentHnswGraphBuilder<T> {
    *
    * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
    *     independent accessor for the vectors
+   * @param autoParallel if true, the builder will allocate one thread per core to building the
+   *     graph; if false, it will use a single thread. For more fine-grained control, use the
+   *     ExecutorService (ThreadPoolExecutor) overload.
    */
+  public ConcurrentOnHeapHnswGraph build(
+      RandomAccessVectorValues<T> vectorsToAdd, boolean autoParallel) throws IOException {
+    if (autoParallel) {
+      return build(
+          vectorsToAdd, Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()));
+    } else {
+      return build(vectorsToAdd, Executors.newSingleThreadExecutor());
+    }
+  }
+
   public ConcurrentOnHeapHnswGraph build(RandomAccessVectorValues<T> vectorsToAdd)
       throws IOException {
+    return build(vectorsToAdd, true);
+  }
+
+  public ConcurrentOnHeapHnswGraph build(
+      RandomAccessVectorValues<T> vectorsToAdd, ExecutorService pool) {
     if (vectorsToAdd == this.vectors) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -168,23 +184,45 @@ public final class ConcurrentHnswGraphBuilder<T> {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectorsToAdd.size() + " vectors");
     }
-    addVectors(vectorsToAdd);
+    if (!(pool instanceof ThreadPoolExecutor)) {
+      throw new IllegalArgumentException("ExecutorService must be a ThreadPoolExecutor");
+    }
+    addVectors(vectorsToAdd, (ThreadPoolExecutor) pool);
     return hnsw;
   }
 
-  private void addVectors(RandomAccessVectorValues<T> vectorsToAdd) throws IOException {
-    var stream = IntStream.range(0, vectorsToAdd.size());
-    if (parallelBuild) { // TODO
-      stream = stream.parallel();
+  // the goal here is to keep all the ExecutorService threads busy, but not to create potentially
+  // millions of futures by naively throwing everything at submit at once.  So, we use
+  // a semaphore to wait until a thread is free before adding a new task.
+  private void addVectors(RandomAccessVectorValues<T> vectorsToAdd, ThreadPoolExecutor pool) {
+    Semaphore semaphore = new Semaphore(pool.getMaximumPoolSize());
+
+    for (int i = 0; i < vectorsToAdd.size(); i++) {
+      final int node = i; // copy for closure
+      try {
+        semaphore.acquire();
+        pool.submit(
+            () -> {
+              try {
+                addGraphNode(node, vectorsToAdd);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              } finally {
+                semaphore.release();
+              }
+            });
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
     }
-    stream.forEach(
-        node -> {
-          try {
-            addGraphNode(node, vectorsToAdd);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+
+    // Wait for any remaining tasks to complete
+    pool.shutdown();
+    try {
+      pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /** Set info-stream to output debugging information * */
@@ -215,9 +253,9 @@ public final class ConcurrentHnswGraphBuilder<T> {
       hnsw.addNode(level, node);
     }
 
-    var progressMarker = new NodeAtLevel(nodeLevel, node);
+    NodeAtLevel progressMarker = new NodeAtLevel(nodeLevel, node);
     insertionsInProgress.add(progressMarker);
-    var inProgressBefore = insertionsInProgress.clone();
+    ConcurrentSkipListSet<NodeAtLevel> inProgressBefore = insertionsInProgress.clone();
     try {
       NeighborQueue candidates;
       int curMaxLevel = hnsw.numLevels() - 1;
@@ -236,7 +274,7 @@ public final class ConcurrentHnswGraphBuilder<T> {
         candidates =
             graphSearcher.get().searchLevel(value, beamWidth, level, eps, vectors, hnsw.getView());
         // any nodes that are being added concurrently at this level are also candidates
-        for (var concurrentCandidate : inProgressBefore) {
+        for (NodeAtLevel concurrentCandidate : inProgressBefore) {
           if (concurrentCandidate.level < level || concurrentCandidate == progressMarker) {
             continue;
           }
@@ -278,20 +316,20 @@ public final class ConcurrentHnswGraphBuilder<T> {
   private void addDiverseNeighbors(int level, int newNode, NeighborQueue candidates) {
     // Add links from new node -> candidates.
     // See ConcurrentNeighborSet for an explanation of "diverse."
-    var neighbors = hnsw.getNeighbors(level, newNode);
-    var scratch = popToScratch(candidates);
+    ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
+    NeighborArray scratch = popToScratch(candidates);
     neighbors.insertDiverse(scratch, this::scoreBetween);
 
     // Add links from candidates -> new node (again applying diversity heuristic)
     neighbors.forEach(
         (nbr, nbrScore) -> {
-          var nbrNbr = hnsw.getNeighbors(level, nbr);
+          ConcurrentNeighborSet nbrNbr = hnsw.getNeighbors(level, nbr);
           nbrNbr.insert(newNode, nbrScore, this::scoreBetween);
         });
   }
 
   private NeighborArray popToScratch(NeighborQueue candidates) {
-    var scratch = this.scratchNeighbors.get();
+    NeighborArray scratch = this.scratchNeighbors.get();
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
