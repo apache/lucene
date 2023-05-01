@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static java.lang.Math.log;
 
 import java.io.IOException;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
@@ -278,7 +277,7 @@ public final class ConcurrentHnswGraphBuilder<T> {
           if (concurrentCandidate.level < level || concurrentCandidate == progressMarker) {
             continue;
           }
-          float score = scoreBetween(value, vectors.vectorValue(concurrentCandidate.node));
+          float score = scoreBetween(value, vectorsCopy.vectorValue(concurrentCandidate.node));
           candidates.add(concurrentCandidate.node, score);
           if (candidates.size() > beamWidth) {
             candidates.pop();
@@ -298,19 +297,6 @@ public final class ConcurrentHnswGraphBuilder<T> {
 
   public void addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
     addGraphNode(node, values.vectorValue(node));
-  }
-
-  private long printGraphBuildStatus(int node, long start, long t) {
-    long now = System.nanoTime();
-    infoStream.message(
-        HNSW_COMPONENT,
-        String.format(
-            Locale.ROOT,
-            "built %d in %d/%d ms",
-            node,
-            TimeUnit.NANOSECONDS.toMillis(now - t),
-            TimeUnit.NANOSECONDS.toMillis(now - start)));
-    return now;
   }
 
   private void addDiverseNeighbors(int level, int newNode, NeighborQueue candidates) {
@@ -343,8 +329,8 @@ public final class ConcurrentHnswGraphBuilder<T> {
 
   private float scoreBetween(int i, int j) {
     try {
-      final T v1 = vectors.vectorValue(i);
-      final T v2 = vectors.vectorValue(j);
+      final T v1 = vectorsCopy.vectorValue(i);
+      final T v2 = vectorsCopy.vectorValue(j);
       return scoreBetween(v1, v2);
     } catch (IOException e) {
       throw new RuntimeException(e);
