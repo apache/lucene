@@ -421,26 +421,39 @@ public class ToParentBlockJoinQuery extends Query {
           }
         }
       }
-
+      // this one causes issues
+      //
       if (bestChild == null) {
-        return Explanation.match(
-            score(),
-            String.format(
-                Locale.ROOT,
-                "Score based on 0 child docs in range from %d to %d, best match according to %s:",
-                matches,
-                start,
-                end,
-                scoreMode));
+        if (scoreMode == ScoreMode.None) {
+          double score = bestChild.getValue().doubleValue();
+          return Explanation.match(
+              score,
+              String.format(
+                  Locale.ROOT,
+                  "Score based on %d child docs in range from %d to %d, using score mode %s",
+                  matches,
+                  start,
+                  end,
+                  scoreMode),
+              bestChild);
+        } else {
+          return Explanation.match(
+              0.0f,
+              String.format(
+                  Locale.ROOT,
+                  "Score based on 0 child docs in range from %d to %d, using score mode %s",
+                  start,
+                  end,
+                  scoreMode));
+        }
       }
-
       if (scoreMode == ScoreMode.Avg) {
         double avgScore = matches > 0 ? childScoreSum / (double) matches : 0;
         return Explanation.match(
             avgScore,
             String.format(
                 Locale.ROOT,
-                "Score based on %d child docs in range from %d to %d, best match according to %s:",
+                "Score based on %d child docs in range from %d to %d, using score mode %s",
                 matches,
                 start,
                 end,
@@ -451,7 +464,7 @@ public class ToParentBlockJoinQuery extends Query {
             score(),
             String.format(
                 Locale.ROOT,
-                "Score based on %d child docs in range from %d to %d, best match according to %s:",
+                "Score based on %d child docs in range from %d to %d, using score mode %s",
                 matches,
                 start,
                 end,
