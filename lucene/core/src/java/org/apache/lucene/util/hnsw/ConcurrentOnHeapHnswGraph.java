@@ -163,38 +163,45 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
   @Override
   public long ramBytesUsed() {
-    long neighborArrayBytes0 =
-        nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
-    long neighborArrayBytes =
-        nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
+    // skip list used by Neighbor Set
+    long cskmNodesBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    long cskmIndexBytes = 4L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    long cskmBytes =
+        RamUsageEstimator.NUM_BYTES_OBJECT_REF // head
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + Runtime.getRuntime().availableProcessors() * Long.BYTES; // counters
+    long neighborSetBytes =
+        cskmBytes + Integer.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES;
+
+    // a CHM Node contains an int hash and a Node reference, as well as K and V references.
+    long chmNodeBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES;
+    float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
+    // CHM has a striped counter Cell implementation, we expect at most one per core
+    long chmCounters =
+        RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + Runtime.getRuntime().availableProcessors()
+                * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + Long.BYTES);
+
     long total = 0;
     for (int l = 0; l <= entryPoint.get().level; l++) {
-      if (l == 0) {
-        total +=
-            size() * neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
-      } else {
-        long numNodesOnLevel = graphLevels.get(l).size();
+      long numNodesOnLevel = graphLevels.get(l).size();
 
-        // For levels > 0, we represent the graph structure with a tree map.
-        // A single node in the tree contains 3 references (left root, right root, value) as well
-        // as an Integer for the key and 1 extra byte for the color of the node (this is actually 1
-        // bit, but
-        // because we do not have that granularity, we set to 1 byte). In addition, we include 1
-        // more reference for
-        // the tree map itself.
-        total +=
-            numNodesOnLevel * (3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES + 1)
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      // we represent the graph structure with a concurrent hash map.
+      // we expect there to be nodesOnLevel / levelLoadFactor Nodes in its internal table.
+      // there is also an entrySet reference, 3 ints, and a float for internal use.
+      int nodeCount = (int) (numNodesOnLevel / chmLoadFactor);
+      total +=
+          nodeCount * chmNodeBytes // nodes
+              + nodeCount * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER // nodes array
+              + Long.BYTES
+              + 3 * Integer.BYTES
+              + 3 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // extra internal fields
+              + chmCounters
+              + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // the Map reference itself
 
-        // Add the size neighbor of each node
-        total += numNodesOnLevel * neighborArrayBytes;
-      }
+      // Add the size neighbor of each node
+      total += numNodesOnLevel * (neighborSetBytes + nsize * (cskmNodesBytes + cskmIndexBytes));
     }
     return total;
   }
