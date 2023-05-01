@@ -164,14 +164,19 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   @Override
   public long ramBytesUsed() {
     // skip list used by Neighbor Set
-    long cskmNodesBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-    long cskmIndexBytes = 4L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    long cskmNodesBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // K, V, index
+    long cskmIndexBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // node, down, right
     long cskmBytes =
         RamUsageEstimator.NUM_BYTES_OBJECT_REF // head
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + Runtime.getRuntime().availableProcessors() * Long.BYTES; // counters
+            + Runtime.getRuntime().availableProcessors() * Long.BYTES // longadder cells
+            + 4L * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // internal view refs
     long neighborSetBytes =
-        cskmBytes + Integer.BYTES + RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES;
+        cskmBytes
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF // skiplist -> map reference
+            + Integer.BYTES
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + Integer.BYTES; // CNS fields
 
     // a CHM Node contains an int hash and a Node reference, as well as K and V references.
     long chmNodeBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES;
@@ -190,7 +195,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       // we expect there to be nodesOnLevel / levelLoadFactor Nodes in its internal table.
       // there is also an entrySet reference, 3 ints, and a float for internal use.
       int nodeCount = (int) (numNodesOnLevel / chmLoadFactor);
-      total +=
+      long chmSize =
           nodeCount * chmNodeBytes // nodes
               + nodeCount * RamUsageEstimator.NUM_BYTES_OBJECT_REF
               + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER // nodes array
@@ -201,7 +206,12 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
               + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // the Map reference itself
 
       // Add the size neighbor of each node
-      total += numNodesOnLevel * (neighborSetBytes + nsize * (cskmNodesBytes + cskmIndexBytes));
+      long neighborSize = 0;
+      for (ConcurrentNeighborSet cns : graphLevels.get(l).values()) {
+        neighborSize += neighborSetBytes + cns.size() * (cskmNodesBytes + cskmIndexBytes);
+      }
+
+      total += chmSize + neighborSize;
     }
     return total;
   }
