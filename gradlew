@@ -214,11 +214,14 @@ save () {
 }
 APP_ARGS=$(save "$@")
 
+# open classes to allow ram usage estimator to access private anonymous fields
+JVM_ARGS=" -Ptests.jvmargs=\"--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED\""
+
 # Prevent jgit from forking/searching git.exe
 export GIT_CONFIG_NOSYSTEM=1
 
 # Collect all arguments for the java command, following the shell quoting and substitution rules
-eval set -- $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
+eval set -- $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS" "$JVM_ARGS"
 
 # by default we should be in the correct project dir, but when run from Finder on Mac, the cwd is wrong
 if [ "$(uname)" = "Darwin" ] && [ "$HOME" = "$PWD" ]; then
