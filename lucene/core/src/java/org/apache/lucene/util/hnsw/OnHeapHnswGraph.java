@@ -79,7 +79,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     if (level == 0) {
       return graphLevel0.get(node);
     }
-    var levelMap = graphUpperLevels.get(level);
+    Map<Integer, NeighborArray> levelMap = graphUpperLevels.get(level);
     assert levelMap.containsKey(node);
     return levelMap.get(node);
   }

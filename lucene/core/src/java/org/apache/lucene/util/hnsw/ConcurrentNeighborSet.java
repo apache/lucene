@@ -37,7 +37,7 @@ public class ConcurrentNeighborSet {
   public Iterator<Integer> nodeIterator() {
     // don't use a stream here. stream's implementation of iterator buffers
     // very aggressively, which is a big waste for a lot of searches
-    var it = neighbors.iterator();
+    Iterator<Long> it = neighbors.iterator();
     return new Iterator<>() {
       public boolean hasNext() {
         return it.hasNext();
@@ -110,15 +110,15 @@ public class ConcurrentNeighborSet {
    * than e1 is to the base node, remove e1.
    */
   private void removeLeastDiverse(BiFunction<Integer, Integer, Float> scoreBetween) {
-    for (var e1 : neighbors.descendingSet()) {
-      var e1Id = decodeNodeId(e1);
-      var baseScore = decodeScore(e1);
+    for (Long e1 : neighbors.descendingSet()) {
+      int e1Id = decodeNodeId(e1);
+      float baseScore = decodeScore(e1);
 
-      var e2Iterator = iteratorStartingAfter(neighbors, e1);
+      Iterator<Long> e2Iterator = iteratorStartingAfter(neighbors, e1);
       while (e2Iterator.hasNext()) {
-        var e2 = e2Iterator.next();
-        var e2Id = decodeNodeId(e2);
-        var e1e2Score = scoreBetween.apply(e1Id, e2Id);
+        Long e2 = e2Iterator.next();
+        int e2Id = decodeNodeId(e2);
+        Float e1e2Score = scoreBetween.apply(e1Id, e2Id);
         if (e1e2Score >= baseScore) {
           if (neighbors.remove(e1)) {
             return;
@@ -157,7 +157,7 @@ public class ConcurrentNeighborSet {
   }
 
   public boolean contains(int i) {
-    for (var e : neighbors) {
+    for (Long e : neighbors) {
       if (decodeNodeId(e) == i) {
         return true;
       }

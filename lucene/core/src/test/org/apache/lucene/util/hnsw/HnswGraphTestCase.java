@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -277,19 +278,19 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   void assertGraphEqual(HnswGraph g, HnswGraph h) throws IOException {
     // construct these up front since they call seek which will mess up our test loop
-    var prettyG = prettyPrint(g);
-    var prettyH = prettyPrint(h);
-    var m1 =
+    String prettyG = prettyPrint(g);
+    String prettyH = prettyPrint(h);
+    String m1 =
         "the number of levels in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m1, g.numLevels(), h.numLevels());
-    var m2 = "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
+    String m2 = "the number of nodes in the graphs are different:%n%s%n%s".formatted(prettyG, prettyH);
     assertEquals(m2, g.size(), h.size());
 
     // assert equal nodes on each level
     for (int level = 0; level < g.numLevels(); level++) {
-      var hNodes = sortedNodesOnLevel(h, level);
-      var gNodes = sortedNodesOnLevel(g, level);
-      var m3 =
+      List<Integer> hNodes = sortedNodesOnLevel(h, level);
+      List<Integer> gNodes = sortedNodesOnLevel(g, level);
+      String m3 =
           "nodes in the graphs are different on level %d:%n%s%n%s"
               .formatted(level, prettyG, prettyH);
       assertEquals(m3, gNodes, hNodes);
@@ -302,7 +303,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         int node = nodesOnLevel.nextInt();
         g.seek(level, node);
         h.seek(level, node);
-        var m4 =
+        String m4 =
             "arcs differ for node %d on level %d:%n%s%n%s".formatted(node, level, prettyG, prettyH);
         assertEquals(m4, getNeighborNodes(g), getNeighborNodes(h));
       }
@@ -355,8 +356,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     assertTrue("sum(result docs)=" + sum, sum < 75);
 
     for (int i = 0; i < nDoc; i++) {
-      var neighbors = hnsw.getNeighbors(0, i);
-      var it = neighbors.nodeIterator();
+      ConcurrentNeighborSet neighbors = hnsw.getNeighbors(0, i);
+      Iterator<Integer> it = neighbors.nodeIterator();
       while (it.hasNext()) {
         // all neighbors should be valid node ids.
         assertTrue(it.next() < nDoc);
@@ -513,7 +514,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     for (int currLevel = 1; currLevel < numLevels; currLevel++) {
       List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
-      var sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
+      List<Integer> sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
       assertEquals(
           "Nodes on level %d do not match".formatted(currLevel), expectedNodesOnLevel, sortedNodes);
     }
@@ -894,7 +895,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   private void assertLevel0Neighbors(ConcurrentOnHeapHnswGraph graph, int node, int... expected) {
     Arrays.sort(expected);
-    var it = graph.getNeighbors(0, node).nodeIterator();
+    Iterator<Integer> it = graph.getNeighbors(0, node).nodeIterator();
     int[] actual = IntStream.generate(() -> it.hasNext() ? it.next() : null)
             .takeWhile(Objects::nonNull)
             .sorted()
@@ -1099,8 +1100,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     @Override
     public byte[] vectorValue(int ord) {
-      var value = unitVector2d(ord / (double) size);
-      var bValue = new byte[value.length];
+      float[] value = unitVector2d(ord / (double) size);
+      byte[] bValue = new byte[value.length];
       for (int i = 0; i < value.length; i++) {
         bValue[i] = (byte) (value[i] * 127);
       }
@@ -1216,7 +1217,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     try {
       for (int level = 0; level < hnsw.numLevels(); level++) {
         sb.append("# Level ").append(level).append("\n");
-        var it = hnsw.getNodesOnLevel(level);
+        NodesIterator it = hnsw.getNodesOnLevel(level);
         while (it.hasNext()) {
           int node = it.nextInt();
           sb.append("  ").append(node).append(" -> ");

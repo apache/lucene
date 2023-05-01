@@ -111,7 +111,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
    */
   void maybeUpdateEntryNode(int level, int node) {
     while (true) {
-      var oldEntry = entryPoint.get();
+      NodeAtLevel oldEntry = entryPoint.get();
       if (oldEntry.node >= 0 && oldEntry.level >= level) {
         break;
       }
