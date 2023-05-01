@@ -2,14 +2,11 @@ package org.apache.lucene.util.hnsw;
 
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.stream.Stream;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -95,7 +92,7 @@ public class ConcurrentNeighborSet {
   // is the candidate node with the given score closer to the base node than it is to any of the
   // existing neighbors
   private boolean isDiverse(
-          int node, float score, BiFunction<Integer, Integer, Float> scoreBetween) {
+      int node, float score, BiFunction<Integer, Integer, Float> scoreBetween) {
     for (Long encoded : neighbors) {
       if (scoreBetween.apply(decodeNodeId(encoded), node) > score) {
         return false;

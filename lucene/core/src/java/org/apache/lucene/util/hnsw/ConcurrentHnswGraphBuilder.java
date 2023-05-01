@@ -227,17 +227,14 @@ public final class ConcurrentHnswGraphBuilder<T> {
       int[] eps = ep >= 0 ? new int[] {ep} : new int[0];
       // for levels > nodeLevel search with topk = 1
       for (int level = curMaxLevel; level > nodeLevel; level--) {
-        candidates =
-            graphSearcher.get().searchLevel(value, 1, level, eps, vectors, hnsw.getView());
+        candidates = graphSearcher.get().searchLevel(value, 1, level, eps, vectors, hnsw.getView());
         eps = new int[] {candidates.pop()};
       }
       // for levels <= nodeLevel search with topk = beamWidth, and add connections
       for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
         // find best candidates at this level with a beam search
         candidates =
-            graphSearcher
-                .get()
-                .searchLevel(value, beamWidth, level, eps, vectors, hnsw.getView());
+            graphSearcher.get().searchLevel(value, beamWidth, level, eps, vectors, hnsw.getView());
         // any nodes that are being added concurrently at this level are also candidates
         for (var concurrentCandidate : inProgressBefore) {
           if (concurrentCandidate.level < level || concurrentCandidate == progressMarker) {
@@ -287,10 +284,10 @@ public final class ConcurrentHnswGraphBuilder<T> {
 
     // Add links from candidates -> new node (again applying diversity heuristic)
     neighbors.forEach(
-            (nbr, nbrScore) -> {
-              var nbrNbr = hnsw.getNeighbors(level, nbr);
-              nbrNbr.insert(newNode, nbrScore, this::scoreBetween);
-            });
+        (nbr, nbrScore) -> {
+          var nbrNbr = hnsw.getNeighbors(level, nbr);
+          nbrNbr.insert(newNode, nbrScore, this::scoreBetween);
+        });
   }
 
   private NeighborArray popToScratch(NeighborQueue candidates) {

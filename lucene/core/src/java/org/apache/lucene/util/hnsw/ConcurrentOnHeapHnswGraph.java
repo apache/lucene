@@ -49,8 +49,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   // lists,
   // a ConcurrentHashMap.  While the ArrayList used for L0 in OHHG is faster for single-threaded
   // workloads, it imposes an unacceptable contention burden for concurrent workloads.
-  private final ConcurrentMap<Integer, ConcurrentMap<Integer, ConcurrentNeighborSet>>
-  graphLevels;
+  private final ConcurrentMap<Integer, ConcurrentMap<Integer, ConcurrentNeighborSet>> graphLevels;
 
   // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
   private final int nsize;
