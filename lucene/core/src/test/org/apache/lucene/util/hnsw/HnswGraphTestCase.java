@@ -918,11 +918,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   private void assertLevel0Neighbors(ConcurrentOnHeapHnswGraph graph, int node, int... expected) {
     Arrays.sort(expected);
-    Iterator<Integer> it = graph.getNeighbors(0, node).nodeIterator();
-    int[] actual = IntStream.generate(() -> it.hasNext() ? it.next() : null)
-            .takeWhile(Objects::nonNull)
-            .sorted()
-            .toArray();
+    ConcurrentNeighborSet nn = graph.getNeighbors(0, node);
+    Iterator<Integer> it = nn.nodeIterator();
+    int[] actual = new int[nn.size()];
+    for (int i = 0; i < actual.length; i++) {
+      actual[i] = it.next();
+    }
+    Arrays.sort(actual);
     assertArrayEquals(
         "expected: " + Arrays.toString(expected) + " actual: " + Arrays.toString(actual),
         expected,
