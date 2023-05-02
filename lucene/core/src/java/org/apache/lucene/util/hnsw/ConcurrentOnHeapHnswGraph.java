@@ -152,29 +152,26 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
   @Override
   public long ramBytesUsed() {
-    // skip list used by Neighbor Set
-    long cskmNodesBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // K, V, index
-    long cskmIndexBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // node, down, right
-    long cskmBytes =
-        RamUsageEstimator.NUM_BYTES_OBJECT_REF // head
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + Runtime.getRuntime().availableProcessors() * Long.BYTES // longadder cells
-            + 4L * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // internal view refs
-    long neighborSetBytes =
-        cskmBytes
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF // skiplist -> map reference
-            + Integer.BYTES
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES; // CNS fields
+    // local vars here just to make it easier to keep lines short enough to read
+    long REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+    long CORES = Runtime.getRuntime().availableProcessors();
 
+    // skip list used by Neighbor Set
+    long cskmNodesBytes = 3L * REF_BYTES; // K, V, index
+    long cskmIndexBytes = 3L * REF_BYTES; // node, down, right
+    long cskmBytes =
+        REF_BYTES // head
+            + AH_BYTES + CORES * Long.BYTES // longadder cells
+            + 4L * REF_BYTES; // internal view refs
+    long neighborSetBytes =
+        cskmBytes + REF_BYTES // skiplist -> map reference
+            + Integer.BYTES + REF_BYTES + Integer.BYTES; // CNS fields
     // a CHM Node contains an int hash and a Node reference, as well as K and V references.
-    long chmNodeBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES;
+    long chmNodeBytes = 3L * REF_BYTES + Integer.BYTES;
     float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
     // CHM has a striped counter Cell implementation, we expect at most one per core
-    long chmCounters =
-        RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + Runtime.getRuntime().availableProcessors()
-                * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + Long.BYTES);
+    long chmCounters = AH_BYTES + CORES * (REF_BYTES + Long.BYTES);
 
     long total = 0;
     for (int l = 0; l <= entryPoint.get().level; l++) {
@@ -186,13 +183,9 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       int nodeCount = (int) (numNodesOnLevel / chmLoadFactor);
       long chmSize =
           nodeCount * chmNodeBytes // nodes
-              + nodeCount * RamUsageEstimator.NUM_BYTES_OBJECT_REF
-              + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER // nodes array
-              + Long.BYTES
-              + 3 * Integer.BYTES
-              + 3 * RamUsageEstimator.NUM_BYTES_OBJECT_REF // extra internal fields
-              + chmCounters
-              + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // the Map reference itself
+              + nodeCount * REF_BYTES + AH_BYTES // nodes array
+              + Long.BYTES + 3 * Integer.BYTES + 3 * REF_BYTES // extra internal fields
+              + chmCounters + REF_BYTES; // the Map reference itself
 
       // Add the size neighbor of each node
       long neighborSize = 0;

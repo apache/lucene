@@ -167,26 +167,28 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public long ramBytesUsed() {
+    // local vars here just to make it easier to keep lines short enough to read
+    int AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+    int REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+
     long neighborArrayBytes0 =
         nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + AH_BYTES * 2
+            + REF_BYTES
             + Integer.BYTES * 2;
     long neighborArrayBytes =
         nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
+            + AH_BYTES * 2
+            + REF_BYTES
             + Integer.BYTES * 2;
     long total = 0;
 
     // a hashmap Node contains an int hash and a Node reference, as well as K and V references.
-    long mapNodeBytes = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES;
+    long mapNodeBytes = 3L * REF_BYTES + Integer.BYTES;
 
     for (int l = 0; l < numLevels; l++) {
       if (l == 0) {
-        total +=
-            graphLevel0.size() * neighborArrayBytes0
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
+        total += graphLevel0.size() * neighborArrayBytes0 + REF_BYTES; // for graph;
       } else {
         long numNodesOnLevel = graphUpperLevels.get(l).size();
 
@@ -196,12 +198,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
         int nodeCount = (int) (numNodesOnLevel / levelLoadFactor);
         total +=
             nodeCount * mapNodeBytes // nodes
-                + nodeCount * RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER // nodes array
-                + 3 * Integer.BYTES
-                + Float.BYTES
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF // extra internal fields
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // the Map reference itself
+                + nodeCount * REF_BYTES + AH_BYTES // nodes array
+                + 3 * Integer.BYTES + Float.BYTES + REF_BYTES // extra internal fields
+                + REF_BYTES; // the Map reference itself
 
         // Add the size neighbor of each node
         total += numNodesOnLevel * neighborArrayBytes;
