@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
+
+import org.apache.lucene.index.EmptyDocValuesProducer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreQuery;
@@ -425,17 +427,9 @@ public class ToParentBlockJoinQuery extends Query {
       //
       if (bestChild == null) {
         if (scoreMode == ScoreMode.None) {
-          double score = bestChild.getValue().doubleValue();
-          return Explanation.match(
-              score,
-              String.format(
-                  Locale.ROOT,
-                  "Score based on %d child docs in range from %d to %d, using score mode %s",
-                  matches,
-                  start,
-                  end,
-                  scoreMode),
-              bestChild);
+          return Explanation.noMatch(
+              "No children matched");
+
         } else {
           return Explanation.match(
               0.0f,
