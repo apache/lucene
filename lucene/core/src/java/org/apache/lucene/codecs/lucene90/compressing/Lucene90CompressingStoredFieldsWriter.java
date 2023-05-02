@@ -88,7 +88,11 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   private final ByteBuffersDataOutput bufferedDocs;
   private int[] numStoredFields; // number of stored fields
+
+  private boolean numStoredFieldsAllSame;
   private int[] endOffsets; // end offsets in bufferedDocs
+
+  private boolean docLengthAllSame;
   private int docBase; // doc ID at the beginning of the chunk
   private int numBufferedDocs; // docBase + numBufferedDocs == current doc ID
 
@@ -119,6 +123,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     this.numStoredFields = new int[16];
     this.endOffsets = new int[16];
     this.numBufferedDocs = 0;
+    this.numStoredFieldsAllSame = true;
+    this.docLengthAllSame = true;
 
     boolean success = false;
     try {
@@ -184,6 +190,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       endOffsets = ArrayUtil.growExact(endOffsets, newLength);
     }
     this.numStoredFields[numBufferedDocs] = numStoredFieldsInDoc;
+    numStoredFieldsAllSame &=
+        (this.numStoredFields[Math.max(0, numBufferedDocs - 1)] == numStoredFieldsInDoc);
     numStoredFieldsInDoc = 0;
     endOffsets[numBufferedDocs] = Math.toIntExact(bufferedDocs.size());
     ++numBufferedDocs;
@@ -192,11 +200,12 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     }
   }
 
-  private static void saveInts(int[] values, int length, DataOutput out) throws IOException {
+  private static void saveInts(int[] values, int length, DataOutput out, boolean allSame)
+      throws IOException {
     if (length == 1) {
       out.writeVInt(values[0]);
     } else {
-      StoredFieldsInts.writeInts(values, 0, length, out);
+      StoredFieldsInts.writeInts(values, 0, length, out, allSame);
     }
   }
 
@@ -215,10 +224,10 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     fieldsStream.writeVInt((numBufferedDocs << 2) | dirtyBit | slicedBit);
 
     // save numStoredFields
-    saveInts(numStoredFields, numBufferedDocs, fieldsStream);
+    saveInts(numStoredFields, numBufferedDocs, fieldsStream, numStoredFieldsAllSame);
 
     // save lengths
-    saveInts(lengths, numBufferedDocs, fieldsStream);
+    saveInts(lengths, numBufferedDocs, fieldsStream, docLengthAllSame);
   }
 
   private boolean triggerFlush() {
@@ -240,6 +249,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     final int[] lengths = endOffsets;
     for (int i = numBufferedDocs - 1; i > 0; --i) {
       lengths[i] = endOffsets[i] - endOffsets[i - 1];
+      docLengthAllSame &= (lengths[i] == lengths[0]);
       assert lengths[i] >= 0;
     }
     final boolean sliced = bufferedDocs.size() >= 2L * chunkSize;
@@ -262,6 +272,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     // reset
     docBase += numBufferedDocs;
     numBufferedDocs = 0;
+    numStoredFieldsAllSame = true;
+    docLengthAllSame = true;
     bufferedDocs.reset();
   }
 
