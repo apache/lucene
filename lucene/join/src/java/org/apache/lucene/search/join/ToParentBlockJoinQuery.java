@@ -423,8 +423,6 @@ public class ToParentBlockJoinQuery extends Query {
           }
         }
       }
-      // this one causes issues
-      //
       if (bestChild == null) {
         if (scoreMode == ScoreMode.None) {
           return Explanation.noMatch(
@@ -453,6 +451,19 @@ public class ToParentBlockJoinQuery extends Query {
                 end,
                 scoreMode),
             bestChild);
+      }
+      if (scoreMode == ScoreMode.Total) {
+        double totalScore = childScoreSum;
+        return Explanation.match(
+                totalScore,
+                String.format(
+                        Locale.ROOT,
+                        "Score based on %d child docs in range from %d to %d, using score mode %s",
+                        matches,
+                        start,
+                        end,
+                        scoreMode),
+                bestChild);
       } else {
         return Explanation.match(
             score(),
