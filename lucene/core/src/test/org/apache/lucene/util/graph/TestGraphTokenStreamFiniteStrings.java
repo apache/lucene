@@ -684,32 +684,6 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
     TokenStream ts = new CannedTokenStream(tokens.toArray(new Token[0]));
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(ts);
 
-    Iterator<TokenStream> it = graph.getFiniteStrings();
-    assertTrue(it.hasNext());
-    it.next();
-    assertTrue(it.hasNext());
-    it.next();
-    assertFalse(it.hasNext());
-
-    int[] points = graph.articulationPoints(); // This will cause a java.lang.StackOverflowError
-    assertEquals(points[0], 1);
-    assertEquals(points[1], 3);
-    assertEquals(points.length, MAX_RECURSION_LEVEL - 2);
-
-    assertFalse(graph.hasSidePath(0));
-    it = graph.getFiniteStrings(0, 1);
-    assertTrue(it.hasNext());
-    assertTokenStream(it.next(), new String[] {"fast"}, new int[] {1});
-    assertFalse(it.hasNext());
-    Term[] terms = graph.getTerms("field", 0);
-    assertArrayEquals(terms, new Term[] {new Term("field", "fast")});
-
-    assertTrue(graph.hasSidePath(1));
-    it = graph.getFiniteStrings(1, 3);
-    assertTrue(it.hasNext());
-    assertTokenStream(it.next(), new String[] {"wi", "fi"}, new int[] {1, 1});
-    assertTrue(it.hasNext());
-    assertTokenStream(it.next(), new String[] {"wifi"}, new int[] {1});
-    assertFalse(it.hasNext());
+    assertThrows(IllegalArgumentException.class, () -> graph.articulationPoints());
   }
 }
