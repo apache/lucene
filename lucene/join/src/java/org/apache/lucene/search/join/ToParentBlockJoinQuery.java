@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
-
-import org.apache.lucene.index.EmptyDocValuesProducer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreQuery;
@@ -413,10 +411,6 @@ public class ToParentBlockJoinQuery extends Query {
           matches++;
           childScoreSum += child.getValue().doubleValue();
 
-          if (scoreMode == ScoreMode.Total) {
-            continue;
-          }
-
           if (bestChild == null
               || child.getValue().doubleValue() > bestChild.getValue().doubleValue()) {
             bestChild = child;
@@ -425,8 +419,7 @@ public class ToParentBlockJoinQuery extends Query {
       }
       if (bestChild == null) {
         if (scoreMode == ScoreMode.None) {
-          return Explanation.noMatch(
-              "No children matched");
+          return Explanation.noMatch("No children matched");
 
         } else {
           return Explanation.match(
@@ -452,21 +445,10 @@ public class ToParentBlockJoinQuery extends Query {
                 scoreMode),
             bestChild);
       }
-      if (scoreMode == ScoreMode.Total) {
+      if (scoreMode == ScoreMode.Total && matches > 0) {
         double totalScore = childScoreSum;
         return Explanation.match(
-                totalScore,
-                String.format(
-                        Locale.ROOT,
-                        "Score based on %d child docs in range from %d to %d, using score mode %s",
-                        matches,
-                        start,
-                        end,
-                        scoreMode),
-                bestChild);
-      } else {
-        return Explanation.match(
-            score(),
+            totalScore,
             String.format(
                 Locale.ROOT,
                 "Score based on %d child docs in range from %d to %d, using score mode %s",
@@ -475,6 +457,8 @@ public class ToParentBlockJoinQuery extends Query {
                 end,
                 scoreMode),
             bestChild);
+      } else {
+        return Explanation.noMatch("Unexpected score mode: " + scoreMode);
       }
     }
   }
