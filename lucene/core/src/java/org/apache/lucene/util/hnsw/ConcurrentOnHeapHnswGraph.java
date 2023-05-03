@@ -162,11 +162,15 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     long cskmIndexBytes = 3L * REF_BYTES; // node, down, right
     long cskmBytes =
         REF_BYTES // head
-            + AH_BYTES + CORES * Long.BYTES // longadder cells
+            + AH_BYTES
+            + CORES * Long.BYTES // longadder cells
             + 4L * REF_BYTES; // internal view refs
     long neighborSetBytes =
-        cskmBytes + REF_BYTES // skiplist -> map reference
-            + Integer.BYTES + REF_BYTES + Integer.BYTES; // CNS fields
+        cskmBytes
+            + REF_BYTES // skiplist -> map reference
+            + Integer.BYTES
+            + REF_BYTES
+            + Integer.BYTES; // CNS fields
     // a CHM Node contains an int hash and a Node reference, as well as K and V references.
     long chmNodeBytes = 3L * REF_BYTES + Integer.BYTES;
     float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
@@ -183,9 +187,13 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       int nodeCount = (int) (numNodesOnLevel / chmLoadFactor);
       long chmSize =
           nodeCount * chmNodeBytes // nodes
-              + nodeCount * REF_BYTES + AH_BYTES // nodes array
-              + Long.BYTES + 3 * Integer.BYTES + 3 * REF_BYTES // extra internal fields
-              + chmCounters + REF_BYTES; // the Map reference itself
+              + nodeCount * REF_BYTES
+              + AH_BYTES // nodes array
+              + Long.BYTES
+              + 3 * Integer.BYTES
+              + 3 * REF_BYTES // extra internal fields
+              + chmCounters
+              + REF_BYTES; // the Map reference itself
 
       // Add the size neighbor of each node
       long neighborSize = 0;
