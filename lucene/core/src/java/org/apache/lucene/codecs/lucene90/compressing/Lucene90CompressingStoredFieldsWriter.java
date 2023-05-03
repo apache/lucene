@@ -88,11 +88,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   private final ByteBuffersDataOutput bufferedDocs;
   private int[] numStoredFields; // number of stored fields
-
-  private boolean numStoredFieldsAllSame;
+  private boolean numStoredFieldsAllSame; // number of stored fields is all same
   private int[] endOffsets; // end offsets in bufferedDocs
-
-  private boolean docLengthAllSame;
+  private boolean docLengthAllSame; // buffered doc's length is all same
   private int docBase; // doc ID at the beginning of the chunk
   private int numBufferedDocs; // docBase + numBufferedDocs == current doc ID
 
