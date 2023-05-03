@@ -403,6 +403,7 @@ public class ToParentBlockJoinQuery extends Query {
       int end = context.docBase + parentApproximation.docID() - 1; // -1 b/c parentDoc is parent doc
 
       Explanation bestChild = null;
+      Explanation worstChild = null;
       double childScoreSum = 0;
       int matches = 0;
       for (int childDoc = start; childDoc <= end; childDoc++) {
@@ -415,12 +416,15 @@ public class ToParentBlockJoinQuery extends Query {
               || child.getValue().doubleValue() > bestChild.getValue().doubleValue()) {
             bestChild = child;
           }
+          if (worstChild == null
+              || child.getValue().doubleValue() < worstChild.getValue().doubleValue()) {
+            worstChild = child;
+          }
         }
       }
       if (bestChild == null) {
         if (scoreMode == ScoreMode.None) {
           return Explanation.noMatch("No children matched");
-
         } else {
           return Explanation.match(
               0.0f,
@@ -457,6 +461,30 @@ public class ToParentBlockJoinQuery extends Query {
                 end,
                 scoreMode),
             bestChild);
+      }
+      if (scoreMode == ScoreMode.Max && matches > 0) {
+        return Explanation.match(
+            bestChild.getValue().doubleValue(),
+            String.format(
+                Locale.ROOT,
+                "Score based on %d child docs in range from %d to %d, using score mode %s",
+                matches,
+                start,
+                end,
+                scoreMode),
+            bestChild);
+      }
+      if (scoreMode == ScoreMode.Min && matches > 0) {
+        return Explanation.match(
+            worstChild.getValue().doubleValue(),
+            String.format(
+                Locale.ROOT,
+                "Score based on %d child docs in range from %d to %d, using score mode %s",
+                matches,
+                start,
+                end,
+                scoreMode),
+            worstChild);
       } else {
         return Explanation.noMatch("Unexpected score mode: " + scoreMode);
       }
