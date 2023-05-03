@@ -74,26 +74,17 @@ public class TestSynonymQuery extends LuceneTestCase {
             .addTerm(new Term("field", "d"))
             .build());
 
-    QueryUtils.checkUnequal(new SynonymQuery.Builder("field")
-                    .addTerm(new Term("field", "a"), 0.4f)
-                    .build(),
-            new SynonymQuery.Builder("field")
-                    .addTerm(new Term("field", "b"), 0.4f)
-                    .build());
+    QueryUtils.checkUnequal(
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "a"), 0.4f).build(),
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "b"), 0.4f).build());
 
-    QueryUtils.checkUnequal(new SynonymQuery.Builder("field")
-                    .addTerm(new Term("field", "a"), 0.2f)
-                    .build(),
-            new SynonymQuery.Builder("field")
-                    .addTerm(new Term("field", "a"), 0.4f)
-                    .build());
+    QueryUtils.checkUnequal(
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "a"), 0.2f).build(),
+        new SynonymQuery.Builder("field").addTerm(new Term("field", "a"), 0.4f).build());
 
-    QueryUtils.checkUnequal(new SynonymQuery.Builder("field1")
-                    .addTerm(new Term("field1", "b"), 0.4f)
-                    .build(),
-            new SynonymQuery.Builder("field2")
-                    .addTerm(new Term("field2", "b"), 0.4f)
-                    .build());
+    QueryUtils.checkUnequal(
+        new SynonymQuery.Builder("field1").addTerm(new Term("field1", "b"), 0.4f).build(),
+        new SynonymQuery.Builder("field2").addTerm(new Term("field2", "b"), 0.4f).build());
   }
 
   public void testBogusParams() {
@@ -150,12 +141,10 @@ public class TestSynonymQuery extends LuceneTestCase {
         });
 
     expectThrows(
-            NullPointerException.class,
-            () -> new SynonymQuery.Builder(null).addTerm(new Term("field1", "a"), -0f));
+        NullPointerException.class,
+        () -> new SynonymQuery.Builder(null).addTerm(new Term("field1", "a"), -0f));
 
-    expectThrows(
-            NullPointerException.class,
-            () -> new SynonymQuery.Builder(null).build());
+    expectThrows(NullPointerException.class, () -> new SynonymQuery.Builder(null).build());
   }
 
   public void testToString() {

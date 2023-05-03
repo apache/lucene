@@ -146,7 +146,9 @@ public final class SynonymQuery extends Query {
 
   @Override
   public boolean equals(Object other) {
-    return sameClassAs(other) && field.equals(((SynonymQuery)other).field) && Arrays.equals(terms, ((SynonymQuery) other).terms);
+    return sameClassAs(other)
+        && field.equals(((SynonymQuery) other).field)
+        && Arrays.equals(terms, ((SynonymQuery) other).terms);
   }
 
   @Override
