@@ -410,8 +410,6 @@ public class ToParentBlockJoinQuery extends Query {
         Explanation child = childWeight.explain(context, childDoc - context.docBase);
         if (child.isMatch()) {
           matches++;
-          childScoreSum += child.getValue().doubleValue();
-
           if (bestChild == null
               || child.getValue().doubleValue() > bestChild.getValue().doubleValue()) {
             bestChild = child;
@@ -422,72 +420,55 @@ public class ToParentBlockJoinQuery extends Query {
           }
         }
       }
+
       if (bestChild == null) {
-        if (scoreMode == ScoreMode.None) {
-          return Explanation.noMatch("No children matched");
-        } else {
-          return Explanation.match(
-              0.0f,
-              String.format(
-                  Locale.ROOT,
-                  "Score based on 0 child docs in range from %d to %d, using score mode %s",
-                  start,
-                  end,
-                  scoreMode));
+        switch (scoreMode) {
+          case None:
+            return Explanation.noMatch("No children matched");
+          default:
+            return Explanation.match(
+                this.score(), formatScoreExplanation(0, start, end, scoreMode));
         }
       }
-      if (scoreMode == ScoreMode.Avg) {
-        double avgScore = matches > 0 ? childScoreSum / (double) matches : 0;
-        return Explanation.match(
-            avgScore,
-            String.format(
-                Locale.ROOT,
-                "Score based on %d child docs in range from %d to %d, using score mode %s",
-                matches,
-                start,
-                end,
-                scoreMode),
-            bestChild);
+
+      switch (scoreMode) {
+        case Avg:
+          double avgScore = matches > 0 ? childScoreSum / (double) matches : 0;
+          return Explanation.match(
+              this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
+        case Total:
+          if (matches > 0) {
+            return Explanation.match(
+                this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
+          }
+          break;
+        case Max:
+          if (matches > 0) {
+            return Explanation.match(
+                this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
+          }
+          break;
+        case Min:
+          if (matches > 0) {
+            return Explanation.match(
+                this.score(), formatScoreExplanation(matches, start, end, scoreMode), worstChild);
+          }
+          break;
+        default:
+          return Explanation.noMatch("Unexpected score mode: " + scoreMode);
       }
-      if (scoreMode == ScoreMode.Total && matches > 0) {
-        double totalScore = childScoreSum;
-        return Explanation.match(
-            totalScore,
-            String.format(
-                Locale.ROOT,
-                "Score based on %d child docs in range from %d to %d, using score mode %s",
-                matches,
-                start,
-                end,
-                scoreMode),
-            bestChild);
-      }
-      if (scoreMode == ScoreMode.Max && matches > 0) {
-        return Explanation.match(
-            bestChild.getValue().doubleValue(),
-            String.format(
-                Locale.ROOT,
-                "Score based on %d child docs in range from %d to %d, using score mode %s",
-                matches,
-                start,
-                end,
-                scoreMode),
-            bestChild);
-      }
-      if (scoreMode == ScoreMode.Min && matches > 0) {
-        return Explanation.match(
-            worstChild.getValue().doubleValue(),
-            String.format(
-                Locale.ROOT,
-                "Score based on %d child docs in range from %d to %d, using score mode %s",
-                matches,
-                start,
-                end,
-                scoreMode),
-            worstChild);
-      } else {
-        return Explanation.noMatch("Unexpected score mode: " + scoreMode);
-      }
+
+      return Explanation.noMatch("No matches found");
+    }
+
+    private String formatScoreExplanation(int matches, int start, int end, ScoreMode scoreMode) {
+      return String.format(
+          Locale.ROOT,
+          "Score based on %d child docs in range from %d to %d, using score mode %s",
+          matches,
+          start,
+          end,
+          scoreMode);
     }
   }
 
