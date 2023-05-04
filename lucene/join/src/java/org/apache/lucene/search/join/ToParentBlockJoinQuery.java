@@ -424,7 +424,8 @@ public class ToParentBlockJoinQuery extends Query {
       if (bestChild == null) {
         switch (scoreMode) {
           case None:
-            return Explanation.noMatch("No children matched");
+            return Explanation.match(
+                this.score(), formatScoreExplanation(0, start, end, scoreMode), bestChild);
           default:
             return Explanation.match(
                 this.score(), formatScoreExplanation(0, start, end, scoreMode));
@@ -433,7 +434,6 @@ public class ToParentBlockJoinQuery extends Query {
 
       switch (scoreMode) {
         case Avg:
-          double avgScore = matches > 0 ? childScoreSum / (double) matches : 0;
           return Explanation.match(
               this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
         case Total:
