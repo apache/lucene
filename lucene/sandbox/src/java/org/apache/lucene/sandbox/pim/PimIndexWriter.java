@@ -34,7 +34,10 @@ import java.util.ArrayList;
  */
 public class PimIndexWriter extends IndexWriter {
 
-  public static final String DPU_TERM_INDEX_EXTENSION = "dput";
+  public static final String DPU_TERM_FIELD_INDEX_EXTENSION = "dpuf";
+  public static final String DPU_TERM_BLOCK_TABLE_INDEX_EXTENSION = "dpub";
+  public static final String DPU_TERM_BLOCK_INDEX_EXTENSION = "dput";
+  public static final String DPU_TERM_POSTINGS_INDEX_EXTENSION = "dpup";
 
   private final PimConfig pimConfig;
 
@@ -110,14 +113,12 @@ public class PimIndexWriter extends IndexWriter {
 
       Set<String> fileNames = Set.of(getDirectory().listAll());
       for (int i = 0; i < termIndexes.length; i++) {
-        String indexName =
-                IndexFileNames.segmentFileName(
-                        segmentCommitInfo.info.name, Integer.toString(i), DPU_TERM_INDEX_EXTENSION);
-        if (fileNames.contains(indexName)) {
-          getDirectory().deleteFile(indexName);
-        }
-        IndexOutput indexOutput = getDirectory().createOutput(indexName, IOContext.DEFAULT);
-        termIndexes[i] = new DpuTermBlockIndex(i, indexOutput, numFields, blockSize);
+        termIndexes[i] = new DpuTermIndex(i,
+                createIndexOutput(segmentCommitInfo.info.name, DPU_TERM_FIELD_INDEX_EXTENSION, i, fileNames),
+                createIndexOutput(segmentCommitInfo.info.name, DPU_TERM_BLOCK_TABLE_INDEX_EXTENSION, i, fileNames),
+                createIndexOutput(segmentCommitInfo.info.name, DPU_TERM_BLOCK_INDEX_EXTENSION, i, fileNames),
+                createIndexOutput(segmentCommitInfo.info.name, DPU_TERM_POSTINGS_INDEX_EXTENSION, i, fileNames),
+                numFields, blockSize);
       }
       posBuffer = ByteBuffersDataOutput.newResettableInstance();
     }
@@ -166,109 +167,41 @@ public class PimIndexWriter extends IndexWriter {
       return ((63 - Long.numberOfLeadingZeros(value)) >> 3) + 1;
     }
 
-    private class DpuTermIndex {
-
-      final int dpuIndex;
-      final IndexOutput indexOutput;
-      final Map<FieldInfo, Long> fieldPointer;
-      boolean fieldWritten;
-      boolean termWritten;
-      int doc;
-      long numTerms;
-
-      DpuTermIndex(int dpuIndex, IndexOutput indexOutput, int numFields) {
-        this.dpuIndex = dpuIndex;
-        this.indexOutput = indexOutput;
-        fieldPointer = new LinkedHashMap<>((int) (numFields / 0.75f) + 1);
+    private IndexOutput createIndexOutput(String name, String ext, int dpuIndex, Set<String> fileNames) throws IOException {
+      String indexName =
+              IndexFileNames.segmentFileName(
+                      name, Integer.toString(dpuIndex), ext);
+      if (fileNames.contains(indexName)) {
+        getDirectory().deleteFile(indexName);
       }
-
-      void resetForNextField() {
-        fieldWritten = false;
-      }
-
-      void endField() {}
-
-      void resetForNextTerm() {
-        termWritten = false;
-        doc = 0;
-      }
-
-      void writeTermIfAbsent(BytesRef term) throws IOException {
-        if (!termWritten) {
-          if (!fieldWritten) {
-            fieldPointer.put(fieldInfo, indexOutput.getFilePointer());
-            fieldWritten = true;
-          }
-          //TODO: delta-prefix the term bytes (see UniformSplit).
-          indexOutput.writeBytes(term.bytes, term.offset, term.length);
-          termWritten = true;
-          numTerms++;
-        }
-      }
-
-      void close() throws IOException {
-        indexOutput.close();
-      }
-
-      void writeDoc(int doc) throws IOException {
-        int deltaDoc = doc - this.doc;
-        assert deltaDoc > 0 || doc == 0 && deltaDoc == 0;
-        indexOutput.writeVInt(deltaDoc);
-        this.doc = doc;
-        int freq = postingsEnum.freq();
-        assert freq > 0;
-        System.out.print("    doc=" + doc + " dpu=" + dpuIndex + " freq=" + freq);
-        int previousPos = 0;
-        for (int i = 0; i < freq; i++) {
-          // TODO: If freq is large (>= 128) then it could be possible to better
-          //  encode positions (see PForUtil).
-          int pos = postingsEnum.nextPosition();
-          int deltaPos = pos - previousPos;
-          previousPos = pos;
-          posBuffer.writeVInt(deltaPos);
-          System.out.print(" pos=" + pos);
-        }
-        long numBytesPos = posBuffer.size();
-        // The sign bit of freq defines how the offset to the next doc is encoded:
-        // freq > 0 => offset encoded on 1 byte
-        // freq < 0 => offset encoded on 2 bytes
-        // freq = 0 => write real freq and offset encoded on variable length
-        switch (numBytesToEncode(numBytesPos)) {
-          case 1 -> {
-            indexOutput.writeZInt(freq);
-            indexOutput.writeByte((byte) numBytesPos);
-          }
-          case 2 -> {
-            indexOutput.writeZInt(-freq);
-            indexOutput.writeShort((short) numBytesPos);
-          }
-          default -> {
-            indexOutput.writeZInt(0);
-            indexOutput.writeVInt(freq);
-            indexOutput.writeVLong(numBytesPos);
-          }
-        }
-        posBuffer.copyTo(indexOutput);
-        posBuffer.reset();
-        System.out.println();
-      }
+      return getDirectory().createOutput(indexName, IOContext.DEFAULT);
     }
 
-    private class TreeBasedTermBlockTable {
+    /**
+     * @class TreeBasedTermTable
+     * Write a term table as a tree structure, so that
+     * binary search for a particular term can be performed.
+     * Each term is associated to a pointer/offset (long).
+     **/
+    private class TreeBasedTermTable {
 
-      ArrayList<BytesRef> blockTermList;
-      ArrayList<Long> blockAddressList;
+      ArrayList<BytesRef> termList;
+      ArrayList<Long> addressList;
       ArrayList<TreeNode> tree;
 
-      TreeBasedTermBlockTable(ArrayList<BytesRef> blockTermList, ArrayList<Long> blockAddressList) {
-        this.blockTermList = blockTermList;
-        this.blockAddressList = blockAddressList;
+      TreeBasedTermTable(ArrayList<BytesRef> termList, ArrayList<Long> addressList) {
+        this.termList = termList;
+        this.addressList = addressList;
         this.tree = new ArrayList<>();
-        buildTreeRecursive(blockTermList, blockAddressList, 0, tree);
+        buildTreeRecursive(termList, addressList, 0, tree);
+      }
+
+      TreeBasedTermTable(Map<BytesRef, Long> blockMap) {
+        this(new ArrayList<>(blockMap.keySet()), new ArrayList<>(blockMap.values()));
       }
 
       void write(IndexOutput indexOutput) throws IOException {
-       for(TreeNode node : tree) node.write(indexOutput);
+        for(TreeNode node : tree) node.write(indexOutput);
       }
 
       private TreeNode buildTreeRecursive(List<BytesRef> termList, List<Long> addrList,
@@ -282,12 +215,13 @@ public class PimIndexWriter extends IndexWriter {
         TreeNode node = new TreeNode(termList.get(mid), addrList.get(mid), offset);
         tree.add(node);
         offset += node.getByteSize();
-        if(termList.size() > 2) {
+        if(termList.size() > 1) {
           node.leftChild = buildTreeRecursive(termList.subList(0, mid), addrList.subList(0, mid), offset, tree);
           offset += node.leftChild.offset;
         }
-        if(termList.size() > 1) {
-          node.rightChild = buildTreeRecursive(termList.subList(mid + 1, termList.size()), addrList.subList(mid + 1, termList.size()), offset, tree);
+        if(termList.size() > 2) {
+          node.rightChild = buildTreeRecursive(termList.subList(mid + 1, termList.size()),
+                  addrList.subList(mid + 1, termList.size()), offset, tree);
         }
         return node;
       }
@@ -295,14 +229,14 @@ public class PimIndexWriter extends IndexWriter {
       private class TreeNode {
 
         BytesRef term;
-        Long blockAdress;
+        Long blockAddress;
         int offset;
         TreeNode leftChild;
         TreeNode rightChild;
 
         TreeNode(BytesRef term, Long blockAdress, int offset) {
           this.term = term;
-          this.blockAdress = blockAdress;
+          this.blockAddress = blockAdress;
           this.offset = offset;
           this.leftChild = null;
           this.rightChild = null;
@@ -324,12 +258,12 @@ public class PimIndexWriter extends IndexWriter {
             // that the right path must be followed
             output.writeVInt(rightChild.offset - this.offset);
           }
-          output.writeVInt((int)blockAdress.longValue());
+          output.writeVInt((int) blockAddress.longValue());
           System.out.println("Block first term: " + term.utf8ToString());
         }
 
         int getByteSize() {
-          return term.length + getVIntByteSize((int)blockAdress.longValue()) + ((rightChild == null) ?
+          return term.length + getVIntByteSize((int) blockAddress.longValue()) + ((rightChild == null) ?
                   1 : getVIntByteSize(rightChild.offset - this.offset));
         }
       }
@@ -343,15 +277,21 @@ public class PimIndexWriter extends IndexWriter {
     }
 
     /**
-     * @class DpuTermBlockIndex
-     * Specialization of class DpuTermIndex where terms and their
+     * @class DpuTermIndex
+     * Write a DPU index where terms and their
      * posting lists are stored in blocks of fixed size. A block table
      * contains the first term of each block and the address to jump to
      * the block. Hence, for search it is sufficient to find the right block
      * from the block table and to scan the block to find the term.
      **/
-    private class DpuTermBlockIndex extends DpuTermIndex {
+    private class DpuTermIndex {
 
+      final int dpuIndex;
+      final Map<BytesRef, Long> fieldPointer;
+      boolean fieldWritten;
+      boolean termWritten;
+      int doc;
+      long numTerms;
       /** number of terms stored in one block of the index.
        *  each block is scanned linearly for searching a term.
        */
@@ -359,16 +299,35 @@ public class PimIndexWriter extends IndexWriter {
       int currBlockSz;
       ArrayList<BytesRef> blockTermList;
       ArrayList<Long> blockAddressList;
+      IndexOutput fieldTableOutput;
+      IndexOutput blocksTableOutput;
+      IndexOutput blocksOutput;
+      IndexOutput postingsOutput;
 
-      DpuTermBlockIndex(int dpuIndex, IndexOutput indexOutput, int numFields, int blockCapacity) {
-        super(dpuIndex, indexOutput, numFields);
+      DpuTermIndex(int dpuIndex,
+                   IndexOutput fieldTableOutput, IndexOutput blockTablesOutput,
+                   IndexOutput blocksOutput, IndexOutput postingsOutput,
+                   int numFields, int blockCapacity) {
+        this.dpuIndex = dpuIndex;
+        fieldPointer = new LinkedHashMap<>((int) (numFields / 0.75f) + 1);
         this.blockCapacity = blockCapacity;
         this.currBlockSz = 0;
         this.blockTermList = new ArrayList<>();
         this.blockAddressList = new ArrayList<>();
+        this.fieldTableOutput = fieldTableOutput;
+        this.blocksTableOutput = blockTablesOutput;
+        this.blocksOutput = blocksOutput;
+        this.postingsOutput = postingsOutput;
       }
 
-      @Override
+      void resetForNextField() {
+        fieldWritten = false;
+      }
+      void resetForNextTerm() {
+        termWritten = false;
+        doc = 0;
+      }
+
       void writeTermIfAbsent(BytesRef term) throws IOException {
 
         // Do not write the bytes of the first term of a block
@@ -380,10 +339,21 @@ public class PimIndexWriter extends IndexWriter {
             // if yes, start a new block
             if(currBlockSz == blockCapacity) {
               blockTermList.add(BytesRef.deepCopyOf(term));
-              blockAddressList.add(indexOutput.getFilePointer());
+              blockAddressList.add(blocksOutput.getFilePointer());
               currBlockSz = 0;
             }
-            super.writeTermIfAbsent(term);
+
+            if (!fieldWritten) {
+              fieldPointer.put(new BytesRef(fieldInfo.getName()), blocksTableOutput.getFilePointer());
+              fieldWritten = true;
+            }
+            //TODO: delta-prefix the term bytes (see UniformSplit).
+            blocksOutput.writeBytes(term.bytes, term.offset, term.length);
+            termWritten = true;
+            numTerms++;
+
+            // write pointer to the posting list for this term (in posting file)
+            blocksOutput.writeVLong(postingsOutput.getFilePointer());
             currBlockSz++;
           }
         }
@@ -396,9 +366,52 @@ public class PimIndexWriter extends IndexWriter {
             // this is the first term of the first block
             // save the address and term
             blockTermList.add(BytesRef.deepCopyOf(term));
-            blockAddressList.add(indexOutput.getFilePointer());
+            blockAddressList.add(blocksOutput.getFilePointer());
           }
         }
+      }
+
+      void writeDoc(int doc) throws IOException {
+        int deltaDoc = doc - this.doc;
+        assert deltaDoc > 0 || doc == 0 && deltaDoc == 0;
+        postingsOutput.writeVInt(deltaDoc);
+        this.doc = doc;
+        int freq = postingsEnum.freq();
+        assert freq > 0;
+        System.out.print("    doc=" + doc + " dpu=" + dpuIndex + " freq=" + freq);
+        int previousPos = 0;
+        for (int i = 0; i < freq; i++) {
+          // TODO: If freq is large (>= 128) then it could be possible to better
+          //  encode positions (see PForUtil).
+          int pos = postingsEnum.nextPosition();
+          int deltaPos = pos - previousPos;
+          previousPos = pos;
+          posBuffer.writeVInt(deltaPos);
+          System.out.print(" pos=" + pos);
+        }
+        long numBytesPos = posBuffer.size();
+        // The sign bit of freq defines how the offset to the next doc is encoded:
+        // freq > 0 => offset encoded on 1 byte
+        // freq < 0 => offset encoded on 2 bytes
+        // freq = 0 => write real freq and offset encoded on variable length
+        switch (numBytesToEncode(numBytesPos)) {
+          case 1 -> {
+            postingsOutput.writeZInt(freq);
+            postingsOutput.writeByte((byte) numBytesPos);
+          }
+          case 2 -> {
+            postingsOutput.writeZInt(-freq);
+            postingsOutput.writeShort((short) numBytesPos);
+          }
+          default -> {
+            postingsOutput.writeZInt(0);
+            postingsOutput.writeVInt(freq);
+            postingsOutput.writeVLong(numBytesPos);
+          }
+        }
+        posBuffer.copyTo(postingsOutput);
+        posBuffer.reset();
+        System.out.println();
       }
 
       void writeBlockTable() throws IOException {
@@ -409,8 +422,8 @@ public class PimIndexWriter extends IndexWriter {
         if(numBlocks == 0)
           return;
 
-        TreeBasedTermBlockTable table = new TreeBasedTermBlockTable(blockTermList, blockAddressList);
-        table.write(indexOutput);
+        TreeBasedTermTable table = new TreeBasedTermTable(blockTermList, blockAddressList);
+        table.write(blocksTableOutput);
 
         // reset internal parameters
         currBlockSz = 0;
@@ -418,7 +431,12 @@ public class PimIndexWriter extends IndexWriter {
         blockAddressList = new ArrayList<>();
       }
 
-      @Override
+      void writeFieldTable() throws IOException {
+
+        TreeBasedTermTable table = new TreeBasedTermTable(fieldPointer);
+        table.write(fieldTableOutput);
+      }
+
       void endField() {
 
         // at the end of a field,
@@ -429,6 +447,14 @@ public class PimIndexWriter extends IndexWriter {
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
+      }
+      void close() throws IOException {
+        System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldPointer.size());
+        writeFieldTable();
+        fieldTableOutput.close();
+        blocksTableOutput.close();
+        blocksOutput.close();
+        postingsOutput.close();
       }
     }
   }
