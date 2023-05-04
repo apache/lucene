@@ -66,18 +66,16 @@ public class PimIndexWriter extends IndexWriter {
           for (FieldInfo fieldInfo : reader.getFieldInfos()) {
             // For each field in the term index.
             // There will be a different term index sub-part per segment, per field, and per DPU.
-            dpuTermIndexes.startField(fieldInfo);
+            //dpuTermIndexes.startField(fieldInfo);
             reader.getLiveDocs();//TODO: remove as useless. We are going to let Core Lucene handle the live docs.
             Terms terms = reader.terms(fieldInfo.name);
             if (terms != null) {
               int docCount = terms.getDocCount();
               System.out.println("  " + docCount + " docs");
               TermsEnum termsEnum = terms.iterator();
-              while (termsEnum.next() != null) {
-                // Send the term enum to DpuTermIndexes.
-                // DpuTermIndexes separates the term docs according to the docId range split per DPU.
-                dpuTermIndexes.writeTerm(termsEnum);
-              }
+              // Send the term enum to DpuTermIndexes.
+              // DpuTermIndexes separates the term docs according to the docId range split per DPU.
+              dpuTermIndexes.writeTerms(fieldInfo, termsEnum);
             }
           }
         }
@@ -101,7 +99,7 @@ public class PimIndexWriter extends IndexWriter {
       //    at indexing time, in a new file. Then here we could target (sumDocSizes / numDpus)
       //    per DPU.
       numDocsPerDpu = Math.max((segmentCommitInfo.info.maxDoc() - segmentCommitInfo.getDelCount()) / pimConfig.getNumDpus(),
-                               1);
+              1);
       termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
 
       System.out.println("Directory " + getDirectory() + " --------------");
@@ -113,8 +111,8 @@ public class PimIndexWriter extends IndexWriter {
       Set<String> fileNames = Set.of(getDirectory().listAll());
       for (int i = 0; i < termIndexes.length; i++) {
         String indexName =
-          IndexFileNames.segmentFileName(
-            segmentCommitInfo.info.name, Integer.toString(i), DPU_TERM_INDEX_EXTENSION);
+                IndexFileNames.segmentFileName(
+                        segmentCommitInfo.info.name, Integer.toString(i), DPU_TERM_INDEX_EXTENSION);
         if (fileNames.contains(indexName)) {
           getDirectory().deleteFile(indexName);
         }
@@ -124,27 +122,32 @@ public class PimIndexWriter extends IndexWriter {
       posBuffer = ByteBuffersDataOutput.newResettableInstance();
     }
 
-    void startField(FieldInfo fieldInfo) {
+    void writeTerms(FieldInfo fieldInfo, TermsEnum termsEnum) throws IOException {
+
       this.fieldInfo = fieldInfo;
       for (DpuTermIndex termIndex : termIndexes) {
         termIndex.resetForNextField();
       }
       System.out.println("  field " + fieldInfo.name);
-    }
 
-    void writeTerm(TermsEnum termsEnum) throws IOException {
-      BytesRef term = termsEnum.term();
-      System.out.println("   " + term.utf8ToString());
-      for (DpuTermIndex termIndex : termIndexes) {
-        termIndex.resetForNextTerm();
+      while (termsEnum.next() != null) {
+        BytesRef term = termsEnum.term();
+        System.out.println("   " + term.utf8ToString());
+        for (DpuTermIndex termIndex : termIndexes) {
+          termIndex.resetForNextTerm();
+        }
+        postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.POSITIONS);
+        int doc;
+        while ((doc = postingsEnum.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
+          int dpuIndex = Math.min(doc / numDocsPerDpu, pimConfig.getNumDpus() - 1);
+          DpuTermIndex termIndex = termIndexes[dpuIndex];
+          termIndex.writeTermIfAbsent(term);
+          termIndex.writeDoc(doc);
+        }
       }
-      postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.POSITIONS);
-      int doc;
-      while ((doc = postingsEnum.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
-        int dpuIndex = Math.min(doc / numDocsPerDpu, pimConfig.getNumDpus() - 1);
-        DpuTermIndex termIndex = termIndexes[dpuIndex];
-        termIndex.writeTermIfAbsent(term);
-        termIndex.writeDoc(doc);
+
+      for (DpuTermIndex termIndex : termIndexes) {
+        termIndex.endField();
       }
     }
 
@@ -182,6 +185,8 @@ public class PimIndexWriter extends IndexWriter {
       void resetForNextField() {
         fieldWritten = false;
       }
+
+      void endField() {}
 
       void resetForNextTerm() {
         termWritten = false;
@@ -249,6 +254,94 @@ public class PimIndexWriter extends IndexWriter {
       }
     }
 
+    private class TreeBasedTermBlockTable {
+
+      ArrayList<BytesRef> blockTermList;
+      ArrayList<Long> blockAddressList;
+      ArrayList<TreeNode> tree;
+
+      TreeBasedTermBlockTable(ArrayList<BytesRef> blockTermList, ArrayList<Long> blockAddressList) {
+        this.blockTermList = blockTermList;
+        this.blockAddressList = blockAddressList;
+        this.tree = new ArrayList<>();
+        buildTreeRecursive(blockTermList, blockAddressList, 0, tree);
+      }
+
+      void write(IndexOutput indexOutput) throws IOException {
+       for(TreeNode node : tree) node.write(indexOutput);
+      }
+
+      private TreeNode buildTreeRecursive(List<BytesRef> termList, List<Long> addrList,
+                                      int offset, ArrayList<TreeNode> tree) {
+
+        assert termList.size() == addrList.size();
+        if(termList.isEmpty()) return null;
+
+        // dump middle term
+        int mid = termList.size() / 2;
+        TreeNode node = new TreeNode(termList.get(mid), addrList.get(mid), offset);
+        tree.add(node);
+        offset += node.getByteSize();
+        if(termList.size() > 2) {
+          node.leftChild = buildTreeRecursive(termList.subList(0, mid), addrList.subList(0, mid), offset, tree);
+          offset += node.leftChild.offset;
+        }
+        if(termList.size() > 1) {
+          node.rightChild = buildTreeRecursive(termList.subList(mid + 1, termList.size()), addrList.subList(mid + 1, termList.size()), offset, tree);
+        }
+        return node;
+      }
+
+      private class TreeNode {
+
+        BytesRef term;
+        Long blockAdress;
+        int offset;
+        TreeNode leftChild;
+        TreeNode rightChild;
+
+        TreeNode(BytesRef term, Long blockAdress, int offset) {
+          this.term = term;
+          this.blockAdress = blockAdress;
+          this.offset = offset;
+          this.leftChild = null;
+          this.rightChild = null;
+        }
+
+        void write(IndexOutput output) throws IOException {
+
+          // TODO implement an option to align on 4B
+          // It will be faster for the DPU to search, at the expense of more memory space
+          // TODO do we need to write the length before the term bytes ? Otherwise can we figure it out ?
+          output.writeBytes(term.bytes, term.offset, term.length);
+          if(rightChild == null) {
+            // TODO what to output in this case ? a special value 0 ?
+            output.writeVInt(0);
+          }
+          else {
+            assert rightChild.offset > this.offset;
+            // Dump offset in bytes to which to jump in case
+            // that the right path must be followed
+            output.writeVInt(rightChild.offset - this.offset);
+          }
+          output.writeVInt((int)blockAdress.longValue());
+          System.out.println("Block first term: " + term.utf8ToString());
+        }
+
+        int getByteSize() {
+          return term.length + getVIntByteSize((int)blockAdress.longValue()) + ((rightChild == null) ?
+                  1 : getVIntByteSize(rightChild.offset - this.offset));
+        }
+      }
+
+      /**
+       * @return the number of bytes needed to store v
+       **/
+      static private int getVIntByteSize(int v) {
+        return (Integer.SIZE - Integer.numberOfLeadingZeros(v) + 7) / 8;
+      }
+    }
+
     /**
      * @class DpuTermBlockIndex
      * Specialization of class DpuTermIndex where terms and their
@@ -263,7 +356,6 @@ public class PimIndexWriter extends IndexWriter {
        *  each block is scanned linearly for searching a term.
        */
       int blockCapacity;
-
       int currBlockSz;
       ArrayList<BytesRef> blockTermList;
       ArrayList<Long> blockAddressList;
@@ -287,7 +379,7 @@ public class PimIndexWriter extends IndexWriter {
             // first check if the current block exceeds its capacity
             // if yes, start a new block
             if(currBlockSz == blockCapacity) {
-              blockTermList.add(term);
+              blockTermList.add(BytesRef.deepCopyOf(term));
               blockAddressList.add(indexOutput.getFilePointer());
               currBlockSz = 0;
             }
@@ -303,7 +395,7 @@ public class PimIndexWriter extends IndexWriter {
           if(blockTermList.size() == 0) {
             // this is the first term of the first block
             // save the address and term
-            blockTermList.add(term);
+            blockTermList.add(BytesRef.deepCopyOf(term));
             blockAddressList.add(indexOutput.getFilePointer());
           }
         }
@@ -317,54 +409,26 @@ public class PimIndexWriter extends IndexWriter {
         if(numBlocks == 0)
           return;
 
-        // 1) write the number of blocks
-        indexOutput.writeInt(numBlocks);
-
-        // 2) write the N/2 block first (for binary search)
-        BytesRef middleTerm = blockTermList.get(blockTermList.size() / 2);
-        indexOutput.writeBytes(middleTerm.bytes, middleTerm.offset, middleTerm.length);
-        // Note: the memory of a DPU is 64M, so the address must fit on 4 bytes integer
-        indexOutput.writeVInt((int) blockAddressList.get(blockAddressList.size() / 2).longValue());
-
-        // 3) write the remaining blocks
-        for (int i = 0; i < blockTermList.size(); ++i) {
-          if (i == blockTermList.size() / 2)
-            continue;
-          BytesRef term = blockTermList.get(i);
-          indexOutput.writeBytes(term.bytes, term.offset, term.length);
-          indexOutput.writeVInt((int) blockAddressList.get(i).longValue());
-        }
+        TreeBasedTermBlockTable table = new TreeBasedTermBlockTable(blockTermList, blockAddressList);
+        table.write(indexOutput);
 
         // reset internal parameters
         currBlockSz = 0;
-        numBlocks = 0;
         blockTermList = new ArrayList<>();
         blockAddressList = new ArrayList<>();
       }
 
       @Override
-      void resetForNextField() {
+      void endField() {
 
-        super.resetForNextField();
-
-        // at the start of a new field,
-        // write the block table of the previous field
+        // at the end of a field,
+        // write the block table
         try {
+          System.out.println("Block table dpu:" + dpuIndex + " field:" + fieldInfo.name);
           writeBlockTable();
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
-      }
-
-      @Override
-      void close() throws IOException {
-
-        // write the block table at the end of this file
-        // TODO should probably be written at the beginning of the file instead
-        writeBlockTable();
-
-        // call parent method
-        super.close();
       }
     }
   }
