@@ -63,13 +63,13 @@ public interface SerialHnswGraphTest<T> {
     long seed = random().nextLong();
     AbstractMockVectorValues<T> vectors = vectorValues(nDoc, dim);
     AbstractMockVectorValues<T> v2 = vectors.copy(), v3 = vectors.copy();
-    OnHeapHnswGraphBuilder<T> builder =
+    HnswGraphBuilder<T> builder =
         OnHeapHnswGraphFactory.instance.createBuilder(
             vectors, getVectorEncoding(), getSimilarityFunction(), M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors.copy());
 
     // Recreate the graph while indexing with the same random seed and write it out
-    OnHeapHnswGraphBuilder.randSeed = seed;
+    HnswGraphBuilder.randSeed = seed;
     try (Directory dir = newDirectory()) {
       int nVec = 0, indexedDoc = 0;
       // Don't merge randomly, create a single segment because we rely on the docid ordering for
@@ -127,7 +127,7 @@ public interface SerialHnswGraphTest<T> {
     long seed = random().nextLong();
 
     AbstractMockVectorValues<T> initializerVectors = vectorValues(initializerSize, dim);
-    OnHeapHnswGraphBuilder<T> initializerBuilder =
+    HnswGraphBuilder<T> initializerBuilder =
         OnHeapHnswGraphFactory.instance.createBuilder(
             initializerVectors, getVectorEncoding(), getSimilarityFunction(), 10, 30, seed);
 
@@ -138,7 +138,7 @@ public interface SerialHnswGraphTest<T> {
     Map<Integer, Integer> initializerOrdMap =
         createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
 
-    OnHeapHnswGraphBuilder<T> finalBuilder =
+    HnswGraphBuilder<T> finalBuilder =
         OnHeapHnswGraphFactory.instance.createBuilder(
             finalVectorValues,
             getVectorEncoding(),
@@ -165,7 +165,7 @@ public interface SerialHnswGraphTest<T> {
     long seed = random().nextLong();
 
     AbstractMockVectorValues<T> initializerVectors = vectorValues(initializerSize, dim);
-    OnHeapHnswGraphBuilder<T> initializerBuilder =
+    HnswGraphBuilder<T> initializerBuilder =
         OnHeapHnswGraphFactory.instance.createBuilder(
             initializerVectors.copy(), getVectorEncoding(), getSimilarityFunction(), 10, 30, seed);
     HnswGraph initializerGraph = initializerBuilder.build(initializerVectors.copy());
@@ -174,7 +174,7 @@ public interface SerialHnswGraphTest<T> {
     Map<Integer, Integer> initializerOrdMap =
         createOffsetOrdinalMap(initializerSize, finalVectorValues.copy(), docIdOffset);
 
-    OnHeapHnswGraphBuilder<T> finalBuilder =
+    HnswGraphBuilder<T> finalBuilder =
         OnHeapHnswGraphFactory.instance.createBuilder(
             finalVectorValues,
             getVectorEncoding(),

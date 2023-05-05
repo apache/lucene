@@ -27,7 +27,7 @@ public class OnHeapHnswGraphFactory implements HnswGraphFactory {
   public static OnHeapHnswGraphFactory instance = new OnHeapHnswGraphFactory();
 
   @Override
-  public <T> OnHeapHnswGraphBuilder<T> createBuilder(
+  public <T> HnswGraphBuilder<T> createBuilder(
       RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
@@ -35,11 +35,11 @@ public class OnHeapHnswGraphFactory implements HnswGraphFactory {
       int beamWidth,
       long seed)
       throws IOException {
-    return new OnHeapHnswGraphBuilder<>(
+    return new HnswGraphBuilder<>(
         vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
   }
 
-  public <T> OnHeapHnswGraphBuilder<T> createBuilder(
+  public <T> HnswGraphBuilder<T> createBuilder(
       RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
@@ -49,8 +49,8 @@ public class OnHeapHnswGraphFactory implements HnswGraphFactory {
       HnswGraph initializerGraph,
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
-    OnHeapHnswGraphBuilder<T> hnswGraphBuilder =
-        new OnHeapHnswGraphBuilder<>(
+    HnswGraphBuilder<T> hnswGraphBuilder =
+        new HnswGraphBuilder<>(
             vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;

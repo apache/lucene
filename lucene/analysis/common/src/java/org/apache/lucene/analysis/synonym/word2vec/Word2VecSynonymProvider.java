@@ -17,8 +17,8 @@
 
 package org.apache.lucene.analysis.synonym.word2vec;
 
-import static org.apache.lucene.util.hnsw.OnHeapHnswGraphBuilder.DEFAULT_BEAM_WIDTH;
-import static org.apache.lucene.util.hnsw.OnHeapHnswGraphBuilder.DEFAULT_MAX_CONN;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_MAX_CONN;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -30,7 +30,7 @@ import org.apache.lucene.util.TermAndBoost;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraphBuilder;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraphFactory;
 
 /**
@@ -54,14 +54,14 @@ public class Word2VecSynonymProvider {
   public Word2VecSynonymProvider(Word2VecModel model) throws IOException {
     word2VecModel = model;
 
-    OnHeapHnswGraphBuilder<float[]> builder =
+    HnswGraphBuilder<float[]> builder =
         OnHeapHnswGraphFactory.instance.createBuilder(
             word2VecModel,
             VECTOR_ENCODING,
             SIMILARITY_FUNCTION,
             DEFAULT_MAX_CONN,
             DEFAULT_BEAM_WIDTH,
-            OnHeapHnswGraphBuilder.randSeed);
+            HnswGraphBuilder.randSeed);
     this.hnswGraph = builder.build(word2VecModel.copy());
   }
 

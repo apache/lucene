@@ -51,7 +51,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraphBuilder;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraphFactory;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
@@ -421,14 +421,14 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                OnHeapHnswGraphBuilder<byte[]> hnswGraphBuilder =
+                HnswGraphBuilder<byte[]> hnswGraphBuilder =
                     OnHeapHnswGraphFactory.instance.createBuilder(
                         vectorValues,
                         fieldInfo.getVectorEncoding(),
                         fieldInfo.getVectorSimilarityFunction(),
                         M,
                         beamWidth,
-                        OnHeapHnswGraphBuilder.randSeed);
+                        HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
@@ -439,14 +439,14 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                OnHeapHnswGraphBuilder<float[]> hnswGraphBuilder =
+                HnswGraphBuilder<float[]> hnswGraphBuilder =
                     OnHeapHnswGraphFactory.instance.createBuilder(
                         vectorValues,
                         fieldInfo.getVectorEncoding(),
                         fieldInfo.getVectorSimilarityFunction(),
                         M,
                         beamWidth,
-                        OnHeapHnswGraphBuilder.randSeed);
+                        HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.copy());
               }
@@ -631,7 +631,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
-    private final OnHeapHnswGraphBuilder<T> hnswGraphBuilder;
+    private final HnswGraphBuilder<T> hnswGraphBuilder;
 
     private int lastDocID = -1;
     private int node = 0;
@@ -669,7 +669,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
               fieldInfo.getVectorSimilarityFunction(),
               M,
               beamWidth,
-              OnHeapHnswGraphBuilder.randSeed);
+              HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
     }
 

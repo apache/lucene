@@ -128,7 +128,7 @@ public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<flo
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
-    HnswGraphBuilder<float[]> builder =
+    IHnswGraphBuilder<float[]> builder =
         factory.createBuilder(
             vectors, getVectorEncoding(), similarityFunction, 16, 100, random().nextInt());
     HnswGraph hnsw = builder.build(vectors.copy());

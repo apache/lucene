@@ -42,7 +42,7 @@ import org.apache.lucene.util.hnsw.ConcurrentOnHeapHnswGraph.NodeAtLevel;
  *
  * @param <T> the type of vector
  */
-public final class ConcurrentHnswGraphBuilder<T> implements HnswGraphBuilder<T> {
+public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
