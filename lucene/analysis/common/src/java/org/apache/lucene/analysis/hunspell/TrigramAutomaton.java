@@ -79,7 +79,7 @@ class TrigramAutomaton {
   }
 
   int ngramScore(CharsRef s2) {
-    countedSubstrings.clear(0, countedSubstrings.length());
+    countedSubstrings.clear();
 
     int score1 = 0, score2 = 0, score3 = 0; // scores for substrings of length 1, 2 and 3
 
