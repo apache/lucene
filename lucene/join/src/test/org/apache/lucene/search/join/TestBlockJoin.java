@@ -889,29 +889,29 @@ public class TestBlockJoin extends LuceneTestCase {
           Explanation explanation = joinS.explain(childJoinQuery, hit.doc);
           Document document = joinS.storedFields().document(hit.doc - 1);
           int childId = Integer.parseInt(document.get("childID"));
-            assertEquals(hit.score, explanation.getValue().floatValue(), 0.1f);
-            Matcher m =
-                Pattern.compile(
-                        "Score based on ([0-9]+) child docs in range from ([0-9]+) to ([0-9]+), using score mode (None|Avg|Min|Max|Total)")
-                    .matcher(explanation.getDescription());
-            assertTrue("Block Join description not matches", m.matches());
-            assertTrue("Matched children not positive", Integer.parseInt(m.group(1)) > 0);
-            assertEquals(
-                "Wrong child range start", hit.doc - 1 - childId, Integer.parseInt(m.group(2)));
-            assertEquals("Wrong child range end", hit.doc - 1, Integer.parseInt(m.group(3)));
-            Explanation childWeightExplanation = explanation.getDetails()[0];
-            if ("sum of:".equals(childWeightExplanation.getDescription())) {
-              childWeightExplanation = childWeightExplanation.getDetails()[0];
-            }
-            if (agg == ScoreMode.None) {
-              assertTrue(
-                  "Wrong child weight description",
-                  childWeightExplanation.getDescription().startsWith("ConstantScore("));
-            } else {
-              assertTrue(
-                  "Wrong child weight description",
-                  childWeightExplanation.getDescription().startsWith("weight(child"));
-            }
+          assertEquals(hit.score, explanation.getValue().floatValue(), 0.1f);
+          Matcher m =
+              Pattern.compile(
+                      "Score based on ([0-9]+) child docs in range from ([0-9]+) to ([0-9]+), using score mode (None|Avg|Min|Max|Total)")
+                  .matcher(explanation.getDescription());
+          assertTrue("Block Join description not matches", m.matches());
+          assertTrue("Matched children not positive", Integer.parseInt(m.group(1)) > 0);
+          assertEquals(
+              "Wrong child range start", hit.doc - 1 - childId, Integer.parseInt(m.group(2)));
+          assertEquals("Wrong child range end", hit.doc - 1, Integer.parseInt(m.group(3)));
+          Explanation childWeightExplanation = explanation.getDetails()[0];
+          if ("sum of:".equals(childWeightExplanation.getDescription())) {
+            childWeightExplanation = childWeightExplanation.getDetails()[0];
+          }
+          if (agg == ScoreMode.None) {
+            assertTrue(
+                "Wrong child weight description",
+                childWeightExplanation.getDescription().startsWith("ConstantScore("));
+          } else {
+            assertTrue(
+                "Wrong child weight description",
+                childWeightExplanation.getDescription().startsWith("weight(child"));
+          }
         }
       }
 

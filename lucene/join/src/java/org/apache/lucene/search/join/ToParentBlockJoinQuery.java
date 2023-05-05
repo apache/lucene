@@ -420,10 +420,12 @@ public class ToParentBlockJoinQuery extends Query {
           }
         }
       }
-      assert matches>0 : "No matches should be handled before.";
+      assert matches > 0 : "No matches should be handled before.";
+      Explanation subExplain = scoreMode == ScoreMode.Min ? worstChild : bestChild;
       return Explanation.match(
-              this.score(), formatScoreExplanation(matches, start, end, scoreMode),
-          scoreMode==ScoreMode.Min ? worstChild:bestChild);
+          this.score(),
+          formatScoreExplanation(matches, start, end, scoreMode),
+          subExplain == null ? Collections.emptyList() : Collections.singleton(subExplain));
     }
 
     private String formatScoreExplanation(int matches, int start, int end, ScoreMode scoreMode) {
