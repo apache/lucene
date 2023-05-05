@@ -404,7 +404,7 @@ public class ToParentBlockJoinQuery extends Query {
 
       Explanation bestChild = null;
       Explanation worstChild = null;
-      double childScoreSum = 0;
+
       int matches = 0;
       for (int childDoc = start; childDoc <= end; childDoc++) {
         Explanation child = childWeight.explain(context, childDoc - context.docBase);
@@ -420,45 +420,10 @@ public class ToParentBlockJoinQuery extends Query {
           }
         }
       }
-
-      if (bestChild == null) {
-        switch (scoreMode) {
-          case None:
-            return Explanation.match(
-                this.score(), formatScoreExplanation(0, start, end, scoreMode), bestChild);
-          default:
-            return Explanation.match(
-                this.score(), formatScoreExplanation(0, start, end, scoreMode));
-        }
-      }
-
-      switch (scoreMode) {
-        case Avg:
-          return Explanation.match(
-              this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
-        case Total:
-          if (matches > 0) {
-            return Explanation.match(
-                this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
-          }
-          break;
-        case Max:
-          if (matches > 0) {
-            return Explanation.match(
-                this.score(), formatScoreExplanation(matches, start, end, scoreMode), bestChild);
-          }
-          break;
-        case Min:
-          if (matches > 0) {
-            return Explanation.match(
-                this.score(), formatScoreExplanation(matches, start, end, scoreMode), worstChild);
-          }
-          break;
-        default:
-          return Explanation.noMatch("Unexpected score mode: " + scoreMode);
-      }
-
-      return Explanation.noMatch("No matches found");
+      assert matches>0 : "No matches should be handled before.";
+      return Explanation.match(
+              this.score(), formatScoreExplanation(matches, start, end, scoreMode),
+          scoreMode==ScoreMode.Min ? worstChild:bestChild);
     }
 
     private String formatScoreExplanation(int matches, int start, int end, ScoreMode scoreMode) {
