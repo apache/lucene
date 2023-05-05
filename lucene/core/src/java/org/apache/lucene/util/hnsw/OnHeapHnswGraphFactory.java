@@ -35,8 +35,7 @@ public class OnHeapHnswGraphFactory implements HnswGraphFactory {
       int beamWidth,
       long seed)
       throws IOException {
-    return new HnswGraphBuilder<>(
-        vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
   }
 
   public <T> HnswGraphBuilder<T> createBuilder(
@@ -50,8 +49,7 @@ public class OnHeapHnswGraphFactory implements HnswGraphFactory {
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
     HnswGraphBuilder<T> hnswGraphBuilder =
-        new HnswGraphBuilder<>(
-            vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+        new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
