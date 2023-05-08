@@ -80,6 +80,11 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     return graphLevels.get(0).size(); // all nodes are located on the 0th level
   }
 
+  /**
+   * @param level level to add a node on
+   * @param node the node to add, represented as an ordinal on the level 0. It is the caller's
+   *     responsibility to add each node only once.
+   */
   @Override
   public void addNode(int level, int node) {
     if (level >= graphLevels.size()) {

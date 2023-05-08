@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.AtomicBitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -82,7 +81,6 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
   private final RandomAccessVectorValues<T> vectorsCopy;
-  private final AtomicBitSet initializedNodes;
 
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
@@ -127,7 +125,6 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
     // in scratch we store candidates in reverse order: worse candidates are first
     scratchNeighbors =
         ExplicitThreadLocal.withInitial(() -> new NeighborArray(Math.max(beamWidth, M + 1), false));
-    this.initializedNodes = new AtomicBitSet(vectors.size());
   }
 
   private abstract static class ExplicitThreadLocal<U> {
@@ -275,10 +272,6 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
 
   @Override
   public void addGraphNode(int node, T value) throws IOException {
-    if (initializedNodes.getAndSet(node)) {
-      return; // already initialized
-    }
-
     // do this before adding to in-progress, so a concurrent writer checking
     // the in-progress set doesn't have to worry about uninitialized neighbor sets
     final int nodeLevel = getRandomGraphLevel(ml);
