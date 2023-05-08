@@ -35,6 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
@@ -65,12 +66,12 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
 
   private final int beamWidth;
   private final double ml;
-  private final ThreadLocal<NeighborArray> scratchNeighbors;
+  private final ExplicitThreadLocal<NeighborArray> scratchNeighbors;
 
   private final VectorSimilarityFunction similarityFunction;
   private final VectorEncoding vectorEncoding;
   private final RandomAccessVectorValues<T> vectors;
-  private final ThreadLocal<HnswGraphSearcher<T>> graphSearcher;
+  private final ExplicitThreadLocal<HnswGraphSearcher<T>> graphSearcher;
 
   final ConcurrentOnHeapHnswGraph hnsw;
   private final ConcurrentSkipListSet<NodeAtLevel> insertionsInProgress =
@@ -115,7 +116,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.hnsw = new ConcurrentOnHeapHnswGraph(M);
     this.graphSearcher =
-        ThreadLocal.withInitial(
+        ExplicitThreadLocal.withInitial(
             () -> {
               return new HnswGraphSearcher<>(
                   vectorEncoding,
@@ -125,8 +126,27 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
             });
     // in scratch we store candidates in reverse order: worse candidates are first
     scratchNeighbors =
-        ThreadLocal.withInitial(() -> new NeighborArray(Math.max(beamWidth, M + 1), false));
+        ExplicitThreadLocal.withInitial(() -> new NeighborArray(Math.max(beamWidth, M + 1), false));
     this.initializedNodes = new AtomicBitSet(vectors.size());
+  }
+
+  private abstract static class ExplicitThreadLocal<U> {
+    private final ConcurrentHashMap<Long, U> map = new ConcurrentHashMap<>();
+
+    public U get() {
+      return map.computeIfAbsent(Thread.currentThread().getId(), k -> initialValue());
+    }
+
+    protected abstract U initialValue();
+
+    public static <U> ExplicitThreadLocal<U> withInitial(Supplier<U> initialValue) {
+      return new ExplicitThreadLocal<U>() {
+        @Override
+        protected U initialValue() {
+          return initialValue.get();
+        }
+      };
+    }
   }
 
   /**
