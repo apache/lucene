@@ -21,9 +21,14 @@ import static java.lang.Math.log;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -134,16 +139,25 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
    */
   public ConcurrentOnHeapHnswGraph build(
       RandomAccessVectorValues<T> vectorsToAdd, boolean autoParallel) throws IOException {
+    ExecutorService es;
     if (autoParallel) {
-      return build(
-          vectorsToAdd,
+      es =
           Executors.newFixedThreadPool(
               Runtime.getRuntime().availableProcessors(),
-              new NamedThreadFactory("Concurrent HNSW builder")));
+              new NamedThreadFactory("Concurrent HNSW builder"));
     } else {
-      return build(
-          vectorsToAdd,
-          Executors.newSingleThreadExecutor(new NamedThreadFactory("Concurrent HNSW builder")));
+      es = Executors.newSingleThreadExecutor(new NamedThreadFactory("Concurrent HNSW builder"));
+    }
+
+    Future<ConcurrentOnHeapHnswGraph> f = buildAsync(vectorsToAdd, es);
+    try {
+      return f.get();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (ExecutionException e) {
+      throw new IOException(e);
+    } finally {
+      es.shutdown();
     }
   }
 
@@ -153,7 +167,18 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
     return build(vectorsToAdd, true);
   }
 
-  public ConcurrentOnHeapHnswGraph build(
+  /**
+   * Bring-your-own ExecutorService graph builder.
+   *
+   * <p>Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
+   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
+   * returned values.
+   *
+   * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
+   *     independent accessor for the vectors
+   * @param pool The ExecutorService to use. Must be an instance of ThreadPoolExecutor.
+   */
+  public Future<ConcurrentOnHeapHnswGraph> buildAsync(
       RandomAccessVectorValues<T> vectorsToAdd, ExecutorService pool) {
     if (vectorsToAdd == this.vectors) {
       throw new IllegalArgumentException(
@@ -165,20 +190,22 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
     if (!(pool instanceof ThreadPoolExecutor)) {
       throw new IllegalArgumentException("ExecutorService must be a ThreadPoolExecutor");
     }
-    addVectors(vectorsToAdd, (ThreadPoolExecutor) pool);
-    return hnsw;
+    return addVectors(vectorsToAdd, (ThreadPoolExecutor) pool);
   }
 
   // the goal here is to keep all the ExecutorService threads busy, but not to create potentially
   // millions of futures by naively throwing everything at submit at once.  So, we use
   // a semaphore to wait until a thread is free before adding a new task.
-  private void addVectors(RandomAccessVectorValues<T> vectorsToAdd, ThreadPoolExecutor pool) {
+  private Future<ConcurrentOnHeapHnswGraph> addVectors(
+      RandomAccessVectorValues<T> vectorsToAdd, ThreadPoolExecutor pool) {
     Semaphore semaphore = new Semaphore(pool.getMaximumPoolSize());
+    Set<Integer> inFlight = ConcurrentHashMap.newKeySet();
 
     for (int i = 0; i < vectorsToAdd.size(); i++) {
       final int node = i; // copy for closure
       try {
         semaphore.acquire();
+        inFlight.add(node);
         pool.submit(
             () -> {
               try {
@@ -187,6 +214,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
                 throw new RuntimeException(e);
               } finally {
                 semaphore.release();
+                inFlight.remove(node);
               }
             });
       } catch (InterruptedException e) {
@@ -194,13 +222,18 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
       }
     }
 
-    // Wait for any remaining tasks to complete
-    pool.shutdown();
-    try {
-      pool.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    // return a future that will complete when the inflight set is empty
+    return CompletableFuture.supplyAsync(
+        () -> {
+          while (!inFlight.isEmpty()) {
+            try {
+              TimeUnit.MILLISECONDS.sleep(100);
+            } catch (InterruptedException e) {
+              throw new RuntimeException(e);
+            }
+          }
+          return hnsw;
+        });
   }
 
   /** Set info-stream to output debugging information * */
