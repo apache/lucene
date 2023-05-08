@@ -46,6 +46,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
@@ -402,5 +403,19 @@ public class TestTermInSetQuery extends LuceneTestCase {
             }
           }
         });
+  }
+
+  public void testQueryTermIteration() throws Exception {
+    Set<BytesRef> terms = new HashSet<>();
+    for (int i = 0; i < 100; i++) {
+      terms.add(new BytesRef(TestUtil.randomAnalysisString(random(), 10, true)));
+    }
+    List<BytesRef> expected = terms.stream().sorted().toList();
+    TermInSetQuery q = new TermInSetQuery("field", expected);
+    BytesRefIterator it = q.getQueryTerms();
+    for (BytesRef e : expected) {
+      assertEquals(e, it.next());
+    }
+    assertNull(it.next());
   }
 }

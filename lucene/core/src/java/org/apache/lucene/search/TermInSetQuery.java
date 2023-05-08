@@ -34,6 +34,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
@@ -135,6 +136,11 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   @Override
   public long getTermsCount() throws IOException {
     return termData.size();
+  }
+
+  /** Returns an iterator of the provided query terms */
+  public BytesRefIterator getQueryTerms() {
+    return termData.iterator();
   }
 
   @Override
