@@ -555,8 +555,6 @@ final class ReadersAndUpdates {
     FieldInfos fieldInfos = null;
     boolean any = false;
     for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
-      // Sort by increasing delGen:
-      Collections.sort(updates, Comparator.comparingLong(a -> a.delGen));
       for (DocValuesFieldUpdates update : updates) {
         if (update.delGen <= maxDelGen && update.any()) {
           any = true;
