@@ -39,6 +39,7 @@ import org.apache.lucene.util.AtomicBitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.hnsw.ConcurrentOnHeapHnswGraph.NodeAtLevel;
 
 /**
@@ -153,7 +154,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
     try {
       return f.get();
     } catch (InterruptedException e) {
-      throw new RuntimeException(e);
+      throw new ThreadInterruptedException(e);
     } catch (ExecutionException e) {
       throw new IOException(e);
     } finally {
@@ -218,7 +219,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
               }
             });
       } catch (InterruptedException e) {
-        throw new RuntimeException(e);
+        throw new ThreadInterruptedException(e);
       }
     }
 
@@ -229,7 +230,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
             try {
               TimeUnit.MILLISECONDS.sleep(100);
             } catch (InterruptedException e) {
-              throw new RuntimeException(e);
+              throw new ThreadInterruptedException(e);
             }
           }
           return hnsw;
