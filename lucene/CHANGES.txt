@@ -110,7 +110,7 @@ Other
 
 API Changes
 ---------------------
-* GITHUB#xx: Expose iterator over query terms in TermInSetQuery (Greg Miller)
+* GITHUB#12280: Expose iterator over query terms in TermInSetQuery (Greg Miller)
 
 New Features
 ---------------------
