@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutionException;
@@ -33,6 +34,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
@@ -201,6 +203,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
       RandomAccessVectorValues<T> vectorsToAdd, ThreadPoolExecutor pool) {
     Semaphore semaphore = new Semaphore(pool.getMaximumPoolSize());
     Set<Integer> inFlight = ConcurrentHashMap.newKeySet();
+    AtomicReference<IOException> asyncException = new AtomicReference<>(null);
 
     for (int i = 0; i < vectorsToAdd.size(); i++) {
       final int node = i; // copy for closure
@@ -212,7 +215,7 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
               try {
                 addGraphNode(node, vectorsToAdd);
               } catch (IOException e) {
-                throw new RuntimeException(e);
+                asyncException.set(e);
               } finally {
                 semaphore.release();
                 inFlight.remove(node);
@@ -228,10 +231,13 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
         () -> {
           while (!inFlight.isEmpty()) {
             try {
-              TimeUnit.MILLISECONDS.sleep(100);
+              TimeUnit.MILLISECONDS.sleep(10);
             } catch (InterruptedException e) {
               throw new ThreadInterruptedException(e);
             }
+          }
+          if (asyncException.get() != null) {
+            throw new CompletionException(asyncException.get());
           }
           return hnsw;
         });
@@ -307,7 +313,8 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
     }
   }
 
-  private void addDiverseNeighbors(int level, int newNode, NeighborQueue candidates) {
+  private void addDiverseNeighbors(int level, int newNode, NeighborQueue candidates)
+      throws IOException {
     // Add links from new node -> candidates.
     // See ConcurrentNeighborSet for an explanation of "diverse."
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
@@ -322,6 +329,31 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
         });
   }
 
+  // public for testing
+  @FunctionalInterface
+  public interface ThrowingBiFunction<T, U, R> {
+    R apply(T t, U u) throws IOException;
+  }
+
+  // public for testing
+  @FunctionalInterface
+  public interface ThrowingBiConsumer<T, U> {
+    void accept(T t, U u) throws IOException;
+  }
+
+  private float scoreBetween(int i, int j) throws IOException {
+    final T v1 = vectorsCopy.vectorValue(i);
+    final T v2 = vectorsCopy.vectorValue(j);
+    return scoreBetween(v1, v2);
+  }
+
+  private float scoreBetween(T v1, T v2) {
+    return switch (vectorEncoding) {
+      case BYTE -> similarityFunction.compare((byte[]) v1, (byte[]) v2);
+      case FLOAT32 -> similarityFunction.compare((float[]) v1, (float[]) v2);
+    };
+  }
+
   private NeighborArray popToScratch(NeighborQueue candidates) {
     NeighborArray scratch = this.scratchNeighbors.get();
     scratch.clear();
@@ -333,23 +365,6 @@ public final class ConcurrentHnswGraphBuilder<T> implements IHnswGraphBuilder<T>
       scratch.add(candidates.pop(), maxSimilarity);
     }
     return scratch;
-  }
-
-  private float scoreBetween(int i, int j) {
-    try {
-      final T v1 = vectorsCopy.vectorValue(i);
-      final T v2 = vectorsCopy.vectorValue(j);
-      return scoreBetween(v1, v2);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private float scoreBetween(T v1, T v2) {
-    return switch (vectorEncoding) {
-      case BYTE -> similarityFunction.compare((byte[]) v1, (byte[]) v2);
-      case FLOAT32 -> similarityFunction.compare((float[]) v1, (float[]) v2);
-    };
   }
 
   private static int getRandomGraphLevel(double ml) {

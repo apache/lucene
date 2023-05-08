@@ -19,25 +19,26 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.util.hnsw.ConcurrentNeighborSet.*;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.hnsw.ConcurrentHnswGraphBuilder.ThrowingBiFunction;
 
 public class TestConcurrentNeighborSet extends LuceneTestCase {
-  private static final BiFunction<Integer, Integer, Float> simpleScore =
+  private static final ThrowingBiFunction<Integer, Integer, Float> simpleScore =
       (a, b) -> {
         return VectorSimilarityFunction.EUCLIDEAN.compare(new float[] {a}, new float[] {b});
       };
 
-  private static float baseScore(int neighbor) {
+  private static float baseScore(int neighbor) throws IOException {
     return simpleScore.apply(0, neighbor);
   }
 
-  public void testInsertAndSize() {
+  public void testInsertAndSize() throws IOException {
     ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(2);
     neighbors.insert(1, baseScore(1), simpleScore);
     neighbors.insert(2, baseScore(2), simpleScore);
@@ -47,7 +48,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     assertEquals(2, neighbors.size());
   }
 
-  public void testRemoveLeastDiverseFromEnd() {
+  public void testRemoveLeastDiverseFromEnd() throws IOException {
     ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(3);
     neighbors.insert(1, baseScore(1), simpleScore);
     neighbors.insert(2, baseScore(2), simpleScore);
@@ -66,18 +67,25 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     assertFalse(iterator.hasNext());
   }
 
-  public void testInsertDiverse() {
+  public void testInsertDiverse() throws IOException {
     var similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     var vectors = new HnswGraphTestCase.CircularFloatVectorValues(10);
     var candidates = new NeighborArray(10, false);
-    BiFunction<Integer, Integer, Float> scoreBetween =
+    ThrowingBiFunction<Integer, Integer, Float> scoreBetween =
         (a, b) -> {
           return similarityFunction.compare(vectors.vectorValue(a), vectors.vectorValue(b));
         };
     var L =
         IntStream.range(0, 10)
             .filter(i -> i != 7)
-            .mapToLong(i -> encode(i, scoreBetween.apply(7, i)))
+            .mapToLong(
+                i -> {
+                  try {
+                    return encode(i, scoreBetween.apply(7, i));
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
             .sorted()
             .toArray();
     for (int i = 0; i < L.length; i++) {
