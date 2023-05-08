@@ -1118,7 +1118,7 @@ public class RegExp {
         // before getting here
         assert n != -1;
         if (!match('}')) throw new IllegalArgumentException("expected '}' at position " + pos);
-        if (n > m) {
+        if (m != -1 && n > m) {
           throw new IllegalArgumentException(
               "invalid repetition range(out of order): " + n + ".." + m);
         }
