@@ -1095,14 +1095,33 @@ public class RegExp {
         int start = pos;
         while (peek("0123456789")) next();
         if (start == pos) throw new IllegalArgumentException("integer expected at position " + pos);
-        int n = Integer.parseInt(originalString.substring(start, pos));
         int m = -1;
-        if (match(',')) {
-          start = pos;
-          while (peek("0123456789")) next();
-          if (start != pos) m = Integer.parseInt(originalString.substring(start, pos));
-        } else m = n;
+        int n = -1;
+        try {
+          n = Integer.parseInt(originalString.substring(start, pos));
+          if (match(',')) {
+            start = pos;
+            while (peek("0123456789")) next();
+            if (start != pos) {
+              m = Integer.parseInt(originalString.substring(start, pos));
+            }
+          } else m = n;
+        } catch (NumberFormatException numberFormatException) {
+          throw new IllegalArgumentException(
+              "expected integer at position "
+                  + pos
+                  + " got "
+                  + originalString.substring(start, pos),
+              numberFormatException);
+        }
+        // n should never be -1, since if it could not be parsed, we would have thrown an exception
+        // before getting here
+        assert n != -1;
         if (!match('}')) throw new IllegalArgumentException("expected '}' at position " + pos);
+        if (n > m) {
+          throw new IllegalArgumentException(
+              "invalid repetition range(out of order): " + n + ".." + m);
+        }
         if (m == -1) e = makeRepeat(flags, e, n);
         else e = makeRepeat(flags, e, n, m);
       }
