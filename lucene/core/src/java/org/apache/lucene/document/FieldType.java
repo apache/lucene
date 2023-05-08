@@ -400,6 +400,17 @@ public class FieldType implements IndexableFieldType {
     return vectorEncoding;
   }
 
+  /**
+   * Set's the encoding for the field's vector value
+   *
+   * @param encoding The {@link VectorEncoding} of the field's vector value
+   * @throws IllegalStateException if this FieldType is frozen against future modifications.
+   */
+  public void setVectorEncoding(VectorEncoding encoding) {
+    checkIfFrozen();
+    this.vectorEncoding = Objects.requireNonNull(encoding);
+  }
+
   @Override
   public VectorSimilarityFunction vectorSimilarityFunction() {
     return vectorSimilarityFunction;
