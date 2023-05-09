@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.AtomicBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -132,7 +132,7 @@ public final class ConcurrentHnswGraphBuilder<T> {
                   vectorEncoding,
                   similarityFunction,
                   new NeighborQueue(beamWidth, true),
-                  new FixedBitSet(this.vectors.size()));
+                  new AtomicBitSet(this.vectors.size()));
             });
     // in scratch we store candidates in reverse order: worse candidates are first
     scratchNeighbors =
