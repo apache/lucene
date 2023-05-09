@@ -115,6 +115,8 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
+* GITHUB#12260: Fix SynonymQuery equals implementation to take the targeted field name into account (Luca Cavanna)
+
 Build
 ---------------------
 
