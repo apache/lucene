@@ -145,7 +145,7 @@ public class TestConcurrentHnswFloatVectorGraph extends ConcurrentHnswGraphTestC
             vectors.copy(),
             getVectorEncoding(),
             similarityFunction,
-            hnsw,
+            hnsw.getView(),
             acceptOrds,
             Integer.MAX_VALUE);
 

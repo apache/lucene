@@ -32,18 +32,11 @@ import org.apache.lucene.util.RamUsageEstimator;
  * speedups in construction and searching as you add threads.
  *
  * <p>To search this graph, you should use a View obtained from {@link #getView()} to perform `seek`
- * and `nextNeighbor` operations. For convenience, you can use these methods directly on the graph
- * instance, which will give you a ThreadLocal View, but you can call `getView` directly if you need
- * more control, e.g. for performing a second search in the same thread while the first is still in
- * progress.
+ * and `nextNeighbor` operations.
  */
 public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accountable {
   private final AtomicReference<NodeAtLevel>
       entryPoint; // the current graph entry node on the top level. -1 if not set
-
-  // views for compatibility with HnswGraph interface; prefer creating views explicitly
-  private final ThreadLocal<ConcurrentHnswGraphView> views =
-      ThreadLocal.withInitial(ConcurrentHnswGraphView::new);
 
   // Unlike OnHeapHnswGraph (OHHG), we use the same data structure for Level 0 and higher node
   // lists,
@@ -113,12 +106,12 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
   @Override
   public void seek(int level, int target) throws IOException {
-    views.get().seek(level, target);
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public int nextNeighbor() throws IOException {
-    return views.get().nextNeighbor();
+    throw new UnsupportedOperationException();
   }
 
   /**

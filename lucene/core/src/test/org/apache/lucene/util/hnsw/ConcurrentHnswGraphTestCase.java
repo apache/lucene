@@ -353,7 +353,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               null,
               Integer.MAX_VALUE);
           case FLOAT32 -> HnswGraphSearcher.search(
@@ -362,7 +362,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<float[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               null,
               Integer.MAX_VALUE);
         };
@@ -406,7 +406,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               acceptOrds,
               Integer.MAX_VALUE);
           case FLOAT32 -> HnswGraphSearcher.search(
@@ -415,7 +415,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<float[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               acceptOrds,
               Integer.MAX_VALUE);
         };
@@ -456,7 +456,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<float[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               acceptOrds,
               Integer.MAX_VALUE);
           case BYTE -> HnswGraphSearcher.search(
@@ -465,7 +465,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               acceptOrds,
               Integer.MAX_VALUE);
         };
@@ -543,9 +543,9 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
           sortedNodes);
     }
 
-    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
-    assertGraphEqual(bottomUpExpectedHnsw, bottomUpOrderReversedHnsw);
-    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderRandomHnsw);
+    assertGraphEqual(bottomUpExpectedHnsw.getView(), topDownOrderReversedHnsw.getView());
+    assertGraphEqual(bottomUpExpectedHnsw.getView(), bottomUpOrderReversedHnsw.getView());
+    assertGraphEqual(bottomUpExpectedHnsw.getView(), topDownOrderRandomHnsw.getView());
   }
 
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
@@ -724,7 +724,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<float[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               createRandomAcceptOrds(0, nDoc),
               visitedLimit);
           case BYTE -> HnswGraphSearcher.search(
@@ -733,7 +733,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
               (RandomAccessVectorValues<byte[]>) vectors.copy(),
               getVectorEncoding(),
               similarityFunction,
-              hnsw,
+              hnsw.getView(),
               createRandomAcceptOrds(0, nDoc),
               visitedLimit);
         };
@@ -953,7 +953,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
                 (RandomAccessVectorValues<byte[]>) vectors,
                 getVectorEncoding(),
                 similarityFunction,
-                hnsw,
+                hnsw.getView(),
                 acceptOrds,
                 Integer.MAX_VALUE);
             case FLOAT32 -> HnswGraphSearcher.search(
@@ -962,7 +962,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
                 (RandomAccessVectorValues<float[]>) vectors,
                 getVectorEncoding(),
                 similarityFunction,
-                hnsw,
+                hnsw.getView(),
                 acceptOrds,
                 Integer.MAX_VALUE);
           };
