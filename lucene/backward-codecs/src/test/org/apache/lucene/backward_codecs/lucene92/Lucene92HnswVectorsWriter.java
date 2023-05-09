@@ -43,7 +43,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraphFactory;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -279,7 +278,7 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
     // build graph
     HnswGraphBuilder<float[]> hnswGraphBuilder =
-        OnHeapHnswGraphFactory.instance.createBuilder(
+        HnswGraphBuilder.create(
             vectorValues,
             VectorEncoding.FLOAT32,
             similarityFunction,

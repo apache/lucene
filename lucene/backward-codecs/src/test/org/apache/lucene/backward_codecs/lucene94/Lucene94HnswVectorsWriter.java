@@ -52,7 +52,6 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraphFactory;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -422,7 +421,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<byte[]> hnswGraphBuilder =
-                    OnHeapHnswGraphFactory.instance.createBuilder(
+                    HnswGraphBuilder.create(
                         vectorValues,
                         fieldInfo.getVectorEncoding(),
                         fieldInfo.getVectorSimilarityFunction(),
@@ -440,7 +439,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<float[]> hnswGraphBuilder =
-                    OnHeapHnswGraphFactory.instance.createBuilder(
+                    HnswGraphBuilder.create(
                         vectorValues,
                         fieldInfo.getVectorEncoding(),
                         fieldInfo.getVectorSimilarityFunction(),
@@ -663,7 +662,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       vectors = new ArrayList<>();
       RAVectorValues<T> raVectorValues = new RAVectorValues<>(vectors, dim);
       hnswGraphBuilder =
-          OnHeapHnswGraphFactory.instance.createBuilder(
+          HnswGraphBuilder.create(
               raVectorValues,
               fieldInfo.getVectorEncoding(),
               fieldInfo.getVectorSimilarityFunction(),

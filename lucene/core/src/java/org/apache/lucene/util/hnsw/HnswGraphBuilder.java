@@ -39,7 +39,7 @@ import org.apache.lucene.util.InfoStream;
  *
  * @param <T> the type of vector
  */
-public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
+public final class HnswGraphBuilder<T> {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
@@ -79,6 +79,33 @@ public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
   // tracks nodes that were already added when initializing from another graph
   private final Set<Integer> initializedNodes;
 
+  public static <T> HnswGraphBuilder<T> create(
+      RandomAccessVectorValues<T> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed)
+      throws IOException {
+    return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+  }
+
+  public static <T> HnswGraphBuilder<T> create(
+      RandomAccessVectorValues<T> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      Map<Integer, Integer> oldToNewOrdinalMap)
+      throws IOException {
+    HnswGraphBuilder<T> hnswGraphBuilder =
+        new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+    hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
+    return hnswGraphBuilder;
+  }
+
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
@@ -91,7 +118,7 @@ public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
    */
-  public HnswGraphBuilder(
+  private HnswGraphBuilder(
       RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
@@ -134,7 +161,6 @@ public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
    * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
    *     independent accessor for the vectors
    */
-  @Override
   public OnHeapHnswGraph build(RandomAccessVectorValues<T> vectorsToAdd) throws IOException {
     if (vectorsToAdd == this.vectors) {
       throw new IllegalArgumentException(
@@ -157,8 +183,8 @@ public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
    * @param oldToNewOrdinalMap map for converting from ordinals in the initializerGraph to this
    *     builder's graph
    */
-  void initializeFromGraph(HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap)
-      throws IOException {
+  private void initializeFromGraph(
+      HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
     assert hnsw.size() == 0;
     float[] vectorValue = null;
     byte[] binaryValue = null;
@@ -217,13 +243,11 @@ public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
     this.infoStream = infoStream;
   }
 
-  @Override
   public OnHeapHnswGraph getGraph() {
     return hnsw;
   }
 
   /** Inserts a doc with vector value to the graph */
-  @Override
   public void addGraphNode(int node, T value) throws IOException {
     NeighborQueue candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
@@ -255,6 +279,10 @@ public final class HnswGraphBuilder<T> implements IHnswGraphBuilder<T> {
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
+  }
+
+  public void addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
+    addGraphNode(node, values.vectorValue(node));
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {

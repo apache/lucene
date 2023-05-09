@@ -37,8 +37,7 @@ import org.apache.lucene.index.FloatVectorValues;
  * <h2>Hyperparameters</h2>
  *
  * <ul>
- *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>
- *       efConst
+ *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
  *       </code> in the paper. It is the number of nearest neighbor candidates to track while
  *       searching the graph for each newly inserted node.
  *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the paper; it controls how

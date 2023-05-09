@@ -34,7 +34,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 
 /** Tests HNSW KNN graphs */
-public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<float[]> {
+public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
@@ -42,7 +42,7 @@ public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<flo
   }
 
   @Override
-  public VectorEncoding getVectorEncoding() {
+  VectorEncoding getVectorEncoding() {
     return VectorEncoding.FLOAT32;
   }
 
@@ -57,17 +57,17 @@ public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<flo
   }
 
   @Override
-  public AbstractMockVectorValues<float[]> vectorValues(int size, int dimension) {
+  AbstractMockVectorValues<float[]> vectorValues(int size, int dimension) {
     return MockVectorValues.fromValues(createRandomFloatVectors(size, dimension, random()));
   }
 
   @Override
-  public AbstractMockVectorValues<float[]> vectorValues(float[][] values) {
+  AbstractMockVectorValues<float[]> vectorValues(float[][] values) {
     return MockVectorValues.fromValues(values);
   }
 
   @Override
-  public AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
+  AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
       throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
     float[][] vectors = new float[reader.maxDoc()][];
@@ -80,7 +80,7 @@ public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<flo
   }
 
   @Override
-  public AbstractMockVectorValues<float[]> vectorValues(
+  AbstractMockVectorValues<float[]> vectorValues(
       int size,
       int dimension,
       AbstractMockVectorValues<float[]> pregeneratedVectorValues,
@@ -109,8 +109,7 @@ public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<flo
   }
 
   @Override
-  public Field knnVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
@@ -128,10 +127,10 @@ public abstract class FloatVectorHnswGraphTestCase extends HnswGraphTestCase<flo
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
-    IHnswGraphBuilder<float[]> builder =
-        factory.createBuilder(
+    ConcurrentHnswGraphBuilder<float[]> builder =
+        ConcurrentHnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 16, 100, random().nextInt());
-    HnswGraph hnsw = builder.build(vectors.copy());
+    ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);

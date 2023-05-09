@@ -46,7 +46,6 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraphFactory;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -490,7 +489,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       int initializerIndex)
       throws IOException {
     if (initializerIndex == -1) {
-      return OnHeapHnswGraphFactory.instance.createBuilder(
+      return HnswGraphBuilder.create(
           floatVectorValues,
           fieldInfo.getVectorEncoding(),
           fieldInfo.getVectorSimilarityFunction(),
@@ -503,7 +502,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]);
     Map<Integer, Integer> ordinalMapper =
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
-    return OnHeapHnswGraphFactory.instance.createBuilder(
+    return HnswGraphBuilder.create(
         floatVectorValues,
         fieldInfo.getVectorEncoding(),
         fieldInfo.getVectorSimilarityFunction(),
@@ -900,7 +899,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
       hnswGraphBuilder =
-          OnHeapHnswGraphFactory.instance.createBuilder(
+          HnswGraphBuilder.create(
               new RAVectorValues<>(vectors, dim),
               fieldInfo.getVectorEncoding(),
               fieldInfo.getVectorSimilarityFunction(),
