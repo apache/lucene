@@ -36,7 +36,7 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  */
 public class ExitableDirectoryReader extends FilterDirectoryReader {
 
-  private QueryTimeout queryTimeout;
+  private final QueryTimeout queryTimeout;
 
   /** Exception that is thrown to prematurely terminate a term enumeration. */
   @SuppressWarnings("serial")
@@ -50,7 +50,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
   /** Wrapper class for a SubReaderWrapper that is used by the ExitableDirectoryReader. */
   public static class ExitableSubReaderWrapper extends SubReaderWrapper {
-    private QueryTimeout queryTimeout;
+    private final QueryTimeout queryTimeout;
 
     /** Constructor * */
     public ExitableSubReaderWrapper(QueryTimeout queryTimeout) {
@@ -810,7 +810,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     // Create bit mask in the form of 0000 1111 for efficient checking
     private static final int NUM_CALLS_PER_TIMEOUT_CHECK = (1 << 4) - 1; // 15
     private int calls;
-    private QueryTimeout queryTimeout;
+    private final QueryTimeout queryTimeout;
 
     /** Constructor * */
     public ExitableTermsEnum(TermsEnum termsEnum, QueryTimeout queryTimeout) {
