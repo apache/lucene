@@ -855,7 +855,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
+    public Query rewrite(IndexSearcher searcher) {
       return this;
     }
   }
@@ -876,7 +876,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     IndexReader r = w.getReader();
     IndexSearcher searcher = newSearcher(r);
-    Query rewrittenQuery = q.rewrite(r);
+    Query rewrittenQuery = q.rewrite(searcher);
     assertTrue(rewrittenQuery instanceof TermAutomatonQuery);
 
     TopDocs topDocs = searcher.search(rewrittenQuery, 10);
@@ -918,7 +918,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
     IndexReader r = w.getReader();
     IndexSearcher searcher = newSearcher(r);
-    Query rewrittenQuery = q.rewrite(r);
+    Query rewrittenQuery = q.rewrite(searcher);
     assertTrue(
         "Rewritten query should be an instance of TermAutomatonQuery",
         rewrittenQuery instanceof TermAutomatonQuery);

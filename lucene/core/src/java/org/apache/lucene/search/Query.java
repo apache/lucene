@@ -46,11 +46,11 @@ import org.apache.lucene.util.VirtualMethod;
  */
 public abstract class Query {
 
-  static final VirtualMethod<Query> oldMethod =
+  private static final VirtualMethod<Query> oldMethod =
       new VirtualMethod<>(Query.class, "rewrite", IndexReader.class);
-  static final VirtualMethod<Query> newMethod =
+  private static final VirtualMethod<Query> newMethod =
       new VirtualMethod<>(Query.class, "rewrite", IndexSearcher.class);
-  final boolean isDeprecatedRewriteMethodOverridden =
+  private final boolean isDeprecatedRewriteMethodOverridden =
       VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) > 0;
 
   /**

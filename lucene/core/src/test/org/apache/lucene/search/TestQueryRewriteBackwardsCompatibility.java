@@ -86,6 +86,75 @@ public class TestQueryRewriteBackwardsCompatibility extends LuceneTestCase {
     dir.close();
   }
 
+  public void testRewriteQueryInheritance() throws IOException {
+    Directory directory = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), directory, newIndexWriterConfig());
+    IndexReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+    NewRewritableCallingSuper oneRewrite = new NewRewritableCallingSuper();
+    NewRewritableCallingSuper twoRewrites = new OldNewRewritableCallingSuper();
+    NewRewritableCallingSuper threeRewrites = new OldOldNewRewritableCallingSuper();
+
+    searcher.rewrite(oneRewrite);
+    searcher.rewrite(twoRewrites);
+    searcher.rewrite(threeRewrites);
+    assertEquals(1, oneRewrite.rewriteCount);
+    assertEquals(2, twoRewrites.rewriteCount);
+    assertEquals(3, threeRewrites.rewriteCount);
+
+    reader.close();
+    directory.close();
+  }
+
+  private static class NewRewritableCallingSuper extends RewriteCountingQuery {
+
+    @Override
+    public Query rewrite(IndexSearcher searcher) throws IOException {
+      rewriteCount++;
+      return super.rewrite(searcher);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "NewRewritableCallingSuper";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof NewRewritableCallingSuper;
+    }
+
+    @Override
+    public int hashCode() {
+      return 1;
+    }
+
+    @Override
+    RewriteCountingQuery getInnerQuery() {
+      return null;
+    }
+  }
+
+  private static class OldNewRewritableCallingSuper extends NewRewritableCallingSuper {
+    @Override
+    public Query rewrite(IndexReader reader) throws IOException {
+      rewriteCount++;
+      return super.rewrite(reader);
+    }
+  }
+
+  private static class OldOldNewRewritableCallingSuper extends OldNewRewritableCallingSuper {
+    @Override
+    public Query rewrite(IndexReader reader) throws IOException {
+      rewriteCount++;
+      return super.rewrite(reader);
+    }
+  }
+
   private abstract static class RewriteCountingQuery extends Query {
     int rewriteCount = 0;
 
