@@ -18,6 +18,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.Closeable;
@@ -179,223 +180,6 @@ public class PimIndexWriter extends IndexWriter {
     }
 
     /**
-     * @class TreeBasedTermTable
-     * Write a term table as a tree structure, so that
-     * binary search for a particular term can be performed.
-     * Each term is associated to a pointer/offset (long).
-     **/
-    private class TreeBasedTermTable {
-
-      TreeNode root;
-
-      public static class Block {
-        BytesRef term;
-        Long address;
-        Long byteSize;
-
-        Block(BytesRef term, Long address, long byteSize) {
-          this.term = term;
-          this.address = address;
-          this.byteSize = byteSize;
-        }
-      }
-
-      /**
-       * @param minTreeNodeSz the minimal size of a node in the tree
-       * When this size is reached, binary search stops and terms must be scanned sequentially
-       **/
-      TreeBasedTermTable(ArrayList<Block> blockList, int minTreeNodeSz) {
-        // build a BST for the terms
-        root = buildBSTreeRecursive(blockList, minTreeNodeSz);
-      }
-
-      TreeBasedTermTable(ArrayList<Block> blockList) {
-        this(blockList, 0);
-      }
-
-      void write(IndexOutput indexOutput) throws IOException {
-        writeTreePreOrder(root, indexOutput);
-      }
-
-      private void writeTreePreOrder(TreeNode node, IndexOutput indexOutput) throws IOException {
-
-        if(node == null) return;
-        node.write(indexOutput);
-        writeTreePreOrder(node.leftChild, indexOutput);
-        writeTreePreOrder(node.rightChild, indexOutput);
-      }
-
-      private TreeNode buildBSTreeRecursive(List<Block> blockList, int minTreeNodeSz) {
-
-        if(blockList.isEmpty()) return null;
-
-        if((blockList.size() > 1) && (blockList.size() <= minTreeNodeSz)) {
-          // stop here, create a CompoundTreeNode
-          CompoundTreeNode node = new CompoundTreeNode(blockList.get(0));
-          for(int i = 1; i < blockList.size(); ++i) {
-            node.AddSibling(new TreeNode(blockList.get(i)));
-          }
-          return node;
-        }
-
-        // get median term and create a tree node for it
-        int mid = blockList.size() / 2;
-        TreeNode node = new TreeNode(blockList.get(mid));
-
-        if(blockList.size() > 1) {
-          node.leftChild = buildBSTreeRecursive(blockList.subList(0, mid), minTreeNodeSz);
-          if(node.leftChild != null)
-            node.totalByteSize += node.leftChild.totalByteSize;
-        }
-
-        if(blockList.size() > 2) {
-          node.rightChild = buildBSTreeRecursive(blockList.subList(mid + 1, blockList.size()), minTreeNodeSz);
-          if(node.rightChild != null)
-            node.totalByteSize += node.rightChild.totalByteSize;
-        }
-
-        // update node's subtree byte size with the node size post-order
-        // this ensures that the offset to the right child is already known and
-        // correctly accounted for in node.getByteSize()
-        node.totalByteSize += node.getByteSize();
-
-        return node;
-      }
-
-      private class TreeNode {
-
-        BytesRef term;
-        Long blockAddress;
-        Long byteSize;
-        int totalByteSize;
-        TreeNode leftChild;
-        TreeNode rightChild;
-
-        TreeNode(Block block) {
-          this.term = block.term;
-          this.blockAddress = block.address;
-          this.byteSize = block.byteSize;
-          this.totalByteSize = 0;
-          this.leftChild = null;
-          this.rightChild = null;
-        }
-
-        /**
-         * Write this node to a DataOutput object
-         **/
-        void write(DataOutput output) throws IOException {
-
-          // TODO implement an option to align on 4B
-          // It will be faster for the DPU to search, at the expense of more memory space
-          // TODO do we need to write the length before the term bytes ? Otherwise can we figure it out ?
-          output.writeBytes(term.bytes, term.offset, term.length);
-          output.writeVInt(getRightChildOffset());
-
-          //write address of the block and its byte size
-          output.writeVLong(blockAddress);
-          output.writeVLong(byteSize);
-          if(output instanceof IndexOutput)
-            System.out.println("Tree term: " + term.utf8ToString() + " addr:" + blockAddress);
-        }
-
-        /**
-         * @return the number of bytes used when writing this node
-         **/
-        int getByteSize() {
-          ByteCountDataOutput out = new ByteCountDataOutput();
-          try {
-            write(out);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-          return (int) out.getByteCount().longValue();
-        }
-
-        private int getRightChildOffset() {
-
-          // Note: use the least significant bit of right child offset to
-          // encode whether the left child is null or not. If not null, the
-          // left child is the consecutive node, so no need to write its address
-          int rightChildAddress = 0;
-          if (rightChild != null) {
-            // the right child offset is the byte size of the left subtree
-            assert (leftChild.totalByteSize & 0xC0000000) == 0;
-            rightChildAddress = leftChild.totalByteSize << 2;
-          }
-          if (leftChild != null) rightChildAddress++;
-          return rightChildAddress;
-        }
-
-        /**
-         * A dummy DataOutput class that just counts how many bytes
-         * have been written.
-         **/
-        private class ByteCountDataOutput extends DataOutput {
-          private Long byteCount;
-
-          ByteCountDataOutput() {
-            this.byteCount = 0L;
-          }
-          @Override
-          public void writeByte(byte b) throws IOException { byteCount++; }
-          @Override
-          public void writeBytes(byte[] b, int offset, int length) throws IOException { byteCount += length; }
-          Long getByteCount() { return byteCount; }
-        }
-      }
-
-      /**
-       * @CompoundTreeNode a node for a list of terms that are written sequentially in the index file
-       **/
-      private class CompoundTreeNode extends TreeNode {
-
-        private int nbNodes;
-        TreeNode lastSibling;
-
-        CompoundTreeNode(Block block) {
-          super(block);
-          nbNodes = 0;
-          lastSibling = null;
-        }
-
-        void AddSibling(TreeNode node) {
-
-          if (leftChild == null) {
-            leftChild = node;
-          } else {
-            lastSibling.leftChild = node;
-          }
-          lastSibling = node;
-          nbNodes++;
-        }
-
-        @Override
-        void write(DataOutput output) throws IOException {
-
-          output.writeBytes(term.bytes, term.offset, term.length);
-          output.writeVInt((nbNodes << 2) + 2);
-
-          //write address of the block and its byte size
-          output.writeVLong(blockAddress);
-          output.writeVLong(byteSize);
-          if(output instanceof IndexOutput)
-            System.out.println("Tree term (compound node): " + term.utf8ToString() + " addr:" + blockAddress);
-
-          TreeNode node = leftChild;
-          while(node != null) {
-            output.writeBytes(term.bytes, term.offset, term.length);
-            output.writeVLong(blockAddress);
-            output.writeVLong(byteSize);
-            if(output instanceof IndexOutput)
-              System.out.println("Tree term(compound node): " + term.utf8ToString() + " addr:" + blockAddress);
-
-            node = node.leftChild;
-          }
-        }
-      }
-    }
-
-    /**
      * @class DpuTermIndex
      * Write a DPU index where terms and their
      * posting lists are stored in blocks of fixed size. A block table
@@ -406,17 +190,18 @@ public class PimIndexWriter extends IndexWriter {
     private class DpuTermIndex {
 
       final int dpuIndex;
-      final ArrayList<TreeBasedTermTable.Block> fieldList;
+      final ArrayList<PimTreeBasedTermTable.Block> fieldList;
       boolean fieldWritten;
       boolean termWritten;
       int doc;
       long numTerms;
+      long lastTermPostingAddress;
       /** number of terms stored in one block of the index.
        *  each block is scanned linearly for searching a term.
        */
       int blockCapacity;
       int currBlockSz;
-      ArrayList<TreeBasedTermTable.Block> blockList;
+      ArrayList<PimTreeBasedTermTable.Block> blockList;
       IndexOutput fieldTableOutput;
       IndexOutput blocksTableOutput;
       IndexOutput blocksOutput;
@@ -443,6 +228,7 @@ public class PimIndexWriter extends IndexWriter {
       void resetForNextTerm() {
         termWritten = false;
         doc = 0;
+        lastTermPostingAddress = -1L;
       }
 
       void writeTermIfAbsent(BytesRef term) throws IOException {
@@ -458,18 +244,24 @@ public class PimIndexWriter extends IndexWriter {
               if(blockList.size() > 0) {
                 blockList.get(blockList.size() - 1).byteSize += blocksOutput.getFilePointer();
               }
-              blockList.add(new TreeBasedTermTable.Block(BytesRef.deepCopyOf(term),
+              blockList.add(new PimTreeBasedTermTable.Block(BytesRef.deepCopyOf(term),
                       blocksOutput.getFilePointer(), -blocksOutput.getFilePointer()));
               currBlockSz = 0;
             }
 
             //TODO: delta-prefix the term bytes (see UniformSplit).
+            blocksOutput.writeVInt(term.length);
             blocksOutput.writeBytes(term.bytes, term.offset, term.length);
             termWritten = true;
             numTerms++;
 
+            // write byte size of the last term postings (if any)
+            if(this.lastTermPostingAddress >= 0)
+              blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+            this.lastTermPostingAddress = postingsOutput.getFilePointer();
             // write pointer to the posting list for this term (in posting file)
             blocksOutput.writeVLong(postingsOutput.getFilePointer());
+
             currBlockSz++;
           }
         }
@@ -477,13 +269,19 @@ public class PimIndexWriter extends IndexWriter {
           if(blockList.size() == 0) {
             // this is the first term of the first block
             // save the address and term
-            blockList.add(new TreeBasedTermTable.Block(BytesRef.deepCopyOf(term),
+            blockList.add(new PimTreeBasedTermTable.Block(BytesRef.deepCopyOf(term),
                     blocksOutput.getFilePointer(), -blocksOutput.getFilePointer()));
           }
           // Do not write the first term
           // but the parent method should act as if it was written
           termWritten = true;
           currBlockSz++;
+
+          // write byte size of the postings of the previous term (if any)
+          if(this.lastTermPostingAddress >= 0)
+            blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+          this.lastTermPostingAddress = postingsOutput.getFilePointer();
+
           // write pointer to the posting list for this term (in posting file)
           blocksOutput.writeVLong(postingsOutput.getFilePointer());
         }
@@ -492,7 +290,7 @@ public class PimIndexWriter extends IndexWriter {
           if(fieldList.size() > 0) {
             fieldList.get(fieldList.size() - 1).byteSize += blocksTableOutput.getFilePointer();
           }
-          fieldList.add(new TreeBasedTermTable.Block(new BytesRef(fieldInfo.getName()),
+          fieldList.add(new PimTreeBasedTermTable.Block(new BytesRef(fieldInfo.getName()),
                   blocksTableOutput.getFilePointer(), -blocksTableOutput.getFilePointer()));
           fieldWritten = true;
         }
@@ -548,8 +346,12 @@ public class PimIndexWriter extends IndexWriter {
 
         blockList.get(blockList.size() - 1).byteSize += blocksOutput.getFilePointer();
 
-        TreeBasedTermTable table = new TreeBasedTermTable(blockList);
+        PimTreeBasedTermTable table = new PimTreeBasedTermTable(blockList);
         table.write(blocksTableOutput);
+
+        // minimal TESTING of search in block table
+        // TODO remove
+        blockList.forEach((block) -> { assert table.SearchForBlock(block.term).term == block.term; });
 
         // reset internal parameters
         currBlockSz = 0;
@@ -563,7 +365,7 @@ public class PimIndexWriter extends IndexWriter {
 
         fieldList.get(fieldList.size() - 1).byteSize += blocksTableOutput.getFilePointer();
 
-        TreeBasedTermTable table = new TreeBasedTermTable(fieldList);
+        PimTreeBasedTermTable table = new PimTreeBasedTermTable(fieldList);
         table.write(fieldTableOutput);
       }
 
@@ -572,6 +374,10 @@ public class PimIndexWriter extends IndexWriter {
         // at the end of a field,
         // write the block table
         try {
+          // write byte size of the postings of the last term (if any)
+          if(this.lastTermPostingAddress >= 0)
+            blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+
           System.out.println("Block table dpu:" + dpuIndex + " field:" + fieldInfo.name);
           writeBlockTable();
         } catch (IOException e) {
@@ -579,12 +385,39 @@ public class PimIndexWriter extends IndexWriter {
         }
       }
       void close() throws IOException {
+
         System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldList.size());
         writeFieldTable();
         fieldTableOutput.close();
         blocksTableOutput.close();
         blocksOutput.close();
         postingsOutput.close();
+
+        //TEST
+        // TODO move this in the test case
+        // For the moment I did not manage to keep the index files in the directory
+        // so I can only test at this place
+        if(dpuIndex == 1) {
+          PimIndexSearcher pimSearcher = new PimIndexSearcher(getDirectory(), pimConfig);
+
+          var matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("yellow"));
+          System.out.println("Searching for field1:yellow: found " + matches.size() + " results");
+          matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+
+          matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("green"));
+          System.out.println("Searching for field1:green found " + matches.size() + " results");
+          matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+
+          matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("green"));
+          System.out.println("Searching for field2:green found " + matches.size() + " results");
+          matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+
+          matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("orange"));
+          System.out.println("Searching for field2:orange found " + matches.size() + " results");
+          matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+
+          pimSearcher.close();
+        }
       }
     }
   }
