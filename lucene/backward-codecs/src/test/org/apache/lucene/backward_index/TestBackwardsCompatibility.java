@@ -147,11 +147,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // -----
   //
-  // To generate backcompat indexes with the current default codec, run the following ant command:
-  //  ant test -Dtestcase=TestBackwardsCompatibility -Dtests.bwcdir=/path/to/store/indexes
-  //           -Dtests.codec=default -Dtests.useSecurityManager=false
+  // To generate backcompat indexes with the current default codec, run the following gradle
+  // command:
+  //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
+  //               -Ptests.useSecurityManager=false --tests TestBackwardsCompatibility
   // Also add testmethod with one of the index creation methods below, for example:
-  //    -Dtestmethod=testCreateCFS
+  //    -Ptestmethod=testCreateCFS
   //
   // Zip up the generated indexes:
   //
@@ -228,8 +229,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     Thread.sleep(100000);
   }
 
-  // ant test -Dtestcase=TestBackwardsCompatibility -Dtestmethod=testCreateSortedIndex
-  // -Dtests.codec=default -Dtests.useSecurityManager=false -Dtests.bwcdir=/tmp/sorted
+  // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
+  // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
   public void testCreateSortedIndex() throws Exception {
 
     Path indexDir = getIndexDir().resolve("sorted");
@@ -2266,6 +2267,20 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
         IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
         StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR, null).close();
+      }
+    }
+  }
+
+  @Nightly
+  public void testReadNMinusTwoSegmentInfos() throws IOException {
+    for (String name : binarySupportedNames) {
+      Path oldIndexDir = createTempDir(name);
+      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+        expectThrows(
+            IndexFormatTooOldException.class,
+            () -> SegmentInfos.readLatestCommit(dir, Version.MIN_SUPPORTED_MAJOR));
+        SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
       }
     }
   }

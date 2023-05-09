@@ -3,6 +3,33 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================== Lucene 9.7.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+
+* GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.6.0 =======================
 
 API Changes
@@ -72,6 +99,8 @@ Optimizations
 
 * GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
 
+* GITHUB#12241: Add ordering of files in compound files. (Christoph Büscher)
+
 Bug Fixes
 ---------------------
 
@@ -81,9 +110,15 @@ Bug Fixes
 
 * GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
 
+* GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Patrick Zhai, Mike McCandless, Robert Muir, Mikhail Khludnev)
+
 * GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
 
 * GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end (Peter Gromov)
+
+* GITHUB#12260: Fix SynonymQuery equals implementation to take the targeted field name into account (Luca Cavanna)
 
 Build
 ---------------------
@@ -99,11 +134,18 @@ Build
 * GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
   printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
 
+Documentation
+---------------------
+
+* GITHUB#10633: Update javadocs in TestBackwardsCompatibility to use gradle and not ant. (Usman Shaikh)
+
 Other
 ---------------------
 
 * GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
   IndexInput and IndexOutput classes (Marc D'Mello)
+
+* GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
 ======================== Lucene 9.5.0 =======================
 

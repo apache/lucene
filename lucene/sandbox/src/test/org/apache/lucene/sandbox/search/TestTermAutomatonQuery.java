@@ -43,6 +43,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -838,6 +839,97 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     int[] positions = ((PhraseQuery) rewrite).getPositions();
     assertEquals(0, positions[0]);
     assertEquals(1, positions[1]);
+
+    IOUtils.close(w, r, dir);
+  }
+
+  /* Implement a custom term automaton query to ensure that rewritten queries
+   *  do not get rewritten to primitive queries. The custom extension will allow
+   *  the following explain tests to evaluate Explain for the query we intend to
+   *  test, TermAutomatonQuery.
+   * */
+
+  private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
+    public CustomTermAutomatonQuery(String field) {
+      super(field);
+    }
+
+    @Override
+    public Query rewrite(IndexReader reader) throws IOException {
+      return this;
+    }
+  }
+
+  public void testExplainNoMatchingDocument() throws Exception {
+    CustomTermAutomatonQuery q = new CustomTermAutomatonQuery("field");
+    int initState = q.createState();
+    int s1 = q.createState();
+    q.addTransition(initState, s1, "xml");
+    q.setAccept(s1, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(newTextField("field", "protobuf", Field.Store.NO));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrittenQuery = q.rewrite(r);
+    assertTrue(rewrittenQuery instanceof TermAutomatonQuery);
+
+    TopDocs topDocs = searcher.search(rewrittenQuery, 10);
+    assertEquals(0, topDocs.totalHits.value);
+
+    Explanation explanation = searcher.explain(rewrittenQuery, 0);
+    assertFalse("Explanation should indicate no match", explanation.isMatch());
+
+    IOUtils.close(w, r, dir);
+  }
+
+  // TODO: improve experience of working with explain
+  public void testExplainMatchingDocuments() throws Exception {
+    CustomTermAutomatonQuery q = new CustomTermAutomatonQuery("field");
+
+    int initState = q.createState();
+    int s1 = q.createState();
+    int s2 = q.createState();
+    q.addTransition(initState, s1, "xml");
+    q.addTransition(s1, s2, "json");
+    q.addTransition(s1, s2, "protobuf");
+    q.setAccept(s2, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    Document doc1 = new Document();
+    doc1.add(newTextField("field", "xml json", Field.Store.NO));
+    w.addDocument(doc1);
+
+    Document doc2 = new Document();
+    doc2.add(newTextField("field", "xml protobuf", Field.Store.NO));
+    w.addDocument(doc2);
+
+    Document doc3 = new Document();
+    doc3.add(newTextField("field", "xml qux", Field.Store.NO));
+    w.addDocument(doc3);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrittenQuery = q.rewrite(r);
+    assertTrue(
+        "Rewritten query should be an instance of TermAutomatonQuery",
+        rewrittenQuery instanceof TermAutomatonQuery);
+    TopDocs topDocs = searcher.search(q, 10);
+    assertEquals(2, topDocs.totalHits.value);
+
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      Explanation explanation = searcher.explain(q, scoreDoc.doc);
+      assertNotNull("Explanation should not be null", explanation);
+      assertTrue("Explanation should indicate a match", explanation.isMatch());
+    }
 
     IOUtils.close(w, r, dir);
   }

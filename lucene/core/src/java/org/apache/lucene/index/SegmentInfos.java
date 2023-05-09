@@ -528,8 +528,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return readLatestCommit(directory, Version.MIN_SUPPORTED_MAJOR);
   }
 
-  static final SegmentInfos readLatestCommit(Directory directory, int minSupportedMajorVersion)
-      throws IOException {
+  /**
+   * Find the latest commit ({@code segments_N file}) and load all {@link SegmentCommitInfo}s, as
+   * long as the commit's {@link SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater
+   * than the provided minimum supported major version. If the commit's version is older, an {@link
+   * IndexFormatTooOldException} will be thrown.
+   */
+  public static final SegmentInfos readLatestCommit(
+      Directory directory, int minSupportedMajorVersion) throws IOException {
     return new FindSegmentsFile<SegmentInfos>(directory) {
       @Override
       protected SegmentInfos doBody(String segmentFileName) throws IOException {
