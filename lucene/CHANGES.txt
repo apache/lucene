@@ -19,7 +19,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
 
 Bug Fixes
 ---------------------
