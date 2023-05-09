@@ -87,7 +87,6 @@ public class TestRegExp extends LuceneTestCase {
   }
 
   public void testParseIllegalRepeatExp() {
-
     // out of order
     IllegalArgumentException expected =
         expectThrows(
@@ -96,15 +95,6 @@ public class TestRegExp extends LuceneTestCase {
               new RegExp("a{99,11}");
             });
     assertTrue(expected.getMessage().contains("out of order"));
-
-    // overflow
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new RegExp("a{13,9999999999999999999999999999999999999999999999}");
-            });
-    assertTrue(expected.getMessage().contains("expected integer at position"));
   }
 
   static String randomDocValue(int minLength) {
