@@ -91,13 +91,15 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
    * levels
    */
   void maybeUpdateEntryNode(int level, int node) {
-    while (true) {
-      NodeAtLevel oldEntry = entryPoint.get();
-      if (oldEntry.node >= 0 && oldEntry.level >= level) {
-        break;
-      }
-      entryPoint.compareAndSet(oldEntry, new NodeAtLevel(level, node));
-    }
+    entryPoint.accumulateAndGet(
+        new NodeAtLevel(level, node),
+        (oldEntry, newEntry) -> {
+          if (oldEntry.node >= 0 && oldEntry.level >= level) {
+            return oldEntry;
+          } else {
+            return newEntry;
+          }
+        });
   }
 
   private int connectionsOnLevel(int level) {
