@@ -7,7 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
+  rewriting. (Patrick Zhai, Ben Trent)
 
 New Features
 ---------------------
@@ -46,9 +48,6 @@ API Changes
   may want to change in the future, and users shouldn't rely on the encoding directly. (Greg Miller)
 
 * GITHUB#11746: Deprecate LongValueFacetCounts#getTopChildrenSortByCount. (Greg Miller)
-
-* GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
-  rewriting. (Patrick Zhai, Ben Trent)
 
 New Features
 ---------------------

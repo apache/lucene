@@ -25,6 +25,20 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestQueryRewriteBackwardsCompatibility extends LuceneTestCase {
 
+  public void testQueryRewriteNoOverrides() throws IOException {
+    Directory directory = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), directory, newIndexWriterConfig());
+    IndexReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+    Query queryNoOverrides = new TestQueryNoOverrides();
+    assertSame(queryNoOverrides, searcher.rewrite(queryNoOverrides));
+    assertSame(queryNoOverrides, queryNoOverrides.rewrite(searcher));
+    assertSame(queryNoOverrides, queryNoOverrides.rewrite(reader));
+    reader.close();
+    directory.close();
+  }
+
   public void testSingleQueryRewrite() throws IOException {
     Directory directory = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), directory, newIndexWriterConfig());
@@ -157,6 +171,30 @@ public class TestQueryRewriteBackwardsCompatibility extends LuceneTestCase {
     @Override
     RewriteCountingQuery getInnerQuery() {
       return optionalSubQuery;
+    }
+  }
+
+  private static class TestQueryNoOverrides extends Query {
+
+    private final int randomHash = random().nextInt();
+
+    @Override
+    public String toString(String field) {
+      return "TestQueryNoOverrides";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {}
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof TestQueryNoOverrides
+          && randomHash == ((TestQueryNoOverrides) obj).randomHash;
+    }
+
+    @Override
+    public int hashCode() {
+      return randomHash;
     }
   }
 }
