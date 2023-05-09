@@ -17,10 +17,7 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import com.carrotsearch.randomizedtesting.RandomizedTest;
-import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
@@ -33,8 +30,12 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 
+import java.io.IOException;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 /** Tests HNSW KNN graphs */
-public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
+public class TestConcurrentHnswFloatVectorGraph extends ConcurrentHnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
@@ -127,10 +128,10 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
-    HnswGraphBuilder<float[]> builder =
-        HnswGraphBuilder.create(
+    ConcurrentHnswGraphBuilder<float[]> builder =
+        ConcurrentHnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 16, 100, random().nextInt());
-    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
+    ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
