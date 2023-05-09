@@ -82,22 +82,6 @@ public final class ConcurrentHnswGraphBuilder<T> {
   // colliding
   private final RandomAccessVectorValues<T> vectorsCopy;
 
-  /**
-   * This factory matches HnswGraphBuilder's signature for convenience. "_seed" is ignored since the
-   * Concurrent classes use ThreadLocalRandom. Building will be done in parallel.
-   */
-  public static <T> ConcurrentHnswGraphBuilder<T> create(
-      RandomAccessVectorValues<T> vectors,
-      VectorEncoding vectorEncoding,
-      VectorSimilarityFunction similarityFunction,
-      int M,
-      int beamWidth,
-      long _seed)
-      throws IOException {
-    return new ConcurrentHnswGraphBuilder<>(
-        vectors, vectorEncoding, similarityFunction, M, beamWidth);
-  }
-
   /** This is the "native" factory for ConcurrentHnswGraphBuilder. */
   public static <T> ConcurrentHnswGraphBuilder<T> create(
       RandomAccessVectorValues<T> vectors,
@@ -120,7 +104,7 @@ public final class ConcurrentHnswGraphBuilder<T> {
    *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    */
-  private ConcurrentHnswGraphBuilder(
+  public ConcurrentHnswGraphBuilder(
       RandomAccessVectorValues<T> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,

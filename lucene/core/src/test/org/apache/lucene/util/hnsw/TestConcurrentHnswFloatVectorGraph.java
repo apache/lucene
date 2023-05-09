@@ -128,9 +128,11 @@ public class TestConcurrentHnswFloatVectorGraph extends ConcurrentHnswGraphTestC
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     RandomAccessVectorValues<float[]> vectors = circularVectorValues(nDoc);
+    VectorEncoding vectorEncoding = getVectorEncoding();
+    random().nextInt();
     ConcurrentHnswGraphBuilder<float[]> builder =
-        ConcurrentHnswGraphBuilder.create(
-            vectors, getVectorEncoding(), similarityFunction, 16, 100, random().nextInt());
+        new ConcurrentHnswGraphBuilder<>(
+            vectors, vectorEncoding, similarityFunction, 16, 100);
     ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     // Skip over half of the documents that are closest to the query vector
