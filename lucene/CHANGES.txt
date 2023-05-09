@@ -86,7 +86,7 @@ Bug Fixes
 
 * GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
 
-* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end (Peter Gromov)
 
 * GITHUB#12260: Fix SynonymQuery equals implementation to take the targeted field name into account (Luca Cavanna)
 
