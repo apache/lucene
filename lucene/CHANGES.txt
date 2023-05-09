@@ -72,8 +72,6 @@ Optimizations
 
 * GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
 
-* GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
-
 Bug Fixes
 ---------------------
 
@@ -124,7 +122,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
 
 Bug Fixes
 ---------------------
