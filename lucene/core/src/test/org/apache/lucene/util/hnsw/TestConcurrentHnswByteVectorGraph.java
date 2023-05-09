@@ -17,7 +17,10 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
@@ -28,10 +31,6 @@ import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
 import org.junit.Before;
-
-import java.io.IOException;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /** Tests HNSW KNN graphs */
 public class TestConcurrentHnswByteVectorGraph extends ConcurrentHnswGraphTestCase<byte[]> {

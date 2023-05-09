@@ -17,7 +17,10 @@
 
 package org.apache.lucene.util.hnsw;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
@@ -29,10 +32,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
-
-import java.io.IOException;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /** Tests HNSW KNN graphs */
 public class TestConcurrentHnswFloatVectorGraph extends ConcurrentHnswGraphTestCase<float[]> {
@@ -131,8 +130,7 @@ public class TestConcurrentHnswFloatVectorGraph extends ConcurrentHnswGraphTestC
     VectorEncoding vectorEncoding = getVectorEncoding();
     random().nextInt();
     ConcurrentHnswGraphBuilder<float[]> builder =
-        new ConcurrentHnswGraphBuilder<>(
-            vectors, vectorEncoding, similarityFunction, 16, 100);
+        new ConcurrentHnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100);
     ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
 
     // Skip over half of the documents that are closest to the query vector

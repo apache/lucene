@@ -358,15 +358,13 @@ public final class ConcurrentHnswGraphBuilder<T> {
         });
   }
 
-  // public for testing
   @FunctionalInterface
-  public interface ThrowingBiFunction<T, U, R> {
+  interface ThrowingBiFunction<T, U, R> {
     R apply(T t, U u) throws IOException;
   }
 
-  // public for testing
   @FunctionalInterface
-  public interface ThrowingBiConsumer<T, U> {
+  interface ThrowingBiConsumer<T, U> {
     void accept(T t, U u) throws IOException;
   }
 

@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -745,8 +744,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   public void testHnswGraphBuilderInvalid() {
     expectThrows(
-        NullPointerException.class,
-        () -> HnswGraphBuilder.create(null, null, null, 0, 0, 0));
+        NullPointerException.class, () -> HnswGraphBuilder.create(null, null, null, 0, 0, 0));
     // M must be > 0
     expectThrows(
         IllegalArgumentException.class,

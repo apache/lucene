@@ -98,6 +98,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param level level to add a node on
    * @param node the node to add, represented as an ordinal on the level 0.
    */
+  @Override
   public void addNode(int level, int node) {
     if (entryNode == -1) {
       entryNode = node;
