@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.hnsw.ConcurrentHnswGraphBuilder.ThrowingBiFunction;
+import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.ThrowingBiFunction;
 
 public class TestConcurrentNeighborSet extends LuceneTestCase {
   private static final ThrowingBiFunction<Integer, Integer, Float> simpleScore =

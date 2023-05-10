@@ -24,8 +24,6 @@ import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.hnsw.ConcurrentHnswGraphBuilder.ThrowingBiConsumer;
-import org.apache.lucene.util.hnsw.ConcurrentHnswGraphBuilder.ThrowingBiFunction;
 
 /**
  * A concurrent set of neighbors
@@ -70,6 +68,12 @@ public class ConcurrentNeighborSet {
 
   public void forEach(ThrowingBiConsumer<Integer, Float> consumer) throws IOException {
     for (Long encoded : neighbors) {
+      consumer.accept(decodeNodeId(encoded), decodeScore(encoded));
+    }
+  }
+
+  public void forEachDescending(ThrowingBiConsumer<Integer, Float> consumer) throws IOException {
+    for (Long encoded : neighbors.descendingSet()) {
       consumer.accept(decodeNodeId(encoded), decodeScore(encoded));
     }
   }
@@ -198,5 +202,17 @@ public class ConcurrentNeighborSet {
 
   static int decodeNodeId(long heapValue) {
     return (int) ~(heapValue);
+  }
+
+  /** A BiFunction that can throw IOException. */
+  @FunctionalInterface
+  public interface ThrowingBiFunction<T, U, R> {
+    R apply(T t, U u) throws IOException;
+  }
+
+  /** A BiConsumer that can throw IOException. */
+  @FunctionalInterface
+  public interface ThrowingBiConsumer<T, U> {
+    void accept(T t, U u) throws IOException;
   }
 }

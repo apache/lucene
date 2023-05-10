@@ -358,16 +358,6 @@ public final class ConcurrentHnswGraphBuilder<T> {
         });
   }
 
-  @FunctionalInterface
-  interface ThrowingBiFunction<T, U, R> {
-    R apply(T t, U u) throws IOException;
-  }
-
-  @FunctionalInterface
-  interface ThrowingBiConsumer<T, U> {
-    void accept(T t, U u) throws IOException;
-  }
-
   private float scoreBetween(int i, int j) throws IOException {
     final T v1 = vectorsCopy.vectorValue(i);
     final T v2 = vectorsCopy.vectorValue(j);
