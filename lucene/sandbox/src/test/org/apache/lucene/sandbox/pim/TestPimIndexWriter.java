@@ -27,17 +27,22 @@ import org.junit.BeforeClass;
 public class TestPimIndexWriter extends LuceneTestCase {
 
   private static Directory directory;
+  private static Directory pimDirectory;
   private IndexReader reader;
 
   @BeforeClass
   public static void beforeClass() {
+
     directory = newDirectory();
+    pimDirectory = newDirectory();
   }
 
   @AfterClass
   public static void afterClass() throws Exception {
     directory.close();
     directory = null;
+    pimDirectory.close();
+    pimDirectory = null;
   }
 
   @Override
@@ -53,7 +58,7 @@ public class TestPimIndexWriter extends LuceneTestCase {
     PimConfig pimConfig = new PimConfig();
     IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
       .setMergePolicy(NoMergePolicy.INSTANCE);
-    IndexWriter writer = new PimIndexWriter(directory, indexWriterConfig, pimConfig);
+    IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
 
     Document doc = new Document();
     doc.add(newTextField("id", "AAA", Field.Store.YES));

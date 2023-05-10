@@ -39,11 +39,14 @@ public class PimIndexWriter extends IndexWriter {
   public static final String DPU_TERM_POSTINGS_INDEX_EXTENSION = "dpup";
 
   private final PimConfig pimConfig;
+  private final Directory pimDirectory;
 
-  public PimIndexWriter(Directory directory, IndexWriterConfig indexWriterConfig, PimConfig pimConfig)
+  public PimIndexWriter(Directory directory, Directory pimDirectory,
+                        IndexWriterConfig indexWriterConfig, PimConfig pimConfig)
     throws IOException {
     super(directory, indexWriterConfig);
     this.pimConfig = pimConfig;
+    this.pimDirectory = pimDirectory;
   }
 
   @Override
@@ -65,7 +68,6 @@ public class PimIndexWriter extends IndexWriter {
                              + " delCount=" + segmentCommitInfo.getDelCount());
         // Create a DpuTermIndexes that will build the term index for each DPU separately.
         try (DpuTermIndexes dpuTermIndexes = new DpuTermIndexes(segmentCommitInfo, reader.getFieldInfos().size())) {
-          dpuTermIndexes.setTestName(this.testName);
           for (FieldInfo fieldInfo : reader.getFieldInfos()) {
             // For each field in the term index.
             // There will be a different term index sub-part per segment, per field, and per DPU.
@@ -111,7 +113,7 @@ public class PimIndexWriter extends IndexWriter {
       }
       System.out.println("---------");
 
-      Set<String> fileNames = Set.of(getDirectory().listAll());
+      Set<String> fileNames = Set.of(pimDirectory.listAll());
       for (int i = 0; i < termIndexes.length; i++) {
         termIndexes[i] = new DpuTermIndex(i,
                 createIndexOutput(segmentCommitInfo.info.name, DPU_TERM_FIELD_INDEX_EXTENSION, i, fileNames),
@@ -172,9 +174,9 @@ public class PimIndexWriter extends IndexWriter {
               IndexFileNames.segmentFileName(
                       name, Integer.toString(dpuIndex), ext);
       if (fileNames.contains(indexName)) {
-        getDirectory().deleteFile(indexName);
+        pimDirectory.deleteFile(indexName);
       }
-      return getDirectory().createOutput(indexName, IOContext.DEFAULT);
+      return pimDirectory.createOutput(indexName, IOContext.DEFAULT);
     }
 
     /**
@@ -399,13 +401,6 @@ public class PimIndexWriter extends IndexWriter {
         }
       }
 
-      // hack to test the PIM Index search
-      // before PIM index files are removed on close()
-      private String testName;
-      void setTestName(String testName) {
-        this.testName = testName;
-      }
-
       void close() throws IOException {
 
         //System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldList.size());
@@ -414,164 +409,7 @@ public class PimIndexWriter extends IndexWriter {
         blocksTableOutput.close();
         blocksOutput.close();
         postingsOutput.close();
-
-        if(testName == null)
-          return;
-
-        //TEST
-        // TODO move this in the test case
-        // For the moment I did not manage to keep the index files in the directory
-        // so I can only test at this place
-        if(testName.equals("testBasic")) {
-          testBasic();
-        }
-        else if(testName.equals("testMoreText")) {
-          testMoreText();
-        }
       }
     }
-
-    void setTestName(String testName) {
-      this.termIndexes[pimConfig.getNumDpus() - 1].setTestName(testName);
-    }
-
-    void testBasic() throws IOException {
-
-      System.out.println("\nTEST PIM INDEX SEARCH (BASIC)");
-      PimIndexSearcher pimSearcher = new PimIndexSearcher(getDirectory(), pimConfig);
-
-      var matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("yellow"));
-      System.out.println("\nSearching for field1:yellow: found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      ArrayList<PimMatch> expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(0, 1));
-      expectedMatches.add(new PimMatch(1, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("green"));
-      System.out.println("\nSearching for field1:green found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(1, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("green"));
-      System.out.println("\nSearching for field2:green found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(1, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("orange"));
-      System.out.println("\nSearching for field2:orange found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(0, 2));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("yellow"));
-      System.out.println("\nSearching for field2:yellow found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("id"), new BytesRef("AAC"));
-      System.out.println("\nSearching for id:AAC found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(2, 1));
-      assert matches.equals(expectedMatches);
-      System.out.println("");
-
-      pimSearcher.close();
-    }
-
-    void testMoreText() throws IOException {
-
-      System.out.println("\nTEST PIM INDEX SEARCH (MORE TEXT)");
-      PimIndexSearcher pimSearcher = new PimIndexSearcher(getDirectory(), pimConfig);
-
-      var matches = pimSearcher.SearchTerm(new BytesRef("title"), new BytesRef("Apache"));
-      System.out.println("\nSearching for title:Apache: found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      ArrayList<PimMatch> expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(1, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("title"), new BytesRef("München"));
-      System.out.println("\nSearching for title:München found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(0, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("manuscrit"));
-      System.out.println("\nSearching for body:manuscrit found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(2, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("copie"));
-      System.out.println("\nSearching for body:copie found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(2, 2));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("wird"));
-      System.out.println("\nSearching for body:wird found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(0, 2));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("Dativ"));
-      System.out.println("\nSearching for body:Dativ found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      expectedMatches.add(new PimMatch(0, 1));
-      assert matches.equals(expectedMatches);
-
-      matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("conservé"));
-      System.out.println("\nSearching for body:conservé found " + matches.size() + " results");
-      matches.forEach((m) -> {
-        System.out.println("Doc:" + m.docId + " freq:" + m.score);
-      });
-      expectedMatches = new ArrayList<>();
-      assert matches.equals(expectedMatches);
-
-      System.out.println("");
-      pimSearcher.close();
-    }
-  }
-
-  private String testName;
-  void setTestName(String testName) {
-    this.testName = testName;
   }
 }

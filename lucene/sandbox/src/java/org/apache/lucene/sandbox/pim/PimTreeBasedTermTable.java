@@ -152,8 +152,8 @@ public class PimTreeBasedTermTable {
             //write address of the block and its byte size
             output.writeVLong(blockAddress);
             output.writeVLong(byteSize);
-            if (output instanceof IndexOutput)
-                System.out.println("Tree term: " + term.utf8ToString() + " addr:" + blockAddress);
+            //if (output instanceof IndexOutput)
+            //    System.out.println("Tree term: " + term.utf8ToString() + " addr:" + blockAddress);
         }
 
         Block SearchForBlock(BytesRef searchTerm) {

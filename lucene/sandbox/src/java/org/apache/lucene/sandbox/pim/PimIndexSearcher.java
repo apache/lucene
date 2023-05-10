@@ -23,11 +23,11 @@ public class PimIndexSearcher implements Closeable  {
 
     ArrayList<DPUIndexSearcher> searchers;
 
-    PimIndexSearcher(Directory dir, PimConfig config) {
+    PimIndexSearcher(Directory dir, Directory pimDir, PimConfig config) {
 
         searchers = new ArrayList<>();
         for(int i = 0; i < config.getNumDpus(); ++i) {
-            searchers.add(new DPUIndexSearcher(dir, i));
+            searchers.add(new DPUIndexSearcher(dir, pimDir, i));
         }
     }
 
@@ -60,11 +60,11 @@ public class PimIndexSearcher implements Closeable  {
         PimTreeBasedTermTable fieldTableTree;
         PimTreeBasedTermTable blockTableTree;
 
-        DPUIndexSearcher(Directory dir, int dpuId) {
+        DPUIndexSearcher(Directory dir, Directory pimDir, int dpuId) {
 
             this.dpuId = dpuId;
             try {
-                openFilesInput(dir);
+                openFilesInput(dir, pimDir);
                 // create field table
                 this.fieldTableTree = PimTreeBasedTermTable.read(fieldTableInput);
             } catch (IOException e) {
@@ -72,7 +72,7 @@ public class PimIndexSearcher implements Closeable  {
             }
         }
 
-        void openFilesInput(Directory dir) throws IOException {
+        void openFilesInput(Directory dir, Directory pimDir) throws IOException {
 
             SegmentInfos segmentInfos = SegmentInfos.readCommit(dir,
                     SegmentInfos.getLastCommitSegmentsFileName(dir));
@@ -83,22 +83,22 @@ public class PimIndexSearcher implements Closeable  {
             String fieldFileName =
                     IndexFileNames.segmentFileName(
                             segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_FIELD_INDEX_EXTENSION);
-            fieldTableInput = dir.openInput(fieldFileName, IOContext.DEFAULT);
+            fieldTableInput = pimDir.openInput(fieldFileName, IOContext.DEFAULT);
 
             String blockTablesFileName =
                     IndexFileNames.segmentFileName(
                             segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_BLOCK_TABLE_INDEX_EXTENSION);
-            blockTableInput = dir.openInput(blockTablesFileName, IOContext.DEFAULT);
+            blockTableInput = pimDir.openInput(blockTablesFileName, IOContext.DEFAULT);
 
             String blocksFileName =
                     IndexFileNames.segmentFileName(
                             segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_BLOCK_INDEX_EXTENSION);
-            blocksInput = dir.openInput(blocksFileName, IOContext.DEFAULT);
+            blocksInput = pimDir.openInput(blocksFileName, IOContext.DEFAULT);
 
             String postingsFileName =
                     IndexFileNames.segmentFileName(
                             segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_POSTINGS_INDEX_EXTENSION);
-            postingsInput = dir.openInput(postingsFileName, IOContext.DEFAULT);
+            postingsInput = pimDir.openInput(postingsFileName, IOContext.DEFAULT);
         }
 
         ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
