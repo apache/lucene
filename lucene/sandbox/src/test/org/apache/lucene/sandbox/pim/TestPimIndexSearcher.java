@@ -7,6 +7,7 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -35,11 +36,12 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         super.tearDown();
     }
 
-    public void test() throws Exception {
+    public void testBasic() throws Exception {
         PimConfig pimConfig = new PimConfig();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
         IndexWriter writer = new PimIndexWriter(directory, indexWriterConfig, pimConfig);
+        ((PimIndexWriter) writer).setTestName("testBasic");
 
         Document doc = new Document();
         doc.add(newTextField("id", "AAA", Field.Store.YES));
@@ -71,6 +73,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         //TODO need to see how to make sure the PIM index files are kept
         // in the directory. For the moment they are dropped on writer.close
+
         /*
         System.out.println("-- Searching PIM index ------------------");
         System.out.println("list directory files: " + directory.toString());
@@ -87,6 +90,45 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         QueryUtils.check(random(), query, searcher);
         */
     }
+
+    public void testMoreText() throws Exception {
+        PimConfig pimConfig = new PimConfig();
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
+                .setMergePolicy(NoMergePolicy.INSTANCE);
+        IndexWriter writer = new PimIndexWriter(directory, indexWriterConfig, pimConfig);
+        ((PimIndexWriter) writer).setTestName("testMoreText");
+
+        Document doc = new Document();
+        doc.add(newTextField("title", "München", Field.Store.YES));
+        doc.add(newTextField("body", "Der Name München wird üblicherweise als " +
+                "„bei den Mönchen“ gedeutet. Erstmals erwähnt wird der Name als forum apud " +
+                "Munichen im Augsburger Schied vom 14. Juni 1158 von Kaiser Friedrich I.[15][16] " +
+                "Munichen ist der Dativ Plural von althochdeutsch munih bzw. mittelhochdeutsch mün(e)ch, " +
+                "dem Vorläufer von neuhochdeutsch Mönch", Field.Store.YES));
+        writer.addDocument(doc);
+
+        doc = new Document();
+        doc.add(newTextField("title", "Apache Lucene", Field.Store.YES));
+        doc.add(newTextField("body", "While suitable for any application that requires full " +
+                "text indexing and searching capability, Lucene is recognized for its utility in the " +
+                "implementation of Internet search engines and local, single-site searching.[10][11]. " +
+                "Lucene includes a feature to perform a fuzzy search based on edit distance.", Field.Store.YES));
+        writer.addDocument(doc);
+
+        doc = new Document();
+        doc.add(newTextField("title", "Chartreuse", Field.Store.YES));
+        doc.add(newTextField("body", "Poursuivis pendant la Révolution française, les moines " +
+                "sont dispersés en 1793. La distillation de la chartreuse s'interrompt alors, mais les " +
+                "chartreux réussissent à conserver la recette secrète : le manuscrit est emporté par un des " +
+                "pères et une copie est conservée par le moine autorisé à garder le monastère ; lors de son " +
+                "incarcération à Bordeaux, ce dernier remet sa copie à un confrère qui finit par la céder à " +
+                "un pharmacien de Grenoble, un certain Liotard. ", Field.Store.YES));
+        writer.addDocument(doc);
+
+        System.out.println("-- CLOSE -------------------------------");
+        writer.close();
+    }
+
 
     private Analyzer getAnalyzer() {
         return
