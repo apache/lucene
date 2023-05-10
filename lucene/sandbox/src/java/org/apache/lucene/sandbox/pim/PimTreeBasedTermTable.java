@@ -152,15 +152,15 @@ public class PimTreeBasedTermTable {
             //write address of the block and its byte size
             output.writeVLong(blockAddress);
             output.writeVLong(byteSize);
-            if (output instanceof IndexOutput)
-                System.out.println("Tree term: " + term.utf8ToString() + " addr:" + blockAddress);
+            //if (output instanceof IndexOutput)
+            //    System.out.println("Tree term: " + term.utf8ToString() + " addr:" + blockAddress);
         }
 
-        Block SearchForBlock(BytesRef term) {
+        Block SearchForBlock(BytesRef searchTerm) {
 
             // searching for the block in which a term lies is a
             // floor operation in BST
-            int cmp = term.compareTo(this.term);
+            int cmp = searchTerm.compareTo(term);
             if (cmp == 0) {
                 // found term
                 return new Block(term, blockAddress, byteSize);
@@ -170,14 +170,14 @@ public class PimTreeBasedTermTable {
                 // the term we are searching for is necessarily
                 // in a block of the left subtree
                 if(leftChild == null) return null;
-                return leftChild.SearchForBlock(term);
+                return leftChild.SearchForBlock(searchTerm);
             } else {
                 // the term we are searching for may be in this block
                 // or in a block in the right subtree if we find one
                 if(rightChild == null)
                     return new Block(term, blockAddress, byteSize);
 
-                Block rb = rightChild.SearchForBlock(term);
+                Block rb = rightChild.SearchForBlock(searchTerm);
                 if (rb == null)
                     return new Block(term, blockAddress, byteSize);
                 else

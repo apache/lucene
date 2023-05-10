@@ -83,7 +83,6 @@ public class PimIndexSearcher implements Closeable  {
             String fieldFileName =
                     IndexFileNames.segmentFileName(
                             segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_FIELD_INDEX_EXTENSION);
-            System.out.println("trying to open file " + fieldFileName);
             fieldTableInput = dir.openInput(fieldFileName, IOContext.DEFAULT);
 
             String blockTablesFileName =
@@ -161,10 +160,13 @@ public class PimIndexSearcher implements Closeable  {
                             postingByteSize = blocksInput.readVLong();
                             break;
                         }
-                        if(cmp > 0) {
+                        if(cmp < 0) {
                             // this means the term searched is not present
                             break;
                         }
+                        // skip current term posting address / byte size
+                        blocksInput.readVLong();
+                        blocksInput.readVLong();
                     }
                 }
             } catch (IOException e) {

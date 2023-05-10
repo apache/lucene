@@ -16,18 +16,15 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.Collections;
 
 /**
  * Extends {@link IndexWriter} to build the term indexes for each DPU after each commit.
@@ -213,6 +210,11 @@ public class PimIndexWriter extends IndexWriter {
                    int numFields, int blockCapacity) {
         this.dpuIndex = dpuIndex;
         this.fieldList = new ArrayList<>();
+        this.fieldWritten = false;
+        this.termWritten = false;
+        this.doc = 0;
+        this.numTerms = 0;
+        this.lastTermPostingAddress = -1L;
         this.blockCapacity = blockCapacity;
         this.currBlockSz = 0;
         this.blockList = new ArrayList<>();
@@ -223,12 +225,13 @@ public class PimIndexWriter extends IndexWriter {
       }
 
       void resetForNextField() {
+
         fieldWritten = false;
+        lastTermPostingAddress = -1L;
       }
       void resetForNextTerm() {
         termWritten = false;
         doc = 0;
-        lastTermPostingAddress = -1L;
       }
 
       void writeTermIfAbsent(BytesRef term) throws IOException {
@@ -249,16 +252,17 @@ public class PimIndexWriter extends IndexWriter {
               currBlockSz = 0;
             }
 
+            // write byte size of the last term postings (if any)
+            if(this.lastTermPostingAddress >= 0)
+              blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+            this.lastTermPostingAddress = postingsOutput.getFilePointer();
+
             //TODO: delta-prefix the term bytes (see UniformSplit).
             blocksOutput.writeVInt(term.length);
             blocksOutput.writeBytes(term.bytes, term.offset, term.length);
             termWritten = true;
             numTerms++;
 
-            // write byte size of the last term postings (if any)
-            if(this.lastTermPostingAddress >= 0)
-              blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
-            this.lastTermPostingAddress = postingsOutput.getFilePointer();
             // write pointer to the posting list for this term (in posting file)
             blocksOutput.writeVLong(postingsOutput.getFilePointer());
 
@@ -290,6 +294,7 @@ public class PimIndexWriter extends IndexWriter {
           if(fieldList.size() > 0) {
             fieldList.get(fieldList.size() - 1).byteSize += blocksTableOutput.getFilePointer();
           }
+          //System.out.println("Add field:" + fieldInfo.name + " to field table addr:" +  blocksTableOutput.getFilePointer());
           fieldList.add(new PimTreeBasedTermTable.Block(new BytesRef(fieldInfo.getName()),
                   blocksTableOutput.getFilePointer(), -blocksTableOutput.getFilePointer()));
           fieldWritten = true;
@@ -365,6 +370,10 @@ public class PimIndexWriter extends IndexWriter {
 
         fieldList.get(fieldList.size() - 1).byteSize += blocksTableOutput.getFilePointer();
 
+        // NOTE: the fields are not read in sorted order in Lucene index (why ?)
+        // sorting them here, otherwise the binary search in block table cannot work
+        Collections.sort(fieldList, (b1, b2) -> b1.term.compareTo(b2.term));
+
         PimTreeBasedTermTable table = new PimTreeBasedTermTable(fieldList);
         table.write(fieldTableOutput);
       }
@@ -378,7 +387,7 @@ public class PimIndexWriter extends IndexWriter {
           if(this.lastTermPostingAddress >= 0)
             blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
 
-          System.out.println("Block table dpu:" + dpuIndex + " field:" + fieldInfo.name);
+          //System.out.println("Block table dpu:" + dpuIndex + " field:" + fieldInfo.name);
           writeBlockTable();
         } catch (IOException e) {
           throw new RuntimeException(e);
@@ -386,7 +395,7 @@ public class PimIndexWriter extends IndexWriter {
       }
       void close() throws IOException {
 
-        System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldList.size());
+        //System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldList.size());
         writeFieldTable();
         fieldTableOutput.close();
         blocksTableOutput.close();
@@ -398,23 +407,52 @@ public class PimIndexWriter extends IndexWriter {
         // For the moment I did not manage to keep the index files in the directory
         // so I can only test at this place
         if(dpuIndex == 1) {
+
+          System.out.println("\nTEST PIM INDEX SEARCH");
           PimIndexSearcher pimSearcher = new PimIndexSearcher(getDirectory(), pimConfig);
 
           var matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("yellow"));
-          System.out.println("Searching for field1:yellow: found " + matches.size() + " results");
+          System.out.println("\nSearching for field1:yellow: found " + matches.size() + " results");
           matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+          ArrayList<PimMatch> expectedMatches = new ArrayList<>();
+          expectedMatches.add(new PimMatch(0, 1));
+          expectedMatches.add(new PimMatch(1, 1));
+          assert matches.equals(expectedMatches);
 
           matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("green"));
-          System.out.println("Searching for field1:green found " + matches.size() + " results");
+          System.out.println("\nSearching for field1:green found " + matches.size() + " results");
           matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+          expectedMatches = new ArrayList<>();
+          expectedMatches.add(new PimMatch(1, 1));
+          assert matches.equals(expectedMatches);
 
           matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("green"));
-          System.out.println("Searching for field2:green found " + matches.size() + " results");
+          System.out.println("\nSearching for field2:green found " + matches.size() + " results");
           matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+          expectedMatches = new ArrayList<>();
+          expectedMatches.add(new PimMatch(1, 1));
+          assert matches.equals(expectedMatches);
 
           matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("orange"));
-          System.out.println("Searching for field2:orange found " + matches.size() + " results");
+          System.out.println("\nSearching for field2:orange found " + matches.size() + " results");
           matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+          expectedMatches = new ArrayList<>();
+          expectedMatches.add(new PimMatch(0, 2));
+          assert matches.equals(expectedMatches);
+
+          matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("yellow"));
+          System.out.println("\nSearching for field2:yellow found " + matches.size() + " results");
+          matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+          expectedMatches = new ArrayList<>();
+          assert matches.equals(expectedMatches);
+
+          matches = pimSearcher.SearchTerm(new BytesRef("id"), new BytesRef("AAC"));
+          System.out.println("\nSearching for id:AAC found " + matches.size() + " results");
+          matches.forEach((m) -> {System.out.println("Doc:" + m.docId + " freq:" + m.score);});
+          expectedMatches = new ArrayList<>();
+          expectedMatches.add(new PimMatch(2, 1));
+          assert matches.equals(expectedMatches);
+          System.out.println("");
 
           pimSearcher.close();
         }

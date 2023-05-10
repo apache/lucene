@@ -1,6 +1,7 @@
 package org.apache.lucene.sandbox.pim;
 
 import org.apache.lucene.search.DocIdSetIterator;
+import java.util.Objects;
 
 public class PimMatch {
 
@@ -14,4 +15,22 @@ public class PimMatch {
     this.docId = docId;
     this.score = score;
   }
+
+  @Override
+  public boolean equals(Object o) {
+
+    if (o == this) return true;
+    if (!(o instanceof PimMatch)) {
+      return false;
+    }
+    PimMatch other = (PimMatch) o;
+    return (docId == other.docId) && (score == other.score);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(docId, score);
+  }
+
+
 }
