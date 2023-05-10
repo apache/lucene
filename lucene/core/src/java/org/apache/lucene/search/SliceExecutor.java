@@ -52,7 +52,7 @@ class SliceExecutor {
   }
 
   boolean shouldExecuteOnCallerThread(int index, int numTasks) {
-    //Execute last task on caller thread
+    // Execute last task on caller thread
     return index == numTasks - 1;
   }
 }
