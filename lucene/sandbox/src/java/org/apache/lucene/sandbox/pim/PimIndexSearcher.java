@@ -11,6 +11,7 @@ import org.apache.lucene.util.BytesRef;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * @class PimIndexSearcher
@@ -36,6 +37,17 @@ public class PimIndexSearcher implements Closeable  {
         ArrayList<PimMatch> results = new ArrayList<>();
         searchers.forEach((s) -> {
             var matches = s.SearchTerm(field, term);
+            if(matches != null)
+                results.addAll(matches);
+        });
+        return results;
+    }
+
+    ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
+
+        ArrayList<PimMatch> results = new ArrayList<>();
+        searchers.forEach((s) -> {
+            var matches = s.SearchPhrase(query);
             if(matches != null)
                 results.addAll(matches);
         });
@@ -103,6 +115,158 @@ public class PimIndexSearcher implements Closeable  {
 
         ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
 
+            // search for the right block where to find the term
+            PimTreeBasedTermTable.Block termPostings = getTermPostings(field, term);
+
+            if(termPostings == null)
+                return null;
+
+            ArrayList<PimMatch> results = new ArrayList<>();
+
+            // read the postings
+            try {
+                postingsInput.seek(termPostings.address);
+                int doc = 0;
+                while (postingsInput.getFilePointer() < (termPostings.address + termPostings.byteSize)) {
+                    int deltaDoc = postingsInput.readVInt();
+                    doc += deltaDoc;
+                    int freq = postingsInput.readZInt();
+                    long numBytesPos = 0L;
+                    if(freq == 0) {
+                        freq = postingsInput.readVInt();
+                        numBytesPos = postingsInput.readVLong();
+                    }
+                    else if(freq < 0) {
+                        freq = -freq;
+                        numBytesPos = postingsInput.readShort();
+                    }
+                    else {
+                        numBytesPos = postingsInput.readByte();
+                    }
+
+                    results.add(new PimMatch(doc, freq));
+
+                    // TODO read positions for the term in this doc
+                    // For the moment just skip
+                    postingsInput.skipBytes(numBytesPos);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            return results;
+        }
+
+        ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
+
+            // search for the blocks where to find the phrase terms
+            PimTreeBasedTermTable.Block[] termPostingBlocks = new PimTreeBasedTermTable.Block[query.getTerms().length];
+            IndexInput[] termPostings =  new IndexInput[query.getTerms().length];
+            BytesRef field = new BytesRef(query.getField());
+            for(int i = 0; i < termPostingBlocks.length; ++i) {
+                termPostingBlocks[i] = getTermPostings(field, query.getTerms()[i].bytes());
+                if(termPostingBlocks[i] == null)
+                    return null;
+
+                // TODO verify that clone works here (independent file pointers ?)
+                termPostings[i] = postingsInput.clone();
+                try {
+                    termPostings[i].seek(termPostingBlocks[i].address);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            // the search for exact phrase is done in two steps
+            // 1) find the next document which contains all terms of the phrase
+            // 2) try to find an alignment of positions to form the exact phrase in the document
+            ArrayList<PimMatch> results = new ArrayList<>();
+
+            try {
+                assert termPostings.length > 0;
+                int[] currDoc = new int[termPostings.length];
+                Arrays.fill(currDoc, -1);
+                DocumentIterator[] docIt = new DocumentIterator[termPostings.length];
+                for(int i = 0; i < termPostings.length; ++i)
+                    docIt[i] = new DocumentIterator(termPostings[i], termPostingBlocks[i].byteSize);
+
+                int searchDoc = docIt[0].Next(0);
+                currDoc[0] = searchDoc;
+                int maxDoc = currDoc[0];
+
+                while(true) {
+                    // document search
+                    while (true) {
+                        for (int i = 0; i < termPostings.length; ++i) {
+                            if (currDoc[i] != searchDoc) {
+                                currDoc[i] = docIt[i].Next(searchDoc);
+                                if (currDoc[i] < 0) {
+                                    // no more docs to check, we are done
+                                    return results;
+                                }
+                                if (currDoc[i] > maxDoc) {
+                                    maxDoc = currDoc[i];
+                                }
+                            }
+                        }
+                        if (maxDoc == searchDoc)
+                            break; // found document
+                        assert maxDoc > searchDoc;
+                        searchDoc = maxDoc;
+                    }
+
+                    // here perform the positions alignment
+                    int[] currPos = new int[termPostings.length];
+                    int[] searchPos = new int[termPostings.length];
+                    Arrays.fill(currPos, -1);
+                    PositionsIterator[] posIt = new PositionsIterator[termPostings.length];
+                    for(int i = 0; i < termPostings.length; ++i)
+                        posIt[i] = new PositionsIterator(termPostings[i], docIt[i].getNbPositionsForDoc());
+
+                    searchPos[0] = posIt[0].Next(0);
+                    if(searchPos[0] < 0) continue;
+                    currPos[0] = searchPos[0];
+                    for (int i = 1; i < searchPos.length; ++i) searchPos[i] = searchPos[0] + i;
+                    boolean endPositions = false;
+                    while (true) {
+                        int nbMatches = 1;
+                        int maxPos = 0;
+                        for (int i = 0; i < termPostings.length; ++i) {
+                            if (currPos[i] != searchPos[i]) {
+                                currPos[i] = posIt[i].Next(searchPos[i]);
+                                if (currPos[i] < 0) {
+                                    // no more positions to check, we are done with this doc
+                                    endPositions = true;
+                                    break;
+                                } else if (currPos[i] == searchPos[i]) {
+                                    nbMatches++;
+                                }
+                                else if(currPos[i] > maxPos + i) {
+                                    maxPos = currPos[i] - i;
+                                }
+                            }
+                        }
+                        if (endPositions)
+                            break;
+                        if(nbMatches == termPostings.length) {
+                            // found a match, store it
+                            results.add(new PimMatch(searchDoc, searchPos[0]));
+                            searchPos[0] = posIt[0].Next(0);
+                            currPos[0] = searchPos[0];
+                        }
+                        else {
+                            searchPos[0] = maxPos;
+                        }
+                        for (int i = 1; i < searchPos.length; ++i) searchPos[i] = searchPos[0] + i;
+                    }
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private PimTreeBasedTermTable.Block getTermPostings(BytesRef field, BytesRef term) {
+
             // first search for the field in the field table
             PimTreeBasedTermTable.Block fieldBlock = fieldTableTree.SearchForBlock(field);
 
@@ -126,8 +290,6 @@ public class PimIndexSearcher implements Closeable  {
 
             if(termBlock == null)
                 return null;
-
-            ArrayList<PimMatch> results = new ArrayList<>();
 
             // start reading at the address of the block to find the term (if present)
             // and the address to its posting list
@@ -176,38 +338,90 @@ public class PimIndexSearcher implements Closeable  {
             if(postingAddress < 0)
                 return null;
 
-            // read the postings
-            try {
-                postingsInput.seek(postingAddress);
-                int doc = 0;
-                while (postingsInput.getFilePointer() < (postingAddress + postingByteSize)) {
-                    int deltaDoc = postingsInput.readVInt();
-                    doc += deltaDoc;
-                    int freq = postingsInput.readZInt();
-                    long numBytesPos = 0L;
-                    if(freq == 0) {
-                        freq = postingsInput.readVInt();
-                        numBytesPos = postingsInput.readVLong();
-                    }
-                    else if(freq < 0) {
-                        freq = -freq;
-                        numBytesPos = postingsInput.readShort();
-                    }
-                    else {
-                        numBytesPos = postingsInput.readByte();
-                    }
+            return new PimTreeBasedTermTable.Block(term, postingAddress, postingByteSize);
+        }
 
-                    results.add(new PimMatch(doc, freq));
+        private abstract class Iterator {
 
-                    // TODO read positions for the term in this doc
-                    // For the moment just skip
-                    postingsInput.skipBytes(numBytesPos);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            public abstract int Next() throws IOException;
+
+            int Next(int target) throws IOException {
+
+                int next = Next();
+                while(next >= 0 && next < target)
+                    next = Next();
+                return next;
+            }
+        }
+        private class DocumentIterator extends Iterator {
+
+            private IndexInput postingInput;
+            private final long endPointer;
+            private int lastDoc;
+            private long nbSkipBytes;
+            private long nbPositions;
+
+            DocumentIterator(IndexInput postingInput, long byteSize) {
+                this.postingInput = postingInput;
+                this.endPointer = postingInput.getFilePointer() + byteSize;
+                this.lastDoc = 0;
+                this.nbSkipBytes = -1;
+                this.nbPositions = -1;
             }
 
-            return results;
+            public int Next() throws IOException {
+
+                // first skip the necessary number of bytes
+                // to reach the next doc
+                if(nbSkipBytes > 0) {
+                    postingsInput.skipBytes(nbSkipBytes);
+                }
+
+                if(postingsInput.getFilePointer() >= endPointer) {
+                    nbSkipBytes = -1;
+                    return -1;
+                }
+
+                int deltaDoc = postingsInput.readVInt();
+                lastDoc += deltaDoc;
+                int freq = postingsInput.readZInt();
+                if(freq == 0) {
+                    nbPositions = postingsInput.readVInt();
+                    nbSkipBytes = postingsInput.readVLong();
+                }
+                else if(freq < 0) {
+                    nbPositions = -freq;
+                    nbSkipBytes = postingsInput.readShort();
+                }
+                else {
+                    nbPositions = freq;
+                    nbSkipBytes = postingsInput.readByte();
+                }
+                return lastDoc;
+            }
+
+            long getNbPositionsForDoc() {
+                return nbPositions;
+            }
+        }
+
+        private class PositionsIterator extends Iterator {
+
+            private IndexInput postingInput;
+            private long nbPositions;
+            private int lastPos;
+
+            PositionsIterator(IndexInput postingInput, long nbPositions) {
+                this.postingInput = postingsInput;
+                this.nbPositions = nbPositions;
+            }
+
+            public int Next() throws IOException {
+                if(nbPositions == 0)
+                    return -1;
+                nbPositions--;
+                return postingInput.readVInt();
+            }
         }
 
         @Override

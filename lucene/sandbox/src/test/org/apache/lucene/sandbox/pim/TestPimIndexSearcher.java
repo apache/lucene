@@ -232,6 +232,12 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches = new ArrayList<>();
         assert matches.equals(expectedMatches);
 
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
+        System.out.println("\nSearching for body:[Apache Lucene] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+
         System.out.println("");
         pimSearcher.close();
     }

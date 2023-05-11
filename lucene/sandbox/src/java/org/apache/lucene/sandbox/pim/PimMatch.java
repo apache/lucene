@@ -31,6 +31,6 @@ public class PimMatch {
   public int hashCode() {
     return Objects.hash(docId, score);
   }
-
-
 }
+
+
