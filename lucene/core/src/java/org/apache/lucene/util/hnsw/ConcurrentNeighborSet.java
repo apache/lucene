@@ -113,10 +113,14 @@ public class ConcurrentNeighborSet {
   public void insert(
       int node, float score, ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
-    neighbors.add(encode(node, score));
-    if (size.incrementAndGet() > maxConnections) {
-      removeLeastDiverse(scoreBetween);
-      size.decrementAndGet();
+    // if two nodes are inserted concurrently, and see each other as neighbors,
+    // we will try to add a duplicate entry to the set, so it is not correct to assume
+    // that all calls will result in a new entry being added
+    if (neighbors.add(encode(node, score))) {
+      if (size.incrementAndGet() > maxConnections) {
+        removeLeastDiverse(scoreBetween);
+        size.decrementAndGet();
+      }
     }
   }
 
