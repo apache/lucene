@@ -136,19 +136,6 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(exc.getMessage().contains("input automaton is too large"));
   }
 
-  public void testTopoSortEatsStack() {
-    char[] chars = new char[50000];
-    TestUtil.randomFixedLengthUnicodeString(random(), chars, 0, chars.length);
-    String bigString1 = new String(chars);
-    TestUtil.randomFixedLengthUnicodeString(random(), chars, 0, chars.length);
-    String bigString2 = new String(chars);
-    Automaton a =
-        Operations.union(Automata.makeString(bigString1), Automata.makeString(bigString2));
-    IllegalArgumentException exc =
-        expectThrows(IllegalArgumentException.class, () -> Operations.topoSortStates(a));
-    assertTrue(exc.getMessage().contains("input automaton is too large"));
-  }
-
   /**
    * Returns the set of all accepted strings.
    *

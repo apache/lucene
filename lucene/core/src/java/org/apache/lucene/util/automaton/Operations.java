@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -1284,7 +1285,7 @@ public final class Operations {
     int numStates = a.getNumStates();
     int[] states = new int[numStates];
     final BitSet visited = new BitSet(numStates);
-    int upto = topoSortStatesRecurse(a, visited, states, 0, 0, 0);
+    int upto = topoSortStates(a, visited, states);
 
     if (upto < states.length) {
       // There were dead states
@@ -1303,24 +1304,35 @@ public final class Operations {
     return states;
   }
 
-  // TODO: not great that this is recursive... in theory a
-  // large automata could exceed java's stack so the maximum level of recursion is bounded to 1000
-  private static int topoSortStatesRecurse(
-      Automaton a, BitSet visited, int[] states, int upto, int state, int level) {
-    if (level > MAX_RECURSION_LEVEL) {
-      throw new IllegalArgumentException("input automaton is too large: " + level);
-    }
+  private static int topoSortStates(Automaton a, BitSet visited, int[] states) {
+
+    Stack<Integer> stack = new Stack<>();
+    stack.push(0); // Assuming that the initial state is 0.
+    int upto = 0;
     Transition t = new Transition();
-    int count = a.initTransition(state, t);
-    for (int i = 0; i < count; i++) {
-      a.getNextTransition(t);
-      if (!visited.get(t.dest)) {
-        visited.set(t.dest);
-        upto = topoSortStatesRecurse(a, visited, states, upto, t.dest, level + 1);
+
+    while (!stack.empty()) {
+      int state = stack.peek(); // Just peek, don't remove the state yet
+
+      int count = a.initTransition(state, t);
+      boolean pushed = false;
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(t);
+        if (!visited.get(t.dest)) {
+          visited.set(t.dest);
+          stack.push(t.dest); // Push the next unvisited state onto the stack
+          pushed = true;
+          break; // Exit the loop, we'll continue from here in the next iteration
+        }
+      }
+
+      // If we haven't pushed any new state onto the stack, we're done with this state
+      if (!pushed) {
+        stack.pop();
+        states[upto] = state;
+        upto++;
       }
     }
-    states[upto] = state;
-    upto++;
     return upto;
   }
 }
