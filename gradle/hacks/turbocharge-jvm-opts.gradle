@@ -19,8 +19,7 @@
 allprojects {
     def vmOpts = [
         '-XX:+UseParallelGC',
-        '-XX:TieredStopAtLevel=1',
-        '-XX:ActiveProcessorCount=1'
+        '-XX:TieredStopAtLevel=1'
     ]
 
     // Inject vm options into custom javadoc rendering. We can't refer
