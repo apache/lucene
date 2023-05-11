@@ -1314,8 +1314,8 @@ public final class Operations {
    *
    * @param a The automaton whose states are to be topologically sorted.
    * @param visited A BitSet representing the visited states during the sorting process.
-   * @param states An int array which stores the reversed topological order of the states.
-   * @return the topologically sorted array of state ids
+   * @param states An int array which stores the states.
+   * @return the reversed topologically sorted array of state ids
    * @throws IllegalArgumentException if the input automaton has a cycle.
    */
   private static int topoSortStates(Automaton a, BitSet visited, int[] states) {
