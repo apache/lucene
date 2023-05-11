@@ -66,6 +66,10 @@ public class ConcurrentNeighborSet {
     return size.get();
   }
 
+  public int rawSize() {
+    return neighbors.size();
+  }
+
   public void forEach(ThrowingBiConsumer<Integer, Float> consumer) throws IOException {
     for (Long encoded : neighbors) {
       consumer.accept(decodeNodeId(encoded), decodeScore(encoded));

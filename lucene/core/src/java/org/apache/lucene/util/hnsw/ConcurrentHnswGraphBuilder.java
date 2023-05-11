@@ -50,7 +50,7 @@ import org.apache.lucene.util.hnsw.ConcurrentOnHeapHnswGraph.NodeAtLevel;
  *
  * @param <T> the type of vector
  */
-public final class ConcurrentHnswGraphBuilder<T> {
+public class ConcurrentHnswGraphBuilder<T> {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
@@ -364,7 +364,7 @@ public final class ConcurrentHnswGraphBuilder<T> {
     return scoreBetween(v1, v2);
   }
 
-  private float scoreBetween(T v1, T v2) {
+  protected float scoreBetween(T v1, T v2) {
     return switch (vectorEncoding) {
       case BYTE -> similarityFunction.compare((byte[]) v1, (byte[]) v2);
       case FLOAT32 -> similarityFunction.compare((float[]) v1, (float[]) v2);
