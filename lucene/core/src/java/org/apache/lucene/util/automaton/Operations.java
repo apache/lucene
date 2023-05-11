@@ -29,17 +29,7 @@
 
 package org.apache.lucene.util.automaton;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -1274,9 +1264,14 @@ public final class Operations {
   }
 
   /**
-   * Returns the topological sort of all states reachable from the initial state. Behavior is
-   * undefined if this automaton has cycles. CPU cost is O(numTransitions), and the implementation
-   * is recursive so an automaton matching long strings may exhaust the java stack.
+   * Returns the topological sort of all states reachable from the initial state. This method
+   * assumes that the automaton does not contain cycles, and will throw an IllegalArgumentException
+   * if a cycle is detected. The CPU cost is O(numTransitions), and the implementation is
+   * non-recursive, so it will not exhaust the java stack for automaton matching long strings. If
+   * there are dead states in the automaton, they will be removed from the returned array.
+   *
+   * @param a the Automaton to be sorted
+   * @return the topologically sorted array of state ids
    */
   public static int[] topoSortStates(Automaton a) {
     if (a.getNumStates() == 0) {
@@ -1304,8 +1299,17 @@ public final class Operations {
     return states;
   }
 
+  /**
+   * Performs a topological sort on the states of the given Automaton.
+   *
+   * @param a The automaton whose states are to be topologically sorted.
+   * @param visited A BitSet representing the visited states during the sorting process.
+   * @param states An int array which stores the reversed topological order of the states.
+   * @return the topologically sorted array of state ids
+   * @throws IllegalArgumentException if the input automaton has a cycle.
+   */
   private static int topoSortStates(Automaton a, BitSet visited, int[] states) {
-
+    BitSet onStack = new BitSet(a.getNumStates());
     Stack<Integer> stack = new Stack<>();
     stack.push(0); // Assuming that the initial state is 0.
     int upto = 0;
@@ -1321,13 +1325,18 @@ public final class Operations {
         if (!visited.get(t.dest)) {
           visited.set(t.dest);
           stack.push(t.dest); // Push the next unvisited state onto the stack
+          onStack.set(state);
           pushed = true;
           break; // Exit the loop, we'll continue from here in the next iteration
+        } else if (onStack.get(t.dest)) {
+          // If the state is on the current recursion stack, we have detected a cycle
+          throw new IllegalArgumentException("Input automaton has a cycle.");
         }
       }
 
       // If we haven't pushed any new state onto the stack, we're done with this state
       if (!pushed) {
+        onStack.clear(state); // remove the node from the current recursion stack
         stack.pop();
         states[upto] = state;
         upto++;

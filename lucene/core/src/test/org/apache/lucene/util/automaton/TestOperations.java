@@ -17,6 +17,7 @@
 package org.apache.lucene.util.automaton;
 
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
+import static org.apache.lucene.util.automaton.Operations.topoSortStates;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
@@ -67,6 +68,36 @@ public class TestOperations extends LuceneTestCase {
     Automaton a = Automata.makeString("a");
     Automaton concat = Operations.concatenate(a, Automata.makeEmpty());
     assertTrue(Operations.isEmpty(concat));
+  }
+
+  /**
+   * Test case for the topoSortStates method when the input Automaton contains a cycle. This test
+   * case constructs an Automaton with two disjoint sets of states—one without a cycle and one with
+   * a cycle. The topoSortStates method should detect the presence of a cycle and throw an
+   * IllegalArgumentException.
+   */
+  public void testCycledAutomaton() {
+    Automaton a = new Automaton();
+    // Create three states (s1, s2, s3) for the non-cycled part of the Automaton.
+    int s1 = a.createState();
+    int s2 = a.createState();
+    int s3 = a.createState();
+
+    // Create three states (c1, c2, c3) for the cycled part of the Automaton.
+    int c1 = a.createState();
+    int c2 = a.createState();
+    int c3 = a.createState();
+
+    a.addTransition(s1, s2, 'a');
+    a.addTransition(s2, s3, 'b');
+    a.addTransition(s3, c1, 'c');
+    a.addTransition(c1, c2, 'd');
+    a.addTransition(c2, c3, 'e');
+    a.addTransition(c3, c1, 'f');
+    a.finishState();
+    IllegalArgumentException exc =
+        expectThrows(IllegalArgumentException.class, () -> topoSortStates(a));
+    assertTrue(exc.getMessage().contains("Input automaton has a cycle"));
   }
 
   /** Test optimization to concatenate() with empty String to an NFA */
