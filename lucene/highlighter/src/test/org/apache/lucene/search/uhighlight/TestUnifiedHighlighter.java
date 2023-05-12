@@ -1619,7 +1619,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
                   }
 
                   @Override
-                  public Query rewrite(IndexReader reader) {
+                  public Query rewrite(IndexSearcher indexSearcher) {
                     return this;
                   }
 

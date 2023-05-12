@@ -33,6 +33,7 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiTermQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -65,8 +66,14 @@ public class FieldQuery {
       throws IOException {
     this.fieldMatch = fieldMatch;
     Set<Query> flatQueries = new LinkedHashSet<>();
-    flatten(query, reader, flatQueries, 1f);
-    saveTerms(flatQueries, reader);
+    IndexSearcher searcher;
+    if (reader == null) {
+      searcher = null;
+    } else {
+      searcher = new IndexSearcher(reader);
+    }
+    flatten(query, searcher, flatQueries, 1f);
+    saveTerms(flatQueries, searcher);
     Collection<Query> expandQueries = expand(flatQueries);
 
     for (Query flatQuery : expandQueries) {
@@ -96,7 +103,7 @@ public class FieldQuery {
   }
 
   protected void flatten(
-      Query sourceQuery, IndexReader reader, Collection<Query> flatQueries, float boost)
+      Query sourceQuery, IndexSearcher searcher, Collection<Query> flatQueries, float boost)
       throws IOException {
     while (sourceQuery instanceof BoostQuery) {
       BoostQuery bq = (BoostQuery) sourceQuery;
@@ -107,13 +114,13 @@ public class FieldQuery {
       BooleanQuery bq = (BooleanQuery) sourceQuery;
       for (BooleanClause clause : bq) {
         if (!clause.isProhibited()) {
-          flatten(clause.getQuery(), reader, flatQueries, boost);
+          flatten(clause.getQuery(), searcher, flatQueries, boost);
         }
       }
     } else if (sourceQuery instanceof DisjunctionMaxQuery) {
       DisjunctionMaxQuery dmq = (DisjunctionMaxQuery) sourceQuery;
       for (Query query : dmq) {
-        flatten(query, reader, flatQueries, boost);
+        flatten(query, searcher, flatQueries, boost);
       }
     } else if (sourceQuery instanceof TermQuery) {
       if (boost != 1f) {
@@ -123,7 +130,7 @@ public class FieldQuery {
     } else if (sourceQuery instanceof SynonymQuery) {
       SynonymQuery synQuery = (SynonymQuery) sourceQuery;
       for (Term term : synQuery.getTerms()) {
-        flatten(new TermQuery(term), reader, flatQueries, boost);
+        flatten(new TermQuery(term), searcher, flatQueries, boost);
       }
     } else if (sourceQuery instanceof PhraseQuery) {
       PhraseQuery pq = (PhraseQuery) sourceQuery;
@@ -135,28 +142,28 @@ public class FieldQuery {
     } else if (sourceQuery instanceof ConstantScoreQuery) {
       final Query q = ((ConstantScoreQuery) sourceQuery).getQuery();
       if (q != null) {
-        flatten(q, reader, flatQueries, boost);
+        flatten(q, searcher, flatQueries, boost);
       }
     } else if (sourceQuery instanceof FunctionScoreQuery) {
       final Query q = ((FunctionScoreQuery) sourceQuery).getWrappedQuery();
       if (q != null) {
-        flatten(q, reader, flatQueries, boost);
+        flatten(q, searcher, flatQueries, boost);
       }
-    } else if (reader != null) {
+    } else if (searcher != null) {
       Query query = sourceQuery;
       Query rewritten;
       if (sourceQuery instanceof MultiTermQuery) {
         rewritten =
             new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(MAX_MTQ_TERMS)
-                .rewrite(reader, (MultiTermQuery) query);
+                .rewrite(searcher.getIndexReader(), (MultiTermQuery) query);
       } else {
-        rewritten = query.rewrite(reader);
+        rewritten = query.rewrite(searcher);
       }
       if (rewritten != query) {
         // only rewrite once and then flatten again - the rewritten query could have a speacial
         // treatment
         // if this method is overwritten in a subclass.
-        flatten(rewritten, reader, flatQueries, boost);
+        flatten(rewritten, searcher, flatQueries, boost);
       }
       // if the query is already rewritten we discard it
     }
@@ -311,7 +318,7 @@ public class FieldQuery {
    *      - fieldMatch==false
    *          termSetMap=Map<null,Set<"john","lennon">>
    */
-  void saveTerms(Collection<Query> flatQueries, IndexReader reader) throws IOException {
+  void saveTerms(Collection<Query> flatQueries, IndexSearcher searcher) throws IOException {
     for (Query query : flatQueries) {
       while (query instanceof BoostQuery) {
         query = ((BoostQuery) query).getQuery();
@@ -320,8 +327,8 @@ public class FieldQuery {
       if (query instanceof TermQuery) termSet.add(((TermQuery) query).getTerm().text());
       else if (query instanceof PhraseQuery) {
         for (Term term : ((PhraseQuery) query).getTerms()) termSet.add(term.text());
-      } else if (query instanceof MultiTermQuery && reader != null) {
-        BooleanQuery mtqTerms = (BooleanQuery) query.rewrite(reader);
+      } else if (query instanceof MultiTermQuery && searcher != null) {
+        BooleanQuery mtqTerms = (BooleanQuery) query.rewrite(searcher);
         for (BooleanClause clause : mtqTerms) {
           termSet.add(((TermQuery) clause.getQuery()).getTerm().text());
         }

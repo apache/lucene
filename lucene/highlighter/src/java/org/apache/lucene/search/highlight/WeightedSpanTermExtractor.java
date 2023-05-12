@@ -250,7 +250,7 @@ public class WeightedSpanTermExtractor {
       if (query instanceof MultiTermQuery) {
         rewritten = MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(reader, (MultiTermQuery) query);
       } else {
-        rewritten = origQuery.rewrite(reader);
+        rewritten = origQuery.rewrite(new IndexSearcher(reader));
       }
       if (rewritten != origQuery) {
         // only rewrite once and then flatten again - the rewritten query could have a special

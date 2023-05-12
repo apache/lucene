@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.util.VirtualMethod;
 
 /**
  * The abstract base class for queries.
@@ -44,6 +45,13 @@ import org.apache.lucene.index.IndexReader;
  * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
  */
 public abstract class Query {
+
+  private static final VirtualMethod<Query> oldMethod =
+      new VirtualMethod<>(Query.class, "rewrite", IndexReader.class);
+  private static final VirtualMethod<Query> newMethod =
+      new VirtualMethod<>(Query.class, "rewrite", IndexSearcher.class);
+  private final boolean isDeprecatedRewriteMethodOverridden =
+      VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) > 0;
 
   /**
    * Prints a query to a string, with <code>field</code> assumed to be the default field and
@@ -77,10 +85,32 @@ public abstract class Query {
    * <p>Callers are expected to call <code>rewrite</code> multiple times if necessary, until the
    * rewritten query is the same as the original query.
    *
+   * @deprecated Use {@link Query#rewrite(IndexSearcher)}
    * @see IndexSearcher#rewrite(Query)
    */
+  @Deprecated
   public Query rewrite(IndexReader reader) throws IOException {
-    return this;
+    return isDeprecatedRewriteMethodOverridden ? this : rewrite(new IndexSearcher(reader));
+  }
+
+  /**
+   * Expert: called to re-write queries into primitive queries. For example, a PrefixQuery will be
+   * rewritten into a BooleanQuery that consists of TermQuerys.
+   *
+   * <p>Callers are expected to call <code>rewrite</code> multiple times if necessary, until the
+   * rewritten query is the same as the original query.
+   *
+   * <p>The rewrite process may be able to make use of IndexSearcher's executor and be executed in
+   * parallel if the executor is provided.
+   *
+   * <p>However, if any of the intermediary queries do not satisfy the new API, parallel rewrite is
+   * not possible for any subsequent sub-queries. To take advantage of this API, the entire query
+   * tree must override this method.
+   *
+   * @see IndexSearcher#rewrite(Query)
+   */
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    return isDeprecatedRewriteMethodOverridden ? rewrite(indexSearcher.getIndexReader()) : this;
   }
 
   /**

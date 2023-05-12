@@ -740,7 +740,7 @@ public class TestDrillSideways extends FacetTestCase {
     Query baseQuery =
         new TermQuery(new Term("content", "foo")) {
           @Override
-          public Query rewrite(IndexReader reader) {
+          public Query rewrite(IndexSearcher indexSearcher) {
             // return a new instance, forcing the DrillDownQuery to also rewrite itself, exposing
             // the bug in LUCENE-9988:
             return new TermQuery(getTerm());

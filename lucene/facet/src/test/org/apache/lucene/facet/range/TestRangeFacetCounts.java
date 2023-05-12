@@ -1450,12 +1450,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      final Query inRewritten = in.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      final Query inRewritten = in.rewrite(indexSearcher);
       if (in != inRewritten) {
         return new UsedQuery(inRewritten, used);
       }
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
 
     @Override

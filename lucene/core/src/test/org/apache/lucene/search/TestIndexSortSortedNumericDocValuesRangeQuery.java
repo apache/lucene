@@ -339,7 +339,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     IndexReader reader = writer.getReader();
 
     Query query = createQuery("field", Long.MIN_VALUE, Long.MAX_VALUE);
-    Query rewrittenQuery = query.rewrite(reader);
+    Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertEquals(new FieldExistsQuery("field"), rewrittenQuery);
 
     writer.close();
@@ -357,7 +357,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Query fallbackQuery = new BooleanQuery.Builder().build();
     Query query = new IndexSortSortedNumericDocValuesRangeQuery("field", 1, 42, fallbackQuery);
 
-    Query rewrittenQuery = query.rewrite(reader);
+    Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertNotEquals(query, rewrittenQuery);
     assertThat(rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
 

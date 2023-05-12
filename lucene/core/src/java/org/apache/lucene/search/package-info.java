@@ -357,11 +357,11 @@
  *       each Query implementation must provide an implementation of Weight. See the subsection on
  *       <a href="#weightClass">The Weight Interface</a> below for details on implementing the
  *       Weight interface.
- *   <li>{@link org.apache.lucene.search.Query#rewrite(org.apache.lucene.index.IndexReader)
- *       rewrite(IndexReader reader)} &mdash; Rewrites queries into primitive queries. Primitive
- *       queries are: {@link org.apache.lucene.search.TermQuery TermQuery}, {@link
- *       org.apache.lucene.search.BooleanQuery BooleanQuery}, <span >and other queries that
- *       implement {@link org.apache.lucene.search.Query#createWeight(IndexSearcher,ScoreMode,float)
+ *   <li>{@link org.apache.lucene.search.Query#rewrite(IndexSearcher) rewrite(IndexSearcher
+ *       searcher)} &mdash; Rewrites queries into primitive queries. Primitive queries are: {@link
+ *       org.apache.lucene.search.TermQuery TermQuery}, {@link org.apache.lucene.search.BooleanQuery
+ *       BooleanQuery}, <span >and other queries that implement {@link
+ *       org.apache.lucene.search.Query#createWeight(IndexSearcher,ScoreMode,float)
  *       createWeight(IndexSearcher searcher,ScoreMode scoreMode, float boost)}</span>
  * </ol>
  *

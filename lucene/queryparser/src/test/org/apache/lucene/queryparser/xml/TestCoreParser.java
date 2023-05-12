@@ -316,7 +316,7 @@ public class TestCoreParser extends LuceneTestCase {
   }
 
   protected Query rewrite(Query q) throws IOException {
-    return q.rewrite(reader());
+    return q.rewrite(searcher());
   }
 
   protected void dumpResults(String qType, Query q, int numDocs) throws IOException {

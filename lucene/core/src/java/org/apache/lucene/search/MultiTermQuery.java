@@ -18,9 +18,9 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.FilteredTermsEnum; // javadocs
+import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.SingleTermsEnum; // javadocs
+import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
@@ -321,8 +321,8 @@ public abstract class MultiTermQuery extends Query {
    * AttributeSource)}. For example, to rewrite to a single term, return a {@link SingleTermsEnum}
    */
   @Override
-  public final Query rewrite(IndexReader reader) throws IOException {
-    return rewriteMethod.rewrite(reader, this);
+  public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    return rewriteMethod.rewrite(indexSearcher.getIndexReader(), this);
   }
 
   public RewriteMethod getRewriteMethod() {

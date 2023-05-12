@@ -61,8 +61,7 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
   protected abstract int getMaxSize();
 
   @Override
-  public final Query rewrite(final IndexReader reader, final MultiTermQuery query)
-      throws IOException {
+  public final Query rewrite(IndexReader reader, final MultiTermQuery query) throws IOException {
     final int maxSize = Math.min(size, getMaxSize());
     final PriorityQueue<ScoreTerm> stQueue = new PriorityQueue<>();
     collectTerms(

@@ -101,8 +101,7 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
   protected abstract void checkMaxClauseCount(int count) throws IOException;
 
   @Override
-  public final Query rewrite(final IndexReader reader, final MultiTermQuery query)
-      throws IOException {
+  public final Query rewrite(IndexReader reader, final MultiTermQuery query) throws IOException {
     final B builder = getTopLevelBuilder();
     final ParallelArraysTermCollector col = new ParallelArraysTermCollector();
     collectTerms(reader, query, col);
