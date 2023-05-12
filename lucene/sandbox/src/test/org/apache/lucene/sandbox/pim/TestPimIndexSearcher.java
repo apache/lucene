@@ -307,7 +307,9 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
     public void testPhraseCornerCases() throws Exception {
 
-        PimConfig pimConfig = new PimConfig(1);
+        // note pim config is using 2 DPUs unless one won't have any files
+        // and thus an empty index
+        PimConfig pimConfig = new PimConfig(2);
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
         IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);

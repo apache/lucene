@@ -9,6 +9,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,6 +80,10 @@ public class PimIndexSearcher implements Closeable  {
                 openFilesInput(dir, pimDir);
                 // create field table
                 this.fieldTableTree = PimTreeBasedTermTable.read(fieldTableInput);
+            } catch (EOFException e) {
+                // it may be that the file is empty if the DPU was assigned no docs
+                // in this case this searcher will always return null for searchTerm/searchPhrase
+                this.fieldTableTree = null;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -269,6 +274,10 @@ public class PimIndexSearcher implements Closeable  {
         // method to find the address of where to read the postings of a given term in a given field
         // first lookup the field in the field table, then the term in the term block table
         private PimTreeBasedTermTable.Block getTermPostings(BytesRef field, BytesRef term) {
+
+            // case of empty index for this DPU
+            if(this.fieldTableTree == null)
+                return null;
 
             // first search for the field in the field table
             PimTreeBasedTermTable.Block fieldBlock = fieldTableTree.SearchForBlock(field);
