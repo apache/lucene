@@ -231,7 +231,7 @@ public class ConcurrentHnswGraphBuilder<T> {
       RandomAccessVectorValues<T> vectorsToAdd, ThreadPoolExecutor pool) {
     Semaphore semaphore = new Semaphore(pool.getMaximumPoolSize());
     Set<Integer> inFlight = ConcurrentHashMap.newKeySet();
-    AtomicReference<IOException> asyncException = new AtomicReference<>(null);
+    AtomicReference<Throwable> asyncException = new AtomicReference<>(null);
 
     for (int i = 0; i < vectorsToAdd.size(); i++) {
       final int node = i; // copy for closure
@@ -242,7 +242,7 @@ public class ConcurrentHnswGraphBuilder<T> {
             () -> {
               try {
                 addGraphNode(node, vectorsToAdd);
-              } catch (IOException e) {
+              } catch (Throwable e) {
                 asyncException.set(e);
               } finally {
                 semaphore.release();
