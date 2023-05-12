@@ -34,12 +34,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Stack;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -1289,8 +1289,7 @@ public final class Operations {
     }
     int numStates = a.getNumStates();
     int[] states = new int[numStates];
-    final BitSet visited = new BitSet(numStates);
-    int upto = topoSortStates(a, visited, states);
+    int upto = topoSortStates(a, states);
 
     if (upto < states.length) {
       // There were dead states
@@ -1313,19 +1312,19 @@ public final class Operations {
    * Performs a topological sort on the states of the given Automaton.
    *
    * @param a The automaton whose states are to be topologically sorted.
-   * @param visited A BitSet representing the visited states during the sorting process.
    * @param states An int array which stores the states.
    * @return the reversed topologically sorted array of state ids
    * @throws IllegalArgumentException if the input automaton has a cycle.
    */
-  private static int topoSortStates(Automaton a, BitSet visited, int[] states) {
+  private static int topoSortStates(Automaton a, int[] states) {
     BitSet onStack = new BitSet(a.getNumStates());
-    Stack<Integer> stack = new Stack<>();
+    BitSet visited = new BitSet(a.getNumStates());
+    Deque<Integer> stack = new ArrayDeque<>();
     stack.push(0); // Assuming that the initial state is 0.
     int upto = 0;
     Transition t = new Transition();
 
-    while (!stack.empty()) {
+    while (!stack.isEmpty()) {
       int state = stack.peek(); // Just peek, don't remove the state yet
 
       int count = a.initTransition(state, t);

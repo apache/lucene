@@ -77,27 +77,33 @@ public class TestOperations extends LuceneTestCase {
    * IllegalArgumentException.
    */
   public void testCycledAutomaton() {
-    Automaton a = new Automaton();
-    // Create three states (s1, s2, s3) for the non-cycled part of the Automaton.
-    int s1 = a.createState();
-    int s2 = a.createState();
-    int s3 = a.createState();
-
-    // Create three states (c1, c2, c3) for the cycled part of the Automaton.
-    int c1 = a.createState();
-    int c2 = a.createState();
-    int c3 = a.createState();
-
-    a.addTransition(s1, s2, 'a');
-    a.addTransition(s2, s3, 'b');
-    a.addTransition(s3, c1, 'c');
-    a.addTransition(c1, c2, 'd');
-    a.addTransition(c2, c3, 'e');
-    a.addTransition(c3, c1, 'f');
-    a.finishState();
+    Automaton a = generateRandomAutomaton(true);
     IllegalArgumentException exc =
         expectThrows(IllegalArgumentException.class, () -> topoSortStates(a));
     assertTrue(exc.getMessage().contains("Input automaton has a cycle"));
+  }
+
+  public void testTopoSortStates() {
+    Automaton a = generateRandomAutomaton(false);
+
+    int[] sorted = topoSortStates(a);
+    int[] stateMap = new int[a.getNumStates()];
+    Arrays.fill(stateMap, -1);
+    int order = 0;
+    for (int state : sorted) {
+      assertEquals(-1, stateMap[state]);
+      stateMap[state] = (order++);
+    }
+
+    Transition transition = new Transition();
+    for (int state : sorted) {
+      int count = a.initTransition(state, transition);
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(transition);
+        // ensure dest's order is higher than current state
+        assertTrue(stateMap[transition.dest] > stateMap[state]);
+      }
+    }
   }
 
   /** Test optimization to concatenate() with empty String to an NFA */
@@ -199,5 +205,53 @@ public class TestOperations extends LuceneTestCase {
     }
 
     return result;
+  }
+
+  /**
+   * This method creates a random Automaton by generating states at multiple levels. At each level,
+   * a random number of states are created, and transitions are added between the states of the
+   * current and the previous level randomly, If the 'hasCycle' parameter is true, a transition is
+   * added from the first state of the last level back to the initial state to create a cycle in the
+   * Automaton..
+   *
+   * @param hasCycle if true, the generated Automaton will have a cycle; if false, it won't have a
+   *     cycle.
+   * @return a randomly generated Automaton instance.
+   */
+  private Automaton generateRandomAutomaton(boolean hasCycle) {
+    Automaton a = new Automaton();
+    List<Integer> lastLevelStates = new ArrayList<>();
+    int initialState = a.createState();
+    int maxLevel = random().nextInt(4, 10);
+    lastLevelStates.add(initialState);
+
+    for (int level = 1; level < maxLevel; level++) {
+      int numStates = random().nextInt(3, 10);
+      List<Integer> nextLevelStates = new ArrayList<>();
+
+      for (int i = 0; i < numStates; i++) {
+        int nextState = a.createState();
+        nextLevelStates.add(nextState);
+      }
+
+      for (int lastState : lastLevelStates) {
+        for (int nextState : nextLevelStates) {
+          // if hasCycle is enabled, we will always add a transition, so we could make sure the
+          // generated Automaton has a cycle.
+          if (hasCycle || random().nextInt(7) >= 1) {
+            a.addTransition(lastState, nextState, random().nextInt(10));
+          }
+        }
+      }
+      lastLevelStates = nextLevelStates;
+    }
+
+    if (hasCycle) {
+      int lastState = lastLevelStates.get(0);
+      a.addTransition(lastState, initialState, random().nextInt(10));
+    }
+
+    a.finishState();
+    return a;
   }
 }
