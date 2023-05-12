@@ -14,23 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.queries.function.valuesource.densevectors;
 
 import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
+import org.apache.lucene.queries.function.valuesource.MultiFunction;
 
-public abstract class DenseVectorSimilarityFunction extends ValueSource {
+public abstract class VectorSimilarityFunction extends ValueSource {
 
-  protected final VectorSimilarityFunction similarityFunction;
+  protected final org.apache.lucene.index.VectorSimilarityFunction similarityFunction;
   protected final ValueSource vector1;
   protected final ValueSource vector2;
 
-  public DenseVectorSimilarityFunction(
-      VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+  public VectorSimilarityFunction(
+          org.apache.lucene.index.VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
 
     this.similarityFunction = similarityFunction;
     this.vector1 = vector1;
@@ -66,7 +66,7 @@ public abstract class DenseVectorSimilarityFunction extends ValueSource {
     };
   }
 
-  protected void checkSize(int sizeVector1, int sizeVector2) throws IOException {
+  protected void assertSameSize(int sizeVector1, int sizeVector2){
     if (sizeVector1 != sizeVector2) {
       throw new UnsupportedOperationException("Vectors must have the same size");
     }
@@ -76,10 +76,10 @@ public abstract class DenseVectorSimilarityFunction extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof DenseVectorSimilarityFunction
-        && similarityFunction.equals(((DenseVectorSimilarityFunction) o).similarityFunction)
-        && vector1.equals(((DenseVectorSimilarityFunction) o).vector1)
-        && vector2.equals(((DenseVectorSimilarityFunction) o).vector2);
+    return o instanceof VectorSimilarityFunction
+        && similarityFunction.equals(((VectorSimilarityFunction) o).similarityFunction)
+        && vector1.equals(((VectorSimilarityFunction) o).vector1)
+        && vector2.equals(((VectorSimilarityFunction) o).vector2);
   }
 
   @Override

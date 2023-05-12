@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.queries.function.valuesource.densevectors;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -24,10 +24,10 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
-public class DenseVectorFloatConstValueSource extends ValueSource {
+public class FloatVectorValueSource extends ValueSource {
   float[] vector;
 
-  public DenseVectorFloatConstValueSource(List<Number> constVector) {
+  public FloatVectorValueSource(List<Number> constVector) {
     this.vector = new float[constVector.size()];
     for (int i = 0; i < constVector.size(); i++) {
       vector[i] = constVector.get(i).floatValue();
@@ -57,8 +57,8 @@ public class DenseVectorFloatConstValueSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof DenseVectorFloatConstValueSource)) return false;
-    DenseVectorFloatConstValueSource other = (DenseVectorFloatConstValueSource) o;
+    if (!(o instanceof FloatVectorValueSource)) return false;
+    FloatVectorValueSource other = (FloatVectorValueSource) o;
     return Arrays.equals(vector, other.vector);
   }
 

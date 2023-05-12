@@ -14,22 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.queries.function.valuesource.densevectors;
 
 import java.io.IOException;
-import org.apache.lucene.index.VectorSimilarityFunction;
+
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
-public class FloatDenseVectorSimilarityFunction extends DenseVectorSimilarityFunction {
-  public FloatDenseVectorSimilarityFunction(
-      VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
+  public ByteVectorSimilarityFunction(
+          org.apache.lucene.index.VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
     super(similarityFunction, vector1, vector2);
   }
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-    checkSize(f1.floatVectorVal(doc).length, f2.floatVectorVal(doc).length);
-    return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
+    assertSameSize(f1.byteVectorVal(doc).length, f2.byteVectorVal(doc).length);
+    return similarityFunction.compare(f1.byteVectorVal(doc), f2.byteVectorVal(doc));
   }
 }

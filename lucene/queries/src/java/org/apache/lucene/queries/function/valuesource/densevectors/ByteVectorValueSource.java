@@ -14,70 +14,61 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.queries.function.valuesource.densevectors;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
-import org.apache.lucene.search.DocIdSetIterator;
+/** Function that returns a constant byte vector value for every document. */
+public class ByteVectorValueSource extends ValueSource {
+  byte[] vector;
 
-public class DenseVectorByteFieldSource extends ValueSource {
-  private final String fieldName;
-
-  public DenseVectorByteFieldSource(String fieldName) {
-    this.fieldName = fieldName;
+  public ByteVectorValueSource(List<Number> constVector) {
+    this.vector = new byte[constVector.size()];
+    for (int i = 0; i < constVector.size(); i++) {
+      vector[i] = constVector.get(i).byteValue();
+    }
   }
 
   @Override
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
-
-    final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
-    return new DenseVectorFieldFunction(this) {
-      byte[] defaultVector = null;
-
+    return new FunctionValues() {
       @Override
-      public byte[] byteVectorVal(int doc) throws IOException {
-        if (exists(doc)) {
-          return vectorValues.vectorValue();
-        } else {
-          return defaultVector();
-        }
+      public byte[] byteVectorVal(int doc) {
+        return vector;
       }
 
       @Override
-      protected DocIdSetIterator getVectorIterator() {
-        return vectorValues;
+      public String strVal(int doc) {
+        return Arrays.toString(vector);
       }
 
-      private byte[] defaultVector() {
-        if (defaultVector == null) {
-          defaultVector = new byte[vectorValues.dimension()];
-          Arrays.fill(defaultVector, (byte) 0);
-        }
-        return defaultVector;
+      @Override
+      public String toString(int doc) throws IOException {
+        return description() + '=' + strVal(doc);
       }
     };
   }
 
   @Override
   public boolean equals(Object o) {
-    if (o.getClass() != DenseVectorByteFieldSource.class) return false;
-    DenseVectorByteFieldSource other = (DenseVectorByteFieldSource) o;
-    return fieldName.equals(other.fieldName);
+    if (!(o instanceof ByteVectorValueSource)) return false;
+    ByteVectorValueSource other = (ByteVectorValueSource) o;
+    return Arrays.equals(vector, other.vector);
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode() * 31 + fieldName.getClass().hashCode();
+    return getClass().hashCode() * 31 + Arrays.hashCode(vector);
   }
 
   @Override
   public String description() {
-    return "denseByteVectorField(" + fieldName + ")";
+    return "denseVectorConst(" + Arrays.toString(vector) + ')';
   }
 }

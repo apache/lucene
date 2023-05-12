@@ -27,12 +27,12 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.queries.function.valuesource.ByteDenseVectorSimilarityFunction;
-import org.apache.lucene.queries.function.valuesource.DenseVectorByteConstValueSource;
-import org.apache.lucene.queries.function.valuesource.DenseVectorByteFieldSource;
-import org.apache.lucene.queries.function.valuesource.DenseVectorFloatConstValueSource;
-import org.apache.lucene.queries.function.valuesource.DenseVectorFloatFieldSource;
-import org.apache.lucene.queries.function.valuesource.FloatDenseVectorSimilarityFunction;
+import org.apache.lucene.queries.function.valuesource.densevectors.ByteVectorSimilarityFunction;
+import org.apache.lucene.queries.function.valuesource.densevectors.ByteVectorValueSource;
+import org.apache.lucene.queries.function.valuesource.densevectors.ByteVectorFieldSource;
+import org.apache.lucene.queries.function.valuesource.densevectors.FloatVectorValueSource;
+import org.apache.lucene.queries.function.valuesource.densevectors.FloatVectorFieldSource;
+import org.apache.lucene.queries.function.valuesource.densevectors.FloatVectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -90,90 +90,90 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   public void testFloatVectorSimilarityFunctionConst() throws Exception {
-    ValueSource v1 = new DenseVectorFloatConstValueSource(List.of(1, 2, 3));
-    ValueSource v2 = new DenseVectorFloatConstValueSource(List.of(5, 4, 1));
+    ValueSource v1 = new FloatVectorValueSource(List.of(1, 2, 3));
+    ValueSource v2 = new FloatVectorValueSource(List.of(5, 4, 1));
     assertHits(
         new FunctionQuery(
-            new FloatDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.04f, 0.04f});
   }
 
   public void testByteVectorSimilarityFunctionConst() throws Exception {
-    ValueSource v1 = new DenseVectorByteConstValueSource(List.of(1, 2, 3));
-    ValueSource v2 = new DenseVectorByteConstValueSource(List.of(2, 5, 6));
+    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3));
+    ValueSource v2 = new ByteVectorValueSource(List.of(2, 5, 6));
     assertHits(
         new FunctionQuery(
-            new ByteDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.05f, 0.05f});
   }
 
   public void testFloatVectorSimilarityFunctionField() throws Exception {
-    ValueSource v1 = new DenseVectorFloatFieldSource("knnFloatField1");
-    ValueSource v2 = new DenseVectorFloatFieldSource("knnFloatField2");
+    ValueSource v1 = new FloatVectorFieldSource("knnFloatField1");
+    ValueSource v2 = new FloatVectorFieldSource("knnFloatField2");
     assertHits(
         new FunctionQuery(
-            new FloatDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.049776014f, 0.049776014f});
   }
 
   public void testByteVectorSimilarityFunctionField() throws Exception {
-    ValueSource v1 = new DenseVectorByteFieldSource("knnByteField1");
-    ValueSource v2 = new DenseVectorByteFieldSource("knnByteField2");
+    ValueSource v1 = new ByteVectorFieldSource("knnByteField1");
+    ValueSource v2 = new ByteVectorFieldSource("knnByteField2");
     assertHits(
         new FunctionQuery(
-            new ByteDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.1f, 0.1f});
   }
 
   public void testFloatVectorSimilarityFunctionMixed() throws Exception {
-    ValueSource v1 = new DenseVectorFloatConstValueSource(List.of(1, 2, 4));
-    ValueSource v2 = new DenseVectorFloatFieldSource("knnFloatField1");
+    ValueSource v1 = new FloatVectorValueSource(List.of(1, 2, 4));
+    ValueSource v2 = new FloatVectorFieldSource("knnFloatField1");
     assertHits(
         new FunctionQuery(
-            new FloatDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.5f, 0.5f});
   }
 
   public void testByteVectorSimilarityFunctionMixed() throws Exception {
-    ValueSource v1 = new DenseVectorByteConstValueSource(List.of(1, 2, 4));
-    ValueSource v2 = new DenseVectorByteFieldSource("knnByteField1");
+    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 4));
+    ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
     assertHits(
         new FunctionQuery(
-            new ByteDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.5f, 0.5f});
   }
 
   public void testDismatchDimension() {
-    ValueSource v1 = new DenseVectorByteConstValueSource(List.of(1, 2, 3, 4));
-    ValueSource v2 = new DenseVectorByteFieldSource("knnByteField1");
-    ByteDenseVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-        new ByteDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3, 4));
+    ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
+    ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
+        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
-    v1 = new DenseVectorFloatConstValueSource(List.of(1, 2));
-    v2 = new DenseVectorFloatFieldSource("knnFloatField1");
-    FloatDenseVectorSimilarityFunction floatDenseVectorSimilarityFunction =
-        new FloatDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    v1 = new FloatVectorValueSource(List.of(1, 2));
+    v2 = new FloatVectorFieldSource("knnFloatField1");
+    FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
+        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
   }
 
   public void testMismatchType() {
-    ValueSource v1 = new DenseVectorByteConstValueSource(List.of(1, 2, 3));
-    ValueSource v2 = new DenseVectorByteFieldSource("knnByteField1");
-    FloatDenseVectorSimilarityFunction floatDenseVectorSimilarityFunction =
-        new FloatDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3));
+    ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
+    FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
+        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
 
-    v1 = new DenseVectorByteConstValueSource(List.of(1, 2, 3));
-    v2 = new DenseVectorFloatFieldSource("knnByteField1");
-    ByteDenseVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-        new ByteDenseVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+    v1 = new ByteVectorValueSource(List.of(1, 2, 3));
+    v2 = new FloatVectorFieldSource("knnByteField1");
+    ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
+        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));

@@ -14,21 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.queries.function.valuesource.densevectors;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
-public class DenseVectorFloatFieldSource extends ValueSource {
+public class ByteVectorFieldSource extends ValueSource {
   private final String fieldName;
 
-  public DenseVectorFloatFieldSource(String fieldName) {
+  public ByteVectorFieldSource(String fieldName) {
     this.fieldName = fieldName;
   }
 
@@ -36,12 +36,12 @@ public class DenseVectorFloatFieldSource extends ValueSource {
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
 
-    final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
-    return new DenseVectorFieldFunction(this) {
-      float[] defaultVector = null;
+    final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
+    return new VectorFieldFunction(this) {
+      byte[] defaultVector = null;
 
       @Override
-      public float[] floatVectorVal(int doc) throws IOException {
+      public byte[] byteVectorVal(int doc) throws IOException {
         if (exists(doc)) {
           return vectorValues.vectorValue();
         } else {
@@ -54,10 +54,10 @@ public class DenseVectorFloatFieldSource extends ValueSource {
         return vectorValues;
       }
 
-      private float[] defaultVector() {
+      private byte[] defaultVector() {
         if (defaultVector == null) {
-          defaultVector = new float[vectorValues.dimension()];
-          Arrays.fill(defaultVector, 0.f);
+          defaultVector = new byte[vectorValues.dimension()];
+          Arrays.fill(defaultVector, (byte) 0);
         }
         return defaultVector;
       }
@@ -66,8 +66,8 @@ public class DenseVectorFloatFieldSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (o.getClass() != DenseVectorFloatFieldSource.class) return false;
-    DenseVectorFloatFieldSource other = (DenseVectorFloatFieldSource) o;
+    if (o.getClass() != ByteVectorFieldSource.class) return false;
+    ByteVectorFieldSource other = (ByteVectorFieldSource) o;
     return fieldName.equals(other.fieldName);
   }
 
@@ -78,6 +78,6 @@ public class DenseVectorFloatFieldSource extends ValueSource {
 
   @Override
   public String description() {
-    return "denseFloatVectorField(" + fieldName + ")";
+    return "denseByteVectorField(" + fieldName + ")";
   }
 }

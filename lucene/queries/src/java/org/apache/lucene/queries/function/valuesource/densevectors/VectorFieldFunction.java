@@ -14,19 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource;
+package org.apache.lucene.queries.function.valuesource.densevectors;
 
 import java.io.IOException;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
-public abstract class DenseVectorFieldFunction extends FunctionValues {
+public abstract class VectorFieldFunction extends FunctionValues {
 
   protected final ValueSource vs;
   int lastDocID;
 
-  protected DenseVectorFieldFunction(ValueSource vs) {
+  protected VectorFieldFunction(ValueSource vs) {
     this.vs = vs;
   }
 
