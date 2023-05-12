@@ -23,6 +23,7 @@ import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Unwrappable;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -106,6 +107,11 @@ public abstract class FilterLeafReader extends LeafReader {
         throw new NullPointerException("incoming Terms must not be null");
       }
       this.in = in;
+    }
+
+    @Override
+    public TermsEnum intersect(CompiledAutomaton compiled, BytesRef startTerm) throws IOException {
+      return in.intersect(compiled, startTerm);
     }
 
     @Override

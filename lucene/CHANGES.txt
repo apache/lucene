@@ -119,7 +119,10 @@ New Features
 Improvements
 ---------------------
 
-GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+* GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+
+* GITHUB#xxx: FilterLeafReader$FilterTerms#intersect now delegates to wrapped Terms#intersect instead of masking it
+  with a default implementation. (Greg Miller)
 
 Optimizations
 ---------------------
