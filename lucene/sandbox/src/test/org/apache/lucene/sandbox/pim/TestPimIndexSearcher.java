@@ -305,6 +305,61 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         pimSearcher.close();
     }
 
+    public void testPhraseCornerCases() throws Exception {
+
+        PimConfig pimConfig = new PimConfig(1);
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
+                .setMergePolicy(NoMergePolicy.INSTANCE);
+        IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
+
+        Document doc = new Document();
+        doc.add(newTextField("title", "blah", Field.Store.YES));
+        doc.add(newTextField("body", "blah blah blah blah blah youpi blah blah blah", Field.Store.YES));
+        writer.addDocument(doc);
+        writer.close();
+
+        System.out.println("\nTEST PIM INDEX SEARCH (PHRASE CORNER CASES)");
+        PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
+
+        var matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "blah", "blah"));
+        System.out.println("\nSearching for body:[blah blah] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        var expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(0, 0));
+        expectedMatches.add(new PimMatch(0, 1));
+        expectedMatches.add(new PimMatch(0, 2));
+        expectedMatches.add(new PimMatch(0, 3));
+        expectedMatches.add(new PimMatch(0, 6));
+        expectedMatches.add(new PimMatch(0, 7));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "blah", "blah", "blah"));
+        System.out.println("\nSearching for body:[blah blah blah] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(0, 0));
+        expectedMatches.add(new PimMatch(0, 1));
+        expectedMatches.add(new PimMatch(0, 2));
+        expectedMatches.add(new PimMatch(0, 6));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "blah", "youpi", "blah"));
+        System.out.println("\nSearching for body:[blah youpi blah] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(0, 4));
+        assert matches.equals(expectedMatches);
+
+        System.out.println("");
+        pimSearcher.close();
+    }
+
     void writeFewWikiText(PimConfig pimConfig) throws IOException {
 
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
