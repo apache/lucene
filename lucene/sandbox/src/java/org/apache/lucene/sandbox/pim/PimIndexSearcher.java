@@ -126,29 +126,11 @@ public class PimIndexSearcher implements Closeable  {
             // read the postings
             try {
                 postingsInput.seek(termPostings.address);
-                int doc = 0;
-                while (postingsInput.getFilePointer() < (termPostings.address + termPostings.byteSize)) {
-                    int deltaDoc = postingsInput.readVInt();
-                    doc += deltaDoc;
-                    int freq = postingsInput.readZInt();
-                    long numBytesPos = 0L;
-                    if(freq == 0) {
-                        freq = postingsInput.readVInt();
-                        numBytesPos = postingsInput.readVLong();
-                    }
-                    else if(freq < 0) {
-                        freq = -freq;
-                        numBytesPos = postingsInput.readShort();
-                    }
-                    else {
-                        numBytesPos = postingsInput.readByte();
-                    }
-
-                    results.add(new PimMatch(doc, freq));
-
-                    // TODO read positions for the term in this doc
-                    // For the moment just skip
-                    postingsInput.skipBytes(numBytesPos);
+                DocumentIterator docIt = new DocumentIterator(postingsInput, termPostings.byteSize);
+                int doc = docIt.Next();
+                while(doc >= 0) {
+                    results.add(new PimMatch(doc, docIt.getFreq()));
+                    doc = docIt.Next();
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -159,7 +141,7 @@ public class PimIndexSearcher implements Closeable  {
 
         ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
 
-            // search for the blocks where to find the phrase terms
+            // lookup the term blocks where to find the phrase terms (in block table)
             PimTreeBasedTermTable.Block[] termPostingBlocks = new PimTreeBasedTermTable.Block[query.getTerms().length];
             IndexInput[] termPostings =  new IndexInput[query.getTerms().length];
             BytesRef field = new BytesRef(query.getField());
@@ -168,6 +150,8 @@ public class PimIndexSearcher implements Closeable  {
                 if(termPostingBlocks[i] == null)
                     return null;
 
+                // create multiple readers of the postings file
+                // in order to read the postings of phrase terms in parallel
                 termPostings[i] = postingsInput.clone();
                 try {
                     termPostings[i].seek(termPostingBlocks[i].address);
@@ -176,9 +160,9 @@ public class PimIndexSearcher implements Closeable  {
                 }
             }
 
-            // the search for exact phrase is done in two steps
+            // the search for exact phrase is done in two main steps
             // 1) find the next document which contains all terms of the phrase
-            // 2) try to find an alignment of positions to form the exact phrase in the document
+            // 2) try to find an alignment of positions that forms the exact phrase in the document
             ArrayList<PimMatch> results = new ArrayList<>();
 
             try {
@@ -211,13 +195,15 @@ public class PimIndexSearcher implements Closeable  {
                                 }
                             }
                         }
+                        // if maxDoc == searchDoc, then a document is found
+                        // otherwise continue the loop and start searching from maxDoc
                         if (maxDoc == searchDoc)
-                            break; // found document
+                            break;
                         assert maxDoc > searchDoc;
                         searchDoc = maxDoc;
                     }
 
-                    // here perform the positions alignment
+                    // found a document, perform the positions alignment
                     int[] currPos = new int[termPostings.length];
                     int[] searchPos = new int[termPostings.length];
                     Arrays.fill(currPos, -1);
@@ -229,7 +215,7 @@ public class PimIndexSearcher implements Closeable  {
                     searchPos[0] = posIt[0].Next(0);
                     if(searchPos[0] < 0) continue;
                     currPos[0] = searchPos[0];
-                    for (int i = 1; i < searchPos.length; ++i) searchPos[i] = searchPos[0] + i;
+                    extendSearchPositions(searchPos);
                     boolean endPositions = false;
                     while (true) {
                         int nbMatches = 1;
@@ -253,6 +239,7 @@ public class PimIndexSearcher implements Closeable  {
                             break;
                         if(nbMatches == termPostings.length) {
                             // found a match, store it
+                            // and continue the search from first term next position
                             results.add(new PimMatch(searchDoc, searchPos[0]));
                             searchPos[0] = posIt[0].Next(0);
                             if(searchPos[0] < 0) {
@@ -262,9 +249,11 @@ public class PimIndexSearcher implements Closeable  {
                             currPos[0] = searchPos[0];
                         }
                         else {
+                            // no match at this position
+                            // start searching from maxPos
                             searchPos[0] = maxPos;
                         }
-                        for (int i = 1; i < searchPos.length; ++i) searchPos[i] = searchPos[0] + i;
+                        extendSearchPositions(searchPos);
                     }
                 }
             } catch (IOException e) {
@@ -272,6 +261,13 @@ public class PimIndexSearcher implements Closeable  {
             }
         }
 
+        void extendSearchPositions(int[] searchPos) {
+            for (int i = 1; i < searchPos.length; ++i)
+                searchPos[i] = searchPos[0] + i;
+        }
+
+        // method to find the address of where to read the postings of a given term in a given field
+        // first lookup the field in the field table, then the term in the term block table
         private PimTreeBasedTermTable.Block getTermPostings(BytesRef field, BytesRef term) {
 
             // first search for the field in the field table
@@ -348,10 +344,15 @@ public class PimIndexSearcher implements Closeable  {
             return new PimTreeBasedTermTable.Block(term, postingAddress, postingByteSize);
         }
 
+        /**
+         * abstract base class for doc and position iterator classes
+         ***/
         private static abstract class Iterator {
 
             public abstract int Next() throws IOException;
 
+            // iterate to the next value that is no smaller
+            // than the target value
             int Next(int target) throws IOException {
 
                 int next = Next();
@@ -360,6 +361,10 @@ public class PimIndexSearcher implements Closeable  {
                 return next;
             }
         }
+
+        /**
+         * class used to iterate over documents in the posting list
+         **/
         private static class DocumentIterator extends Iterator {
 
             private IndexInput postingInput;
@@ -367,13 +372,19 @@ public class PimIndexSearcher implements Closeable  {
             private int lastDoc;
             private long nbSkipBytes;
             private long nbPositions;
+            private int freq;
 
+            /**
+             * @param postingInput the IndexInput where to read the postings
+             * @param byteSize the size in bytes of the postings for the term we want to find the docs
+             ***/
             DocumentIterator(IndexInput postingInput, long byteSize) {
                 this.postingInput = postingInput;
                 this.endPointer = postingInput.getFilePointer() + byteSize;
                 this.lastDoc = 0;
                 this.nbSkipBytes = -1;
                 this.nbPositions = -1;
+                this.freq = -1;
             }
 
             public int Next() throws IOException {
@@ -384,15 +395,17 @@ public class PimIndexSearcher implements Closeable  {
                     this.postingInput.skipBytes(nbSkipBytes);
                 }
 
+                // stop if this is the end of the posting list for the term
                 if(postingInput.getFilePointer() >= endPointer) {
                     nbSkipBytes = -1;
                     nbPositions = -1;
                     return -1;
                 }
 
+                // decode doc, freq and byte size
                 int deltaDoc = postingInput.readVInt();
                 lastDoc += deltaDoc;
-                int freq = postingInput.readZInt();
+                freq = postingInput.readZInt();
                 if(freq == 0) {
                     nbPositions = postingInput.readVInt();
                     nbSkipBytes = postingInput.readVLong();
@@ -411,14 +424,25 @@ public class PimIndexSearcher implements Closeable  {
             long getNbPositionsForDoc() {
                 return nbPositions;
             }
+
+            int getFreq() {
+                return freq;
+            }
         }
 
+        /**
+         * class used to iterate over positions in the posting list
+         **/
         private static class PositionsIterator extends Iterator {
 
             private IndexInput postingInput;
             private long nbPositions;
             private int lastPos;
 
+            /**
+             * @param postingInput the IndexInput where to read the postings
+             * @param nbPositions the number of positions to read
+             ***/
             PositionsIterator(IndexInput postingInput, long nbPositions) {
                 assert nbPositions > 0;
                 this.postingInput = postingInput;
