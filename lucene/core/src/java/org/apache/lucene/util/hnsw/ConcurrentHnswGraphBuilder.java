@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static java.lang.Math.log;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -36,9 +37,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -60,7 +63,7 @@ public class ConcurrentHnswGraphBuilder<T> {
    */
   public static final int DEFAULT_BEAM_WIDTH = 100;
 
-  /** A name for the HNSW component for the info-stream * */
+  /** A name for the HNSW component for the info-stream */
   public static final String HNSW_COMPONENT = "HNSW";
 
   private final int beamWidth;
@@ -304,36 +307,80 @@ public class ConcurrentHnswGraphBuilder<T> {
     insertionsInProgress.add(progressMarker);
     ConcurrentSkipListSet<NodeAtLevel> inProgressBefore = insertionsInProgress.clone();
     try {
-      NeighborQueue candidates;
-      int curMaxLevel = hnsw.numLevels() - 1;
-
       // find ANN of the new node by searching the graph
-      int ep = hnsw.entryNode();
-      int[] eps = ep >= 0 ? new int[] {ep} : new int[0];
-      // for levels > nodeLevel search with topk = 1
-      for (int level = curMaxLevel; level > nodeLevel; level--) {
-        candidates = graphSearcher.get().searchLevel(value, 1, level, eps, vectors, hnsw.getView());
-        eps = new int[] {candidates.pop()};
+      NodeAtLevel entry = hnsw.entry();
+      int ep = entry.node;
+      int[] eps = ep >= 0 ? new int[]{ep} : new int[0];
+
+      // follow the index from the top down, but link neighbors from the bottom up;
+      // that way concurrent inserts also going top-down don't see incompletely
+      // added nodes on the way down.  If we link top-down, the following could happen:
+      //
+      // Initial graph state:
+      // L0:
+      // 0 -> 1
+      // 1 <- 0
+      // L1:
+      // 1 -> [empty]
+      // At this point we insert nodes 2 and 3 concurrently, denoted T1 and T2 for threads 1 and 2
+      //   T1  T2
+      //       insert 2 to L0 [2 is marked "in progress"]
+      //   insert 3 to L1
+      //   insert 3 to L0
+      //       insert 2 to L0
+      //       2 follows index from 1 -> 3 in L1, then sees 3 with no neighbors on L0
+      // 2 -> 3 is added at L0. It is missing a connection it should have to 1
+      //
+      // Linking bottom-up avoids this problem.
+      InvertedBitSet notMe = new InvertedBitSet(node);
+      for (int level = entry.level; level > nodeLevel; level--) {
+        NeighborQueue candidates = new NeighborQueue(1, false);
+        graphSearcher.get().searchLevel(candidates, value, 1, level, eps, vectors, hnsw.getView(), notMe, Integer.MAX_VALUE);
+        eps = new int[]{candidates.pop()};
       }
-      // for levels <= nodeLevel search with topk = beamWidth, and add connections
-      for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
+      // for levels <= nodeLevel search with topk = beamWidth
+      NeighborQueue[] candidatesOnLevel = new NeighborQueue[1 + Math.min(nodeLevel, entry.level)];
+      for (int level = candidatesOnLevel.length - 1; level >= 0; level--) {
         // find best candidates at this level with a beam search
-        candidates =
-            graphSearcher.get().searchLevel(value, beamWidth, level, eps, vectors, hnsw.getView());
-        // any nodes that are being added concurrently at this level are also candidates
-        for (NodeAtLevel concurrentCandidate : inProgressBefore) {
-          if (concurrentCandidate.level < level || concurrentCandidate == progressMarker) {
-            continue;
-          }
-          float score = scoreBetween(value, vectorsCopy.vectorValue(concurrentCandidate.node));
-          candidates.add(concurrentCandidate.node, score);
-          if (candidates.size() > beamWidth) {
-            candidates.pop();
-          }
-        }
-        // update entry points and neighbors with these candidates
-        eps = candidates.nodes();
-        addDiverseNeighbors(level, node, candidates);
+        candidatesOnLevel[level] = new NeighborQueue(beamWidth, false);
+        graphSearcher.get().searchLevel(candidatesOnLevel[level], value, beamWidth, level, eps, vectors, hnsw.getView(), notMe, Integer.MAX_VALUE);
+        eps = candidatesOnLevel[level].nodes();
+      }
+
+      for (int level = 0; level < candidatesOnLevel.length; level++) {
+        // We don't want the existing nodes to over-prune their neighbors, which can
+        // happen if we group the concurrent candidates and the "natural" candidates together.
+        //
+        // Consider the following graph with "circular" test vectors:
+        //
+        // 0 -> 1
+        // 1 <- 0
+        // At this point we insert nodes 2 and 3 concurrently, denoted T1 and T2 for threads 1 and 2
+        //   T1  T2
+        //       insert 2 to L1 [2 is marked "in progress"]
+        //   insert 3 to L1
+        //   3 considers as neighbors 0, 1, 2; 0 and 1 are not diverse wrt 2
+        // 3 -> 2 is added to graph
+        //   3 is marked entry node
+        //        2 follows 3 to L0, where 3 only has 2 as a neighbor
+        // 2 -> 3 is added to graph
+        // all further nodes will only be added to the 2/3 subgraph; 0/1 are partitioned forever
+        //
+        // Considering concurrent inserts separately from "natural" candidates solves this problem;
+        // both 1 and 2 will be added as neighbors to 3, avoiding the partition, and 2 will then
+        // pick up the connection to 1 that it's supposed to have as well.
+        addForwardLinks(level, node, candidatesOnLevel[level]);
+        addForwardLinks(level, node, inProgressBefore, progressMarker);
+        // backlinking is where we become visible to natural searches that aren't checking in-progress,
+        // so this has to be done after everything is is complete on this level
+        addBackLinks(level, node);
+      }
+
+      // if we're being added in a new level above the entry point, consider concurrent insertions
+      // for inclusion as neighbors at that level. There are no natural neighbors yet.
+      for (int level = entry.level + 1; level <= nodeLevel; level++) {
+        addForwardLinks(level, node, inProgressBefore, progressMarker);
+        addBackLinks(level, node);
       }
 
       // update entry node last, once everything is wired together
@@ -343,15 +390,26 @@ public class ConcurrentHnswGraphBuilder<T> {
     }
   }
 
-  private void addDiverseNeighbors(int level, int newNode, NeighborQueue candidates)
-      throws IOException {
-    // Add links from new node -> candidates.
-    // See ConcurrentNeighborSet for an explanation of "diverse."
+  private void addForwardLinks(int level, int newNode, NeighborQueue candidates) throws IOException {
+    NeighborArray scratch = popToScratch(candidates); // worst are first
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
-    NeighborArray scratch = popToScratch(candidates);
     neighbors.insertDiverse(scratch, this::scoreBetween);
+  }
 
-    // Add links from candidates -> new node (again applying diversity heuristic)
+  private void addForwardLinks(int level, int newNode, Set<NodeAtLevel> inProgress, NodeAtLevel progressMarker) throws IOException {
+    NeighborQueue candidates = new NeighborQueue(inProgress.size(), false);
+    for (NodeAtLevel n : inProgress) {
+      if (n.level >= level && n != progressMarker) {
+        candidates.add(n.node, scoreBetween(n.node, newNode));
+      }
+    }
+    ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
+    NeighborArray scratch = popToScratch(candidates); // worst are first
+    neighbors.insertDiverse(scratch, this::scoreBetween);
+  }
+
+  private void addBackLinks(int level, int newNode) throws IOException {
+    ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
     neighbors.forEach(
         (nbr, nbrScore) -> {
           ConcurrentNeighborSet nbrNbr = hnsw.getNeighbors(level, nbr);
@@ -392,5 +450,68 @@ public class ConcurrentHnswGraphBuilder<T> {
           ThreadLocalRandom.current().nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  private static class InvertedBitSet extends BitSet {
+    private final int setBit;
+
+    public InvertedBitSet(int setBit) {
+      this.setBit = setBit;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return 4;
+    }
+
+    @Override
+    public void set(int i) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean getAndSet(int i) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clear(int i) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clear(int startIndex, int endIndex) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int cardinality() {
+      return 1;
+    }
+
+    @Override
+    public int approximateCardinality() {
+      return 1;
+    }
+
+    @Override
+    public int prevSetBit(int index) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public int nextSetBit(int index) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean get(int index) {
+      return index != setBit;
+    }
+
+    @Override
+    public int length() {
+      return 1;
+    }
   }
 }

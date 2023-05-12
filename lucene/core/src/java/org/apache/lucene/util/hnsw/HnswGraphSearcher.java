@@ -221,7 +221,7 @@ public class HnswGraphSearcher<T> {
    * score/comparison value, will be at the top of the heap, while the closest neighbor will be the
    * last to be popped.
    */
-  private void searchLevel(
+  void searchLevel(
       NeighborQueue results,
       T query,
       int topK,

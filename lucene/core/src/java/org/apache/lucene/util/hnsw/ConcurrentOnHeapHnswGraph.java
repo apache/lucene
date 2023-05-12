@@ -81,7 +81,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       }
     }
 
-    graphLevels.get(level).put(node, new ConcurrentNeighborSet(connectionsOnLevel(level)));
+    graphLevels.get(level).put(node, new ConcurrentNeighborSet(node, connectionsOnLevel(level)));
   }
 
   /**
@@ -134,6 +134,10 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   @Override
   public int entryNode() {
     return entryPoint.get().node;
+  }
+
+  NodeAtLevel entry() {
+    return entryPoint.get();
   }
 
   @Override
@@ -258,6 +262,11 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     @Override
     public int nextNeighbor() {
       return remainingNeighbors.hasNext() ? remainingNeighbors.next() : NO_MORE_DOCS;
+    }
+
+    @Override
+    public String toString() {
+      return "ConcurrentOnHeapHnswGraphView(size=" + size() + ", entryPoint=" + entryPoint.get();
     }
   }
 
