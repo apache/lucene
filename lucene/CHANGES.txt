@@ -17,7 +17,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
 
 Optimizations
 ---------------------

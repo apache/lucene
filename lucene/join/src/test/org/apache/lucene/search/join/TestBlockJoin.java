@@ -277,7 +277,6 @@ public class TestBlockJoin extends LuceneTestCase {
     CheckHits.checkHitCollector(random(), fullQuery.build(), "country", s, new int[] {2});
 
     TopDocs topDocs = s.search(fullQuery.build(), 1);
-
     // assertEquals(1, results.totalHitCount);
     assertEquals(1, topDocs.totalHits.value);
     Document parentDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
@@ -890,13 +889,11 @@ public class TestBlockJoin extends LuceneTestCase {
           Explanation explanation = joinS.explain(childJoinQuery, hit.doc);
           Document document = joinS.storedFields().document(hit.doc - 1);
           int childId = Integer.parseInt(document.get("childID"));
-          // System.out.println("  hit docID=" + hit.doc + " childId=" + childId + " parentId=" +
-          // document.get("parentID"));
           assertTrue(explanation.isMatch());
           assertEquals(hit.score, explanation.getValue().doubleValue(), 0.0f);
           Matcher m =
               Pattern.compile(
-                      "Score based on ([0-9]+) child docs in range from ([0-9]+) to ([0-9]+), best match:")
+                      "Score based on ([0-9]+) child docs in range from ([0-9]+) to ([0-9]+), using score mode (None|Avg|Min|Max|Total)")
                   .matcher(explanation.getDescription());
           assertTrue("Block Join description not matches", m.matches());
           assertTrue("Matched children not positive", Integer.parseInt(m.group(1)) > 0);
