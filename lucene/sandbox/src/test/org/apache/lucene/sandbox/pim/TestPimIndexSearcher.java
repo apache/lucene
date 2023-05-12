@@ -7,12 +7,15 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestRuleLimitSysouts;
 import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
+@TestRuleLimitSysouts.Limit(bytes = 1 << 14, hardLimit = 1 << 14)
 public class TestPimIndexSearcher extends LuceneTestCase {
 
     private static Directory directory;
@@ -43,7 +46,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         super.tearDown();
     }
 
-    public void testBasic() throws Exception {
+    public void testTermBasic() throws Exception {
         PimConfig pimConfig = new PimConfig();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
@@ -131,41 +134,10 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         pimSearcher.close();
     }
 
-    public void testMoreText() throws Exception {
+    public void testTermMoreText() throws Exception {
+
         PimConfig pimConfig = new PimConfig();
-        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
-                .setMergePolicy(NoMergePolicy.INSTANCE);
-        IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
-
-        Document doc = new Document();
-        doc.add(newTextField("title", "München", Field.Store.YES));
-        doc.add(newTextField("body", "Der Name München wird üblicherweise als " +
-                "„bei den Mönchen“ gedeutet. Erstmals erwähnt wird der Name als forum apud " +
-                "Munichen im Augsburger Schied vom 14. Juni 1158 von Kaiser Friedrich I.[15][16] " +
-                "Munichen ist der Dativ Plural von althochdeutsch munih bzw. mittelhochdeutsch mün(e)ch, " +
-                "dem Vorläufer von neuhochdeutsch Mönch", Field.Store.YES));
-        writer.addDocument(doc);
-
-        doc = new Document();
-        doc.add(newTextField("title", "Apache Lucene", Field.Store.YES));
-        doc.add(newTextField("body", "While suitable for any application that requires full " +
-                "text indexing and searching capability, Lucene is recognized for its utility in the " +
-                "implementation of Internet search engines and local, single-site searching.[10][11]. " +
-                "Lucene includes a feature to perform a fuzzy search based on edit distance.", Field.Store.YES));
-        writer.addDocument(doc);
-
-        doc = new Document();
-        doc.add(newTextField("title", "Chartreuse", Field.Store.YES));
-        doc.add(newTextField("body", "Poursuivis pendant la Révolution française, les moines " +
-                "sont dispersés en 1793. La distillation de la chartreuse s'interrompt alors, mais les " +
-                "chartreux réussissent à conserver la recette secrète : le manuscrit est emporté par un des " +
-                "pères et une copie est conservée par le moine autorisé à garder le monastère ; lors de son " +
-                "incarcération à Bordeaux, ce dernier remet sa copie à un confrère qui finit par la céder à " +
-                "un pharmacien de Grenoble, un certain Liotard. ", Field.Store.YES));
-        writer.addDocument(doc);
-
-        System.out.println("-- CLOSE -------------------------------");
-        writer.close();
+        writeFewWikiText(pimConfig);
 
         System.out.println("\nTEST PIM INDEX SEARCH (MORE TEXT)");
         PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
@@ -233,13 +205,151 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         assert matches.equals(expectedMatches);
 
         matches = pimSearcher.SearchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
-        System.out.println("\nSearching for body:[Apache Lucene] found " + matches.size() + " results");
+        System.out.println("\nSearching for title:[Apache Lucene] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(1, 0));
+        assert matches.equals(expectedMatches);
 
         System.out.println("");
         pimSearcher.close();
+    }
+
+    public void testPhraseMoreText() throws Exception {
+
+        PimConfig pimConfig = new PimConfig();
+        writeFewWikiText(pimConfig);
+
+        System.out.println("\nTEST PIM INDEX SEARCH (PHRASE MORE TEXT)");
+        PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
+
+        var matches = pimSearcher.SearchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
+        System.out.println("\nSearching for title:[Apache Lucene] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        var expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(1, 0));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "recette", "secrète"));
+        System.out.println("\nSearching for body:[recette secrète] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(2, 25));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "dem", "Vorläufer", "von", "neuhochdeutsch"));
+        System.out.println("\nSearching for body:[dem Vorläufer von neuhochdeutsch] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(0, 41));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "fuzzy", "search"));
+        System.out.println("\nSearching for body:[fuzzy search] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(1, 37));
+        expectedMatches.add(new PimMatch(3, 2));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "edit", "distance."));
+        System.out.println("\nSearching for body:[edit distance] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(1, 41));
+        expectedMatches.add(new PimMatch(3, 47));
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "fuzzy", "search", "based", "on", "edit", "distance."));
+        System.out.println("\nSearching for body:[fuzzy search based on edit distance.] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(1, 37));
+        //assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "fuzzy", "search", "based", "on", "Levenshtein", "distance."));
+        System.out.println("\nSearching for body:[fuzzy search based on Levenshtein distance.] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        assert matches.equals(expectedMatches);
+
+        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "Lucene", "is",
+                "recognized", "for", "its", "utility", "in", "the", "implementation", "of",
+                "Internet", "search", "engines"));
+        System.out.println("\nSearching for body:[Lucene is recognized for its utility in the" +
+                " implementation of Internet search engines] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(1, 13));
+        assert matches.equals(expectedMatches);
+
+        System.out.println("");
+        pimSearcher.close();
+    }
+
+    void writeFewWikiText(PimConfig pimConfig) throws IOException {
+
+        IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
+                .setMergePolicy(NoMergePolicy.INSTANCE);
+        IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
+
+        Document doc = new Document();
+        doc.add(newTextField("title", "München", Field.Store.YES));
+        doc.add(newTextField("body", "Der Name München wird üblicherweise als " +
+                "„bei den Mönchen“ gedeutet. Erstmals erwähnt wird der Name als forum apud " +
+                "Munichen im Augsburger Schied vom 14. Juni 1158 von Kaiser Friedrich I.[15][16] " +
+                "Munichen ist der Dativ Plural von althochdeutsch munih bzw. mittelhochdeutsch mün(e)ch, " +
+                "dem Vorläufer von neuhochdeutsch Mönch", Field.Store.YES));
+        writer.addDocument(doc);
+
+        doc = new Document();
+        doc.add(newTextField("title", "Apache Lucene", Field.Store.YES));
+        doc.add(newTextField("body", "While suitable for any application that requires full " +
+                "text indexing and searching capability, Lucene is recognized for its utility in the " +
+                "implementation of Internet search engines and local, single-site searching.[10][11]. " +
+                "Lucene includes a feature to perform a fuzzy search based on edit distance.", Field.Store.YES));
+        writer.addDocument(doc);
+
+        doc = new Document();
+        doc.add(newTextField("title", "Chartreuse", Field.Store.YES));
+        doc.add(newTextField("body", "Poursuivis pendant la Révolution française, les moines " +
+                "sont dispersés en 1793. La distillation de la chartreuse s'interrompt alors, mais les " +
+                "chartreux réussissent à conserver la recette secrète : le manuscrit est emporté par un des " +
+                "pères et une copie est conservée par le moine autorisé à garder le monastère ; lors de son " +
+                "incarcération à Bordeaux, ce dernier remet sa copie à un confrère qui finit par la céder à " +
+                "un pharmacien de Grenoble, un certain Liotard. ", Field.Store.YES));
+        writer.addDocument(doc);
+
+        doc = new Document();
+        doc.add(newTextField("title", "FuzzyQuery", Field.Store.YES));
+        doc.add(newTextField("body", "Implements the fuzzy search query. The similarity " +
+                "measurement is based on the Damerau-Levenshtein (optimal string alignment) algorithm, though" +
+                " you can explicitly choose classic Levenshtein by passing false to the transpositions parameter.\n" +
+                "This query uses MultiTermQuery.TopTermsBlendedFreqScoringRewrite as default. So terms will " +
+                "be collected and scored according to their edit distance. Only the top terms are used for building " +
+                "the BooleanQuery. It is not recommended to change the rewrite mode for fuzzy queries.", Field.Store.YES));
+        writer.addDocument(doc);
+
+        System.out.println("-- CLOSE -------------------------------");
+        writer.close();
     }
 
 

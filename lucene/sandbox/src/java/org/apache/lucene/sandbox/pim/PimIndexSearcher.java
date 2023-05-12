@@ -168,7 +168,6 @@ public class PimIndexSearcher implements Closeable  {
                 if(termPostingBlocks[i] == null)
                     return null;
 
-                // TODO verify that clone works here (independent file pointers ?)
                 termPostings[i] = postingsInput.clone();
                 try {
                     termPostings[i].seek(termPostingBlocks[i].address);
@@ -190,11 +189,14 @@ public class PimIndexSearcher implements Closeable  {
                 for(int i = 0; i < termPostings.length; ++i)
                     docIt[i] = new DocumentIterator(termPostings[i], termPostingBlocks[i].byteSize);
 
-                int searchDoc = docIt[0].Next(0);
-                currDoc[0] = searchDoc;
-                int maxDoc = currDoc[0];
-
                 while(true) {
+
+                    int searchDoc = docIt[0].Next(0);
+                    if(searchDoc < 0)
+                        return results;
+                    currDoc[0] = searchDoc;
+                    int maxDoc = currDoc[0];
+
                     // document search
                     while (true) {
                         for (int i = 0; i < termPostings.length; ++i) {
@@ -220,8 +222,9 @@ public class PimIndexSearcher implements Closeable  {
                     int[] searchPos = new int[termPostings.length];
                     Arrays.fill(currPos, -1);
                     PositionsIterator[] posIt = new PositionsIterator[termPostings.length];
-                    for(int i = 0; i < termPostings.length; ++i)
+                    for(int i = 0; i < termPostings.length; ++i) {
                         posIt[i] = new PositionsIterator(termPostings[i], docIt[i].getNbPositionsForDoc());
+                    }
 
                     searchPos[0] = posIt[0].Next(0);
                     if(searchPos[0] < 0) continue;
@@ -252,6 +255,10 @@ public class PimIndexSearcher implements Closeable  {
                             // found a match, store it
                             results.add(new PimMatch(searchDoc, searchPos[0]));
                             searchPos[0] = posIt[0].Next(0);
+                            if(searchPos[0] < 0) {
+                                // no more positions
+                                break;
+                            }
                             currPos[0] = searchPos[0];
                         }
                         else {
@@ -341,7 +348,7 @@ public class PimIndexSearcher implements Closeable  {
             return new PimTreeBasedTermTable.Block(term, postingAddress, postingByteSize);
         }
 
-        private abstract class Iterator {
+        private static abstract class Iterator {
 
             public abstract int Next() throws IOException;
 
@@ -353,7 +360,7 @@ public class PimIndexSearcher implements Closeable  {
                 return next;
             }
         }
-        private class DocumentIterator extends Iterator {
+        private static class DocumentIterator extends Iterator {
 
             private IndexInput postingInput;
             private final long endPointer;
@@ -374,28 +381,29 @@ public class PimIndexSearcher implements Closeable  {
                 // first skip the necessary number of bytes
                 // to reach the next doc
                 if(nbSkipBytes > 0) {
-                    postingsInput.skipBytes(nbSkipBytes);
+                    this.postingInput.skipBytes(nbSkipBytes);
                 }
 
-                if(postingsInput.getFilePointer() >= endPointer) {
+                if(postingInput.getFilePointer() >= endPointer) {
                     nbSkipBytes = -1;
+                    nbPositions = -1;
                     return -1;
                 }
 
-                int deltaDoc = postingsInput.readVInt();
+                int deltaDoc = postingInput.readVInt();
                 lastDoc += deltaDoc;
-                int freq = postingsInput.readZInt();
+                int freq = postingInput.readZInt();
                 if(freq == 0) {
-                    nbPositions = postingsInput.readVInt();
-                    nbSkipBytes = postingsInput.readVLong();
+                    nbPositions = postingInput.readVInt();
+                    nbSkipBytes = postingInput.readVLong();
                 }
                 else if(freq < 0) {
                     nbPositions = -freq;
-                    nbSkipBytes = postingsInput.readShort();
+                    nbSkipBytes = postingInput.readShort();
                 }
                 else {
                     nbPositions = freq;
-                    nbSkipBytes = postingsInput.readByte();
+                    nbSkipBytes = postingInput.readByte();
                 }
                 return lastDoc;
             }
@@ -405,22 +413,25 @@ public class PimIndexSearcher implements Closeable  {
             }
         }
 
-        private class PositionsIterator extends Iterator {
+        private static class PositionsIterator extends Iterator {
 
             private IndexInput postingInput;
             private long nbPositions;
             private int lastPos;
 
             PositionsIterator(IndexInput postingInput, long nbPositions) {
-                this.postingInput = postingsInput;
+                assert nbPositions > 0;
+                this.postingInput = postingInput;
                 this.nbPositions = nbPositions;
+                this.lastPos = 0;
             }
 
             public int Next() throws IOException {
                 if(nbPositions == 0)
                     return -1;
                 nbPositions--;
-                return postingInput.readVInt();
+                lastPos += postingInput.readVInt();
+                return lastPos;
             }
         }
 
