@@ -34,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95Codec;
@@ -434,19 +435,69 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   @SuppressWarnings("unchecked")
+  public void testConnections() throws IOException {
+    for (int i = 0; i < 100; i++)
+    {
+      for (int j = 1; j < 1000; j *= 10) {
+        int nDoc = atLeast(5 * j);
+        RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
+        similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+        VectorEncoding vectorEncoding = getVectorEncoding();
+        ConcurrentHnswGraphBuilder<T> builder =
+                new ConcurrentHnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100) {
+                  @Override
+                  int getRandomGraphLevel(double ml) {
+                    int level = 0;
+                    while (ThreadLocalRandom.current().nextDouble() < 0.5) {
+                      level++;
+                    }
+                    return level;
+                  }
+                };
+        ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
+        new HnswGraphValidator(hnsw).validateReachability();
+      }
+    }
+  }
+
   public void testSearchWithSelectiveAcceptOrds() throws IOException {
-    int nDoc = 100;
+    // searchWithSelectiveAcceptOrds seems particularly good at exposing problems with the graph
+    for (int i = 0; i < 10; i++) {
+      searchWithSelectiveAcceptOrds(50, 5);
+      searchWithSelectiveAcceptOrds(100, 5);
+      searchWithSelectiveAcceptOrds(100, 15);
+      searchWithSelectiveAcceptOrds(500, 10);
+      searchWithSelectiveAcceptOrds(500, 50);
+      searchWithSelectiveAcceptOrds(1000, 10);
+      searchWithSelectiveAcceptOrds(1000, 50);
+      searchWithSelectiveAcceptOrds(1000, 100);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public void searchWithSelectiveAcceptOrds(int nDoc, int toAccept) throws IOException {
+    nDoc = atLeast(nDoc);
     RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     VectorEncoding vectorEncoding = getVectorEncoding();
-    random().nextInt();
+    // builder that more aggressively creates new levels, whicn increases the chances of
+    // exposing a concurrency bug
     ConcurrentHnswGraphBuilder<T> builder =
-        new ConcurrentHnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100);
+            new ConcurrentHnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100) {
+              @Override
+              int getRandomGraphLevel(double ml) {
+                int level = 0;
+                while (ThreadLocalRandom.current().nextDouble() < 0.5) {
+                  level++;
+                }
+                return level;
+              }
+            };
     ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // Only mark a few vectors as accepted
     BitSet acceptOrds = new FixedBitSet(nDoc);
-    for (int i = 0; i < nDoc; i += random().nextInt(15, 20)) {
-      acceptOrds.set(i);
+    for (int i = 0; i < atLeast(toAccept); i++) {
+      acceptOrds.set(random().nextInt(nDoc));
     }
 
     // Check the search finds all accepted vectors
@@ -1257,6 +1308,9 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   static String prettyPrint(HnswGraph hnsw) {
+    if (hnsw instanceof ConcurrentOnHeapHnswGraph) {
+      hnsw = ((ConcurrentOnHeapHnswGraph) hnsw).getView();
+    }
     StringBuilder sb = new StringBuilder();
     sb.append(hnsw);
     sb.append("\n");

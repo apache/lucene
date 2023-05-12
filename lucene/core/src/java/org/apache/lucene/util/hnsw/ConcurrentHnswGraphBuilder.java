@@ -384,7 +384,7 @@ public class ConcurrentHnswGraphBuilder<T> {
     return scratch;
   }
 
-  private static int getRandomGraphLevel(double ml) {
+  int getRandomGraphLevel(double ml) {
     double randDouble;
     do {
       randDouble =
