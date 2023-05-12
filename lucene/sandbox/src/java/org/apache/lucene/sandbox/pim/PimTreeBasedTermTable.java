@@ -21,9 +21,15 @@ public class PimTreeBasedTermTable {
     TreeNode root;
 
     public static class Block {
-        BytesRef term;
-        Long address;
+        final BytesRef term;
+        final Long address;
         Long byteSize;
+
+        Block() {
+            this.term = null;
+            this.address = 0L;
+            this.byteSize = 0L;
+        }
 
         Block(BytesRef term, Long address, long byteSize) {
             this.term = term;
@@ -113,26 +119,20 @@ public class PimTreeBasedTermTable {
 
     private static class TreeNode {
 
-        BytesRef term;
-        Long blockAddress;
-        Long byteSize;
+        final Block block;
         int totalByteSize;
         TreeNode leftChild;
         TreeNode rightChild;
 
         TreeNode() {
-            this.term = null;
-            this.blockAddress = 0L;
-            this.byteSize = 0L;
+            this.block = new Block();
             this.totalByteSize = 0;
             this.leftChild = null;
             this.rightChild = null;
         }
 
         TreeNode(Block block) {
-            this.term = block.term;
-            this.blockAddress = block.address;
-            this.byteSize = block.byteSize;
+            this.block = block;
             this.totalByteSize = 0;
             this.leftChild = null;
             this.rightChild = null;
@@ -146,12 +146,12 @@ public class PimTreeBasedTermTable {
             // TODO implement an option to align on 4B
             // It will be faster for the DPU to search, at the expense of more memory space
             // TODO do we need to write the length before the term bytes ? Otherwise can we figure it out ?
-            writeTerm(output, term);
+            writeTerm(output, block.term);
             output.writeVInt(getRightChildOffset());
 
             //write address of the block and its byte size
-            output.writeVLong(blockAddress);
-            output.writeVLong(byteSize);
+            output.writeVLong(block.address);
+            output.writeVLong(block.byteSize);
             //if (output instanceof IndexOutput)
             //    System.out.println("Tree term: " + term.utf8ToString() + " addr:" + blockAddress);
         }
@@ -160,10 +160,10 @@ public class PimTreeBasedTermTable {
 
             // searching for the block in which a term lies is a
             // floor operation in BST
-            int cmp = searchTerm.compareTo(term);
+            int cmp = searchTerm.compareTo(block.term);
             if (cmp == 0) {
                 // found term
-                return new Block(term, blockAddress, byteSize);
+                return block;
             }
 
             if (cmp < 0) {
@@ -175,11 +175,11 @@ public class PimTreeBasedTermTable {
                 // the term we are searching for may be in this block
                 // or in a block in the right subtree if we find one
                 if(rightChild == null)
-                    return new Block(term, blockAddress, byteSize);
+                    return block;
 
                 Block rb = rightChild.SearchForBlock(searchTerm);
                 if (rb == null)
-                    return new Block(term, blockAddress, byteSize);
+                    return block;
                 else
                     return rb;
             }
@@ -189,13 +189,13 @@ public class PimTreeBasedTermTable {
          * @return the number of bytes used when writing this node
          **/
         int getByteSize() {
-            ByteCountDataOutput out = new ByteCountDataOutput();
             try {
-                write(out);
+                outByteCount.reset();
+                write(outByteCount);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            return (int) out.getByteCount().longValue();
+            return (int) outByteCount.getByteCount().longValue();
         }
 
         private int getRightChildOffset() {
@@ -218,12 +218,14 @@ public class PimTreeBasedTermTable {
          * A dummy DataOutput class that just counts how many bytes
          * have been written.
          **/
-        private class ByteCountDataOutput extends DataOutput {
+        private static class ByteCountDataOutput extends DataOutput {
             private Long byteCount;
 
             ByteCountDataOutput() {
                 this.byteCount = 0L;
             }
+
+            void reset() { this.byteCount = 0L; }
 
             @Override
             public void writeByte(byte b) throws IOException {
@@ -239,6 +241,7 @@ public class PimTreeBasedTermTable {
                 return byteCount;
             }
         }
+        static ByteCountDataOutput outByteCount = new ByteCountDataOutput();
     }
 
     /**
@@ -269,22 +272,24 @@ public class PimTreeBasedTermTable {
         @Override
         void write(DataOutput output) throws IOException {
 
-            writeTerm(output, term);
+            writeTerm(output, block.term);
             output.writeVInt((nbNodes << 2) + 2);
 
             //write address of the block and its byte size
-            output.writeVLong(blockAddress);
-            output.writeVLong(byteSize);
+            output.writeVLong(block.address);
+            output.writeVLong(block.byteSize);
             if (output instanceof IndexOutput)
-                System.out.println("Tree term (compound node): " + term.utf8ToString() + " addr:" + blockAddress);
+                System.out.println("Tree term (compound node): "
+                        + block.term.utf8ToString() + " addr:" + block.address);
 
             TreeNode node = leftChild;
             while (node != null) {
-                writeTerm(output, term);
-                output.writeVLong(blockAddress);
-                output.writeVLong(byteSize);
+                writeTerm(output, node.block.term);
+                output.writeVLong(node.block.address);
+                output.writeVLong(node.block.byteSize);
                 if (output instanceof IndexOutput)
-                    System.out.println("Tree term(compound node): " + term.utf8ToString() + " addr:" + blockAddress);
+                    System.out.println("Tree term(compound node): "
+                            + node.block.term.utf8ToString() + " addr:" + node.block.address);
 
                 node = node.leftChild;
             }
@@ -294,13 +299,13 @@ public class PimTreeBasedTermTable {
 
             // loop over all siblings to find the right block
             TreeNode n = this;
-            if (term.compareTo(n.term) > 0)
+            if (term.compareTo(n.block.term) > 0)
                 return null; // this should not happen
 
-            while ((n.leftChild != null) && (term.compareTo(n.leftChild.term) <= 0)) {
+            while ((n.leftChild != null) && (term.compareTo(n.leftChild.block.term) <= 0)) {
                 n = n.leftChild;
             }
-            return new Block(n.term, n.blockAddress, n.byteSize);
+            return n.block;
         }
     }
 
