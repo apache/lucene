@@ -267,6 +267,7 @@ public class ConcurrentHnswGraphBuilder<T> {
           if (asyncException.get() != null) {
             throw new CompletionException(asyncException.get());
           }
+          hnsw.validateEntryNode();
           return hnsw;
         });
   }

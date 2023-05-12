@@ -217,6 +217,16 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     return new ConcurrentHnswGraphView();
   }
 
+  void validateEntryNode() {
+    if (size() == 0) {
+      return;
+    }
+    var en = entryPoint.get();
+    if (!(en.level >= 0 && en.node >= 0 && graphLevels.get(en.level).containsKey(en.node))) {
+      throw new IllegalStateException("Entry node was incompletely added! " + en);
+    }
+  }
+
   private class ConcurrentHnswGraphView extends HnswGraph {
     private Iterator<Integer> remainingNeighbors;
 
