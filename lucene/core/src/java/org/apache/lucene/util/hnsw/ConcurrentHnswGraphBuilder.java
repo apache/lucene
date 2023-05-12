@@ -39,7 +39,6 @@ import java.util.function.Supplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
@@ -301,6 +300,7 @@ public class ConcurrentHnswGraphBuilder<T> {
       hnsw.addNode(level, node);
     }
 
+    HnswGraph consistentView = hnsw.getView();
     NodeAtLevel progressMarker = new NodeAtLevel(nodeLevel, node);
     insertionsInProgress.add(progressMarker);
     ConcurrentSkipListSet<NodeAtLevel> inProgressBefore = insertionsInProgress.clone();
@@ -330,21 +330,11 @@ public class ConcurrentHnswGraphBuilder<T> {
       // 2 -> 3 is added at L0. It is missing a connection it should have to 1
       //
       // Linking bottom-up avoids this problem.
-      InvertedBitSet notMe = new InvertedBitSet(node);
+      var gs = graphSearcher.get();
       for (int level = entry.level; level > nodeLevel; level--) {
         NeighborQueue candidates = new NeighborQueue(1, false);
-        graphSearcher
-            .get()
-            .searchLevel(
-                candidates,
-                value,
-                1,
-                level,
-                eps,
-                vectors,
-                hnsw.getView(),
-                notMe,
-                Integer.MAX_VALUE);
+        gs.searchLevel(
+            candidates, value, 1, level, eps, vectors, consistentView, null, Integer.MAX_VALUE);
         eps = new int[] {candidates.pop()};
       }
       // for levels <= nodeLevel search with topk = beamWidth
@@ -352,18 +342,16 @@ public class ConcurrentHnswGraphBuilder<T> {
       for (int level = candidatesOnLevel.length - 1; level >= 0; level--) {
         // find best candidates at this level with a beam search
         candidatesOnLevel[level] = new NeighborQueue(beamWidth, false);
-        graphSearcher
-            .get()
-            .searchLevel(
-                candidatesOnLevel[level],
-                value,
-                beamWidth,
-                level,
-                eps,
-                vectors,
-                hnsw.getView(),
-                notMe,
-                Integer.MAX_VALUE);
+        gs.searchLevel(
+            candidatesOnLevel[level],
+            value,
+            beamWidth,
+            level,
+            eps,
+            vectors,
+            consistentView,
+            null,
+            Integer.MAX_VALUE);
         eps = candidatesOnLevel[level].nodes();
       }
 
@@ -404,8 +392,7 @@ public class ConcurrentHnswGraphBuilder<T> {
         addBackLinks(level, node);
       }
 
-      // update entry node last, once everything is wired together
-      hnsw.maybeUpdateEntryNode(nodeLevel, node);
+      hnsw.markComplete(nodeLevel, node);
     } finally {
       insertionsInProgress.remove(progressMarker);
     }
@@ -474,68 +461,5 @@ public class ConcurrentHnswGraphBuilder<T> {
           ThreadLocalRandom.current().nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
-  }
-
-  private static class InvertedBitSet extends BitSet {
-    private final int setBit;
-
-    public InvertedBitSet(int setBit) {
-      this.setBit = setBit;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return 4;
-    }
-
-    @Override
-    public void set(int i) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean getAndSet(int i) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void clear(int i) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void clear(int startIndex, int endIndex) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int cardinality() {
-      return 1;
-    }
-
-    @Override
-    public int approximateCardinality() {
-      return 1;
-    }
-
-    @Override
-    public int prevSetBit(int index) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int nextSetBit(int index) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean get(int index) {
-      return index != setBit;
-    }
-
-    @Override
-    public int length() {
-      return 1;
-    }
   }
 }

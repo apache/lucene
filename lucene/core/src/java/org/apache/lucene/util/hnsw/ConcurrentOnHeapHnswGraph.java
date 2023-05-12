@@ -21,8 +21,9 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -42,7 +43,9 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   // lists,
   // a ConcurrentHashMap.  While the ArrayList used for L0 in OHHG is faster for single-threaded
   // workloads, it imposes an unacceptable contention burden for concurrent workloads.
-  private final ConcurrentMap<Integer, ConcurrentMap<Integer, ConcurrentNeighborSet>> graphLevels;
+  private final Map<Integer, Map<Integer, ConcurrentNeighborSet>> graphLevels;
+  private final Map<Integer, Integer> completedTime;
+  private final AtomicInteger logicalClock;
 
   // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
   private final int nsize;
@@ -56,6 +59,8 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     this.nsize0 = 2 * M;
 
     this.graphLevels = new ConcurrentHashMap<>();
+    this.completedTime = new ConcurrentHashMap<>();
+    logicalClock = new AtomicInteger(0);
   }
 
   /**
@@ -84,13 +89,8 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     graphLevels.get(level).put(node, new ConcurrentNeighborSet(node, connectionsOnLevel(level)));
   }
 
-  /**
-   * must be called after addNode to a level > 0
-   *
-   * <p>we don't do this as part of addNode itself, since it may not yet have been added to all the
-   * levels
-   */
-  void maybeUpdateEntryNode(int level, int node) {
+  /** must be called after addNode once neighbors are linked in all levels. */
+  void markComplete(int level, int node) {
     entryPoint.accumulateAndGet(
         new NodeAtLevel(level, node),
         (oldEntry, newEntry) -> {
@@ -100,6 +100,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
             return newEntry;
           }
         });
+    completedTime.put(node, logicalClock.getAndIncrement());
   }
 
   private int connectionsOnLevel(int level) {
@@ -231,8 +232,31 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     }
   }
 
+  /**
+   * A concurrent View of the graph that is safe to search concurrently with updates and with other
+   * searches. The View provides a limited kind of snapshot isolation: only nodes completely added
+   * to the graph at the time the View was created will be visible (but the connections between them
+   * are allowed to change, so you could potentially get different top K results from the same query
+   * if concurrent updates are in progress.)
+   */
   private class ConcurrentHnswGraphView extends HnswGraph {
+    // It is tempting, but incorrect, to try to provide "adequate" isolation by
+    // (1) keeping a bitset of complete nodes and giving that to the searcher as nodes to
+    // accept -- but we need to keep incomplete nodes out of the search path entirely,
+    // not just out of the result set, or
+    // (2) keeping a bitset of complete nodes and restricting the View to those nodes
+    // -- but we needs to consider neighbor diversity separately for concurrent
+    // inserts and completed nodes; this allows us to keep the former out of the latter,
+    // but not the latter out of the former (when a node completes while we are working,
+    // that was in-progress when we started.)
+    // The only really foolproof solution is to implement snapshot isolation as
+    // we have done here.
+    private final int timestamp;
     private Iterator<Integer> remainingNeighbors;
+
+    public ConcurrentHnswGraphView() {
+      this.timestamp = logicalClock.get();
+    }
 
     @Override
     public int size() {
@@ -261,7 +285,13 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
     @Override
     public int nextNeighbor() {
-      return remainingNeighbors.hasNext() ? remainingNeighbors.next() : NO_MORE_DOCS;
+      while (remainingNeighbors.hasNext()) {
+        int next = remainingNeighbors.next();
+        if (completedTime.getOrDefault(next, Integer.MAX_VALUE) < timestamp) {
+          return next;
+        }
+      }
+      return NO_MORE_DOCS;
     }
 
     @Override
