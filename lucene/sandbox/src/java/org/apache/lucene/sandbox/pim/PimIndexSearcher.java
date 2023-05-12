@@ -1,8 +1,6 @@
 package org.apache.lucene.sandbox.pim;
 
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentCommitInfo;
-import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IOContext;
@@ -13,6 +11,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * @class PimIndexSearcher
@@ -24,9 +23,11 @@ import java.util.Arrays;
 public class PimIndexSearcher implements Closeable  {
 
     ArrayList<DPUIndexSearcher> searchers;
+    Directory dir;
 
     PimIndexSearcher(Directory dir, Directory pimDir, PimConfig config) {
 
+        this.dir = dir;
         searchers = new ArrayList<>();
         for(int i = 0; i < config.getNumDpus(); ++i) {
             searchers.add(new DPUIndexSearcher(dir, pimDir, i));
@@ -36,22 +37,42 @@ public class PimIndexSearcher implements Closeable  {
     ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
 
         ArrayList<PimMatch> results = new ArrayList<>();
-        searchers.forEach((s) -> {
-            var matches = s.SearchTerm(field, term);
-            if(matches != null)
-                results.addAll(matches);
-        });
+        int nbSegments = GetNumberOfSegments();
+        for(int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
+            int finalLeafIdx = leafIdx;
+            searchers.forEach((s) -> {
+                s.switchToNewSegment(finalLeafIdx);
+                var matches = s.SearchTerm(field, term);
+                if (matches != null)
+                    results.addAll(matches);
+                try {
+                    s.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
         return results;
     }
 
     ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
 
         ArrayList<PimMatch> results = new ArrayList<>();
-        searchers.forEach((s) -> {
-            var matches = s.SearchPhrase(query);
-            if(matches != null)
-                results.addAll(matches);
-        });
+        int nbSegments = GetNumberOfSegments();
+        for(int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
+            int finalLeafIdx = leafIdx;
+            searchers.forEach((s) -> {
+                s.switchToNewSegment(finalLeafIdx);
+                var matches = s.SearchPhrase(query);
+                if (matches != null)
+                    results.addAll(matches);
+                try {
+                    s.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
         return results;
     }
 
@@ -62,9 +83,22 @@ public class PimIndexSearcher implements Closeable  {
         }
     }
 
+    private int GetNumberOfSegments() {
+
+        try (IndexReader indexReader = DirectoryReader.open(dir)) {
+            List<LeafReaderContext> leaves = indexReader.leaves();
+            return leaves.size();
+        }
+        catch(IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private class DPUIndexSearcher implements Closeable {
 
         int dpuId;
+        Directory dir;
+        Directory pimDir;
         IndexInput fieldTableInput;
         IndexInput blockTableInput;
         IndexInput blocksInput;
@@ -72,12 +106,18 @@ public class PimIndexSearcher implements Closeable  {
 
         PimTreeBasedTermTable fieldTableTree;
         PimTreeBasedTermTable blockTableTree;
+        int startDoc;
 
         DPUIndexSearcher(Directory dir, Directory pimDir, int dpuId) {
-
             this.dpuId = dpuId;
+            this.dir = dir;
+            this.pimDir = pimDir;
+        }
+
+        void switchToNewSegment(int leafIdx) {
+
             try {
-                openFilesInput(dir, pimDir);
+                openFilesInput(dir, pimDir, leafIdx);
                 // create field table
                 this.fieldTableTree = PimTreeBasedTermTable.read(fieldTableInput);
             } catch (EOFException e) {
@@ -89,13 +129,16 @@ public class PimIndexSearcher implements Closeable  {
             }
         }
 
-        void openFilesInput(Directory dir, Directory pimDir) throws IOException {
+        void openFilesInput(Directory dir, Directory pimDir, int leafIdx) throws IOException {
 
             SegmentInfos segmentInfos = SegmentInfos.readCommit(dir,
                     SegmentInfos.getLastCommitSegmentsFileName(dir));
 
-            //TODO for the moment assume only one segment
-            SegmentCommitInfo segmentCommitInfo = segmentInfos.info(0);
+            SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
+            startDoc = 0;
+            for(int i = 0; i < leafIdx && i < segmentInfos.size(); ++i) {
+                startDoc += segmentInfos.info(i).info.maxDoc();
+            }
 
             String fieldFileName =
                     IndexFileNames.segmentFileName(
@@ -134,7 +177,7 @@ public class PimIndexSearcher implements Closeable  {
                 DocumentIterator docIt = new DocumentIterator(postingsInput, termPostings.byteSize);
                 int doc = docIt.Next();
                 while(doc >= 0) {
-                    results.add(new PimMatch(doc, docIt.getFreq()));
+                    results.add(new PimMatch(startDoc + doc, docIt.getFreq()));
                     doc = docIt.Next();
                 }
             } catch (IOException e) {
@@ -245,7 +288,7 @@ public class PimIndexSearcher implements Closeable  {
                         if(nbMatches == termPostings.length) {
                             // found a match, store it
                             // and continue the search from first term next position
-                            results.add(new PimMatch(searchDoc, searchPos[0]));
+                            results.add(new PimMatch(startDoc + searchDoc, searchPos[0]));
                             searchPos[0] = posIt[0].Next(0);
                             if(searchPos[0] < 0) {
                                 // no more positions
@@ -474,10 +517,14 @@ public class PimIndexSearcher implements Closeable  {
         @Override
         public void close() throws IOException {
 
-            fieldTableInput.close();
-            blockTableInput.close();
-            blocksInput.close();
-            postingsInput.close();
+            if(fieldTableInput != null)
+                fieldTableInput.close();
+            if(blockTableInput != null)
+                blockTableInput.close();
+            if(blocksInput != null)
+                blocksInput.close();
+            if(postingsInput != null)
+                postingsInput.close();
         }
     }
 

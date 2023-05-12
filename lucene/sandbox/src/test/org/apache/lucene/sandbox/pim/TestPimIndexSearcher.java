@@ -385,6 +385,8 @@ public class TestPimIndexSearcher extends LuceneTestCase {
                 "Lucene includes a feature to perform a fuzzy search based on edit distance.", Field.Store.YES));
         writer.addDocument(doc);
 
+        writer.commit();
+
         doc = new Document();
         doc.add(newTextField("title", "Chartreuse", Field.Store.YES));
         doc.add(newTextField("body", "Poursuivis pendant la Révolution française, les moines " +
