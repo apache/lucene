@@ -146,7 +146,10 @@ public class ConcurrentNeighborSet {
   // is the candidate node with the given score closer to the base node than it is to any of the
   // existing neighbors
   private boolean isDiverse(
-      int node, float score, NeighborArray others, ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
+      int node,
+      float score,
+      NeighborArray others,
+      ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
     for (int i = 0; i < others.size(); i++) {
       int candidateNode = others.node[i];
@@ -210,9 +213,7 @@ public class ConcurrentNeighborSet {
     };
   }
 
-  /**
-   * This is O(n) because we have to decode node ids!  Only for testing.
-   */
+  /** This is O(n) because we have to decode node ids! Only for testing. */
   boolean contains(int i) {
     for (Long e : neighbors) {
       if (decodeNodeId(e) == i) {

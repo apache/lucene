@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static java.lang.Math.log;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +36,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.AtomicBitSet;
@@ -310,7 +308,7 @@ public class ConcurrentHnswGraphBuilder<T> {
       // find ANN of the new node by searching the graph
       NodeAtLevel entry = hnsw.entry();
       int ep = entry.node;
-      int[] eps = ep >= 0 ? new int[]{ep} : new int[0];
+      int[] eps = ep >= 0 ? new int[] {ep} : new int[0];
 
       // follow the index from the top down, but link neighbors from the bottom up;
       // that way concurrent inserts also going top-down don't see incompletely
@@ -335,15 +333,37 @@ public class ConcurrentHnswGraphBuilder<T> {
       InvertedBitSet notMe = new InvertedBitSet(node);
       for (int level = entry.level; level > nodeLevel; level--) {
         NeighborQueue candidates = new NeighborQueue(1, false);
-        graphSearcher.get().searchLevel(candidates, value, 1, level, eps, vectors, hnsw.getView(), notMe, Integer.MAX_VALUE);
-        eps = new int[]{candidates.pop()};
+        graphSearcher
+            .get()
+            .searchLevel(
+                candidates,
+                value,
+                1,
+                level,
+                eps,
+                vectors,
+                hnsw.getView(),
+                notMe,
+                Integer.MAX_VALUE);
+        eps = new int[] {candidates.pop()};
       }
       // for levels <= nodeLevel search with topk = beamWidth
       NeighborQueue[] candidatesOnLevel = new NeighborQueue[1 + Math.min(nodeLevel, entry.level)];
       for (int level = candidatesOnLevel.length - 1; level >= 0; level--) {
         // find best candidates at this level with a beam search
         candidatesOnLevel[level] = new NeighborQueue(beamWidth, false);
-        graphSearcher.get().searchLevel(candidatesOnLevel[level], value, beamWidth, level, eps, vectors, hnsw.getView(), notMe, Integer.MAX_VALUE);
+        graphSearcher
+            .get()
+            .searchLevel(
+                candidatesOnLevel[level],
+                value,
+                beamWidth,
+                level,
+                eps,
+                vectors,
+                hnsw.getView(),
+                notMe,
+                Integer.MAX_VALUE);
         eps = candidatesOnLevel[level].nodes();
       }
 
@@ -371,7 +391,8 @@ public class ConcurrentHnswGraphBuilder<T> {
         // pick up the connection to 1 that it's supposed to have as well.
         addForwardLinks(level, node, candidatesOnLevel[level]);
         addForwardLinks(level, node, inProgressBefore, progressMarker);
-        // backlinking is where we become visible to natural searches that aren't checking in-progress,
+        // backlinking is where we become visible to natural searches that aren't checking
+        // in-progress,
         // so this has to be done after everything is is complete on this level
         addBackLinks(level, node);
       }
@@ -390,13 +411,16 @@ public class ConcurrentHnswGraphBuilder<T> {
     }
   }
 
-  private void addForwardLinks(int level, int newNode, NeighborQueue candidates) throws IOException {
+  private void addForwardLinks(int level, int newNode, NeighborQueue candidates)
+      throws IOException {
     NeighborArray scratch = popToScratch(candidates); // worst are first
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
     neighbors.insertDiverse(scratch, this::scoreBetween);
   }
 
-  private void addForwardLinks(int level, int newNode, Set<NodeAtLevel> inProgress, NodeAtLevel progressMarker) throws IOException {
+  private void addForwardLinks(
+      int level, int newNode, Set<NodeAtLevel> inProgress, NodeAtLevel progressMarker)
+      throws IOException {
     NeighborQueue candidates = new NeighborQueue(inProgress.size(), false);
     for (NodeAtLevel n : inProgress) {
       if (n.level >= level && n != progressMarker) {
