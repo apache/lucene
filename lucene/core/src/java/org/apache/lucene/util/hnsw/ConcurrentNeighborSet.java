@@ -37,11 +37,13 @@ import org.apache.lucene.util.NumericUtils;
  * out a Big Lock to impose a strict cap.
  */
 public class ConcurrentNeighborSet {
+  private int nodeId;
   private final ConcurrentSkipListSet<Long> neighbors;
   private final int maxConnections;
   private final AtomicInteger size;
 
-  public ConcurrentNeighborSet(int maxConnections) {
+  public ConcurrentNeighborSet(int nodeId, int maxConnections) {
+    this.nodeId = nodeId;
     this.maxConnections = maxConnections;
     neighbors = new ConcurrentSkipListSet<>(Comparator.<Long>naturalOrder().reversed());
     size = new AtomicInteger();
@@ -113,6 +115,7 @@ public class ConcurrentNeighborSet {
   public void insert(
       int node, float score, ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
+    assert neighborId != nodeId : "can't add self as neighbor at node " + nodeId;
     // if two nodes are inserted concurrently, and see each other as neighbors,
     // we will try to add a duplicate entry to the set, so it is not correct to assume
     // that all calls will result in a new entry being added
@@ -190,7 +193,10 @@ public class ConcurrentNeighborSet {
     };
   }
 
-  public boolean contains(int i) {
+  /**
+   * This is O(n) because we have to decode node ids!  Only for testing.
+   */
+  boolean contains(int i) {
     for (Long e : neighbors) {
       if (decodeNodeId(e) == i) {
         return true;

@@ -39,7 +39,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
   }
 
   public void testInsertAndSize() throws IOException {
-    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(2);
+    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 2);
     neighbors.insert(1, baseScore(1), simpleScore);
     neighbors.insert(2, baseScore(2), simpleScore);
     assertEquals(2, neighbors.size());
@@ -49,7 +49,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
   }
 
   public void testRemoveLeastDiverseFromEnd() throws IOException {
-    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(3);
+    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 3);
     neighbors.insert(1, baseScore(1), simpleScore);
     neighbors.insert(2, baseScore(2), simpleScore);
     neighbors.insert(3, baseScore(3), simpleScore);
@@ -94,7 +94,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     }
     assert candidates.size() == 9;
 
-    var neighbors = new ConcurrentNeighborSet(3);
+    var neighbors = new ConcurrentNeighborSet(0, 3);
     neighbors.insertDiverse(candidates, scoreBetween);
     assert neighbors.size() == 2;
     assert neighbors.contains(8);

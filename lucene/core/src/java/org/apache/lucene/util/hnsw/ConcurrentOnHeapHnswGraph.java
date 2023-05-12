@@ -164,6 +164,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
         cskmBytes
             + REF_BYTES // skiplist -> map reference
             + Integer.BYTES
+            + Integer.BYTES
             + REF_BYTES
             + Integer.BYTES; // CNS fields
     // a CHM Node contains an int hash and a Node reference, as well as K and V references.
