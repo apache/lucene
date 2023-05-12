@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
+import java.util.stream.Collectors;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -113,7 +114,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     List<FutureTask<TopDocs>> tasks =
         leafReaderContexts.stream()
             .map(ctx -> new FutureTask<>(() -> searchLeaf(ctx, filterWeight)))
-            .toList();
+            .collect(Collectors.toList());
 
     SliceExecutor sliceExecutor = new SliceExecutor(executor);
     sliceExecutor.invokeAll(tasks);
