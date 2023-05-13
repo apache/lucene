@@ -165,6 +165,8 @@ New Features
   crash the JVM. To disable this feature, pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
 
+* GITHUB#12169: Introduce a new token filter to expand synonyms based on Word2Vec DL4j models. (Daniele Antuzi, Ilaria Petreti, Alessandro Benedetti)
+
 Improvements
 ---------------------
 
@@ -204,6 +206,8 @@ Optimizations
 
 * GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
 
+* GITHUB#12241: Add ordering of files in compound files. (Christoph Büscher)
+
 Bug Fixes
 ---------------------
 
@@ -218,6 +222,10 @@ Bug Fixes
 * GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
 
 * GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end (Peter Gromov)
+
+* GITHUB#12260: Fix SynonymQuery equals implementation to take the targeted field name into account (Luca Cavanna)
 
 Build
 ---------------------

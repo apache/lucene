@@ -14,27 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.util;
 
-/**
- * Throw this exception in {@link LeafCollector#collect(int)} to prematurely terminate collection of
- * the current leaf.
- *
- * <p>Note: IndexSearcher swallows this exception and never re-throws it. As a consequence, you
- * should not catch it when calling {@link IndexSearcher#search} as it is unnecessary and might hide
- * misuse of this exception.
- */
-@SuppressWarnings("serial")
-public final class CollectionTerminatedException extends RuntimeException {
+/** Wraps a term and boost */
+public class TermAndBoost {
+  /** the term */
+  public final BytesRef term;
+  /** the boost */
+  public final float boost;
 
-  /** Sole constructor. */
-  public CollectionTerminatedException() {
-    super();
-  }
-
-  @Override
-  public Throwable fillInStackTrace() {
-    // never re-thrown so we can save the expensive stacktrace
-    return this;
+  /** Creates a new TermAndBoost */
+  public TermAndBoost(BytesRef term, float boost) {
+    this.term = BytesRef.deepCopyOf(term);
+    this.boost = boost;
   }
 }

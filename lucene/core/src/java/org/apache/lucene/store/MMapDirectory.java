@@ -76,9 +76,9 @@ import org.apache.lucene.util.SuppressForbidden;
  *   <li>{@code permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";}
  * </ul>
  *
- * <p>On exactly <b>Java 19</b> this class will use the modern {@code MemorySegment} API which
- * allows to safely unmap (if you discover any problems with this preview API, you can disable it by
- * using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
+ * <p>On exactly <b>Java 19</b> and <b>Java 20</b> this class will use the modern {@code
+ * MemorySegment} API which allows to safely unmap (if you discover any problems with this preview
+ * API, you can disable it by using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
  *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
@@ -123,7 +123,7 @@ public class MMapDirectory extends FSDirectory {
    * Default max chunk size:
    *
    * <ul>
-   *   <li>16 GiBytes for 64 bit <b>Java 19</b> JVMs
+   *   <li>16 GiBytes for 64 bit <b>Java 19</b> and <b>Java 20</b> JVMs
    *   <li>1 GiBytes for other 64 bit JVMs
    *   <li>256 MiBytes for 32 bit JVMs
    * </ul>
@@ -198,9 +198,9 @@ public class MMapDirectory extends FSDirectory {
    * files cannot be mapped. Using a lower chunk size makes the directory implementation a little
    * bit slower (as the correct chunk may be resolved on lots of seeks) but the chance is higher
    * that mmap does not fail. On 64 bit Java platforms, this parameter should always be large (like
-   * 1 GiBytes, or even larger with Java 19), as the address space is big enough. If it is larger,
-   * fragmentation of address space increases, but number of file handles and mappings is lower for
-   * huge installations with many open indexes.
+   * 1 GiBytes, or even larger with recent Java versions), as the address space is big enough. If it
+   * is larger, fragmentation of address space increases, but number of file handles and mappings is
+   * lower for huge installations with many open indexes.
    *
    * <p><b>Please note:</b> The chunk size is always rounded down to a power of 2.
    *

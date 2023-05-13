@@ -172,7 +172,7 @@ public class ToParentBlockJoinQuery extends Query {
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
       BlockJoinScorer scorer = (BlockJoinScorer) scorer(context);
       if (scorer != null && scorer.iterator().advance(doc) == doc) {
-        return scorer.explain(context, in);
+        return scorer.explain(context, in, scoreMode);
       }
       return Explanation.noMatch("Not a match");
     }
@@ -391,35 +391,51 @@ public class ToParentBlockJoinQuery extends Query {
       }
       this.score = (float) score;
     }
-
-    public Explanation explain(LeafReaderContext context, Weight childWeight) throws IOException {
+    /*
+     * This instance of Explanation requires three parameters, context, childWeight, and scoreMode.
+     * The scoreMode parameter considers Avg, Total, Min, Max, and None.
+     * */
+    public Explanation explain(LeafReaderContext context, Weight childWeight, ScoreMode scoreMode)
+        throws IOException {
       int prevParentDoc = parentBits.prevSetBit(parentApproximation.docID() - 1);
       int start =
           context.docBase + prevParentDoc + 1; // +1 b/c prevParentDoc is previous parent doc
       int end = context.docBase + parentApproximation.docID() - 1; // -1 b/c parentDoc is parent doc
 
       Explanation bestChild = null;
+      Explanation worstChild = null;
+
       int matches = 0;
       for (int childDoc = start; childDoc <= end; childDoc++) {
         Explanation child = childWeight.explain(context, childDoc - context.docBase);
         if (child.isMatch()) {
           matches++;
           if (bestChild == null
-              || child.getValue().floatValue() > bestChild.getValue().floatValue()) {
+              || child.getValue().doubleValue() > bestChild.getValue().doubleValue()) {
             bestChild = child;
+          }
+          if (worstChild == null
+              || child.getValue().doubleValue() < worstChild.getValue().doubleValue()) {
+            worstChild = child;
           }
         }
       }
-
+      assert matches > 0 : "No matches should be handled before.";
+      Explanation subExplain = scoreMode == ScoreMode.Min ? worstChild : bestChild;
       return Explanation.match(
-          score(),
-          String.format(
-              Locale.ROOT,
-              "Score based on %d child docs in range from %d to %d, best match:",
-              matches,
-              start,
-              end),
-          bestChild);
+          this.score(),
+          formatScoreExplanation(matches, start, end, scoreMode),
+          subExplain == null ? Collections.emptyList() : Collections.singleton(subExplain));
+    }
+
+    private String formatScoreExplanation(int matches, int start, int end, ScoreMode scoreMode) {
+      return String.format(
+          Locale.ROOT,
+          "Score based on %d child docs in range from %d to %d, using score mode %s",
+          matches,
+          start,
+          end,
+          scoreMode);
     }
   }
 

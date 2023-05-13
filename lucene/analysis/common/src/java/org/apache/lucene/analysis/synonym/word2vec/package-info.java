@@ -14,27 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
 
-/**
- * Throw this exception in {@link LeafCollector#collect(int)} to prematurely terminate collection of
- * the current leaf.
- *
- * <p>Note: IndexSearcher swallows this exception and never re-throws it. As a consequence, you
- * should not catch it when calling {@link IndexSearcher#search} as it is unnecessary and might hide
- * misuse of this exception.
- */
-@SuppressWarnings("serial")
-public final class CollectionTerminatedException extends RuntimeException {
-
-  /** Sole constructor. */
-  public CollectionTerminatedException() {
-    super();
-  }
-
-  @Override
-  public Throwable fillInStackTrace() {
-    // never re-thrown so we can save the expensive stacktrace
-    return this;
-  }
-}
+/** Analysis components for Synonyms using Word2Vec model. */
+package org.apache.lucene.analysis.synonym.word2vec;
