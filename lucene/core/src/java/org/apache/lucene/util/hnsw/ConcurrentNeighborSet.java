@@ -111,8 +111,6 @@ public class ConcurrentNeighborSet {
     for (int i = candidates.size() - 1; neighbors.size() < maxConnections && i >= 0; i--) {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      // TODO in the paper, the diversity requirement is only enforced when there are more than
-      // maxConn
       if (isDiverse(cNode, cScore, selected, scoreBetween)) {
         selected.add(cNode, cScore);
         // raw inserts (invoked by other threads backlinking to us) could happen concurrently,
@@ -120,8 +118,8 @@ public class ConcurrentNeighborSet {
         insert(cNode, cScore, scoreBetween);
       }
     }
-    // TODO follow the paper's suggestion and fill up the rest of the neighbors with non-diverse
-    // candidates?
+    // This leaves the paper's keepPrunedConnection option out; we might want to add that
+    // as an option in the future.
   }
 
   /**
