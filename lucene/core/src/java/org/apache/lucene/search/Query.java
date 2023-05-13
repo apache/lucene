@@ -97,8 +97,8 @@ public abstract class Query {
    * that {@link QueryCache} works properly.
    *
    * <p>Typically a query will be equal to another only if it's an instance of the same class and
-   * its document-filtering properties are identical to those of the other instance.
-   * Utility methods are provided for certain repetitive code.
+   * its document-filtering properties are identical to those of the other instance. Utility methods
+   * are provided for certain repetitive code.
    *
    * @see #sameClassAs(Object)
    * @see #classHash()
