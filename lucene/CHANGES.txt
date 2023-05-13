@@ -106,6 +106,36 @@ Other
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
+======================== Lucene 9.7.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+
+Optimizations
+---------------------
+
+* GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
+
+* GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.6.0 =======================
 
 API Changes
