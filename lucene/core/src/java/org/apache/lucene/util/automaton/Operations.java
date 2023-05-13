@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1319,7 +1318,7 @@ public final class Operations {
   private static int topoSortStates(Automaton a, int[] states) {
     BitSet onStack = new BitSet(a.getNumStates());
     BitSet visited = new BitSet(a.getNumStates());
-    Deque<Integer> stack = new ArrayDeque<>();
+    var stack = new ArrayDeque<Integer>();
     stack.push(0); // Assuming that the initial state is 0.
     int upto = 0;
     Transition t = new Transition();
