@@ -172,31 +172,16 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
             + Integer.BYTES
             + REF_BYTES
             + Integer.BYTES; // CNS fields
-    // a CHM Node contains an int hash and a Node reference, as well as K and V references.
-    long chmNodeBytes = 3L * REF_BYTES + Integer.BYTES;
-    float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
-    // CHM has a striped counter Cell implementation, we expect at most one per core
-    long chmCounters = AH_BYTES + CORES * (REF_BYTES + Long.BYTES);
 
     long total = 0;
+
+    // the main graph structure
     for (int l = 0; l <= entryPoint.get().level; l++) {
-      long numNodesOnLevel = graphLevels.get(l).size();
+      // size of nodes CHM
+      int numNodesOnLevel = graphLevels.get(l).size();
+      long chmSize = concurrentHashMapRamUsed(numNodesOnLevel);
 
-      // we represent the graph structure with a concurrent hash map.
-      // we expect there to be nodesOnLevel / levelLoadFactor Nodes in its internal table.
-      // there is also an entrySet reference, 3 ints, and a float for internal use.
-      int nodeCount = (int) (numNodesOnLevel / chmLoadFactor);
-      long chmSize =
-          nodeCount * chmNodeBytes // nodes
-              + nodeCount * REF_BYTES
-              + AH_BYTES // nodes array
-              + Long.BYTES
-              + 3 * Integer.BYTES
-              + 3 * REF_BYTES // extra internal fields
-              + chmCounters
-              + REF_BYTES; // the Map reference itself
-
-      // Add the size neighbor of each node
+      // size of the CNS of each node
       long neighborSize = 0;
       for (ConcurrentNeighborSet cns : graphLevels.get(l).values()) {
         neighborSize += neighborSetBytes + cns.size() * (cskmNodesBytes + cskmIndexBytes);
@@ -204,7 +189,36 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
       total += chmSize + neighborSize;
     }
+
+    // logical clocks
+    total += concurrentHashMapRamUsed(completedTime.size());
+
     return total;
+  }
+
+  private static long concurrentHashMapRamUsed(int externalNodeCount) {
+    long REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+    long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+    long CORES = Runtime.getRuntime().availableProcessors();
+
+    // a CHM Node contains an int hash and a Node reference, as well as K and V references.
+    long chmNodeBytes = 3L * REF_BYTES + Integer.BYTES;
+    float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
+    // CHM has a striped counter Cell implementation, we expect at most one per core
+    long chmCounters = AH_BYTES + CORES * (REF_BYTES + Long.BYTES);
+
+    long nodeCount = (long) (externalNodeCount / chmLoadFactor);
+
+    long chmSize =
+        nodeCount * chmNodeBytes // nodes
+            + nodeCount * REF_BYTES
+            + AH_BYTES // nodes array
+            + Long.BYTES
+            + 3 * Integer.BYTES
+            + 3 * REF_BYTES // extra internal fields
+            + chmCounters
+            + REF_BYTES; // the Map reference itself
+    return chmSize;
   }
 
   @Override
