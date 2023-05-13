@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -172,16 +171,18 @@ public class ConcurrentHnswGraphBuilder<T> {
   public ConcurrentOnHeapHnswGraph build(
       RandomAccessVectorValues<T> vectorsToAdd, boolean autoParallel) throws IOException {
     ExecutorService es;
+    int threadCount;
     if (autoParallel) {
+      threadCount = Runtime.getRuntime().availableProcessors();
       es =
           Executors.newFixedThreadPool(
-              Runtime.getRuntime().availableProcessors(),
-              new NamedThreadFactory("Concurrent HNSW builder"));
+              threadCount, new NamedThreadFactory("Concurrent HNSW builder"));
     } else {
+      threadCount = 1;
       es = Executors.newSingleThreadExecutor(new NamedThreadFactory("Concurrent HNSW builder"));
     }
 
-    Future<ConcurrentOnHeapHnswGraph> f = buildAsync(vectorsToAdd, es);
+    Future<ConcurrentOnHeapHnswGraph> f = buildAsync(vectorsToAdd, es, threadCount);
     try {
       return f.get();
     } catch (InterruptedException e) {
@@ -208,9 +209,10 @@ public class ConcurrentHnswGraphBuilder<T> {
    * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
    *     independent accessor for the vectors
    * @param pool The ExecutorService to use. Must be an instance of ThreadPoolExecutor.
+   * @param concurrentTasks the number of tasks to submit in parallel.
    */
   public Future<ConcurrentOnHeapHnswGraph> buildAsync(
-      RandomAccessVectorValues<T> vectorsToAdd, ExecutorService pool) {
+      RandomAccessVectorValues<T> vectorsToAdd, ExecutorService pool, int concurrentTasks) {
     if (vectorsToAdd == this.vectors) {
       throw new IllegalArgumentException(
           "Vectors to build must be independent of the source of vectors provided to HnswGraphBuilder()");
@@ -218,18 +220,15 @@ public class ConcurrentHnswGraphBuilder<T> {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + vectorsToAdd.size() + " vectors");
     }
-    if (!(pool instanceof ThreadPoolExecutor)) {
-      throw new IllegalArgumentException("ExecutorService must be a ThreadPoolExecutor");
-    }
-    return addVectors(vectorsToAdd, (ThreadPoolExecutor) pool);
+    return addVectors(vectorsToAdd, pool, concurrentTasks);
   }
 
   // the goal here is to keep all the ExecutorService threads busy, but not to create potentially
   // millions of futures by naively throwing everything at submit at once.  So, we use
   // a semaphore to wait until a thread is free before adding a new task.
   private Future<ConcurrentOnHeapHnswGraph> addVectors(
-      RandomAccessVectorValues<T> vectorsToAdd, ThreadPoolExecutor pool) {
-    Semaphore semaphore = new Semaphore(pool.getMaximumPoolSize());
+      RandomAccessVectorValues<T> vectorsToAdd, ExecutorService pool, int concurrentTasks) {
+    Semaphore semaphore = new Semaphore(concurrentTasks);
     Set<Integer> inFlight = ConcurrentHashMap.newKeySet();
     AtomicReference<Throwable> asyncException = new AtomicReference<>(null);
 
