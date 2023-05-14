@@ -17,16 +17,14 @@
 package org.apache.lucene.tests.util;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.GrowableBitSet;
 import org.apache.lucene.util.RoaringDocIdSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.junit.Ignore;
@@ -74,7 +72,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testCardinality() throws IOException {
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      BitSet set1 = new GrowableBitSet(randomSet(numBits, percentSet));
       T set2 = copyOf(set1, numBits);
       assertEquals(set1.cardinality(), set2.cardinality());
     }
@@ -84,7 +82,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testPrevSetBit() throws IOException {
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      BitSet set1 = new GrowableBitSet(randomSet(numBits, percentSet));
       T set2 = copyOf(set1, numBits);
       for (int i = 0; i < numBits; ++i) {
         assertEquals(Integer.toString(i), set1.prevSetBit(i), set2.prevSetBit(i));
@@ -96,7 +94,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testNextSetBit() throws IOException {
     final int numBits = 1 + random().nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      BitSet set1 = new GrowableBitSet(randomSet(numBits, percentSet));
       T set2 = copyOf(set1, numBits);
       for (int i = 0; i < numBits; ++i) {
         assertEquals(set1.nextSetBit(i), set2.nextSetBit(i));
@@ -108,7 +106,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testSet() throws IOException {
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
-    BitSet set1 = new JavaUtilBitSet(randomSet(numBits, 0), numBits);
+    BitSet set1 = new GrowableBitSet(randomSet(numBits, 0));
     T set2 = copyOf(set1, numBits);
     final int iters = 10000 + random.nextInt(10000);
     for (int i = 0; i < iters; ++i) {
@@ -123,7 +121,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   public void testGetAndSet() throws IOException {
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
-    BitSet set1 = new JavaUtilBitSet(randomSet(numBits, 0), numBits);
+    BitSet set1 = new GrowableBitSet(randomSet(numBits, 0));
     T set2 = copyOf(set1, numBits);
     final int iters = 10000 + random.nextInt(10000);
     for (int i = 0; i < iters; ++i) {
@@ -140,7 +138,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      BitSet set1 = new GrowableBitSet(randomSet(numBits, percentSet));
       T set2 = copyOf(set1, numBits);
       final int iters = 1 + random.nextInt(numBits * 2);
       for (int i = 0; i < iters; ++i) {
@@ -157,7 +155,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     Random random = random();
     final int numBits = 1 + random.nextInt(100000);
     for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
-      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      BitSet set1 = new GrowableBitSet(randomSet(numBits, percentSet));
       T set2 = copyOf(set1, numBits);
       final int iters = atLeast(random, 10);
       for (int i = 0; i < iters; ++i) {
@@ -200,13 +198,12 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
 
   private void testOr(float load) throws IOException {
     final int numBits = 1 + random().nextInt(100000);
-    BitSet set1 = new JavaUtilBitSet(randomSet(numBits, 0), numBits); // empty
+    BitSet set1 = new GrowableBitSet(randomSet(numBits, 0)); // empty
     T set2 = copyOf(set1, numBits);
 
     final int iterations = atLeast(10);
     for (int iter = 0; iter < iterations; ++iter) {
-      DocIdSet otherSet =
-          randomCopy(new JavaUtilBitSet(randomSet(numBits, load), numBits), numBits);
+      DocIdSet otherSet = randomCopy(new GrowableBitSet(randomSet(numBits, load)), numBits);
       DocIdSetIterator otherIterator = otherSet.iterator();
       if (otherIterator != null) {
         set1.or(otherIterator);
@@ -229,85 +226,5 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
   /** Test {@link BitSet#or(DocIdSetIterator)} on a random density. */
   public void testOrRandom() throws IOException {
     testOr(random().nextFloat());
-  }
-
-  private static class JavaUtilBitSet extends BitSet {
-
-    private final java.util.BitSet bitSet;
-    private final int numBits;
-
-    JavaUtilBitSet(java.util.BitSet bitSet, int numBits) {
-      this.bitSet = bitSet;
-      this.numBits = numBits;
-    }
-
-    @Override
-    public void clear(int index) {
-      bitSet.clear(index);
-    }
-
-    @Override
-    public boolean get(int index) {
-      return bitSet.get(index);
-    }
-
-    @Override
-    public boolean getAndSet(int index) {
-      boolean v = get(index);
-      set(index);
-      return v;
-    }
-
-    @Override
-    public int length() {
-      return numBits;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return -1;
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      return Collections.emptyList();
-    }
-
-    @Override
-    public void set(int i) {
-      bitSet.set(i);
-    }
-
-    @Override
-    public void clear(int startIndex, int endIndex) {
-      if (startIndex >= endIndex) {
-        return;
-      }
-      bitSet.clear(startIndex, endIndex);
-    }
-
-    @Override
-    public int cardinality() {
-      return bitSet.cardinality();
-    }
-
-    @Override
-    public int approximateCardinality() {
-      return bitSet.cardinality();
-    }
-
-    @Override
-    public int prevSetBit(int index) {
-      return bitSet.previousSetBit(index);
-    }
-
-    @Override
-    public int nextSetBit(int i) {
-      int next = bitSet.nextSetBit(i);
-      if (next == -1) {
-        next = DocIdSetIterator.NO_MORE_DOCS;
-      }
-      return next;
-    }
   }
 }

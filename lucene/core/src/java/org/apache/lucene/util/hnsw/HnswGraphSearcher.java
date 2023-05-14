@@ -26,6 +26,7 @@ import org.apache.lucene.util.AtomicBitSet;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.GrowableBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -306,12 +307,12 @@ public class HnswGraphSearcher<T> {
     if (visited.length() < capacity) {
       // this happens during graph construction; otherwise the size of the vector values should
       // be constant, and it will be a SparseFixedBitSet instead of FixedBitSet
-      assert (visited instanceof FixedBitSet || visited instanceof AtomicBitSet)
+      assert (visited instanceof FixedBitSet || visited instanceof GrowableBitSet)
           : "Unexpected visited type: " + visited.getClass().getName();
       if (visited instanceof FixedBitSet) {
         visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
       }
-      // else AtomicBitSet knows how to grow itself safely
+      // else GrowableBitSet knows how to grow itself safely
     }
     visited.clear(0, visited.length());
   }
