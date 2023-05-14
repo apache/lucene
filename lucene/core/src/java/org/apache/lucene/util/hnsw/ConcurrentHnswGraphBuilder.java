@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.AtomicBitSet;
 import org.apache.lucene.util.GrowableBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
