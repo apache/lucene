@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -39,7 +40,7 @@ final class ByteBufferGuard {
    * this to allow unmapping of bytebuffers with private Java APIs.
    */
   @FunctionalInterface
-  static interface BufferCleaner {
+  interface BufferCleaner {
     void freeBuffer(String resourceDescription, ByteBuffer b) throws IOException;
   }
 
@@ -48,9 +49,6 @@ final class ByteBufferGuard {
 
   /** Not volatile; see comments on visibility below! */
   private boolean invalidated = false;
-
-  /** Used as a store-store barrier; see comments below! */
-  private final AtomicInteger barrier = new AtomicInteger();
 
   /**
    * Creates an instance to be used for a single {@link ByteBufferIndexInput} which must be shared
@@ -65,14 +63,8 @@ final class ByteBufferGuard {
   public void invalidateAndUnmap(ByteBuffer... bufs) throws IOException {
     if (cleaner != null) {
       invalidated = true;
-      // This call should hopefully flush any CPU caches and as a result make
-      // the "invalidated" field update visible to other threads. We specifically
-      // don't make "invalidated" field volatile for performance reasons, hoping the
-      // JVM won't optimize away reads of that field and hardware should ensure
-      // caches are in sync after this call. This isn't entirely "fool-proof"
-      // (see LUCENE-7409 discussion), but it has been shown to work in practice
-      // and we count on this behavior.
-      barrier.lazySet(0);
+      // Makes "invalidated" field visible to other threads.
+      VarHandle.fullFence();
       // we give other threads a bit of time to finish reads on their ByteBuffer...:
       Thread.yield();
       // finally unmap the ByteBuffers:
