@@ -308,41 +308,23 @@ public class ConcurrentHnswGraphBuilder<T> {
       NodeAtLevel entry = hnsw.entry();
       int ep = entry.node;
       int[] eps = ep >= 0 ? new int[] {ep} : new int[0];
-
-      // follow the index from the top down, but link neighbors from the bottom up;
-      // that way concurrent inserts also going top-down don't see incompletely
-      // added nodes on the way down.  If we link top-down, the following could happen:
-      //
-      // Initial graph state:
-      // L0:
-      // 0 -> 1
-      // 1 <- 0
-      // L1:
-      // 1 -> [empty]
-      // At this point we insert nodes 2 and 3 concurrently, denoted T1 and T2 for threads 1 and 2
-      //   T1  T2
-      //       insert 2 to L0 [2 is marked "in progress"]
-      //   insert 3 to L1
-      //   insert 3 to L0
-      //       insert 2 to L0
-      //       2 follows index from 1 -> 3 in L1, then sees 3 with no neighbors on L0
-      // 2 -> 3 is added at L0. It is missing a connection it should have to 1
-      //
-      // Linking bottom-up avoids this problem.
       var gs = graphSearcher.get();
+
+      // for levels > nodeLevel search with topk = 1
+      NeighborQueue candidates = new NeighborQueue(1, false);
       for (int level = entry.level; level > nodeLevel; level--) {
-        NeighborQueue candidates = new NeighborQueue(1, false);
+        candidates.clear();
         gs.searchLevel(
             candidates, value, 1, level, eps, vectors, consistentView, null, Integer.MAX_VALUE);
         eps = new int[] {candidates.pop()};
       }
-      // for levels <= nodeLevel search with topk = beamWidth
-      NeighborQueue[] candidatesOnLevel = new NeighborQueue[1 + Math.min(nodeLevel, entry.level)];
-      for (int level = candidatesOnLevel.length - 1; level >= 0; level--) {
-        // find best candidates at this level with a beam search
-        candidatesOnLevel[level] = new NeighborQueue(beamWidth, false);
+      // for levels <= nodeLevel search with topk = beamWidth, and add connections
+      candidates = new NeighborQueue(beamWidth, false);
+      for (int level = Math.min(nodeLevel, entry.level); level >= 0; level--) {
+        candidates.clear();
+        // find best "natural" candidates at this level with a beam search
         gs.searchLevel(
-            candidatesOnLevel[level],
+            candidates,
             value,
             beamWidth,
             level,
@@ -351,12 +333,12 @@ public class ConcurrentHnswGraphBuilder<T> {
             consistentView,
             null,
             Integer.MAX_VALUE);
-        eps = candidatesOnLevel[level].nodes();
-      }
+        eps = candidates.nodes();
 
-      for (int level = 0; level < candidatesOnLevel.length; level++) {
-        // We don't want the existing nodes to over-prune their neighbors, which can
-        // happen if we group the concurrent candidates and the "natural" candidates together.
+        // Update entry points and neighbors with these candidates.
+        //
+        // Note: We don't want to over-prune the neighbors, which can
+        // happen if we group the concurrent candidates and the natural candidates together.
         //
         // Consider the following graph with "circular" test vectors:
         //
@@ -373,18 +355,16 @@ public class ConcurrentHnswGraphBuilder<T> {
         // 2 -> 3 is added to graph
         // all further nodes will only be added to the 2/3 subgraph; 0/1 are partitioned forever
         //
-        // Considering concurrent inserts separately from "natural" candidates solves this problem;
+        // Considering concurrent inserts separately from natural candidates solves this problem;
         // both 1 and 2 will be added as neighbors to 3, avoiding the partition, and 2 will then
         // pick up the connection to 1 that it's supposed to have as well.
-        addForwardLinks(level, node, candidatesOnLevel[level]);
-        addForwardLinks(level, node, inProgressBefore, progressMarker);
-        // backlinking is where we become visible to natural searches that aren't checking
-        // in-progress,
-        // so this has to be done after everything is is complete on this level
+        addForwardLinks(level, node, candidates); // natural candidates
+        addForwardLinks(level, node, inProgressBefore, progressMarker); // concurrent candidates
+        // Backlinking is the same for both natural and concurrent candidates.
         addBackLinks(level, node);
       }
 
-      // if we're being added in a new level above the entry point, consider concurrent insertions
+      // If we're being added in a new level above the entry point, consider concurrent insertions
       // for inclusion as neighbors at that level. There are no natural neighbors yet.
       for (int level = entry.level + 1; level <= nodeLevel; level++) {
         addForwardLinks(level, node, inProgressBefore, progressMarker);
