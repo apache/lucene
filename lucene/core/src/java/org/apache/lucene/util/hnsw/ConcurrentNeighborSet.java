@@ -18,14 +18,12 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.util.NumericUtils;
+import java.io.UncheckedIOException;
+import java.util.Arrays;
+import java.util.PrimitiveIterator;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * A concurrent set of neighbors
@@ -39,61 +37,60 @@ import org.apache.lucene.util.NumericUtils;
  * out a Big Lock to impose a strict cap.
  */
 public class ConcurrentNeighborSet {
-  private int nodeId;
-  private final ConcurrentSkipListSet<Long> neighbors;
+  private final int nodeId;
+  private final AtomicReference<ConcurrentNeighborArray> neighborsRef;
   private final int maxConnections;
-  private final AtomicInteger size;
 
   public ConcurrentNeighborSet(int nodeId, int maxConnections) {
     this.nodeId = nodeId;
     this.maxConnections = maxConnections;
-    neighbors = new ConcurrentSkipListSet<>(Comparator.<Long>naturalOrder().reversed());
-    size = new AtomicInteger();
+    neighborsRef = new AtomicReference<>(new ConcurrentNeighborArray(maxConnections, true));
   }
 
-  public Iterator<Integer> nodeIterator() {
+  public PrimitiveIterator.OfInt nodeIterator() {
     // don't use a stream here. stream's implementation of iterator buffers
     // very aggressively, which is a big waste for a lot of searches
-    Iterator<Long> it = neighbors.iterator();
-    return new Iterator<>() {
-      public boolean hasNext() {
-        return it.hasNext();
-      }
-
-      public Integer next() {
-        return decodeNodeId(it.next());
-      }
-    };
+   return new NeighborIterator(neighborsRef.get());
   }
 
-  // for debugging
-  List<Integer> neighborsAsList() {
-    ArrayList<Integer> res = new ArrayList<>();
-    for (Long encoded : neighbors) {
-      res.add(decodeNodeId(encoded));
+  public void backlink(Function<Integer, ConcurrentNeighborSet> neighborhoodOf, BiFunction<Integer, Integer, Float> scoreBetween) throws IOException {
+    NeighborArray neighbors = neighborsRef.get();
+    for (int i = 0; i < neighbors.size(); i++) {
+       int nbr = neighbors.node[i];
+       float nbrScore = neighbors.score[i];
+      ConcurrentNeighborSet nbrNbr = neighborhoodOf.apply(nbr);
+      nbrNbr.insert(nodeId, nbrScore, scoreBetween);
     }
-    return res;
+  }
+
+  private static class NeighborIterator implements PrimitiveIterator.OfInt {
+    private final NeighborArray neighbors;
+    private int i;
+
+    private NeighborIterator(NeighborArray neighbors) {
+      this.neighbors = neighbors;
+      i = 0;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return i < neighbors.size();
+    }
+
+    @Override
+    public int nextInt() {
+      return neighbors.node[i++];
+    }
   }
 
   public int size() {
-    return size.get();
+    return neighborsRef.get().size();
   }
 
-  public int rawSize() {
-    return neighbors.size();
+  public int arrayLength() {
+    return neighborsRef.get().node.length;
   }
 
-  public void forEach(ThrowingBiConsumer<Integer, Float> consumer) throws IOException {
-    for (Long encoded : neighbors) {
-      consumer.accept(decodeNodeId(encoded), decodeScore(encoded));
-    }
-  }
-
-  public void forEachDescending(ThrowingBiConsumer<Integer, Float> consumer) throws IOException {
-    for (Long encoded : neighbors.descendingSet()) {
-      consumer.accept(decodeNodeId(encoded), decodeScore(encoded));
-    }
-  }
 
   /**
    * For each candidate (going from best to worst), select it only if it is closer to target than it
@@ -101,44 +98,46 @@ public class ConcurrentNeighborSet {
    * were selected by this method, or were added as a "backlink" to a node inserted concurrently
    * that chose this one as a neighbor.
    */
-  public void insertDiverse(
-      NeighborArray candidates, ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
-      throws IOException {
-    // It is not correct to just use our internal neighbor set to compare diversity against;
-    // this may include backlinks that other nodes added to us concurrently.  Track in a
-    // separate NeighborArray instead.
+  public void insertDiverse(NeighborArray candidates, BiFunction<Integer, Integer, Float> scoreBetween) throws IOException {
     NeighborArray selected = new NeighborArray(candidates.size(), true);
-    for (int i = candidates.size() - 1; neighbors.size() < maxConnections && i >= 0; i--) {
+    for (int i = candidates.size() - 1; i >= 0; i--) {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
       if (isDiverse(cNode, cScore, selected, scoreBetween)) {
         selected.add(cNode, cScore);
-        // raw inserts (invoked by other threads backlinking to us) could happen concurrently,
-        // so don't "cheat" and do a raw put()
-        insert(cNode, cScore, scoreBetween);
       }
     }
+    insertMultiple(selected, scoreBetween);
     // This leaves the paper's keepPrunedConnection option out; we might want to add that
     // as an option in the future.
+  }
+
+  private void insertMultiple(NeighborArray selected, BiFunction<Integer, Integer, Float> scoreBetween) {
+    neighborsRef.getAndUpdate(current -> {
+      ConcurrentNeighborArray next = current.copy();
+        for (int i = 0; i < selected.size(); i++) {
+            int node = selected.node[i];
+            float score = selected.score[i];
+            next.insertSorted(node, score);
+        }
+        enforceMaxConnLimit(next, scoreBetween);
+        return next;
+    });
   }
 
   /**
    * Insert a new neighbor, maintaining our size cap by removing the least diverse neighbor if
    * necessary.
    */
-  public void insert(
-      int neighborId, float score, ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
+  public void insert(int neighborId, float score, BiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
     assert neighborId != nodeId : "can't add self as neighbor at node " + nodeId;
-    // if two nodes are inserted concurrently, and see each other as neighbors,
-    // we will try to add a duplicate entry to the set, so it is not correct to assume
-    // that all calls will result in a new entry being added
-    if (neighbors.add(encode(neighborId, score))) {
-      if (size.incrementAndGet() > maxConnections) {
-        removeLeastDiverse(scoreBetween);
-        size.decrementAndGet();
-      }
-    }
+    neighborsRef.getAndUpdate(current -> {
+      ConcurrentNeighborArray next = current.copy();
+      next.insertSorted(neighborId, score);
+      enforceMaxConnLimit(next, scoreBetween);
+      return next;
+    });
   }
 
   // is the candidate node with the given score closer to the base node than it is to any of the
@@ -147,7 +146,7 @@ public class ConcurrentNeighborSet {
       int node,
       float score,
       NeighborArray others,
-      ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
+      BiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
     for (int i = 0; i < others.size(); i++) {
       int candidateNode = others.node[i];
@@ -158,91 +157,96 @@ public class ConcurrentNeighborSet {
     return true;
   }
 
+  private void enforceMaxConnLimit(NeighborArray neighbors, BiFunction<Integer, Integer, Float> scoreBetween) {
+    while (neighbors.size() > maxConnections) {
+      try {
+        removeLeastDiverse(neighbors, scoreBetween);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e); // called from closures
+      }
+    }
+  }
+
   /**
-   * find the first node e1 starting with the last neighbor (i.e. least similar to the base node),
-   * look at all nodes e2 that are closer to the base node than e1 is. if any e2 is closer to e1
+   * For each node e1 starting with the last neighbor (i.e. least similar to the base node),
+   * look at all nodes e2 that are closer to the base node than e1 is. If any e2 is closer to e1
    * than e1 is to the base node, remove e1.
    */
-  private void removeLeastDiverse(ThrowingBiFunction<Integer, Integer, Float> scoreBetween)
+  private void removeLeastDiverse(NeighborArray neighbors, BiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
-    for (Long e1 : neighbors.descendingSet()) {
-      int e1Id = decodeNodeId(e1);
-      float baseScore = decodeScore(e1);
-
-      Iterator<Long> e2Iterator = iteratorStartingAfter(neighbors, e1);
-      while (e2Iterator.hasNext()) {
-        Long e2 = e2Iterator.next();
-        int e2Id = decodeNodeId(e2);
-        Float e1e2Score = scoreBetween.apply(e1Id, e2Id);
-        if (e1e2Score >= baseScore) {
-          if (neighbors.remove(e1)) {
-            return;
-          }
-          // else another thread already removed it, keep looking
+    for (int i = neighbors.size() - 1; i >= 1; i--) {
+      int e1Id = neighbors.node[i];
+      float baseScore = neighbors.score[i];
+      for (int j = i - 1; j >= 0; j--) {
+        int n2Id = neighbors.node[j];
+        float n1n2Score = scoreBetween.apply(e1Id, n2Id);
+        if (n1n2Score > baseScore) {
+          neighbors.removeIndex(i);
+          return;
         }
       }
     }
     // couldn't find any "non-diverse" neighbors, so remove the one farthest from the base node
-    neighbors.remove(neighbors.last());
-  }
-
-  /**
-   * Returns an iterator over the entries in the set, starting at the entry *after* the given key.
-   * So iteratorStartingAfter(map, 2) invoked on a set with keys [1, 2, 3, 4] would return an
-   * iterator over the entries [3, 4].
-   */
-  private static <K> Iterator<K> iteratorStartingAfter(NavigableSet<K> set, K key) {
-    // this isn't ideal, since the iteration will be worst case O(N log N), but since the worst
-    // scores will usually be the first ones we iterate through, the average case is much better
-    return new Iterator<>() {
-      private K nextItem = set.lower(key);
-
-      @Override
-      public boolean hasNext() {
-        return nextItem != null;
-      }
-
-      @Override
-      public K next() {
-        K current = nextItem;
-        nextItem = set.lower(nextItem);
-        return current;
-      }
-    };
+    neighbors.removeIndex(neighbors.size() - 1);
   }
 
   /** This is O(n) because we have to decode node ids! Only for testing. */
   boolean contains(int i) {
-    for (Long e : neighbors) {
-      if (decodeNodeId(e) == i) {
+    var it = this.nodeIterator();
+    while (it.hasNext()) {
+      if (it.nextInt() == i) {
         return true;
       }
     }
     return false;
   }
 
-  // as found in NeighborQueue
-  static long encode(int node, float score) {
-    return (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node);
-  }
+  private static class ConcurrentNeighborArray extends NeighborArray {
+    public ConcurrentNeighborArray(int maxSize, boolean descOrder) {
+      this(maxSize, descOrder, true);
+    }
 
-  static float decodeScore(long heapValue) {
-    return NumericUtils.sortableIntToFloat((int) (heapValue >> 32));
-  }
+    private ConcurrentNeighborArray(int maxSize, boolean descOrder, boolean fillNodes) {
+      super(maxSize, descOrder);
+      if (fillNodes) {
+        Arrays.fill(node, -1);
+      }
+    }
 
-  static int decodeNodeId(long heapValue) {
-    return (int) ~(heapValue);
-  }
 
-  /** A BiFunction that can throw IOException. */
-  @FunctionalInterface
-  public interface ThrowingBiFunction<T, U, R> {
-    R apply(T t, U u) throws IOException;
-  }
+    @Override
+    protected void growArrays() {
+      int oldLength = node.length;
+      super.growArrays();
+      Arrays.fill(node, oldLength, node.length, -1);
+    }
 
-  /** A BiConsumer that can throw IOException. */
-  @FunctionalInterface
-  public interface ThrowingBiConsumer<T, U> {
-    void accept(T t, U u) throws IOException;
+    public void insertSorted(int newNode, float newScore) {
+      if (size == node.length) {
+        growArrays();
+      }
+      int insertionPoint =
+              scoresDescOrder
+                      ? descSortFindRightMostInsertionPoint(newScore)
+                      : ascSortFindRightMostInsertionPoint(newScore);
+      // two nodes may attempt to add each other in the Concurrent classes,
+      // so we need to check if the node is already present
+      if (node[insertionPoint] != newNode) {
+        System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
+        System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
+        node[insertionPoint] = newNode;
+        score[insertionPoint] = newScore;
+        ++size;
+      }
+    }
+
+    public ConcurrentNeighborArray copy() {
+      ConcurrentNeighborArray copy = new ConcurrentNeighborArray(node.length, scoresDescOrder, false);
+      copy.size = size;
+      System.arraycopy(node, 0, copy.node, 0, size);
+      Arrays.fill(copy.node, size, node.length, -1);
+      System.arraycopy(score, 0, copy.score, 0, size);
+      return copy;
+    }
   }
 }

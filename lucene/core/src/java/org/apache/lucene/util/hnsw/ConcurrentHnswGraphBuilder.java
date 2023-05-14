@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static java.lang.Math.log;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -400,17 +401,17 @@ public class ConcurrentHnswGraphBuilder<T> {
 
   private void addBackLinks(int level, int newNode) throws IOException {
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
-    neighbors.forEach(
-        (nbr, nbrScore) -> {
-          ConcurrentNeighborSet nbrNbr = hnsw.getNeighbors(level, nbr);
-          nbrNbr.insert(newNode, nbrScore, this::scoreBetween);
-        });
+    neighbors.backlink(i -> hnsw.getNeighbors(level, i), this::scoreBetween);
   }
 
-  private float scoreBetween(int i, int j) throws IOException {
-    final T v1 = vectorsCopy.vectorValue(i);
-    final T v2 = vectorsCopy.vectorValue(j);
-    return scoreBetween(v1, v2);
+  private float scoreBetween(int i, int j) {
+    try {
+      T v1 = vectorsCopy.vectorValue(i);
+      T v2 = vectorsCopy.vectorValue(j);
+      return scoreBetween(v1, v2);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e); // called from closures
+    }
   }
 
   protected float scoreBetween(T v1, T v2) {

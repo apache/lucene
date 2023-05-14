@@ -1033,7 +1033,6 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
     ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
     for (int i = 0; i < vectors.size(); i++) {
       assertTrue(hnsw.getNeighbors(0, i).size() <= 2); // Level 0 gets 2x neighbors
-      assertEquals(hnsw.getNeighbors(0, i).rawSize(), hnsw.getNeighbors(0, i).size());
     }
   }
 

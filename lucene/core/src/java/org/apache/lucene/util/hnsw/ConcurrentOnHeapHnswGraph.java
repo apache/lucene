@@ -20,8 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.Map;
+import java.util.PrimitiveIterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -155,24 +155,13 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     // local vars here just to make it easier to keep lines short enough to read
     long REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
-    long CORES = Runtime.getRuntime().availableProcessors();
 
-    // skip list used by Neighbor Set
-    long cskmNodesBytes = 3L * REF_BYTES; // K, V, index
-    long cskmIndexBytes = 3L * REF_BYTES; // node, down, right
-    long cskmBytes =
-        REF_BYTES // head
-            + AH_BYTES
-            + CORES * Long.BYTES // longadder cells
-            + 4L * REF_BYTES; // internal view refs
     long neighborSetBytes =
-        cskmBytes
-            + REF_BYTES // skiplist -> map reference
+            + REF_BYTES // atomicreference
             + Integer.BYTES
             + Integer.BYTES
-            + REF_BYTES
-            + Integer.BYTES; // CNS fields
-
+            + REF_BYTES // NeighborArray
+            + AH_BYTES * 2 + REF_BYTES * 2 + Integer.BYTES + 1; // NeighborArray internals
     long total = 0;
 
     // the main graph structure
@@ -184,7 +173,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       // size of the CNS of each node
       long neighborSize = 0;
       for (ConcurrentNeighborSet cns : graphLevels.get(l).values()) {
-        neighborSize += neighborSetBytes + cns.size() * (cskmNodesBytes + cskmIndexBytes);
+        neighborSize += neighborSetBytes + (long) cns.arrayLength() * (Integer.BYTES + Float.BYTES);
       }
 
       total += chmSize + neighborSize;
@@ -201,8 +190,8 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
     long CORES = Runtime.getRuntime().availableProcessors();
 
-    // a CHM Node contains an int hash and a Node reference, as well as K and V references.
-    long chmNodeBytes = 3L * REF_BYTES + Integer.BYTES;
+    long chmNodeBytes = REF_BYTES // node itself in Node[]
+    + 3L * REF_BYTES + Integer.BYTES; // node internals
     float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
     // CHM has a striped counter Cell implementation, we expect at most one per core
     long chmCounters = AH_BYTES + CORES * (REF_BYTES + Long.BYTES);
@@ -266,7 +255,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     // The only really foolproof solution is to implement snapshot isolation as
     // we have done here.
     private final int timestamp;
-    private Iterator<Integer> remainingNeighbors;
+    private PrimitiveIterator.OfInt remainingNeighbors;
 
     public ConcurrentHnswGraphView() {
       this.timestamp = logicalClock.get();
@@ -300,7 +289,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     @Override
     public int nextNeighbor() {
       while (remainingNeighbors.hasNext()) {
-        int next = remainingNeighbors.next();
+        int next = remainingNeighbors.nextInt();
         if (completedTime.getOrDefault(next, Integer.MAX_VALUE) < timestamp) {
           return next;
         }
