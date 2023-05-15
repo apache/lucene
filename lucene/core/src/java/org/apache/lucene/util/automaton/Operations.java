@@ -1317,6 +1317,14 @@ public final class Operations {
    * non-recursive, so it will not exhaust the java stack for automaton matching long strings. If
    * there are dead states in the automaton, they will be removed from the returned array.
    *
+   * <p>Note: This method uses a deque to iterative the states, which could potentially consume a
+   * lot of heap space for some automatons. Specifically, automatons with a deep level of states
+   * (i.e., a large number of transitions from the initial state to the final state) may
+   * particularly contribute to high memory usage. The memory consumption of this method can be
+   * considered as O(N), where N is the depth of the automaton (the maximum number of transitions
+   * from the initial state to any state). However, as this method detects cycles, it will never
+   * attempt to use infinite RAM.
+   *
    * @param a the Automaton to be sorted
    * @return the topologically sorted array of state ids
    */
