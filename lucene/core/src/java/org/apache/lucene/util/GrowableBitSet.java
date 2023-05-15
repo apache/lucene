@@ -78,7 +78,10 @@ public class GrowableBitSet extends BitSet {
 
   @Override
   public void clear(int startIndex, int endIndex) {
-    if (startIndex >= endIndex) {
+    if (startIndex == 0 && endIndex == bitSet.length()) {
+      bitSet.clear();
+      return;
+    } else if (startIndex >= endIndex) {
       return;
     }
     bitSet.clear(startIndex, endIndex);
