@@ -30,6 +30,34 @@ import java.util.Collections;
  * Extends {@link IndexWriter} to build the term indexes for each DPU after each commit.
  * The term indexes for DPUs are split by the Lucene internal docId, so that each DPU
  * receives the term index for an exclusive range of docIds, and for each index segment.
+ *
+ * The PIM index for one DPU consists in four parts:
+ *
+ * 1) A field table (BytesRefToDataBlockTreeMap object written to disk)
+ * The field table associates to each field the address where to find
+ * the field's term block table
+ *
+ * 2) A list of term block table for each field (BytesRefToDataBlockTreeMap object
+ * written to disk)
+ * The term block table is used to find the block where a particular term should be
+ * searched. For instance, if we have the following sorted term set:
+ *
+ * Apache, Lucene, Search, Table, Term, Tree
+ *
+ * And this set is split into two blocks of size 3, then the term block table has
+ * 2 elements, one for term "Apache" and one for term "Table".
+ * A search for the terms "Lucene" or "Search" will return a pointer to "Apache",
+ * from where a linear scan can be done to find the right term in the block.
+ *
+ * 3) A block list
+ * Each block is a list of terms of a small and configurable size, which is meant
+ * to be scanned linearly after finding the block's start term in the block table.
+ * Each term in a block is associated to an address pointing to the term's postings list.
+ *
+ * 4) The postings lists
+ * The postings list of a term contains the list of docIDs and positions where
+ * the term appears. The docIDs and positions are delta-encoded.
+ *
  */
 public class PimIndexWriter extends IndexWriter {
 
@@ -71,7 +99,6 @@ public class PimIndexWriter extends IndexWriter {
           for (FieldInfo fieldInfo : reader.getFieldInfos()) {
             // For each field in the term index.
             // There will be a different term index sub-part per segment, per field, and per DPU.
-            //dpuTermIndexes.startField(fieldInfo);
             reader.getLiveDocs();//TODO: remove as useless. We are going to let Core Lucene handle the live docs.
             Terms terms = reader.terms(fieldInfo.name);
             if (terms != null) {
