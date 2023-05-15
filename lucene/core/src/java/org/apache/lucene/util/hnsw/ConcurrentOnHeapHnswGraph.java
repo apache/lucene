@@ -157,11 +157,14 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 
     long neighborSetBytes =
-            + REF_BYTES // atomicreference
+        +REF_BYTES // atomicreference
             + Integer.BYTES
             + Integer.BYTES
             + REF_BYTES // NeighborArray
-            + AH_BYTES * 2 + REF_BYTES * 2 + Integer.BYTES + 1; // NeighborArray internals
+            + AH_BYTES * 2
+            + REF_BYTES * 2
+            + Integer.BYTES
+            + 1; // NeighborArray internals
     long total = 0;
 
     // the main graph structure
@@ -190,8 +193,10 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
     long CORES = Runtime.getRuntime().availableProcessors();
 
-    long chmNodeBytes = REF_BYTES // node itself in Node[]
-    + 3L * REF_BYTES + Integer.BYTES; // node internals
+    long chmNodeBytes =
+        REF_BYTES // node itself in Node[]
+            + 3L * REF_BYTES
+            + Integer.BYTES; // node internals
     float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
     // CHM has a striped counter Cell implementation, we expect at most one per core
     long chmCounters = AH_BYTES + CORES * (REF_BYTES + Long.BYTES);

@@ -66,9 +66,9 @@ public class NeighborArray {
       growArrays();
     }
     int insertionPoint =
-            scoresDescOrder
-                    ? descSortFindRightMostInsertionPoint(newScore)
-                    : ascSortFindRightMostInsertionPoint(newScore);
+        scoresDescOrder
+            ? descSortFindRightMostInsertionPoint(newScore)
+            : ascSortFindRightMostInsertionPoint(newScore);
     System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
     System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
     node[insertionPoint] = newNode;

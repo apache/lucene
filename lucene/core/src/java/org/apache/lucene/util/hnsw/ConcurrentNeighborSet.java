@@ -50,14 +50,17 @@ public class ConcurrentNeighborSet {
   public PrimitiveIterator.OfInt nodeIterator() {
     // don't use a stream here. stream's implementation of iterator buffers
     // very aggressively, which is a big waste for a lot of searches
-   return new NeighborIterator(neighborsRef.get());
+    return new NeighborIterator(neighborsRef.get());
   }
 
-  public void backlink(Function<Integer, ConcurrentNeighborSet> neighborhoodOf, BiFunction<Integer, Integer, Float> scoreBetween) throws IOException {
+  public void backlink(
+      Function<Integer, ConcurrentNeighborSet> neighborhoodOf,
+      BiFunction<Integer, Integer, Float> scoreBetween)
+      throws IOException {
     NeighborArray neighbors = neighborsRef.get();
     for (int i = 0; i < neighbors.size(); i++) {
-       int nbr = neighbors.node[i];
-       float nbrScore = neighbors.score[i];
+      int nbr = neighbors.node[i];
+      float nbrScore = neighbors.score[i];
       ConcurrentNeighborSet nbrNbr = neighborhoodOf.apply(nbr);
       nbrNbr.insert(nodeId, nbrScore, scoreBetween);
     }
@@ -91,14 +94,15 @@ public class ConcurrentNeighborSet {
     return neighborsRef.get().node.length;
   }
 
-
   /**
    * For each candidate (going from best to worst), select it only if it is closer to target than it
    * is to any of the already-selected candidates. This is maintained whether those other neighbors
    * were selected by this method, or were added as a "backlink" to a node inserted concurrently
    * that chose this one as a neighbor.
    */
-  public void insertDiverse(NeighborArray candidates, BiFunction<Integer, Integer, Float> scoreBetween) throws IOException {
+  public void insertDiverse(
+      NeighborArray candidates, BiFunction<Integer, Integer, Float> scoreBetween)
+      throws IOException {
     NeighborArray selected = new NeighborArray(candidates.size(), true);
     for (int i = candidates.size() - 1; i >= 0; i--) {
       int cNode = candidates.node[i];
@@ -112,17 +116,19 @@ public class ConcurrentNeighborSet {
     // as an option in the future.
   }
 
-  private void insertMultiple(NeighborArray selected, BiFunction<Integer, Integer, Float> scoreBetween) {
-    neighborsRef.getAndUpdate(current -> {
-      ConcurrentNeighborArray next = current.copy();
-        for (int i = 0; i < selected.size(); i++) {
+  private void insertMultiple(
+      NeighborArray selected, BiFunction<Integer, Integer, Float> scoreBetween) {
+    neighborsRef.getAndUpdate(
+        current -> {
+          ConcurrentNeighborArray next = current.copy();
+          for (int i = 0; i < selected.size(); i++) {
             int node = selected.node[i];
             float score = selected.score[i];
             next.insertSorted(node, score);
-        }
-        enforceMaxConnLimit(next, scoreBetween);
-        return next;
-    });
+          }
+          enforceMaxConnLimit(next, scoreBetween);
+          return next;
+        });
   }
 
   /**
@@ -132,21 +138,19 @@ public class ConcurrentNeighborSet {
   public void insert(int neighborId, float score, BiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
     assert neighborId != nodeId : "can't add self as neighbor at node " + nodeId;
-    neighborsRef.getAndUpdate(current -> {
-      ConcurrentNeighborArray next = current.copy();
-      next.insertSorted(neighborId, score);
-      enforceMaxConnLimit(next, scoreBetween);
-      return next;
-    });
+    neighborsRef.getAndUpdate(
+        current -> {
+          ConcurrentNeighborArray next = current.copy();
+          next.insertSorted(neighborId, score);
+          enforceMaxConnLimit(next, scoreBetween);
+          return next;
+        });
   }
 
   // is the candidate node with the given score closer to the base node than it is to any of the
   // existing neighbors
   private boolean isDiverse(
-      int node,
-      float score,
-      NeighborArray others,
-      BiFunction<Integer, Integer, Float> scoreBetween)
+      int node, float score, NeighborArray others, BiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
     for (int i = 0; i < others.size(); i++) {
       int candidateNode = others.node[i];
@@ -157,7 +161,8 @@ public class ConcurrentNeighborSet {
     return true;
   }
 
-  private void enforceMaxConnLimit(NeighborArray neighbors, BiFunction<Integer, Integer, Float> scoreBetween) {
+  private void enforceMaxConnLimit(
+      NeighborArray neighbors, BiFunction<Integer, Integer, Float> scoreBetween) {
     while (neighbors.size() > maxConnections) {
       try {
         removeLeastDiverse(neighbors, scoreBetween);
@@ -168,11 +173,12 @@ public class ConcurrentNeighborSet {
   }
 
   /**
-   * For each node e1 starting with the last neighbor (i.e. least similar to the base node),
-   * look at all nodes e2 that are closer to the base node than e1 is. If any e2 is closer to e1
-   * than e1 is to the base node, remove e1.
+   * For each node e1 starting with the last neighbor (i.e. least similar to the base node), look at
+   * all nodes e2 that are closer to the base node than e1 is. If any e2 is closer to e1 than e1 is
+   * to the base node, remove e1.
    */
-  private void removeLeastDiverse(NeighborArray neighbors, BiFunction<Integer, Integer, Float> scoreBetween)
+  private void removeLeastDiverse(
+      NeighborArray neighbors, BiFunction<Integer, Integer, Float> scoreBetween)
       throws IOException {
     for (int i = neighbors.size() - 1; i >= 1; i--) {
       int e1Id = neighbors.node[i];
@@ -213,7 +219,6 @@ public class ConcurrentNeighborSet {
       }
     }
 
-
     @Override
     protected void growArrays() {
       int oldLength = node.length;
@@ -221,14 +226,15 @@ public class ConcurrentNeighborSet {
       Arrays.fill(node, oldLength, node.length, -1);
     }
 
+    @Override
     public void insertSorted(int newNode, float newScore) {
       if (size == node.length) {
         growArrays();
       }
       int insertionPoint =
-              scoresDescOrder
-                      ? descSortFindRightMostInsertionPoint(newScore)
-                      : ascSortFindRightMostInsertionPoint(newScore);
+          scoresDescOrder
+              ? descSortFindRightMostInsertionPoint(newScore)
+              : ascSortFindRightMostInsertionPoint(newScore);
       // two nodes may attempt to add each other in the Concurrent classes,
       // so we need to check if the node is already present
       if (node[insertionPoint] != newNode) {
@@ -241,7 +247,8 @@ public class ConcurrentNeighborSet {
     }
 
     public ConcurrentNeighborArray copy() {
-      ConcurrentNeighborArray copy = new ConcurrentNeighborArray(node.length, scoresDescOrder, false);
+      ConcurrentNeighborArray copy =
+          new ConcurrentNeighborArray(node.length, scoresDescOrder, false);
       copy.size = size;
       System.arraycopy(node, 0, copy.node, 0, size);
       Arrays.fill(copy.node, size, node.length, -1);

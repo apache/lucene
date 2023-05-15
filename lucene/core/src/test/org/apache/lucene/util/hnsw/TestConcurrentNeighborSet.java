@@ -74,11 +74,11 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
           return similarityFunction.compare(vectors.vectorValue(a), vectors.vectorValue(b));
         };
     IntStream.range(0, 10)
-            .filter(i -> i != 7)
-            .forEach(
-                    i -> {
-                      candidates.insertSorted(i, scoreBetween.apply(7, i));
-                    });
+        .filter(i -> i != 7)
+        .forEach(
+            i -> {
+              candidates.insertSorted(i, scoreBetween.apply(7, i));
+            });
     assert candidates.size() == 9;
 
     var neighbors = new ConcurrentNeighborSet(0, 3);
