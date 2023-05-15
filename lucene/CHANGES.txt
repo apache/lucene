@@ -27,6 +27,8 @@ Optimizations
 
 * GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
 
+* GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
+
 Bug Fixes
 ---------------------
 (No changes)
