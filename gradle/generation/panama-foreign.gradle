@@ -20,7 +20,7 @@ def resources = scriptResources(buildscript)
 configure(project(":lucene:core")) {
   ext {
     apijars = file('src/generated/jdk');
-    panamaJavaVersions = [ 19, 20 ]
+    panamaJavaVersions = [ 19, 20, 21 ]
   }
   
   configurations {
