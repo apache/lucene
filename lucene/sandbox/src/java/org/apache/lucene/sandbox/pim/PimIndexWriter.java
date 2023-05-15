@@ -190,7 +190,7 @@ public class PimIndexWriter extends IndexWriter {
     private class DpuTermIndex {
 
       final int dpuIndex;
-      final ArrayList<PimTreeBasedTermTable.Block> fieldList;
+      final ArrayList<BytesRefToDataBlockTreeMap.Block> fieldList;
       boolean fieldWritten;
       boolean termWritten;
       int doc;
@@ -201,7 +201,7 @@ public class PimIndexWriter extends IndexWriter {
        */
       int blockCapacity;
       int currBlockSz;
-      ArrayList<PimTreeBasedTermTable.Block> blockList;
+      ArrayList<BytesRefToDataBlockTreeMap.Block> blockList;
       IndexOutput fieldTableOutput;
       IndexOutput blocksTableOutput;
       IndexOutput blocksOutput;
@@ -256,7 +256,7 @@ public class PimIndexWriter extends IndexWriter {
               if(blockList.size() > 0) {
                 blockList.get(blockList.size() - 1).byteSize += blocksOutput.getFilePointer();
               }
-              blockList.add(new PimTreeBasedTermTable.Block(BytesRef.deepCopyOf(term),
+              blockList.add(new BytesRefToDataBlockTreeMap.Block(BytesRef.deepCopyOf(term),
                       blocksOutput.getFilePointer(), -blocksOutput.getFilePointer()));
               currBlockSz = 0;
             }
@@ -280,7 +280,7 @@ public class PimIndexWriter extends IndexWriter {
           if(blockList.size() == 0) {
             // this is the first term of the first block
             // save the address and term
-            blockList.add(new PimTreeBasedTermTable.Block(BytesRef.deepCopyOf(term),
+            blockList.add(new BytesRefToDataBlockTreeMap.Block(BytesRef.deepCopyOf(term),
                     blocksOutput.getFilePointer(), -blocksOutput.getFilePointer()));
           }
           // Do not write the first term
@@ -302,7 +302,7 @@ public class PimIndexWriter extends IndexWriter {
             fieldList.get(fieldList.size() - 1).byteSize += blocksTableOutput.getFilePointer();
           }
           System.out.println("Add field:" + fieldInfo.name + " to field table addr:" +  blocksTableOutput.getFilePointer());
-          fieldList.add(new PimTreeBasedTermTable.Block(new BytesRef(fieldInfo.getName()),
+          fieldList.add(new BytesRefToDataBlockTreeMap.Block(new BytesRef(fieldInfo.getName()),
                   blocksTableOutput.getFilePointer(), -blocksTableOutput.getFilePointer()));
           fieldWritten = true;
         }
@@ -358,12 +358,8 @@ public class PimIndexWriter extends IndexWriter {
 
         blockList.get(blockList.size() - 1).byteSize += blocksOutput.getFilePointer();
 
-        PimTreeBasedTermTable table = new PimTreeBasedTermTable(blockList);
+        BytesRefToDataBlockTreeMap table = new BytesRefToDataBlockTreeMap(blockList);
         table.write(blocksTableOutput);
-
-        // minimal TESTING of search in block table
-        // TODO remove
-        blockList.forEach((block) -> { assert table.SearchForBlock(block.term).term == block.term; });
 
         // reset internal parameters
         currBlockSz = 0;
@@ -377,11 +373,11 @@ public class PimIndexWriter extends IndexWriter {
 
         fieldList.get(fieldList.size() - 1).byteSize += blocksTableOutput.getFilePointer();
 
-        // NOTE: the fields are not read in sorted order in Lucene index (why ?)
+        // NOTE: the fields are not read in sorted order in Lucene index
         // sorting them here, otherwise the binary search in block table cannot work
-        Collections.sort(fieldList, (b1, b2) -> b1.term.compareTo(b2.term));
+        Collections.sort(fieldList, (b1, b2) -> b1.bytesRef.compareTo(b2.bytesRef));
 
-        PimTreeBasedTermTable table = new PimTreeBasedTermTable(fieldList);
+        BytesRefToDataBlockTreeMap table = new BytesRefToDataBlockTreeMap(fieldList);
         table.write(fieldTableOutput);
       }
 

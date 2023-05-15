@@ -104,8 +104,8 @@ public class PimIndexSearcher implements Closeable  {
         IndexInput blocksInput;
         IndexInput postingsInput;
 
-        PimTreeBasedTermTable fieldTableTree;
-        PimTreeBasedTermTable blockTableTree;
+        BytesRefToDataBlockTreeMap fieldTableTree;
+        BytesRefToDataBlockTreeMap blockTableTree;
         int startDoc;
 
         DPUIndexSearcher(Directory dir, Directory pimDir, int dpuId) {
@@ -119,7 +119,7 @@ public class PimIndexSearcher implements Closeable  {
             try {
                 openFilesInput(dir, pimDir, leafIdx);
                 // create field table
-                this.fieldTableTree = PimTreeBasedTermTable.read(fieldTableInput);
+                this.fieldTableTree = BytesRefToDataBlockTreeMap.read(fieldTableInput);
             } catch (EOFException e) {
                 // it may be that the file is empty if the DPU was assigned no docs
                 // in this case this searcher will always return null for searchTerm/searchPhrase
@@ -164,7 +164,7 @@ public class PimIndexSearcher implements Closeable  {
         ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
 
             // search for the right block where to find the term
-            PimTreeBasedTermTable.Block termPostings = getTermPostings(field, term);
+            BytesRefToDataBlockTreeMap.Block termPostings = getTermPostings(field, term);
 
             if(termPostings == null)
                 return null;
@@ -190,7 +190,7 @@ public class PimIndexSearcher implements Closeable  {
         ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
 
             // lookup the term blocks where to find the phrase terms (in block table)
-            PimTreeBasedTermTable.Block[] termPostingBlocks = new PimTreeBasedTermTable.Block[query.getTerms().length];
+            BytesRefToDataBlockTreeMap.Block[] termPostingBlocks = new BytesRefToDataBlockTreeMap.Block[query.getTerms().length];
             IndexInput[] termPostings =  new IndexInput[query.getTerms().length];
             BytesRef field = new BytesRef(query.getField());
             for(int i = 0; i < termPostingBlocks.length; ++i) {
@@ -316,14 +316,14 @@ public class PimIndexSearcher implements Closeable  {
 
         // method to find the address of where to read the postings of a given term in a given field
         // first lookup the field in the field table, then the term in the term block table
-        private PimTreeBasedTermTable.Block getTermPostings(BytesRef field, BytesRef term) {
+        private BytesRefToDataBlockTreeMap.Block getTermPostings(BytesRef field, BytesRef term) {
 
             // case of empty index for this DPU
             if(this.fieldTableTree == null)
                 return null;
 
             // first search for the field in the field table
-            PimTreeBasedTermTable.Block fieldBlock = fieldTableTree.SearchForBlock(field);
+            BytesRefToDataBlockTreeMap.Block fieldBlock = fieldTableTree.SearchForBlock(field);
 
             if(fieldBlock == null)
                 return null;
@@ -332,7 +332,7 @@ public class PimIndexSearcher implements Closeable  {
             blockTableTree = null;
             try {
                 blockTableInput.seek(fieldBlock.address);
-                blockTableTree = PimTreeBasedTermTable.read(blockTableInput);
+                blockTableTree = BytesRefToDataBlockTreeMap.read(blockTableInput);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -341,7 +341,7 @@ public class PimIndexSearcher implements Closeable  {
                 return null;
 
             // search for the right block where to find the term
-            PimTreeBasedTermTable.Block termBlock = blockTableTree.SearchForBlock(term);
+            BytesRefToDataBlockTreeMap.Block termBlock = blockTableTree.SearchForBlock(term);
 
             if(termBlock == null)
                 return null;
@@ -354,7 +354,7 @@ public class PimIndexSearcher implements Closeable  {
                 blocksInput.seek(termBlock.address);
                 //special case where the first term of the block
                 //is the one searched
-                if(term.compareTo(termBlock.term) == 0) {
+                if(term.compareTo(termBlock.bytesRef) == 0) {
                     // the posting address is the first VLong
                     postingAddress = blocksInput.readVLong();
                     postingByteSize = blocksInput.readVLong();
@@ -393,7 +393,7 @@ public class PimIndexSearcher implements Closeable  {
             if(postingAddress < 0)
                 return null;
 
-            return new PimTreeBasedTermTable.Block(term, postingAddress, postingByteSize);
+            return new BytesRefToDataBlockTreeMap.Block(term, postingAddress, postingByteSize);
         }
 
         /**
