@@ -230,11 +230,11 @@ public class TestOperations extends LuceneTestCase {
     Automaton a = new Automaton();
     List<Integer> lastLevelStates = new ArrayList<>();
     int initialState = a.createState();
-    int maxLevel = random().nextInt(4, 10);
+    int maxLevel = TestUtil.nextInt(random(), 4, 9);
     lastLevelStates.add(initialState);
 
     for (int level = 1; level < maxLevel; level++) {
-      int numStates = random().nextInt(3, 10);
+      int numStates = TestUtil.nextInt(random(), 3, 9);
       List<Integer> nextLevelStates = new ArrayList<>();
 
       for (int i = 0; i < numStates; i++) {
