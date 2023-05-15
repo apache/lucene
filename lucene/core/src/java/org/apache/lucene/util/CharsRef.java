@@ -98,8 +98,8 @@ public final class CharsRef implements Comparable<CharsRef>, CharSequence, Clone
     if (other == null) {
       return false;
     }
-    if (other instanceof CharsRef) {
-      return this.charsEquals((CharsRef) other);
+    if (other instanceof CharsRef charsRef) {
+      return this.charsEquals(charsRef);
     }
     return false;
   }

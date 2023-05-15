@@ -136,10 +136,10 @@ public class Lucene90PointsWriter extends PointsWriter {
             maxMBSortInHeap,
             values.size())) {
 
-      if (values instanceof MutablePointTree) {
+      if (values instanceof MutablePointTree mutablePointTree) {
         Runnable finalizer =
             writer.writeField(
-                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
+                metaOut, indexOut, dataOut, fieldInfo.name, mutablePointTree);
         if (finalizer != null) {
           metaOut.writeInt(fieldInfo.number);
           finalizer.run();
@@ -182,7 +182,7 @@ public class Lucene90PointsWriter extends PointsWriter {
      * a bulk merge of the points.
      */
     for (PointsReader reader : mergeState.pointsReaders) {
-      if (reader instanceof Lucene90PointsReader == false) {
+      if (!(reader instanceof Lucene90PointsReader)) {
         // We can only bulk merge when all to-be-merged segments use our format:
         super.merge(mergeState);
         return;

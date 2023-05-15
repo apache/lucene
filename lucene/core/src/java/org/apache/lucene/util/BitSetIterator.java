@@ -27,8 +27,8 @@ public class BitSetIterator extends DocIdSetIterator {
 
   private static <T extends BitSet> T getBitSet(
       DocIdSetIterator iterator, Class<? extends T> clazz) {
-    if (iterator instanceof BitSetIterator) {
-      BitSet bits = ((BitSetIterator) iterator).bits;
+    if (iterator instanceof BitSetIterator bitSetIterator) {
+      BitSet bits = bitSetIterator.bits;
       assert bits != null;
       if (clazz.isInstance(bits)) {
         return clazz.cast(bits);

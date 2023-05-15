@@ -341,8 +341,8 @@ public final class MultiTermsEnum extends BaseTermsEnum {
     MultiPostingsEnum docsEnum;
 
     // Can only reuse if incoming enum is also a MultiDocsEnum
-    if (reuse != null && reuse instanceof MultiPostingsEnum) {
-      docsEnum = (MultiPostingsEnum) reuse;
+    if (reuse != null && reuse instanceof MultiPostingsEnum reuseDocsEnum) {
+      docsEnum = reuseDocsEnum;
       // ... and was previously created w/ this MultiTermsEnum:
       if (!docsEnum.canReuse(this)) {
         docsEnum = new MultiPostingsEnum(this, subs.length);

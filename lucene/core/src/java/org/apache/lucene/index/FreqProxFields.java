@@ -240,8 +240,8 @@ class FreqProxFields extends Fields {
           throw new IllegalArgumentException("did not index offsets");
         }
 
-        if (reuse instanceof FreqProxPostingsEnum) {
-          posEnum = (FreqProxPostingsEnum) reuse;
+        if (reuse instanceof FreqProxPostingsEnum reusePosEnum) {
+          posEnum = reusePosEnum;
           if (posEnum.postingsArray != postingsArray) {
             posEnum = new FreqProxPostingsEnum(terms, postingsArray);
           }
@@ -260,8 +260,8 @@ class FreqProxFields extends Fields {
         throw new IllegalArgumentException("did not index freq");
       }
 
-      if (reuse instanceof FreqProxDocsEnum) {
-        docsEnum = (FreqProxDocsEnum) reuse;
+      if (reuse instanceof FreqProxDocsEnum reuseDocsEnum) {
+        docsEnum = reuseDocsEnum;
         if (docsEnum.postingsArray != postingsArray) {
           docsEnum = new FreqProxDocsEnum(terms, postingsArray);
         }

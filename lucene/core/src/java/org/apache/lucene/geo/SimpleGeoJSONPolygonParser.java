@@ -85,11 +85,11 @@ class SimpleGeoJSONPolygonParser {
       List<Polygon> polygons = new ArrayList<>();
       for (int i = 0; i < coordinates.size(); i++) {
         Object o = coordinates.get(i);
-        if (o instanceof List == false) {
+        if (!(o instanceof List<?> list)) {
           throw newParseException(
               "elements of coordinates array should be an array, but got: " + o.getClass());
         }
-        polygons.add(parsePolygon((List<Object>) o));
+        polygons.add(parsePolygon(list));
       }
 
       return polygons.toArray(new Polygon[polygons.size()]);
@@ -172,11 +172,10 @@ class SimpleGeoJSONPolygonParser {
       }
 
       if (path.equals("crs.properties") && key.equals("name")) {
-        if (o instanceof String == false) {
+        if (!(o instanceof final String crs)) {
           upto = uptoStart;
           throw newParseException("crs.properties.name should be a string, but saw: " + o);
         }
-        String crs = (String) o;
         if (crs.startsWith("urn:ogc:def:crs:OGC") == false || crs.endsWith(":CRS84") == false) {
           upto = uptoStart;
           throw newParseException("crs must be CRS84 from OGC, but saw: " + o);
@@ -184,11 +183,10 @@ class SimpleGeoJSONPolygonParser {
       }
 
       if (key.equals("type") && path.startsWith("crs") == false) {
-        if (o instanceof String == false) {
+        if (!(o instanceof final String type)) {
           upto = uptoStart;
           throw newParseException("type should be a string, but got: " + o);
         }
-        String type = (String) o;
         if (type.equals("Polygon") && isValidGeometryPath(path)) {
           polyType = "Polygon";
         } else if (type.equals("MultiPolygon") && isValidGeometryPath(path)) {
@@ -203,7 +201,7 @@ class SimpleGeoJSONPolygonParser {
                   + type);
         }
       } else if (key.equals("coordinates") && isValidGeometryPath(path)) {
-        if (o instanceof List == false) {
+        if (!(o instanceof List list)) {
           upto = uptoStart;
           throw newParseException("coordinates should be an array, but got: " + o.getClass());
         }
@@ -211,7 +209,7 @@ class SimpleGeoJSONPolygonParser {
           upto = uptoStart;
           throw newParseException("only one Polygon or MultiPolygon is supported");
         }
-        coordinates = (List<Object>) o;
+        coordinates = list;
       }
     }
 
@@ -223,50 +221,52 @@ class SimpleGeoJSONPolygonParser {
     return path.equals("") || path.equals("geometry") || path.equals("features.[].geometry");
   }
 
-  private Polygon parsePolygon(List<Object> coordinates) throws ParseException {
+  private Polygon parsePolygon(List<?> coordinates) throws ParseException {
     List<Polygon> holes = new ArrayList<>();
     Object o = coordinates.get(0);
-    if (o instanceof List == false) {
-      throw newParseException(
-          "first element of polygon array must be an array [[lat, lon], [lat, lon] ...] but got: "
-              + o);
+    double[][] polyPoints;
+    {
+      if (!(o instanceof List<?> list)) {
+        throw newParseException(
+            "first element of polygon array must be an array [[lat, lon], [lat, lon] ...] but got: "
+                + o);
+      }
+      polyPoints = parsePoints(list);
     }
-    double[][] polyPoints = parsePoints((List<Object>) o);
     for (int i = 1; i < coordinates.size(); i++) {
       o = coordinates.get(i);
-      if (o instanceof List == false) {
+      if (!(o instanceof List<?> list)) {
         throw newParseException(
             "elements of coordinates array must be an array [[lat, lon], [lat, lon] ...] but got: "
                 + o);
       }
-      double[][] holePoints = parsePoints((List<Object>) o);
+      double[][] holePoints = parsePoints(list);
       holes.add(new Polygon(holePoints[0], holePoints[1]));
     }
-    return new Polygon(polyPoints[0], polyPoints[1], holes.toArray(new Polygon[holes.size()]));
+    return new Polygon(polyPoints[0], polyPoints[1], holes.toArray(Polygon[]::new));
   }
 
   /** Parses [[lat, lon], [lat, lon] ...] into 2d double array */
-  private double[][] parsePoints(List<Object> o) throws ParseException {
+  private double[][] parsePoints(List<?> o) throws ParseException {
     double[] lats = new double[o.size()];
     double[] lons = new double[o.size()];
     for (int i = 0; i < o.size(); i++) {
       Object point = o.get(i);
-      if (point instanceof List == false) {
+      if (!(point instanceof List<?> pointList)) {
         throw newParseException(
             "elements of coordinates array must [lat, lon] array, but got: " + point);
       }
-      List<Object> pointList = (List<Object>) point;
       if (pointList.size() != 2) {
         throw newParseException(
             "elements of coordinates array must [lat, lon] array, but got wrong element count: "
                 + pointList);
       }
-      if (pointList.get(0) instanceof Double == false) {
+      if (!(pointList.get(0) instanceof Double)) {
         throw newParseException(
             "elements of coordinates array must [lat, lon] array, but first element is not a Double: "
                 + pointList.get(0));
       }
-      if (pointList.get(1) instanceof Double == false) {
+      if (!(pointList.get(1) instanceof Double)) {
         throw newParseException(
             "elements of coordinates array must [lat, lon] array, but second element is not a Double: "
                 + pointList.get(1));

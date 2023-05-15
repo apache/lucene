@@ -110,10 +110,10 @@ public final class BKDRadixSelector {
         : "[partition alices] must be > 1, got " + partitionSlices.length;
 
     // If we are on heap then we just select on heap
-    if (points.writer instanceof HeapPointWriter) {
+    if (points.writer instanceof HeapPointWriter heapWriter) {
       byte[] partition =
           heapRadixSelect(
-              (HeapPointWriter) points.writer,
+              heapWriter,
               dim,
               Math.toIntExact(from),
               Math.toIntExact(to),
@@ -311,9 +311,9 @@ public final class BKDRadixSelector {
 
     long newPartitionPoint = partitionPoint - from - leftCount;
 
-    if (deltaPoints instanceof HeapPointWriter) {
+    if (deltaPoints instanceof HeapPointWriter heapDeltaPoints) {
       return heapPartition(
-          (HeapPointWriter) deltaPoints,
+          heapDeltaPoints,
           left,
           right,
           dim,
@@ -644,11 +644,11 @@ public final class BKDRadixSelector {
 
   private int getMaxPointsSortInHeap(PointWriter left, PointWriter right) {
     int pointsUsed = 0;
-    if (left instanceof HeapPointWriter) {
-      pointsUsed += ((HeapPointWriter) left).size;
+    if (left instanceof HeapPointWriter leftHeap) {
+      pointsUsed += leftHeap.size;
     }
-    if (right instanceof HeapPointWriter) {
-      pointsUsed += ((HeapPointWriter) right).size;
+    if (right instanceof HeapPointWriter rightHeap) {
+      pointsUsed += rightHeap.size;
     }
     assert maxPointsSortInHeap >= pointsUsed;
     return maxPointsSortInHeap - pointsUsed;

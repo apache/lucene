@@ -82,13 +82,7 @@ public final class LongsRef implements Comparable<LongsRef>, Cloneable {
 
   @Override
   public boolean equals(Object other) {
-    if (other == null) {
-      return false;
-    }
-    if (other instanceof LongsRef) {
-      return this.longsEquals((LongsRef) other);
-    }
-    return false;
+    return other != null && other instanceof LongsRef longsRef && this.longsEquals(longsRef);
   }
 
   public boolean longsEquals(LongsRef other) {

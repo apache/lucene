@@ -34,13 +34,13 @@ public abstract class FSLockFactory extends LockFactory {
 
   @Override
   public final Lock obtainLock(Directory dir, String lockName) throws IOException {
-    if (!(dir instanceof FSDirectory)) {
+    if (!(dir instanceof FSDirectory fsDirectory)) {
       throw new UnsupportedOperationException(
           getClass().getSimpleName()
               + " can only be used with FSDirectory subclasses, got: "
               + dir);
     }
-    return obtainFSLock((FSDirectory) dir, lockName);
+    return obtainFSLock(fsDirectory, lockName);
   }
 
   /**

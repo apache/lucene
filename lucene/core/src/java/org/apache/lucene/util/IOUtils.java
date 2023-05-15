@@ -390,16 +390,16 @@ public final class IOUtils {
       throw new AssertionError("rethrow argument must not be null.");
     }
 
-    if (th instanceof IOException) {
-      throw (IOException) th;
+    if (th instanceof IOException ioException) {
+      throw ioException;
     }
 
-    if (th instanceof RuntimeException) {
-      throw (RuntimeException) th;
+    if (th instanceof RuntimeException runtimeException) {
+      throw runtimeException;
     }
 
-    if (th instanceof Error) {
-      throw (Error) th;
+    if (th instanceof Error error) {
+      throw error;
     }
 
     throw new RuntimeException(th);

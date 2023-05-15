@@ -82,13 +82,7 @@ public final class IntsRef implements Comparable<IntsRef>, Cloneable {
 
   @Override
   public boolean equals(Object other) {
-    if (other == null) {
-      return false;
-    }
-    if (other instanceof IntsRef) {
-      return this.intsEquals((IntsRef) other);
-    }
-    return false;
+    return other != null && other instanceof IntsRef intsRef && this.intsEquals(intsRef);
   }
 
   public boolean intsEquals(IntsRef other) {

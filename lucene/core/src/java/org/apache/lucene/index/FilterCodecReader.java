@@ -42,8 +42,8 @@ public abstract class FilterCodecReader extends CodecReader {
    * FilterCodecReader}.
    */
   public static CodecReader unwrap(CodecReader reader) {
-    while (reader instanceof FilterCodecReader) {
-      reader = ((FilterCodecReader) reader).getDelegate();
+    while (reader instanceof FilterCodecReader filterReader) {
+      reader = filterReader.getDelegate();
     }
     return reader;
   }

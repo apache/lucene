@@ -222,8 +222,8 @@ public final class SegmentReader extends CodecReader {
     try {
       core.decRef();
     } finally {
-      if (docValuesProducer instanceof SegmentDocValuesProducer) {
-        segDocValues.decRef(((SegmentDocValuesProducer) docValuesProducer).dvGens);
+      if (docValuesProducer instanceof SegmentDocValuesProducer segmentDocValuesProducer) {
+        segDocValues.decRef(segmentDocValuesProducer.dvGens);
       } else if (docValuesProducer != null) {
         segDocValues.decRef(Collections.singletonList(-1L));
       }

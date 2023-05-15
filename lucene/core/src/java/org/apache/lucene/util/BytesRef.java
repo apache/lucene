@@ -124,8 +124,8 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
     if (other == null) {
       return false;
     }
-    if (other instanceof BytesRef) {
-      return this.bytesEquals((BytesRef) other);
+    if (other instanceof BytesRef bytesRef) {
+      return this.bytesEquals(bytesRef);
     }
     return false;
   }

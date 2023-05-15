@@ -62,10 +62,7 @@ public final class XYPoint extends XYGeometry {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof XYPoint)) return false;
-    XYPoint point = (XYPoint) o;
-    return point.x == x && point.y == y;
+    return this == o || o instanceof XYPoint point && point.x == x && point.y == y;
   }
 
   @Override

@@ -62,10 +62,7 @@ public final class Point extends LatLonGeometry {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof Point)) return false;
-    Point point = (Point) o;
-    return point.lat == lat && point.lon == lon;
+    return this == o || o instanceof Point point && point.lat == lat && point.lon == lon;
   }
 
   @Override
