@@ -96,9 +96,9 @@ public class PimIndexSearcher implements Closeable  {
 
     private class DPUIndexSearcher implements Closeable {
 
-        int dpuId;
-        Directory dir;
-        Directory pimDir;
+        final int dpuId;
+        final Directory dir;
+        final Directory pimDir;
         IndexInput fieldTableInput;
         IndexInput blockTableInput;
         IndexInput blocksInput;

@@ -103,7 +103,7 @@ public class PimIndexWriter extends IndexWriter {
       // 2- adapted to the doc size, but it would require to keep the doc size info
       //    at indexing time, in a new file. Then here we could target (sumDocSizes / numDpus)
       //    per DPU.
-      numDocsPerDpu = Math.max((segmentCommitInfo.info.maxDoc() - segmentCommitInfo.getDelCount()) / pimConfig.getNumDpus(),
+      numDocsPerDpu = Math.max((segmentCommitInfo.info.maxDoc()) / pimConfig.getNumDpus(),
               1);
       termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
 
