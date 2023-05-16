@@ -15,7 +15,7 @@ import java.util.List;
 
 /**
  * @class PimIndexSearcher
- * Implement term search on a PIM index.
+ * Implement term and phrase search on a PIM index.
  * The PIM index is intended to be loaded in PIM memory and
  * searched by the PIM Hardware. Hence, this class purpose
  * is only to test the index correctness.
@@ -34,6 +34,14 @@ public class PimIndexSearcher implements Closeable  {
         }
     }
 
+    /**
+     * Search a term in PIM index
+     * @param field the field to be searched
+     * @param term the term to be searched
+     * @return a list of PimMatch
+     *
+     * @TODO there is no scoring done for now, just put the frequency as the score
+     */
     ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
 
         ArrayList<PimMatch> results = new ArrayList<>();
@@ -55,6 +63,14 @@ public class PimIndexSearcher implements Closeable  {
         return results;
     }
 
+    /**
+     * Search a phrase in PIM index
+     * @param query the PIM phrase query
+     * @return a list of PimMatch
+     *
+     @TODO there is no scoring done for now, just return
+     * all results with the position of the match as the score
+     */
     ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
 
         ArrayList<PimMatch> results = new ArrayList<>();
@@ -94,6 +110,10 @@ public class PimIndexSearcher implements Closeable  {
         }
     }
 
+    /**
+     * @class DPUIndexSearcher
+     * Search for a term or phrase in the index of a DPU
+     */
     private class DPUIndexSearcher implements Closeable {
 
         final int dpuId;
@@ -163,7 +183,7 @@ public class PimIndexSearcher implements Closeable  {
 
         ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
 
-            // search for the right block where to find the term
+            // get the postings for this term
             BytesRefToDataBlockTreeMap.SearchResult termPostings = getTermPostings(field, term);
 
             if(termPostings == null)
@@ -171,7 +191,8 @@ public class PimIndexSearcher implements Closeable  {
 
             ArrayList<PimMatch> results = new ArrayList<>();
 
-            // read the postings
+            // read the postings and fill in the results array
+            // TODO there is no scoring done for now, just put the frequency as the score
             try {
                 postingsInput.seek(termPostings.block.address);
                 DocumentIterator docIt = new DocumentIterator(postingsInput, termPostings.byteSize);
@@ -189,7 +210,7 @@ public class PimIndexSearcher implements Closeable  {
 
         ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
 
-            // lookup the term blocks where to find the phrase terms (in block table)
+            // get the postings address of each term in the phrase query
             BytesRefToDataBlockTreeMap.SearchResult[] termPostingBlocks =
                     new BytesRefToDataBlockTreeMap.SearchResult[query.getTerms().length];
             IndexInput[] termPostings =  new IndexInput[query.getTerms().length];
@@ -398,7 +419,7 @@ public class PimIndexSearcher implements Closeable  {
                     new BytesRefToDataBlockTreeMap.Block(term, postingAddress), (int) postingByteSize);
         }
 
-        /**
+        /**@class Iterator
          * abstract base class for doc and position iterator classes
          ***/
         private static abstract class Iterator {
@@ -417,6 +438,7 @@ public class PimIndexSearcher implements Closeable  {
         }
 
         /**
+         * @class DocumentIterator
          * class used to iterate over documents in the posting list
          **/
         private static class DocumentIterator extends Iterator {
@@ -488,6 +510,7 @@ public class PimIndexSearcher implements Closeable  {
         }
 
         /**
+         * @class PositionsIterator
          * class used to iterate over positions in the posting list
          **/
         private static class PositionsIterator extends Iterator {

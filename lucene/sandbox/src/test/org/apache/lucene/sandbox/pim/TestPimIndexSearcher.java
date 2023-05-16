@@ -20,33 +20,22 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
     private static Directory directory;
     private static Directory pimDirectory;
-    private IndexReader reader;
 
-    @BeforeClass
-    public static void beforeClass() {
+    public static void initDirectories() {
 
         directory = newDirectory();
         pimDirectory = newDirectory();
     }
 
-    @AfterClass
-    public static void afterClass() throws Exception {
+    public static void closeDirectories() throws Exception {
         directory.close();
         directory = null;
         pimDirectory.close();
         pimDirectory = null;
     }
 
-    @Override
-    public void tearDown() throws Exception {
-        if (reader != null) {
-            reader.close();
-            reader = null;
-        }
-        super.tearDown();
-    }
-
     public void testTermBasic() throws Exception {
+        initDirectories();
         PimConfig pimConfig = new PimConfig();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
@@ -132,10 +121,12 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         System.out.println("");
 
         pimSearcher.close();
+        closeDirectories();
     }
 
     public void testTermMoreText() throws Exception {
 
+        initDirectories();
         PimConfig pimConfig = new PimConfig();
         writeFewWikiText(pimConfig);
 
@@ -215,10 +206,12 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         System.out.println("");
         pimSearcher.close();
+        closeDirectories();
     }
 
     public void testPhraseMoreText() throws Exception {
 
+        initDirectories();
         PimConfig pimConfig = new PimConfig();
         writeFewWikiText(pimConfig);
 
@@ -303,10 +296,12 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         System.out.println("");
         pimSearcher.close();
+        closeDirectories();
     }
 
     public void testPhraseCornerCases() throws Exception {
 
+        initDirectories();
         // note pim config is using 2 DPUs unless one won't have any files
         // and thus an empty index
         PimConfig pimConfig = new PimConfig(2);
@@ -360,6 +355,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         System.out.println("");
         pimSearcher.close();
+        closeDirectories();
     }
 
     void writeFewWikiText(PimConfig pimConfig) throws IOException {
