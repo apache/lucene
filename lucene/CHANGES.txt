@@ -126,6 +126,8 @@ Optimizations
 
 * GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
 
+* GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
+
 * GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
 
 Bug Fixes
