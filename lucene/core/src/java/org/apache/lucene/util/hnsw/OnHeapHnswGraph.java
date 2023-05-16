@@ -170,14 +170,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   public long ramBytesUsed() {
     long neighborArrayBytes0 =
         nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + Integer.BYTES * 3;
     long neighborArrayBytes =
         nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + Integer.BYTES * 3;
     long total = 0;
     for (int l = 0; l < numLevels; l++) {
       if (l == 0) {
