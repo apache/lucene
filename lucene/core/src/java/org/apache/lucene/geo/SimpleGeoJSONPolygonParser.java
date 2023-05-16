@@ -54,7 +54,7 @@ class SimpleGeoJSONPolygonParser {
   final String input;
   private int upto;
   private String polyType;
-  private List<Object> coordinates;
+  private List<?> coordinates;
 
   public SimpleGeoJSONPolygonParser(String input) {
     this.input = input;
@@ -201,7 +201,7 @@ class SimpleGeoJSONPolygonParser {
                   + type);
         }
       } else if (key.equals("coordinates") && isValidGeometryPath(path)) {
-        if (!(o instanceof List list)) {
+        if (!(o instanceof List<?> list)) {
           upto = uptoStart;
           throw newParseException("coordinates should be an array, but got: " + o.getClass());
         }
