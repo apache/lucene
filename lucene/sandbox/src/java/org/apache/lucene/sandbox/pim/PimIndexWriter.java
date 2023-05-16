@@ -19,8 +19,10 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -68,6 +70,7 @@ public class PimIndexWriter extends IndexWriter {
 
   private final PimConfig pimConfig;
   private final Directory pimDirectory;
+  private static final boolean enableStats = false;
 
   public PimIndexWriter(Directory directory, Directory pimDirectory,
                         IndexWriterConfig indexWriterConfig, PimConfig pimConfig)
@@ -162,7 +165,7 @@ public class PimIndexWriter extends IndexWriter {
 
       while (termsEnum.next() != null) {
         BytesRef term = termsEnum.term();
-        System.out.println("   " + term.utf8ToString());
+        //System.out.println("   " + term.utf8ToString());
         for (DpuTermIndex termIndex : termIndexes) {
           termIndex.resetForNextTerm();
         }
@@ -234,6 +237,8 @@ public class PimIndexWriter extends IndexWriter {
       IndexOutput blocksOutput;
       IndexOutput postingsOutput;
 
+      ByteArrayOutputStream statsOut;
+
       DpuTermIndex(int dpuIndex,
                    IndexOutput fieldTableOutput, IndexOutput blockTablesOutput,
                    IndexOutput blocksOutput, IndexOutput postingsOutput,
@@ -252,6 +257,9 @@ public class PimIndexWriter extends IndexWriter {
         this.blocksTableOutput = blockTablesOutput;
         this.blocksOutput = blocksOutput;
         this.postingsOutput = postingsOutput;
+        if(enableStats) {
+          this.statsOut = new ByteArrayOutputStream();
+        }
       }
 
       void resetForNextField() {
@@ -321,7 +329,7 @@ public class PimIndexWriter extends IndexWriter {
         }
 
         if (!fieldWritten) {
-          System.out.println("Add field:" + fieldInfo.name + " to field table addr:" +  blocksTableOutput.getFilePointer());
+          //System.out.println("Add field:" + fieldInfo.name + " to field table addr:" +  blocksTableOutput.getFilePointer());
           fieldList.add(new BytesRefToDataBlockTreeMap.Block(new BytesRef(fieldInfo.getName()),
                   blocksTableOutput.getFilePointer()));
           fieldWritten = true;
@@ -335,7 +343,7 @@ public class PimIndexWriter extends IndexWriter {
         this.doc = doc;
         int freq = postingsEnum.freq();
         assert freq > 0;
-        System.out.print("    doc=" + doc + " dpu=" + dpuIndex + " freq=" + freq);
+        //System.out.print("    doc=" + doc + " dpu=" + dpuIndex + " freq=" + freq);
         int previousPos = 0;
         for (int i = 0; i < freq; i++) {
           // TODO: If freq is large (>= 128) then it could be possible to better
@@ -344,7 +352,7 @@ public class PimIndexWriter extends IndexWriter {
           int deltaPos = pos - previousPos;
           previousPos = pos;
           posBuffer.writeVInt(deltaPos);
-          System.out.print(" pos=" + pos);
+          //System.out.print(" pos=" + pos);
         }
         long numBytesPos = posBuffer.size();
         // The sign bit of freq defines how the offset to the next doc is encoded:
@@ -368,7 +376,7 @@ public class PimIndexWriter extends IndexWriter {
         }
         posBuffer.copyTo(postingsOutput);
         posBuffer.reset();
-        System.out.println();
+        //System.out.println();
       }
 
       void writeBlockTable() throws IOException {
@@ -379,6 +387,20 @@ public class PimIndexWriter extends IndexWriter {
         BytesRefToDataBlockTreeMap table = new BytesRefToDataBlockTreeMap(
                 new BytesRefToDataBlockTreeMap.BlockList(blockList, blocksOutput.getFilePointer()));
         table.write(blocksTableOutput);
+
+        if(enableStats) {
+
+          PrintWriter p = new PrintWriter(statsOut, true);
+
+          if(fieldList.size() < 2) {
+            p.println("\n------------- DPU" + dpuIndex +
+                    " PIM INDEX STATS -------------");
+          }
+          p.println("#terms block table    : " + blockList.size() + " (field " + fieldInfo.getName() + ")");
+          p.println("#bytes block table    : " + blocksTableOutput.getFilePointer());
+          p.println("#bytes block file     : " + blocksOutput.getFilePointer());
+          p.println("#bytes postings file  : " + postingsOutput.getFilePointer());
+        }
 
         // reset internal parameters
         currBlockSz = 0;
@@ -397,6 +419,12 @@ public class PimIndexWriter extends IndexWriter {
         BytesRefToDataBlockTreeMap table = new BytesRefToDataBlockTreeMap(
                 new BytesRefToDataBlockTreeMap.BlockList(fieldList, blocksTableOutput.getFilePointer()));
         table.write(fieldTableOutput);
+
+        if(enableStats) {
+          PrintWriter p = new PrintWriter(statsOut, true);
+          p.println("#fields               : " + fieldList.size());
+          p.println("#bytes field table    : " + fieldTableOutput.getFilePointer());
+        }
       }
 
       void endField() {
@@ -419,6 +447,15 @@ public class PimIndexWriter extends IndexWriter {
 
         //System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldList.size());
         writeFieldTable();
+        if(enableStats) {
+          PrintWriter p = new PrintWriter(statsOut, true);
+          p.println("\n#TOTAL DPU" + dpuIndex);
+          p.println("#terms for DPU        : " + numTerms);
+          p.println("#bytes block table    : " + blocksTableOutput.getFilePointer());
+          p.println("#bytes block file     : " + blocksOutput.getFilePointer());
+          p.println("#bytes postings file  : " + postingsOutput.getFilePointer());
+          System.out.println(statsOut.toString());
+        }
         fieldTableOutput.close();
         blocksTableOutput.close();
         blocksOutput.close();
