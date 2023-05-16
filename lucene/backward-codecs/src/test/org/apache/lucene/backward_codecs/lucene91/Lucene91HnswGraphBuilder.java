@@ -204,10 +204,10 @@ public final class Lucene91HnswGraphBuilder {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
-      Lucene91NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
-      nbrNbr.add(node, neighbors.score[i]);
-      if (nbrNbr.size() > maxConn) {
-        diversityUpdate(nbrNbr);
+      Lucene91NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
+      nbrsOfNbr.add(node, neighbors.score[i]);
+      if (nbrsOfNbr.size() > maxConn) {
+        diversityUpdate(nbrsOfNbr);
       }
     }
   }
