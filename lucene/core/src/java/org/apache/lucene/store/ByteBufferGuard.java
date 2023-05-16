@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A guard that is created for every {@link ByteBufferIndexInput} that tries on best effort to
