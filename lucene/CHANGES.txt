@@ -47,6 +47,10 @@ API Changes
 * GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
   LeafReader#getVectorValues. (Luca Cavanna)
 
+* GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
+  They have already been runtime-checked to only be implemented by the specific classes
+  so this is effectively a non-breaking change.
+
 New Features
 ---------------------
 
