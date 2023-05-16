@@ -40,8 +40,7 @@ public abstract sealed class IndexReaderContext permits CompositeReaderContext, 
   // identity object, even after the index reader has been closed
   final Object identity = new Object();
 
-  protected IndexReaderContext(
-      CompositeReaderContext parent, int ordInParent, int docBaseInParent) {
+  IndexReaderContext(CompositeReaderContext parent, int ordInParent, int docBaseInParent) {
     this.parent = parent;
     this.docBaseInParent = docBaseInParent;
     this.ordInParent = ordInParent;
