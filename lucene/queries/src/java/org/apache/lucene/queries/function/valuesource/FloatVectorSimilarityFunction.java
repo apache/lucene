@@ -17,19 +17,25 @@
 package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
-
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
+/**
+ * <code>FloatVectorSimilarityFunction</code> returns a similarity function between two knn vectors
+ * with float elements.
+ */
 public class FloatVectorSimilarityFunction extends VectorSimilarityFunction {
   public FloatVectorSimilarityFunction(
-          org.apache.lucene.index.VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+      org.apache.lucene.index.VectorSimilarityFunction similarityFunction,
+      ValueSource vector1,
+      ValueSource vector2) {
     super(similarityFunction, vector1, vector2);
   }
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-    assert f1.floatVectorVal(doc).length == f2.floatVectorVal(doc).length: "Vectors must have the same length";
+    assert f1.floatVectorVal(doc).length == f2.floatVectorVal(doc).length
+        : "Vectors must have the same length";
     return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
   }
 }

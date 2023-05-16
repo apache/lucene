@@ -25,6 +25,9 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
+/**
+ * An implementation for retrieving {@link FunctionValues} instances for byte knn vectors fields.
+ */
 public class ByteVectorFieldSource extends ValueSource {
   private final String fieldName;
 

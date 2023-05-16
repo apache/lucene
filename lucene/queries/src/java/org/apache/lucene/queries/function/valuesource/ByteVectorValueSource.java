@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
+
 /** Function that returns a constant byte vector value for every document. */
 public class ByteVectorValueSource extends ValueSource {
   byte[] vector;

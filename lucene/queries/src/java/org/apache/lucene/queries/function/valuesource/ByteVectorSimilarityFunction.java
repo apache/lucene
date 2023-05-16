@@ -17,19 +17,25 @@
 package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
-
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
+/**
+ * <code>ByteVectorSimilarityFunction</code> returns a similarity function between two knn vectors
+ * with byte elements.
+ */
 public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
   public ByteVectorSimilarityFunction(
-          org.apache.lucene.index.VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+      org.apache.lucene.index.VectorSimilarityFunction similarityFunction,
+      ValueSource vector1,
+      ValueSource vector2) {
     super(similarityFunction, vector1, vector2);
   }
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-    assert f1.byteVectorVal(doc).length == f2.byteVectorVal(doc).length: "Vectors must have the same length";
+    assert f1.byteVectorVal(doc).length == f2.byteVectorVal(doc).length
+        : "Vectors must have the same length";
     return similarityFunction.compare(f1.byteVectorVal(doc), f2.byteVectorVal(doc));
   }
 }

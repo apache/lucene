@@ -21,6 +21,7 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
+/** An implementation for retrieving {@link FunctionValues} instances for knn vectors fields. */
 public abstract class VectorFieldFunction extends FunctionValues {
 
   protected final ValueSource vs;

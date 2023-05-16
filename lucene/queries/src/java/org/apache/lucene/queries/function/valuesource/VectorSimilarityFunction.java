@@ -22,6 +22,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
+/** <code>VectorSimilarityFunction</code> returns a similarity function between two knn vectors. */
 public abstract class VectorSimilarityFunction extends ValueSource {
 
   protected final org.apache.lucene.index.VectorSimilarityFunction similarityFunction;
@@ -29,7 +30,9 @@ public abstract class VectorSimilarityFunction extends ValueSource {
   protected final ValueSource vector2;
 
   public VectorSimilarityFunction(
-          org.apache.lucene.index.VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
+      org.apache.lucene.index.VectorSimilarityFunction similarityFunction,
+      ValueSource vector1,
+      ValueSource vector2) {
 
     this.similarityFunction = similarityFunction;
     this.vector1 = vector1;

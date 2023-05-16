@@ -24,6 +24,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
+/** Function that returns a constant float vector value for every document. */
 public class FloatVectorValueSource extends ValueSource {
   float[] vector;
 

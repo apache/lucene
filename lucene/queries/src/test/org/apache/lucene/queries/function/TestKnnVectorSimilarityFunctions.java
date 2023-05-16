@@ -27,12 +27,12 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.queries.function.valuesource.ByteVectorFieldSource;
 import org.apache.lucene.queries.function.valuesource.ByteVectorSimilarityFunction;
 import org.apache.lucene.queries.function.valuesource.ByteVectorValueSource;
-import org.apache.lucene.queries.function.valuesource.ByteVectorFieldSource;
-import org.apache.lucene.queries.function.valuesource.FloatVectorValueSource;
 import org.apache.lucene.queries.function.valuesource.FloatVectorFieldSource;
 import org.apache.lucene.queries.function.valuesource.FloatVectorSimilarityFunction;
+import org.apache.lucene.queries.function.valuesource.FloatVectorValueSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -149,7 +149,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
         new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
-            AssertionError.class,
+        AssertionError.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
     v1 = new FloatVectorValueSource(List.of(1, 2));
@@ -157,7 +157,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
         new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
-            AssertionError.class,
+        AssertionError.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
   }
 
