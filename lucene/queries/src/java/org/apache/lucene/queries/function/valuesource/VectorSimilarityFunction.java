@@ -65,12 +65,6 @@ public abstract class VectorSimilarityFunction extends ValueSource {
     };
   }
 
-  protected void assertSameSize(int sizeVector1, int sizeVector2){
-    if (sizeVector1 != sizeVector2) {
-      throw new UnsupportedOperationException("Vectors must have the same size");
-    }
-  }
-
   protected abstract float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException;
 
   @Override

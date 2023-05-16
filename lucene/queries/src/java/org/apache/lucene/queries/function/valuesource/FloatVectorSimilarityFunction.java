@@ -29,7 +29,7 @@ public class FloatVectorSimilarityFunction extends VectorSimilarityFunction {
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-    assertSameSize(f1.floatVectorVal(doc).length, f2.floatVectorVal(doc).length);
+    assert f1.floatVectorVal(doc).length == f2.floatVectorVal(doc).length: "Vectors must have the same length";
     return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
   }
 }

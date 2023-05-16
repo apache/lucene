@@ -29,7 +29,7 @@ public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-    assertSameSize(f1.byteVectorVal(doc).length, f2.byteVectorVal(doc).length);
+    assert f1.byteVectorVal(doc).length == f2.byteVectorVal(doc).length: "Vectors must have the same length";
     return similarityFunction.compare(f1.byteVectorVal(doc), f2.byteVectorVal(doc));
   }
 }

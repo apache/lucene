@@ -149,7 +149,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
         new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
-        UnsupportedOperationException.class,
+            AssertionError.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
     v1 = new FloatVectorValueSource(List.of(1, 2));
@@ -157,7 +157,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
         new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
-        UnsupportedOperationException.class,
+            AssertionError.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
   }
 
