@@ -14,61 +14,70 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource.densevectors;
+package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
-/** Function that returns a constant byte vector value for every document. */
-public class ByteVectorValueSource extends ValueSource {
-  byte[] vector;
+import org.apache.lucene.search.DocIdSetIterator;
 
-  public ByteVectorValueSource(List<Number> constVector) {
-    this.vector = new byte[constVector.size()];
-    for (int i = 0; i < constVector.size(); i++) {
-      vector[i] = constVector.get(i).byteValue();
-    }
+public class FloatVectorFieldSource extends ValueSource {
+  private final String fieldName;
+
+  public FloatVectorFieldSource(String fieldName) {
+    this.fieldName = fieldName;
   }
 
   @Override
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
-    return new FunctionValues() {
+
+    final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
+    return new VectorFieldFunction(this) {
+      float[] defaultVector = null;
+
       @Override
-      public byte[] byteVectorVal(int doc) {
-        return vector;
+      public float[] floatVectorVal(int doc) throws IOException {
+        if (exists(doc)) {
+          return vectorValues.vectorValue();
+        } else {
+          return defaultVector();
+        }
       }
 
       @Override
-      public String strVal(int doc) {
-        return Arrays.toString(vector);
+      protected DocIdSetIterator getVectorIterator() {
+        return vectorValues;
       }
 
-      @Override
-      public String toString(int doc) throws IOException {
-        return description() + '=' + strVal(doc);
+      private float[] defaultVector() {
+        if (defaultVector == null) {
+          defaultVector = new float[vectorValues.dimension()];
+          Arrays.fill(defaultVector, 0.f);
+        }
+        return defaultVector;
       }
     };
   }
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ByteVectorValueSource)) return false;
-    ByteVectorValueSource other = (ByteVectorValueSource) o;
-    return Arrays.equals(vector, other.vector);
+    if (o.getClass() != FloatVectorFieldSource.class) return false;
+    FloatVectorFieldSource other = (FloatVectorFieldSource) o;
+    return fieldName.equals(other.fieldName);
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode() * 31 + Arrays.hashCode(vector);
+    return getClass().hashCode() * 31 + fieldName.getClass().hashCode();
   }
 
   @Override
   public String description() {
-    return "denseVectorConst(" + Arrays.toString(vector) + ')';
+    return "denseFloatVectorField(" + fieldName + ")";
   }
 }

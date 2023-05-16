@@ -14,14 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource.densevectors;
+package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
-import org.apache.lucene.queries.function.valuesource.MultiFunction;
 
 public abstract class VectorSimilarityFunction extends ValueSource {
 

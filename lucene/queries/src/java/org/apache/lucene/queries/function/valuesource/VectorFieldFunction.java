@@ -14,22 +14,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.queries.function.valuesource.densevectors;
+package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
-
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
+import org.apache.lucene.search.DocIdSetIterator;
 
-public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
-  public ByteVectorSimilarityFunction(
-          org.apache.lucene.index.VectorSimilarityFunction similarityFunction, ValueSource vector1, ValueSource vector2) {
-    super(similarityFunction, vector1, vector2);
+public abstract class VectorFieldFunction extends FunctionValues {
+
+  protected final ValueSource vs;
+  int lastDocID;
+
+  protected VectorFieldFunction(ValueSource vs) {
+    this.vs = vs;
+  }
+
+  protected abstract DocIdSetIterator getVectorIterator();
+
+  @Override
+  public String toString(int doc) throws IOException {
+    return vs.description() + strVal(doc);
   }
 
   @Override
-  protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
-    assertSameSize(f1.byteVectorVal(doc).length, f2.byteVectorVal(doc).length);
-    return similarityFunction.compare(f1.byteVectorVal(doc), f2.byteVectorVal(doc));
+  public boolean exists(int doc) throws IOException {
+    if (doc < lastDocID) {
+      throw new IllegalArgumentException(
+          "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
+    }
+    lastDocID = doc;
+    int curDocID = getVectorIterator().docID();
+    if (doc > curDocID) {
+      curDocID = getVectorIterator().advance(doc);
+    }
+    return doc == curDocID;
   }
 }
