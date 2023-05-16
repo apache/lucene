@@ -26,8 +26,8 @@ public abstract sealed class IndexReaderContext permits CompositeReaderContext, 
   /** The reader context for this reader's immediate parent, or null if none */
   public final CompositeReaderContext parent;
   /**
-   * {@code true} if this context struct represents the top level reader within the
-   * hierarchical context
+   * {@code true} if this context struct represents the top level reader within the hierarchical
+   * context
    */
   public final boolean isTopLevel;
   /** the doc base for this reader in the parent, {@code 0} if parent is null */
@@ -38,9 +38,10 @@ public abstract sealed class IndexReaderContext permits CompositeReaderContext, 
   // An object that uniquely identifies this context without referencing
   // segments. The goal is to make it fine to have references to this
   // identity object, even after the index reader has been closed
-  protected final Object identity = new Object();
+  final Object identity = new Object();
 
-  protected IndexReaderContext(CompositeReaderContext parent, int ordInParent, int docBaseInParent) {
+  protected IndexReaderContext(
+      CompositeReaderContext parent, int ordInParent, int docBaseInParent) {
     this.parent = parent;
     this.docBaseInParent = docBaseInParent;
     this.ordInParent = ordInParent;
