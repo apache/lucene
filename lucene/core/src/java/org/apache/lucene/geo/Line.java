@@ -118,7 +118,10 @@ public class Line extends LatLonGeometry {
 
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof Line line && Arrays.equals(lats, line.lats) && Arrays.equals(lons, line.lons);
+    return this == o
+        || o instanceof Line line
+            && Arrays.equals(lats, line.lats)
+            && Arrays.equals(lons, line.lons);
   }
 
   @Override

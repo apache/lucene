@@ -75,10 +75,11 @@ public final class XYCircle extends XYGeometry {
 
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof XYCircle circle
-        && x == circle.x
-        && y == circle.y
-        && radius == circle.radius;
+    return this == o
+        || o instanceof XYCircle circle
+            && x == circle.x
+            && y == circle.y
+            && radius == circle.radius;
   }
 
   @Override

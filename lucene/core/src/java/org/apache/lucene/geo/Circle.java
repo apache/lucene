@@ -74,10 +74,11 @@ public final class Circle extends LatLonGeometry {
 
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof Circle circle
-        && lat == circle.lat
-        && lon == circle.lon
-        && radiusMeters == circle.radiusMeters;
+    return this == o
+        || o instanceof Circle circle
+            && lat == circle.lat
+            && lon == circle.lon
+            && radiusMeters == circle.radiusMeters;
   }
 
   @Override

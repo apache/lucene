@@ -45,8 +45,9 @@ abstract class IntSet {
 
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof IntSet that
-        && longHashCode() == that.longHashCode()
-        && Arrays.equals(getArray(), 0, size(), that.getArray(), 0, that.size());
+    return this == o
+        || o instanceof IntSet that
+            && longHashCode() == that.longHashCode()
+            && Arrays.equals(getArray(), 0, size(), that.getArray(), 0, that.size());
   }
 }

@@ -71,11 +71,11 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
       // we try to reuse the life docs instances here if the reader cache key didn't change
       if (reader instanceof SoftDeletesFilterLeafReader softDeletesFilterLeafReader
           && softDeletesFilterLeafReader.getReaderCacheHelper() != null) {
-        readerCache.put(
-            softDeletesFilterLeafReader.reader.getReaderCacheHelper().getKey(), reader);
+        readerCache.put(softDeletesFilterLeafReader.reader.getReaderCacheHelper().getKey(), reader);
       } else if (reader instanceof SoftDeletesFilterCodecReader softDeletesFilterCodecReader
           && softDeletesFilterCodecReader.getReaderCacheHelper() != null) {
-        readerCache.put(softDeletesFilterCodecReader.reader.getReaderCacheHelper().getKey(), reader);
+        readerCache.put(
+            softDeletesFilterCodecReader.reader.getReaderCacheHelper().getKey(), reader);
       }
     }
     return new SoftDeletesDirectoryReaderWrapper(

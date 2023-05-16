@@ -466,12 +466,13 @@ public class SortField {
    */
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof final SortField other
-        && Objects.equals(other.field, this.field)
-        && other.type == this.type
-        && other.reverse == this.reverse
-        && Objects.equals(this.comparatorSource, other.comparatorSource)
-        && Objects.equals(this.missingValue, other.missingValue);
+    return this == o
+        || o instanceof final SortField other
+            && Objects.equals(other.field, this.field)
+            && other.type == this.type
+            && other.reverse == this.reverse
+            && Objects.equals(this.comparatorSource, other.comparatorSource)
+            && Objects.equals(this.missingValue, other.missingValue);
   }
 
   /**

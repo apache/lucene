@@ -110,7 +110,8 @@ public class XYLine extends XYGeometry {
 
   @Override
   public boolean equals(Object o) {
-    return this == o || o instanceof XYLine line && Arrays.equals(x, line.x) && Arrays.equals(y, line.y);
+    return this == o
+        || o instanceof XYLine line && Arrays.equals(x, line.x) && Arrays.equals(y, line.y);
   }
 
   @Override
