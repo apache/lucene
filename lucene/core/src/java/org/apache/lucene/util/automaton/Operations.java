@@ -1273,9 +1273,22 @@ public final class Operations {
   }
 
   /**
-   * Returns the topological sort of all states reachable from the initial state. Behavior is
-   * undefined if this automaton has cycles. CPU cost is O(numTransitions), and the implementation
-   * is recursive so an automaton matching long strings may exhaust the java stack.
+   * Returns the topological sort of all states reachable from the initial state. This method
+   * assumes that the automaton does not contain cycles, and will throw an IllegalArgumentException
+   * if a cycle is detected. The CPU cost is O(numTransitions), and the implementation is
+   * non-recursive, so it will not exhaust the java stack for automaton matching long strings. If
+   * there are dead states in the automaton, they will be removed from the returned array.
+   *
+   * <p>Note: This method uses a deque to iterative the states, which could potentially consume a
+   * lot of heap space for some automatons. Specifically, automatons with a deep level of states
+   * (i.e., a large number of transitions from the initial state to the final state) may
+   * particularly contribute to high memory usage. The memory consumption of this method can be
+   * considered as O(N), where N is the depth of the automaton (the maximum number of transitions
+   * from the initial state to any state). However, as this method detects cycles, it will never
+   * attempt to use infinite RAM.
+   *
+   * @param a the Automaton to be sorted
+   * @return the topologically sorted array of state ids
    */
   public static int[] topoSortStates(Automaton a) {
     if (a.getNumStates() == 0) {
@@ -1283,8 +1296,7 @@ public final class Operations {
     }
     int numStates = a.getNumStates();
     int[] states = new int[numStates];
-    final BitSet visited = new BitSet(numStates);
-    int upto = topoSortStatesRecurse(a, visited, states, 0, 0, 0);
+    int upto = topoSortStates(a, states);
 
     if (upto < states.length) {
       // There were dead states
@@ -1303,24 +1315,49 @@ public final class Operations {
     return states;
   }
 
-  // TODO: not great that this is recursive... in theory a
-  // large automata could exceed java's stack so the maximum level of recursion is bounded to 1000
-  private static int topoSortStatesRecurse(
-      Automaton a, BitSet visited, int[] states, int upto, int state, int level) {
-    if (level > MAX_RECURSION_LEVEL) {
-      throw new IllegalArgumentException("input automaton is too large: " + level);
-    }
+  /**
+   * Performs a topological sort on the states of the given Automaton.
+   *
+   * @param a The automaton whose states are to be topologically sorted.
+   * @param states An int array which stores the states.
+   * @return the number of states in the final sorted list.
+   * @throws IllegalArgumentException if the input automaton has a cycle.
+   */
+  private static int topoSortStates(Automaton a, int[] states) {
+    BitSet onStack = new BitSet(a.getNumStates());
+    BitSet visited = new BitSet(a.getNumStates());
+    var stack = new ArrayDeque<Integer>();
+    stack.push(0); // Assuming that the initial state is 0.
+    int upto = 0;
     Transition t = new Transition();
-    int count = a.initTransition(state, t);
-    for (int i = 0; i < count; i++) {
-      a.getNextTransition(t);
-      if (!visited.get(t.dest)) {
-        visited.set(t.dest);
-        upto = topoSortStatesRecurse(a, visited, states, upto, t.dest, level + 1);
+
+    while (!stack.isEmpty()) {
+      int state = stack.peek(); // Just peek, don't remove the state yet
+
+      int count = a.initTransition(state, t);
+      boolean pushed = false;
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(t);
+        if (!visited.get(t.dest)) {
+          visited.set(t.dest);
+          stack.push(t.dest); // Push the next unvisited state onto the stack
+          onStack.set(state);
+          pushed = true;
+          break; // Exit the loop, we'll continue from here in the next iteration
+        } else if (onStack.get(t.dest)) {
+          // If the state is on the current recursion stack, we have detected a cycle
+          throw new IllegalArgumentException("Input automaton has a cycle.");
+        }
+      }
+
+      // If we haven't pushed any new state onto the stack, we're done with this state
+      if (!pushed) {
+        onStack.clear(state); // remove the node from the current recursion stack
+        stack.pop();
+        states[upto] = state;
+        upto++;
       }
     }
-    states[upto] = state;
-    upto++;
     return upto;
   }
 }

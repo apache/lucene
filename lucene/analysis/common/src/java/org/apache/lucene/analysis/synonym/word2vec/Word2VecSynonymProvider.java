@@ -85,7 +85,7 @@ public class Word2VecSynonymProvider {
               SIMILARITY_FUNCTION,
               hnswGraph,
               null,
-              word2VecModel.size());
+              Integer.MAX_VALUE);
 
       int size = synonyms.size();
       for (int i = 0; i < size; i++) {
