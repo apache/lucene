@@ -27,5 +27,4 @@ module org.apache.lucene.queries {
   exports org.apache.lucene.queries.mlt;
   exports org.apache.lucene.queries.payloads;
   exports org.apache.lucene.queries.spans;
-    exports org.apache.lucene.queries.function.valuesource.densevectors;
 }
