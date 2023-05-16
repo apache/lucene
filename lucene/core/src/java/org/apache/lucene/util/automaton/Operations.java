@@ -61,9 +61,6 @@ public final class Operations {
    */
   public static final int DEFAULT_DETERMINIZE_WORK_LIMIT = 10000;
 
-  /** Maximum level of recursion allowed in recursive operations. */
-  public static final int MAX_RECURSION_LEVEL = 1000;
-
   private Operations() {}
 
   /**
