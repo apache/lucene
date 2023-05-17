@@ -115,10 +115,11 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
             + availableServices()
             + ((System.getSecurityManager() == null)
                 ? ""
-                : "We have detected that a security manager is installed so it is also possible "
-                    + "that the jar containing the codec is inaccessible under the current "
-                    + "security policy. (Java does not throw SecurityException if this is the "
-                    + "case, it just ignores the jar!)"));
+                : " We have detected that a security manager is installed so it is also possible "
+                    + "that the services file in the jar containing the codec is inaccessible under the current "
+                    + "security policy. A FilePermission implying 'read' access to the "
+                    + "jar containing the META-INF/services/org.apache.lucene.codec.Codec file is necessary. "
+                    + "Note that Java does not throw SecurityException if the permission is missing."));
   }
 
   public Set<String> availableServices() {
