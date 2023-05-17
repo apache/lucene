@@ -16,15 +16,16 @@
  */
 package org.apache.lucene.util.automaton;
 
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.CharsRef;
+import org.apache.lucene.util.CharsRefBuilder;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.UnicodeUtil;
 
 /**
  * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings. The algorithm
@@ -182,7 +183,7 @@ public final class DaciukMihovAutomatonBuilder {
   private final State root = new State();
 
   /** Previous sequence added to the automaton in {@link #add(CharsRef)}. */
-  private CharsRef previous;
+  private CharsRefBuilder previous;
 
   /** A comparator used for enforcing sorted UTF8 order, used in assertions only. */
   @SuppressWarnings("deprecation")
@@ -198,7 +199,7 @@ public final class DaciukMihovAutomatonBuilder {
           "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
     }
     assert stateRegistry != null : "Automaton already built.";
-    assert previous == null || comparator.compare(previous, current) <= 0
+    assert previous == null || comparator.compare(previous.get(), current) <= 0
         : "Input must be in sorted UTF-8 order: " + previous + " >= " + current;
     assert setPrevious(current);
 
@@ -270,14 +271,10 @@ public final class DaciukMihovAutomatonBuilder {
   public static Automaton build(Collection<BytesRef> input) {
     final DaciukMihovAutomatonBuilder builder = new DaciukMihovAutomatonBuilder();
 
-    char[] chars = new char[0];
-    CharsRef ref = new CharsRef();
+    CharsRefBuilder current = new CharsRefBuilder();
     for (BytesRef b : input) {
-      chars = ArrayUtil.grow(chars, b.length);
-      final int len = UnicodeUtil.UTF8toUTF16(b, chars);
-      ref.chars = chars;
-      ref.length = len;
-      builder.add(ref);
+      current.copyUTF8Bytes(b);
+      builder.add(current.get());
     }
 
     Automaton.Builder a = new Automaton.Builder();
@@ -288,9 +285,10 @@ public final class DaciukMihovAutomatonBuilder {
 
   /** Copy <code>current</code> into an internal buffer. */
   private boolean setPrevious(CharsRef current) {
-    // don't need to copy, once we fix https://issues.apache.org/jira/browse/LUCENE-3277
-    // still, called only from assert
-    previous = CharsRef.deepCopyOf(current);
+    if (previous == null) {
+      previous = new CharsRefBuilder();
+    }
+    previous.copyChars(current);
     return true;
   }
 
