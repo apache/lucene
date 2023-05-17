@@ -267,13 +267,19 @@ public final class HnswGraphBuilder<T> {
     }
 
     // for levels > nodeLevel search with topk = 1
+    candidates = new NeighborQueue(1, false);
     for (int level = curMaxLevel; level > nodeLevel; level--) {
-      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectors, hnsw);
+      candidates.clear();
+      graphSearcher.searchLevel(
+          candidates, value, 1, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
       eps = new int[] {candidates.pop()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
+    candidates = new NeighborQueue(beamWidth, false);
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
-      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectors, hnsw);
+      candidates.clear();
+      graphSearcher.searchLevel(
+          candidates, value, beamWidth, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
       eps = candidates.nodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
