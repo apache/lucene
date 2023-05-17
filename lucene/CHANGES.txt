@@ -125,7 +125,7 @@ Improvements
 
 * GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
 
-* GITHUB#xx: Minor cleanup and improvements to DaciukMihovAutomatonBuilder. (Greg Miller)
+* GITHUB#12305: Minor cleanup and improvements to DaciukMihovAutomatonBuilder. (Greg Miller)
 
 Optimizations
 ---------------------

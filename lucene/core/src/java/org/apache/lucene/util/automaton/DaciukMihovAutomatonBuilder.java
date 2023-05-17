@@ -204,7 +204,7 @@ public final class DaciukMihovAutomatonBuilder {
 
     // Descend in the automaton (find matching prefix).
     int pos = 0, max = current.length();
-    State next, state = root;
+    State state = root;
     for (; ; ) {
       assert pos <= max;
       if (pos == max) {
@@ -212,7 +212,7 @@ public final class DaciukMihovAutomatonBuilder {
       }
 
       int codePoint = Character.codePointAt(current, pos);
-      next = state.lastChild(codePoint);
+      State next = state.lastChild(codePoint);
       if (next == null) {
         break;
       }
