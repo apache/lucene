@@ -55,7 +55,7 @@ public class WordlistLoader {
       while ((word = br.readLine()) != null) {
         word = word.trim();
         // skip blank lines
-        if (word.length() == 0) continue;
+        if (word.isEmpty()) continue;
         result.add(word);
       }
     }
@@ -122,7 +122,7 @@ public class WordlistLoader {
         if (word.startsWith(comment) == false) {
           word = word.trim();
           // skip blank lines
-          if (word.length() == 0) continue;
+          if (word.isEmpty()) continue;
           result.add(word);
         }
       }
