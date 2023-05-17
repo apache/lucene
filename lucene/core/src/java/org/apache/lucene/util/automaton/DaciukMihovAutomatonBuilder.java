@@ -179,7 +179,7 @@ public final class DaciukMihovAutomatonBuilder {
   private HashMap<State, State> stateRegistry = new HashMap<>();
 
   /** Root automaton state. */
-  private State root = new State();
+  private final State root = new State();
 
   /** Previous sequence added to the automaton in {@link #add(CharsRef)}. */
   private CharsRef previous;
@@ -192,7 +192,7 @@ public final class DaciukMihovAutomatonBuilder {
    * Add another character sequence to this automaton. The sequence must be lexicographically larger
    * or equal compared to any previous sequences added to this automaton (the input must be sorted).
    */
-  public void add(CharsRef current) {
+  private void add(CharsRef current) {
     if (current.length > MAX_TERM_LENGTH) {
       throw new IllegalArgumentException(
           "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
@@ -205,10 +205,20 @@ public final class DaciukMihovAutomatonBuilder {
     // Descend in the automaton (find matching prefix).
     int pos = 0, max = current.length();
     State next, state = root;
-    while (pos < max && (next = state.lastChild(Character.codePointAt(current, pos))) != null) {
+    for (; ; ) {
+      assert pos <= max;
+      if (pos == max) {
+        break;
+      }
+
+      int codePoint = Character.codePointAt(current, pos);
+      next = state.lastChild(codePoint);
+      if (next == null) {
+        break;
+      }
+
       state = next;
-      // todo, optimize me
-      pos += Character.charCount(Character.codePointAt(current, pos));
+      pos += Character.charCount(codePoint);
     }
 
     if (state.hasChildren()) replaceOrRegister(state);
@@ -222,7 +232,7 @@ public final class DaciukMihovAutomatonBuilder {
    *
    * @return Root automaton state.
    */
-  public State complete() {
+  private State complete() {
     if (this.stateRegistry == null) throw new IllegalStateException();
 
     if (root.hasChildren()) replaceOrRegister(root);
@@ -271,7 +281,7 @@ public final class DaciukMihovAutomatonBuilder {
     }
 
     Automaton.Builder a = new Automaton.Builder();
-    convert(a, builder.complete(), new IdentityHashMap<State, Integer>());
+    convert(a, builder.complete(), new IdentityHashMap<>());
 
     return a.finish();
   }
