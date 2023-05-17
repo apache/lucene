@@ -100,12 +100,13 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    NeighborQueue results = new NeighborQueue(topK, false);
+    NeighborQueue results;
 
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
       return new NeighborQueue(1, true);
     }
+    results = new NeighborQueue(1, false);
     int[] eps = new int[] {initialEp};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
@@ -119,7 +120,8 @@ public class HnswGraphSearcher<T> {
       }
       eps[0] = results.pop();
     }
-    results.clear();
+
+    results = new NeighborQueue(topK, false);
     graphSearcher.searchLevel(
         results, query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
     results.setVisitedCount(results.visitedCount() + numVisited);
@@ -163,7 +165,8 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    NeighborQueue results = new NeighborQueue(topK, false);
+    NeighborQueue results;
+    results = new NeighborQueue(1, false);
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
@@ -179,7 +182,7 @@ public class HnswGraphSearcher<T> {
       }
       eps[0] = results.pop();
     }
-    results.clear();
+    results = new NeighborQueue(topK, false);
     graphSearcher.searchLevel(
         results, query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
     results.setVisitedCount(results.visitedCount() + numVisited);
