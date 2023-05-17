@@ -43,7 +43,7 @@ public class HnswGraphSearcher<T> {
   public enum Multivalued {
     NONE {
       @Override
-      float updateScore(float originalScore, float newScore) {
+      public float updateScore(float originalScore, float newScore) {
         return originalScore;
       }
 
@@ -54,7 +54,7 @@ public class HnswGraphSearcher<T> {
     },
     MAX {
       @Override
-      float updateScore(float originalScore, float newScore) {
+      public float updateScore(float originalScore, float newScore) {
         return Math.max(originalScore,newScore);
       }
 
@@ -66,7 +66,7 @@ public class HnswGraphSearcher<T> {
     },
     SUM {
       @Override
-      float updateScore(float originalScore, float newScore) {
+      public float updateScore(float originalScore, float newScore) {
         return originalScore + newScore;
       }
 
@@ -76,7 +76,7 @@ public class HnswGraphSearcher<T> {
       }
     };
     
-    abstract float updateScore(float originalScore, float newScore);
+    public abstract float updateScore(float originalScore, float newScore);
 
     public abstract String explainScore();
   }
