@@ -168,6 +168,24 @@ public class AssertingScorer extends Scorer {
       }
 
       @Override
+      public int peekNextNonMatchingDocID() throws IOException {
+        assert state != IteratorState.FINISHED
+            : "peekNextNonMatchingDocID() called after NO_MORE_DOCS";
+        int currentDoc = in.docID();
+        int nextNonMatchingDocID = in.peekNextNonMatchingDocID();
+        assert nextNonMatchingDocID > doc
+            : "Incorrect peekNextNonMatchingDocID() result "
+                + nextNonMatchingDocID
+                + " smaller or equal to current doc "
+                + doc;
+        assert nextNonMatchingDocID != NO_MORE_DOCS
+            : "peekNextNonMatchingDocID() should not return NO_MORE_DOCS";
+        assert currentDoc == in.docID()
+            : "peekNextNonMatchingDocID() should not advance underlying doc";
+        return nextNonMatchingDocID;
+      }
+
+      @Override
       public int advance(int target) throws IOException {
         assert state != IteratorState.FINISHED : "advance() called after NO_MORE_DOCS";
         assert target > doc : "target must be > docID(), got " + target + " <= " + doc;

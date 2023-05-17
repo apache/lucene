@@ -135,6 +135,27 @@ public abstract class MultiLevelSkipListReader implements Closeable {
     return numSkipped[0] - skipInterval[0] - 1;
   }
 
+  /**
+   * Finds the furthest-out skip entry across levels from next skipDoc (skipDoc[0]), such that the
+   * difference in doc id values is the same with number of docs in between (by calculating
+   * difference in numSkipped), which suggests there are continuous doc ids between the two.
+   *
+   * @return furthest-out skip entry doc id with continuous match from skipDoc[0]. Returns -1 if no
+   *     such doc id.
+   */
+  public int furthestContinuousMatchingSkipEntry() {
+    for (int level = numberOfSkipLevels - 1; level > 0; level--) {
+      if (skipDoc[level] != skipDoc[0]
+          && numSkipped[level] - numSkipped[0] == skipDoc[level] - skipDoc[0]
+          && skipDoc[level] != Integer.MAX_VALUE) {
+        // no "gap" in matches leading up to skipDoc[level]
+        return skipDoc[level];
+      }
+    }
+
+    return -1;
+  }
+
   private boolean loadNextSkip(int level) throws IOException {
     // we have to skip, the target document is greater than the current
     // skip list entry
