@@ -4,6 +4,9 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -14,6 +17,7 @@ import org.junit.BeforeClass;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 @TestRuleLimitSysouts.Limit(bytes = 1 << 14, hardLimit = 1 << 14)
 public class TestPimIndexSearcher extends LuceneTestCase {
@@ -39,7 +43,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         PimConfig pimConfig = new PimConfig();
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
-        IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
+        PimIndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
 
         Document doc = new Document();
         doc.add(newTextField("id", "AAA", Field.Store.YES));
@@ -63,9 +67,9 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         writer.close();
 
         System.out.println("\nTEST PIM INDEX SEARCH (BASIC)");
-        PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
+        PimIndexSearcher pimSearcher = new PimIndexSearcher(writer.getPimIndexInfo(), true);
 
-        var matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("yellow"));
+        var matches = pimSearcher.searchTerm(new BytesRef("field1"), new BytesRef("yellow"));
         System.out.println("\nSearching for field1:yellow: found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -75,7 +79,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("field1"), new BytesRef("green"));
+        matches = pimSearcher.searchTerm(new BytesRef("field1"), new BytesRef("green"));
         System.out.println("\nSearching for field1:green found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -84,7 +88,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("green"));
+        matches = pimSearcher.searchTerm(new BytesRef("field2"), new BytesRef("green"));
         System.out.println("\nSearching for field2:green found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -93,7 +97,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("orange"));
+        matches = pimSearcher.searchTerm(new BytesRef("field2"), new BytesRef("orange"));
         System.out.println("\nSearching for field2:orange found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -102,7 +106,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(0, 2));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("field2"), new BytesRef("yellow"));
+        matches = pimSearcher.searchTerm(new BytesRef("field2"), new BytesRef("yellow"));
         System.out.println("\nSearching for field2:yellow found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -110,7 +114,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches = new ArrayList<>();
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("id"), new BytesRef("AAC"));
+        matches = pimSearcher.searchTerm(new BytesRef("id"), new BytesRef("AAC"));
         System.out.println("\nSearching for id:AAC found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -128,12 +132,12 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         initDirectories();
         PimConfig pimConfig = new PimConfig();
-        writeFewWikiText(pimConfig);
+        PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
 
         System.out.println("\nTEST PIM INDEX SEARCH (MORE TEXT)");
-        PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
+        PimIndexSearcher pimSearcher = new PimIndexSearcher(pimIndexInfo, true);
 
-        var matches = pimSearcher.SearchTerm(new BytesRef("title"), new BytesRef("Apache"));
+        var matches = pimSearcher.searchTerm(new BytesRef("title"), new BytesRef("Apache"));
         System.out.println("\nSearching for title:Apache: found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -142,7 +146,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("title"), new BytesRef("München"));
+        matches = pimSearcher.searchTerm(new BytesRef("title"), new BytesRef("München"));
         System.out.println("\nSearching for title:München found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -151,7 +155,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(0, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("manuscrit"));
+        matches = pimSearcher.searchTerm(new BytesRef("body"), new BytesRef("manuscrit"));
         System.out.println("\nSearching for body:manuscrit found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -160,7 +164,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(2, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("copie"));
+        matches = pimSearcher.searchTerm(new BytesRef("body"), new BytesRef("copie"));
         System.out.println("\nSearching for body:copie found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -169,7 +173,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(2, 2));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("wird"));
+        matches = pimSearcher.searchTerm(new BytesRef("body"), new BytesRef("wird"));
         System.out.println("\nSearching for body:wird found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -178,7 +182,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(0, 2));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("Dativ"));
+        matches = pimSearcher.searchTerm(new BytesRef("body"), new BytesRef("Dativ"));
         System.out.println("\nSearching for body:Dativ found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -187,7 +191,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(0, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchTerm(new BytesRef("body"), new BytesRef("conservé"));
+        matches = pimSearcher.searchTerm(new BytesRef("body"), new BytesRef("conservé"));
         System.out.println("\nSearching for body:conservé found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -195,13 +199,13 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches = new ArrayList<>();
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
         System.out.println("\nSearching for title:[Apache Lucene] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(1, 0));
+        expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
         System.out.println("");
@@ -213,68 +217,68 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         initDirectories();
         PimConfig pimConfig = new PimConfig();
-        writeFewWikiText(pimConfig);
+        PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
 
         System.out.println("\nTEST PIM INDEX SEARCH (PHRASE MORE TEXT)");
-        PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
+        PimIndexSearcher pimSearcher = new PimIndexSearcher(pimIndexInfo, true);
 
-        var matches = pimSearcher.SearchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
+        var matches = pimSearcher.searchPhrase(new PimPhraseQuery("title", "Apache", "Lucene"));
         System.out.println("\nSearching for title:[Apache Lucene] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         var expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(1, 0));
+        expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "recette", "secrète"));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "recette", "secrète"));
         System.out.println("\nSearching for body:[recette secrète] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(2, 25));
+        expectedMatches.add(new PimMatch(2, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "dem", "Vorläufer", "von", "neuhochdeutsch"));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "dem", "Vorläufer", "von", "neuhochdeutsch"));
         System.out.println("\nSearching for body:[dem Vorläufer von neuhochdeutsch] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(0, 41));
+        expectedMatches.add(new PimMatch(0, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "fuzzy", "search"));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "fuzzy", "search"));
         System.out.println("\nSearching for body:[fuzzy search] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(1, 37));
-        expectedMatches.add(new PimMatch(3, 2));
+        expectedMatches.add(new PimMatch(1, 1));
+        expectedMatches.add(new PimMatch(3, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "edit", "distance."));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "edit", "distance."));
         System.out.println("\nSearching for body:[edit distance] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(1, 41));
-        expectedMatches.add(new PimMatch(3, 47));
+        expectedMatches.add(new PimMatch(1, 1));
+        expectedMatches.add(new PimMatch(3, 1));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "fuzzy", "search", "based", "on", "edit", "distance."));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "fuzzy", "search", "based", "on", "edit", "distance."));
         System.out.println("\nSearching for body:[fuzzy search based on edit distance.] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(1, 37));
+        expectedMatches.add(new PimMatch(1, 1));
         //assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "fuzzy", "search", "based", "on", "Levenshtein", "distance."));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "fuzzy", "search", "based", "on", "Levenshtein", "distance."));
         System.out.println("\nSearching for body:[fuzzy search based on Levenshtein distance.] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
@@ -282,7 +286,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches = new ArrayList<>();
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "Lucene", "is",
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "Lucene", "is",
                 "recognized", "for", "its", "utility", "in", "the", "implementation", "of",
                 "Internet", "search", "engines"));
         System.out.println("\nSearching for body:[Lucene is recognized for its utility in the" +
@@ -291,11 +295,42 @@ public class TestPimIndexSearcher extends LuceneTestCase {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(1, 13));
+        expectedMatches.add(new PimMatch(1, 1));
         assert matches.equals(expectedMatches);
 
         System.out.println("");
         pimSearcher.close();
+        closeDirectories();
+    }
+
+    public void testPimPhraseQuery() throws Exception {
+
+        initDirectories();
+        PimConfig pimConfig = new PimConfig();
+        PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
+
+        // load the index to PIM system
+        PimSystemManager.get().loadPimIndex(pimIndexInfo);
+
+        IndexReader reader = DirectoryReader.open(directory);
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        System.out.println("\nTEST PIM PHRASE QUERY (PHRASE MORE TEXT)");
+
+        checkPhraseQuery(searcher, "title", "Apache", "Lucene");
+        checkPhraseQuery(searcher, "body", "recette", "secrète");
+        checkPhraseQuery(searcher, "body", "dem", "Vorläufer", "von", "neuhochdeutsch");
+        checkPhraseQuery(searcher, "body", "fuzzy", "search");
+        checkPhraseQuery(searcher, "body", "edit", "distance.");
+        checkPhraseQuery(searcher, "body", "fuzzy", "search", "based", "on", "edit", "distance.");
+        checkPhraseQuery(searcher, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
+        checkPhraseQuery(searcher, "body", "Lucene", "is",
+                "recognized", "for", "its", "utility", "in", "the", "implementation", "of",
+                "Internet", "search", "engines");
+
+        System.out.println("");
+        PimSystemManager.get().unloadPimIndex();
+        reader.close();
         closeDirectories();
     }
 
@@ -307,7 +342,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         PimConfig pimConfig = new PimConfig(2);
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
-        IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
+        PimIndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
 
         Document doc = new Document();
         doc.add(newTextField("title", "blah", Field.Store.YES));
@@ -316,36 +351,19 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         writer.close();
 
         System.out.println("\nTEST PIM INDEX SEARCH (PHRASE CORNER CASES)");
-        PimIndexSearcher pimSearcher = new PimIndexSearcher(directory, pimDirectory, pimConfig);
+        PimIndexSearcher pimSearcher = new PimIndexSearcher(writer.getPimIndexInfo());
 
-        var matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "blah", "blah"));
+        var matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "blah", "blah"));
         System.out.println("\nSearching for body:[blah blah] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         var expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(0, 0));
-        expectedMatches.add(new PimMatch(0, 1));
-        expectedMatches.add(new PimMatch(0, 2));
-        expectedMatches.add(new PimMatch(0, 3));
         expectedMatches.add(new PimMatch(0, 6));
-        expectedMatches.add(new PimMatch(0, 7));
         assert matches.equals(expectedMatches);
 
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "blah", "blah", "blah"));
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "blah", "blah", "blah"));
         System.out.println("\nSearching for body:[blah blah blah] found " + matches.size() + " results");
-        matches.forEach((m) -> {
-            System.out.println("Doc:" + m.docId + " freq:" + m.score);
-        });
-        expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(0, 0));
-        expectedMatches.add(new PimMatch(0, 1));
-        expectedMatches.add(new PimMatch(0, 2));
-        expectedMatches.add(new PimMatch(0, 6));
-        assert matches.equals(expectedMatches);
-
-        matches = pimSearcher.SearchPhrase(new PimPhraseQuery("body", "blah", "youpi", "blah"));
-        System.out.println("\nSearching for body:[blah youpi blah] found " + matches.size() + " results");
         matches.forEach((m) -> {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
@@ -353,16 +371,25 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         expectedMatches.add(new PimMatch(0, 4));
         assert matches.equals(expectedMatches);
 
+        matches = pimSearcher.searchPhrase(new PimPhraseQuery("body", "blah", "youpi", "blah"));
+        System.out.println("\nSearching for body:[blah youpi blah] found " + matches.size() + " results");
+        matches.forEach((m) -> {
+            System.out.println("Doc:" + m.docId + " freq:" + m.score);
+        });
+        expectedMatches = new ArrayList<>();
+        expectedMatches.add(new PimMatch(0, 1));
+        assert matches.equals(expectedMatches);
+
         System.out.println("");
         pimSearcher.close();
         closeDirectories();
     }
 
-    void writeFewWikiText(PimConfig pimConfig) throws IOException {
+    PimIndexInfo writeFewWikiText(PimConfig pimConfig) throws IOException {
 
         IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
                 .setMergePolicy(NoMergePolicy.INSTANCE);
-        IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
+        PimIndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
 
         Document doc = new Document();
         doc.add(newTextField("title", "München", Field.Store.YES));
@@ -405,6 +432,50 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         System.out.println("-- CLOSE -------------------------------");
         writer.close();
+        return writer.getPimIndexInfo();
+    }
+
+    private void checkPhraseQuery(IndexSearcher searcher, String field, String... terms) throws IOException {
+
+
+        System.out.println("\nPIM Searching for " + field + ":" + Arrays.toString(terms));
+        var matchesPim = searcher.search(new PimPhraseQuery(field, terms), 10);
+        System.out.println("Found " + matchesPim.totalHits + " results:");
+        for (ScoreDoc m : matchesPim.scoreDocs) {
+            System.out.println("Doc:" + m.doc + " score:" + m.score);
+        }
+        ;
+        var matchesRef = searcher.search(new PhraseQuery(field, terms), 10);
+        System.out.println("\nRef Searching for " + field + ":" + Arrays.toString(terms));
+        System.out.println("Found " + matchesRef.totalHits + " results:");
+        for (ScoreDoc m : matchesRef.scoreDocs) {
+            System.out.println("Doc:" + m.doc + " score:" + m.score);
+        }
+        ;
+        assert compareScoreDocs(matchesPim.scoreDocs, matchesRef.scoreDocs);
+    }
+
+    private boolean compareScoreDocs(ScoreDoc[] s1, ScoreDoc[] s2) {
+
+        if (s1.length != s2.length) {
+            System.out.println("Different number of matches ! PIM:" +
+                    s1.length + " Ref:" + s2.length);
+            return false;
+        }
+        for (int i = 0; i < s1.length; ++i) {
+            if (s1[i].doc != s2[i].doc) {
+                System.out.println("Different doc ID for match " + i + " ! PIM:" +
+                        s1[i].doc + " Ref:" + s2[i].doc);
+                return false;
+            }
+            if (Float.compare(s1[i].score, s2[i].score) != 0) {
+                System.out.println("Different scores for match " + i + "! PIM:" +
+                        s1[i].score + " Ref:" + s2[i].score);
+                return false;
+            }
+        }
+        System.out.println("PIM and Ref MATCH !");
+        return true;
     }
 
 

@@ -71,6 +71,7 @@ public class PimIndexWriter extends IndexWriter {
   private final PimConfig pimConfig;
   private final Directory pimDirectory;
   private static final boolean enableStats = false;
+  private PimIndexInfo pimIndexInfo;
 
   public PimIndexWriter(Directory directory, Directory pimDirectory,
                         IndexWriterConfig indexWriterConfig, PimConfig pimConfig)
@@ -78,6 +79,10 @@ public class PimIndexWriter extends IndexWriter {
     super(directory, indexWriterConfig);
     this.pimConfig = pimConfig;
     this.pimDirectory = pimDirectory;
+  }
+
+  PimIndexInfo getPimIndexInfo() {
+    return pimIndexInfo;
   }
 
   @Override
@@ -115,6 +120,8 @@ public class PimIndexWriter extends IndexWriter {
           }
         }
       }
+      // successfully updated the PIM index, register it
+      pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, segmentInfos);
     }
   }
 

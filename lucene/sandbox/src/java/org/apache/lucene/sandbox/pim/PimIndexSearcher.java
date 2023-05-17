@@ -1,9 +1,8 @@
 package org.apache.lucene.sandbox.pim;
 
-import org.apache.lucene.index.*;
-import org.apache.lucene.store.Directory;
+import org.apache.lucene.search.LeafSimScorer;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.Closeable;
@@ -11,7 +10,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * @class PimIndexSearcher
@@ -20,93 +18,187 @@ import java.util.List;
  * searched by the PIM Hardware. Hence, this class purpose
  * is only to test the index correctness.
  **/
-public class PimIndexSearcher implements Closeable  {
+public class PimIndexSearcher implements Closeable {
 
     ArrayList<DPUIndexSearcher> searchers;
-    Directory dir;
+    PimIndexInfo pimIndexInfo;
+    boolean addStartDoc;
 
-    PimIndexSearcher(Directory dir, Directory pimDir, PimConfig config) {
+    /**
+     * Constructor
+     *
+     * @param pimIndexInfo Object containing the info on the PIM index
+     */
+    PimIndexSearcher(PimIndexInfo pimIndexInfo) {
+        this(pimIndexInfo, false);
+    }
 
-        this.dir = dir;
+    /**
+     * Constructor
+     *
+     * @param pimIndexInfo Object containing the info on the PIM index
+     * @param addStartDoc true if the document IDs need to be shifted with
+     *                    the segment start doc ID
+     */
+    PimIndexSearcher(PimIndexInfo pimIndexInfo, boolean addStartDoc) {
+
+        this.pimIndexInfo = pimIndexInfo;
+        this.addStartDoc = addStartDoc;
         searchers = new ArrayList<>();
-        for(int i = 0; i < config.getNumDpus(); ++i) {
-            searchers.add(new DPUIndexSearcher(dir, pimDir, i));
+        for (int i = 0; i < pimIndexInfo.getNumDpus(); ++i) {
+            searchers.add(new DPUIndexSearcher(pimIndexInfo, i));
         }
     }
 
     /**
      * Search a term in PIM index
-     * @param field the field to be searched
-     * @param term the term to be searched
-     * @return a list of PimMatch
      *
-     * @TODO there is no scoring done for now, just put the frequency as the score
+     * @param field  the field to be searched
+     * @param term   the term to be searched
+     * @param scorer the scorer to be used for each match
+     * @return the list of matches with document ID and score
      */
-    ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
+    ArrayList<PimMatch> searchTerm(BytesRef field, BytesRef term, LeafSimScorer scorer) {
 
         ArrayList<PimMatch> results = new ArrayList<>();
-        int nbSegments = GetNumberOfSegments();
-        for(int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
-            int finalLeafIdx = leafIdx;
-            searchers.forEach((s) -> {
-                s.switchToNewSegment(finalLeafIdx);
-                var matches = s.SearchTerm(field, term);
-                if (matches != null)
-                    results.addAll(matches);
-                try {
-                    s.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+        int nbSegments = pimIndexInfo.getNumSegments();
+        for (int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
+            results.addAll(searchTerm(leafIdx, field, term, scorer));
         }
         return results;
     }
 
     /**
-     * Search a phrase in PIM index
-     * @param query the PIM phrase query
-     * @return a list of PimMatch
+     * Search a term in PIM index in a given segment
      *
-     @TODO there is no scoring done for now, just return
-     * all results with the position of the match as the score
+     * @param leafIdx the segment number
+     * @param field   the field to be searched
+     * @param term    the term to be searched
+     * @param scorer  the scorer to be used for each match
+     * @return the list of matches with document ID and score
      */
-    ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
+    ArrayList<PimMatch> searchTerm(int leafIdx, BytesRef field, BytesRef term, LeafSimScorer scorer) {
 
         ArrayList<PimMatch> results = new ArrayList<>();
-        int nbSegments = GetNumberOfSegments();
-        for(int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
-            int finalLeafIdx = leafIdx;
-            searchers.forEach((s) -> {
-                s.switchToNewSegment(finalLeafIdx);
-                var matches = s.SearchPhrase(query);
-                if (matches != null)
-                    results.addAll(matches);
-                try {
-                    s.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+        int finalLeafIdx = leafIdx;
+        searchers.forEach((s) -> {
+            s.switchToNewSegment(finalLeafIdx);
+            var matches = s.SearchTerm(field, term, scorer);
+            if (matches != null)
+                results.addAll(matches);
+            try {
+                s.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return results;
+    }
+
+    /**
+     * Search a term in PIM index without scorer
+     * In this case the score is just the frequency
+     *
+     * @param field the field to be searched
+     * @param term  the term to be searched
+     * @return the list of matches with document ID and frequency
+     */
+    ArrayList<PimMatch> searchTerm(BytesRef field, BytesRef term) {
+
+        try {
+            return searchTerm(field, term,
+                    new LeafSimScorer(
+                            new Similarity.SimScorer() {
+                                @Override
+                                public float score(float freq, long norm) {
+                                    return freq;
+                                }
+                            },
+                            null,
+                            field.utf8ToString(),
+                            false
+                    )
+            );
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    /**
+     * Search a phrase in PIM index
+     *
+     * @param query  the PIM phrase query
+     * @param scorer the LeafSimScorer to be used to score each match
+     * @return a list of matches with doc ID and score
+     */
+    ArrayList<PimMatch> searchPhrase(PimPhraseQuery query, LeafSimScorer scorer) {
+
+        ArrayList<PimMatch> results = new ArrayList<>();
+        int nbSegments = pimIndexInfo.getNumSegments();
+        for (int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
+            results.addAll(searchPhrase(leafIdx, query, scorer));
         }
         return results;
+    }
+
+    /**
+     * Search a phrase in PIM index in one segment
+     *
+     * @param leafIdx the segment number
+     * @param query   the PIM phrase query
+     * @param scorer  the LeafSimScorer to be used to score each match
+     * @return a list of matches with doc ID and score
+     */
+    ArrayList<PimMatch> searchPhrase(int leafIdx, PimPhraseQuery query, LeafSimScorer scorer) {
+
+        ArrayList<PimMatch> results = new ArrayList<>();
+        searchers.forEach((s) -> {
+            s.switchToNewSegment(leafIdx);
+            var matches = s.SearchPhrase(query, scorer);
+            if (matches != null)
+                results.addAll(matches);
+            try {
+                s.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return results;
+    }
+
+    /**
+     * Search a phrase in PIM index without scoring
+     * In this case the score is just the frequency
+     *
+     * @param query the PIM phrase query
+     * @return a list of matches with doc ID and freq
+     */
+    ArrayList<PimMatch> searchPhrase(PimPhraseQuery query) {
+
+        try {
+            return searchPhrase(query,
+                    new LeafSimScorer(
+                            new Similarity.SimScorer() {
+                                @Override
+                                public float score(float freq, long norm) {
+                                    return freq;
+                                }
+                            },
+                            null,
+                            query.getField(),
+                            false
+                    )
+            );
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void close() throws IOException {
         for (DPUIndexSearcher s : searchers) {
             s.close();
-        }
-    }
-
-    private int GetNumberOfSegments() {
-
-        try (IndexReader indexReader = DirectoryReader.open(dir)) {
-            List<LeafReaderContext> leaves = indexReader.leaves();
-            return leaves.size();
-        }
-        catch(IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -117,8 +209,8 @@ public class PimIndexSearcher implements Closeable  {
     private class DPUIndexSearcher implements Closeable {
 
         final int dpuId;
-        final Directory dir;
-        final Directory pimDir;
+        final PimIndexInfo pimIndexInfo;
+        int startDoc;
         IndexInput fieldTableInput;
         IndexInput blockTableInput;
         IndexInput blocksInput;
@@ -126,18 +218,17 @@ public class PimIndexSearcher implements Closeable  {
 
         BytesRefToDataBlockTreeMap fieldTableTree;
         BytesRefToDataBlockTreeMap blockTableTree;
-        int startDoc;
 
-        DPUIndexSearcher(Directory dir, Directory pimDir, int dpuId) {
+        DPUIndexSearcher(PimIndexInfo pimIndexInfo, int dpuId) {
             this.dpuId = dpuId;
-            this.dir = dir;
-            this.pimDir = pimDir;
+            this.pimIndexInfo = pimIndexInfo;
+            this.startDoc = 0;
         }
 
         void switchToNewSegment(int leafIdx) {
 
             try {
-                openFilesInput(dir, pimDir, leafIdx);
+                openFilesInput(pimIndexInfo, leafIdx);
                 // create field table
                 this.fieldTableTree = BytesRefToDataBlockTreeMap.read(fieldTableInput);
             } catch (EOFException e) {
@@ -149,44 +240,21 @@ public class PimIndexSearcher implements Closeable  {
             }
         }
 
-        void openFilesInput(Directory dir, Directory pimDir, int leafIdx) throws IOException {
+        void openFilesInput(PimIndexInfo pimIndexInfo, int leafIdx) throws IOException {
 
-            SegmentInfos segmentInfos = SegmentInfos.readCommit(dir,
-                    SegmentInfos.getLastCommitSegmentsFileName(dir));
-
-            SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
-            startDoc = 0;
-            for(int i = 0; i < leafIdx && i < segmentInfos.size(); ++i) {
-                startDoc += segmentInfos.info(i).info.maxDoc();
-            }
-
-            String fieldFileName =
-                    IndexFileNames.segmentFileName(
-                            segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_FIELD_INDEX_EXTENSION);
-            fieldTableInput = pimDir.openInput(fieldFileName, IOContext.DEFAULT);
-
-            String blockTablesFileName =
-                    IndexFileNames.segmentFileName(
-                            segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_BLOCK_TABLE_INDEX_EXTENSION);
-            blockTableInput = pimDir.openInput(blockTablesFileName, IOContext.DEFAULT);
-
-            String blocksFileName =
-                    IndexFileNames.segmentFileName(
-                            segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_BLOCK_INDEX_EXTENSION);
-            blocksInput = pimDir.openInput(blocksFileName, IOContext.DEFAULT);
-
-            String postingsFileName =
-                    IndexFileNames.segmentFileName(
-                            segmentCommitInfo.info.name, Integer.toString(dpuId), DPU_TERM_POSTINGS_INDEX_EXTENSION);
-            postingsInput = pimDir.openInput(postingsFileName, IOContext.DEFAULT);
+            startDoc = addStartDoc ? pimIndexInfo.getStartDoc(leafIdx) : 0;
+            fieldTableInput = pimIndexInfo.getFieldFileInput(leafIdx, dpuId);
+            blockTableInput = pimIndexInfo.getBlockTableFileInput(leafIdx, dpuId);
+            blocksInput = pimIndexInfo.getBlocksFileInput(leafIdx, dpuId);
+            postingsInput = pimIndexInfo.getPostingsFileInput(leafIdx, dpuId);
         }
 
-        ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term) {
+        ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term, LeafSimScorer scorer) {
 
             // get the postings for this term
             BytesRefToDataBlockTreeMap.SearchResult termPostings = getTermPostings(field, term);
 
-            if(termPostings == null)
+            if (termPostings == null)
                 return null;
 
             ArrayList<PimMatch> results = new ArrayList<>();
@@ -197,8 +265,9 @@ public class PimIndexSearcher implements Closeable  {
                 postingsInput.seek(termPostings.block.address);
                 DocumentIterator docIt = new DocumentIterator(postingsInput, termPostings.byteSize);
                 int doc = docIt.Next();
-                while(doc >= 0) {
-                    results.add(new PimMatch(startDoc + doc, docIt.getFreq()));
+                while (doc >= 0) {
+                    results.add(new PimMatch(doc + startDoc,
+                            scorer.score(doc, docIt.getFreq())));
                     doc = docIt.Next();
                 }
             } catch (IOException e) {
@@ -208,16 +277,16 @@ public class PimIndexSearcher implements Closeable  {
             return results;
         }
 
-        ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query) {
+        ArrayList<PimMatch> SearchPhrase(PimPhraseQuery query, LeafSimScorer scorer) {
 
             // get the postings address of each term in the phrase query
             BytesRefToDataBlockTreeMap.SearchResult[] termPostingBlocks =
                     new BytesRefToDataBlockTreeMap.SearchResult[query.getTerms().length];
-            IndexInput[] termPostings =  new IndexInput[query.getTerms().length];
+            IndexInput[] termPostings = new IndexInput[query.getTerms().length];
             BytesRef field = new BytesRef(query.getField());
-            for(int i = 0; i < termPostingBlocks.length; ++i) {
+            for (int i = 0; i < termPostingBlocks.length; ++i) {
                 termPostingBlocks[i] = getTermPostings(field, query.getTerms()[i].bytes());
-                if(termPostingBlocks[i] == null)
+                if (termPostingBlocks[i] == null)
                     return null;
 
                 // create multiple readers of the postings file
@@ -240,13 +309,13 @@ public class PimIndexSearcher implements Closeable  {
                 int[] currDoc = new int[termPostings.length];
                 Arrays.fill(currDoc, -1);
                 DocumentIterator[] docIt = new DocumentIterator[termPostings.length];
-                for(int i = 0; i < termPostings.length; ++i)
+                for (int i = 0; i < termPostings.length; ++i)
                     docIt[i] = new DocumentIterator(termPostings[i], termPostingBlocks[i].byteSize);
 
-                while(true) {
+                while (true) {
 
                     int searchDoc = docIt[0].Next(0);
-                    if(searchDoc < 0)
+                    if (searchDoc < 0)
                         return results;
                     currDoc[0] = searchDoc;
                     int maxDoc = currDoc[0];
@@ -278,15 +347,16 @@ public class PimIndexSearcher implements Closeable  {
                     int[] searchPos = new int[termPostings.length];
                     Arrays.fill(currPos, -1);
                     PositionsIterator[] posIt = new PositionsIterator[termPostings.length];
-                    for(int i = 0; i < termPostings.length; ++i) {
+                    for (int i = 0; i < termPostings.length; ++i) {
                         posIt[i] = new PositionsIterator(termPostings[i], docIt[i].getNbPositionsForDoc());
                     }
 
                     searchPos[0] = posIt[0].Next(0);
-                    if(searchPos[0] < 0) continue;
+                    if (searchPos[0] < 0) continue;
                     currPos[0] = searchPos[0];
                     extendSearchPositions(searchPos);
                     boolean endPositions = false;
+                    int nbPositionsMatch = 0;
                     while (true) {
                         int nbMatches = 1;
                         int maxPos = 0;
@@ -299,31 +369,35 @@ public class PimIndexSearcher implements Closeable  {
                                     break;
                                 } else if (currPos[i] == searchPos[i]) {
                                     nbMatches++;
-                                }
-                                else if(currPos[i] > maxPos + i) {
+                                } else if (currPos[i] > maxPos + i) {
                                     maxPos = currPos[i] - i;
                                 }
                             }
                         }
                         if (endPositions)
                             break;
-                        if(nbMatches == termPostings.length) {
-                            // found a match, store it
+                        if (nbMatches == termPostings.length) {
+                            // found a match, increment the number of position matches
                             // and continue the search from first term next position
-                            results.add(new PimMatch(startDoc + searchDoc, searchPos[0]));
+                            nbPositionsMatch++;
                             searchPos[0] = posIt[0].Next(0);
-                            if(searchPos[0] < 0) {
+                            if (searchPos[0] < 0) {
                                 // no more positions
                                 break;
                             }
                             currPos[0] = searchPos[0];
-                        }
-                        else {
+                        } else {
                             // no match at this position
                             // start searching from maxPos
                             searchPos[0] = maxPos;
                         }
                         extendSearchPositions(searchPos);
+                    }
+                    // end looking for positions of the matching document
+                    // add the result if positions matches were found
+                    if (nbPositionsMatch > 0) {
+                        results.add(new PimMatch(searchDoc + startDoc,
+                                scorer.score(searchDoc, nbPositionsMatch)));
                     }
                 }
             } catch (IOException e) {
@@ -341,13 +415,13 @@ public class PimIndexSearcher implements Closeable  {
         private BytesRefToDataBlockTreeMap.SearchResult getTermPostings(BytesRef field, BytesRef term) {
 
             // case of empty index for this DPU
-            if(this.fieldTableTree == null)
+            if (this.fieldTableTree == null)
                 return null;
 
             // first search for the field in the field table
             BytesRefToDataBlockTreeMap.SearchResult fieldResult = fieldTableTree.SearchForBlock(field);
 
-            if(fieldResult == null)
+            if (fieldResult == null)
                 return null;
 
             // search for the block table for this field and read it
@@ -359,13 +433,13 @@ public class PimIndexSearcher implements Closeable  {
                 throw new RuntimeException(e);
             }
 
-            if(blockTableTree == null)
+            if (blockTableTree == null)
                 return null;
 
             // search for the right block where to find the term
             BytesRefToDataBlockTreeMap.SearchResult termResult = blockTableTree.SearchForBlock(term);
 
-            if(termResult == null)
+            if (termResult == null)
                 return null;
 
             // start reading at the address of the block to find the term (if present)
@@ -376,12 +450,11 @@ public class PimIndexSearcher implements Closeable  {
                 blocksInput.seek(termResult.block.address);
                 //special case where the first term of the block
                 //is the one searched
-                if(term.compareTo(termResult.block.bytesRef) == 0) {
+                if (term.compareTo(termResult.block.bytesRef) == 0) {
                     // the posting address is the first VLong
                     postingAddress = blocksInput.readVLong();
                     postingByteSize = blocksInput.readVLong();
-                }
-                else {
+                } else {
                     // ignore first term posting info
                     blocksInput.readVLong();
                     blocksInput.readVLong();
@@ -393,13 +466,13 @@ public class PimIndexSearcher implements Closeable  {
 
                         // compare term to the one searched
                         int cmp = term.compareTo(new BytesRef(termBytes));
-                        if(cmp == 0) {
+                        if (cmp == 0) {
                             // found term, save posting list address
                             postingAddress = blocksInput.readVLong();
                             postingByteSize = blocksInput.readVLong();
                             break;
                         }
-                        if(cmp < 0) {
+                        if (cmp < 0) {
                             // this means the term searched is not present
                             break;
                         }
@@ -412,14 +485,15 @@ public class PimIndexSearcher implements Closeable  {
                 throw new RuntimeException(e);
             }
 
-            if(postingAddress < 0)
+            if (postingAddress < 0)
                 return null;
 
             return new BytesRefToDataBlockTreeMap.SearchResult(
                     new BytesRefToDataBlockTreeMap.Block(term, postingAddress), (int) postingByteSize);
         }
 
-        /**@class Iterator
+        /**
+         * @class Iterator
          * abstract base class for doc and position iterator classes
          ***/
         private static abstract class Iterator {
@@ -431,7 +505,7 @@ public class PimIndexSearcher implements Closeable  {
             int Next(int target) throws IOException {
 
                 int next = Next();
-                while(next >= 0 && next < target)
+                while (next >= 0 && next < target)
                     next = Next();
                 return next;
             }
@@ -452,7 +526,7 @@ public class PimIndexSearcher implements Closeable  {
 
             /**
              * @param postingInput the IndexInput where to read the postings
-             * @param byteSize the size in bytes of the postings for the term we want to find the docs
+             * @param byteSize     the size in bytes of the postings for the term we want to find the docs
              ***/
             DocumentIterator(IndexInput postingInput, long byteSize) {
                 this.postingInput = postingInput;
@@ -467,12 +541,12 @@ public class PimIndexSearcher implements Closeable  {
 
                 // first skip the necessary number of bytes
                 // to reach the next doc
-                if(nextDocPointer > 0) {
+                if (nextDocPointer > 0) {
                     this.postingInput.seek(nextDocPointer);
                 }
 
                 // stop if this is the end of the posting list for the term
-                if(postingInput.getFilePointer() >= endPointer) {
+                if (postingInput.getFilePointer() >= endPointer) {
                     nextDocPointer = -1;
                     nbPositions = -1;
                     return -1;
@@ -482,17 +556,15 @@ public class PimIndexSearcher implements Closeable  {
                 int deltaDoc = postingInput.readVInt();
                 lastDoc += deltaDoc;
                 freq = postingInput.readZInt();
-                if(freq == 0) {
+                if (freq == 0) {
                     nbPositions = postingInput.readVInt();
                     nextDocPointer = postingInput.readVLong();
                     nextDocPointer += postingInput.getFilePointer();
-                }
-                else if(freq < 0) {
+                } else if (freq < 0) {
                     nbPositions = -freq;
                     nextDocPointer = postingInput.readShort();
                     nextDocPointer += postingInput.getFilePointer();
-                }
-                else {
+                } else {
                     nbPositions = freq;
                     nextDocPointer = postingInput.readByte();
                     nextDocPointer += postingInput.getFilePointer();
@@ -521,7 +593,7 @@ public class PimIndexSearcher implements Closeable  {
 
             /**
              * @param postingInput the IndexInput where to read the postings
-             * @param nbPositions the number of positions to read
+             * @param nbPositions  the number of positions to read
              ***/
             PositionsIterator(IndexInput postingInput, long nbPositions) {
                 assert nbPositions > 0;
@@ -531,7 +603,7 @@ public class PimIndexSearcher implements Closeable  {
             }
 
             public int Next() throws IOException {
-                if(nbPositions == 0)
+                if (nbPositions == 0)
                     return -1;
                 nbPositions--;
                 lastPos += postingInput.readVInt();
@@ -542,19 +614,14 @@ public class PimIndexSearcher implements Closeable  {
         @Override
         public void close() throws IOException {
 
-            if(fieldTableInput != null)
+            if (fieldTableInput != null)
                 fieldTableInput.close();
-            if(blockTableInput != null)
+            if (blockTableInput != null)
                 blockTableInput.close();
-            if(blocksInput != null)
+            if (blocksInput != null)
                 blocksInput.close();
-            if(postingsInput != null)
+            if (postingsInput != null)
                 postingsInput.close();
         }
     }
-
-    public static final String DPU_TERM_FIELD_INDEX_EXTENSION = "dpuf";
-    public static final String DPU_TERM_BLOCK_TABLE_INDEX_EXTENSION = "dpub";
-    public static final String DPU_TERM_BLOCK_INDEX_EXTENSION = "dput";
-    public static final String DPU_TERM_POSTINGS_INDEX_EXTENSION = "dpup";
 }
