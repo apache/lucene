@@ -28,8 +28,14 @@ import org.apache.lucene.search.DocIdSetIterator;
  */
 public abstract class FloatVectorValues extends DocIdSetIterator {
 
-  /** The maximum length of a vector */
-  public static final int MAX_DIMENSIONS = 1024;
+  /**
+   * The maximum length of a vector. Can be overridden via a system property
+   * "lucene.hnsw.maxDimensions".
+   *
+   * @deprecated Expected to move to a codec specific limit.
+   */
+  @Deprecated
+  public static final int MAX_DIMENSIONS = Integer.getInteger("lucene.hnsw.maxDimensions", 1024);
 
   /** Sole constructor */
   protected FloatVectorValues() {}
