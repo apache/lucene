@@ -23,3 +23,8 @@ dependencies {
   moduleTestImplementation project(':lucene:codecs')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+test {
+  // test higher dimensions than the default limit
+  systemProperty 'org.apache.lucene.hnsw.maxDimensions', '2048'
+}

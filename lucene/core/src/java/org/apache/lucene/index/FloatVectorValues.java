@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -27,15 +28,33 @@ import org.apache.lucene.search.DocIdSetIterator;
  * @lucene.experimental
  */
 public abstract class FloatVectorValues extends DocIdSetIterator {
+  private static final Logger LOG = Logger.getLogger(FloatVectorValues.class.getName());
 
   /**
    * The maximum length of a vector. Can be overridden via a system property
-   * "lucene.hnsw.maxDimensions".
+   * "org.apache.lucene.hnsw.maxDimensions".
    *
    * @deprecated Expected to move to a codec specific limit.
    */
-  @Deprecated
-  public static final int MAX_DIMENSIONS = Integer.getInteger("lucene.hnsw.maxDimensions", 1024);
+  @Deprecated public static final int MAX_DIMENSIONS = initMaxDim();
+
+  private static int initMaxDim() {
+    final var PROP_NAME = "org.apache.lucene.hnsw.maxDimensions";
+    final int DEFAULT_MAX = 1024;
+    try {
+      int d = Integer.getInteger(PROP_NAME, DEFAULT_MAX);
+      if (d > 2048) {
+        LOG.warning("Lucene HNSW only supports up to 2048 dimensions.");
+      }
+      return d;
+    } catch (
+        @SuppressWarnings("unused")
+        Exception ignored) { // e.g. SecurityException
+      LOG.warning(
+          "Cannot read sysprop " + PROP_NAME + ", so the dimension limit will be unchanged.");
+      return DEFAULT_MAX;
+    }
+  }
 
   /** Sole constructor */
   protected FloatVectorValues() {}

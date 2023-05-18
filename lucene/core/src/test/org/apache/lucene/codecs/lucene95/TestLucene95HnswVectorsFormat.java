@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene95;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -47,5 +48,9 @@ public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, -1));
     expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(512 + 1, 20));
     expectThrows(IllegalArgumentException.class, () -> new Lucene95HnswVectorsFormat(20, 3201));
+  }
+
+  public void testTestedWithHighDimensionLimit() {
+    assertEquals(2048, FloatVectorValues.MAX_DIMENSIONS);
   }
 }
