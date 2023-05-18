@@ -40,6 +40,7 @@ configure(project(":lucene:core")) {
           "-Xlint:-options",
           "--patch-module", "java.base=${apijar}",
           "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
+          "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED", // This is a hack, but does it matter
         ]
       }
     }

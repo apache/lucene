@@ -17,8 +17,18 @@
 
 package org.apache.lucene.util;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.logging.Logger;
+
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
+
+  private static final Logger LOG = Logger.getLogger(VectorUtil.class.getName());
+
+  private static final VectorUtilProvider PROVIDER;
 
   private VectorUtil() {}
 
@@ -28,71 +38,7 @@ public final class VectorUtil {
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float dotProduct(float[] a, float[] b) {
-    if (a.length != b.length) {
-      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
-    }
-    float res = 0f;
-    /*
-     * If length of vector is larger than 8, we use unrolled dot product to accelerate the
-     * calculation.
-     */
-    int i;
-    for (i = 0; i < a.length % 8; i++) {
-      res += b[i] * a[i];
-    }
-    if (a.length < 8) {
-      return res;
-    }
-    for (; i + 31 < a.length; i += 32) {
-      res +=
-          b[i + 0] * a[i + 0]
-              + b[i + 1] * a[i + 1]
-              + b[i + 2] * a[i + 2]
-              + b[i + 3] * a[i + 3]
-              + b[i + 4] * a[i + 4]
-              + b[i + 5] * a[i + 5]
-              + b[i + 6] * a[i + 6]
-              + b[i + 7] * a[i + 7];
-      res +=
-          b[i + 8] * a[i + 8]
-              + b[i + 9] * a[i + 9]
-              + b[i + 10] * a[i + 10]
-              + b[i + 11] * a[i + 11]
-              + b[i + 12] * a[i + 12]
-              + b[i + 13] * a[i + 13]
-              + b[i + 14] * a[i + 14]
-              + b[i + 15] * a[i + 15];
-      res +=
-          b[i + 16] * a[i + 16]
-              + b[i + 17] * a[i + 17]
-              + b[i + 18] * a[i + 18]
-              + b[i + 19] * a[i + 19]
-              + b[i + 20] * a[i + 20]
-              + b[i + 21] * a[i + 21]
-              + b[i + 22] * a[i + 22]
-              + b[i + 23] * a[i + 23];
-      res +=
-          b[i + 24] * a[i + 24]
-              + b[i + 25] * a[i + 25]
-              + b[i + 26] * a[i + 26]
-              + b[i + 27] * a[i + 27]
-              + b[i + 28] * a[i + 28]
-              + b[i + 29] * a[i + 29]
-              + b[i + 30] * a[i + 30]
-              + b[i + 31] * a[i + 31];
-    }
-    for (; i + 7 < a.length; i += 8) {
-      res +=
-          b[i + 0] * a[i + 0]
-              + b[i + 1] * a[i + 1]
-              + b[i + 2] * a[i + 2]
-              + b[i + 3] * a[i + 3]
-              + b[i + 4] * a[i + 4]
-              + b[i + 5] * a[i + 5]
-              + b[i + 6] * a[i + 6]
-              + b[i + 7] * a[i + 7];
-    }
-    return res;
+    return PROVIDER.dotProduct(a, b);
   }
 
   /**
@@ -269,5 +215,135 @@ public final class VectorUtil {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  interface VectorUtilProvider {
+
+    // just dot product for now
+    float dotProduct(float[] a, float[] b);
+  }
+
+  private static VectorUtilProvider lookupProvider() {
+    // TODO: add a check
+    final int runtimeVersion = Runtime.version().feature();
+    if (runtimeVersion == 20) { // TODO: do we want JDK 19?
+      try {
+        ensureReadability();
+        final var lookup = MethodHandles.lookup();
+        final var cls = lookup.findClass("org.apache.lucene.util.JDKVectorUtilProvider");
+        // we use method handles, so we do not need to deal with setAccessible as we have private
+        // access through the lookup:
+        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+        try {
+          return (VectorUtilProvider) constr.invoke();
+        } catch (RuntimeException | Error e) {
+          throw e;
+        } catch (Throwable th) {
+          throw new AssertionError(th);
+        }
+      } catch (NoSuchMethodException | IllegalAccessException e) {
+        throw new LinkageError("JDKVectorUtilProvider is missing correctly typed constructor", e);
+      } catch (ClassNotFoundException cnfe) {
+        throw new LinkageError("JDKVectorUtilProvider is missing in Lucene JAR file", cnfe);
+      }
+    } else if (runtimeVersion >= 21) {
+      LOG.warning(
+          "You are running with Java 21 or later. To make full use of the Vector API, please update Apache Lucene.");
+    }
+    return new LuceneVectorUtilProvider();
+  }
+
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
+
+  static void ensureReadability() {
+    ModuleLayer.boot().modules().stream()
+        .filter(m -> m.getName().equals("jdk.incubator.vector"))
+        .findFirst()
+        .ifPresentOrElse(
+            vecMod -> VectorUtilProvider.class.getModule().addReads(vecMod),
+            () -> LOG.warning("vector incubator module not present"));
+  }
+
+  static {
+    PROVIDER =
+        doPrivileged(VectorUtil::lookupProvider); // TODO check what permissions we actually need
+  }
+
+  static final class LuceneVectorUtilProvider implements VectorUtilProvider {
+
+    @Override
+    public float dotProduct(float[] a, float[] b) {
+      if (a.length != b.length) {
+        throw new IllegalArgumentException(
+            "vector dimensions differ: " + a.length + "!=" + b.length);
+      }
+      float res = 0f;
+      /*
+       * If length of vector is larger than 8, we use unrolled dot product to accelerate the
+       * calculation.
+       */
+      int i;
+      for (i = 0; i < a.length % 8; i++) {
+        res += b[i] * a[i];
+      }
+      if (a.length < 8) {
+        return res;
+      }
+      for (; i + 31 < a.length; i += 32) {
+        res +=
+            b[i + 0] * a[i + 0]
+                + b[i + 1] * a[i + 1]
+                + b[i + 2] * a[i + 2]
+                + b[i + 3] * a[i + 3]
+                + b[i + 4] * a[i + 4]
+                + b[i + 5] * a[i + 5]
+                + b[i + 6] * a[i + 6]
+                + b[i + 7] * a[i + 7];
+        res +=
+            b[i + 8] * a[i + 8]
+                + b[i + 9] * a[i + 9]
+                + b[i + 10] * a[i + 10]
+                + b[i + 11] * a[i + 11]
+                + b[i + 12] * a[i + 12]
+                + b[i + 13] * a[i + 13]
+                + b[i + 14] * a[i + 14]
+                + b[i + 15] * a[i + 15];
+        res +=
+            b[i + 16] * a[i + 16]
+                + b[i + 17] * a[i + 17]
+                + b[i + 18] * a[i + 18]
+                + b[i + 19] * a[i + 19]
+                + b[i + 20] * a[i + 20]
+                + b[i + 21] * a[i + 21]
+                + b[i + 22] * a[i + 22]
+                + b[i + 23] * a[i + 23];
+        res +=
+            b[i + 24] * a[i + 24]
+                + b[i + 25] * a[i + 25]
+                + b[i + 26] * a[i + 26]
+                + b[i + 27] * a[i + 27]
+                + b[i + 28] * a[i + 28]
+                + b[i + 29] * a[i + 29]
+                + b[i + 30] * a[i + 30]
+                + b[i + 31] * a[i + 31];
+      }
+      for (; i + 7 < a.length; i += 8) {
+        res +=
+            b[i + 0] * a[i + 0]
+                + b[i + 1] * a[i + 1]
+                + b[i + 2] * a[i + 2]
+                + b[i + 3] * a[i + 3]
+                + b[i + 4] * a[i + 4]
+                + b[i + 5] * a[i + 5]
+                + b[i + 6] * a[i + 6]
+                + b[i + 7] * a[i + 7];
+      }
+      return res;
+    }
   }
 }

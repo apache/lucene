@@ -122,7 +122,7 @@ allprojects {
       
       // Lucene needs to optional modules at runtime, which we want to enforce for testing
       // (if the runner JVM does not support them, it will fail tests):
-      jvmArgs '--add-modules', 'jdk.unsupported,jdk.management'
+      jvmArgs '--add-modules', 'jdk.unsupported,jdk.management,jdk.incubator.vector'
 
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
       def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
