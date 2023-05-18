@@ -39,8 +39,7 @@ public final class VectorUtil {
    */
   public static float dotProduct(float[] a, float[] b) {
     if (a.length != b.length) {
-      throw new IllegalArgumentException(
-              "vector dimensions differ: " + a.length + "!=" + b.length);
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
     return PROVIDER.dotProduct(a, b);
   }

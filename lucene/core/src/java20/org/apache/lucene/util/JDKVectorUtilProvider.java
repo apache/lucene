@@ -28,18 +28,27 @@ public final class JDKVectorUtilProvider implements VectorUtil.VectorUtilProvide
 
   @Override
   public float dotProduct(float[] a, float[] b) {
-    var upperBound = SPECIES.loopBound(a.length);
-    var sum = FloatVector.zero(SPECIES);
-    var i = 0;
-    for (; i < upperBound; i += SPECIES.length()) {
-      var va = FloatVector.fromArray(SPECIES, a, i);
-      var vb = FloatVector.fromArray(SPECIES, b, i);
-      sum = va.fma(vb, sum);
+    int i = 0;
+    float res = 0;
+    // if the array size is large (2x platform vector size), its worth the overhead to vectorize
+    // vector loop is unrolled a single time (2 accumulators in parallel)
+    if (a.length >= 2 * SPECIES.length()) {
+      FloatVector acc1 = FloatVector.zero(SPECIES);
+      FloatVector acc2 = FloatVector.zero(SPECIES);
+      int upperBound = SPECIES.loopBound(a.length - SPECIES.length());
+      for (; i < upperBound; i += 2 * SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+        acc1 = acc1.add(va.mul(vb));
+        FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
+        FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
+        acc2 = acc2.add(vc.mul(vd));
+      }
+      res += acc1.reduceLanes(VectorOperators.ADD) + acc2.reduceLanes(VectorOperators.ADD);
     }
-    var c = sum.reduceLanes(VectorOperators.ADD);
-    for (; i < a.length; i++) { // tail loop
-      c += a[i] * b[i];
+    for (; i < a.length; i++) {
+      res += b[i] * a[i];
     }
-    return c;
+    return res;
   }
 }
