@@ -52,30 +52,12 @@ public abstract class Query {
       new VirtualMethod<>(Query.class, "rewrite", IndexReader.class);
   private static final VirtualMethod<Query> newMethod =
       new VirtualMethod<>(Query.class, "rewrite", IndexSearcher.class);
-  private final boolean isDeprecatedRewriteMethodOverridden;
-
-  /** Constructor for query classes. */
-  public Query() {
-    var clazz = this.getClass();
-    if (clazz.getName().startsWith("org.apache.lucene.")) {
-      // we know that all Lucene's own classes have been updated to use new API, so reflection is
-      // not needed
-      isDeprecatedRewriteMethodOverridden = false;
-    } else {
-      isDeprecatedRewriteMethodOverridden = detectDeprectatedRewriteMethodOverridden(clazz);
-    }
-  }
-
-  /** Test only method (used to test backwards layer) */
-  Query(Void forTestOnly) {
-    isDeprecatedRewriteMethodOverridden = detectDeprectatedRewriteMethodOverridden(this.getClass());
-  }
-
-  private static boolean detectDeprectatedRewriteMethodOverridden(Class<? extends Query> clazz) {
-    final PrivilegedAction<Boolean> action =
-        () -> VirtualMethod.compareImplementationDistance(clazz, oldMethod, newMethod) > 0;
-    return AccessController.doPrivileged(action);
-  }
+  private final boolean isDeprecatedRewriteMethodOverridden =
+      AccessController.doPrivileged(
+          (PrivilegedAction<Boolean>)
+              () ->
+                  VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod)
+                      > 0);
 
   /**
    * Prints a query to a string, with <code>field</code> assumed to be the default field and

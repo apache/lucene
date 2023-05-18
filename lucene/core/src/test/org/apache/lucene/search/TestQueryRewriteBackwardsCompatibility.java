@@ -158,10 +158,6 @@ public class TestQueryRewriteBackwardsCompatibility extends LuceneTestCase {
   private abstract static class RewriteCountingQuery extends Query {
     int rewriteCount = 0;
 
-    RewriteCountingQuery() {
-      super(null); // enforce usage of backwards compatibility mode
-    }
-
     abstract RewriteCountingQuery getInnerQuery();
   }
 
