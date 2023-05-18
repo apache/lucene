@@ -19,8 +19,6 @@ package org.apache.lucene.util;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.logging.Logger;
 
 /** Utilities for computations with numeric arrays */
@@ -28,7 +26,7 @@ public final class VectorUtil {
 
   private static final Logger LOG = Logger.getLogger(VectorUtil.class.getName());
 
-  private static final VectorUtilProvider PROVIDER;
+  private static final VectorUtilProvider PROVIDER = lookupProvider();
 
   private VectorUtil() {}
 
@@ -227,11 +225,9 @@ public final class VectorUtil {
   }
 
   private static VectorUtilProvider lookupProvider() {
-    // TODO: add a check
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 20) { // TODO: do we want JDK 19?
+    if (runtimeVersion == 20 && vectorModulePresentAndReadable()) {
       try {
-        ensureReadability();
         final var lookup = MethodHandles.lookup();
         final var cls = lookup.findClass("org.apache.lucene.util.JDKVectorUtilProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
@@ -253,31 +249,22 @@ public final class VectorUtil {
       LOG.warning(
           "You are running with Java 21 or later. To make full use of the Vector API, please update Apache Lucene.");
     }
-    return new LuceneVectorUtilProvider();
+    return new DefaultVectorUtilProvider();
   }
 
-  // Extracted to a method to be able to apply the SuppressForbidden annotation
-  @SuppressWarnings("removal")
-  @SuppressForbidden(reason = "security manager")
-  private static <T> T doPrivileged(PrivilegedAction<T> action) {
-    return AccessController.doPrivileged(action);
+  static boolean vectorModulePresentAndReadable() {
+    var opt =
+        ModuleLayer.boot().modules().stream()
+            .filter(m -> m.getName().equals("jdk.incubator.vector"))
+            .findFirst();
+    if (opt.isPresent()) {
+      VectorUtilProvider.class.getModule().addReads(opt.get());
+      return true;
+    }
+    return false;
   }
 
-  static void ensureReadability() {
-    ModuleLayer.boot().modules().stream()
-        .filter(m -> m.getName().equals("jdk.incubator.vector"))
-        .findFirst()
-        .ifPresentOrElse(
-            vecMod -> VectorUtilProvider.class.getModule().addReads(vecMod),
-            () -> LOG.warning("vector incubator module not present"));
-  }
-
-  static {
-    PROVIDER =
-        doPrivileged(VectorUtil::lookupProvider); // TODO check what permissions we actually need
-  }
-
-  static final class LuceneVectorUtilProvider implements VectorUtilProvider {
+  static final class DefaultVectorUtilProvider implements VectorUtilProvider {
 
     @Override
     public float dotProduct(float[] a, float[] b) {
