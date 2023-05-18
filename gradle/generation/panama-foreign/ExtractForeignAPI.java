@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -47,13 +48,24 @@ public final class ExtractForeignAPI {
       throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
     }
     var outputPath = Paths.get(args[1]);
+
     var javaBaseModule = Paths.get(URI.create("jrt:/")).resolve("java.base").toRealPath();
-    var fileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel}.class");
-    try (var out = new ZipOutputStream(Files.newOutputStream(outputPath)); var stream = Files.walk(javaBaseModule)) {
-      var filesToExtract = stream.map(javaBaseModule::relativize).filter(fileMatcher::matches).sorted().collect(Collectors.toList());
+    var foreignFileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel}.class");
+    var jdkVectorModule = Paths.get(URI.create("jrt:/")).resolve("jdk.incubator.vector").toRealPath();
+    var jdkVectorMatcher = jdkVectorModule.getFileSystem().getPathMatcher("glob:jdk/incubator/vector/*.class");
+
+    try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
+      process(javaBaseModule, foreignFileMatcher, out);
+      process(jdkVectorModule, jdkVectorMatcher, out);
+    }
+  }
+
+  static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
+    try (var stream = Files.walk(modulePath)) {
+      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).sorted().collect(Collectors.toList());
       for (Path relative : filesToExtract) {
         System.out.println("Processing class file: " + relative);
-        try (var in = Files.newInputStream(javaBaseModule.resolve(relative))) {
+        try (var in = Files.newInputStream(modulePath.resolve(relative))) {
           final var reader = new ClassReader(in);
           final var cw = new ClassWriter(0);
           reader.accept(new Cleaner(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
