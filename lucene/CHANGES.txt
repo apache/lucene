@@ -8,8 +8,12 @@ http://s.apache.org/luceneversions
 API Changes
 ---------------------
 
-* GITHUB#11840: Query rewrite now takes an IndexSearcher instead of IndexReader to enable concurrent
-  rewriting. (Patrick Zhai, Ben Trent)
+* GITHUB#11840, GITHUB#12304: Query rewrite now takes an IndexSearcher instead of
+  IndexReader to enable concurrent rewriting. Please note: This is implemented in
+  a backwards compatible way. A query overriding any of both rewrite methods is
+  supported. To implement this backwards layer in Lucene 9.x the
+  RuntimePermission "accessDeclaredMembers" is needed in applications using
+  SecurityManager.  (Patrick Zhai, Ben Trent, Uwe Schindler)
 
 New Features
 ---------------------
