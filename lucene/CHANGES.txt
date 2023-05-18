@@ -138,7 +138,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
 
 Other
 ---------------------
