@@ -38,6 +38,10 @@ public final class VectorUtil {
    * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float dotProduct(float[] a, float[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException(
+              "vector dimensions differ: " + a.length + "!=" + b.length);
+    }
     return PROVIDER.dotProduct(a, b);
   }
 
@@ -278,10 +282,6 @@ public final class VectorUtil {
 
     @Override
     public float dotProduct(float[] a, float[] b) {
-      if (a.length != b.length) {
-        throw new IllegalArgumentException(
-            "vector dimensions differ: " + a.length + "!=" + b.length);
-      }
       float res = 0f;
       /*
        * If length of vector is larger than 8, we use unrolled dot product to accelerate the
