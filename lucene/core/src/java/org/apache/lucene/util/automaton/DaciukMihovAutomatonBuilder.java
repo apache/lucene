@@ -24,7 +24,7 @@ import java.util.IdentityHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.UnicodeUtil;
+import org.apache.lucene.util.CharsRefBuilder;
 
 /**
  * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings. The algorithm
@@ -179,10 +179,10 @@ public final class DaciukMihovAutomatonBuilder {
   private HashMap<State, State> stateRegistry = new HashMap<>();
 
   /** Root automaton state. */
-  private State root = new State();
+  private final State root = new State();
 
   /** Previous sequence added to the automaton in {@link #add(CharsRef)}. */
-  private CharsRef previous;
+  private CharsRefBuilder previous;
 
   /** A comparator used for enforcing sorted UTF8 order, used in assertions only. */
   @SuppressWarnings("deprecation")
@@ -192,23 +192,33 @@ public final class DaciukMihovAutomatonBuilder {
    * Add another character sequence to this automaton. The sequence must be lexicographically larger
    * or equal compared to any previous sequences added to this automaton (the input must be sorted).
    */
-  public void add(CharsRef current) {
+  private void add(CharsRef current) {
     if (current.length > MAX_TERM_LENGTH) {
       throw new IllegalArgumentException(
           "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
     }
     assert stateRegistry != null : "Automaton already built.";
-    assert previous == null || comparator.compare(previous, current) <= 0
+    assert previous == null || comparator.compare(previous.get(), current) <= 0
         : "Input must be in sorted UTF-8 order: " + previous + " >= " + current;
     assert setPrevious(current);
 
     // Descend in the automaton (find matching prefix).
     int pos = 0, max = current.length();
-    State next, state = root;
-    while (pos < max && (next = state.lastChild(Character.codePointAt(current, pos))) != null) {
+    State state = root;
+    for (; ; ) {
+      assert pos <= max;
+      if (pos == max) {
+        break;
+      }
+
+      int codePoint = Character.codePointAt(current, pos);
+      State next = state.lastChild(codePoint);
+      if (next == null) {
+        break;
+      }
+
       state = next;
-      // todo, optimize me
-      pos += Character.charCount(Character.codePointAt(current, pos));
+      pos += Character.charCount(codePoint);
     }
 
     if (state.hasChildren()) replaceOrRegister(state);
@@ -222,7 +232,7 @@ public final class DaciukMihovAutomatonBuilder {
    *
    * @return Root automaton state.
    */
-  public State complete() {
+  private State complete() {
     if (this.stateRegistry == null) throw new IllegalStateException();
 
     if (root.hasChildren()) replaceOrRegister(root);
@@ -260,27 +270,24 @@ public final class DaciukMihovAutomatonBuilder {
   public static Automaton build(Collection<BytesRef> input) {
     final DaciukMihovAutomatonBuilder builder = new DaciukMihovAutomatonBuilder();
 
-    char[] chars = new char[0];
-    CharsRef ref = new CharsRef();
+    CharsRefBuilder current = new CharsRefBuilder();
     for (BytesRef b : input) {
-      chars = ArrayUtil.grow(chars, b.length);
-      final int len = UnicodeUtil.UTF8toUTF16(b, chars);
-      ref.chars = chars;
-      ref.length = len;
-      builder.add(ref);
+      current.copyUTF8Bytes(b);
+      builder.add(current.get());
     }
 
     Automaton.Builder a = new Automaton.Builder();
-    convert(a, builder.complete(), new IdentityHashMap<State, Integer>());
+    convert(a, builder.complete(), new IdentityHashMap<>());
 
     return a.finish();
   }
 
   /** Copy <code>current</code> into an internal buffer. */
   private boolean setPrevious(CharsRef current) {
-    // don't need to copy, once we fix https://issues.apache.org/jira/browse/LUCENE-3277
-    // still, called only from assert
-    previous = CharsRef.deepCopyOf(current);
+    if (previous == null) {
+      previous = new CharsRefBuilder();
+    }
+    previous.copyChars(current);
     return true;
   }
 
