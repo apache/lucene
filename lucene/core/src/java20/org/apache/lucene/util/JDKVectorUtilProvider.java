@@ -20,11 +20,11 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
-public final class JDKVectorUtilProvider implements VectorUtil.VectorUtilProvider {
+final class JDKVectorUtilProvider implements VectorUtil.VectorUtilProvider {
 
   static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
 
-  public JDKVectorUtilProvider() {}
+  JDKVectorUtilProvider() {}
 
   @Override
   public float dotProduct(float[] a, float[] b) {
