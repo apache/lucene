@@ -17,8 +17,6 @@
 
 package org.apache.lucene.util;
 
-import org.apache.lucene.internal.vector.VectorUtilProvider;
-
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vector;
+package org.apache.lucene.util;
 
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
@@ -25,11 +25,11 @@ import jdk.incubator.vector.VectorSpecies;
  *
  * @lucene.internal
  */
-final class PanamaVectorUtilProvider implements VectorUtilProvider {
+final class VectorUtilPanamaProvider implements VectorUtilProvider {
 
   static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
 
-  PanamaVectorUtilProvider() {}
+  VectorUtilPanamaProvider() {}
 
   @Override
   public float dotProduct(float[] a, float[] b) {
