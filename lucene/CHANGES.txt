@@ -47,6 +47,10 @@ API Changes
 * GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
   LeafReader#getVectorValues. (Luca Cavanna)
 
+* GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
+  They have already been runtime-checked to only be implemented by the specific classes
+  so this is effectively a non-breaking change.
+
 New Features
 ---------------------
 
@@ -78,6 +82,8 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+
 Other
 ---------------------
 
@@ -101,6 +107,43 @@ Other
 * GITHUB#977, LUCENE-9500: Remove the deflater hack introduced because of JDK-8252739 (Uwe Schindler)
 
 * GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
+
+* GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
+
+======================== Lucene 9.7.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+
+* GITHUB#12305: Minor cleanup and improvements to DaciukMihovAutomatonBuilder. (Greg Miller)
+
+Optimizations
+---------------------
+
+* GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
+
+* GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
+
+* GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
+
+Bug Fixes
+---------------------
+
+* GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
+
+Other
+---------------------
+(No changes)
 
 ======================== Lucene 9.6.0 =======================
 
@@ -130,6 +173,8 @@ New Features
   (instead of 1 GiB) and indexes closed while queries are running can no longer
   crash the JVM. To disable this feature, pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
+* GITHUB#12169: Introduce a new token filter to expand synonyms based on Word2Vec DL4j models. (Daniele Antuzi, Ilaria Petreti, Alessandro Benedetti)
 
 Improvements
 ---------------------
@@ -170,6 +215,8 @@ Optimizations
 
 * GITHUB#12198, GITHUB#12199: Reduced contention when indexing with many threads. (Adrien Grand)
 
+* GITHUB#12241: Add ordering of files in compound files. (Christoph Büscher)
+
 Bug Fixes
 ---------------------
 
@@ -179,9 +226,15 @@ Bug Fixes
 
 * GITHUB#12202: Fix MultiFieldQueryParser to apply boosts to regexp, wildcard, prefix, range, fuzzy queries.  (Jasir KT)
 
+* GITHUB#12178: Add explanations for TermAutomatonQuery (Marcus Eagan via Patrick Zhai, Mike McCandless, Robert Muir, Mikhail Khludnev)
+
 * GITHUB#12214: Fix ordered intervals query to avoid skipping some of the results over interleaved terms. (Hongyu Yan)
 
 * GITHUB#12212: Bug fix for a DrillSideways issue where matching hits could occasionally be missed. (Frederic Thevenet)
+
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end (Peter Gromov)
+
+* GITHUB#12260: Fix SynonymQuery equals implementation to take the targeted field name into account (Luca Cavanna)
 
 Build
 ---------------------
@@ -196,6 +249,11 @@ Build
 
 * GITHUB#12215: Upgrade forbiddenapis to version 3.5.  This tones down some verbose warnings
   printed while checking Java 19 and Java 20 sourcesets for the MR-JAR.  (Uwe Schindler)
+
+Documentation
+---------------------
+
+* GITHUB#10633: Update javadocs in TestBackwardsCompatibility to use gradle and not ant. (Usman Shaikh)
 
 Other
 ---------------------

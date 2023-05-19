@@ -42,7 +42,7 @@ import org.apache.lucene.util.hnsw.HnswGraphSearcher;
  * synchronization, you should <b>not</b> synchronize on the <code>IndexReader</code> instance; use
  * your own (non-Lucene) objects instead.
  */
-public abstract class LeafReader extends IndexReader {
+public abstract non-sealed class LeafReader extends IndexReader {
 
   private final LeafReaderContext readerContext = new LeafReaderContext(this);
 

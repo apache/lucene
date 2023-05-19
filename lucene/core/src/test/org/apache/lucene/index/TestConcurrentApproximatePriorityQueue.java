@@ -18,12 +18,18 @@ package org.apache.lucene.index;
 
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
 
   public void testPollFromSameThread() {
-    ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();
+    ConcurrentApproximatePriorityQueue<Integer> pq =
+        new ConcurrentApproximatePriorityQueue<>(
+            TestUtil.nextInt(
+                random(),
+                ConcurrentApproximatePriorityQueue.MIN_CONCURRENCY,
+                ConcurrentApproximatePriorityQueue.MAX_CONCURRENCY));
     pq.add(3, 3);
     pq.add(10, 10);
     pq.add(7, 7);
@@ -34,7 +40,12 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
   }
 
   public void testPollFromDifferentThread() throws Exception {
-    ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();
+    ConcurrentApproximatePriorityQueue<Integer> pq =
+        new ConcurrentApproximatePriorityQueue<>(
+            TestUtil.nextInt(
+                random(),
+                ConcurrentApproximatePriorityQueue.MIN_CONCURRENCY,
+                ConcurrentApproximatePriorityQueue.MAX_CONCURRENCY));
     pq.add(3, 3);
     pq.add(10, 10);
     pq.add(7, 7);
@@ -53,7 +64,10 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
   }
 
   public void testCurrentLockIsBusy() throws Exception {
-    ConcurrentApproximatePriorityQueue<Integer> pq = new ConcurrentApproximatePriorityQueue<>();
+    // This test needs a concurrency of 2 or more.
+    ConcurrentApproximatePriorityQueue<Integer> pq =
+        new ConcurrentApproximatePriorityQueue<>(
+            TestUtil.nextInt(random(), 2, ConcurrentApproximatePriorityQueue.MAX_CONCURRENCY));
     pq.add(3, 3);
     CountDownLatch takeLock = new CountDownLatch(1);
     CountDownLatch releaseLock = new CountDownLatch(1);

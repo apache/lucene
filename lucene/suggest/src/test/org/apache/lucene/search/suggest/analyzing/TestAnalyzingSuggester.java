@@ -1325,22 +1325,6 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
     return asList;
   }
 
-  // TODO: we need BaseSuggesterTestCase?
-  public void testTooLongSuggestion() throws Exception {
-    Analyzer a = new MockAnalyzer(random());
-    Directory tempDir = getDirectory();
-    AnalyzingSuggester suggester = new AnalyzingSuggester(tempDir, "suggest", a);
-    String bigString = TestUtil.randomSimpleString(random(), 30000, 30000);
-    IllegalArgumentException ex =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              suggester.build(new InputArrayIterator(new Input[] {new Input(bigString, 7)}));
-            });
-    assertTrue(ex.getMessage().contains("input automaton is too large"));
-    IOUtils.close(a, tempDir);
-  }
-
   private Directory getDirectory() {
     return newDirectory();
   }

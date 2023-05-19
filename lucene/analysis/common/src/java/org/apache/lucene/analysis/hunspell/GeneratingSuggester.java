@@ -98,7 +98,7 @@ class GeneratingSuggester {
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
           boolean overflow = roots.size() == MAX_ROOTS;
-          if (overflow && sc <= roots.peek().score) {
+          if (overflow && isWorseThan(sc, rootChars, roots.peek())) {
             return;
           }
 
@@ -117,6 +117,11 @@ class GeneratingSuggester {
         });
 
     return roots.stream().sorted().collect(Collectors.toList());
+  }
+
+  private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
+    return score < root.score
+        || score == root.score && CharSequence.compare(candidate, root.word.word) > 0;
   }
 
   private void processSuggestibleWords(

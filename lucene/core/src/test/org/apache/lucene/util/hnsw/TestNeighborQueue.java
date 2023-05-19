@@ -83,10 +83,12 @@ public class TestNeighborQueue extends LuceneTestCase {
     nn.add(1, 1.1f);
     nn.add(2, -2.2f);
     nn.setVisitedCount(42);
+    nn.markIncomplete();
     nn.clear();
 
     assertEquals(0, nn.size());
     assertEquals(0, nn.visitedCount());
+    assertFalse(nn.incomplete());
   }
 
   public void testMaxSizeQueue() {

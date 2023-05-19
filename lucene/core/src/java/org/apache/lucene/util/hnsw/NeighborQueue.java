@@ -248,6 +248,7 @@ public class NeighborQueue {
   public void clear() {
     heap.clear();
     visitedCount = 0;
+    incomplete = false;
   }
 
   public int visitedCount() {
