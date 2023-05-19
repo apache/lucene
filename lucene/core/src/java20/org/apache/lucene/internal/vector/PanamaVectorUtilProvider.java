@@ -14,12 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util.vector;
+package org.apache.lucene.internal.vector;
 
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
+/**
+ * A VectorUtil provider implementation that leverages the Panama Vector API.
+ *
+ * @lucene.internal
+ */
 final class PanamaVectorUtilProvider implements VectorUtilProvider {
 
   static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;

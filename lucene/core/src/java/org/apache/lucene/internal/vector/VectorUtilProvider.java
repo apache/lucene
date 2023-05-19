@@ -15,12 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.vector;
+package org.apache.lucene.internal.vector;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.logging.Logger;
 
+/**
+ * A provider of VectorUtil implementations.
+ *
+ * @lucene.internal
+ */
 public interface VectorUtilProvider {
 
   /** Calculates the dot product of the given float arrays. */
@@ -35,7 +40,8 @@ public interface VectorUtilProvider {
     if (runtimeVersion == 20 && vectorModulePresentAndReadable()) {
       try {
         final var lookup = MethodHandles.lookup();
-        final var cls = lookup.findClass("org.apache.lucene.util.vector.PanamaVectorUtilProvider");
+        final var cls =
+            lookup.findClass("org.apache.lucene.internal.vector.PanamaVectorUtilProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
         // access through the lookup:
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));

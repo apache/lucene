@@ -15,8 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.vector;
+package org.apache.lucene.internal.vector;
 
+/**
+ * The default VectorUtil provider implementation.
+ *
+ * @lucene.internal
+ */
 public final class DefaultVectorUtilProvider implements VectorUtilProvider {
 
   @Override
