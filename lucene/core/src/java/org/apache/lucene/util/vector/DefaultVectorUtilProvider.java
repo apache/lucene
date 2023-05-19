@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util;
+package org.apache.lucene.util.vector;
 
-final class DefaultVectorUtilProvider implements VectorUtil.VectorUtilProvider {
+public final class DefaultVectorUtilProvider implements VectorUtilProvider {
 
   @Override
   public float dotProduct(float[] a, float[] b) {

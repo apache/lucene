@@ -14,17 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.util.vector;
 
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
-final class JDKVectorUtilProvider implements VectorUtil.VectorUtilProvider {
+final class PanamaVectorUtilProvider implements VectorUtilProvider {
 
   static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
 
-  JDKVectorUtilProvider() {}
+  PanamaVectorUtilProvider() {}
 
   @Override
   public float dotProduct(float[] a, float[] b) {

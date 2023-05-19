@@ -17,16 +17,12 @@
 
 package org.apache.lucene.util;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.util.logging.Logger;
+import org.apache.lucene.util.vector.VectorUtilProvider;
 
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
-  private static final Logger LOG = Logger.getLogger(VectorUtil.class.getName());
-
-  private static final VectorUtilProvider PROVIDER = lookupProvider();
+  private static final VectorUtilProvider PROVIDER = VectorUtilProvider.lookup();
 
   private VectorUtil() {}
 
@@ -216,51 +212,5 @@ public final class VectorUtil {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
-  }
-
-  interface VectorUtilProvider {
-
-    // just dot product for now
-    float dotProduct(float[] a, float[] b);
-  }
-
-  private static VectorUtilProvider lookupProvider() {
-    final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 20 && vectorModulePresentAndReadable()) {
-      try {
-        final var lookup = MethodHandles.lookup();
-        final var cls = lookup.findClass("org.apache.lucene.util.JDKVectorUtilProvider");
-        // we use method handles, so we do not need to deal with setAccessible as we have private
-        // access through the lookup:
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-        try {
-          return (VectorUtilProvider) constr.invoke();
-        } catch (RuntimeException | Error e) {
-          throw e;
-        } catch (Throwable th) {
-          throw new AssertionError(th);
-        }
-      } catch (NoSuchMethodException | IllegalAccessException e) {
-        throw new LinkageError("JDKVectorUtilProvider is missing correctly typed constructor", e);
-      } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("JDKVectorUtilProvider is missing in Lucene JAR file", cnfe);
-      }
-    } else if (runtimeVersion >= 21) {
-      LOG.warning(
-          "You are running with Java 21 or later. To make full use of the Vector API, please update Apache Lucene.");
-    }
-    return new DefaultVectorUtilProvider();
-  }
-
-  static boolean vectorModulePresentAndReadable() {
-    var opt =
-        ModuleLayer.boot().modules().stream()
-            .filter(m -> m.getName().equals("jdk.incubator.vector"))
-            .findFirst();
-    if (opt.isPresent()) {
-      VectorUtilProvider.class.getModule().addReads(opt.get());
-      return true;
-    }
-    return false;
   }
 }
