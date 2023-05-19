@@ -95,7 +95,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
         AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {1, 0}, 2);
-        Query rewritten = query.rewrite(reader);
+        Query rewritten = query.rewrite(searcher);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
 
@@ -126,7 +126,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         AbstractKnnVectorQuery query =
             getKnnVectorQuery("field", VectorUtil.l2normalize(new float[] {2, 3}), 3);
-        Query rewritten = query.rewrite(reader);
+        Query rewritten = query.rewrite(searcher);
         Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
 

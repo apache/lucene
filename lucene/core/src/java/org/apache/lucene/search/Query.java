@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.util.VirtualMethod;
 
@@ -51,7 +53,11 @@ public abstract class Query {
   private static final VirtualMethod<Query> newMethod =
       new VirtualMethod<>(Query.class, "rewrite", IndexSearcher.class);
   private final boolean isDeprecatedRewriteMethodOverridden =
-      VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) > 0;
+      AccessController.doPrivileged(
+          (PrivilegedAction<Boolean>)
+              () ->
+                  VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod)
+                      > 0);
 
   /**
    * Prints a query to a string, with <code>field</code> assumed to be the default field and
