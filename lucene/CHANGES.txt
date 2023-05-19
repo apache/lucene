@@ -47,6 +47,10 @@ API Changes
 * GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
   LeafReader#getVectorValues. (Luca Cavanna)
 
+* GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
+  They have already been runtime-checked to only be implemented by the specific classes
+  so this is effectively a non-breaking change.
+
 New Features
 ---------------------
 
@@ -119,7 +123,9 @@ New Features
 Improvements
 ---------------------
 
-GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+* GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+
+* GITHUB#12305: Minor cleanup and improvements to DaciukMihovAutomatonBuilder. (Greg Miller)
 
 Optimizations
 ---------------------
@@ -128,9 +134,12 @@ Optimizations
 
 * GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
 
+* GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
 
 Other
 ---------------------
