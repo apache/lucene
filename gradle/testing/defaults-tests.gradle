@@ -119,6 +119,9 @@ allprojects {
       if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
         jvmArgs '--illegal-access=deny'
       }
+
+      // Disable assertions to workaround JDK-8301190
+      jvmArgs '-da:jdk.incubator.vector.LaneType'
       
       // Lucene needs to optional modules at runtime, which we want to enforce for testing
       // (if the runner JVM does not support them, it will fail tests):
