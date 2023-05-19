@@ -20,6 +20,7 @@ package org.apache.lucene.internal.vector;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.logging.Logger;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * A provider of VectorUtil implementations.
@@ -37,7 +38,7 @@ public interface VectorUtilProvider {
 
   static VectorUtilProvider lookup() {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 20 && vectorModulePresentAndReadable()) {
+    if (runtimeVersion == 20 && useVectorAPI() && vectorModulePresentAndReadable()) {
       try {
         final var lookup = MethodHandles.lookup();
         final var cls =
@@ -75,5 +76,11 @@ public interface VectorUtilProvider {
       return true;
     }
     return false;
+  }
+
+  // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
+  @SuppressForbidden(reason = "required to determine if non-workable locale")
+  static boolean useVectorAPI() {
+    return 'I' == int.class.getSimpleName().toUpperCase().charAt(0);
   }
 }
