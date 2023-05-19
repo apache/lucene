@@ -763,9 +763,16 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     } else {
       long offset = vectorData.getFilePointer();
       meta.writeLong(offset); // docsWithFieldOffset
+
+      DocIdSetIterator vectorIterator;
+      if (field.isVectorMultiValued()) {
+        vectorIterator = DocIdSetIterator.all(docsWithField.getTotalVectorsCount());
+      } else {
+        vectorIterator = docsWithField.iterator();
+      }
       final short jumpTableEntryCount =
           IndexedDISI.writeBitSet(
-              docsWithField.iterator(), vectorData, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+                  vectorIterator, vectorData, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
       meta.writeLong(vectorData.getFilePointer() - offset); // docsWithFieldLength
       meta.writeShort(jumpTableEntryCount);
       meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);

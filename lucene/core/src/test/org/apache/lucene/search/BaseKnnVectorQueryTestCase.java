@@ -297,16 +297,25 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testSimpleFilter_multiValuedMax_shouldApplyFilter() throws IOException {
-    multiValued_shouldApplyFilter(HnswGraphSearcher.Multivalued.MAX);
+  public void testExactNearestNeighborWithFilter_multiValuedMax_shouldApplyFilter() throws IOException {
+    multiValuedExactSearch_shouldApplyFilter(HnswGraphSearcher.Multivalued.MAX);
   }
 
 
-  public void testSimpleFilter_multiValuedSum_shouldApplyFilter() throws IOException {
-    multiValued_shouldApplyFilter(HnswGraphSearcher.Multivalued.SUM);
+  public void testExactNearestNeighborWithFilter_multiValuedSum_shouldApplyFilter() throws IOException {
+    multiValuedExactSearch_shouldApplyFilter(HnswGraphSearcher.Multivalued.SUM);
+  }
+
+  public void testApproximateNearestNeighborWithFilter_multiValuedMax_shouldApplyFilter() throws IOException {
+    multiValuedApproximateSearch_shouldApplyFilter(HnswGraphSearcher.Multivalued.MAX);
+  }
+
+
+  public void testApproximateNearestNeighborWithFilter_multiValuedSum_shouldApplyFilter() throws IOException {
+    multiValuedApproximateSearch_shouldApplyFilter(HnswGraphSearcher.Multivalued.SUM);
   }
   
-  public void multiValued_shouldApplyFilter(HnswGraphSearcher.Multivalued strategy) throws IOException {
+  public void multiValuedExactSearch_shouldApplyFilter(HnswGraphSearcher.Multivalued strategy) throws IOException {
     float[][] doc0Vectors = new float[][]{new float[] {1, 2,1}, new float[] {1, 2, 1}, new float[] {1, 2, 1}};
     float[][] doc1Vectors = new float[][]{new float[] {1, 4,1}, new float[] {1, 120,1}, new float[] {1, 1,4}};
     float[][] doc2Vectors = new float[][]{new float[] {1, 1,1}, new float[] {1, 60,1}};
@@ -317,6 +326,28 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       Query filter = new TermQuery(new Term("id", "id2"));
       Query kvq = getKnnVectorQuery("vector3D", new float[] {0, 0, 0}, 10, filter, strategy);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(1, topDocs.totalHits.value);
+      assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);
+    }
+  }
+
+  public void multiValuedApproximateSearch_shouldApplyFilter(HnswGraphSearcher.Multivalued strategy) throws IOException {
+    float[][] doc0Vectors = new float[][]{new float[]{1, 2, 1}, new float[]{1, 2, 1}, new float[]{1, 2, 1}};
+    float[][] doc1Vectors = new float[][]{new float[]{1, 4, 1}, new float[]{1, 120, 1}, new float[]{1, 1, 4}};
+    float[][] doc2Vectors = new float[][]{new float[]{1, 1, 1}, new float[]{1, 60, 1}};
+
+    try (Directory indexStore =
+                 getMultiValuedIndexStore("vector3D", false, doc0Vectors,doc1Vectors,doc2Vectors);
+         IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      BooleanClause id2 = new BooleanClause(new TermQuery(new Term("id", "id2")), BooleanClause.Occur.SHOULD);
+      BooleanClause id1 = new BooleanClause(new TermQuery(new Term("id", "id1")), BooleanClause.Occur.SHOULD);
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      builder.add(id1);
+      builder.add(id2);
+      Query filter = builder.build();
+      Query kvq = getKnnVectorQuery("vector3D", new float[] {0, 0, 0}, 1, filter, strategy);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(1, topDocs.totalHits.value);
       assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);

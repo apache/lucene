@@ -101,6 +101,11 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
+    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+      throw new UnsupportedOperationException("exact search is not supported");
+    }
+
+    @Override
     public String toString(String field) {
       return null;
     }
