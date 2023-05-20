@@ -60,9 +60,12 @@ public final class ExtractForeignAPI {
     if (args.length != 2) {
       throw new IllegalArgumentException("Need two parameters: java version, output file");
     }
-    int jdk = Integer.parseInt(args[0]);
-    if (jdk != Runtime.version().feature()) {
+    Integer jdk = Integer.valueOf(args[0]);
+    if (jdk.intValue() != Runtime.version().feature()) {
       throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
+    }
+    if (!MODULES_TO_PROCESS.containsKey(jdk)) {
+      throw new IllegalArgumentException("No support to extract stubs from java version: " + jdk);
     }
     var outputPath = Paths.get(args[1]);
 
