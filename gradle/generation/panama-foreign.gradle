@@ -17,6 +17,13 @@
 
 def resources = scriptResources(buildscript)
 
+configure(rootProject) {
+  ext {
+    // also change this in extractor tool: ExtractForeignAPI
+    vectorIncubatorJavaVersions = [ JavaVersion.VERSION_20 ] as Set
+  }
+}
+
 configure(project(":lucene:core")) {
   ext {
     apijars = file('src/generated/jdk');
