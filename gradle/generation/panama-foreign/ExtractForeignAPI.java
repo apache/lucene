@@ -22,10 +22,9 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -88,15 +87,13 @@ public final class ExtractForeignAPI {
         }
       }
     }
-    var visibleClasses = classReaders.stream().filter(r -> isVisible(r.getAccess()))
-        .map(ClassReader::getClassName)
-        .collect(Collectors.toUnmodifiableSet());
-    var classesToInclude = new HashSet<String>(visibleClasses);
+    var classesToInclude = classReaders.stream().filter(r -> isVisible(r.getAccess()))
+        .map(ClassReader::getClassName).collect(Collectors.toSet());
     var processed = new HashMap<String, byte[]>();
     System.out.println("Transforming class files in [" + modulePath + "]...");
     for (ClassReader reader : classReaders) {
       var cw = new ClassWriter(0);
-      var cleaner = new Cleaner(cw, visibleClasses, classesToInclude);
+      var cleaner = new Cleaner(cw, classesToInclude);
       reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
       processed.put(reader.getClassName(), cw.toByteArray());
     }
@@ -121,11 +118,10 @@ public final class ExtractForeignAPI {
     private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
     private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
     
-    private final Set<String> visibleClasses, classesToInclude;
+    private final Set<String> classesToInclude;
     
-    Cleaner(ClassWriter out, Set<String> visibleClasses, Set<String> classesToInclude) {
+    Cleaner(ClassWriter out, Set<String> classesToInclude) {
       super(Opcodes.ASM9, out);
-      this.visibleClasses = visibleClasses;
       this.classesToInclude = classesToInclude;
     }
 
