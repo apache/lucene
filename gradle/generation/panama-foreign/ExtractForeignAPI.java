@@ -128,7 +128,6 @@ public final class ExtractForeignAPI {
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
-      //completelyHidden = !isVisible(access);
       classesToInclude.add(superName);
       classesToInclude.addAll(Arrays.asList(interfaces));
     }
