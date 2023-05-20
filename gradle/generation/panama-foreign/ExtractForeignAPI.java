@@ -24,11 +24,11 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -77,9 +77,9 @@ public final class ExtractForeignAPI {
 
   static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
     var classesToInclude = new HashSet<String>();
-    var processed = new LinkedHashMap<String, byte[]>();
+    var processed = new TreeMap<String, byte[]>();
     try (var stream = Files.walk(modulePath)) {
-      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).sorted().toArray(Path[]::new);
+      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).toArray(Path[]::new);
       System.out.println("Transforming " + filesToExtract.length + " class files in [" + modulePath + "]...");
       for (Path relative : filesToExtract) {
         try (var in = Files.newInputStream(modulePath.resolve(relative))) {
