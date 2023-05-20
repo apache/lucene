@@ -19,8 +19,6 @@ package org.apache.lucene.util;
 
 /**
  * The default VectorUtil provider implementation.
- *
- * @lucene.internal
  */
 final class VectorUtilDefaultProvider implements VectorUtilProvider {
 

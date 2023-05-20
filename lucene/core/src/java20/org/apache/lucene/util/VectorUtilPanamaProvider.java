@@ -22,8 +22,6 @@ import jdk.incubator.vector.VectorSpecies;
 
 /**
  * A VectorUtil provider implementation that leverages the Panama Vector API.
- *
- * @lucene.internal
  */
 final class VectorUtilPanamaProvider implements VectorUtilProvider {
 

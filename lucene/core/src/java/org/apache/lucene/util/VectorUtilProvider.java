@@ -25,8 +25,6 @@ import java.util.logging.Logger;
 
 /**
  * A provider of VectorUtil implementations.
- *
- * @lucene.internal
  */
 interface VectorUtilProvider {
 
@@ -39,7 +37,17 @@ interface VectorUtilProvider {
 
   static VectorUtilProvider lookup() {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 20 && useVectorAPI() && vectorModulePresentAndReadable()) {
+    if (runtimeVersion == 20) {
+      // is locale sane (only buggy in Java 20)
+      if (runtimeVersion <= 20 && !hasWorkingDefaultLocale()) {
+        LOG.warning("Java runtime is using a buggy default locale; Vector API can't be enabled: " + Locale.getDefault());
+        return new VectorUtilDefaultProvider();
+      }
+      // is the incubator module present and readable (JVM providers may to exclude them or it is build with jlink)
+      if (!vectorModulePresentAndReadable()) {
+        LOG.warning("Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
+        return new VectorUtilDefaultProvider();        
+      }
       try {
         final var lookup = MethodHandles.lookup();
         final var cls = lookup.findClass("org.apache.lucene.util.VectorUtilPanamaProvider");
@@ -55,9 +63,9 @@ interface VectorUtilProvider {
         }
       } catch (NoSuchMethodException | IllegalAccessException e) {
         throw new LinkageError(
-            "PanamaVectorUtilProvider is missing correctly typed constructor", e);
+            "VectorUtilPanamaProvider is missing correctly typed constructor", e);
       } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("PanamaVectorUtilProvider is missing in Lucene JAR file", cnfe);
+        throw new LinkageError("VectorUtilPanamaProvider is missing in Lucene JAR file", cnfe);
       }
     } else if (runtimeVersion >= 21) {
       LOG.warning(
@@ -79,7 +87,7 @@ interface VectorUtilProvider {
   }
 
   // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
-  static boolean useVectorAPI() {
+  static boolean hasWorkingDefaultLocale() {
     return Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
   }
 }
