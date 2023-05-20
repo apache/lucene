@@ -20,9 +20,7 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
-/**
- * A VectorUtil provider implementation that leverages the Panama Vector API.
- */
+/** A VectorUtil provider implementation that leverages the Panama Vector API. */
 final class VectorUtilPanamaProvider implements VectorUtilProvider {
 
   static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;

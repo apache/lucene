@@ -23,9 +23,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
 
-/**
- * A provider of VectorUtil implementations.
- */
+/** A provider of VectorUtil implementations. */
 interface VectorUtilProvider {
 
   /** Calculates the dot product of the given float arrays. */
@@ -40,13 +38,17 @@ interface VectorUtilProvider {
     if (runtimeVersion == 20) {
       // is locale sane (only buggy in Java 20)
       if (runtimeVersion <= 20 && !hasWorkingDefaultLocale()) {
-        LOG.warning("Java runtime is using a buggy default locale; Vector API can't be enabled: " + Locale.getDefault());
+        LOG.warning(
+            "Java runtime is using a buggy default locale; Vector API can't be enabled: "
+                + Locale.getDefault());
         return new VectorUtilDefaultProvider();
       }
-      // is the incubator module present and readable (JVM providers may to exclude them or it is build with jlink)
+      // is the incubator module present and readable (JVM providers may to exclude them or it is
+      // build with jlink)
       if (!vectorModulePresentAndReadable()) {
-        LOG.warning("Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
-        return new VectorUtilDefaultProvider();        
+        LOG.warning(
+            "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
+        return new VectorUtilDefaultProvider();
       }
       try {
         final var lookup = MethodHandles.lookup();
