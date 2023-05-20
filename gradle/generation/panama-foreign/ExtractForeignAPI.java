@@ -22,7 +22,14 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -40,61 +47,94 @@ public final class ExtractForeignAPI {
   
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
+  static final Map<String,String> CLASSFILE_MATCHERS = Map.of(
+      "java.base",             "glob:java/{lang/foreign/*,nio/channels/FileChannel}.class",
+      "jdk.incubator.vector",  "glob:jdk/incubator/vector/*.class"
+  );
+  
+  static final Map<Integer,List<String>> MODULES_TO_PROCESS = Map.of(
+      19, List.of("java.base"),
+      20, List.of("java.base", "jdk.incubator.vector")      
+  );
+  
   public static void main(String... args) throws IOException {
     if (args.length != 2) {
       throw new IllegalArgumentException("Need two parameters: java version, output file");
     }
-    if (Integer.parseInt(args[0]) != Runtime.version().feature()) {
+    int jdk = Integer.parseInt(args[0]);
+    if (jdk != Runtime.version().feature()) {
       throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
     }
     var outputPath = Paths.get(args[1]);
 
-    var javaBaseModule = Paths.get(URI.create("jrt:/")).resolve("java.base").toRealPath();
-    var foreignFileMatcher = javaBaseModule.getFileSystem().getPathMatcher("glob:java/{lang/foreign/*,nio/channels/FileChannel}.class");
-    var jdkVectorModule = Paths.get(URI.create("jrt:/")).resolve("jdk.incubator.vector").toRealPath();
-    var jdkVectorMatcher = jdkVectorModule.getFileSystem().getPathMatcher("glob:jdk/incubator/vector/*.class");
-
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
-      process(javaBaseModule, foreignFileMatcher, out);
-      process(jdkVectorModule, jdkVectorMatcher, out);
+      for (String mod : MODULES_TO_PROCESS.get(jdk)) {
+        var modulePath = Paths.get(URI.create("jrt:/")).resolve(mod).toRealPath();
+        var moduleMatcher = modulePath.getFileSystem().getPathMatcher(CLASSFILE_MATCHERS.get(mod));
+        process(modulePath, moduleMatcher, out);
+      }
     }
   }
 
   static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
+    var classReaders = new ArrayList<ClassReader>();
     try (var stream = Files.walk(modulePath)) {
-      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).sorted().collect(Collectors.toList());
+      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).sorted().toArray(Path[]::new);
+      System.out.println("Prescanning class files in [" + modulePath + "]...");
       for (Path relative : filesToExtract) {
-        System.out.println("Processing class file: " + relative);
         try (var in = Files.newInputStream(modulePath.resolve(relative))) {
-          final var reader = new ClassReader(in);
-          final var cw = new ClassWriter(0);
-          reader.accept(new Cleaner(cw), ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-          out.putNextEntry(new ZipEntry(relative.toString()).setLastModifiedTime(FIXED_FILEDATE));
-          out.write(cw.toByteArray());
-          out.closeEntry();
+          var reader = new ClassReader(in);
+          classReaders.add(reader);
         }
       }
     }
+    var visibleClasses = classReaders.stream().filter(r -> isVisible(r.getAccess()))
+        .map(ClassReader::getClassName)
+        .collect(Collectors.toUnmodifiableSet());
+    var classesToInclude = new HashSet<String>(visibleClasses);
+    var processed = new HashMap<String, byte[]>();
+    System.out.println("Transforming class files in [" + modulePath + "]...");
+    for (ClassReader reader : classReaders) {
+      var cw = new ClassWriter(0);
+      var cleaner = new Cleaner(cw, visibleClasses, classesToInclude);
+      reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+      processed.put(reader.getClassName(), cw.toByteArray());
+    }
+    System.out.println("Writing visible class files for [" + modulePath + "]...");
+    for (ClassReader reader : classReaders) {
+      String cn = reader.getClassName();
+      if (classesToInclude.contains(cn)) {
+        System.out.println("Writing stub for class: " + cn);
+        var bytes = processed.get(cn);
+        out.putNextEntry(new ZipEntry(cn.concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
+        out.write(bytes);
+        out.closeEntry();
+      }
+    }
+  }
+  
+  static boolean isVisible(int access) {
+    return (access & (Opcodes.ACC_PROTECTED | Opcodes.ACC_PUBLIC)) != 0;
   }
   
   static class Cleaner extends ClassVisitor {
     private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
     private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
     
-    private boolean completelyHidden = false;
+    private final Set<String> visibleClasses, classesToInclude;
     
-    Cleaner(ClassWriter out) {
+    Cleaner(ClassWriter out, Set<String> visibleClasses, Set<String> classesToInclude) {
       super(Opcodes.ASM9, out);
-    }
-    
-    private boolean isHidden(int access) {
-      return completelyHidden || (access & (Opcodes.ACC_PROTECTED | Opcodes.ACC_PUBLIC)) == 0;
+      this.visibleClasses = visibleClasses;
+      this.classesToInclude = classesToInclude;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
-      completelyHidden = isHidden(access);
+      //completelyHidden = !isVisible(access);
+      classesToInclude.add(superName);
+      classesToInclude.addAll(Arrays.asList(interfaces));
     }
 
     @Override
@@ -104,7 +144,7 @@ public final class ExtractForeignAPI {
 
     @Override
     public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-      if (isHidden(access)) {
+      if (!isVisible(access)) {
         return null;
       }
       return new FieldVisitor(Opcodes.ASM9, super.visitField(access, name, descriptor, signature, value)) {
@@ -117,7 +157,7 @@ public final class ExtractForeignAPI {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-      if (isHidden(access)) {
+      if (!isVisible(access)) {
         return null;
       }
       return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
