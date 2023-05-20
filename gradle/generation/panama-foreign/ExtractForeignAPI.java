@@ -22,14 +22,14 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -76,37 +76,29 @@ public final class ExtractForeignAPI {
   }
 
   static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
-    var classReaders = new ArrayList<ClassReader>();
+    var classesToInclude = new HashSet<String>();
+    var processed = new LinkedHashMap<String, byte[]>();
     try (var stream = Files.walk(modulePath)) {
       var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).sorted().toArray(Path[]::new);
-      System.out.println("Prescanning class files in [" + modulePath + "]...");
+      System.out.println("Transforming " + filesToExtract.length + " class files in [" + modulePath + "]...");
       for (Path relative : filesToExtract) {
         try (var in = Files.newInputStream(modulePath.resolve(relative))) {
           var reader = new ClassReader(in);
-          classReaders.add(reader);
+          var cw = new ClassWriter(0);
+          var cleaner = new Cleaner(cw, classesToInclude);
+          reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+          processed.put(reader.getClassName(), cw.toByteArray());
         }
       }
     }
-    var classesToInclude = classReaders.stream().filter(r -> isVisible(r.getAccess()))
-        .map(ClassReader::getClassName).collect(Collectors.toSet());
-    var processed = new HashMap<String, byte[]>();
-    System.out.println("Transforming class files in [" + modulePath + "]...");
-    for (ClassReader reader : classReaders) {
-      var cw = new ClassWriter(0);
-      var cleaner = new Cleaner(cw, classesToInclude);
-      reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-      processed.put(reader.getClassName(), cw.toByteArray());
-    }
-    System.out.println("Writing visible class files for [" + modulePath + "]...");
-    for (ClassReader reader : classReaders) {
-      String cn = reader.getClassName();
-      if (classesToInclude.contains(cn)) {
-        System.out.println("Writing stub for class: " + cn);
-        var bytes = processed.get(cn);
-        out.putNextEntry(new ZipEntry(cn.concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
-        out.write(bytes);
-        out.closeEntry();
-      }
+    processed.keySet().removeIf(Predicate.not(classesToInclude::contains));
+    System.out.println("Writing " + processed.size() + " visible classes for [" + modulePath + "]...");
+    for (var cls : processed.entrySet()) {
+      String cn = cls.getKey();
+      System.out.println("Writing stub for class: " + cn);
+      out.putNextEntry(new ZipEntry(cn.concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
+      out.write(cls.getValue());
+      out.closeEntry();
     }
   }
   
@@ -128,8 +120,11 @@ public final class ExtractForeignAPI {
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
-      classesToInclude.add(superName);
-      classesToInclude.addAll(Arrays.asList(interfaces));
+      if (isVisible(access)) {
+        classesToInclude.add(name);
+        classesToInclude.add(superName);
+        classesToInclude.addAll(Arrays.asList(interfaces));
+      }
     }
 
     @Override
