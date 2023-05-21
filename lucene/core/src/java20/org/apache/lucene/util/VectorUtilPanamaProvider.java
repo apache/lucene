@@ -38,7 +38,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
       FloatVector acc2 = FloatVector.zero(SPECIES);
       FloatVector acc3 = FloatVector.zero(SPECIES);
       FloatVector acc4 = FloatVector.zero(SPECIES);
-      int upperBound = SPECIES.loopBound(a.length - 3*SPECIES.length());
+      int upperBound = SPECIES.loopBound(a.length - 3 * SPECIES.length());
       for (; i < upperBound; i += 4 * SPECIES.length()) {
         FloatVector va = FloatVector.fromArray(SPECIES, a, i);
         FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
@@ -46,11 +46,11 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
         FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
         FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
         acc2 = acc2.add(vc.mul(vd));
-        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2*SPECIES.length());
-        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2*SPECIES.length());
+        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2 * SPECIES.length());
+        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2 * SPECIES.length());
         acc3 = acc3.add(ve.mul(vf));
-        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3*SPECIES.length());
-        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3*SPECIES.length());
+        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3 * SPECIES.length());
+        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3 * SPECIES.length());
         acc4 = acc4.add(vg.mul(vh));
       }
       // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
