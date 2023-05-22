@@ -17,7 +17,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12257: Create OnHeapHnswGraphSearcher to let OnHeapHnswGraph to be searched in a thread-safety manner. (Patrick Zhai)
 
 Improvements
 ---------------------

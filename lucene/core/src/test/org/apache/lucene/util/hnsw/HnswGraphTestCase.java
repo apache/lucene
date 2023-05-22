@@ -32,6 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95Codec;
@@ -66,6 +72,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
@@ -988,6 +995,105 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     double overlap = totalMatches / (double) (100 * topK);
     System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
     assertTrue("overlap=" + overlap, overlap > 0.9);
+  }
+
+  /* test thread-safety of searching OnHeapHnswGraph */
+  @SuppressWarnings("unchecked")
+  public void testOnHeapHnswGraphSearch()
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
+    int size = atLeast(100);
+    int dim = atLeast(10);
+    AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
+    int topK = 5;
+    HnswGraphBuilder<T> builder =
+        HnswGraphBuilder.create(
+            vectors, getVectorEncoding(), similarityFunction, 10, 30, random().nextLong());
+    OnHeapHnswGraph hnsw = builder.build(vectors.copy());
+    Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
+
+    List<T> queries = new ArrayList<>();
+    List<NeighborQueue> expects = new ArrayList<>();
+    for (int i = 0; i < 100; i++) {
+      NeighborQueue expect;
+      T query = randomVector(dim);
+      queries.add(query);
+      expect =
+          switch (getVectorEncoding()) {
+            case BYTE -> HnswGraphSearcher.search(
+                (byte[]) query,
+                100,
+                (RandomAccessVectorValues<byte[]>) vectors,
+                getVectorEncoding(),
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+            case FLOAT32 -> HnswGraphSearcher.search(
+                (float[]) query,
+                100,
+                (RandomAccessVectorValues<float[]>) vectors,
+                getVectorEncoding(),
+                similarityFunction,
+                hnsw,
+                acceptOrds,
+                Integer.MAX_VALUE);
+          };
+
+      while (expect.size() > topK) {
+        expect.pop();
+      }
+      expects.add(expect);
+    }
+
+    ExecutorService exec =
+        Executors.newFixedThreadPool(4, new NamedThreadFactory("onHeapHnswSearch"));
+    List<Future<NeighborQueue>> futures = new ArrayList<>();
+    for (T query : queries) {
+      futures.add(
+          exec.submit(
+              () -> {
+                NeighborQueue actual;
+                try {
+                  actual =
+                      switch (getVectorEncoding()) {
+                        case BYTE -> HnswGraphSearcher.search(
+                            (byte[]) query,
+                            100,
+                            (RandomAccessVectorValues<byte[]>) vectors,
+                            getVectorEncoding(),
+                            similarityFunction,
+                            hnsw,
+                            acceptOrds,
+                            Integer.MAX_VALUE);
+                        case FLOAT32 -> HnswGraphSearcher.search(
+                            (float[]) query,
+                            100,
+                            (RandomAccessVectorValues<float[]>) vectors,
+                            getVectorEncoding(),
+                            similarityFunction,
+                            hnsw,
+                            acceptOrds,
+                            Integer.MAX_VALUE);
+                      };
+                } catch (IOException ioe) {
+                  throw new RuntimeException(ioe);
+                }
+                while (actual.size() > topK) {
+                  actual.pop();
+                }
+                return actual;
+              }));
+    }
+    List<NeighborQueue> actuals = new ArrayList<>();
+    for (Future<NeighborQueue> future : futures) {
+      actuals.add(future.get(10, TimeUnit.SECONDS));
+    }
+    exec.shutdownNow();
+    for (int i = 0; i < expects.size(); i++) {
+      NeighborQueue expect = expects.get(i);
+      NeighborQueue actual = actuals.get(i);
+      assertArrayEquals(expect.nodes(), actual.nodes());
+    }
   }
 
   private int computeOverlap(int[] a, int[] b) {
