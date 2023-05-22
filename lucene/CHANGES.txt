@@ -131,6 +131,8 @@ Improvements
 Optimizations
 ---------------------
 
+* GITHUB#12324: Speed up Sparse block advanceExact with tiny step in IndexedDISI. (Guo Feng)
+
 * GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
 
 * GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
