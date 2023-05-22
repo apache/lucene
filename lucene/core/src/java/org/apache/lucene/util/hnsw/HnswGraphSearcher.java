@@ -109,7 +109,7 @@ public class HnswGraphSearcher<T> {
     int[] eps = new int[] {initialEp};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, false);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, graph.isMultiValued());
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
       if (results.incomplete()) {
@@ -119,7 +119,7 @@ public class HnswGraphSearcher<T> {
       eps[0] = results.pop();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, false);
+        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, graph.isMultiValued());
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -165,7 +165,7 @@ public class HnswGraphSearcher<T> {
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, false);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, graph.isMultiValued());
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
@@ -177,7 +177,7 @@ public class HnswGraphSearcher<T> {
       eps[0] = results.pop();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, false);
+        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, graph.isMultiValued());
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -205,7 +205,7 @@ public class HnswGraphSearcher<T> {
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
-    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, true);
+    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, false);
   }
 
   private NeighborQueue searchLevel(
@@ -217,7 +217,7 @@ public class HnswGraphSearcher<T> {
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit,
-      boolean graphBuilding)
+      boolean multiValued)
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
@@ -236,9 +236,9 @@ public class HnswGraphSearcher<T> {
         int docId = vectors.ordToDoc(vectorId);
         if (acceptOrds == null || acceptOrds.get(vectorId)) {
           if(level == 0) { // final result list of Lucene Documents
-            results.add(docId, score, graphBuilding);
+            results.add(docId, score, multiValued);
           } else {
-            results.add(vectorId, score, graphBuilding); // next entry point, it is a vector
+            results.add(vectorId, score, multiValued); // next entry point, it is a vector
           }        }
       }
     }
@@ -276,9 +276,9 @@ public class HnswGraphSearcher<T> {
           if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
             boolean nodeInserted = false;
             if(level == 0){
-              nodeInserted = results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, graphBuilding);
+              nodeInserted = results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, multiValued);
             } else {
-              nodeInserted = results.insertWithOverflow(friendVectorId, friendSimilarity, graphBuilding);
+              nodeInserted = results.insertWithOverflow(friendVectorId, friendSimilarity, multiValued);
             }
             if (nodeInserted && results.size() >= topK) {
               minAcceptedSimilarity = results.topScore();

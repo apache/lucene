@@ -94,9 +94,9 @@ public class NeighborQueue {
    * @param nodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public void add(int nodeId, float nodeScore, boolean graphBuilding) {
+  public void add(int nodeId, float nodeScore, boolean multiValued) {
     boolean nodeAdded = false;
-    if(graphBuilding){
+    if(!multiValued){
       this.add(nodeId,nodeScore);
     } else {
       Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
@@ -134,9 +134,9 @@ public class NeighborQueue {
    * @param nodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public boolean insertWithOverflow(int nodeId, float nodeScore, boolean graphBuilding) {
+  public boolean insertWithOverflow(int nodeId, float nodeScore, boolean multiValued) {
     boolean full = size() == heap.maxSize();
-    if (graphBuilding) {
+    if (!multiValued) {
       return insertWithOverflow(nodeId, nodeScore);
     } else {
       int minNodeId = this.topNode();

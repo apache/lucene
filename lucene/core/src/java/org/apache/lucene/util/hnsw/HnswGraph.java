@@ -50,8 +50,19 @@ import org.apache.lucene.index.FloatVectorValues;
  */
 public abstract class HnswGraph {
 
+  protected boolean multiValued;
   /** Sole constructor */
-  protected HnswGraph() {}
+  protected HnswGraph() {
+    multiValued = false;
+  }
+
+  public HnswGraph(boolean multiValued) {
+    this.multiValued = multiValued;
+  }
+
+  public boolean isMultiValued() {
+    return multiValued;
+  }
 
   /**
    * Move the pointer to exactly the given {@code level}'s {@code target}. After this method

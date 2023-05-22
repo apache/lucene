@@ -749,6 +749,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeByte((byte) (field.isVectorMultiValued() ? 1:0));
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(vectorIndexOffset);
