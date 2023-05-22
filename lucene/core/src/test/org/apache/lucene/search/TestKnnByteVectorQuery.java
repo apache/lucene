@@ -25,17 +25,16 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter, HnswGraphSearcher.Multivalued strategy) {
-    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter, strategy);
+  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
   }
 
   @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query, HnswGraphSearcher.Multivalued strategy) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, strategy);
+  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
+    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
   }
 
   @Override
@@ -96,8 +95,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
-      super(field, target, k, filter, strategy);
+    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
+      super(field, target, k, filter);
     }
 
     @Override

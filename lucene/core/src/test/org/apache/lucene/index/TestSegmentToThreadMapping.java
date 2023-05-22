@@ -36,7 +36,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 public class TestSegmentToThreadMapping extends LuceneTestCase {
 
@@ -119,13 +118,13 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
       @Override
       public TopDocs searchNearestVectors(
-              String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+          String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
         return null;
       }
 

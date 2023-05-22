@@ -62,7 +62,6 @@ import org.apache.lucene.util.IntBlockPool.SliceWriter;
 import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.RecyclingIntBlockAllocator;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * High-performance single-document main memory Apache Lucene fulltext search index.
@@ -1436,13 +1435,13 @@ public class MemoryIndex {
 
     @Override
     public TopDocs searchNearestVectors(
-            String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+        String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
       return null;
     }
 
     @Override
     public TopDocs searchNearestVectors(
-            String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
       return null;
     }
 

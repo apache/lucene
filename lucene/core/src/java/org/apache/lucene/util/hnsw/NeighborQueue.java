@@ -94,9 +94,9 @@ public class NeighborQueue {
    * @param nodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public void add(int nodeId, float nodeScore, HnswGraphSearcher.Multivalued strategy) {
+  public void add(int nodeId, float nodeScore, boolean graphBuilding) {
     boolean nodeAdded = false;
-    if(strategy.equals(HnswGraphSearcher.Multivalued.NONE)){
+    if(graphBuilding){
       this.add(nodeId,nodeScore);
     } else {
       Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
@@ -105,13 +105,13 @@ public class NeighborQueue {
         heapIndex = heap.push(encode(nodeId, nodeScore));
       } else {
         float originalScore = decodeScore(heap.get(heapIndex));
-        float updatedScore = strategy.updateScore(originalScore, nodeScore);
+        float updatedScore = Math.max(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
       }
       this.updateHeapIndexesCache(false, nodeAdded, heapIndex, nodeId);
     }
   }
-
+  
   /**
    * If the heap is not full (size is less than the initialSize provided to the constructor), adds a
    * new node-and-score element. If the heap is full, compares the score against the current top
@@ -121,7 +121,7 @@ public class NeighborQueue {
    * @param nodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public boolean insertWithOverflow(int nodeId, float nodeScore) {
+  private boolean insertWithOverflow(int nodeId, float nodeScore) {
     return (heap.insertWithOverflow(encode(nodeId, nodeScore)) != -1);
   }
   
@@ -134,9 +134,9 @@ public class NeighborQueue {
    * @param nodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
    */
-  public boolean insertWithOverflow(int nodeId, float nodeScore, HnswGraphSearcher.Multivalued strategy) {
+  public boolean insertWithOverflow(int nodeId, float nodeScore, boolean graphBuilding) {
     boolean full = size() == heap.maxSize();
-    if (strategy.equals(HnswGraphSearcher.Multivalued.NONE)) {
+    if (graphBuilding) {
       return insertWithOverflow(nodeId, nodeScore);
     } else {
       int minNodeId = this.topNode();
@@ -150,14 +150,14 @@ public class NeighborQueue {
         }
       } else {
         float originalScore = decodeScore(heap.get(heapIndex));
-        float updatedScore = strategy.updateScore(originalScore, nodeScore);
+        float updatedScore = Math.max(originalScore, nodeScore);
         heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
         this.updateHeapIndexesCache(full, nodeAdded, heapIndex, nodeId);
       }
       if (nodeAdded && full) {
         nodeIdToHeapIndex.remove(minNodeId);
       }
-      
+
       return nodeAdded;
     }
   }

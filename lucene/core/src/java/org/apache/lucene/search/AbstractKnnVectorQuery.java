@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.HnswGraphSearcher.Multivalued.NONE;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -36,7 +35,6 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.ThreadInterruptedException;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -57,16 +55,14 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected final String field;
   protected final int k;
   private final Query filter;
-  private final HnswGraphSearcher.Multivalued strategy;
 
-  public AbstractKnnVectorQuery(String field, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
+  public AbstractKnnVectorQuery(String field, int k, Query filter) {
     this.field = field;
     this.k = k;
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
     this.filter = filter;
-    this.strategy = strategy;
   }
 
   @Override
@@ -148,11 +144,12 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+    FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(field);
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE, strategy);
+      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -166,23 +163,23 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      if (NONE == strategy) {
+      if (!fi.isVectorMultiValued()) {
         return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
       } else {
-        return exactSearchMultiValued(ctx, acceptDocs, strategy, cost);
+        return exactSearchMultiValued(ctx, acceptDocs, cost);
       }
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost, strategy);
+    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      if (NONE == strategy) {
+      if (!fi.isVectorMultiValued()) {
         return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
       } else {
-        return exactSearchMultiValued(ctx, acceptDocs, strategy, cost);
+        return exactSearchMultiValued(ctx, acceptDocs, cost);
       }    }
   }
 
@@ -205,7 +202,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   protected abstract TopDocs approximateSearch(
-      LeafReaderContext context, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;
+      LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
@@ -249,7 +246,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new TopDocs(totalHits, topScoreDocs);
   }
 
-  protected TopDocs exactSearchMultiValued(LeafReaderContext context, BitSet acceptedDocs, HnswGraphSearcher.Multivalued strategy, long cost)
+  protected TopDocs exactSearchMultiValued(LeafReaderContext context, BitSet acceptedDocs, long cost)
           throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
@@ -257,7 +254,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return NO_RESULTS;
     }
     VectorScorer vectorScorer = createVectorScorer(context, fi);
-    Map<Integer, Float> docToScore = vectorScorer.scoreMultiValued(acceptedDocs, strategy);
+    Map<Integer, Float> docToScore = vectorScorer.scoreMultiValued(acceptedDocs);
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     
@@ -298,7 +295,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(strategy, docs, scores, maxScore, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
   }
 
   static int[] findSegmentStarts(IndexReader reader, int[] docs) {
@@ -331,12 +328,12 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AbstractKnnVectorQuery that = (AbstractKnnVectorQuery) o;
-    return k == that.k && strategy.equals(that.strategy) && Objects.equals(field, that.field) && Objects.equals(filter, that.filter);
+    return k == that.k && Objects.equals(field, that.field) && Objects.equals(filter, that.filter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, k, filter, strategy);
+    return Objects.hash(field, k, filter);
   }
 
   /**
@@ -364,7 +361,6 @@ abstract class AbstractKnnVectorQuery extends Query {
   /** Caches the results of a KnnVector search: a list of docs and their scores */
   static class DocAndScoreQuery extends Query {
 
-    private final HnswGraphSearcher.Multivalued strategy;
     private final int[] docs;
     private final float[] scores;
     private final float maxScore;
@@ -384,8 +380,7 @@ abstract class AbstractKnnVectorQuery extends Query {
      *     query
      */
     DocAndScoreQuery(
-            HnswGraphSearcher.Multivalued strategy,  int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
-      this.strategy = strategy;
+        int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
       this.docs = docs;
       this.scores = scores;
       this.maxScore = maxScore;
@@ -406,7 +401,7 @@ abstract class AbstractKnnVectorQuery extends Query {
           if (found < 0) {
             return Explanation.noMatch("not in top " + docs.length + " docs");
           }
-          return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs" + ((strategy != NONE) ? ", " + strategy.explainScore() : ""));
+          return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs");
         }
 
         @Override

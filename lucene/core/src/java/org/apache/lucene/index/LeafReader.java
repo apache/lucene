@@ -21,7 +21,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * {@code LeafReader} is an abstract class, providing an interface for accessing an index. Search of
@@ -242,7 +241,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract TopDocs searchNearestVectors(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;
+      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -270,7 +269,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * @lucene.experimental
    */
   public abstract TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) throws IOException;
+      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
 
   /**
    * Get the {@link FieldInfos} describing all fields in this reader.

@@ -24,10 +24,8 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -69,7 +67,7 @@ abstract class VectorScorer {
 
   abstract boolean advanceExact(int doc) throws IOException;
 
-  abstract Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs, HnswGraphSearcher.Multivalued strategy) throws IOException;
+  abstract Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs) throws IOException;
 
 
   private static class ByteVectorScorer extends VectorScorer {
@@ -97,7 +95,7 @@ abstract class VectorScorer {
     }
 
     @Override
-    public Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs, HnswGraphSearcher.Multivalued strategy) throws IOException {
+    public Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs) throws IOException {
       Map<Integer, Float> docToScore = new HashMap<>();
       for (int vectorId = values.nextOrd(); vectorId != NO_MORE_DOCS; vectorId = values.nextOrd()) {
         int docID = values.ordToDoc(vectorId);
@@ -105,7 +103,7 @@ abstract class VectorScorer {
           float currentScore = similarity.compare(query, values.vectorValue());
           docToScore.putIfAbsent(docID, currentScore);
           docToScore.computeIfPresent(docID,
-                  (key, previousScore) -> strategy.updateScore(previousScore, currentScore));
+                  (key, previousScore) -> Math.max(previousScore, currentScore));
         }
       }
       return docToScore;
@@ -147,7 +145,7 @@ abstract class VectorScorer {
     }
 
     @Override
-    public Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs, HnswGraphSearcher.Multivalued strategy) throws IOException {
+    public Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs) throws IOException {
       Map<Integer, Float> docToScore = new HashMap<>();
       for (int vectorId = values.nextOrd(); vectorId != NO_MORE_DOCS; vectorId = values.nextOrd()) {
         int docID = values.ordToDoc(vectorId);
@@ -155,7 +153,7 @@ abstract class VectorScorer {
           float currentScore = similarity.compare(query, values.vectorValue());
           docToScore.putIfAbsent(docID, currentScore);
           docToScore.computeIfPresent(docID,
-                  (key, previousScore) -> strategy.updateScore(previousScore, currentScore));
+                  (key, previousScore) -> Math.max(previousScore, currentScore));
         }
       }
       return docToScore;

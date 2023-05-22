@@ -36,51 +36,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public class HnswGraphSearcher<T> {
   private final VectorSimilarityFunction similarityFunction;
   private final VectorEncoding vectorEncoding;
-    
-  /**
-   * multi valued approach
-   */
-  public enum Multivalued {
-    NONE {
-      @Override
-      public float updateScore(float originalScore, float newScore) {
-        return originalScore;
-      }
 
-      @Override
-      public String explainScore() {
-        return null;
-      }
-    },
-    MAX {
-      @Override
-      public float updateScore(float originalScore, float newScore) {
-        return Math.max(originalScore,newScore);
-      }
-
-      @Override
-      public String explainScore() {
-        return "this is the max vector similarity between the query vector and each document vector.";
-      }
-
-    },
-    SUM {
-      @Override
-      public float updateScore(float originalScore, float newScore) {
-        return originalScore + newScore;
-      }
-
-      @Override
-      public String explainScore() {
-        return "this is the sum of vector similarities of the document vectors closer to the query.";
-      }
-    };
-    
-    public abstract float updateScore(float originalScore, float newScore);
-
-    public abstract String explainScore();
-  }
-  
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
@@ -129,8 +85,7 @@ public class HnswGraphSearcher<T> {
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
-      int visitedLimit,
-      Multivalued strategy)
+      int visitedLimit)
       throws IOException {
     if (query.length != vectors.dimension()) {
       throw new IllegalArgumentException(
@@ -154,7 +109,7 @@ public class HnswGraphSearcher<T> {
     int[] eps = new int[] {initialEp};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, strategy);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, false);
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
       if (results.incomplete()) {
@@ -164,7 +119,7 @@ public class HnswGraphSearcher<T> {
       eps[0] = results.pop();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, strategy);
+        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, false);
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -191,8 +146,7 @@ public class HnswGraphSearcher<T> {
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
-      int visitedLimit,
-      Multivalued strategy)
+      int visitedLimit)
       throws IOException {
     if (query.length != vectors.dimension()) {
       throw new IllegalArgumentException(
@@ -211,7 +165,7 @@ public class HnswGraphSearcher<T> {
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, strategy);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, false);
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
@@ -223,7 +177,7 @@ public class HnswGraphSearcher<T> {
       eps[0] = results.pop();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, strategy);
+        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, false);
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -251,7 +205,7 @@ public class HnswGraphSearcher<T> {
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
-    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, Multivalued.NONE);
+    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, true);
   }
 
   private NeighborQueue searchLevel(
@@ -263,7 +217,7 @@ public class HnswGraphSearcher<T> {
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit,
-      Multivalued strategy)
+      boolean graphBuilding)
       throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
@@ -282,9 +236,9 @@ public class HnswGraphSearcher<T> {
         int docId = vectors.ordToDoc(vectorId);
         if (acceptOrds == null || acceptOrds.get(vectorId)) {
           if(level == 0) { // final result list of Lucene Documents
-            results.add(docId, score, strategy);
+            results.add(docId, score, graphBuilding);
           } else {
-            results.add(vectorId, score, strategy); // next entry point, it is a vector
+            results.add(vectorId, score, graphBuilding); // next entry point, it is a vector
           }        }
       }
     }
@@ -322,9 +276,9 @@ public class HnswGraphSearcher<T> {
           if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
             boolean nodeInserted = false;
             if(level == 0){
-              nodeInserted = results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, strategy);
+              nodeInserted = results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, graphBuilding);
             } else {
-              nodeInserted = results.insertWithOverflow(friendVectorId, friendSimilarity, strategy);
+              nodeInserted = results.insertWithOverflow(friendVectorId, friendSimilarity, graphBuilding);
             }
             if (nodeInserted && results.size() >= topK) {
               minAcceptedSimilarity = results.topScore();

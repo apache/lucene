@@ -40,17 +40,16 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter, HnswGraphSearcher.Multivalued strategy) {
-    return new KnnFloatVectorQuery(field, query, k, queryFilter, strategy);
+  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return new KnnFloatVectorQuery(field, query, k, queryFilter);
   }
 
   @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query, HnswGraphSearcher.Multivalued strategy) {
-    return new ThrowingKnnVectorQuery(field, vec, k, query, strategy);
+  AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
+    return new ThrowingKnnVectorQuery(field, vec, k, query);
   }
 
   @Override
@@ -211,7 +210,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         int[] segments = AbstractKnnVectorQuery.findSegmentStarts(indexReader, docs);
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
-            new AbstractKnnVectorQuery.DocAndScoreQuery(HnswGraphSearcher.Multivalued.NONE,
+            new AbstractKnnVectorQuery.DocAndScoreQuery(
                 docs, scores, maxScore, segments, indexReader.getContext().id());
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
@@ -246,15 +245,15 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter, HnswGraphSearcher.Multivalued strategy) {
-      super(field, target, k, filter, strategy);
+    public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
+      super(field, target, k, filter);
     }
 
     @Override
     protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
-    
+
     @Override
     public String toString(String field) {
       return null;

@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.codecs.perfield;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.util.TestVectorUtil.randomVector;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -45,7 +43,6 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -53,7 +50,6 @@ import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -112,12 +108,12 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
             reader.searchNearestVectors(
-                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
             reader.searchNearestVectors(
-                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
@@ -169,12 +165,12 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
                 reader.searchNearestVectors(
-                        "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.MAX);
+                        "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
                 reader.searchNearestVectors(
-                        "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.MAX);
+                        "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }

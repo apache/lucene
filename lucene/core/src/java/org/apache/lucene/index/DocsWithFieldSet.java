@@ -94,7 +94,7 @@ public final class DocsWithFieldSet extends DocIdSet {
     vectorsCount++;
     lastDocId = docID;
   }
-  
+
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + (set == null ? 0 : set.ramBytesUsed());

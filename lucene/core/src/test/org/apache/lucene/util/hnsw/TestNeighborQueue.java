@@ -17,27 +17,18 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 import java.util.HashMap;
-import java.util.Set;
-import java.util.TreeSet;
-
-import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.util.TestVectorUtil.randomVector;
 
 public class TestNeighborQueue extends LuceneTestCase {
 
   public void testNeighborsProduct() {
     // make sure we have the sign correct
     NeighborQueue nn = new NeighborQueue(2, false);
-    assertTrue(nn.insertWithOverflow(2, 0.5f));
-    assertTrue(nn.insertWithOverflow(1, 0.2f));
-    assertTrue(nn.insertWithOverflow(3, 1f));
+    assertTrue(nn.insertWithOverflow(2, 0.5f, false));
+    assertTrue(nn.insertWithOverflow(1, 0.2f, false));
+    assertTrue(nn.insertWithOverflow(3, 1f, false));
     assertEquals(0.5f, nn.topScore(), 0);
     nn.pop();
     assertEquals(1f, nn.topScore(), 0);
@@ -46,9 +37,9 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testNeighborsMaxHeap() {
     NeighborQueue nn = new NeighborQueue(2, true);
-    assertTrue(nn.insertWithOverflow(2, 2));
-    assertTrue(nn.insertWithOverflow(1, 1));
-    assertFalse(nn.insertWithOverflow(3, 3));
+    assertTrue(nn.insertWithOverflow(2, 2, false));
+    assertTrue(nn.insertWithOverflow(1, 1, false));
+    assertFalse(nn.insertWithOverflow(3, 3, false));
     assertEquals(2f, nn.topScore(), 0);
     nn.pop();
     assertEquals(1f, nn.topScore(), 0);
@@ -56,8 +47,8 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testTopMaxHeap() {
     NeighborQueue nn = new NeighborQueue(2, true);
-    nn.add(1, 2);
-    nn.add(2, 1);
+    nn.add(1, 2, false);
+    nn.add(2, 1, false);
     // lower scores are better; highest score on top
     assertEquals(2, nn.topScore(), 0);
     assertEquals(1, nn.topNode());
@@ -65,8 +56,8 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testTopMinHeap() {
     NeighborQueue nn = new NeighborQueue(2, false);
-    nn.add(1, 0.5f);
-    nn.add(2, -0.5f);
+    nn.add(1, 0.5f, false);
+    nn.add(2, -0.5f, false);
     // higher scores are better; lowest score on top
     assertEquals(-0.5f, nn.topScore(), 0);
     assertEquals(2, nn.topNode());
@@ -80,8 +71,8 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testClear() {
     NeighborQueue nn = new NeighborQueue(2, false);
-    nn.add(1, 1.1f);
-    nn.add(2, -2.2f);
+    nn.add(1, 1.1f, false);
+    nn.add(2, -2.2f, false);
     nn.setVisitedCount(42);
     nn.markIncomplete();
     nn.clear();
@@ -93,18 +84,18 @@ public class TestNeighborQueue extends LuceneTestCase {
 
   public void testMaxSizeQueue() {
     NeighborQueue nn = new NeighborQueue(2, false);
-    nn.add(1, 1);
-    nn.add(2, 2);
+    nn.add(1, 1, false);
+    nn.add(2, 2, false);
     assertEquals(2, nn.size());
     assertEquals(1, nn.topNode());
 
     // insertWithOverflow does not extend the queue
-    nn.insertWithOverflow(3, 3);
+    nn.insertWithOverflow(3, 3, false);
     assertEquals(2, nn.size());
     assertEquals(2, nn.topNode());
 
     // add does extend the queue beyond maxSize
-    nn.add(4, 1);
+    nn.add(4, 1, false);
     assertEquals(3, nn.size());
   }
 
@@ -119,42 +110,10 @@ public class TestNeighborQueue extends LuceneTestCase {
         maxScore = score;
         maxNode = i;
       }
-      nn.add(i, score);
+      nn.add(i, score, false);
     }
     assertEquals(maxScore, nn.topScore(), 0);
     assertEquals(maxNode, nn.topNode());
-  }
-
-  public void testMinHeap_notFull_multiValuedSum() {
-    NeighborQueue nn = new NeighborQueue(3, false);
-
-    for (int i = 1; i < 4; i++) {
-        for (int j = 0; j < i; j++) {
-          nn.insertWithOverflow(i, 0.2f * j, HnswGraphSearcher.Multivalued.SUM);
-        }
-    }
-
-    HashMap<Integer, Integer> nodeIdToHeapIndex = nn.getNodeIdToHeapIndex();
-    assertEquals(3,nodeIdToHeapIndex.size());
-    assertEquals(1l, nn.pop());
-    assertEquals(2l, nn.pop());
-    assertEquals(3l, nn.pop());
-  }
-
-  public void testMinHeap_full_multiValuedSum() {
-    NeighborQueue nn = new NeighborQueue(3, false);
-
-    for (int i = 1; i < 6; i++) {
-      for (int j = 0; j < i; j++) {
-        nn.insertWithOverflow(i, 0.2f * j, HnswGraphSearcher.Multivalued.SUM);
-      }
-    }
-
-    HashMap<Integer, Integer> nodeIdToHeapIndex = nn.getNodeIdToHeapIndex();
-    assertEquals(3,nodeIdToHeapIndex.size());
-    assertEquals(3l, nn.pop());
-    assertEquals(4l, nn.pop());
-    assertEquals(5l, nn.pop());
   }
 
   public void testMinHeap_notFull_multiValuedMax() {
@@ -167,7 +126,7 @@ public class TestNeighborQueue extends LuceneTestCase {
         if(i==2 && j==0){
           score = 0.9f;
         }
-        nn.insertWithOverflow(i, score * (j+1), HnswGraphSearcher.Multivalued.MAX);
+        nn.insertWithOverflow(i, score * (j+1), false);
       }
     }
 
@@ -192,7 +151,7 @@ public class TestNeighborQueue extends LuceneTestCase {
         if(i==4 && j==0){
           score = 0.8f;
         }
-        nn.insertWithOverflow(i, score * (j+1), HnswGraphSearcher.Multivalued.MAX);
+        nn.insertWithOverflow(i, score * (j+1), false);
       }
     }
 

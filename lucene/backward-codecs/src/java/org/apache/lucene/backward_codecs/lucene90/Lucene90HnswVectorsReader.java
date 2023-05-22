@@ -44,7 +44,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
@@ -238,7 +237,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
+  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -279,7 +278,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     throw new UnsupportedOperationException();
   }

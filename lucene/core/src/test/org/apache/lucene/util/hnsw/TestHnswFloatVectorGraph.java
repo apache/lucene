@@ -146,8 +146,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
             similarityFunction,
             hnsw,
             acceptOrds,
-            Integer.MAX_VALUE,
-            HnswGraphSearcher.Multivalued.NONE);
+            Integer.MAX_VALUE);
 
     int[] nodes = nn.nodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);

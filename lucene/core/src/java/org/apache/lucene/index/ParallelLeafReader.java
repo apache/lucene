@@ -30,7 +30,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * An {@link LeafReader} which reads multiple, parallel indexes. Each index added must have the same
@@ -417,24 +416,24 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-          String fieldName, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
+      String fieldName, float[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit, strategy);
+        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
   }
 
   @Override
   public TopDocs searchNearestVectors(
-          String fieldName, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy)
+      String fieldName, byte[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit, strategy);
+        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
   }
 
   @Override

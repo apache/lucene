@@ -55,7 +55,6 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.junit.After;
 import org.junit.Before;
 
@@ -356,7 +355,7 @@ public class TestKnnGraph extends LuceneTestCase {
       Bits liveDocs = ctx.reader().getLiveDocs();
       results[ctx.ord] =
           ctx.reader()
-              .searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs, Integer.MAX_VALUE, HnswGraphSearcher.Multivalued.NONE);
+              .searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs, Integer.MAX_VALUE);
       if (ctx.docBase > 0) {
         for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
           doc.doc += ctx.docBase;

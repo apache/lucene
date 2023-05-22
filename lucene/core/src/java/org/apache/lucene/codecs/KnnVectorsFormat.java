@@ -25,7 +25,6 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.NamedSPILoader;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 
 /**
  * Encodes/decodes per-document vector and any associated indexing structures required to support
@@ -106,13 +105,13 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
             @Override
             public TopDocs search(
-                String field, float[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+                String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
               throw new UnsupportedOperationException();
             }
 
             @Override
             public TopDocs search(
-                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit, HnswGraphSearcher.Multivalued strategy) {
+                String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
               throw new UnsupportedOperationException();
             }
 
