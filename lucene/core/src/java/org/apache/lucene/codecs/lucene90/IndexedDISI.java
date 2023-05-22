@@ -418,6 +418,7 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   // SPARSE variables
   boolean exists;
+  int nextExistDocInBlock = -1;
 
   // DENSE variables
   long word;
@@ -495,6 +496,7 @@ public final class IndexedDISI extends DocIdSetIterator {
     if (numValues <= MAX_ARRAY_LENGTH) {
       method = Method.SPARSE;
       blockEnd = slice.getFilePointer() + (numValues << 1);
+      nextExistDocInBlock = -1;
     } else if (numValues == 65536) {
       method = Method.ALL;
       blockEnd = slice.getFilePointer();
@@ -550,9 +552,11 @@ public final class IndexedDISI extends DocIdSetIterator {
           if (doc >= targetInBlock) {
             disi.doc = disi.block | doc;
             disi.exists = true;
+            disi.nextExistDocInBlock = doc;
             return true;
           }
         }
+        disi.nextExistDocInBlock = Integer.MAX_VALUE;
         return false;
       }
 
@@ -560,6 +564,10 @@ public final class IndexedDISI extends DocIdSetIterator {
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
         // TODO: binary search
+        if (disi.nextExistDocInBlock > targetInBlock) {
+          assert !disi.exists;
+          return false;
+        }
         if (target == disi.doc) {
           return disi.exists;
         }
@@ -567,15 +575,18 @@ public final class IndexedDISI extends DocIdSetIterator {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
           if (doc >= targetInBlock) {
+            disi.nextExistDocInBlock = doc;
             if (doc != targetInBlock) {
               disi.index--;
               disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-              break;
+              disi.exists = false;
+              return false;
             }
             disi.exists = true;
             return true;
           }
         }
+        disi.nextExistDocInBlock = Integer.MAX_VALUE;
         disi.exists = false;
         return false;
       }
