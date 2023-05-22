@@ -96,4 +96,32 @@ final class VectorUtilDefaultProvider implements VectorUtilProvider {
     }
     return total;
   }
+
+  @Override
+  public float cosine(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int sum = 0;
+    int norm1 = 0;
+    int norm2 = 0;
+
+    for (int i = 0; i < a.length; i++) {
+      byte elem1 = a[i];
+      byte elem2 = b[i];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
+  @Override
+  public int squareDistance(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int squareSum = 0;
+    for (int i = 0; i < a.length; i++) {
+      int diff = a[i] - b[i];
+      squareSum += diff * diff;
+    }
+    return squareSum;
+  }
 }

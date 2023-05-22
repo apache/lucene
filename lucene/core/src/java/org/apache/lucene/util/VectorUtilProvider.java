@@ -38,6 +38,12 @@ interface VectorUtilProvider {
    */
   int dotProduct(byte[] a, byte[] b);
 
+  /** Returns the cosine similarity between the two byte vectors. */
+  float cosine(byte[] a, byte[] b);
+
+  /** Returns the sum of squared differences of the two byte vectors. */
+  int squareDistance(byte[] a, byte[] b);
+
   // -- provider lookup mechanism
 
   Logger LOG = Logger.getLogger(VectorUtilProvider.class.getName());

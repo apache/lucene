@@ -64,19 +64,10 @@ public final class VectorUtil {
 
   /** Returns the cosine similarity between the two vectors. */
   public static float cosine(byte[] a, byte[] b) {
-    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
-    int sum = 0;
-    int norm1 = 0;
-    int norm2 = 0;
-
-    for (int i = 0; i < a.length; i++) {
-      byte elem1 = a[i];
-      byte elem2 = b[i];
-      sum += elem1 * elem2;
-      norm1 += elem1 * elem1;
-      norm2 += elem2 * elem2;
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+    return PROVIDER.cosine(a, b);
   }
 
   /**
@@ -123,13 +114,10 @@ public final class VectorUtil {
 
   /** Returns the sum of squared differences of the two vectors. */
   public static int squareDistance(byte[] a, byte[] b) {
-    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
-    int squareSum = 0;
-    for (int i = 0; i < a.length; i++) {
-      int diff = a[i] - b[i];
-      squareSum += diff * diff;
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return squareSum;
+    return PROVIDER.squareDistance(a, b);
   }
 
   /**
