@@ -1014,31 +1014,35 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     List<T> queries = new ArrayList<>();
     List<NeighborQueue> expects = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      NeighborQueue expect;
+      NeighborQueue expect = null;
       T query = randomVector(dim);
       queries.add(query);
-      expect =
-          switch (getVectorEncoding()) {
-            case BYTE -> HnswGraphSearcher.search(
-                (byte[]) query,
-                100,
-                (RandomAccessVectorValues<byte[]>) vectors,
-                getVectorEncoding(),
-                similarityFunction,
-                hnsw,
-                acceptOrds,
-                Integer.MAX_VALUE);
-            case FLOAT32 -> HnswGraphSearcher.search(
-                (float[]) query,
-                100,
-                (RandomAccessVectorValues<float[]>) vectors,
-                getVectorEncoding(),
-                similarityFunction,
-                hnsw,
-                acceptOrds,
-                Integer.MAX_VALUE);
-          };
-
+      switch (getVectorEncoding()) {
+        case BYTE:
+          expect =
+              HnswGraphSearcher.search(
+                  (byte[]) query,
+                  100,
+                  (RandomAccessVectorValues<byte[]>) vectors,
+                  getVectorEncoding(),
+                  similarityFunction,
+                  hnsw,
+                  acceptOrds,
+                  Integer.MAX_VALUE);
+          break;
+        case FLOAT32:
+          expect =
+              HnswGraphSearcher.search(
+                  (float[]) query,
+                  100,
+                  (RandomAccessVectorValues<float[]>) vectors,
+                  getVectorEncoding(),
+                  similarityFunction,
+                  hnsw,
+                  acceptOrds,
+                  Integer.MAX_VALUE);
+      }
+      ;
       while (expect.size() > topK) {
         expect.pop();
       }
@@ -1052,29 +1056,35 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       futures.add(
           exec.submit(
               () -> {
-                NeighborQueue actual;
+                NeighborQueue actual = null;
                 try {
-                  actual =
-                      switch (getVectorEncoding()) {
-                        case BYTE -> HnswGraphSearcher.search(
-                            (byte[]) query,
-                            100,
-                            (RandomAccessVectorValues<byte[]>) vectors,
-                            getVectorEncoding(),
-                            similarityFunction,
-                            hnsw,
-                            acceptOrds,
-                            Integer.MAX_VALUE);
-                        case FLOAT32 -> HnswGraphSearcher.search(
-                            (float[]) query,
-                            100,
-                            (RandomAccessVectorValues<float[]>) vectors,
-                            getVectorEncoding(),
-                            similarityFunction,
-                            hnsw,
-                            acceptOrds,
-                            Integer.MAX_VALUE);
-                      };
+
+                  switch (getVectorEncoding()) {
+                    case BYTE:
+                      actual =
+                          HnswGraphSearcher.search(
+                              (byte[]) query,
+                              100,
+                              (RandomAccessVectorValues<byte[]>) vectors,
+                              getVectorEncoding(),
+                              similarityFunction,
+                              hnsw,
+                              acceptOrds,
+                              Integer.MAX_VALUE);
+                      break;
+                    case FLOAT32:
+                      actual =
+                          HnswGraphSearcher.search(
+                              (float[]) query,
+                              100,
+                              (RandomAccessVectorValues<float[]>) vectors,
+                              getVectorEncoding(),
+                              similarityFunction,
+                              hnsw,
+                              acceptOrds,
+                              Integer.MAX_VALUE);
+                  }
+                  ;
                 } catch (IOException ioe) {
                   throw new RuntimeException(ioe);
                 }
