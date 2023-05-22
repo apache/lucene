@@ -34,12 +34,12 @@ public final class DocsWithFieldSet extends DocIdSet {
       RamUsageEstimator.shallowSizeOfInstance(DocsWithFieldSet.class);
 
   private FixedBitSet set;
-  private int cardinality = 0;
+  private int docsCount = 0;
   private int lastDocId = 0; // at a certain point in time this was changed to 0? why?
   
   private Stack<Integer> valuesPerDocuments;
   private int currentDocVectorsCount;
-  private int totalVectorsCount;
+  private int vectorsCount;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -57,14 +57,14 @@ public final class DocsWithFieldSet extends DocIdSet {
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
       set.set(docID);
-    } else if (docID != cardinality) {
+    } else if (docID != docsCount) {
       // migrate to a sparse encoding using a bit set
       set = new FixedBitSet(docID + 1);
-      set.set(0, cardinality);
+      set.set(0, docsCount);
       set.set(docID);
     }
     lastDocId = docID;
-    cardinality++;
+    docsCount++;
   }
 
   public void addMultiValue(int docID) {
@@ -75,15 +75,15 @@ public final class DocsWithFieldSet extends DocIdSet {
     if (set == null) { //first doc arrives
       valuesPerDocuments = new Stack<>();
       currentDocVectorsCount = 0;
-      totalVectorsCount = 0;
+      vectorsCount = 0;
       set = new FixedBitSet(docID + 1);
-      set.set(0, cardinality);
+      set.set(0, docsCount);
       set.set(docID);
-      cardinality++;
+      docsCount++;
     } else {
       set = FixedBitSet.ensureCapacity(set, docID);
       if (!set.getAndSet(docID)) { 
-        cardinality++; //this is the first vector for the docID
+        docsCount++; //this is the first vector for the docID
       }
     }
     if(docID != lastDocId){//vector for lastDocId are finished
@@ -91,7 +91,7 @@ public final class DocsWithFieldSet extends DocIdSet {
       currentDocVectorsCount = 0;
     }
     currentDocVectorsCount++;
-    totalVectorsCount++;
+    vectorsCount++;
     lastDocId = docID;
   }
   
@@ -102,21 +102,21 @@ public final class DocsWithFieldSet extends DocIdSet {
 
   @Override
   public DocIdSetIterator iterator() {
-    return set != null ? new BitSetIterator(set, cardinality) : DocIdSetIterator.all(cardinality);
+    return set != null ? new BitSetIterator(set, docsCount) : DocIdSetIterator.all(docsCount);
   }
 
   /** Return the number of documents of this set. */
   public int cardinality() {
-    return cardinality;
+    return docsCount;
   }
   /** Return the number of vectors of this set. */
-  public int getTotalVectorsCount() {
-    return totalVectorsCount;
+  public int getVectorsCount() {
+    return vectorsCount;
   }
 
   public int[] getValuesPerDocument() {
     if(valuesPerDocuments != null) {
-      int[] valuesPerDocumentArray = new int[cardinality];
+      int[] valuesPerDocumentArray = new int[docsCount];
       if (currentDocVectorsCount != 0) {
         valuesPerDocuments.push(currentDocVectorsCount);
         currentDocVectorsCount = 0;

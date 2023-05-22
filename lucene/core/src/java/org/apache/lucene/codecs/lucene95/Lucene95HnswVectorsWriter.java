@@ -412,7 +412,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                   case FLOAT32 -> writeVectorMultiValuedData(
                           tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
                 };
-        liveVectors = docsWithField.getTotalVectorsCount();
+        liveVectors = docsWithField.getVectorsCount();
       }
       else {
         // write the vector data to a temporary file
@@ -742,7 +742,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithFieldSet docsWithField,
-      int vectorsSize,
+      int vectorsCount,
       HnswGraph graph,
       int[][] graphLevelNodeOffsets)
       throws IOException {
@@ -756,13 +756,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVInt(field.getVectorDimension());
 
     // write docIDs
-    meta.writeInt(vectorsSize);
-    if (vectorsSize == 0) {
+    meta.writeInt(vectorsCount);
+    if (vectorsCount == 0) {
       meta.writeLong(-2); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
       meta.writeByte((byte) -1); // denseRankPower
-    } else if (!field.isVectorMultiValued() && vectorsSize == maxDoc ) {
+    } else if (!field.isVectorMultiValued() && vectorsCount == maxDoc ) {
       meta.writeLong(-1); // docsWithFieldOffset
       meta.writeLong(0L); // docsWithFieldLength
       meta.writeShort((short) -1); // jumpTableEntryCount
@@ -773,7 +773,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
 
       DocIdSetIterator vectorIterator;
       if (field.isVectorMultiValued()) {
-        vectorIterator = DocIdSetIterator.all(docsWithField.getTotalVectorsCount());
+        vectorIterator = DocIdSetIterator.all(docsWithField.getVectorsCount());
       } else {
         vectorIterator = docsWithField.iterator();
       }
@@ -790,7 +790,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
       // dense case and empty case do not need to store ordToMap mapping
       final DirectMonotonicWriter ordToDocWriter =
-          DirectMonotonicWriter.getInstance(meta, vectorData, vectorsSize, DIRECT_MONOTONIC_BLOCK_SHIFT);
+          DirectMonotonicWriter.getInstance(meta, vectorData, vectorsCount, DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
       int[] valuesPerDocument = docsWithField.getValuesPerDocument();
       int valuesIndex = 0;
@@ -830,7 +830,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             meta.writeVInt(n);
           }
         } else {
-          assert nodesOnLevel.size() == vectorsSize : "Level 0 expects to have all nodes";
+          assert nodesOnLevel.size() == vectorsCount : "Level 0 expects to have all nodes";
         }
       }
       long start = vectorIndex.getFilePointer();

@@ -71,7 +71,7 @@ public class TestDocsWithFieldSet extends LuceneTestCase {
     DocIdSetIterator it = set.iterator();
     assertEquals(doc1, it.nextDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
-    assertEquals(doc1Vectors, set.getTotalVectorsCount());
+    assertEquals(doc1Vectors, set.getVectorsCount());
     
     int doc2 = doc1 + TestUtil.nextInt(random(), 1, 100);
     int doc2Vectors = 5;
@@ -82,7 +82,7 @@ public class TestDocsWithFieldSet extends LuceneTestCase {
     assertEquals(doc1, it.nextDoc());
     assertEquals(doc2, it.nextDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
-    assertEquals(doc1Vectors + doc2Vectors, set.getTotalVectorsCount());
+    assertEquals(doc1Vectors + doc2Vectors, set.getVectorsCount());
     int[] valuesPerDocument = set.getValuesPerDocument();
     assertEquals(doc1Vectors, valuesPerDocument[0]);
     assertEquals(doc2Vectors, valuesPerDocument[1]);
