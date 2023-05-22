@@ -191,12 +191,10 @@ public final class VectorUtil {
    * @return the value of the dot product of the two vectors
    */
   public static int dotProduct(byte[] a, byte[] b) {
-    assert a.length == b.length;
-    int total = 0;
-    for (int i = 0; i < a.length; i++) {
-      total += a[i] * b[i];
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return total;
+    return PROVIDER.dotProduct(a, b);
   }
 
   /**

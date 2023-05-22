@@ -29,6 +29,15 @@ interface VectorUtilProvider {
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);
 
+  /**
+   * Dot product computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  int dotProduct(byte[] a, byte[] b);
+
   // -- provider lookup mechanism
 
   Logger LOG = Logger.getLogger(VectorUtilProvider.class.getName());

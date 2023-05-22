@@ -87,4 +87,13 @@ final class VectorUtilDefaultProvider implements VectorUtilProvider {
     }
     return res;
   }
+
+  @Override
+  public int dotProduct(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      total += a[i] * b[i];
+    }
+    return total;
+  }
 }

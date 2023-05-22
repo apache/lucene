@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.ShortVector;
+import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
@@ -64,6 +68,82 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
       FloatVector res1 = acc1.add(acc2);
       FloatVector res2 = acc3.add(acc4);
       res += res1.add(res2).reduceLanes(VectorOperators.ADD);
+    }
+
+    for (; i < a.length; i++) {
+      res += b[i] * a[i];
+    }
+    return res;
+  }
+
+  @Override
+  public int dotProduct(byte[] a, byte[] b) {
+    int i = 0;
+    int res = 0;
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length >= ByteVector.SPECIES_64.length()) {
+      // compute vectorized dot product consistent with VPDPBUSD instruction, acts like:
+      // int sum = 0;
+      // for (...) {
+      //   short product = (short) (x[i] * y[i]);
+      //   sum += product;
+      // }
+      if (IntVector.SPECIES_PREFERRED.vectorBitSize() >= 256) {
+        // optimized 256 bit implementation, processes 8 bytes at a time
+        int upperBound = ByteVector.SPECIES_64.loopBound(a.length);
+        IntVector acc = IntVector.zero(IntVector.SPECIES_256);
+        for (; i < upperBound; i += ByteVector.SPECIES_64.length()) {
+          ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
+          ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
+          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_128, 0);
+          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_128, 0);
+          Vector<Short> prod16 = va16.mul(vb16);
+          Vector<Integer> prod32 =
+              prod16.convertShape(VectorOperators.S2I, IntVector.SPECIES_256, 0);
+          acc = acc.add(prod32);
+        }
+        // reduce
+        res += acc.reduceLanes(VectorOperators.ADD);
+      } else {
+        // generic implementation, which must "split up" vectors due to widening conversions
+        int upperBound = ByteVector.SPECIES_PREFERRED.loopBound(a.length);
+        IntVector acc1 = IntVector.zero(IntVector.SPECIES_PREFERRED);
+        IntVector acc2 = IntVector.zero(IntVector.SPECIES_PREFERRED);
+        IntVector acc3 = IntVector.zero(IntVector.SPECIES_PREFERRED);
+        IntVector acc4 = IntVector.zero(IntVector.SPECIES_PREFERRED);
+        for (; i < upperBound; i += ByteVector.SPECIES_PREFERRED.length()) {
+          ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, a, i);
+          ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_PREFERRED, b, i);
+          // split each byte vector into two short vectors and multiply
+          Vector<Short> va16_1 =
+              va8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_PREFERRED, 0);
+          Vector<Short> va16_2 =
+              va8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_PREFERRED, 1);
+          Vector<Short> vb16_1 =
+              vb8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_PREFERRED, 0);
+          Vector<Short> vb16_2 =
+              vb8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_PREFERRED, 1);
+          Vector<Short> prod16_1 = va16_1.mul(vb16_1);
+          Vector<Short> prod16_2 = va16_2.mul(vb16_2);
+          // split each short vector into two int vectors and add
+          Vector<Integer> prod32_1 =
+              prod16_1.convertShape(VectorOperators.S2I, IntVector.SPECIES_PREFERRED, 0);
+          Vector<Integer> prod32_2 =
+              prod16_1.convertShape(VectorOperators.S2I, IntVector.SPECIES_PREFERRED, 1);
+          Vector<Integer> prod32_3 =
+              prod16_2.convertShape(VectorOperators.S2I, IntVector.SPECIES_PREFERRED, 0);
+          Vector<Integer> prod32_4 =
+              prod16_2.convertShape(VectorOperators.S2I, IntVector.SPECIES_PREFERRED, 1);
+          acc1 = acc1.add(prod32_1);
+          acc2 = acc2.add(prod32_2);
+          acc3 = acc3.add(prod32_3);
+          acc4 = acc4.add(prod32_4);
+        }
+        // reduce
+        IntVector res1 = acc1.add(acc2);
+        IntVector res2 = acc3.add(acc4);
+        res += res1.add(res2).reduceLanes(VectorOperators.ADD);
+      }
     }
 
     for (; i < a.length; i++) {
