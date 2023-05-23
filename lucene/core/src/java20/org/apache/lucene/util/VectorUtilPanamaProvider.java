@@ -241,12 +241,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
     if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
-      // compute vectorized dot product consistent with VPDPBUSD instruction, acts like:
-      // int sum = 0;
-      // for (...) {
-      //   short product = (short) (x[i] * y[i]);
-      //   sum += product;
-      // }
+      // compute vectorized dot product consistent with VPDPBUSD instruction
       if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
@@ -303,12 +298,6 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
     if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
-      // acts like:
-      // int sum = 0;
-      // for (...) {
-      //   short difference = (short) (x[i] - y[i]);
-      //   sum += (int) difference * (int) difference;
-      // }
       if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
@@ -399,12 +388,6 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
     if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
-      // acts like:
-      // int sum = 0;
-      // for (...) {
-      //   short difference = (short) (x[i] - y[i]);
-      //   sum += (int) difference * (int) difference;
-      // }
       if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
