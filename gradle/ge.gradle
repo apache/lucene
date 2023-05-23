@@ -1,12 +1,10 @@
-def isGithubActions = System.getenv('GITHUB_ACTIONS') != null
-def isJenkins = System.getenv('JENKINS_URL') != null
-def isCI = isGithubActions || isJenkins
+def isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
 
 gradleEnterprise {
     server = "https://ge.apache.org"
     buildScan {
         capture { taskInputFiles = true }
-        uploadInBackground = !isCI
+        uploadInBackground = !isCIBuild
         publishAlways()
         publishIfAuthenticated()
         obfuscation {
@@ -17,7 +15,7 @@ gradleEnterprise {
 
 buildCache {
     local {
-        enabled = !isCI
+        enabled = !isCIBuild
     }
 
     remote(gradleEnterprise.buildCache) {
