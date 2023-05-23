@@ -66,16 +66,18 @@ interface VectorUtilProvider {
         return new VectorUtilDefaultProvider();
       }
       try {
+        // we use method handles with lookup, so we do not need to deal with setAccessible as we
+        // have private access through the lookup:
         final var lookup = MethodHandles.lookup();
         final var cls = lookup.findClass("org.apache.lucene.util.VectorUtilPanamaProvider");
-        int vectorBitSize = vectorBitSize(lookup, cls);
+        final int vectorBitSize =
+            (int) lookup.findStaticVarHandle(cls, "INT_SPECIES_PREF_BIT_SIZE", int.class).get();
         if (vectorBitSize < 128) {
           LOG.warning(
               "Vector API is not enabled. Vector bit size is less than 128: " + vectorBitSize);
           return new VectorUtilDefaultProvider();
         }
-        // we use method handles, so we do not need to deal with setAccessible as we have private
-        // access through the lookup:
+        LOG.fine("Panama vector API enabled; uses preferredBitSize=" + vectorBitSize);
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
           return (VectorUtilProvider) constr.invoke();
@@ -84,11 +86,15 @@ interface VectorUtilProvider {
         } catch (Throwable th) {
           throw new AssertionError(th);
         }
-      } catch (NoSuchMethodException | IllegalAccessException e) {
+      } catch (NoSuchMethodException nsme) {
         throw new LinkageError(
-            "VectorUtilPanamaProvider is missing correctly typed constructor", e);
-      } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("VectorUtilPanamaProvider is missing in Lucene JAR file", cnfe);
+            "VectorUtilPanamaProvider is missing correctly typed constructor", nsme);
+      } catch (NoSuchFieldException nsfe) {
+        throw new LinkageError(
+            "VectorUtilPanamaProvider is missing correctly typed INT_SPECIES_PREF_BIT_SIZE", nsfe);
+      } catch (ClassNotFoundException | IllegalAccessException e) {
+        throw new LinkageError(
+            "VectorUtilPanamaProvider is missing or not accessible in Lucene JAR file", e);
       }
     } else if (runtimeVersion >= 21) {
       LOG.warning(
@@ -97,7 +103,7 @@ interface VectorUtilProvider {
     return new VectorUtilDefaultProvider();
   }
 
-  static boolean vectorModulePresentAndReadable() {
+  private static boolean vectorModulePresentAndReadable() {
     var opt =
         ModuleLayer.boot().modules().stream()
             .filter(m -> m.getName().equals("jdk.incubator.vector"))
@@ -110,23 +116,7 @@ interface VectorUtilProvider {
   }
 
   // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
-  static boolean hasWorkingDefaultLocale() {
+  private static boolean hasWorkingDefaultLocale() {
     return Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
-  }
-
-  static int vectorBitSize(MethodHandles.Lookup lookup, Class<?> cls) {
-    try {
-      final var mh = lookup.findStatic(cls, "vectorBitSize", MethodType.methodType(int.class));
-      try {
-        return (int) mh.invoke();
-      } catch (RuntimeException | Error e) {
-        throw e;
-      } catch (Throwable th) {
-        throw new AssertionError(th);
-      }
-    } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new LinkageError(
-          "VectorUtilPanamaProvider is missing correctly typed vectorBitSize", e);
-    }
   }
 }
