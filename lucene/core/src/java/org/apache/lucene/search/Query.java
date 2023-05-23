@@ -44,7 +44,7 @@ import org.apache.lucene.util.VirtualMethod;
  * </ul>
  *
  * <p>See also additional queries available in the <a
- * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>
+ * href="{@docRoot}/../queries/overview-summary.html">Queries module</a>.
  */
 public abstract class Query {
 
@@ -120,7 +120,7 @@ public abstract class Query {
   }
 
   /**
-   * Recurse through the query tree, visiting any child queries
+   * Recurse through the query tree, visiting any child queries.
    *
    * @param visitor a QueryVisitor to be called by each query in the tree
    */
@@ -131,8 +131,8 @@ public abstract class Query {
    * that {@link QueryCache} works properly.
    *
    * <p>Typically a query will be equal to another only if it's an instance of the same class and
-   * its document-filtering properties are identical that other instance. Utility methods are
-   * provided for certain repetitive code.
+   * its document-filtering properties are identical to those of the other instance. Utility methods
+   * are provided for certain repetitive code.
    *
    * @see #sameClassAs(Object)
    * @see #classHash()
@@ -155,7 +155,7 @@ public abstract class Query {
    *
    * <p>When this method is used in an implementation of {@link #equals(Object)}, consider using
    * {@link #classHash()} in the implementation of {@link #hashCode} to differentiate different
-   * class
+   * class.
    */
   protected final boolean sameClassAs(Object other) {
     return other != null && getClass() == other.getClass();
