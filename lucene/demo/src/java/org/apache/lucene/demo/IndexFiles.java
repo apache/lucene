@@ -262,7 +262,7 @@ public class IndexFiles implements AutoCloseable {
                   new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
               new KnnFloatVectorField(
-                  "contents-vector", vector, false, VectorSimilarityFunction.DOT_PRODUCT));
+                  "contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
         }
       }
 

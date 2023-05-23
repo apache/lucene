@@ -128,7 +128,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
 
   @Override
   Field knnVectorField(String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnByteVectorField(name, vector, false, similarityFunction);
+    return new KnnByteVectorField(name, vector, similarityFunction);
   }
 
   @Override

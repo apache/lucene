@@ -404,7 +404,6 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
   }
 
   public void testVectorValues() throws IOException {
-    boolean multiValued = false;
     Directory directory = newDirectory();
     IndexWriter writer =
         new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
@@ -421,7 +420,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
         value[j] = random().nextFloat();
       }
       FieldType fieldType =
-          KnnFloatVectorField.createFieldType(dimension, multiValued, VectorSimilarityFunction.COSINE);
+          KnnFloatVectorField.createFieldType(dimension, false, VectorSimilarityFunction.COSINE);
       doc.add(new KnnFloatVectorField("vector", value, fieldType));
 
       doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));

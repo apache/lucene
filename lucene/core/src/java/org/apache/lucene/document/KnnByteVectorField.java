@@ -98,6 +98,24 @@ public class KnnByteVectorField extends Field {
    *     dimension &gt; 1024.
    */
   public KnnByteVectorField(
+          String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
+    super(name, createType(vector, false, similarityFunction));
+    fieldsData = vector;
+  }
+  
+  /**
+   * Creates a numeric vector field. Fields are single-valued: each document has either one value or
+   * no value. Vectors of a single field share the same dimension and similarity function. Note that
+   * some vector similarities (like {@link VectorSimilarityFunction#DOT_PRODUCT}) require values to
+   * be constant-length.
+   *
+   * @param name field name
+   * @param vector value
+   * @param similarityFunction a function defining vector proximity.
+   * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
+   *     dimension &gt; 1024.
+   */
+  public KnnByteVectorField(
       String name, byte[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, multiValued, similarityFunction));
     fieldsData = vector;

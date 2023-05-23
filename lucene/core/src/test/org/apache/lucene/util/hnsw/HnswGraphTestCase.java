@@ -972,11 +972,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           if (getVectorEncoding() == VectorEncoding.BYTE) {
             assert query instanceof byte[];
             expected.add(
-                j, similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(j)), false);
+                j, similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(j)));
           } else {
             assert query instanceof float[];
             expected.add(
-                j, similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(j)), false);
+                j, similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(j)));
           }
           if (expected.size() > topK) {
             expected.pop();

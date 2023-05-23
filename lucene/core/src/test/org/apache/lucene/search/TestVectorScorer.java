@@ -79,7 +79,7 @@ public class TestVectorScorer extends LuceneTestCase {
         for (int j = 0; j < v.length; j++) {
           v[j] = (byte) contents[i][j];
         }
-        doc.add(new KnnByteVectorField(field, v, false, EUCLIDEAN));
+        doc.add(new KnnByteVectorField(field, v, EUCLIDEAN));
       } else {
         doc.add(new KnnFloatVectorField(field, contents[i]));
       }

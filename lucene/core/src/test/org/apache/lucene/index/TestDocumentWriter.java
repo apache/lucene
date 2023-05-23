@@ -385,7 +385,7 @@ public class TestDocumentWriter extends LuceneTestCase {
     doTestRAMUsage(
         field ->
             new KnnFloatVectorField(
-                field, new float[] {1, 2, 3, 4}, false, VectorSimilarityFunction.EUCLIDEAN));
+                field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 
   private static class MockIndexableField implements IndexableField {

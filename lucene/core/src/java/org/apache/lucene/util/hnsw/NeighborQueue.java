@@ -121,7 +121,7 @@ public class NeighborQueue {
    * @param nodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
    */
-  private boolean insertWithOverflow(int nodeId, float nodeScore) {
+  public boolean insertWithOverflow(int nodeId, float nodeScore) {
     return (heap.insertWithOverflow(encode(nodeId, nodeScore)) != -1);
   }
   

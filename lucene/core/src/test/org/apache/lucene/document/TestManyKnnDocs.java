@@ -55,7 +55,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
       int numVectors = 2088992;
       float[] vector = new float[1];
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField(fieldName, vector, false, similarityFunction));
+      doc.add(new KnnFloatVectorField(fieldName, vector, similarityFunction));
       for (int i = 0; i < numVectors; i++) {
         vector[0] = (i % 256);
         iw.addDocument(doc);
