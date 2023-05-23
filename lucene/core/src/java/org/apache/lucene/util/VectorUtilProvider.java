@@ -19,6 +19,8 @@ package org.apache.lucene.util;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -65,16 +67,9 @@ interface VectorUtilProvider {
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
         return new VectorUtilDefaultProvider();
       }
-      try {
-        if (System.getProperty("java.vm.info").contains("emulated-client")) {
-          LOG.warning("C2 compiler is disabled: Java vector incubator API can't be enabled");
-          return new VectorUtilDefaultProvider();
-        }
-      } catch (
-          @SuppressWarnings("unused")
-          SecurityException e) {
-        LOG.warning(
-            "SecurityManager denies permission to java.vm.info system property, trying anyway and hoping for the best");
+      if (isClientVM()) {
+        LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
+        return new VectorUtilDefaultProvider();
       }
       try {
         // we use method handles with lookup, so we do not need to deal with setAccessible as we
@@ -121,5 +116,22 @@ interface VectorUtilProvider {
   // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
   private static boolean hasWorkingDefaultLocale() {
     return Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
+  }
+
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static boolean isClientVM() throws SecurityException {
+    try {
+      final PrivilegedAction<Boolean> action =
+          () -> System.getProperty("java.vm.info", "").contains("emulated-client");
+      return AccessController.doPrivileged(action);
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException e) {
+      LOG.warning(
+          "SecurityManager denies permission to 'java.vm.info' system property, so state of C2 compiler can't be detected. "
+              + "In case of performance issues allow access to this property.");
+      return false;
+    }
   }
 }
