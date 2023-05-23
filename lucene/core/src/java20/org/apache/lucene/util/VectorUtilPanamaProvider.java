@@ -270,7 +270,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && INT_SPECIES_PREF_BIT_SIZE >= 128) {
+    if (a.length >= 16) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
@@ -327,7 +327,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int norm2 = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && INT_SPECIES_PREF_BIT_SIZE >= 128) {
+    if (a.length >= 16) {
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
@@ -417,7 +417,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && INT_SPECIES_PREF_BIT_SIZE >= 128) {
+    if (a.length >= 16) {
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
