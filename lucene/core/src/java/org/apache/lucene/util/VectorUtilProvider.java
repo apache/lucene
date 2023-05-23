@@ -74,10 +74,11 @@ interface VectorUtilProvider {
             (int) lookup.findStaticVarHandle(cls, "INT_SPECIES_PREF_BIT_SIZE", int.class).get();
         if (vectorBitSize < 128) {
           LOG.warning(
-              "Vector API is not enabled. Vector bit size is less than 128: " + vectorBitSize);
+              "Java vector incubator API was not enabled. Vector bit size is less than 128: "
+                  + vectorBitSize);
           return new VectorUtilDefaultProvider();
         }
-        LOG.fine("Panama vector API enabled; uses preferredBitSize=" + vectorBitSize);
+        LOG.info("Java vector incubator API enabled; uses preferredBitSize=" + vectorBitSize);
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
           return (VectorUtilProvider) constr.invoke();
