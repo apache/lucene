@@ -25,7 +25,7 @@ import org.junit.BeforeClass;
 
 public class TestVectorUtilProviders extends LuceneTestCase {
 
-  private static final float DELTA = 1e-4f;
+  private static final double DELTA = 1e-4;
   private static final VectorUtilProvider LUCENE_PROVIDER = new VectorUtilDefaultProvider();
   private static final VectorUtilProvider JDK_PROVIDER = VectorUtil.PROVIDER;
 
