@@ -232,21 +232,22 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     }
   }
 
+  static final int INT_SPECIES_PREFERRED_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
+
   @Override
   public int dotProduct(byte[] a, byte[] b) {
     int i = 0;
     int res = 0;
-    final int vectorSize = IntVector.SPECIES_PREFERRED.vectorBitSize();
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && vectorSize >= 128) {
+    if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
       // compute vectorized dot product consistent with VPDPBUSD instruction, acts like:
       // int sum = 0;
       // for (...) {
       //   short product = (short) (x[i] * y[i]);
       //   sum += product;
       // }
-      if (vectorSize >= 256) {
+      if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
         IntVector acc = IntVector.zero(IntVector.SPECIES_PREFERRED);
@@ -299,17 +300,16 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int sum = 0;
     int norm1 = 0;
     int norm2 = 0;
-    final int vectorSize = IntVector.SPECIES_PREFERRED.vectorBitSize();
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && vectorSize >= 128) {
+    if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
       // acts like:
       // int sum = 0;
       // for (...) {
       //   short difference = (short) (x[i] - y[i]);
       //   sum += (int) difference * (int) difference;
       // }
-      if (vectorSize >= 256) {
+      if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
         IntVector accSum = IntVector.zero(IntVector.SPECIES_PREFERRED);
@@ -396,17 +396,16 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
   public int squareDistance(byte[] a, byte[] b) {
     int i = 0;
     int res = 0;
-    final int vectorSize = IntVector.SPECIES_PREFERRED.vectorBitSize();
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && vectorSize >= 128) {
+    if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
       // acts like:
       // int sum = 0;
       // for (...) {
       //   short difference = (short) (x[i] - y[i]);
       //   sum += (int) difference * (int) difference;
       // }
-      if (vectorSize >= 256) {
+      if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
         IntVector acc = IntVector.zero(IntVector.SPECIES_PREFERRED);
