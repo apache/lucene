@@ -54,7 +54,7 @@ interface VectorUtilProvider {
       // is locale sane (only buggy in Java 20)
       if (runtimeVersion <= 20 && !hasWorkingDefaultLocale()) {
         LOG.warning(
-            "Java runtime is using a buggy default locale; Vector API can't be enabled: "
+            "Java runtime is using a buggy default locale; Java vector incubator API can't be enabled: "
                 + Locale.getDefault());
         return new VectorUtilDefaultProvider();
       }
@@ -70,31 +70,23 @@ interface VectorUtilProvider {
         // have private access through the lookup:
         final var lookup = MethodHandles.lookup();
         final var cls = lookup.findClass("org.apache.lucene.util.VectorUtilPanamaProvider");
-        final int vectorBitSize =
-            (int) lookup.findStaticVarHandle(cls, "INT_SPECIES_PREF_BIT_SIZE", int.class).get();
-        if (vectorBitSize < 128) {
-          LOG.warning(
-              "Java vector incubator API was not enabled. Vector bit size is less than 128: "
-                  + vectorBitSize);
-          return new VectorUtilDefaultProvider();
-        }
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
           return (VectorUtilProvider) constr.invoke();
+        } catch (UnsupportedOperationException uoe) {
+          // not supported because preferred vector size too small or similar
+          LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
+          return new VectorUtilDefaultProvider();
         } catch (RuntimeException | Error e) {
           throw e;
         } catch (Throwable th) {
           throw new AssertionError(th);
         }
-      } catch (NoSuchMethodException nsme) {
+      } catch (NoSuchMethodException | IllegalAccessException e) {
         throw new LinkageError(
-            "VectorUtilPanamaProvider is missing correctly typed constructor", nsme);
-      } catch (NoSuchFieldException nsfe) {
-        throw new LinkageError(
-            "VectorUtilPanamaProvider is missing correctly typed INT_SPECIES_PREF_BIT_SIZE", nsfe);
-      } catch (ClassNotFoundException | IllegalAccessException e) {
-        throw new LinkageError(
-            "VectorUtilPanamaProvider is missing or not accessible in Lucene JAR file", e);
+            "VectorUtilPanamaProvider is missing correctly typed constructor", e);
+      } catch (ClassNotFoundException cnfe) {
+        throw new LinkageError("VectorUtilPanamaProvider is missing in Lucene JAR file", cnfe);
       }
     } else if (runtimeVersion >= 21) {
       LOG.warning(

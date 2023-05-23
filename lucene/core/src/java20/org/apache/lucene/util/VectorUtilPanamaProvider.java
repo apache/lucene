@@ -54,6 +54,10 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
   }
 
   VectorUtilPanamaProvider() {
+    if (INT_SPECIES_PREF_BIT_SIZE < 128) {
+      throw new UnsupportedOperationException(
+          "Vector bit size is less than 128: " + INT_SPECIES_PREF_BIT_SIZE);
+    }
     var log = Logger.getLogger(getClass().getName());
     log.info(
         "Java vector incubator API enabled; uses preferredBitSize=" + INT_SPECIES_PREF_BIT_SIZE);
