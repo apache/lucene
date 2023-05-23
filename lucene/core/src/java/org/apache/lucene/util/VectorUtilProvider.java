@@ -68,6 +68,12 @@ interface VectorUtilProvider {
       try {
         final var lookup = MethodHandles.lookup();
         final var cls = lookup.findClass("org.apache.lucene.util.VectorUtilPanamaProvider");
+        int vectorBitSize = vectorBitSize(lookup, cls);
+        if (vectorBitSize < 128) {
+          LOG.warning(
+              "Vector API is not enabled. Vector bit size is less than 128: " + vectorBitSize);
+          return new VectorUtilDefaultProvider();
+        }
         // we use method handles, so we do not need to deal with setAccessible as we have private
         // access through the lookup:
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
@@ -106,5 +112,21 @@ interface VectorUtilProvider {
   // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
   static boolean hasWorkingDefaultLocale() {
     return Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
+  }
+
+  static int vectorBitSize(MethodHandles.Lookup lookup, Class<?> cls) {
+    try {
+      final var mh = lookup.findStatic(cls, "vectorBitSize", MethodType.methodType(int.class));
+      try {
+        return (int) mh.invoke();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable th) {
+        throw new AssertionError(th);
+      }
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new LinkageError(
+          "VectorUtilPanamaProvider is missing correctly typed vectorBitSize", e);
+    }
   }
 }

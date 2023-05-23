@@ -47,6 +47,11 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     }
   }
 
+  /** Returns the bit size of the preferred species. */
+  static int vectorBitSize() {
+    return INT_SPECIES_PREF_BIT_SIZE;
+  }
+
   VectorUtilPanamaProvider() {}
 
   @Override
