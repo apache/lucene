@@ -20,7 +20,8 @@ package org.apache.lucene.util;
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
-  private static final VectorUtilProvider PROVIDER = VectorUtilProvider.lookup();
+  // visible for testing
+  static final VectorUtilProvider PROVIDER = VectorUtilProvider.lookup();
 
   private VectorUtil() {}
 
