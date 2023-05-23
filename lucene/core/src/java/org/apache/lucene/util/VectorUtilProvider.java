@@ -66,6 +66,15 @@ interface VectorUtilProvider {
         return new VectorUtilDefaultProvider();
       }
       try {
+        if (System.getProperty("java.vm.info").contains("emulated-client")) {
+          LOG.warning("C2 compiler is disabled: Java vector incubator API can't be enabled");
+          return new VectorUtilDefaultProvider();
+        }
+      } catch (SecurityException e) {
+        LOG.warning(
+            "SecurityManager denies permission to java.vm.info system property, trying anyway and hoping for the best");
+      }
+      try {
         // we use method handles with lookup, so we do not need to deal with setAccessible as we
         // have private access through the lookup:
         final var lookup = MethodHandles.lookup();
