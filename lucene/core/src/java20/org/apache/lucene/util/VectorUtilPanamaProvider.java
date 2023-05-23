@@ -28,7 +28,24 @@ import jdk.incubator.vector.VectorSpecies;
 /** A VectorUtil provider implementation that leverages the Panama Vector API. */
 final class VectorUtilPanamaProvider implements VectorUtilProvider {
 
-  static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
+  private static final int INT_SPECIES_PREF_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
+  private static final VectorSpecies<Float> PREF_FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
+  private static final VectorSpecies<Byte> PREF_BYTE_SPECIES;
+  private static final VectorSpecies<Short> PREF_SHORT_SPECIES;
+
+  static {
+    if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
+      PREF_BYTE_SPECIES =
+          ByteVector.SPECIES_MAX.withShape(
+              VectorShape.forBitSize(IntVector.SPECIES_PREFERRED.vectorBitSize() >> 2));
+      PREF_SHORT_SPECIES =
+          ShortVector.SPECIES_MAX.withShape(
+              VectorShape.forBitSize(IntVector.SPECIES_PREFERRED.vectorBitSize() >> 1));
+    } else {
+      PREF_BYTE_SPECIES = null;
+      PREF_SHORT_SPECIES = null;
+    }
+  }
 
   VectorUtilPanamaProvider() {}
 
@@ -37,32 +54,38 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int i = 0;
     float res = 0;
     // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
-    if (a.length > 2 * SPECIES.length()) {
+    if (a.length > 2 * PREF_FLOAT_SPECIES.length()) {
       // vector loop is unrolled 4x (4 accumulators in parallel)
-      FloatVector acc1 = FloatVector.zero(SPECIES);
-      FloatVector acc2 = FloatVector.zero(SPECIES);
-      FloatVector acc3 = FloatVector.zero(SPECIES);
-      FloatVector acc4 = FloatVector.zero(SPECIES);
-      int upperBound = SPECIES.loopBound(a.length - 3 * SPECIES.length());
-      for (; i < upperBound; i += 4 * SPECIES.length()) {
-        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
-        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+      FloatVector acc1 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector acc4 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      int upperBound = PREF_FLOAT_SPECIES.loopBound(a.length - 3 * PREF_FLOAT_SPECIES.length());
+      for (; i < upperBound; i += 4 * PREF_FLOAT_SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i);
         acc1 = acc1.add(va.mul(vb));
-        FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
-        FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
+        FloatVector vc =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + PREF_FLOAT_SPECIES.length());
+        FloatVector vd =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + PREF_FLOAT_SPECIES.length());
         acc2 = acc2.add(vc.mul(vd));
-        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2 * SPECIES.length());
-        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2 * SPECIES.length());
+        FloatVector ve =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + 2 * PREF_FLOAT_SPECIES.length());
+        FloatVector vf =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + 2 * PREF_FLOAT_SPECIES.length());
         acc3 = acc3.add(ve.mul(vf));
-        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3 * SPECIES.length());
-        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3 * SPECIES.length());
+        FloatVector vg =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + 3 * PREF_FLOAT_SPECIES.length());
+        FloatVector vh =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + 3 * PREF_FLOAT_SPECIES.length());
         acc4 = acc4.add(vg.mul(vh));
       }
       // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
-      upperBound = SPECIES.loopBound(a.length);
-      for (; i < upperBound; i += SPECIES.length()) {
-        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
-        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+      upperBound = PREF_FLOAT_SPECIES.loopBound(a.length);
+      for (; i < upperBound; i += PREF_FLOAT_SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i);
         acc1 = acc1.add(va.mul(vb));
       }
       // reduce
@@ -84,48 +107,54 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     float norm1 = 0;
     float norm2 = 0;
     // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
-    if (a.length > 2 * SPECIES.length()) {
+    if (a.length > 2 * PREF_FLOAT_SPECIES.length()) {
       // vector loop is unrolled 4x (4 accumulators in parallel)
-      FloatVector sum1 = FloatVector.zero(SPECIES);
-      FloatVector sum2 = FloatVector.zero(SPECIES);
-      FloatVector sum3 = FloatVector.zero(SPECIES);
-      FloatVector sum4 = FloatVector.zero(SPECIES);
-      FloatVector norm1_1 = FloatVector.zero(SPECIES);
-      FloatVector norm1_2 = FloatVector.zero(SPECIES);
-      FloatVector norm1_3 = FloatVector.zero(SPECIES);
-      FloatVector norm1_4 = FloatVector.zero(SPECIES);
-      FloatVector norm2_1 = FloatVector.zero(SPECIES);
-      FloatVector norm2_2 = FloatVector.zero(SPECIES);
-      FloatVector norm2_3 = FloatVector.zero(SPECIES);
-      FloatVector norm2_4 = FloatVector.zero(SPECIES);
-      int upperBound = SPECIES.loopBound(a.length - 3 * SPECIES.length());
-      for (; i < upperBound; i += 4 * SPECIES.length()) {
-        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
-        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+      FloatVector sum1 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector sum2 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector sum3 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector sum4 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm1_1 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm1_2 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm1_3 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm1_4 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm2_1 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm2_2 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm2_3 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector norm2_4 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      int upperBound = PREF_FLOAT_SPECIES.loopBound(a.length - 3 * PREF_FLOAT_SPECIES.length());
+      for (; i < upperBound; i += 4 * PREF_FLOAT_SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i);
         sum1 = sum1.add(va.mul(vb));
         norm1_1 = norm1_1.add(va.mul(va));
         norm2_1 = norm2_1.add(vb.mul(vb));
-        FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
-        FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
+        FloatVector vc =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + PREF_FLOAT_SPECIES.length());
+        FloatVector vd =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + PREF_FLOAT_SPECIES.length());
         sum2 = sum2.add(vc.mul(vd));
         norm1_2 = norm1_2.add(vc.mul(vc));
         norm2_2 = norm2_2.add(vd.mul(vd));
-        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2 * SPECIES.length());
-        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2 * SPECIES.length());
+        FloatVector ve =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + 2 * PREF_FLOAT_SPECIES.length());
+        FloatVector vf =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + 2 * PREF_FLOAT_SPECIES.length());
         sum3 = sum3.add(ve.mul(vf));
         norm1_3 = norm1_3.add(ve.mul(ve));
         norm2_3 = norm2_3.add(vf.mul(vf));
-        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3 * SPECIES.length());
-        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3 * SPECIES.length());
+        FloatVector vg =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + 3 * PREF_FLOAT_SPECIES.length());
+        FloatVector vh =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + 3 * PREF_FLOAT_SPECIES.length());
         sum4 = sum4.add(vg.mul(vh));
         norm1_4 = norm1_4.add(vg.mul(vg));
         norm2_4 = norm2_4.add(vh.mul(vh));
       }
       // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
-      upperBound = SPECIES.loopBound(a.length);
-      for (; i < upperBound; i += SPECIES.length()) {
-        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
-        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+      upperBound = PREF_FLOAT_SPECIES.loopBound(a.length);
+      for (; i < upperBound; i += PREF_FLOAT_SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i);
         sum1 = sum1.add(va.mul(vb));
         norm1_1 = norm1_1.add(va.mul(va));
         norm2_1 = norm2_1.add(vb.mul(vb));
@@ -157,36 +186,42 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int i = 0;
     float res = 0;
     // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
-    if (a.length > 2 * SPECIES.length()) {
+    if (a.length > 2 * PREF_FLOAT_SPECIES.length()) {
       // vector loop is unrolled 4x (4 accumulators in parallel)
-      FloatVector acc1 = FloatVector.zero(SPECIES);
-      FloatVector acc2 = FloatVector.zero(SPECIES);
-      FloatVector acc3 = FloatVector.zero(SPECIES);
-      FloatVector acc4 = FloatVector.zero(SPECIES);
-      int upperBound = SPECIES.loopBound(a.length - 3 * SPECIES.length());
-      for (; i < upperBound; i += 4 * SPECIES.length()) {
-        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
-        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+      FloatVector acc1 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector acc2 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector acc3 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      FloatVector acc4 = FloatVector.zero(PREF_FLOAT_SPECIES);
+      int upperBound = PREF_FLOAT_SPECIES.loopBound(a.length - 3 * PREF_FLOAT_SPECIES.length());
+      for (; i < upperBound; i += 4 * PREF_FLOAT_SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i);
         FloatVector diff1 = va.sub(vb);
         acc1 = acc1.add(diff1.mul(diff1));
-        FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
-        FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
+        FloatVector vc =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + PREF_FLOAT_SPECIES.length());
+        FloatVector vd =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + PREF_FLOAT_SPECIES.length());
         FloatVector diff2 = vc.sub(vd);
         acc2 = acc2.add(diff2.mul(diff2));
-        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2 * SPECIES.length());
-        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2 * SPECIES.length());
+        FloatVector ve =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + 2 * PREF_FLOAT_SPECIES.length());
+        FloatVector vf =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + 2 * PREF_FLOAT_SPECIES.length());
         FloatVector diff3 = ve.sub(vf);
         acc3 = acc3.add(diff3.mul(diff3));
-        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3 * SPECIES.length());
-        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3 * SPECIES.length());
+        FloatVector vg =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i + 3 * PREF_FLOAT_SPECIES.length());
+        FloatVector vh =
+            FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i + 3 * PREF_FLOAT_SPECIES.length());
         FloatVector diff4 = vg.sub(vh);
         acc4 = acc4.add(diff4.mul(diff4));
       }
       // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
-      upperBound = SPECIES.loopBound(a.length);
-      for (; i < upperBound; i += SPECIES.length()) {
-        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
-        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+      upperBound = PREF_FLOAT_SPECIES.loopBound(a.length);
+      for (; i < upperBound; i += PREF_FLOAT_SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(PREF_FLOAT_SPECIES, b, i);
         FloatVector diff = va.sub(vb);
         acc1 = acc1.add(diff.mul(diff));
       }
@@ -215,42 +250,23 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
   // We also support 128 bit vectors, using two 128 bit accumulators.
   // This is slower but still faster than not vectorizing at all.
 
-  static final VectorSpecies<Byte> PREFERRED_BYTE_SPECIES;
-  static final VectorSpecies<Short> PREFERRED_SHORT_SPECIES;
-
-  static {
-    if (IntVector.SPECIES_PREFERRED.vectorBitSize() >= 256) {
-      PREFERRED_BYTE_SPECIES =
-          ByteVector.SPECIES_MAX.withShape(
-              VectorShape.forBitSize(IntVector.SPECIES_PREFERRED.vectorBitSize() >> 2));
-      PREFERRED_SHORT_SPECIES =
-          ShortVector.SPECIES_MAX.withShape(
-              VectorShape.forBitSize(IntVector.SPECIES_PREFERRED.vectorBitSize() >> 1));
-    } else {
-      PREFERRED_BYTE_SPECIES = null;
-      PREFERRED_SHORT_SPECIES = null;
-    }
-  }
-
-  static final int INT_SPECIES_PREFERRED_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
-
   @Override
   public int dotProduct(byte[] a, byte[] b) {
     int i = 0;
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
+    if (a.length >= 16 && INT_SPECIES_PREF_BIT_SIZE >= 128) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
-      if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
+      if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
-        int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
+        int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
         IntVector acc = IntVector.zero(IntVector.SPECIES_PREFERRED);
-        for (; i < upperBound; i += PREFERRED_BYTE_SPECIES.length()) {
-          ByteVector va8 = ByteVector.fromArray(PREFERRED_BYTE_SPECIES, a, i);
-          ByteVector vb8 = ByteVector.fromArray(PREFERRED_BYTE_SPECIES, b, i);
-          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, PREFERRED_SHORT_SPECIES, 0);
-          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, PREFERRED_SHORT_SPECIES, 0);
+        for (; i < upperBound; i += PREF_BYTE_SPECIES.length()) {
+          ByteVector va8 = ByteVector.fromArray(PREF_BYTE_SPECIES, a, i);
+          ByteVector vb8 = ByteVector.fromArray(PREF_BYTE_SPECIES, b, i);
+          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, PREF_SHORT_SPECIES, 0);
+          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, PREF_SHORT_SPECIES, 0);
           Vector<Short> prod16 = va16.mul(vb16);
           Vector<Integer> prod32 =
               prod16.convertShape(VectorOperators.S2I, IntVector.SPECIES_PREFERRED, 0);
@@ -297,18 +313,18 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int norm2 = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
-      if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
+    if (a.length >= 16 && INT_SPECIES_PREF_BIT_SIZE >= 128) {
+      if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
-        int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
+        int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
         IntVector accSum = IntVector.zero(IntVector.SPECIES_PREFERRED);
         IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_PREFERRED);
         IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_PREFERRED);
-        for (; i < upperBound; i += PREFERRED_BYTE_SPECIES.length()) {
-          ByteVector va8 = ByteVector.fromArray(PREFERRED_BYTE_SPECIES, a, i);
-          ByteVector vb8 = ByteVector.fromArray(PREFERRED_BYTE_SPECIES, b, i);
-          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, PREFERRED_SHORT_SPECIES, 0);
-          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, PREFERRED_SHORT_SPECIES, 0);
+        for (; i < upperBound; i += PREF_BYTE_SPECIES.length()) {
+          ByteVector va8 = ByteVector.fromArray(PREF_BYTE_SPECIES, a, i);
+          ByteVector vb8 = ByteVector.fromArray(PREF_BYTE_SPECIES, b, i);
+          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, PREF_SHORT_SPECIES, 0);
+          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, PREF_SHORT_SPECIES, 0);
           Vector<Short> prod16 = va16.mul(vb16);
           Vector<Short> norm1_16 = va16.mul(va16);
           Vector<Short> norm2_16 = vb16.mul(vb16);
@@ -387,16 +403,16 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors
-    if (a.length >= 16 && INT_SPECIES_PREFERRED_BIT_SIZE >= 128) {
-      if (INT_SPECIES_PREFERRED_BIT_SIZE >= 256) {
+    if (a.length >= 16 && INT_SPECIES_PREF_BIT_SIZE >= 128) {
+      if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
-        int upperBound = PREFERRED_BYTE_SPECIES.loopBound(a.length);
+        int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
         IntVector acc = IntVector.zero(IntVector.SPECIES_PREFERRED);
-        for (; i < upperBound; i += PREFERRED_BYTE_SPECIES.length()) {
-          ByteVector va8 = ByteVector.fromArray(PREFERRED_BYTE_SPECIES, a, i);
-          ByteVector vb8 = ByteVector.fromArray(PREFERRED_BYTE_SPECIES, b, i);
-          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, PREFERRED_SHORT_SPECIES, 0);
-          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, PREFERRED_SHORT_SPECIES, 0);
+        for (; i < upperBound; i += PREF_BYTE_SPECIES.length()) {
+          ByteVector va8 = ByteVector.fromArray(PREF_BYTE_SPECIES, a, i);
+          ByteVector vb8 = ByteVector.fromArray(PREF_BYTE_SPECIES, b, i);
+          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, PREF_SHORT_SPECIES, 0);
+          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, PREF_SHORT_SPECIES, 0);
           Vector<Short> diff16 = va16.sub(vb16);
           Vector<Integer> diff32 =
               diff16.convertShape(VectorOperators.S2I, IntVector.SPECIES_PREFERRED, 0);
