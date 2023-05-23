@@ -70,7 +70,9 @@ interface VectorUtilProvider {
           LOG.warning("C2 compiler is disabled: Java vector incubator API can't be enabled");
           return new VectorUtilDefaultProvider();
         }
-      } catch (SecurityException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          SecurityException e) {
         LOG.warning(
             "SecurityManager denies permission to java.vm.info system property, trying anyway and hoping for the best");
       }
