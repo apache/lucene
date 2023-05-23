@@ -46,7 +46,7 @@ interface VectorUtilProvider {
 
   // -- provider lookup mechanism
 
-  Logger LOG = Logger.getLogger(VectorUtilProvider.class.getName());
+  static final Logger LOG = Logger.getLogger(VectorUtilProvider.class.getName());
 
   static VectorUtilProvider lookup() {
     final int runtimeVersion = Runtime.version().feature();
@@ -79,7 +79,6 @@ interface VectorUtilProvider {
           return new VectorUtilDefaultProvider();
         }
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-        LOG.info("Java vector incubator API enabled; uses preferredBitSize=" + vectorBitSize);
         try {
           return (VectorUtilProvider) constr.invoke();
         } catch (RuntimeException | Error e) {

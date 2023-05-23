@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.logging.Logger;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -52,7 +53,11 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     }
   }
 
-  VectorUtilPanamaProvider() {}
+  VectorUtilPanamaProvider() {
+    var log = Logger.getLogger(getClass().getName());
+    log.info(
+        "Java vector incubator API enabled; uses preferredBitSize=" + INT_SPECIES_PREF_BIT_SIZE);
+  }
 
   @Override
   public float dotProduct(float[] a, float[] b) {
