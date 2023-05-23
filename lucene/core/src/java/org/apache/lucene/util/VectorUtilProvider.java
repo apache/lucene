@@ -78,8 +78,8 @@ interface VectorUtilProvider {
                   + vectorBitSize);
           return new VectorUtilDefaultProvider();
         }
-        LOG.info("Java vector incubator API enabled; uses preferredBitSize=" + vectorBitSize);
         final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+        LOG.info("Java vector incubator API enabled; uses preferredBitSize=" + vectorBitSize);
         try {
           return (VectorUtilProvider) constr.invoke();
         } catch (RuntimeException | Error e) {
