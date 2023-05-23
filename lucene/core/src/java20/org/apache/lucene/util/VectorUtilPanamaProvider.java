@@ -77,6 +77,132 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     return res;
   }
 
+  @Override
+  public float cosine(float[] a, float[] b) {
+    int i = 0;
+    float sum = 0;
+    float norm1 = 0;
+    float norm2 = 0;
+    // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
+    if (a.length > 2 * SPECIES.length()) {
+      // vector loop is unrolled 4x (4 accumulators in parallel)
+      FloatVector sum1 = FloatVector.zero(SPECIES);
+      FloatVector sum2 = FloatVector.zero(SPECIES);
+      FloatVector sum3 = FloatVector.zero(SPECIES);
+      FloatVector sum4 = FloatVector.zero(SPECIES);
+      FloatVector norm1_1 = FloatVector.zero(SPECIES);
+      FloatVector norm1_2 = FloatVector.zero(SPECIES);
+      FloatVector norm1_3 = FloatVector.zero(SPECIES);
+      FloatVector norm1_4 = FloatVector.zero(SPECIES);
+      FloatVector norm2_1 = FloatVector.zero(SPECIES);
+      FloatVector norm2_2 = FloatVector.zero(SPECIES);
+      FloatVector norm2_3 = FloatVector.zero(SPECIES);
+      FloatVector norm2_4 = FloatVector.zero(SPECIES);
+      int upperBound = SPECIES.loopBound(a.length - 3 * SPECIES.length());
+      for (; i < upperBound; i += 4 * SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+        sum1 = sum1.add(va.mul(vb));
+        norm1_1 = norm1_1.add(va.mul(va));
+        norm2_1 = norm2_1.add(vb.mul(vb));
+        FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
+        FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
+        sum2 = sum2.add(vc.mul(vd));
+        norm1_2 = norm1_2.add(vc.mul(vc));
+        norm2_2 = norm2_2.add(vd.mul(vd));
+        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2 * SPECIES.length());
+        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2 * SPECIES.length());
+        sum3 = sum3.add(ve.mul(vf));
+        norm1_3 = norm1_3.add(ve.mul(ve));
+        norm2_3 = norm2_3.add(vf.mul(vf));
+        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3 * SPECIES.length());
+        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3 * SPECIES.length());
+        sum4 = sum4.add(vg.mul(vh));
+        norm1_4 = norm1_4.add(vg.mul(vg));
+        norm2_4 = norm2_4.add(vh.mul(vh));
+      }
+      // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+      upperBound = SPECIES.loopBound(a.length);
+      for (; i < upperBound; i += SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+        sum1 = sum1.add(va.mul(vb));
+        norm1_1 = norm1_1.add(va.mul(va));
+        norm2_1 = norm2_1.add(vb.mul(vb));
+      }
+      // reduce
+      FloatVector sumres1 = sum1.add(sum2);
+      FloatVector sumres2 = sum3.add(sum4);
+      FloatVector norm1res1 = norm1_1.add(norm1_2);
+      FloatVector norm1res2 = norm1_3.add(norm1_4);
+      FloatVector norm2res1 = norm2_1.add(norm2_2);
+      FloatVector norm2res2 = norm2_3.add(norm2_4);
+      sum += sumres1.add(sumres2).reduceLanes(VectorOperators.ADD);
+      norm1 += norm1res1.add(norm1res2).reduceLanes(VectorOperators.ADD);
+      norm2 += norm2res1.add(norm2res2).reduceLanes(VectorOperators.ADD);
+    }
+
+    for (; i < a.length; i++) {
+      float elem1 = a[i];
+      float elem2 = b[i];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt(norm1 * norm2));
+  }
+
+  @Override
+  public float squareDistance(float[] a, float[] b) {
+    int i = 0;
+    float res = 0;
+    // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
+    if (a.length > 2 * SPECIES.length()) {
+      // vector loop is unrolled 4x (4 accumulators in parallel)
+      FloatVector acc1 = FloatVector.zero(SPECIES);
+      FloatVector acc2 = FloatVector.zero(SPECIES);
+      FloatVector acc3 = FloatVector.zero(SPECIES);
+      FloatVector acc4 = FloatVector.zero(SPECIES);
+      int upperBound = SPECIES.loopBound(a.length - 3 * SPECIES.length());
+      for (; i < upperBound; i += 4 * SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+        FloatVector diff1 = va.sub(vb);
+        acc1 = acc1.add(diff1.mul(diff1));
+        FloatVector vc = FloatVector.fromArray(SPECIES, a, i + SPECIES.length());
+        FloatVector vd = FloatVector.fromArray(SPECIES, b, i + SPECIES.length());
+        FloatVector diff2 = vc.sub(vd);
+        acc2 = acc2.add(diff2.mul(diff2));
+        FloatVector ve = FloatVector.fromArray(SPECIES, a, i + 2 * SPECIES.length());
+        FloatVector vf = FloatVector.fromArray(SPECIES, b, i + 2 * SPECIES.length());
+        FloatVector diff3 = ve.sub(vf);
+        acc3 = acc3.add(diff3.mul(diff3));
+        FloatVector vg = FloatVector.fromArray(SPECIES, a, i + 3 * SPECIES.length());
+        FloatVector vh = FloatVector.fromArray(SPECIES, b, i + 3 * SPECIES.length());
+        FloatVector diff4 = vg.sub(vh);
+        acc4 = acc4.add(diff4.mul(diff4));
+      }
+      // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+      upperBound = SPECIES.loopBound(a.length);
+      for (; i < upperBound; i += SPECIES.length()) {
+        FloatVector va = FloatVector.fromArray(SPECIES, a, i);
+        FloatVector vb = FloatVector.fromArray(SPECIES, b, i);
+        FloatVector diff = va.sub(vb);
+        acc1 = acc1.add(diff.mul(diff));
+      }
+      // reduce
+      FloatVector res1 = acc1.add(acc2);
+      FloatVector res2 = acc3.add(acc4);
+      res += res1.add(res2).reduceLanes(VectorOperators.ADD);
+    }
+
+    for (; i < a.length; i++) {
+      float diff = a[i] - b[i];
+      res += diff * diff;
+    }
+    return res;
+  }
+
   // Binary functions, these all follow a general pattern like this:
   //
   //   short intermediate = a * b;

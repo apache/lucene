@@ -29,13 +29,13 @@ interface VectorUtilProvider {
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);
 
-  /**
-   * Dot product computed over signed bytes.
-   *
-   * @param a bytes containing a vector
-   * @param b bytes containing another vector, of the same dimension
-   * @return the value of the dot product of the two vectors
-   */
+  /** Returns the cosine similarity between the two vectors. */
+  float cosine(float[] v1, float[] v2);
+
+  /** Returns the sum of squared differences of the two vectors. */
+  float squareDistance(float[] a, float[] b);
+
+  /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
 
   /** Returns the cosine similarity between the two byte vectors. */
