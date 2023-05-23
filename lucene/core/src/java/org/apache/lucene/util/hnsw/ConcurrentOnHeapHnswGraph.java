@@ -155,27 +155,40 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     // local vars here just to make it easier to keep lines short enough to read
     long REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+    long CORES = Runtime.getRuntime().availableProcessors();
 
+    // skip list used by Neighbor Set
+    long cskmNodesBytes = 3L * REF_BYTES; // K, V, index
+    long cskmIndexBytes = 3L * REF_BYTES; // node, down, right
+    long cskmBytes =
+        REF_BYTES // head
+            + AH_BYTES
+            + CORES * Long.BYTES // longadder cells
+            + 4L * REF_BYTES; // internal view refs
     long neighborSetBytes =
-        +REF_BYTES // atomicreference
+        cskmBytes
+            + REF_BYTES // skiplist -> map reference
             + Integer.BYTES
             + Integer.BYTES
-            + REF_BYTES // NeighborArray
-            + AH_BYTES * 2
-            + REF_BYTES * 2
-            + Integer.BYTES
-            + 1; // NeighborArray internals
+            + REF_BYTES
+            + Integer.BYTES; // CNS fields
+
     long total = 0;
 
     // the main graph structure
     for (int l = 0; l <= entryPoint.get().level; l++) {
+      Map<Integer, ConcurrentNeighborSet> level = graphLevels.get(l);
+      if (level == null) {
+        continue;
+      }
+
       // size of nodes CHM
-      int numNodesOnLevel = graphLevels.get(l).size();
+      int numNodesOnLevel = level.size();
       long chmSize = concurrentHashMapRamUsed(numNodesOnLevel);
 
       // size of the CNS of each node
       long neighborSize = 0;
-      for (ConcurrentNeighborSet cns : graphLevels.get(l).values()) {
+      for (ConcurrentNeighborSet cns : level.values()) {
         neighborSize += neighborSetBytes + (long) cns.arrayLength() * (Integer.BYTES + Float.BYTES);
       }
 
@@ -193,10 +206,8 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
     long CORES = Runtime.getRuntime().availableProcessors();
 
-    long chmNodeBytes =
-        REF_BYTES // node itself in Node[]
-            + 3L * REF_BYTES
-            + Integer.BYTES; // node internals
+    // a CHM Node contains an int hash and a Node reference, as well as K and V references.
+    long chmNodeBytes = 3L * REF_BYTES + Integer.BYTES;
     float chmLoadFactor = 0.75f; // this is hardcoded inside ConcurrentHashMap
     // CHM has a striped counter Cell implementation, we expect at most one per core
     long chmCounters = AH_BYTES + CORES * (REF_BYTES + Long.BYTES);
