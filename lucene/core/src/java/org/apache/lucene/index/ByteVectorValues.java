@@ -31,6 +31,12 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
   /** The maximum length of a vector */
   public static final int MAX_DIMENSIONS = 1024;
 
+  protected boolean multiValued = false;
+
+  public boolean isMultiValued() {
+    return multiValued;
+  }
+
   /** Sole constructor */
   protected ByteVectorValues() {}
 
@@ -65,14 +71,5 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
    */
   public int ordToDoc(int ord){
     return ord;
-  }
-
-  /**
-   * Return the next vector ID(ordinal)
-   *
-   * @return the vector ID(ordinal)
-   */
-  public int nextOrd() throws IOException {
-    return nextDoc();
   }
 }

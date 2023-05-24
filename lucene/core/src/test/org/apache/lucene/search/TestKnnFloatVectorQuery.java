@@ -38,6 +38,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
@@ -59,18 +60,13 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   Field getKnnVectorField(
-      String name, float[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction) {
-    return new KnnFloatVectorField(name, vector, multiValued, similarityFunction);
+      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+    return new KnnFloatVectorField(name, vector, similarityFunction);
   }
 
   @Override
   Field getKnnVectorField(String name, float[] vector) {
     return new KnnFloatVectorField(name, vector);
-  }
-
-  @Override
-  Field getKnnVectorField(String name, float[] vector, boolean multiValued) {
-    return new KnnFloatVectorField(name, vector, multiValued, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   public void testToString() throws IOException {
@@ -97,10 +93,10 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         Document doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {-1, 0}, false,  DOT_PRODUCT));
+        doc.add(getKnnVectorField("field", new float[] {-1, 0}, DOT_PRODUCT));
         w.addDocument(doc);
         doc = new Document();
-        doc.add(getKnnVectorField("field", new float[] {1, 0}, false, DOT_PRODUCT));
+        doc.add(getKnnVectorField("field", new float[] {1, 0}, DOT_PRODUCT));
         w.addDocument(doc);
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
@@ -129,7 +125,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           Document doc = new Document();
           doc.add(
               getKnnVectorField(
-                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), false, DOT_PRODUCT));
+                  "field", VectorUtil.l2normalize(new float[] {j, j * j}), DOT_PRODUCT));
           w.addDocument(doc);
         }
       }
@@ -250,7 +246,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
 
     @Override
-    protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator) {
+    protected TopDocs exactSearch(LeafReaderContext context, BitSet acceptIterator, long cost) {
       throw new UnsupportedOperationException("exact search is not supported");
     }
 

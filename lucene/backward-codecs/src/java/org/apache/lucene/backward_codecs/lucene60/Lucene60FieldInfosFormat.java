@@ -215,7 +215,6 @@ public final class Lucene60FieldInfosFormat extends FieldInfosFormat {
                 pointIndexDimensionCount,
                 pointNumBytes,
                 0,
-                false,
                 VectorEncoding.FLOAT32,
                 VectorSimilarityFunction.EUCLIDEAN,
                 isSoftDeletesField);

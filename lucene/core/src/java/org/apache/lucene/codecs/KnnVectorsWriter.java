@@ -226,24 +226,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public int nextOrd() throws IOException {
-        int nextOrdinal;
-        if (current == null) {
-          current = docIdMerger.next();
-          nextOrdinal = current.values.nextOrd();
-        } else {
-          nextOrdinal = current.values.nextOrd();
-          while (NO_MORE_DOCS == nextOrdinal && current != null) {
-            current = docIdMerger.next();
-            if (current != null) {
-              nextOrdinal = current.values.nextOrd();
-            }
-          }
-        }
-        return nextOrdinal;
-      }
-
-      @Override
       public float[] vectorValue() throws IOException {
         return current.values.vectorValue();
       }
@@ -309,24 +291,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           docId = current.mappedDocID;
         }
         return docId;
-      }
-
-      @Override
-      public int nextOrd() throws IOException {
-        int nextOrdinal;
-        if (current == null) {
-          current = docIdMerger.next();
-          nextOrdinal = current.values.nextOrd();
-        } else {
-          nextOrdinal = current.values.nextOrd();
-          while (NO_MORE_DOCS == nextOrdinal && current != null) {
-            current = docIdMerger.next();
-            if (current != null) {
-              nextOrdinal = current.values.nextOrd();
-            }
-          }
-        }
-        return nextOrdinal;
       }
 
       @Override

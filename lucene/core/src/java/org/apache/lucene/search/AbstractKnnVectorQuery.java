@@ -144,7 +144,6 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
-    FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(field);
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
@@ -163,11 +162,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      if (!fi.isVectorMultiValued()) {
-        return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
-      } else {
-        return exactSearchMultiValued(ctx, acceptDocs, cost);
-      }
+      return exactSearch(ctx, acceptDocs, cost);
     }
 
     // Perform the approximate kNN search
@@ -176,11 +171,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      if (!fi.isVectorMultiValued()) {
-        return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
-      } else {
-        return exactSearchMultiValued(ctx, acceptDocs, cost);
-      }    }
+      return exactSearch(ctx, acceptDocs, cost);
+    }
   }
 
   private BitSet createBitSet(DocIdSetIterator iterator, Bits liveDocs, int maxDoc)
@@ -208,8 +200,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       throws IOException;
 
   // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
-      throws IOException {
+  protected TopDocs exactSearch(LeafReaderContext context, BitSet acceptDocs, long cost)
+          throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       // The field does not exist or does not index vectors
@@ -217,6 +209,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
+    if (vectorScorer.isMultiValued()) {
+      return exactSearchMultiValued(acceptDocs, cost, vectorScorer);
+    } else {
+      return exactSearchSingleValued(acceptDocs, cost, vectorScorer);
+    }
+  }
+
+  private TopDocs exactSearchSingleValued(BitSet acceptDocs, long cost, VectorScorer vectorScorer) throws IOException {
+    BitSetIterator acceptIterator = new BitSetIterator(acceptDocs, cost);
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
@@ -246,18 +247,11 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new TopDocs(totalHits, topScoreDocs);
   }
 
-  protected TopDocs exactSearchMultiValued(LeafReaderContext context, BitSet acceptedDocs, long cost)
-          throws IOException {
-    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
-      // The field does not exist or does not index vectors
-      return NO_RESULTS;
-    }
-    VectorScorer vectorScorer = createVectorScorer(context, fi);
+  private TopDocs exactSearchMultiValued(BitSet acceptedDocs, long cost, VectorScorer vectorScorer) throws IOException {
     Map<Integer, Float> docToScore = vectorScorer.scoreMultiValued(acceptedDocs);
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
-    
+
     for(int doc:docToScore.keySet()){
       float score = docToScore.get(doc);
       if (score > topDoc.score) {

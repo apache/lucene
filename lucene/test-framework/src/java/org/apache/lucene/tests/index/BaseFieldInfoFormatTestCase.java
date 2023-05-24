@@ -306,7 +306,6 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
               fieldType.pointIndexDimensionCount(),
               fieldType.pointNumBytes(),
               fieldType.vectorDimension(),
-              false,
               fieldType.vectorEncoding(),
               fieldType.vectorSimilarityFunction(),
               field.equals(softDeletesField));
@@ -357,7 +356,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
-      type.setVectorAttributes(dimension, false, encoding, similarityFunction);
+      type.setVectorAttributes(dimension, encoding, similarityFunction);
     }
 
     return type;
@@ -426,7 +425,6 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         0,
         0,
         0,
-        false,
         VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
         false);

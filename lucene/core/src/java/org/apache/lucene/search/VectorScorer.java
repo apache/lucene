@@ -68,6 +68,8 @@ abstract class VectorScorer {
   abstract boolean advanceExact(int doc) throws IOException;
 
   abstract Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs) throws IOException;
+  
+  abstract boolean isMultiValued();
 
 
   private static class ByteVectorScorer extends VectorScorer {
@@ -97,7 +99,7 @@ abstract class VectorScorer {
     @Override
     public Map<Integer, Float> scoreMultiValued(BitSet acceptedDocs) throws IOException {
       Map<Integer, Float> docToScore = new HashMap<>();
-      for (int vectorId = values.nextOrd(); vectorId != NO_MORE_DOCS; vectorId = values.nextOrd()) {
+      for (int vectorId = values.nextDoc(); vectorId != NO_MORE_DOCS; vectorId = values.nextDoc()) {
         int docID = values.ordToDoc(vectorId);
         if (acceptedDocs.get(docID)) {
           float currentScore = similarity.compare(query, values.vectorValue());
@@ -107,6 +109,11 @@ abstract class VectorScorer {
         }
       }
       return docToScore;
+    }
+
+    @Override
+    boolean isMultiValued() {
+      return values.isMultiValued();
     }
 
     @Override
@@ -157,6 +164,11 @@ abstract class VectorScorer {
         }
       }
       return docToScore;
+    }
+
+    @Override
+    boolean isMultiValued() {
+      return values.isMultiValued();
     }
   }
 }

@@ -69,7 +69,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef INDEX_DIM_COUNT = new BytesRef("  index dimensional count ");
   static final BytesRef DIM_NUM_BYTES = new BytesRef("  dimensional num bytes ");
   static final BytesRef VECTOR_NUM_DIMS = new BytesRef("  vector number of dimensions ");
-  static final BytesRef VECTOR_MULTI_VALUED = new BytesRef("  vector multi valued ");
   static final BytesRef VECTOR_ENCODING = new BytesRef("  vector encoding ");
   static final BytesRef VECTOR_SIMILARITY = new BytesRef("  vector similarity ");
   static final BytesRef SOFT_DELETES = new BytesRef("  soft-deletes ");
@@ -159,10 +158,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         int vectorNumDimensions = Integer.parseInt(readString(VECTOR_NUM_DIMS.length, scratch));
 
         SimpleTextUtil.readLine(input, scratch);
-        assert StringHelper.startsWith(scratch.get(), VECTOR_MULTI_VALUED);
-        boolean vectorMultiValued = Boolean.parseBoolean(readString(VECTOR_MULTI_VALUED.length, scratch));
-        
-        SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), VECTOR_ENCODING);
         String encoding = readString(VECTOR_ENCODING.length, scratch);
         VectorEncoding vectorEncoding = vectorEncoding(encoding);
@@ -191,7 +186,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 indexDimensionalCount,
                 dimensionalNumBytes,
                 vectorNumDimensions,
-                vectorMultiValued,
                 vectorEncoding,
                 vectorDistFunc,
                 isSoftDeletesField);
@@ -313,10 +307,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.write(out, VECTOR_NUM_DIMS);
         SimpleTextUtil.write(out, Integer.toString(fi.getVectorDimension()), scratch);
-        SimpleTextUtil.writeNewline(out);
-
-        SimpleTextUtil.write(out, VECTOR_MULTI_VALUED);
-        SimpleTextUtil.write(out, Boolean.toString(fi.isVectorMultiValued()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, VECTOR_ENCODING);

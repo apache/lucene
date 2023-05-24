@@ -164,7 +164,6 @@ public class RandomPostingsTester {
               0,
               0,
               0,
-              false,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false);
@@ -737,7 +736,6 @@ public class RandomPostingsTester {
               0,
               0,
               0,
-              false,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
               false);

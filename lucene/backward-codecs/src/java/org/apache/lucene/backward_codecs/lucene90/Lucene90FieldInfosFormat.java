@@ -192,7 +192,6 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     pointIndexDimensionCount,
                     pointNumBytes,
                     vectorDimension,
-                    false,
                     VectorEncoding.FLOAT32,
                     vectorDistFunc,
                     isSoftDeletesField);

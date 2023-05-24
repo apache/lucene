@@ -64,17 +64,14 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   abstract float[] randomVector(int dim);
 
   abstract Field getKnnVectorField(
-      String name, float[] vector, boolean multiValued, VectorSimilarityFunction similarityFunction);
+      String name, float[] vector, VectorSimilarityFunction similarityFunction);
 
   abstract Field getKnnVectorField(String name, float[] vector);
-
-  abstract Field getKnnVectorField(String name, float[] vector, boolean multiValued);
 
   public void testEquals() {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 10);
     Query filter1 = new TermQuery(new Term("id", "id1"));
     AbstractKnnVectorQuery q2 = getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter1);
-    AbstractKnnVectorQuery q3 = getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter1);
 
     assertNotEquals(q2, q1);
     assertNotEquals(q1, q2);
@@ -93,10 +90,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {1, 1}, 10));
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 2));
     assertNotEquals(q1, getKnnVectorQuery("f1", new float[] {0}, 10));
-
-    assertEquals(q1, getKnnVectorQuery("f1", new float[] {0, 1}, 10, null));
-    assertNotEquals(q1, q3);
-    assertEquals(q3, getKnnVectorQuery("f1", new float[] {0, 1}, 10, filter1));
   }
 
   public void testGetField() {
@@ -428,7 +421,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, false, COSINE));
+          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
           w.addDocument(doc);
         }
       }
@@ -825,7 +818,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         d.add(new StringField("index", String.valueOf(i), Field.Store.YES));
         if (frequently()) {
           for (int j = 0; j < i; j++) {
-            d.add(getKnnVectorField("vector", randomVector(dim), true));
+            d.add(getKnnVectorField("vector", randomVector(dim)));
           }
         }
         w.addDocument(d);
@@ -894,7 +887,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       for (int i = 0; i < numDocs; ++i) {
         Document d = new Document();
         for (int j = 0; j < i; j++) {
-          d.add(getKnnVectorField("vector", randomVector(dim), true));
+          d.add(getKnnVectorField("vector", randomVector(dim)));
         }
         w.addDocument(d);
       }
@@ -950,7 +943,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         Document d = new Document();
         d.add(new StringField("index", String.valueOf(i), Field.Store.NO));
         for (int j = 0; j < i; j++) {
-          d.add(getKnnVectorField("vector", randomVector(dim), true));
+          d.add(getKnnVectorField("vector", randomVector(dim)));
         }
         w.addDocument(d);
       }
@@ -1066,7 +1059,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       Document doc = new Document();
       float[][] vectors = contents[i];
       for (int j = 0; j < vectors.length; ++j) {
-        doc.add(getKnnVectorField(field, vectors[j], true));
+        doc.add(getKnnVectorField(field, vectors[j]));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       if (randomWriter != null) {

@@ -638,7 +638,6 @@ final class IndexingChain implements Accountable {
                 s.pointIndexDimensionCount,
                 s.pointNumBytes,
                 s.vectorDimension,
-                s.vectorMultiValued,
                 s.vectorEncoding,
                 s.vectorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
@@ -794,7 +793,7 @@ final class IndexingChain implements Accountable {
       schema.setVectors(
           fieldType.vectorEncoding(),
           fieldType.vectorSimilarityFunction(),
-          fieldType.vectorDimension(),fieldType.vectorMultiValued());
+          fieldType.vectorDimension());
     }
     if (fieldType.getAttributes() != null && fieldType.getAttributes().isEmpty() == false) {
       schema.updateAttributes(fieldType.getAttributes());
@@ -1371,7 +1370,6 @@ final class IndexingChain implements Accountable {
     private int pointIndexDimensionCount = 0;
     private int pointNumBytes = 0;
     private int vectorDimension = 0;
-    private boolean vectorMultiValued = false;
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
@@ -1454,18 +1452,15 @@ final class IndexingChain implements Accountable {
     }
 
     void setVectors(
-        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension, boolean multiValued) {
+        VectorEncoding encoding, VectorSimilarityFunction similarityFunction, int dimension) {
       if (vectorDimension == 0) {
         this.vectorEncoding = encoding;
         this.vectorSimilarityFunction = similarityFunction;
         this.vectorDimension = dimension;
-        this.vectorMultiValued = multiValued;
       } else {
         assertSame("vector encoding", vectorEncoding, encoding);
         assertSame("vector similarity function", vectorSimilarityFunction, similarityFunction);
         assertSame("vector dimension", vectorDimension, dimension);
-        assertSame("vector multi valued", vectorMultiValued, multiValued);
-
       }
     }
 
@@ -1479,7 +1474,6 @@ final class IndexingChain implements Accountable {
       pointIndexDimensionCount = 0;
       pointNumBytes = 0;
       vectorDimension = 0;
-      vectorMultiValued = false;
       vectorEncoding = VectorEncoding.FLOAT32;
       vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
     }
@@ -1493,7 +1487,6 @@ final class IndexingChain implements Accountable {
           "vector similarity function", fi.getVectorSimilarityFunction(), vectorSimilarityFunction);
       assertSame("vector encoding", fi.getVectorEncoding(), vectorEncoding);
       assertSame("vector dimension", fi.getVectorDimension(), vectorDimension);
-      assertSame("vector multi valued", fi.isVectorMultiValued(), vectorMultiValued);
       assertSame("point dimension", fi.getPointDimensionCount(), pointDimensionCount);
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);

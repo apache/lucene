@@ -31,6 +31,12 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
   /** The maximum length of a vector */
   public static final int MAX_DIMENSIONS = 1024;
 
+  protected boolean multiValued = false;
+
+  public boolean isMultiValued() {
+    return multiValued;
+  }
+  
   /** Sole constructor */
   protected FloatVectorValues() {}
 

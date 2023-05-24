@@ -40,6 +40,8 @@ public final class DocsWithFieldSet extends DocIdSet {
   private Stack<Integer> valuesPerDocuments;
   private int currentDocVectorsCount;
   private int vectorsCount;
+  
+  private boolean multiValued = false;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -84,6 +86,8 @@ public final class DocsWithFieldSet extends DocIdSet {
       set = FixedBitSet.ensureCapacity(set, docID);
       if (!set.getAndSet(docID)) { 
         docsCount++; //this is the first vector for the docID
+      } else {
+        multiValued = true;
       }
     }
     if(docID != lastDocId){//vector for lastDocId are finished
@@ -112,6 +116,10 @@ public final class DocsWithFieldSet extends DocIdSet {
   /** Return the number of vectors of this set. */
   public int getVectorsCount() {
     return vectorsCount;
+  }
+
+  public boolean isMultiValued() {
+    return multiValued;
   }
 
   public int[] getValuesPerDocument() {

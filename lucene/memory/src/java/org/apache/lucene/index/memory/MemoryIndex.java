@@ -527,7 +527,6 @@ public class MemoryIndex {
         fieldType.pointIndexDimensionCount(),
         fieldType.pointNumBytes(),
         fieldType.vectorDimension(),
-        fieldType.vectorMultiValued(),
         fieldType.vectorEncoding(),
         fieldType.vectorSimilarityFunction(),
         false);
@@ -581,7 +580,6 @@ public class MemoryIndex {
               info.fieldInfo.getPointIndexDimensionCount(),
               info.fieldInfo.getPointNumBytes(),
               info.fieldInfo.getVectorDimension(),
-              info.fieldInfo.isVectorMultiValued(),
               info.fieldInfo.getVectorEncoding(),
               info.fieldInfo.getVectorSimilarityFunction(),
               info.fieldInfo.isSoftDeletesField());

@@ -45,7 +45,6 @@ public class FieldType implements IndexableFieldType {
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
-  private boolean vectorMultiValued;
   private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private Map<String, String> attributes;
@@ -65,7 +64,6 @@ public class FieldType implements IndexableFieldType {
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
-    this.vectorMultiValued = ref.vectorMultiValued();
     this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
@@ -375,7 +373,7 @@ public class FieldType implements IndexableFieldType {
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
   public void setVectorAttributes(
-      int numDimensions, boolean multiValued, VectorEncoding encoding, VectorSimilarityFunction similarity) {
+      int numDimensions, VectorEncoding encoding, VectorSimilarityFunction similarity) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
@@ -388,7 +386,6 @@ public class FieldType implements IndexableFieldType {
               + numDimensions);
     }
     this.vectorDimension = numDimensions;
-    this.vectorMultiValued =multiValued;
     this.vectorSimilarityFunction = Objects.requireNonNull(similarity);
     this.vectorEncoding = Objects.requireNonNull(encoding);
   }
@@ -398,11 +395,6 @@ public class FieldType implements IndexableFieldType {
     return vectorDimension;
   }
 
-  @Override
-  public boolean vectorMultiValued() {
-    return vectorMultiValued;
-  }
-  
   @Override
   public VectorEncoding vectorEncoding() {
     return vectorEncoding;

@@ -188,7 +188,7 @@ public class TestKnnGraph extends LuceneTestCase {
     for (int field = 0; field < numVectorFields; field++) {
       dims[field] = atLeast(3);
       values[field] = randomVectors(numDoc, dims[field]);
-      fieldTypes[field] = KnnFloatVectorField.createFieldType(dims[field], false, similarityFunction);
+      fieldTypes[field] = KnnFloatVectorField.createFieldType(dims[field], similarityFunction);
     }
 
     try (Directory dir = newDirectory();
@@ -550,7 +550,7 @@ public class TestKnnGraph extends LuceneTestCase {
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      FieldType fieldType = KnnFloatVectorField.createFieldType(vector.length, false, similarityFunction);
+      FieldType fieldType = KnnFloatVectorField.createFieldType(vector.length, similarityFunction);
       doc.add(new KnnFloatVectorField(KNN_GRAPH_FIELD, vector, fieldType));
     }
     String idString = Integer.toString(id);

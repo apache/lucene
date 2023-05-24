@@ -58,7 +58,6 @@ public final class FieldInfo {
   private final int vectorDimension;
   private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
-  private final boolean vectorMultiValued;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
@@ -82,7 +81,6 @@ public final class FieldInfo {
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
-      boolean multiValuedVectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
       boolean softDeletesField) {
@@ -109,7 +107,6 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
-    this.vectorMultiValued = multiValuedVectors;
     this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
@@ -237,11 +234,9 @@ public final class FieldInfo {
         this.vectorDimension,
         this.vectorEncoding,
         this.vectorSimilarityFunction,
-        this.vectorMultiValued,
         o.vectorDimension,
         o.vectorEncoding,
-        o.vectorSimilarityFunction,
-        o.vectorMultiValued);
+        o.vectorSimilarityFunction);
   }
 
   /**
@@ -359,12 +354,10 @@ public final class FieldInfo {
       int vd1,
       VectorEncoding ve1,
       VectorSimilarityFunction vsf1,
-      boolean vmv1,
       int vd2,
       VectorEncoding ve2,
-      VectorSimilarityFunction vsf2,
-      boolean vmv2) {
-    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2 || vmv1 != vmv2) {
+      VectorSimilarityFunction vsf2) {
+    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -374,16 +367,12 @@ public final class FieldInfo {
               + ve1
               + ", vector similarity function="
               + vsf1
-              + ", vector multi valued="
-              + vmv1    
               + " to inconsistent vector dimension="
               + vd2
               + ", vector encoding="
               + ve2
               + ", vector similarity function="
-              + vsf2 
-              + ", vector multi valued="
-              + vmv2 );
+              + vsf2);
     }
   }
 
@@ -492,11 +481,6 @@ public final class FieldInfo {
     return vectorDimension;
   }
 
-  /** Returns true if the vector field can have multiple values */
-  public boolean isVectorMultiValued() {
-    return vectorMultiValued;
-  }
-  
   /** Returns the number of dimensions of the vector value */
   public VectorEncoding getVectorEncoding() {
     return vectorEncoding;

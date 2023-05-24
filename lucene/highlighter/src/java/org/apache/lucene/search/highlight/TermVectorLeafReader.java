@@ -101,7 +101,6 @@ public class TermVectorLeafReader extends LeafReader {
             0,
             0,
             0,
-            false,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             false);

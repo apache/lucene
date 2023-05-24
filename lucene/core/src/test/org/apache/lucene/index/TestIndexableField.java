@@ -116,11 +116,6 @@ public class TestIndexableField extends LuceneTestCase {
           }
 
           @Override
-          public boolean vectorMultiValued() {
-            return false;
-          }
-
-          @Override
           public VectorEncoding vectorEncoding() {
             return VectorEncoding.FLOAT32;
           }

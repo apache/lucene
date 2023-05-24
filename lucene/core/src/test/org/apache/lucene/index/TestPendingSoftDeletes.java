@@ -196,7 +196,6 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            false,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
@@ -235,7 +234,6 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            false,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
@@ -299,7 +297,6 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            false,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
@@ -368,7 +365,6 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            false,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);
@@ -406,7 +402,6 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             0,
             0,
             0,
-            false,
             VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
             true);

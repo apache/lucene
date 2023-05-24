@@ -869,9 +869,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i], 0, scratch, 0, scratch.length);
-          add(iw, fieldName, i, scratch, false, similarityFunction);
+          add(iw, fieldName, i, scratch, similarityFunction);
         } else {
-          add(iw, fieldName, i, values[i], false, similarityFunction);
+          add(iw, fieldName, i, values[i], similarityFunction);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -945,10 +945,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextBoolean() && values[i] != null) {
           // sometimes use a shared scratch array
           System.arraycopy(values[i].bytes, 0, scratch, 0, dimension);
-          add(iw, fieldName, i, scratch, false, similarityFunction);
+          add(iw, fieldName, i, scratch, similarityFunction);
         } else {
           BytesRef value = values[i];
-          add(iw, fieldName, i, value == null ? null : value.bytes, false, similarityFunction);
+          add(iw, fieldName, i, value == null ? null : value.bytes, similarityFunction);
         }
         if (random().nextInt(10) == 2) {
           // sometimes delete a random document
@@ -1015,7 +1015,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         } else {
           value = null;
         }
-        add(iw, fieldName, i, value, false, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, i, value, VectorSimilarityFunction.EUCLIDEAN);
       }
       iw.forceMerge(1);
 
@@ -1080,7 +1080,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           value = null;
         }
         id2value[id] = value;
-        add(iw, fieldName, id, value, false, VectorSimilarityFunction.EUCLIDEAN);
+        add(iw, fieldName, id, value, VectorSimilarityFunction.EUCLIDEAN);
       }
       try (IndexReader reader = DirectoryReader.open(iw)) {
         for (LeafReaderContext ctx : reader.leaves()) {
@@ -1140,21 +1140,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       String field,
       int id,
       float[] vector,
-      boolean multiValued,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
-    add(iw, field, id, random().nextInt(100), vector, multiValued, similarityFunction);
+    add(iw, field, id, random().nextInt(100), vector, similarityFunction);
   }
 
   private void add(
-      IndexWriter iw, String field, int id, byte[] vector, boolean multiValued, VectorSimilarityFunction similarity)
+      IndexWriter iw, String field, int id, byte[] vector, VectorSimilarityFunction similarity)
       throws IOException {
-    add(iw, field, id, random().nextInt(100), vector, multiValued, similarityFunction);
+    add(iw, field, id, random().nextInt(100), vector, similarity);
   }
 
   private void add(IndexWriter iw, String field, int id, int sortKey, byte[] vector)
       throws IOException {
-    add(iw, field, id, sortKey, vector, false, VectorSimilarityFunction.EUCLIDEAN);
+    add(iw, field, id, sortKey, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   private void add(
@@ -1163,12 +1162,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int id,
       int sortKey,
       byte[] vector,
-      boolean multiValued,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      doc.add(new KnnByteVectorField(field, vector, multiValued, similarityFunction));
+      doc.add(new KnnByteVectorField(field, vector, similarityFunction));
     }
     doc.add(new NumericDocValuesField("sortkey", sortKey));
     String idString = Integer.toString(id);
@@ -1179,7 +1177,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   private void add(IndexWriter iw, String field, int id, int sortkey, float[] vector)
       throws IOException {
-    add(iw, field, id, sortkey, vector, false,  VectorSimilarityFunction.EUCLIDEAN);
+    add(iw, field, id, sortkey, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
   private void add(
@@ -1188,12 +1186,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       int id,
       int sortkey,
       float[] vector,
-      boolean multiValued,
       VectorSimilarityFunction similarityFunction)
       throws IOException {
     Document doc = new Document();
     if (vector != null) {
-      doc.add(new KnnFloatVectorField(field, vector, multiValued, similarityFunction));
+      doc.add(new KnnFloatVectorField(field, vector, similarityFunction));
     }
     doc.add(new NumericDocValuesField("sortkey", sortkey));
     String idString = Integer.toString(id);
