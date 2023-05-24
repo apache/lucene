@@ -23,6 +23,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -80,6 +83,7 @@ public final class ExtractJdkApis {
 
   static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
     var classesToInclude = new HashSet<String>();
+    var references = new HashMap<String, String[]>();
     var processed = new TreeMap<String, byte[]>();
     try (var stream = Files.walk(modulePath)) {
       var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).toArray(Path[]::new);
@@ -88,12 +92,18 @@ public final class ExtractJdkApis {
         try (var in = Files.newInputStream(modulePath.resolve(relative))) {
           var reader = new ClassReader(in);
           var cw = new ClassWriter(0);
-          var cleaner = new Cleaner(cw, classesToInclude);
+          var cleaner = new Cleaner(cw, classesToInclude, references);
           reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
           processed.put(reader.getClassName(), cw.toByteArray());
         }
       }
     }
+    // recursively add all superclasses / interfaces of visible classes to classesToInclude:
+    for (Set<String> a = classesToInclude; !a.isEmpty(); 
+        a = a.stream().map(references::get).filter(Objects::nonNull).flatMap(Arrays::stream).collect(Collectors.toSet())) {
+      classesToInclude.addAll(a);
+    }
+    // remove all non-visible or not referenced classes:
     processed.keySet().removeIf(Predicate.not(classesToInclude::contains));
     System.out.println("Writing " + processed.size() + " visible classes for [" + modulePath + "]...");
     for (var cls : processed.entrySet()) {
@@ -114,10 +124,12 @@ public final class ExtractJdkApis {
     private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
     
     private final Set<String> classesToInclude;
+    private final Map<String, String[]> references;
     
-    Cleaner(ClassWriter out, Set<String> classesToInclude) {
+    Cleaner(ClassWriter out, Set<String> classesToInclude, Map<String, String[]> references) {
       super(Opcodes.ASM9, out);
       this.classesToInclude = classesToInclude;
+      this.references = references;
     }
 
     @Override
@@ -125,9 +137,8 @@ public final class ExtractJdkApis {
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
       if (isVisible(access)) {
         classesToInclude.add(name);
-        classesToInclude.add(superName);
-        classesToInclude.addAll(Arrays.asList(interfaces));
       }
+      references.put(name, Stream.concat(Stream.of(superName), Arrays.stream(interfaces)).toArray(String[]::new));
     }
 
     @Override
