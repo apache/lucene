@@ -115,7 +115,8 @@ interface VectorUtilProvider {
 
   // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
   private static boolean hasWorkingDefaultLocale() {
-    return Runtime.version().update() > 1 || Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
+    return Runtime.version().update() > 1
+        || Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
   }
 
   @SuppressWarnings("removal")
