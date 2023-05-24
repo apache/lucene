@@ -39,6 +39,15 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
   private static final VectorSpecies<Byte> PREF_BYTE_SPECIES;
   private static final VectorSpecies<Short> PREF_SHORT_SPECIES;
 
+  /**
+   * x86 and less than 256-bit vectors.
+   *
+   * <p>it could be that it has only AVX1 and integer vectors are fast. it could also be that it has
+   * no AVX and integer vectors are extremely slow. don't use integer vectors to avoid landmines.
+   */
+  private static final boolean IS_AMD64_WITHOUT_AVX2 =
+      Constants.OS_ARCH.equals("amd64") && INT_SPECIES_PREF_BIT_SIZE < 256;
+
   static {
     if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
       PREF_BYTE_SPECIES =
@@ -269,8 +278,8 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int i = 0;
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors
-    if (a.length >= 16) {
+    // vectors (256-bit on intel to dodge performance landmines)
+    if (a.length >= 16 && IS_AMD64_WITHOUT_AVX2 == false) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
@@ -326,8 +335,8 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int norm1 = 0;
     int norm2 = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors
-    if (a.length >= 16) {
+    // vectors (256-bit on intel to dodge performance landmines)
+    if (a.length >= 16 && IS_AMD64_WITHOUT_AVX2 == false) {
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
@@ -416,8 +425,8 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int i = 0;
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
-    // vectors
-    if (a.length >= 16) {
+    // vectors (256-bit on intel to dodge performance landmines)
+    if (a.length >= 16 && IS_AMD64_WITHOUT_AVX2 == false) {
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
