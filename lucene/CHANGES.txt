@@ -119,6 +119,8 @@ API Changes
 New Features
 ---------------------
 
+* GITHUB#12257: Create OnHeapHnswGraphSearcher to let OnHeapHnswGraph to be searched in a thread-safety manner. (Patrick Zhai)
+
 * GITHUB#12302, GITHUB#12311: Add vectorized implementations of VectorUtil.dotProduct(),
   squareDistance(), cosine() with Java 20 jdk.incubator.vector APIs. Applications started
   with command line parameter "java --add-modules jdk.incubator.vector" on exactly Java 20
