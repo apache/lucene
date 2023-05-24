@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util;
 
+import java.lang.Runtime.Version;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.security.AccessController;
@@ -50,11 +51,14 @@ interface VectorUtilProvider {
 
   static final Logger LOG = Logger.getLogger(VectorUtilProvider.class.getName());
 
+  /** The minimal version of Java that has the bugfix for JDK-8301190. */
+  static final Version VERSION_JDK8301190_FIXED = Version.parse("20.0.2");
+
   static VectorUtilProvider lookup() {
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion == 20) {
       // is locale sane (only buggy in Java 20)
-      if (runtimeVersion <= 20 && !hasWorkingDefaultLocale()) {
+      if (isAffectedByJDK8301190()) {
         LOG.warning(
             "Java runtime is using a buggy default locale; Java vector incubator API can't be enabled: "
                 + Locale.getDefault());
@@ -113,10 +117,13 @@ interface VectorUtilProvider {
     return false;
   }
 
-  // Workaround for JDK-8301190, avoids assertion when default locale is say tr.
-  private static boolean hasWorkingDefaultLocale() {
-    return Runtime.version().update() > 1
-        || Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
+  /**
+   * Check if runtime is affected by JDK-8301190 (avoids assertion when default language is say
+   * "tr").
+   */
+  private static boolean isAffectedByJDK8301190() {
+    return VERSION_JDK8301190_FIXED.compareToIgnoreOptional(Runtime.version()) > 0
+        && !Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
   }
 
   @SuppressWarnings("removal")
