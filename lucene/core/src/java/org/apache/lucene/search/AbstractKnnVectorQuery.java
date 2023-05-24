@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -81,11 +82,12 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    Executor executor = indexSearcher.getExecutor();
+    IndexSearcher.LeafSlice[] slices = indexSearcher.getSlices();
+    SliceExecutor sliceExecutor = indexSearcher.getSliceExecutor();
     TopDocs[] perLeafResults =
-        (executor == null)
+        (sliceExecutor == null)
             ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(reader.leaves(), filterWeight, executor);
+            : parallelSearch(slices, filterWeight, sliceExecutor);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -109,27 +111,38 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, Executor executor) {
-    List<FutureTask<TopDocs>> tasks =
-        leafReaderContexts.stream()
-            .map(ctx -> new FutureTask<>(() -> searchLeaf(ctx, filterWeight)))
-            .toList();
+          IndexSearcher.LeafSlice[] slices, Weight filterWeight, SliceExecutor sliceExecutor) {
 
-    SliceExecutor sliceExecutor = new SliceExecutor(executor);
+    List<FutureTask<TopDocs[]>> tasks = new ArrayList<>(slices.length);
+    int segmentsCount = 0;
+    for (IndexSearcher.LeafSlice slice : slices) {
+      segmentsCount += slice.leaves.length;
+      tasks.add(new FutureTask<>(() -> {
+        TopDocs[] results = new TopDocs[slice.leaves.length];
+        int i = 0;
+        for (LeafReaderContext context : slice.leaves) {
+          results[i++] = searchLeaf(context, filterWeight);
+        }
+        return results;
+      }));
+    }
+
     sliceExecutor.invokeAll(tasks);
 
-    return tasks.stream()
-        .map(
-            task -> {
-              try {
-                return task.get();
-              } catch (ExecutionException e) {
-                throw new RuntimeException(e.getCause());
-              } catch (InterruptedException e) {
-                throw new ThreadInterruptedException(e);
-              }
-            })
-        .toArray(TopDocs[]::new);
+    TopDocs[] topDocs = new TopDocs[segmentsCount];
+    int i = 0;
+    for (FutureTask<TopDocs[]> task : tasks) {
+      try {
+        for (TopDocs docs : task.get()) {
+          topDocs[i++] = docs;
+        }
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e.getCause());
+      } catch (InterruptedException e) {
+        throw new ThreadInterruptedException(e);
+      }
+    }
+    return topDocs;
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
