@@ -287,10 +287,10 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
-      int docId = results.topNode();
+      int node = results.topNode();
       float score = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(docId, score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
     }
 
     TotalHits.Relation relation =
