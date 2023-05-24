@@ -400,6 +400,121 @@ public final class FieldInfo {
     }
   }
 
+  /*
+  This method will create a new instance of FieldInfo if any attribute changes (and it changes in a compatible way).
+  It is intended only to be used in indices where schema validation is not strict (legacy indices). It will return null
+  if no changes are done on this FieldInfo
+   */
+  FieldInfo handleLegacySupportedUpdates(FieldInfo otherFi) {
+    IndexOptions newIndexOptions = this.indexOptions;
+    boolean newStoreTermVector = this.storeTermVector;
+    boolean newOmitNorms = this.omitNorms;
+    boolean newStorePayloads = this.storePayloads;
+    DocValuesType newDocValues = this.docValuesType;
+    int newPointDimensionCount = this.pointDimensionCount;
+    int newPointNumBytes = this.pointNumBytes;
+    int newPointIndexDimensionCount = this.pointIndexDimensionCount;
+    long newDvGen = this.dvGen;
+
+    boolean fieldInfoChanges = false;
+    //System.out.println("FI.update field=" + name + " indexed=" + indexed + " omitNorms=" + omitNorms + " this.omitNorms=" + this.omitNorms);
+    if (this.indexOptions != otherFi.indexOptions) {
+      if (this.indexOptions == IndexOptions.NONE) {
+        newIndexOptions = otherFi.indexOptions;
+        fieldInfoChanges = true;
+      } else if (otherFi.indexOptions != IndexOptions.NONE) {
+        throw new IllegalArgumentException("cannot change field \"" + name + "\" from index options=" + this.indexOptions + " to inconsistent index options=" + otherFi.indexOptions);
+      }
+    }
+
+    if (this.pointDimensionCount != otherFi.pointDimensionCount) {
+      if (this.pointDimensionCount == 0) {
+        fieldInfoChanges = true;
+        newPointDimensionCount = otherFi.pointDimensionCount;
+      } else {
+        throw new IllegalArgumentException("cannot change field \"" + name + "\" from points dimensionCount=" + this.pointDimensionCount + " to inconsistent dimensionCount=" + otherFi.pointDimensionCount);
+      }
+    }
+
+    if (this.pointIndexDimensionCount != otherFi.pointIndexDimensionCount) {
+      if (this.pointIndexDimensionCount == 0) {
+        fieldInfoChanges = true;
+        newPointIndexDimensionCount = otherFi.pointIndexDimensionCount;
+      } else {
+        throw new IllegalArgumentException("cannot change field \"" + name + "\" from points indexDimensionCount=" + this.pointIndexDimensionCount + " to inconsistent indexDimensionCount=" + otherFi.pointIndexDimensionCount);
+      }
+    }
+
+    if (this.pointNumBytes != otherFi.pointNumBytes) {
+      if (this.pointNumBytes == 0) {
+        fieldInfoChanges = true;
+        newPointNumBytes = otherFi.pointNumBytes;
+      } else {
+        throw new IllegalArgumentException("cannot change field \"" + name + "\" from points numBytes=" + this.pointNumBytes + " to inconsistent numBytes=" + otherFi.pointNumBytes);
+      }
+    }
+
+    if (newIndexOptions != IndexOptions.NONE) { // if updated field data is not for indexing, leave the updates out
+      if (this.storeTermVector != otherFi.storeTermVector) {
+        fieldInfoChanges = true;
+        this.storeTermVector |= otherFi.storeTermVector;                // once vector, always vector
+      }
+      if (this.storePayloads != otherFi.storePayloads) {
+        fieldInfoChanges = true;
+        this.storePayloads |= otherFi.storePayloads;
+      }
+
+      // Awkward: only drop norms if incoming update is indexed:
+      if (otherFi.indexOptions != IndexOptions.NONE && this.omitNorms != otherFi.omitNorms) {
+        fieldInfoChanges = true;
+        newOmitNorms = true;                // if one require omitNorms at least once, it remains off for life
+      }
+    }
+    if ((this.indexOptions == IndexOptions.NONE || this.indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0) && this.storePayloads == true) {
+      fieldInfoChanges = true;
+      // cannot store payloads if we don't store positions:
+      newStorePayloads = false;
+    }
+
+    if (otherFi.docValuesType != DocValuesType.NONE && otherFi.docValuesType != this.docValuesType) {
+      if (this.docValuesType == DocValuesType.NONE) {
+        fieldInfoChanges = true;
+        newDocValues = otherFi.docValuesType;
+        newDvGen = dvGen;
+      } else {
+        throw new IllegalArgumentException(
+                "cannot change DocValues type from "
+                        + docValuesType
+                        + " to "
+                        + otherFi.docValuesType
+                        + " for field \""
+                        + name
+                        + "\"");
+      }
+    }
+
+    if (!fieldInfoChanges) {
+      return null;
+    }
+    return new FieldInfo(
+            this.name,
+            this.number,
+            newStoreTermVector,
+            newOmitNorms,
+            newStorePayloads,
+            newIndexOptions,
+            newDocValues,
+            newDvGen,
+            this.attributes, // attributes don't need to be handled here because they are handled for the non-legacy case in FieldInfos
+            newPointDimensionCount,
+            newPointIndexDimensionCount,
+            newPointNumBytes,
+            this.vectorDimension,
+            this.vectorEncoding,
+            this.vectorSimilarityFunction,
+            this.softDeletesField);
+  }
+
   /**
    * Record that this field is indexed with points, with the specified number of dimensions and
    * bytes per dimension.

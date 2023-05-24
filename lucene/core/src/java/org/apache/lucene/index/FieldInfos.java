@@ -587,6 +587,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + "] must be doc values only field, but is also indexed with vectors.");
         }
       }
+
     }
 
     /**
@@ -626,6 +627,24 @@ public class FieldInfos implements Iterable<FieldInfo> {
           VectorEncoding.FLOAT32,
           VectorSimilarityFunction.EUCLIDEAN,
           isSoftDeletesField);
+    }
+
+    synchronized void setDocValuesType(int number, String name, DocValuesType dvType) {
+      verifyConsistent(number, name, dvType);
+      docValuesType.put(name, dvType);
+    }
+
+    synchronized void verifyConsistent(Integer number, String name, DocValuesType dvType) {
+      if (name.equals(numberToName.get(number)) == false) {
+        throw new IllegalArgumentException("field number " + number + " is already mapped to field name \"" + numberToName.get(number) + "\", not \"" + name + "\"");
+      }
+      if (number.equals(nameToNumber.get(name)) == false) {
+        throw new IllegalArgumentException("field name \"" + name + "\" is already mapped to field number \"" + nameToNumber.get(name) + "\", not \"" + number + "\"");
+      }
+      DocValuesType currentDVType = docValuesType.get(name);
+      if (dvType != DocValuesType.NONE && currentDVType != null && currentDVType != DocValuesType.NONE && dvType != currentDVType) {
+        throw new IllegalArgumentException("cannot change DocValues type from " + currentDVType + " to " + dvType + " for field \"" + name + "\"");
+      }
     }
 
     synchronized Set<String> getFieldNames() {
@@ -708,10 +727,26 @@ public class FieldInfos implements Iterable<FieldInfo> {
       final FieldInfo curFi = fieldInfo(fi.getName());
       if (curFi != null) {
         curFi.verifySameSchema(fi, globalFieldNumbers.strictlyConsistent);
+
+        if (!globalFieldNumbers.strictlyConsistent) {
+          // For the not strictly consistent case (legacy index), we may need to update merge the FieldInfo
+          FieldInfo updatedFieldInfo = curFi.handleLegacySupportedUpdates(fi);
+          if (updatedFieldInfo != null) {
+            if (fi.getDocValuesType() != DocValuesType.NONE && curFi.getDocValuesType() == fi.getDocValuesType()) {
+              // Must also update docValuesType map so it's
+              // aware of this field's DocValuesType.  This will throw IllegalArgumentException if
+              // an illegal type change was attempted.
+              globalFieldNumbers.setDocValuesType(fi.number, fi.getName(), fi.getDocValuesType());
+            }
+            // Since the FieldInfo changed, update in map
+            byName.put(fi.getName(), updatedFieldInfo);
+          }
+        }
         if (fi.attributes() != null) {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
         if (fi.hasPayloads()) {
+          //nocommit: How about the validation happening in handleLegacySupportedUpdates? not needed here?
           curFi.setStorePayloads();
         }
         return curFi;
