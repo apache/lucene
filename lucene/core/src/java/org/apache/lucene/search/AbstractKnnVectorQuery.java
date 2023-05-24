@@ -25,7 +25,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
@@ -82,12 +81,11 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    IndexSearcher.LeafSlice[] slices = indexSearcher.getSlices();
     SliceExecutor sliceExecutor = indexSearcher.getSliceExecutor();
     TopDocs[] perLeafResults =
         (sliceExecutor == null)
             ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(slices, filterWeight, sliceExecutor);
+            : parallelSearch(indexSearcher.getSlices(), filterWeight, sliceExecutor);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -111,20 +109,22 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] parallelSearch(
-          IndexSearcher.LeafSlice[] slices, Weight filterWeight, SliceExecutor sliceExecutor) {
+      IndexSearcher.LeafSlice[] slices, Weight filterWeight, SliceExecutor sliceExecutor) {
 
     List<FutureTask<TopDocs[]>> tasks = new ArrayList<>(slices.length);
     int segmentsCount = 0;
     for (IndexSearcher.LeafSlice slice : slices) {
       segmentsCount += slice.leaves.length;
-      tasks.add(new FutureTask<>(() -> {
-        TopDocs[] results = new TopDocs[slice.leaves.length];
-        int i = 0;
-        for (LeafReaderContext context : slice.leaves) {
-          results[i++] = searchLeaf(context, filterWeight);
-        }
-        return results;
-      }));
+      tasks.add(
+          new FutureTask<>(
+              () -> {
+                TopDocs[] results = new TopDocs[slice.leaves.length];
+                int i = 0;
+                for (LeafReaderContext context : slice.leaves) {
+                  results[i++] = searchLeaf(context, filterWeight);
+                }
+                return results;
+              }));
     }
 
     sliceExecutor.invokeAll(tasks);
