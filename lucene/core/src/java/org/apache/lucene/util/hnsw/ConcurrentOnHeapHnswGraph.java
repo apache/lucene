@@ -74,8 +74,9 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   }
 
   @Override
-  public synchronized int size() {
-    return graphLevels.get(0).size(); // all nodes are located on the 0th level
+  public int size() {
+    Map<Integer, ConcurrentNeighborSet> levelZero = graphLevels.get(0);
+    return levelZero == null ? 0 : levelZero.size(); // all nodes are located on the 0th level
   }
 
   @Override
