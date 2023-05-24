@@ -128,7 +128,7 @@ interface VectorUtilProvider {
 
   @SuppressWarnings("removal")
   @SuppressForbidden(reason = "security manager")
-  private static boolean isClientVM() throws SecurityException {
+  private static boolean isClientVM() {
     try {
       final PrivilegedAction<Boolean> action =
           () -> System.getProperty("java.vm.info", "").contains("emulated-client");
