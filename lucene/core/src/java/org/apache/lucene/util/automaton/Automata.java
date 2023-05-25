@@ -573,7 +573,7 @@ public final class Automata {
     if (utf8Strings.isEmpty()) {
       return makeEmpty();
     } else {
-      return DaciukMihovAutomatonBuilder.build(utf8Strings);
+      return StringsToAutomaton.build(utf8Strings);
     }
   }
 }
