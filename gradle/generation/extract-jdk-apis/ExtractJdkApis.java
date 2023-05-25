@@ -113,6 +113,8 @@ public final class ExtractJdkApis {
       out.write(cls.getValue());
       out.closeEntry();
     }
+    classesToInclude.removeIf(processed.keySet()::contains);
+    System.out.println("Referenced classes not included: " + classesToInclude);
   }
   
   static boolean isVisible(int access) {
