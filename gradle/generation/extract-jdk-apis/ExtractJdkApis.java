@@ -56,7 +56,8 @@ public final class ExtractJdkApis {
   
   static final Map<Integer,List<String>> MODULES_TO_PROCESS = Map.of(
       19, List.of("java.base"),
-      20, List.of("java.base", "jdk.incubator.vector")      
+      20, List.of("java.base", "jdk.incubator.vector"),      
+      21, List.of("java.base")
   );
   
   public static void main(String... args) throws IOException {
