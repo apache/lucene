@@ -136,7 +136,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   }
 
   private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
-    private int vectorId = -1;
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
@@ -181,15 +180,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public int nextDoc() throws IOException {
       return disi.nextDoc();
-    }
-
-    @Override
-    public int nextOrd() throws IOException {
-      if (vectorId + 1 >= size) {
-        return vectorId = NO_MORE_DOCS;
-      }
-      vectorId++;
-      return vectorId;
     }
 
     @Override
