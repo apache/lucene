@@ -82,6 +82,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     SliceExecutor sliceExecutor = indexSearcher.getSliceExecutor();
+    //in case of parallel execution, the leaf results are not ordered by leaf context's ordinal
     TopDocs[] perLeafResults =
         (sliceExecutor == null)
             ? sequentialSearch(reader.leaves(), filterWeight)
