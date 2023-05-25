@@ -49,14 +49,13 @@ public final class ExtractJdkApis {
   
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
-  static final Map<String,String> CLASSFILE_MATCHERS = Map.of(
-      "java.base",             "glob:{java/lang/foreign/*,java/nio/channels/FileChannel,java/util/Objects,jdk/internal/vm/vector/VectorSupport*}.class",
-      "jdk.incubator.vector",  "glob:jdk/incubator/vector/*.class"
-  );
+  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/{java/lang/foreign/*,java/nio/channels/FileChannel}";
+  private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
+  private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
   
-  static final Map<Integer,List<String>> MODULES_TO_PROCESS = Map.of(
-      19, List.of("java.base"),
-      20, List.of("java.base", "jdk.incubator.vector")      
+  static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
+      19, List.of(PATTERN_PANAMA_FOREIGN),
+      20, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)      
   );
   
   public static void main(String... args) throws IOException {
@@ -67,35 +66,42 @@ public final class ExtractJdkApis {
     if (jdk.intValue() != Runtime.version().feature()) {
       throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
     }
-    if (!MODULES_TO_PROCESS.containsKey(jdk)) {
+    if (!CLASSFILE_PATTERNS.containsKey(jdk)) {
       throw new IllegalArgumentException("No support to extract stubs from java version: " + jdk);
     }
     var outputPath = Paths.get(args[1]);
 
+    // create JRT filesystem and build a combined FileMatcher:
+    var jrtPath = Paths.get(URI.create("jrt:/")).toRealPath();
+    var patterns = CLASSFILE_PATTERNS.get(jdk).stream()
+        .map(pattern -> jrtPath.getFileSystem().getPathMatcher("glob:" + pattern + ".class"))
+        .toArray(PathMatcher[]::new);
+    PathMatcher pattern = p -> Arrays.stream(patterns).anyMatch(matcher -> matcher.matches(p));
+    
+    // Collect all files to process:
+    final List<Path> filesToExtract;
+    try (var stream = Files.walk(jrtPath)) {
+      filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).collect(Collectors.toList());
+    }
+    
+    // Process all class files:
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
-      for (String mod : MODULES_TO_PROCESS.get(jdk)) {
-        var modulePath = Paths.get(URI.create("jrt:/")).resolve(mod).toRealPath();
-        var moduleMatcher = modulePath.getFileSystem().getPathMatcher(CLASSFILE_MATCHERS.get(mod));
-        process(modulePath, moduleMatcher, out);
-      }
+      process(filesToExtract, out);
     }
   }
 
-  static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
+  private static void process(List<Path> filesToExtract, ZipOutputStream out) throws IOException {
     var classesToInclude = new HashSet<String>();
     var references = new HashMap<String, String[]>();
     var processed = new TreeMap<String, byte[]>();
-    try (var stream = Files.walk(modulePath)) {
-      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).toArray(Path[]::new);
-      System.out.println("Transforming " + filesToExtract.length + " class files in [" + modulePath + "]...");
-      for (Path relative : filesToExtract) {
-        try (var in = Files.newInputStream(modulePath.resolve(relative))) {
-          var reader = new ClassReader(in);
-          var cw = new ClassWriter(0);
-          var cleaner = new Cleaner(cw, classesToInclude, references);
-          reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-          processed.put(reader.getClassName(), cw.toByteArray());
-        }
+    System.out.println("Transforming " + filesToExtract.size() + " class files...");
+    for (Path p : filesToExtract) {
+      try (var in = Files.newInputStream(p)) {
+        var reader = new ClassReader(in);
+        var cw = new ClassWriter(0);
+        var cleaner = new Cleaner(cw, classesToInclude, references);
+        reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+        processed.put(reader.getClassName(), cw.toByteArray());
       }
     }
     // recursively add all superclasses / interfaces of visible classes to classesToInclude:
@@ -105,7 +111,7 @@ public final class ExtractJdkApis {
     }
     // remove all non-visible or not referenced classes:
     processed.keySet().removeIf(Predicate.not(classesToInclude::contains));
-    System.out.println("Writing " + processed.size() + " visible classes for [" + modulePath + "]...");
+    System.out.println("Writing " + processed.size() + " visible classes...");
     for (var cls : processed.entrySet()) {
       String cn = cls.getKey();
       System.out.println("Writing stub for class: " + cn);
@@ -113,6 +119,8 @@ public final class ExtractJdkApis {
       out.write(cls.getValue());
       out.closeEntry();
     }
+    classesToInclude.removeIf(processed.keySet()::contains);
+    System.out.println("Referenced classes not included: " + classesToInclude);
   }
   
   static boolean isVisible(int access) {
