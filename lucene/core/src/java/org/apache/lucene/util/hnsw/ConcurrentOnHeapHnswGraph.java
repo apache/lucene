@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -44,8 +45,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   // a ConcurrentHashMap.  While the ArrayList used for L0 in OHHG is faster for single-threaded
   // workloads, it imposes an unacceptable contention burden for concurrent workloads.
   private final Map<Integer, Map<Integer, ConcurrentNeighborSet>> graphLevels;
-  private final Map<Integer, Integer> completedTime;
-  private final AtomicInteger logicalClock;
+  private final CompletionTracker completions;
 
   // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
   private final int nsize;
@@ -59,8 +59,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     this.nsize0 = 2 * M;
 
     this.graphLevels = new ConcurrentHashMap<>();
-    this.completedTime = new ConcurrentHashMap<>();
-    logicalClock = new AtomicInteger(0);
+    this.completions = new CompletionTracker(nsize0);
   }
 
   /**
@@ -101,7 +100,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
             return newEntry;
           }
         });
-    completedTime.put(node, logicalClock.getAndIncrement());
+    completions.markComplete(node);
   }
 
   private int connectionsOnLevel(int level) {
@@ -189,7 +188,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     }
 
     // logical clocks
-    total += concurrentHashMapRamUsed(completedTime.size());
+    total += completions.ramBytesUsed();
 
     return total;
   }
@@ -269,7 +268,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     private PrimitiveIterator.OfInt remainingNeighbors;
 
     public ConcurrentHnswGraphView() {
-      this.timestamp = logicalClock.get();
+      this.timestamp = completions.clock();
     }
 
     @Override
@@ -301,7 +300,7 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     public int nextNeighbor() {
       while (remainingNeighbors.hasNext()) {
         int next = remainingNeighbors.nextInt();
-        if (completedTime.getOrDefault(next, Integer.MAX_VALUE) < timestamp) {
+        if (completions.completedAt(next) < timestamp) {
           return next;
         }
       }
@@ -335,6 +334,75 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
     @Override
     public String toString() {
       return "NodeAtLevel(level=" + level + ", node=" + node + ")";
+    }
+  }
+
+  /** Class to provide snapshot isolation for nodes in the progress of being added. */
+  static final class CompletionTracker implements Accountable {
+    private final AtomicInteger logicalClock = new AtomicInteger();
+    private final AtomicReference<AtomicIntegerArray> completionTimesRef;
+
+    public CompletionTracker(int initialSize) {
+      completionTimesRef = new AtomicReference<>(new AtomicIntegerArray(initialSize));
+      for (int i = 0; i < initialSize; i++) {
+        completionTimesRef.get().set(i, Integer.MAX_VALUE);
+      }
+    }
+
+    /**
+     * @param node ordinal
+     */
+    void markComplete(int node) {
+      ensureCapacity(node);
+      completionTimesRef.get().set(node, logicalClock.getAndIncrement());
+    }
+
+    /**
+     * @return the current logical timestamp; can be compared with completedAt values
+     */
+    int clock() {
+      return logicalClock.get();
+    }
+
+    /**
+     * @param node ordinal
+     * @return the logical clock completion time of the node, or Integer.MAX_VALUE if the node has
+     *     not yet been completed.
+     */
+    public int completedAt(int node) {
+      var completionTimes = completionTimesRef.get();
+      if (node >= completionTimes.length()) {
+        return Integer.MAX_VALUE;
+      }
+      return completionTimes.get(node);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      var REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      return REF_BYTES + Integer.BYTES + REF_BYTES + REF_BYTES + completionTimesRef.get().length();
+    }
+
+    private void ensureCapacity(int node) {
+      AtomicIntegerArray completedTime = completionTimesRef.get();
+      if (node >= completedTime.length()) {
+        completionTimesRef.updateAndGet(
+            existingArray -> {
+              if (node < existingArray.length()) {
+                return existingArray;
+              }
+              int newSize = (node + 1) * 2;
+              AtomicIntegerArray newArray = new AtomicIntegerArray(newSize);
+              for (int i = 0; i < newSize; i++) {
+                if (i < existingArray.length()) {
+                  newArray.set(i, existingArray.get(i));
+                } else {
+                  newArray.set(i, Integer.MAX_VALUE);
+                }
+              }
+              return newArray;
+            });
+      }
     }
   }
 }
