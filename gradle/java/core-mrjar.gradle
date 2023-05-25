@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-// Produce an MR-JAR with Java 19+ MemorySegment implementation for MMapDirectory
+// Produce an MR-JAR with Java 19+ foreign and vector implementations
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
-    for (jdkVersion : panamaJavaVersions) {
+    for (jdkVersion : mrjarJavaVersions) {
       sourceSets.create("main${jdkVersion}") {
         java {
           srcDirs = ["src/java${jdkVersion}"]
@@ -29,7 +29,7 @@ configure(project(":lucene:core")) {
       dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
       tasks.named("compileMain${jdkVersion}Java").configure {
-        def apijar = new File(apijars, "panama-foreign-jdk${jdkVersion}.apijar")
+        def apijar = new File(apijars, "jdk${jdkVersion}.apijar")
         
         inputs.file(apijar)
         
@@ -40,12 +40,14 @@ configure(project(":lucene:core")) {
           "-Xlint:-options",
           "--patch-module", "java.base=${apijar}",
           "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
+          // for compilation we patch the incubator packages into java.base, this has no effect on resulting class files:
+          "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
       }
     }
     
     tasks.named('jar').configure {
-      for (jdkVersion : panamaJavaVersions) {
+      for (jdkVersion : mrjarJavaVersions) {
         into("META-INF/versions/${jdkVersion}") {
           from sourceSets["main${jdkVersion}"].output
         }
