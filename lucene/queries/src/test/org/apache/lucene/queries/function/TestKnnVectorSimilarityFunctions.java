@@ -228,7 +228,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   @Test
-  public void vectorFielValueSourceWithIncorrectFields_shouldRaiseException() {
+  public void vectorFieldValueSourceWithDifferentFieldType_shouldRaiseException() {
     ValueSource v1 = new ByteVectorFieldSource("knnByteField1");
     ValueSource v2 = new ByteVectorFieldSource("knnFloatField2");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
