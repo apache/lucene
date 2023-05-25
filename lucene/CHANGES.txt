@@ -47,6 +47,10 @@ API Changes
 * GITHUB#12107: Remove deprecated KnnVectorField, KnnVectorQuery, VectorValues and
   LeafReader#getVectorValues. (Luca Cavanna)
 
+* GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
+  They have already been runtime-checked to only be implemented by the specific classes
+  so this is effectively a non-breaking change.
+
 New Features
 ---------------------
 
@@ -114,12 +118,24 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12257: Create OnHeapHnswGraphSearcher to let OnHeapHnswGraph to be searched in a thread-safety manner. (Patrick Zhai)
+
+* GITHUB#12302, GITHUB#12311: Add vectorized implementations of VectorUtil.dotProduct(),
+  squareDistance(), cosine() with Java 20 jdk.incubator.vector APIs. Applications started
+  with command line parameter "java --add-modules jdk.incubator.vector" on exactly Java 20
+  will automatically use the new vectorized implementations if running on a supported platform
+  (x86 AVX2 or later, ARM SVE or later). This is an opt-in feature and requires explicit Java
+  command line flag! When enabled, Lucene logs a notice using java.util.logging. Please test
+  thoroughly and report bugs/slowness to Lucene's mailing list.
+  (Chris Hegarty, Robert Muir, Uwe Schindler)
 
 Improvements
 ---------------------
 
-GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+* GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+
+* GITHUB#12305: Minor cleanup and improvements to DaciukMihovAutomatonBuilder. (Greg Miller)
 
 Optimizations
 ---------------------
@@ -132,7 +148,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
 
 Other
 ---------------------
