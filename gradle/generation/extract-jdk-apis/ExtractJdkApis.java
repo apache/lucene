@@ -23,7 +23,6 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,14 +49,13 @@ public final class ExtractJdkApis {
   
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
-  static final Map<String,String> CLASSFILE_MATCHERS = Map.of(
-      "java.base",             "glob:{java/lang/foreign/*,java/nio/channels/FileChannel,jdk/internal/vm/vector/VectorSupport*}.class",
-      "jdk.incubator.vector",  "glob:jdk/incubator/vector/*.class"
-  );
+  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/{java/lang/foreign/*,java/nio/channels/FileChannel}";
+  private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
+  private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
   
-  static final Map<Integer,List<String>> MODULES_TO_PROCESS = Map.of(
-      19, List.of("java.base"),
-      20, List.of("java.base", "jdk.incubator.vector")      
+  static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
+      19, List.of(PATTERN_PANAMA_FOREIGN),
+      20, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)      
   );
   
   public static void main(String... args) throws IOException {
@@ -68,25 +66,31 @@ public final class ExtractJdkApis {
     if (jdk.intValue() != Runtime.version().feature()) {
       throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
     }
-    if (!MODULES_TO_PROCESS.containsKey(jdk)) {
+    if (!CLASSFILE_PATTERNS.containsKey(jdk)) {
       throw new IllegalArgumentException("No support to extract stubs from java version: " + jdk);
     }
     var outputPath = Paths.get(args[1]);
 
+    // create JRT filesystem and build a combined FileMatcher:
+    var jrtPath = Paths.get(URI.create("jrt:/")).toRealPath();
+    var patterns = CLASSFILE_PATTERNS.get(jdk).stream()
+        .map(pattern -> jrtPath.getFileSystem().getPathMatcher("glob:" + pattern + ".class"))
+        .toArray(PathMatcher[]::new);
+    PathMatcher pattern = p -> Arrays.stream(patterns).anyMatch(matcher -> matcher.matches(p));
+    
+    // Collect all files to process:
+    final List<Path> filesToExtract;
+    try (var stream = Files.walk(jrtPath)) {
+      filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).collect(Collectors.toList());
+    }
+    
+    // Process all class files:
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
-      var filesToExtract = new HashSet<Path>();
-      for (String mod : MODULES_TO_PROCESS.get(jdk)) {
-        var modulePath = Paths.get(URI.create("jrt:/")).resolve(mod).toRealPath();
-        var moduleMatcher = modulePath.getFileSystem().getPathMatcher(CLASSFILE_MATCHERS.get(mod));
-        try (var stream = Files.walk(modulePath)) {
-          filesToExtract.addAll(stream.map(modulePath::relativize).filter(moduleMatcher::matches).map(relative -> modulePath.resolve(relative)).collect(Collectors.toList()));
-        }
-      }
       process(filesToExtract, out);
     }
   }
 
-  static void process(Collection<Path> filesToExtract, ZipOutputStream out) throws IOException {
+  private static void process(List<Path> filesToExtract, ZipOutputStream out) throws IOException {
     var classesToInclude = new HashSet<String>();
     var references = new HashMap<String, String[]>();
     var processed = new TreeMap<String, byte[]>();
@@ -129,7 +133,6 @@ public final class ExtractJdkApis {
     
     private final Set<String> classesToInclude;
     private final Map<String, String[]> references;
-    private boolean hideAllMembers = false;
     
     Cleaner(ClassWriter out, Set<String> classesToInclude, Map<String, String[]> references) {
       super(Opcodes.ASM9, out);
@@ -140,8 +143,7 @@ public final class ExtractJdkApis {
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
-      hideAllMembers = name.startsWith("jdk/internal/");
-      if (isVisible(access) && !hideAllMembers) {
+      if (isVisible(access)) {
         classesToInclude.add(name);
       }
       references.put(name, Stream.concat(Stream.of(superName), Arrays.stream(interfaces)).toArray(String[]::new));
@@ -154,7 +156,7 @@ public final class ExtractJdkApis {
 
     @Override
     public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-      if (hideAllMembers || !isVisible(access)) {
+      if (!isVisible(access)) {
         return null;
       }
       return new FieldVisitor(Opcodes.ASM9, super.visitField(access, name, descriptor, signature, value)) {
@@ -167,7 +169,7 @@ public final class ExtractJdkApis {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-      if (hideAllMembers || !isVisible(access)) {
+      if (!isVisible(access)) {
         return null;
       }
       return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
