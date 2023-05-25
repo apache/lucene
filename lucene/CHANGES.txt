@@ -51,6 +51,8 @@ API Changes
   They have already been runtime-checked to only be implemented by the specific classes
   so this is effectively a non-breaking change.
 
+* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton
+
 New Features
 ---------------------
 

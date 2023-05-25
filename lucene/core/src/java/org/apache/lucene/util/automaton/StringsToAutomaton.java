@@ -27,13 +27,15 @@ import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 
 /**
- * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings. The algorithm
- * requires sorted input data, but is very fast (nearly linear with the input size).
+ * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings using the
+ * algorithm described in <a href="https://aclanthology.org/J00-1002.pdf">Incremental Construction
+ * of Minimal Acyclic Finite-State Automata by Daciuk, Mihov, Watson and Watson</a>. This requires
+ * sorted input data, but is very fast (nearly linear with the input size).
  *
  * @see #build(Collection)
  * @see Automata#makeStringUnion(Collection)
  */
-public final class DaciukMihovAutomatonBuilder {
+public final class StringsToAutomaton {
 
   /**
    * This builder rejects terms that are more than 1k chars long since it then uses recursion based
@@ -42,7 +44,7 @@ public final class DaciukMihovAutomatonBuilder {
   public static final int MAX_TERM_LENGTH = 1_000;
 
   /** The default constructor is private. Use static methods directly. */
-  private DaciukMihovAutomatonBuilder() {
+  private StringsToAutomaton() {
     super();
   }
 
@@ -256,7 +258,7 @@ public final class DaciukMihovAutomatonBuilder {
     visited.put(s, converted);
     int i = 0;
     int[] labels = s.labels;
-    for (DaciukMihovAutomatonBuilder.State target : s.states) {
+    for (StringsToAutomaton.State target : s.states) {
       a.addTransition(converted, convert(a, target, visited), labels[i++]);
     }
 
@@ -268,7 +270,7 @@ public final class DaciukMihovAutomatonBuilder {
    * strings in UTF-8. These strings must be binary-sorted.
    */
   public static Automaton build(Collection<BytesRef> input) {
-    final DaciukMihovAutomatonBuilder builder = new DaciukMihovAutomatonBuilder();
+    final StringsToAutomaton builder = new StringsToAutomaton();
 
     CharsRefBuilder current = new CharsRefBuilder();
     for (BytesRef b : input) {

@@ -22,7 +22,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-public class TestDaciukMihovAutomatonBuilder extends LuceneTestCase {
+public class TestStringsToAutomaton extends LuceneTestCase {
 
   public void testLargeTerms() {
     byte[] b10k = new byte[10_000];
@@ -30,12 +30,12 @@ public class TestDaciukMihovAutomatonBuilder extends LuceneTestCase {
     IllegalArgumentException e =
         expectThrows(
             IllegalArgumentException.class,
-            () -> DaciukMihovAutomatonBuilder.build(Collections.singleton(new BytesRef(b10k))));
+            () -> StringsToAutomaton.build(Collections.singleton(new BytesRef(b10k))));
     assertTrue(
         e.getMessage()
             .startsWith("This builder doesn't allow terms that are larger than 1,000 characters"));
 
     byte[] b1k = ArrayUtil.copyOfSubArray(b10k, 0, 1000);
-    DaciukMihovAutomatonBuilder.build(Collections.singleton(new BytesRef(b1k))); // no exception
+    StringsToAutomaton.build(Collections.singleton(new BytesRef(b1k))); // no exception
   }
 }
