@@ -38,7 +38,6 @@ public abstract class VectorFieldFunction extends FunctionValues {
     return vs.description() + strVal(doc);
   }
 
-
   @Override
   public boolean exists(int doc) throws IOException {
     if (doc < lastDocID) {

@@ -41,7 +41,8 @@ public class FloatVectorFieldSource extends ValueSource {
     final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
 
     if (vectorValues == null) {
-      throw new IllegalArgumentException("no float vector value is indexed for field '" + fieldName + "'");
+      throw new IllegalArgumentException(
+          "no float vector value is indexed for field '" + fieldName + "'");
     }
     return new VectorFieldFunction(this) {
 

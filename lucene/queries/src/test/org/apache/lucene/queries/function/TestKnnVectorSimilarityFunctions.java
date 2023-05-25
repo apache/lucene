@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.queries.function;
 
-import com.sun.jdi.Value;
+import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -48,8 +48,6 @@ import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.util.List;
 
 public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   static Directory dir;
@@ -127,7 +125,8 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   @Test
-  public void floatVectorSimilarityBetweenVectorFields_shouldReturnCorrectResult() throws Exception {
+  public void floatVectorSimilarityBetweenVectorFields_shouldReturnCorrectResult()
+      throws Exception {
     var v1 = new FloatVectorFieldSource("knnFloatField1");
     var v2 = new FloatVectorFieldSource("knnFloatField2");
     assertHits(
@@ -147,7 +146,8 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   @Test
-  public void floatVectorSimilarityBetweenConstAndVectorField_shouldReturnCorrectResult() throws Exception {
+  public void floatVectorSimilarityBetweenConstAndVectorField_shouldReturnCorrectResult()
+      throws Exception {
     var v1 = new FloatVectorValueSource(List.of(1, 2, 4));
     var v2 = new FloatVectorFieldSource("knnFloatField1");
     assertHits(
@@ -157,7 +157,8 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   @Test
-  public void byteVectorSimilarityBetweenConstAndVectorField_shouldReturnCorrectResult() throws Exception {
+  public void byteVectorSimilarityBetweenConstAndVectorField_shouldReturnCorrectResult()
+      throws Exception {
     var v1 = new ByteVectorValueSource(List.of(1, 2, 4));
     var v2 = new ByteVectorFieldSource("knnByteField1");
     assertHits(
@@ -167,23 +168,25 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   @Test
-  public void floatVectorSimilarityComputedOnDocumentWithMissingFieldVector_shouldReturnNaN() throws Exception {
+  public void floatVectorSimilarityComputedOnDocumentWithMissingFieldVector_shouldReturnNaN()
+      throws Exception {
     var v1 = new FloatVectorValueSource(List.of(2.0, 1.0, 1.0));
     var v2 = new FloatVectorFieldSource("knnFloatField3");
     assertHits(
-            new FunctionQuery(
-                    new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
-            new float[] {0.5f, Float.NaN});
+        new FunctionQuery(
+            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+        new float[] {0.5f, Float.NaN});
   }
 
   @Test
-  public void byteVectorSimilarityComputedOnDocumentWithMissingFieldVector_shouldReturnNaN() throws Exception {
+  public void byteVectorSimilarityComputedOnDocumentWithMissingFieldVector_shouldReturnNaN()
+      throws Exception {
     var v1 = new ByteVectorValueSource(List.of(2.0, 1.0, 1.0));
     var v2 = new ByteVectorFieldSource("knnByteField3");
     assertHits(
-            new FunctionQuery(
-                    new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
-            new float[] {0.5f, Float.NaN});
+        new FunctionQuery(
+            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+        new float[] {0.5f, Float.NaN});
   }
 
   @Test
@@ -191,15 +194,15 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3, 4));
     ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
-            AssertionError.class,
-            () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
+        AssertionError.class,
+        () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
     v1 = new FloatVectorValueSource(List.of(1, 2));
     v2 = new FloatVectorFieldSource("knnFloatField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
-      new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
         AssertionError.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
@@ -229,20 +232,20 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     ValueSource v1 = new ByteVectorFieldSource("knnByteField1");
     ValueSource v2 = new ByteVectorFieldSource("knnFloatField2");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
 
     assertThrows(
-            IllegalArgumentException.class,
-            () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
+        IllegalArgumentException.class,
+        () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
     v1 = new FloatVectorFieldSource("knnByteField1");
     v2 = new FloatVectorFieldSource("knnFloatField2");
     FloatVectorSimilarityFunction floatVectorSimilarityFunction =
-            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
 
     assertThrows(
-            IllegalArgumentException.class,
-            () -> searcher.search(new FunctionQuery(floatVectorSimilarityFunction), 10));
+        IllegalArgumentException.class,
+        () -> searcher.search(new FunctionQuery(floatVectorSimilarityFunction), 10));
   }
 
   private static void assertHits(Query q, float[] scores) throws Exception {

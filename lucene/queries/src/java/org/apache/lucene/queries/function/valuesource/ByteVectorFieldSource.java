@@ -17,15 +17,12 @@
 package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
-
-import static java.util.Optional.ofNullable;
 
 /**
  * An implementation for retrieving {@link FunctionValues} instances for byte knn vectors fields.
@@ -44,7 +41,8 @@ public class ByteVectorFieldSource extends ValueSource {
     final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
 
     if (vectorValues == null) {
-      throw new IllegalArgumentException("no byte vector value is indexed for field '" + fieldName + "'");
+      throw new IllegalArgumentException(
+          "no byte vector value is indexed for field '" + fieldName + "'");
     }
 
     return new VectorFieldFunction(this) {
@@ -62,7 +60,6 @@ public class ByteVectorFieldSource extends ValueSource {
       protected DocIdSetIterator getVectorIterator() {
         return vectorValues;
       }
-
     };
   }
 
