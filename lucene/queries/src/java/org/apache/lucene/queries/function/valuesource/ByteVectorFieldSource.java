@@ -25,6 +25,8 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
+import static java.util.Optional.ofNullable;
+
 /**
  * An implementation for retrieving {@link FunctionValues} instances for byte knn vectors fields.
  */
@@ -40,15 +42,19 @@ public class ByteVectorFieldSource extends ValueSource {
       throws IOException {
 
     final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
+
+    if (vectorValues == null) {
+      throw new IllegalArgumentException("no byte vector value is indexed for field '" + fieldName + "'");
+    }
+
     return new VectorFieldFunction(this) {
-      byte[] defaultVector = null;
 
       @Override
       public byte[] byteVectorVal(int doc) throws IOException {
         if (exists(doc)) {
           return vectorValues.vectorValue();
         } else {
-          return defaultVector();
+          return null;
         }
       }
 
@@ -57,13 +63,6 @@ public class ByteVectorFieldSource extends ValueSource {
         return vectorValues;
       }
 
-      private byte[] defaultVector() {
-        if (defaultVector == null) {
-          defaultVector = new byte[vectorValues.dimension()];
-          Arrays.fill(defaultVector, (byte) 0);
-        }
-        return defaultVector;
-      }
     };
   }
 

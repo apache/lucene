@@ -17,7 +17,6 @@
 package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -40,29 +39,24 @@ public class FloatVectorFieldSource extends ValueSource {
       throws IOException {
 
     final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
+
+    if (vectorValues == null) {
+      throw new IllegalArgumentException("no float vector value is indexed for field '" + fieldName + "'");
+    }
     return new VectorFieldFunction(this) {
-      float[] defaultVector = null;
 
       @Override
       public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
           return vectorValues.vectorValue();
         } else {
-          return defaultVector();
+          return null;
         }
       }
 
       @Override
       protected DocIdSetIterator getVectorIterator() {
         return vectorValues;
-      }
-
-      private float[] defaultVector() {
-        if (defaultVector == null) {
-          defaultVector = new float[vectorValues.dimension()];
-          Arrays.fill(defaultVector, 0.f);
-        }
-        return defaultVector;
       }
     };
   }

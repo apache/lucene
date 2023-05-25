@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.queries.function;
 
-import java.util.List;
+import com.sun.jdi.Value;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -47,6 +47,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Test;
+
+import java.util.List;
 
 public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   static Directory dir;
@@ -62,16 +65,30 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     IndexWriterConfig iwConfig = newIndexWriterConfig(analyzer);
     iwConfig.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwConfig);
-    for (String docId : documents) {
-      Document document = new Document();
-      document.add(new StringField("id", docId, Field.Store.NO));
-      document.add(new SortedDocValuesField("id", new BytesRef(docId)));
-      document.add(new KnnFloatVectorField("knnFloatField1", new float[] {1.f, 2.f, 3.f}));
-      document.add(new KnnFloatVectorField("knnFloatField2", new float[] {5.2f, 3.2f, 3.1f}));
-      document.add(new KnnByteVectorField("knnByteField1", new byte[] {1, 2, 3}));
-      document.add(new KnnByteVectorField("knnByteField2", new byte[] {4, 2, 3}));
-      iw.addDocument(document);
-    }
+
+    Document document = new Document();
+    document.add(new StringField("id", "1", Field.Store.NO));
+    document.add(new SortedDocValuesField("id", new BytesRef("1")));
+    document.add(new KnnFloatVectorField("knnFloatField1", new float[] {1.f, 2.f, 3.f}));
+    document.add(new KnnFloatVectorField("knnFloatField2", new float[] {5.2f, 3.2f, 3.1f}));
+
+    // add only to the first document
+    document.add(new KnnFloatVectorField("knnFloatField3", new float[] {1.0f, 1.0f, 1.0f}));
+    document.add(new KnnByteVectorField("knnByteField3", new byte[] {1, 1, 1}));
+
+    document.add(new KnnByteVectorField("knnByteField1", new byte[] {1, 2, 3}));
+    document.add(new KnnByteVectorField("knnByteField2", new byte[] {4, 2, 3}));
+    iw.addDocument(document);
+
+    Document document2 = new Document();
+    document2.add(new StringField("id", "2", Field.Store.NO));
+    document2.add(new SortedDocValuesField("id", new BytesRef("2")));
+    document2.add(new KnnFloatVectorField("knnFloatField1", new float[] {1.f, 2.f, 3.f}));
+    document2.add(new KnnFloatVectorField("knnFloatField2", new float[] {5.2f, 3.2f, 3.1f}));
+
+    document2.add(new KnnByteVectorField("knnByteField1", new byte[] {1, 2, 3}));
+    document2.add(new KnnByteVectorField("knnByteField2", new byte[] {4, 2, 3}));
+    iw.addDocument(document2);
 
     reader = iw.getReader();
     searcher = newSearcher(reader);
@@ -89,80 +106,108 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
     analyzer = null;
   }
 
-  public void testFloatVectorSimilarityFunctionConst() throws Exception {
-    ValueSource v1 = new FloatVectorValueSource(List.of(1, 2, 3));
-    ValueSource v2 = new FloatVectorValueSource(List.of(5, 4, 1));
+  @Test
+  public void floatVectorSimilarityBetweenConstVector_shouldReturnCorrectResult() throws Exception {
+    var v1 = new FloatVectorValueSource(List.of(1, 2, 3));
+    var v2 = new FloatVectorValueSource(List.of(5, 4, 1));
     assertHits(
         new FunctionQuery(
             new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.04f, 0.04f});
   }
 
-  public void testByteVectorSimilarityFunctionConst() throws Exception {
-    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3));
-    ValueSource v2 = new ByteVectorValueSource(List.of(2, 5, 6));
+  @Test
+  public void byteVectorSimilarityBetweenConstVector_shouldReturnCorrectResult() throws Exception {
+    var v1 = new ByteVectorValueSource(List.of(1, 2, 3));
+    var v2 = new ByteVectorValueSource(List.of(2, 5, 6));
     assertHits(
         new FunctionQuery(
             new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.05f, 0.05f});
   }
 
-  public void testFloatVectorSimilarityFunctionField() throws Exception {
-    ValueSource v1 = new FloatVectorFieldSource("knnFloatField1");
-    ValueSource v2 = new FloatVectorFieldSource("knnFloatField2");
+  @Test
+  public void floatVectorSimilarityBetweenVectorFields_shouldReturnCorrectResult() throws Exception {
+    var v1 = new FloatVectorFieldSource("knnFloatField1");
+    var v2 = new FloatVectorFieldSource("knnFloatField2");
     assertHits(
         new FunctionQuery(
             new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.049776014f, 0.049776014f});
   }
 
-  public void testByteVectorSimilarityFunctionField() throws Exception {
-    ValueSource v1 = new ByteVectorFieldSource("knnByteField1");
-    ValueSource v2 = new ByteVectorFieldSource("knnByteField2");
+  @Test
+  public void byteVectorSimilarityBetweenVectorFields_shouldReturnCorrectResult() throws Exception {
+    var v1 = new ByteVectorFieldSource("knnByteField1");
+    var v2 = new ByteVectorFieldSource("knnByteField2");
     assertHits(
         new FunctionQuery(
             new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.1f, 0.1f});
   }
 
-  public void testFloatVectorSimilarityFunctionMixed() throws Exception {
-    ValueSource v1 = new FloatVectorValueSource(List.of(1, 2, 4));
-    ValueSource v2 = new FloatVectorFieldSource("knnFloatField1");
+  @Test
+  public void floatVectorSimilarityBetweenConstAndVectorField_shouldReturnCorrectResult() throws Exception {
+    var v1 = new FloatVectorValueSource(List.of(1, 2, 4));
+    var v2 = new FloatVectorFieldSource("knnFloatField1");
     assertHits(
         new FunctionQuery(
             new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.5f, 0.5f});
   }
 
-  public void testByteVectorSimilarityFunctionMixed() throws Exception {
-    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 4));
-    ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
+  @Test
+  public void byteVectorSimilarityBetweenConstAndVectorField_shouldReturnCorrectResult() throws Exception {
+    var v1 = new ByteVectorValueSource(List.of(1, 2, 4));
+    var v2 = new ByteVectorFieldSource("knnByteField1");
     assertHits(
         new FunctionQuery(
             new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
         new float[] {0.5f, 0.5f});
   }
 
-  public void testDismatchDimension() {
+  @Test
+  public void floatVectorSimilarityComputedOnDocumentWithMissingFieldVector_shouldReturnNaN() throws Exception {
+    var v1 = new FloatVectorValueSource(List.of(2.0, 1.0, 1.0));
+    var v2 = new FloatVectorFieldSource("knnFloatField3");
+    assertHits(
+            new FunctionQuery(
+                    new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new float[] {0.5f, Float.NaN});
+  }
+
+  @Test
+  public void byteVectorSimilarityComputedOnDocumentWithMissingFieldVector_shouldReturnNaN() throws Exception {
+    var v1 = new ByteVectorValueSource(List.of(2.0, 1.0, 1.0));
+    var v2 = new ByteVectorFieldSource("knnByteField3");
+    assertHits(
+            new FunctionQuery(
+                    new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
+            new float[] {0.5f, Float.NaN});
+  }
+
+  @Test
+  public void vectorSimilarityBetweenTwoVectorsWithDifferentDimensions_shouldRaiseException() {
     ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3, 4));
     ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
-        new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
-        AssertionError.class,
-        () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
+            AssertionError.class,
+            () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
     v1 = new FloatVectorValueSource(List.of(1, 2));
     v2 = new FloatVectorFieldSource("knnFloatField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
-        new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+      new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
         AssertionError.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
   }
 
-  public void testMismatchType() {
-    ValueSource v1 = new ByteVectorValueSource(List.of(1, 2, 3));
+  @Test
+  public void vectorSimilarityBetweenByteAndFloatVectors_shouldRaiseException() {
+    var v1 = new ByteVectorValueSource(List.of(1, 2, 3));
     ValueSource v2 = new ByteVectorFieldSource("knnByteField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
         new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
@@ -171,7 +216,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
 
     v1 = new ByteVectorValueSource(List.of(1, 2, 3));
-    v2 = new FloatVectorFieldSource("knnByteField1");
+    v2 = new FloatVectorFieldSource("knnFloatField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
         new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
     assertThrows(
@@ -179,7 +224,28 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
   }
 
-  public static void assertHits(Query q, float[] scores) throws Exception {
+  @Test
+  public void vectorFielValueSourceWithIncorrectFields_shouldRaiseException() {
+    ValueSource v1 = new ByteVectorFieldSource("knnByteField1");
+    ValueSource v2 = new ByteVectorFieldSource("knnFloatField2");
+    ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
+            new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
+
+    v1 = new FloatVectorFieldSource("knnByteField1");
+    v2 = new FloatVectorFieldSource("knnFloatField2");
+    FloatVectorSimilarityFunction floatVectorSimilarityFunction =
+            new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> searcher.search(new FunctionQuery(floatVectorSimilarityFunction), 10));
+  }
+
+  private static void assertHits(Query q, float[] scores) throws Exception {
     ScoreDoc[] expected = new ScoreDoc[scores.length];
     int[] expectedDocs = new int[scores.length];
     for (int i = 0; i < expected.length; i++) {

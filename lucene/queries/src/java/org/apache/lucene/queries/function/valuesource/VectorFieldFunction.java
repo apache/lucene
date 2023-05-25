@@ -38,13 +38,16 @@ public abstract class VectorFieldFunction extends FunctionValues {
     return vs.description() + strVal(doc);
   }
 
+
   @Override
   public boolean exists(int doc) throws IOException {
     if (doc < lastDocID) {
       throw new IllegalArgumentException(
           "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
     }
+
     lastDocID = doc;
+
     int curDocID = getVectorIterator().docID();
     if (doc > curDocID) {
       curDocID = getVectorIterator().advance(doc);

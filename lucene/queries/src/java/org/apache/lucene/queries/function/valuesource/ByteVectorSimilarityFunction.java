@@ -34,8 +34,17 @@ public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
+
+    var v1 = f1.byteVectorVal(doc);
+    var v2 = f2.byteVectorVal(doc);
+
+    if (v1 == null || v2 == null) {
+      return Float.NaN;
+    }
+
     assert f1.byteVectorVal(doc).length == f2.byteVectorVal(doc).length
         : "Vectors must have the same length";
+
     return similarityFunction.compare(f1.byteVectorVal(doc), f2.byteVectorVal(doc));
   }
 }

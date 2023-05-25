@@ -34,6 +34,14 @@ public class FloatVectorSimilarityFunction extends VectorSimilarityFunction {
 
   @Override
   protected float func(int doc, FunctionValues f1, FunctionValues f2) throws IOException {
+
+    var v1 = f1.floatVectorVal(doc);
+    var v2 = f2.floatVectorVal(doc);
+
+    if (v1 == null || v2 == null) {
+      return Float.NaN;
+    }
+
     assert f1.floatVectorVal(doc).length == f2.floatVectorVal(doc).length
         : "Vectors must have the same length";
     return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
