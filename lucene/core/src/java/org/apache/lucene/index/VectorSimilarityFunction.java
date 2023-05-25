@@ -90,8 +90,8 @@ public enum VectorSimilarityFunction {
 
   /**
    * Calculates a similarity score between the two vectors with a specified function. Higher
-   * similarity scores correspond to closer vectors. The offsets and lengths of the BytesRefs
-   * determine the vector data that is compared. Each (signed) byte represents a vector dimension.
+   * similarity scores correspond to closer vectors. Each (signed) byte represents a vector
+   * dimension.
    *
    * @param v1 a vector
    * @param v2 another vector, of the same dimension
