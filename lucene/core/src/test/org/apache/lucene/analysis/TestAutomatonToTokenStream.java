@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 
 public class TestAutomatonToTokenStream extends BaseTokenStreamTestCase {
 
@@ -31,7 +31,7 @@ public class TestAutomatonToTokenStream extends BaseTokenStreamTestCase {
     List<BytesRef> acceptStrings = new ArrayList<>();
     acceptStrings.add(new BytesRef("abc"));
 
-    Automaton flatPathAutomaton = DaciukMihovAutomatonBuilder.build(acceptStrings);
+    Automaton flatPathAutomaton = Automata.makeStringUnion(acceptStrings);
     TokenStream ts = AutomatonToTokenStream.toTokenStream(flatPathAutomaton);
     assertTokenStreamContents(
         ts,
@@ -48,7 +48,7 @@ public class TestAutomatonToTokenStream extends BaseTokenStreamTestCase {
     acceptStrings.add(new BytesRef("123"));
     acceptStrings.add(new BytesRef("abc"));
 
-    Automaton flatPathAutomaton = DaciukMihovAutomatonBuilder.build(acceptStrings);
+    Automaton flatPathAutomaton = Automata.makeStringUnion(acceptStrings);
     TokenStream ts = AutomatonToTokenStream.toTokenStream(flatPathAutomaton);
     assertTokenStreamContents(
         ts,
@@ -65,7 +65,7 @@ public class TestAutomatonToTokenStream extends BaseTokenStreamTestCase {
     acceptStrings.add(new BytesRef("ab3"));
     acceptStrings.add(new BytesRef("abc"));
 
-    Automaton flatPathAutomaton = DaciukMihovAutomatonBuilder.build(acceptStrings);
+    Automaton flatPathAutomaton = Automata.makeStringUnion(acceptStrings);
     TokenStream ts = AutomatonToTokenStream.toTokenStream(flatPathAutomaton);
     assertTokenStreamContents(
         ts,

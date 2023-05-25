@@ -32,14 +32,19 @@ import org.apache.lucene.util.CharsRefBuilder;
  *
  * @see #build(Collection)
  * @see Automata#makeStringUnion(Collection)
+ * @deprecated Visibility of this class will be reduced in a future release. Users can access this
+ *     functionality directly through {@link Automata#makeStringUnion(Collection)}
  */
+@Deprecated
 public final class DaciukMihovAutomatonBuilder {
 
   /**
    * This builder rejects terms that are more than 1k chars long since it then uses recursion based
    * on the length of the string, which might cause stack overflows.
+   *
+   * @deprecated See {@link Automata#MAX_STRING_UNION_TERM_LENGTH}
    */
-  public static final int MAX_TERM_LENGTH = 1_000;
+  @Deprecated public static final int MAX_TERM_LENGTH = 1_000;
 
   /** The default constructor is private. Use static methods directly. */
   private DaciukMihovAutomatonBuilder() {
@@ -193,7 +198,7 @@ public final class DaciukMihovAutomatonBuilder {
    * or equal compared to any previous sequences added to this automaton (the input must be sorted).
    */
   private void add(CharsRef current) {
-    if (current.length > MAX_TERM_LENGTH) {
+    if (current.length > Automata.MAX_STRING_UNION_TERM_LENGTH) {
       throw new IllegalArgumentException(
           "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
     }
@@ -266,7 +271,10 @@ public final class DaciukMihovAutomatonBuilder {
   /**
    * Build a minimal, deterministic automaton from a sorted list of {@link BytesRef} representing
    * strings in UTF-8. These strings must be binary-sorted.
+   *
+   * @deprecated Please see {@link Automata#makeStringUnion(Collection)} instead
    */
+  @Deprecated
   public static Automaton build(Collection<BytesRef> input) {
     final DaciukMihovAutomatonBuilder builder = new DaciukMihovAutomatonBuilder();
 

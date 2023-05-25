@@ -30,7 +30,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
+import org.apache.lucene.util.automaton.Automata;
 
 /**
  * Uses an {@link Analyzer} on content to get offsets and then populates a {@link MemoryIndex}.
@@ -67,7 +67,7 @@ public class MemoryIndexOffsetStrategy extends AnalysisOffsetStrategy {
       // to build an automaton on them
       List<BytesRef> filteredTerms =
           Arrays.stream(components.getTerms())
-              .filter(b -> b.length < DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH)
+              .filter(b -> b.length < Automata.MAX_STRING_UNION_TERM_LENGTH)
               .collect(Collectors.toList());
       allAutomata.add(CharArrayMatcher.fromTerms(filteredTerms));
     }
