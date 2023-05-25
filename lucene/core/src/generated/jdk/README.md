@@ -40,4 +40,4 @@ to point the Lucene build system to missing JDK versions. The regeneration task 
 a warning if a specific JDK is missing, leaving the already existing `.apijar` file
 untouched.
 
-The extraction is done with the ASM library, see `ExtractForeignAPI.java` source code.
+The extraction is done with the ASM library, see `ExtractJdkApis.java` source code.
