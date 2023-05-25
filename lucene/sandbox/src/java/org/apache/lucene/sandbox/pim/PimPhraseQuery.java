@@ -25,6 +25,9 @@ import java.io.IOException;
  */
 public class PimPhraseQuery extends PhraseQuery {
 
+  /**
+   * PIM phrase query builder
+   */
   public static class Builder extends PhraseQuery.Builder {
 
     @Override

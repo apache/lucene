@@ -7,6 +7,9 @@ import org.apache.lucene.search.Weight;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Scorer for PIM
+ */
 public class PimScorer extends Scorer {
 
   private final List<PimMatch> matches;

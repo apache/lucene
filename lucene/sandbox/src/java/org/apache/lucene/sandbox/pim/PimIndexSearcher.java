@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
- * @class PimIndexSearcher
+ * class PimIndexSearcher
  * Implement term and phrase search on a PIM index.
  * The PIM index is intended to be loaded in PIM memory and
  * searched by the PIM Hardware. Hence, this class purpose

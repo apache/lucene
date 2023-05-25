@@ -12,8 +12,6 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestRuleLimitSysouts;
 import org.apache.lucene.util.BytesRef;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -310,8 +308,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
 
         // load the index to PIM system
-        PimSystemManager.get().loadPimIndex(pimIndexInfo);
-
+        PimSystemManager.get().loadPimIndex(pimDirectory);
         IndexReader reader = DirectoryReader.open(directory);
         IndexSearcher searcher = new IndexSearcher(reader);
 

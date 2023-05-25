@@ -6,6 +6,9 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
 
+/**
+ * statistics for PIM phrase search
+ */
 public class PimPhraseScoreStats extends PimScoreStats {
 
   public final TermStatistics[] termStats;

@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -70,7 +71,7 @@ public class PimIndexWriter extends IndexWriter {
 
   private final PimConfig pimConfig;
   private final Directory pimDirectory;
-  private static final boolean enableStats = false;
+  private static final boolean enableStats = true;
   private PimIndexInfo pimIndexInfo;
 
   public PimIndexWriter(Directory directory, Directory pimDirectory,
@@ -87,6 +88,9 @@ public class PimIndexWriter extends IndexWriter {
 
   @Override
   protected void doAfterCommit() throws IOException {
+
+    System.out.println("Creating PIM index...");
+
     SegmentInfos segmentInfos = SegmentInfos.readCommit(getDirectory(),
                                                         SegmentInfos.getLastCommitSegmentsFileName(getDirectory()));
     try (IndexReader indexReader = DirectoryReader.open(getDirectory())) {
@@ -121,8 +125,36 @@ public class PimIndexWriter extends IndexWriter {
         }
       }
       // successfully updated the PIM index, register it
-      pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, segmentInfos);
+      writePimIndexInfo(segmentInfos);
     }
+  }
+
+  private IndexOutput createIndexOutput(String name, String ext, int dpuIndex, Set<String> fileNames) throws IOException {
+    String indexName =
+            IndexFileNames.segmentFileName(
+                    name, Integer.toString(dpuIndex), ext);
+    if (fileNames.contains(indexName)) {
+      pimDirectory.deleteFile(indexName);
+    }
+    return pimDirectory.createOutput(indexName, IOContext.DEFAULT);
+  }
+
+  private void writePimIndexInfo(SegmentInfos segmentInfos) throws IOException {
+
+    pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, segmentInfos);
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream objectOutputStream
+            = new ObjectOutputStream(baos);
+    objectOutputStream.writeObject(pimIndexInfo);
+    objectOutputStream.flush();
+    objectOutputStream.close();
+    Set<String> fileNames = Set.of(pimDirectory.listAll());
+    if (fileNames.contains("pimIndexInfo")) {
+      pimDirectory.deleteFile("pimIndexInfo");
+    }
+    IndexOutput infoOutput = pimDirectory.createOutput("pimIndexInfo", IOContext.DEFAULT);
+    infoOutput.writeBytes(baos.toByteArray(), baos.size());
+    infoOutput.close();
   }
 
   private class DpuTermIndexes implements Closeable {
@@ -204,16 +236,6 @@ public class PimIndexWriter extends IndexWriter {
 
     private static int numBytesToEncode(long value) {
       return ((63 - Long.numberOfLeadingZeros(value)) >> 3) + 1;
-    }
-
-    private IndexOutput createIndexOutput(String name, String ext, int dpuIndex, Set<String> fileNames) throws IOException {
-      String indexName =
-              IndexFileNames.segmentFileName(
-                      name, Integer.toString(dpuIndex), ext);
-      if (fileNames.contains(indexName)) {
-        pimDirectory.deleteFile(indexName);
-      }
-      return pimDirectory.createOutput(indexName, IOContext.DEFAULT);
     }
 
     /**

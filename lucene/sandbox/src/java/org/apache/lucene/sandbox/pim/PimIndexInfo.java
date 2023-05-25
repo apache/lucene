@@ -8,16 +8,17 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 /**
- * @class PimIndexInfo
+ * class PimIndexInfo
  * Class to hold the information to be passed from
  * the PimIndexWriter to the PimSystemManager that loads the index
  * to PIM.
  */
-public class PimIndexInfo {
+public class PimIndexInfo implements Serializable {
 
-    final Directory pimDir;
+    transient Directory pimDir;
     final int numDpus;
     final int numSegments;
     final String segmentCommitName[];
@@ -51,6 +52,10 @@ public class PimIndexInfo {
 
     public int getStartDoc(int leafIdx) {
         return startDoc[leafIdx];
+    }
+
+    public void setPimDir(Directory pimDir) {
+        this.pimDir = pimDir;
     }
 
     public IndexInput getFieldFileInput(int leafIdx, int dpuId) throws IOException {

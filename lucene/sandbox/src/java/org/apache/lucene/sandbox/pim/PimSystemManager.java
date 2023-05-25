@@ -3,11 +3,17 @@ package org.apache.lucene.sandbox.pim;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
 
+import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
 import java.util.List;
 
 /**
- * @class PimSystemManager
+ * PimSystemManager
  * Singleton class used to manage the PIM system and offload
  * queries to it.
  * TODO currently use a software model to answer queries, not
@@ -18,6 +24,7 @@ public class PimSystemManager {
     private static PimSystemManager instance;
 
     private boolean isIndexLoaded;
+    private boolean isIndexBeingLoaded;
     private PimIndexInfo pimIndexInfo;
     private final PimConfig pimConfig = new PimConfig();
 
@@ -27,6 +34,7 @@ public class PimSystemManager {
 
     private PimSystemManager() {
         isIndexLoaded = false;
+        isIndexBeingLoaded = false;
         pimIndexInfo = null;
         pimSearcher = null;
     }
@@ -53,24 +61,28 @@ public class PimSystemManager {
     /**
      * Load the pim index unless one is already loaded
      *
-     * @param pimIndexInfo the PIM index to load
+     * @param pimDirectory the directory containing the PIM index
      * @return true if the index was successfully loaded
      */
-    public boolean loadPimIndex(PimIndexInfo pimIndexInfo) {
+    public boolean loadPimIndex(Directory pimDirectory) throws IOException {
 
-        if (!isIndexLoaded) {
+        if (!isIndexLoaded && !isIndexBeingLoaded) {
             boolean loadSuccess = false;
             //synchronized block for thread safety
             synchronized (PimSystemManager.class) {
-                if (!isIndexLoaded) {
-                    this.pimIndexInfo = pimIndexInfo;
-                    isIndexLoaded = true;
+                if (!isIndexLoaded && !isIndexBeingLoaded) {
+                    getPimInfoFromDir(pimDirectory);
+                    isIndexBeingLoaded = true;
                     loadSuccess = true;
                 }
             }
             if (loadSuccess) {
                 // the calling thread has succeeded loading the PIM Index
                 transferPimIndex();
+                synchronized (PimSystemManager.class) {
+                    isIndexBeingLoaded = false;
+                    isIndexLoaded = true;
+                }
             }
         }
         return false;
@@ -162,11 +174,33 @@ public class PimSystemManager {
         return pimSearcher.searchPhrase(context.ord, query, scorer);
     }
 
+    /**
+     * Copy the PIM index to the PIM system
+     */
     private void transferPimIndex() {
         // TODO load index to PIM system
         // create a new PimIndexSearcher for this index
         // TODO copy the PIM index files here to mimic transfer
         // to DPU and be safe searching it while the index is overwritten
+        // Lock the pim index to avoid it to be overwritten ?
         pimSearcher = new PimIndexSearcher(pimIndexInfo);
+    }
+
+    private void getPimInfoFromDir(Directory pimDirectory) throws IOException {
+
+        IndexInput infoInput = pimDirectory.openInput("pimIndexInfo", IOContext.DEFAULT);
+        byte[] bytes = new byte[(int) infoInput.length()];
+        infoInput.readBytes(bytes, 0, bytes.length);
+        infoInput.close();
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+        ObjectInputStream objectInputStream
+                = new ObjectInputStream(bais);
+        try {
+            pimIndexInfo = (PimIndexInfo) objectInputStream.readObject();
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        objectInputStream.close();
+        pimIndexInfo.setPimDir(pimDirectory);
     }
 }

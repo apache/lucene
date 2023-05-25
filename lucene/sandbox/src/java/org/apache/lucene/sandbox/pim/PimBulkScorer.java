@@ -8,6 +8,9 @@ import org.apache.lucene.util.Bits;
 
 import java.io.IOException;
 
+/**
+ * Bulk scorer for PIM
+ */
 public class PimBulkScorer extends BulkScorer {
 
   private final Scorer scorer;

@@ -5,6 +5,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.similarities.Similarity;
 
+/**
+ * score statistics for PIM
+ */
 public class PimScoreStats {
 
   public final IndexSearcher searcher;

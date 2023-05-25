@@ -3,6 +3,9 @@ package org.apache.lucene.sandbox.pim;
 import org.apache.lucene.search.DocIdSetIterator;
 import java.util.Objects;
 
+/**
+ * Class representing the match information returned from the PIM system to the CPU
+ */
 public class PimMatch {
 
   public static final PimMatch UNSET = new PimMatch(-1, 0f);

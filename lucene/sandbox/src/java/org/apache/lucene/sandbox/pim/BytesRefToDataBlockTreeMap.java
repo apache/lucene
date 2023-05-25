@@ -9,9 +9,10 @@ import org.apache.lucene.util.BytesRef;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 /**
- * @class BytesRefToDataBlockTreeMap
+ * class BytesRefToDataBlockTreeMap
  * Writes (or reads) a (key, value) map as a binary search tree to an IndexOutput.
  * The key is a BytesRef object, and the value is a Block object, which is a reference
  * to a block of data identified by a pointer/offset.
@@ -69,7 +70,7 @@ public class BytesRefToDataBlockTreeMap {
     TreeNode root;
 
     /**
-     * @class Block
+     * class Block
      * Used to represent a reference to a block of data associated to
      * a BytesRef object.
      **/
@@ -89,7 +90,7 @@ public class BytesRefToDataBlockTreeMap {
     }
 
     /**
-     * @class BlockList
+     * class BlockList
      * Use to represent of list of consecutive blocks
      * The start address of a block is the end address of the
      * previous block in the list, and the additional member
@@ -99,6 +100,12 @@ public class BytesRefToDataBlockTreeMap {
     public static class BlockList {
         public ArrayList<Block> blockList;
         public long lastBlockEndAddress;
+
+        /**
+         * Constructor
+         * @param blockList an ArrayList of blocks
+         * @param lastBlockEndAddress the address of the end of the last block
+         */
         BlockList(ArrayList<Block> blockList, long lastBlockEndAddress) {
             this.blockList = blockList;
             this.lastBlockEndAddress = lastBlockEndAddress;
@@ -171,7 +178,7 @@ public class BytesRefToDataBlockTreeMap {
     }
 
     /**
-     * @class SearchResult
+     * class SearchResult
      * Contains a Block and a byte size.
      * This is the object type returned on a search in a BytesRefToDataBlockTreeMap.
      */
@@ -180,6 +187,11 @@ public class BytesRefToDataBlockTreeMap {
         final Block block;
         final int byteSize;
 
+        /**
+         * Constructor
+         * @param block the found block
+         * @param byteSize the size of the block
+         */
         public SearchResult(Block block, int byteSize) {
             this.block = block;
             this.byteSize = byteSize;
@@ -254,14 +266,14 @@ public class BytesRefToDataBlockTreeMap {
         int mid = blockList.size() / 2;
         TreeNode node = new TreeNode(blockList.get(mid));
 
-        if (blockList.size() > 1) {
+        if (mid > 0) {
             node.leftChild = buildBSTreeRecursive(blockList.subList(0, mid),
                     maxCompoundNodeSz);
             if (node.leftChild != null)
                 node.subTreeWriteByteSize += node.leftChild.subTreeWriteByteSize;
         }
 
-        if (blockList.size() > 2) {
+        if (mid + 1 < blockList.size()) {
             node.rightChild = buildBSTreeRecursive(blockList.subList(mid + 1, blockList.size()),
                     maxCompoundNodeSz);
             if (node.rightChild != null)
@@ -358,25 +370,39 @@ public class BytesRefToDataBlockTreeMap {
 
         /**
          * Set the size of each data block as a member of the TreeNode
-         * The size is obtained as size = nextNode.block.address - currNode.block.address
-         * The method is recursive, and the first nextAddress passed should be the end
-         * address of the last block
+         * The size is obtained as size = successorNode.block.address - currNode.block.address
+         * The successor of a node is the next node in the inorder traversal of the tree
          * @param nextAddress the end address of the last block
          */
         void setBlockByteSize(long nextAddress) {
 
-            if(rightChild != null) {
-                blockByteSize = (int) (rightChild.block.address - block.address);
-            }
-            else {
-                blockByteSize = (int) (nextAddress - block.address);
+            Stack<TreeNode> stack = new Stack<>();
+
+            TreeNode node = this;
+            while(node != null) {
+                stack.push(node);
+                node = node.leftChild;
             }
 
-            if(leftChild != null)
-                leftChild.setBlockByteSize(block.address);
+            while(!stack.empty()) {
 
-            if(rightChild != null)
-                rightChild.setBlockByteSize(nextAddress);
+                node = stack.pop();
+                if(node.rightChild != null) {
+                    TreeNode tmpNode = node.rightChild;
+                    while(tmpNode != null) {
+                        stack.push(tmpNode);
+                        tmpNode = tmpNode.leftChild;
+                    }
+                    node.blockByteSize = (int) (stack.peek().block.address - node.block.address);
+                }
+                else if(!stack.empty()) {
+                    node.blockByteSize = (int) (stack.peek().block.address - node.block.address);
+                }
+                else {
+                    // no successor
+                    node.blockByteSize = (int) (nextAddress - node.block.address);
+                }
+            }
         }
 
         /**
@@ -392,6 +418,9 @@ public class BytesRefToDataBlockTreeMap {
             return (int) outByteCount.getByteCount().longValue();
         }
 
+        /**
+         * @return the offset to get to the right child of this node
+         */
         private int getRightChildOffset() {
 
             // Note: use the least significant bit of right child offset to

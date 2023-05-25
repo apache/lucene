@@ -15,6 +15,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Weight class for phrase search on PIM system
+ */
 public class PimPhraseWeight extends Weight {
 
     private final PimPhraseScoreStats scoreStats;
