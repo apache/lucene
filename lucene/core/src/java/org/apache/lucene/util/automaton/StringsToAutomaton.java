@@ -32,16 +32,9 @@ import org.apache.lucene.util.CharsRefBuilder;
  * of Minimal Acyclic Finite-State Automata by Daciuk, Mihov, Watson and Watson</a>. This requires
  * sorted input data, but is very fast (nearly linear with the input size).
  *
- * @see #build(Collection)
  * @see Automata#makeStringUnion(Collection)
  */
-public final class StringsToAutomaton {
-
-  /**
-   * This builder rejects terms that are more than 1k chars long since it then uses recursion based
-   * on the length of the string, which might cause stack overflows.
-   */
-  public static final int MAX_TERM_LENGTH = 1_000;
+final class StringsToAutomaton {
 
   /** The default constructor is private. Use static methods directly. */
   private StringsToAutomaton() {
@@ -195,7 +188,7 @@ public final class StringsToAutomaton {
    * or equal compared to any previous sequences added to this automaton (the input must be sorted).
    */
   private void add(CharsRef current) {
-    if (current.length > MAX_TERM_LENGTH) {
+    if (current.length > Automata.MAX_STRING_UNION_TERM_LENGTH) {
       throw new IllegalArgumentException(
           "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
     }
@@ -269,7 +262,7 @@ public final class StringsToAutomaton {
    * Build a minimal, deterministic automaton from a sorted list of {@link BytesRef} representing
    * strings in UTF-8. These strings must be binary-sorted.
    */
-  public static Automaton build(Collection<BytesRef> input) {
+  static Automaton build(Collection<BytesRef> input) {
     final StringsToAutomaton builder = new StringsToAutomaton();
 
     CharsRefBuilder current = new CharsRefBuilder();
