@@ -23,6 +23,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +51,7 @@ public final class ExtractJdkApis {
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
   static final Map<String,String> CLASSFILE_MATCHERS = Map.of(
-      "java.base",             "glob:java/{lang/foreign/*,nio/channels/FileChannel}.class",
+      "java.base",             "glob:{java/lang/foreign/*,java/nio/channels/FileChannel,jdk/internal/vm/vector/VectorSupport*}.class",
       "jdk.incubator.vector",  "glob:jdk/incubator/vector/*.class"
   );
   
@@ -73,29 +74,30 @@ public final class ExtractJdkApis {
     var outputPath = Paths.get(args[1]);
 
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
+      var filesToExtract = new HashSet<Path>();
       for (String mod : MODULES_TO_PROCESS.get(jdk)) {
         var modulePath = Paths.get(URI.create("jrt:/")).resolve(mod).toRealPath();
         var moduleMatcher = modulePath.getFileSystem().getPathMatcher(CLASSFILE_MATCHERS.get(mod));
-        process(modulePath, moduleMatcher, out);
+        try (var stream = Files.walk(modulePath)) {
+          filesToExtract.addAll(stream.map(modulePath::relativize).filter(moduleMatcher::matches).map(relative -> modulePath.resolve(relative)).collect(Collectors.toList()));
+        }
       }
+      process(filesToExtract, out);
     }
   }
 
-  static void process(Path modulePath, PathMatcher fileMatcher, ZipOutputStream out) throws IOException {
+  static void process(Collection<Path> filesToExtract, ZipOutputStream out) throws IOException {
     var classesToInclude = new HashSet<String>();
     var references = new HashMap<String, String[]>();
     var processed = new TreeMap<String, byte[]>();
-    try (var stream = Files.walk(modulePath)) {
-      var filesToExtract = stream.map(modulePath::relativize).filter(fileMatcher::matches).toArray(Path[]::new);
-      System.out.println("Transforming " + filesToExtract.length + " class files in [" + modulePath + "]...");
-      for (Path relative : filesToExtract) {
-        try (var in = Files.newInputStream(modulePath.resolve(relative))) {
-          var reader = new ClassReader(in);
-          var cw = new ClassWriter(0);
-          var cleaner = new Cleaner(cw, classesToInclude, references);
-          reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-          processed.put(reader.getClassName(), cw.toByteArray());
-        }
+    System.out.println("Transforming " + filesToExtract.size() + " class files...");
+    for (Path p : filesToExtract) {
+      try (var in = Files.newInputStream(p)) {
+        var reader = new ClassReader(in);
+        var cw = new ClassWriter(0);
+        var cleaner = new Cleaner(cw, classesToInclude, references);
+        reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+        processed.put(reader.getClassName(), cw.toByteArray());
       }
     }
     // recursively add all superclasses / interfaces of visible classes to classesToInclude:
@@ -105,7 +107,7 @@ public final class ExtractJdkApis {
     }
     // remove all non-visible or not referenced classes:
     processed.keySet().removeIf(Predicate.not(classesToInclude::contains));
-    System.out.println("Writing " + processed.size() + " visible classes for [" + modulePath + "]...");
+    System.out.println("Writing " + processed.size() + " visible classes...");
     for (var cls : processed.entrySet()) {
       String cn = cls.getKey();
       System.out.println("Writing stub for class: " + cn);
@@ -124,12 +126,10 @@ public final class ExtractJdkApis {
   static class Cleaner extends ClassVisitor {
     private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
     private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
-
-    private static final String INTERNAL_PREFIX = "jdk/internal/";
-    private static final String OBJECT_CLASS = "java/lang/Object";
     
     private final Set<String> classesToInclude;
     private final Map<String, String[]> references;
+    private boolean hideAllMembers = false;
     
     Cleaner(ClassWriter out, Set<String> classesToInclude, Map<String, String[]> references) {
       super(Opcodes.ASM9, out);
@@ -139,16 +139,9 @@ public final class ExtractJdkApis {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-      interfaces = Objects.requireNonNullElse(interfaces, new String[0]);
-      // remove references to internal JDK classes:
-      if (superName.startsWith(INTERNAL_PREFIX)) {
-        superName = OBJECT_CLASS;
-      }
-      interfaces = Arrays.stream(interfaces).filter(c -> !c.startsWith(INTERNAL_PREFIX)).toArray(String[]::new);
-      // call ClassWriter and use Java 11 classfile format:
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
-      // add references to other classes (so we can figure out what needs to be packaged in JAR):
-      if (isVisible(access)) {
+      hideAllMembers = name.startsWith("jdk/internal/");
+      if (isVisible(access) && !hideAllMembers) {
         classesToInclude.add(name);
       }
       references.put(name, Stream.concat(Stream.of(superName), Arrays.stream(interfaces)).toArray(String[]::new));
@@ -161,7 +154,7 @@ public final class ExtractJdkApis {
 
     @Override
     public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-      if (!isVisible(access)) {
+      if (hideAllMembers || !isVisible(access)) {
         return null;
       }
       return new FieldVisitor(Opcodes.ASM9, super.visitField(access, name, descriptor, signature, value)) {
@@ -174,7 +167,7 @@ public final class ExtractJdkApis {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-      if (!isVisible(access)) {
+      if (hideAllMembers || !isVisible(access)) {
         return null;
       }
       return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
