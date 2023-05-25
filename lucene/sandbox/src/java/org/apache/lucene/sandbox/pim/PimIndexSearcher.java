@@ -358,7 +358,7 @@ public class PimIndexSearcher implements Closeable {
                     boolean endPositions = false;
                     int nbPositionsMatch = 0;
                     while (true) {
-                        int nbMatches = 1;
+                        int nbMatches = 0;
                         int maxPos = 0;
                         for (int i = 0; i < termPostings.length; ++i) {
                             if (currPos[i] != searchPos[i]) {
@@ -373,6 +373,8 @@ public class PimIndexSearcher implements Closeable {
                                     maxPos = currPos[i] - i;
                                 }
                             }
+                            else
+                                nbMatches++;
                         }
                         if (endPositions)
                             break;
