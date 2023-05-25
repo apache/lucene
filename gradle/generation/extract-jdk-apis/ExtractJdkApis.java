@@ -122,6 +122,9 @@ public final class ExtractJdkApis {
   static class Cleaner extends ClassVisitor {
     private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
     private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
+
+    private static final String INTERNAL_PREFIX = "jdk/internal/";
+    private static final String OBJECT_CLASS = "java/lang/Object";
     
     private final Set<String> classesToInclude;
     private final Map<String, String[]> references;
@@ -134,7 +137,15 @@ public final class ExtractJdkApis {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+      interfaces = Objects.requireNonNullElse(interfaces, new String[0]);
+      // remove references to internal JDK classes:
+      if (superName.startsWith(INTERNAL_PREFIX)) {
+        superName = OBJECT_CLASS;
+      }
+      interfaces = Arrays.stream(interfaces).filter(c -> !c.startsWith(INTERNAL_PREFIX)).toArray(String[]::new);
+      // call ClassWriter and use Java 11 classfile format:
       super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
+      // add references to other classes (so we can figure out what needs to be packaged in JAR):
       if (isVisible(access)) {
         classesToInclude.add(name);
       }
