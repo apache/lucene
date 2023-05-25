@@ -234,8 +234,15 @@ public class PimIndexWriter extends IndexWriter {
       }
     }
 
+    static ByteCountDataOutput outByteCount = new ByteCountDataOutput();
+
     private static int numBytesToEncode(long value) {
-      return ((63 - Long.numberOfLeadingZeros(value)) >> 3) + 1;
+      try {
+        outByteCount.writeVLong(value);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return Math.toIntExact(outByteCount.getByteCount());
     }
 
     /**
@@ -388,6 +395,7 @@ public class PimIndexWriter extends IndexWriter {
         // freq > 0 => offset encoded on 1 byte
         // freq < 0 => offset encoded on 2 bytes
         // freq = 0 => write real freq and offset encoded on variable length
+        assert freq > 0;
         switch (numBytesToEncode(numBytesPos)) {
           case 1 -> {
             postingsOutput.writeZInt(freq);

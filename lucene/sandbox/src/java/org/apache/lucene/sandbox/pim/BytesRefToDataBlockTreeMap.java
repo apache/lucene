@@ -436,37 +436,6 @@ public class BytesRefToDataBlockTreeMap {
             return rightChildAddress;
         }
 
-
-        /**
-         * A dummy DataOutput class that just counts how many bytes
-         * have been written.
-         **/
-        private static class ByteCountDataOutput extends DataOutput {
-            private Long byteCount;
-
-            ByteCountDataOutput() {
-                this.byteCount = 0L;
-            }
-
-            void reset() {
-                this.byteCount = 0L;
-            }
-
-            @Override
-            public void writeByte(byte b) throws IOException {
-                byteCount++;
-            }
-
-            @Override
-            public void writeBytes(byte[] b, int offset, int length) throws IOException {
-                byteCount += length;
-            }
-
-            Long getByteCount() {
-                return byteCount;
-            }
-        }
-
         static ByteCountDataOutput outByteCount = new ByteCountDataOutput();
     }
 
