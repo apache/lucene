@@ -229,8 +229,30 @@ public class PimIndexWriter extends IndexWriter {
       //TODO: for each DPU, at the beginning, write the mapping fieldName -> pointer
       //TODO: for each field of a DPU, write the 7 or 15 terms and their offset to jump fast
       // when searching alphabetically for a specific term.
+
+      int numTerms = 0, numBlockTableBytes = 0, numBlockBytes = 0, numPostingBytes = 0;
+      if(enableStats) {
+        for (DpuTermIndex termIndex : termIndexes) {
+          numTerms += termIndex.numTerms;
+          numBlockTableBytes += termIndex.blocksTableOutput.getFilePointer();
+          numBlockBytes += termIndex.blocksOutput.getFilePointer();
+          numPostingBytes += termIndex.postingsOutput.getFilePointer();
+        }
+      }
+
       for (DpuTermIndex termIndex : termIndexes) {
         termIndex.close();
+      }
+
+      if(enableStats) {
+        ByteArrayOutputStream statsOut = new ByteArrayOutputStream();
+        PrintWriter p = new PrintWriter(statsOut, true);
+        p.println("\n#TOTAL " + termIndexes.length + " DPUS");
+        p.println("#terms for DPUS       : " + numTerms);
+        p.println("#bytes block tables   : " + numBlockTableBytes);
+        p.println("#bytes block files    : " + numBlockBytes);
+        p.println("#bytes postings files : " + numPostingBytes);
+        System.out.println(statsOut);
       }
     }
 
