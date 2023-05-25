@@ -49,7 +49,7 @@ public final class ExtractJdkApis {
   
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
-  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/{java/lang/foreign/*,java/nio/channels/FileChannel}";
+  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/java/{lang/foreign/*,nio/channels/FileChannel,util/Objects}";
   private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
   private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
   
