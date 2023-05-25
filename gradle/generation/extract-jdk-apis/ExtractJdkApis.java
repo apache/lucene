@@ -99,8 +99,8 @@ public final class ExtractJdkApis {
       }
     }
     // recursively add all superclasses / interfaces of visible classes to classesToInclude:
-    for (Set<String> a = classesToInclude; !a.isEmpty(); 
-        a = a.stream().map(references::get).filter(Objects::nonNull).flatMap(Arrays::stream).collect(Collectors.toSet())) {
+    for (Set<String> a = classesToInclude; !a.isEmpty();) {
+      a = a.stream().map(references::get).filter(Objects::nonNull).flatMap(Arrays::stream).collect(Collectors.toSet());
       classesToInclude.addAll(a);
     }
     // remove all non-visible or not referenced classes:
