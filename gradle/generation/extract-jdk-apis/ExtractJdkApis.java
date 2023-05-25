@@ -50,7 +50,7 @@ public final class ExtractJdkApis {
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
   static final Map<String,String> CLASSFILE_MATCHERS = Map.of(
-      "java.base",             "glob:java/{lang/foreign/*,nio/channels/FileChannel,util/Objects}.class",
+      "java.base",             "glob:{java/lang/foreign/*,java/nio/channels/FileChannel,java/util/Objects,jdk/internal/vm/vector/VectorSupport*}.class",
       "jdk.incubator.vector",  "glob:jdk/incubator/vector/*.class"
   );
   
