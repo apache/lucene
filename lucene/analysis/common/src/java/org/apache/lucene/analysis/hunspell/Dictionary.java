@@ -155,7 +155,7 @@ public class Dictionary {
   boolean checkCompoundCase, checkCompoundDup, checkCompoundRep;
   boolean checkCompoundTriple, simplifiedTriple;
   int compoundMin = 3, compoundMax = Integer.MAX_VALUE;
-  List<CompoundRule> compoundRules; // nullable
+  CompoundRule[] compoundRules; // nullable
   List<CheckCompoundPattern> checkCompoundPatterns = new ArrayList<>();
 
   // ignored characters (dictionary, affix, inputs)
@@ -601,11 +601,11 @@ public class Dictionary {
     return parts;
   }
 
-  private List<CompoundRule> parseCompoundRules(LineNumberReader reader, int num)
+  private CompoundRule[] parseCompoundRules(LineNumberReader reader, int num)
       throws IOException, ParseException {
-    List<CompoundRule> compoundRules = new ArrayList<>();
+    CompoundRule[] compoundRules = new CompoundRule[num];
     for (int i = 0; i < num; i++) {
-      compoundRules.add(new CompoundRule(singleArgument(reader, reader.readLine()), this));
+      compoundRules[i] = new CompoundRule(singleArgument(reader, reader.readLine()), this);
     }
     return compoundRules;
   }
