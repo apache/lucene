@@ -51,14 +51,6 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
     public abstract int nextDoc() throws IOException;
 
     /**
-     * Returns the next document ID from this sub reader, and {@link DocIdSetIterator#NO_MORE_DOCS}
-     * when done
-     */
-    public int ordToDoc(int ord){
-      return ord;
-    }
-
-    /**
      * Like {@link #nextDoc()} but skips over unmapped docs and returns the next mapped doc ID, or
      * {@link DocIdSetIterator#NO_MORE_DOCS} when exhausted. This method sets {@link #mappedDocID}
      * as a side effect.

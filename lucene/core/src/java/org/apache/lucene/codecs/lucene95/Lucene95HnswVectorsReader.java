@@ -518,7 +518,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     private final int[] currentNeighborsBuffer;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
-      super.multiValued = entry.vectorMultiValued;
       this.dataIn =
           vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
       this.nodesByLevel = entry.nodesByLevel;

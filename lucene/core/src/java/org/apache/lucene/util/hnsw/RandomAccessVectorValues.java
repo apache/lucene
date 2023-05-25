@@ -26,7 +26,11 @@ import java.io.IOException;
  * @lucene.experimental
  */
 public interface RandomAccessVectorValues<T> {
-
+  
+  default boolean isMultiValued() {
+    return false;
+  }
+  
   /** Return the number of vector values */
   int size();
 

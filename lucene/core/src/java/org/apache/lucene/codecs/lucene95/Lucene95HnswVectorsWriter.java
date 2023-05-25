@@ -401,7 +401,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     IndexInput vectorDataInput = null;
     boolean success = false;
     try {
-      int liveVectors;
+      int vectorsCount;
       DocsWithFieldSet docsWithField;
       docsWithField =
               switch (fieldInfo.getVectorEncoding()) {
@@ -411,7 +411,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 case FLOAT32 -> writeVectorData(
                         tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
               };
-      liveVectors = docsWithField.getVectorsCount();
+      vectorsCount = docsWithField.getVectorsCount();
           
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -440,7 +440,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
-                        liveVectors,
+                            vectorsCount,
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<byte[]> hnswGraphBuilder =
@@ -452,7 +452,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
-                        liveVectors,
+                            vectorsCount,
                         vectorDataInput,
                         byteSize);
                 HnswGraphBuilder<float[]> hnswGraphBuilder =
@@ -472,7 +472,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexOffset,
           vectorIndexLength,
           docsWithField,
-          liveVectors,
+              vectorsCount,
           graph,
           vectorIndexNodeOffsets);
       success = true;
@@ -864,7 +864,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
                     .order(ByteOrder.LITTLE_ENDIAN);
 
-    for (int vectorId = floatVectorValues.nextOrd(); vectorId != NO_MORE_DOCS; vectorId = floatVectorValues.nextOrd()) {
+    for (int vectorId = floatVectorValues.nextDoc(); vectorId != NO_MORE_DOCS; vectorId = floatVectorValues.nextDoc()) {
       int docID = floatVectorValues.ordToDoc(vectorId);
       float[] value = floatVectorValues.vectorValue();
       buffer.asFloatBuffer().put(value);

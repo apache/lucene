@@ -1093,6 +1093,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         }
       }
     }
+    if (randomWriter != null) {
+      randomWriter.forceMerge(1);
+    } else {
+      writer.forceMerge(1);
+    }
   }
 
   private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)

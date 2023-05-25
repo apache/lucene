@@ -120,11 +120,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     public int nextDoc() throws IOException {
       return values.nextDoc();
     }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
-    }
   }
 
   private static class ByteVectorValuesSub extends DocIDMerger.Sub {

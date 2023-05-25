@@ -72,13 +72,4 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
   public int ordToDoc(int ord){
     return ord;
   }
-
-  /**
-   * Return the next vector ID(ordinal)
-   *
-   * @return the vector ID(ordinal)
-   */
-  public int nextOrd() throws IOException {
-    return nextDoc();
-  }
 }
