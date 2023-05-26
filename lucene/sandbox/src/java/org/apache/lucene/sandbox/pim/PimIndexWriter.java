@@ -18,6 +18,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.PriorityQueue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Collections;
+import java.util.Arrays;
 
 /**
  * Extends {@link IndexWriter} to build the term indexes for each DPU after each commit.
@@ -159,11 +161,12 @@ public class PimIndexWriter extends IndexWriter {
 
   private class DpuTermIndexes implements Closeable {
 
-    private final int numDocsPerDpu;
+    private int dpuForDoc[];
     private final DpuTermIndex[] termIndexes;
     private PostingsEnum postingsEnum;
     private final ByteBuffersDataOutput posBuffer;
     private FieldInfo fieldInfo;
+    PriorityQueue<DpuIndexSize> dpuPrQ;
     static final int blockSize = 8;
 
     DpuTermIndexes(SegmentCommitInfo segmentCommitInfo, int numFields) throws IOException {
@@ -172,8 +175,8 @@ public class PimIndexWriter extends IndexWriter {
       // 2- adapted to the doc size, but it would require to keep the doc size info
       //    at indexing time, in a new file. Then here we could target (sumDocSizes / numDpus)
       //    per DPU.
-      numDocsPerDpu = Math.max((segmentCommitInfo.info.maxDoc()) / pimConfig.getNumDpus(),
-              1);
+      dpuForDoc = new int[segmentCommitInfo.info.maxDoc()];
+      Arrays.fill(dpuForDoc, -1);
       termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
 
       System.out.println("Directory " + getDirectory() + " --------------");
@@ -192,6 +195,16 @@ public class PimIndexWriter extends IndexWriter {
                 numFields, blockSize);
       }
       posBuffer = ByteBuffersDataOutput.newResettableInstance();
+
+      dpuPrQ = new PriorityQueue<>(pimConfig.getNumDpus()) {
+        @Override
+        protected boolean lessThan(DpuIndexSize a, DpuIndexSize b) {
+          return a.byteSize < b.byteSize;
+        }
+      };
+      for(int i = pimConfig.getNumDpus() - 1; i >= 0; --i) {
+        dpuPrQ.add(new DpuIndexSize(i, 0));
+      }
     }
 
     void writeTerms(FieldInfo fieldInfo, TermsEnum termsEnum) throws IOException {
@@ -211,7 +224,7 @@ public class PimIndexWriter extends IndexWriter {
         postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.POSITIONS);
         int doc;
         while ((doc = postingsEnum.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
-          int dpuIndex = Math.min(doc / numDocsPerDpu, pimConfig.getNumDpus() - 1);
+          int dpuIndex = getDpuForDoc(doc);
           DpuTermIndex termIndex = termIndexes[dpuIndex];
           termIndex.writeTermIfAbsent(term);
           termIndex.writeDoc(doc);
@@ -223,6 +236,34 @@ public class PimIndexWriter extends IndexWriter {
       }
     }
 
+    private static class DpuIndexSize {
+      int dpuIndex;
+      long byteSize;
+      DpuIndexSize(int dpuIndex, long byteSize) {
+        this.dpuIndex = dpuIndex;
+        this.byteSize = byteSize;
+      }
+    }
+
+    int getDpuForDoc(int doc) {
+      if(dpuForDoc[doc] < 0) {
+        int dpuIndex = getDpuWithSmallerIndex();
+        dpuForDoc[doc] = dpuIndex;
+        addDpuIndexSize(dpuIndex, termIndexes[dpuIndex].getIndexSize());
+      }
+      return dpuForDoc[doc];
+    }
+
+    int getDpuWithSmallerIndex() {
+
+      DpuIndexSize dpu = dpuPrQ.pop();
+      return dpu.dpuIndex;
+    }
+
+    void addDpuIndexSize(int dpuIndex, long byteSize) {
+      dpuPrQ.add(new DpuIndexSize(dpuIndex, byteSize));
+    }
+
     @Override
     public void close() throws IOException {
       //TODO: group all the DPU term index files for one segment in a single compound file.
@@ -231,12 +272,14 @@ public class PimIndexWriter extends IndexWriter {
       // when searching alphabetically for a specific term.
 
       int numTerms = 0, numBlockTableBytes = 0, numBlockBytes = 0, numPostingBytes = 0;
+      int numBytesIndex = 0;
       if(enableStats) {
         for (DpuTermIndex termIndex : termIndexes) {
           numTerms += termIndex.numTerms;
           numBlockTableBytes += termIndex.blocksTableOutput.getFilePointer();
           numBlockBytes += termIndex.blocksOutput.getFilePointer();
           numPostingBytes += termIndex.postingsOutput.getFilePointer();
+          numBytesIndex += termIndex.getIndexSize();
         }
       }
 
@@ -244,14 +287,19 @@ public class PimIndexWriter extends IndexWriter {
         termIndex.close();
       }
 
+      // merge all DPU indexes into one compound file
+      //TODO
+
       if(enableStats) {
         ByteArrayOutputStream statsOut = new ByteArrayOutputStream();
         PrintWriter p = new PrintWriter(statsOut, true);
+        p.println("\n------------ FULL PIM INDEX STATS -------------");
         p.println("\n#TOTAL " + termIndexes.length + " DPUS");
         p.println("#terms for DPUS       : " + numTerms);
         p.println("#bytes block tables   : " + numBlockTableBytes);
         p.println("#bytes block files    : " + numBlockBytes);
         p.println("#bytes postings files : " + numPostingBytes);
+        p.println("#bytes index          : " + numBytesIndex);
         System.out.println(statsOut);
       }
     }
@@ -513,12 +561,20 @@ public class PimIndexWriter extends IndexWriter {
           p.println("#bytes block table    : " + blocksTableOutput.getFilePointer());
           p.println("#bytes block file     : " + blocksOutput.getFilePointer());
           p.println("#bytes postings file  : " + postingsOutput.getFilePointer());
+          p.println("#bytes index          : " + getIndexSize());
           System.out.println(statsOut.toString());
         }
         fieldTableOutput.close();
         blocksTableOutput.close();
         blocksOutput.close();
         postingsOutput.close();
+      }
+
+      public long getIndexSize() {
+        return fieldTableOutput.getFilePointer() +
+                blocksTableOutput.getFilePointer() +
+                blocksOutput.getFilePointer() +
+                postingsOutput.getFilePointer();
       }
     }
   }

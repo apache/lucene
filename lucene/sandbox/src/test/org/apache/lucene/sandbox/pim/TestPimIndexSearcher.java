@@ -73,8 +73,8 @@ public class TestPimIndexSearcher extends LuceneTestCase {
             System.out.println("Doc:" + m.docId + " freq:" + m.score);
         });
         ArrayList<PimMatch> expectedMatches = new ArrayList<>();
-        expectedMatches.add(new PimMatch(0, 1));
         expectedMatches.add(new PimMatch(1, 1));
+        expectedMatches.add(new PimMatch(0, 1));
         assert matches.equals(expectedMatches);
 
         matches = pimSearcher.searchTerm(new BytesRef("field1"), new BytesRef("green"));
