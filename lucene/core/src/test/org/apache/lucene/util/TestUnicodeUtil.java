@@ -181,7 +181,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
         reuse = UnicodeUtil.codePointAt(utf8, pos, reuse);
         assertEquals(expected[expectedUpto], reuse.codePoint);
         expectedUpto++;
-        pos += reuse.codePointBytes;
+        pos += reuse.numBytes;
       }
       assertEquals(utf8Len, pos);
       assertEquals(expected.length, expectedUpto);

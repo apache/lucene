@@ -308,7 +308,7 @@ final class StringsToAutomaton {
           break;
         }
         state = next;
-        pos += codePoint.codePointBytes;
+        pos += codePoint.numBytes;
       }
     }
 
@@ -324,7 +324,7 @@ final class StringsToAutomaton {
       while (pos < max) {
         codePoint = UnicodeUtil.codePointAt(bytes, pos, codePoint);
         state = state.newState(codePoint.codePoint);
-        pos += codePoint.codePointBytes;
+        pos += codePoint.numBytes;
       }
     }
     state.is_final = true;

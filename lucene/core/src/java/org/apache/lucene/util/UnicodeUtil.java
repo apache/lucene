@@ -481,7 +481,7 @@ public final class UnicodeUtil {
     while (utf8Upto < utf8Limit) {
       reuse = codePointAt(bytes, utf8Upto, reuse);
       ints[utf32Count++] = reuse.codePoint;
-      utf8Upto += reuse.codePointBytes;
+      utf8Upto += reuse.numBytes;
     }
 
     return utf32Count;
@@ -491,10 +491,8 @@ public final class UnicodeUtil {
    * Computes the codepoint and codepoint length (in bytes) of the specified {@code offset} in the
    * provided {@code utf8} byte array, assuming UTF8 encoding. As with other related methods in this
    * class, this assumes valid UTF8 input and <strong>does not perform</strong> full UTF8
-   * validation.
-   *
-   * @throws IllegalArgumentException If invalid codepoint header byte occurs or the content is
-   *     prematurely truncated.
+   * validation. Passing invalid UTF8 or a position that is not a valid header byte position may
+   * result in undefined behavior. This makes no attempt to synchronize or validate.
    */
   public static UTF8CodePoint codePointAt(byte[] utf8, int pos, UTF8CodePoint reuse) {
     if (reuse == null) {
@@ -503,7 +501,7 @@ public final class UnicodeUtil {
 
     int leadByte = utf8[pos] & 0xFF;
     int numBytes = utf8CodeLength[leadByte];
-    reuse.codePointBytes = numBytes;
+    reuse.numBytes = numBytes;
     int v;
     switch (numBytes) {
       case 1 -> {
@@ -513,7 +511,8 @@ public final class UnicodeUtil {
       case 2 -> v = leadByte & 31; // 5 useful bits
       case 3 -> v = leadByte & 15; // 4 useful bits
       case 4 -> v = leadByte & 7; // 3 useful bits
-      default -> throw new IllegalArgumentException("invalid utf8");
+      default -> throw new IllegalArgumentException(
+          "Invalid UTF8 header byte: 0x" + Integer.toHexString(leadByte));
     }
 
     // TODO: this may read past utf8's limit.
@@ -530,7 +529,7 @@ public final class UnicodeUtil {
   /** Holds a codepoint along with the number of bytes required to represent it in UTF8 */
   public static final class UTF8CodePoint {
     public int codePoint;
-    public int codePointBytes;
+    public int numBytes;
   }
 
   /** Shift value for lead surrogate to form a supplementary character. */
