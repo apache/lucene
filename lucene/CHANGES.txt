@@ -116,6 +116,10 @@ Other
 
 API Changes
 ---------------------
+
+* GITHUB#12268: Add BitSet.clear() without parameters for clearing the entire set
+  (Jonathan Ellis)
+
 (No changes)
 
 New Features
