@@ -1135,7 +1135,7 @@ public final class Operations {
       FixedBitSet tmp = current;
       current = next;
       next = tmp;
-      next.clear(0, next.length());
+      next.clear();
     }
     return builder.toString();
   }

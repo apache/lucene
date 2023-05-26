@@ -339,7 +339,7 @@ public class HnswGraphSearcher<T> {
     if (visited.length() < capacity) {
       visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
     }
-    visited.clear(0, visited.length());
+    visited.clear();
   }
 
   /**

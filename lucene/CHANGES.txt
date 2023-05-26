@@ -18,6 +18,9 @@ API Changes
 * GITHUB#xx: DaciukMihovAutomatonBuilder has been marked deprecated in preparation of reducing its visibility in
   a future release. (Greg Miller)
 
+* GITHUB#12268: Add BitSet.clear() without parameters for clearing the entire set
+  (Jonathan Ellis)
+
 New Features
 ---------------------
 
