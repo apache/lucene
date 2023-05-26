@@ -51,6 +51,8 @@ API Changes
   They have already been runtime-checked to only be implemented by the specific classes
   so this is effectively a non-breaking change.
 
+* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton
+
 New Features
 ---------------------
 
@@ -139,10 +141,14 @@ Improvements
 
 * GITHUB#12305: Minor cleanup and improvements to DaciukMihovAutomatonBuilder. (Greg Miller)
 
+* GITHUB#12325: Parallelize AbstractKnnVectorQuery rewrite across slices rather than segments. (Luca Cavanna)
+
 Optimizations
 ---------------------
 
 * GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
+
+* GITHUB#12160: Concurrent rewrite for AbstractKnnVectorQuery. (Kaival Parikh)
 
 * GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
 
