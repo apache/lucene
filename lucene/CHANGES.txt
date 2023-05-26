@@ -76,8 +76,6 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
-* GITHUB#12328: Optimize ConjunctionDISI.createConjunction (Armin Braun)
-
 Bug Fixes
 ---------------------
 
@@ -151,6 +149,8 @@ Optimizations
 * GITHUB#12286 Toposort use iterator to avoid stackoverflow. (Tang Donghai)
 
 * GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
+
+* GITHUB#12328: Optimize ConjunctionDISI.createConjunction (Armin Braun)
 
 Bug Fixes
 ---------------------
