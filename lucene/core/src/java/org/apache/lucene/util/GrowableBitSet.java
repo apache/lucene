@@ -45,6 +45,11 @@ public class GrowableBitSet extends BitSet {
   }
 
   @Override
+  public void clear() {
+    bitSet.clear();
+  }
+
+  @Override
   public boolean get(int index) {
     return bitSet.get(index);
   }

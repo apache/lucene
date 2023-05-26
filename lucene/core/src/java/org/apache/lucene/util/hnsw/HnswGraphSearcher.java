@@ -369,6 +369,6 @@ public class HnswGraphSearcher<T> {
       }
       // else GrowableBitSet knows how to grow itself safely
     }
-    visited.clear(0, visited.length());
+    visited.clear();
   }
 }
