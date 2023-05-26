@@ -288,30 +288,27 @@ final class StringsToAutomaton {
         : "Input must be in sorted UTF-8 order: " + previous.get() + " >= " + current;
     assert setPrevious(current);
 
-    // Reusable state information if we're building a non-binary based automaton
-    UnicodeUtil.UTF8CodePointState scratchState = null;
-    if (asBinary == false) {
-      scratchState = new UnicodeUtil.UTF8CodePointState();
-    }
+    // Reusable codepoint information if we're building a non-binary based automaton
+    UnicodeUtil.UTF8CodePoint codePoint = null;
 
     // Descend in the automaton (find matching prefix).
-    int pos = 0, max = current.length;
+    byte[] bytes = current.bytes;
+    int pos = current.offset, max = current.offset + current.length;
     State next, state = root;
     if (asBinary) {
-      while (pos < max
-          && (next = state.lastChild(current.bytes[current.offset + pos] & 0xff)) != null) {
+      while (pos < max && (next = state.lastChild(bytes[pos] & 0xff)) != null) {
         state = next;
         pos++;
       }
     } else {
       while (pos < max) {
-        UnicodeUtil.UTF8CodePointAt(current, pos, scratchState);
-        next = state.lastChild(scratchState.codePoint);
+        codePoint = UnicodeUtil.codePointAt(bytes, pos, codePoint);
+        next = state.lastChild(codePoint.codePoint);
         if (next == null) {
           break;
         }
         state = next;
-        pos += scratchState.codePointBytes;
+        pos += codePoint.codePointBytes;
       }
     }
 
@@ -320,15 +317,14 @@ final class StringsToAutomaton {
     // Add suffix
     if (asBinary) {
       while (pos < max) {
-        state = state.newState(current.bytes[current.offset + pos] & 0xff);
+        state = state.newState(bytes[pos] & 0xff);
         pos++;
       }
     } else {
       while (pos < max) {
-        assert scratchState != null;
-        UnicodeUtil.UTF8CodePointAt(current, pos, scratchState);
-        state = state.newState(scratchState.codePoint);
-        pos += scratchState.codePointBytes;
+        codePoint = UnicodeUtil.codePointAt(bytes, pos, codePoint);
+        state = state.newState(codePoint.codePoint);
+        pos += codePoint.codePointBytes;
       }
     }
     state.is_final = true;

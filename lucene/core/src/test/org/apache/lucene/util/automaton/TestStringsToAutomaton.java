@@ -103,12 +103,14 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     CompiledAutomaton c = new CompiledAutomaton(a, true, false, isBinary);
     ByteRunAutomaton runAutomaton = c.runAutomaton;
 
+    // Make sure every expected term is accepted
     for (BytesRef t : expected) {
       String readable = isBinary ? t.toString() : t.utf8ToString();
       assertTrue(
           readable + " should be found but wasn't", runAutomaton.run(t.bytes, t.offset, t.length));
     }
 
+    // Make sure every term produced by the automaton is expected
     BytesRefBuilder scratch = new BytesRefBuilder();
     FiniteStringsIterator it = new FiniteStringsIterator(c.automaton);
     for (IntsRef r = it.next(); r != null; r = it.next()) {

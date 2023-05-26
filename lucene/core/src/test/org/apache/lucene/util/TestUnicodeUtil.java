@@ -168,21 +168,20 @@ public class TestUnicodeUtil extends LuceneTestCase {
 
   public void testUTF8CodePointAt() {
     int num = atLeast(50000);
-    UnicodeUtil.UTF8CodePointState state = new UnicodeUtil.UTF8CodePointState();
+    UnicodeUtil.UTF8CodePoint reuse = null;
     for (int i = 0; i < num; i++) {
       final String s = TestUtil.randomUnicodeString(random());
       final byte[] utf8 = new byte[UnicodeUtil.maxUTF8Length(s.length())];
       final int utf8Len = UnicodeUtil.UTF16toUTF8(s, 0, s.length(), utf8);
-      final BytesRef utf8Ref = newBytesRef(utf8, 0, utf8Len);
 
       int[] expected = s.codePoints().toArray();
       int pos = 0;
       int expectedUpto = 0;
       while (pos < utf8Len) {
-        UnicodeUtil.UTF8CodePointAt(utf8Ref, pos, state);
-        assertEquals(expected[expectedUpto], state.codePoint);
+        reuse = UnicodeUtil.codePointAt(utf8, pos, reuse);
+        assertEquals(expected[expectedUpto], reuse.codePoint);
         expectedUpto++;
-        pos += state.codePointBytes;
+        pos += reuse.codePointBytes;
       }
       assertEquals(utf8Len, pos);
       assertEquals(expected.length, expectedUpto);

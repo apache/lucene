@@ -477,11 +477,11 @@ public final class UnicodeUtil {
     int utf8Upto = utf8.offset;
     final byte[] bytes = utf8.bytes;
     final int utf8Limit = utf8.offset + utf8.length;
-    UTF8CodePointState state = new UTF8CodePointState();
+    UTF8CodePoint reuse = null;
     while (utf8Upto < utf8Limit) {
-      UTF8CodePointAt(bytes, utf8Upto, state);
-      ints[utf32Count++] = state.codePoint;
-      utf8Upto += state.codePointBytes;
+      reuse = codePointAt(bytes, utf8Upto, reuse);
+      ints[utf32Count++] = reuse.codePoint;
+      utf8Upto += reuse.codePointBytes;
     }
 
     return utf32Count;
@@ -489,27 +489,26 @@ public final class UnicodeUtil {
 
   /**
    * Computes the codepoint and codepoint length (in bytes) of the specified {@code offset} in the
-   * provided {@code utf8} {@link BytesRef}, assuming UTF8 encoding. Note that {@code offset} is
-   * always zero-based, not relative to {@link BytesRef#offset}. As with other related methods in
-   * this class, this assumes valid UTF8 input and <strong>does not perform</strong> full UTF8
+   * provided {@code utf8} byte array, assuming UTF8 encoding. As with other related methods in this
+   * class, this assumes valid UTF8 input and <strong>does not perform</strong> full UTF8
    * validation.
    *
    * @throws IllegalArgumentException If invalid codepoint header byte occurs or the content is
    *     prematurely truncated.
    */
-  public static void UTF8CodePointAt(BytesRef utf8, int offset, UTF8CodePointState state) {
-    UTF8CodePointAt(utf8.bytes, utf8.offset + offset, state);
-  }
+  public static UTF8CodePoint codePointAt(byte[] utf8, int pos, UTF8CodePoint reuse) {
+    if (reuse == null) {
+      reuse = new UTF8CodePoint();
+    }
 
-  private static void UTF8CodePointAt(byte[] utf8, int pos, UTF8CodePointState state) {
     int leadByte = utf8[pos] & 0xFF;
     int numBytes = utf8CodeLength[leadByte];
-    state.codePointBytes = numBytes;
+    reuse.codePointBytes = numBytes;
     int v;
     switch (numBytes) {
       case 1 -> {
-        state.codePoint = leadByte;
-        return;
+        reuse.codePoint = leadByte;
+        return reuse;
       }
       case 2 -> v = leadByte & 31; // 5 useful bits
       case 3 -> v = leadByte & 15; // 4 useful bits
@@ -523,11 +522,13 @@ public final class UnicodeUtil {
     while (pos < limit) {
       v = v << 6 | utf8[pos++] & 63;
     }
-    state.codePoint = v;
+    reuse.codePoint = v;
+
+    return reuse;
   }
 
-  /** Holds a Unicode codepoint along with the number of bytes required to represent it in UTF8 */
-  public static final class UTF8CodePointState {
+  /** Holds a codepoint along with the number of bytes required to represent it in UTF8 */
+  public static final class UTF8CodePoint {
     public int codePoint;
     public int codePointBytes;
   }
