@@ -184,7 +184,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         fieldData.docsWithVectors,
-        fieldData.vectors.size(),
         graph,
         graphLevelNodeOffsets);
   }
@@ -254,7 +253,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         newDocsWithVectors,
-        newDocsWithVectors.getVectorsCount(),
         mockGraph,
         graphLevelNodeOffsets);
   }
@@ -401,7 +399,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     IndexInput vectorDataInput = null;
     boolean success = false;
     try {
-      int vectorsCount;
       // write the vector data to a temporary file
       DocsWithVectorsSet docsWithVectors =
               switch (fieldInfo.getVectorEncoding()) {
@@ -410,7 +407,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 case FLOAT32 -> writeVectorData(
                         tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
               };
-      vectorsCount = docsWithVectors.getVectorsCount();
+      int vectorsCount = docsWithVectors.getVectorsCount();
           
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -471,7 +468,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexOffset,
           vectorIndexLength,
           docsWithVectors,
-              vectorsCount,
           graph,
           vectorIndexNodeOffsets);
       success = true;
@@ -726,7 +722,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       long vectorIndexOffset,
       long vectorIndexLength,
       DocsWithVectorsSet docsWithVectors,
-      int vectorsCount,
       HnswGraph graph,
       int[][] graphLevelNodeOffsets)
       throws IOException {
@@ -741,6 +736,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVInt(field.getVectorDimension());
 
     // write docIDs
+    int vectorsCount = docsWithVectors.getVectorsCount();
     meta.writeInt(vectorsCount);
     if (vectorsCount == 0) {
       meta.writeLong(-2); // docsWithFieldOffset
@@ -756,7 +752,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       long offset = vectorData.getFilePointer();
       meta.writeLong(offset); // docsWithFieldOffset
 
-      DocIdSetIterator vectorIterator = docsWithVectors.iterator();
+      DocIdSetIterator vectorIterator;
       if (docsWithVectors.isMultiValued()) {
         vectorIterator = DocIdSetIterator.all(docsWithVectors.getVectorsCount());
       } else {
