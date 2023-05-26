@@ -40,9 +40,9 @@ import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
-import org.apache.lucene.util.automaton.StringsToAutomaton;
 import org.apache.lucene.util.automaton.Transition;
 
 public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
@@ -780,7 +780,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     acceptStrings.sort(Comparator.naturalOrder());
 
     acceptStrings = acceptStrings.stream().limit(wordCount).collect(Collectors.toList());
-    Automaton nonFlattenedAutomaton = StringsToAutomaton.build(acceptStrings);
+    Automaton nonFlattenedAutomaton = Automata.makeStringUnion(acceptStrings);
 
     TokenStream ts = AutomatonToTokenStream.toTokenStream(nonFlattenedAutomaton);
     TokenStream flattenedTokenStream = new FlattenGraphFilter(ts);

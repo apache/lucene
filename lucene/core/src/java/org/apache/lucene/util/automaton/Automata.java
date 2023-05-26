@@ -40,6 +40,11 @@ import org.apache.lucene.util.StringHelper;
  * @lucene.experimental
  */
 public final class Automata {
+  /**
+   * {@link #makeStringUnion(Collection)} limits terms of this max length to ensure the stack
+   * doesn't overflow while building, since our algorithm currently relies on recursion.
+   */
+  public static final int MAX_STRING_UNION_TERM_LENGTH = 1000;
 
   private Automata() {}
 

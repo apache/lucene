@@ -53,6 +53,8 @@ API Changes
 
 * GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton
 
+* GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
+
 New Features
 ---------------------
 
