@@ -348,7 +348,7 @@ public class PimIndexSearcher implements Closeable {
                     Arrays.fill(currPos, -1);
                     PositionsIterator[] posIt = new PositionsIterator[termPostings.length];
                     for (int i = 0; i < termPostings.length; ++i) {
-                        posIt[i] = new PositionsIterator(termPostings[i], docIt[i].getNbPositionsForDoc());
+                        posIt[i] = new PositionsIterator(termPostings[i], docIt[i].getFreq());
                     }
 
                     searchPos[0] = posIt[0].Next(0);
@@ -523,7 +523,6 @@ public class PimIndexSearcher implements Closeable {
             private final long endPointer;
             private int lastDoc;
             private long nextDocPointer;
-            private long nbPositions;
             private int freq;
 
             /**
@@ -535,7 +534,6 @@ public class PimIndexSearcher implements Closeable {
                 this.endPointer = postingInput.getFilePointer() + byteSize;
                 this.lastDoc = 0;
                 this.nextDocPointer = -1;
-                this.nbPositions = -1;
                 this.freq = -1;
             }
 
@@ -550,32 +548,27 @@ public class PimIndexSearcher implements Closeable {
                 // stop if this is the end of the posting list for the term
                 if (postingInput.getFilePointer() >= endPointer) {
                     nextDocPointer = -1;
-                    nbPositions = -1;
                     return -1;
                 }
 
                 // decode doc, freq and byte size
                 int deltaDoc = postingInput.readVInt();
                 lastDoc += deltaDoc;
-                freq = postingInput.readZInt();
-                if (freq == 0) {
-                    nbPositions = postingInput.readVInt();
+                int tmpFreq = postingInput.readZInt();
+                if (tmpFreq == 0) {
+                    freq = postingInput.readVInt();
                     nextDocPointer = postingInput.readVLong();
                     nextDocPointer += postingInput.getFilePointer();
-                } else if (freq < 0) {
-                    nbPositions = -freq;
+                } else if (tmpFreq < 0) {
+                    freq = -tmpFreq;
                     nextDocPointer = postingInput.readShort();
                     nextDocPointer += postingInput.getFilePointer();
                 } else {
-                    nbPositions = freq;
+                    freq = tmpFreq;
                     nextDocPointer = postingInput.readByte();
                     nextDocPointer += postingInput.getFilePointer();
                 }
                 return lastDoc;
-            }
-
-            long getNbPositionsForDoc() {
-                return nbPositions;
             }
 
             int getFreq() {
