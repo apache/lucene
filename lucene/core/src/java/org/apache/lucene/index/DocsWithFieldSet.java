@@ -22,26 +22,18 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 
-import java.util.Stack;
-
 /**
  * Accumulator for documents that have a value for a field. This is optimized for the case that all
  * documents have a value.
  */
-public final class DocsWithFieldSet extends DocIdSet {
+public class DocsWithFieldSet extends DocIdSet {
 
-  private static long BASE_RAM_BYTES_USED =
+  protected static long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(DocsWithFieldSet.class);
 
-  private FixedBitSet set;
-  private int docsCount = 0;
-  private int lastDocId = 0; // at a certain point in time this was changed to 0? why?
-  
-  private Stack<Integer> valuesPerDocuments;
-  private int currentDocVectorsCount;
-  private int vectorsCount;
-  
-  private boolean multiValued = false;
+  protected FixedBitSet set;
+  protected int cardinality = 0;
+  protected int lastDocId = -1;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}
@@ -52,51 +44,21 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param docID – document ID to be added
    */
   public void add(int docID) {
-    if (docID < lastDocId) {
+    if (docID <= lastDocId) {
       throw new IllegalArgumentException(
           "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
     }
     if (set != null) {
       set = FixedBitSet.ensureCapacity(set, docID);
       set.set(docID);
-    } else if (docID != docsCount) {
+    } else if (docID != cardinality) {
       // migrate to a sparse encoding using a bit set
       set = new FixedBitSet(docID + 1);
-      set.set(0, docsCount);
+      set.set(0, cardinality);
       set.set(docID);
     }
     lastDocId = docID;
-    docsCount++;
-  }
-
-  public void addMultiValue(int docID) {
-    if (docID < lastDocId) {
-      throw new IllegalArgumentException(
-              "Out of order doc ids: last=" + lastDocId + ", next=" + docID);
-    }
-    if (set == null) { //first doc arrives
-      valuesPerDocuments = new Stack<>();
-      currentDocVectorsCount = 0;
-      vectorsCount = 0;
-      set = new FixedBitSet(docID + 1);
-      set.set(0, docsCount);
-      set.set(docID);
-      docsCount++;
-    } else {
-      set = FixedBitSet.ensureCapacity(set, docID);
-      if (!set.getAndSet(docID)) { 
-        docsCount++; //this is the first vector for the docID
-      } else {
-        multiValued = true;
-      }
-    }
-    if(docID != lastDocId){//vector for lastDocId are finished
-      valuesPerDocuments.push(currentDocVectorsCount);
-      currentDocVectorsCount = 0;
-    }
-    currentDocVectorsCount++;
-    vectorsCount++;
-    lastDocId = docID;
+    cardinality++;
   }
 
   @Override
@@ -106,35 +68,11 @@ public final class DocsWithFieldSet extends DocIdSet {
 
   @Override
   public DocIdSetIterator iterator() {
-    return set != null ? new BitSetIterator(set, docsCount) : DocIdSetIterator.all(docsCount);
+    return set != null ? new BitSetIterator(set, cardinality) : DocIdSetIterator.all(cardinality);
   }
 
   /** Return the number of documents of this set. */
   public int cardinality() {
-    return docsCount;
-  }
-  /** Return the number of vectors of this set. */
-  public int getVectorsCount() {
-    return vectorsCount;
-  }
-
-  public boolean isMultiValued() {
-    return multiValued;
-  }
-
-  public int[] getValuesPerDocument() {
-    if(valuesPerDocuments != null) {
-      int[] valuesPerDocumentArray = new int[docsCount];
-      if (currentDocVectorsCount != 0) {
-        valuesPerDocuments.push(currentDocVectorsCount);
-        currentDocVectorsCount = 0;
-      }
-      for (int i = valuesPerDocumentArray.length - 1; i > -1; i--) {
-        valuesPerDocumentArray[i] = valuesPerDocuments.pop();
-      }
-      return valuesPerDocumentArray;
-    } else {
-      return null;
-    }
+    return cardinality;
   }
 }
