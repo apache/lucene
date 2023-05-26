@@ -49,6 +49,8 @@ Optimizations
 
 * GITHUB#12235: Optimize HNSW diversity calculation. (Patrick Zhai)
 
+* GITHUB#12328: Optimize ConjunctionDISI.createConjunction (Armin Braun)
+
 Bug Fixes
 ---------------------
 
