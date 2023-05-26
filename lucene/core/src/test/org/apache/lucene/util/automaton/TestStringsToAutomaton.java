@@ -43,6 +43,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
 
     Automaton a = build(terms, false);
     checkAutomaton(terms, a, false);
+    checkMinimized(a);
   }
 
   public void testBasicBinary() throws Exception {
@@ -51,6 +52,35 @@ public class TestStringsToAutomaton extends LuceneTestCase {
 
     Automaton a = build(terms, true);
     checkAutomaton(terms, a, true);
+    checkMinimized(a);
+  }
+
+  public void testRandomMinimized() throws Exception {
+    int iters = RandomizedTest.isNightly() ? 20 : 5;
+    for (int i = 0; i < iters; i++) {
+      boolean buildBinary = random().nextBoolean();
+      int size = random().nextInt(2, 50);
+      Set<BytesRef> terms = new HashSet<>();
+      List<Automaton> automatonList = new ArrayList<>(size);
+      for (int j = 0; j < size; j++) {
+        if (buildBinary) {
+          BytesRef t = TestUtil.randomBinaryTerm(random(), 8);
+          terms.add(t);
+          automatonList.add(Automata.makeBinary(t));
+        } else {
+          String s = TestUtil.randomRealisticUnicodeString(random(), 8);
+          terms.add(newBytesRef(s));
+          automatonList.add(Automata.makeString(s));
+        }
+      }
+      List<BytesRef> sortedTerms = terms.stream().sorted().toList();
+
+      Automaton expected =
+          MinimizationOperations.minimize(
+              Operations.union(automatonList), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+      Automaton actual = build(sortedTerms, buildBinary);
+      assertSameAutomaton(expected, actual);
+    }
   }
 
   public void testRandomUnicodeOnly() throws Exception {
@@ -119,6 +149,18 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     }
   }
 
+  private void checkMinimized(Automaton a) {
+    Automaton minimized =
+        MinimizationOperations.minimize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    assertSameAutomaton(minimized, a);
+  }
+
+  private static void assertSameAutomaton(Automaton a, Automaton b) {
+    assertEquals(a.getNumStates(), b.getNumStates());
+    assertEquals(a.getNumTransitions(), b.getNumTransitions());
+    assertTrue(Operations.sameLanguage(a, b));
+  }
+
   private List<BytesRef> basicTerms() {
     List<BytesRef> terms = new ArrayList<>();
     terms.add(newBytesRef("dog"));
@@ -137,7 +179,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     }
   }
 
-  private static class TermIterator implements BytesRefIterator {
+  private static final class TermIterator implements BytesRefIterator {
     private final Iterator<BytesRef> it;
 
     TermIterator(Collection<BytesRef> terms) {
