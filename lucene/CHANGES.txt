@@ -125,7 +125,7 @@ New Features
   squareDistance(), cosine() with Java 20 jdk.incubator.vector APIs. Applications started
   with command line parameter "java --add-modules jdk.incubator.vector" on exactly Java 20
   will automatically use the new vectorized implementations if running on a supported platform
-  (x86 AVX2 or later, ARM SVE or later). This is an opt-in feature and requires explicit Java
+  (x86 AVX2 or later, ARM NEON). This is an opt-in feature and requires explicit Java
   command line flag! When enabled, Lucene logs a notice using java.util.logging. Please test
   thoroughly and report bugs/slowness to Lucene's mailing list.
   (Chris Hegarty, Robert Muir, Uwe Schindler)
