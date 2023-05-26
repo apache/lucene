@@ -32,11 +32,9 @@ import org.apache.lucene.util.UnicodeUtil;
  * algorithm described in <a href="https://aclanthology.org/J00-1002.pdf">Incremental Construction
  * of Minimal Acyclic Finite-State Automata by Daciuk, Mihov, Watson and Watson</a>. This requires
  * sorted input data, but is very fast (nearly linear with the input size). Also offers the ability
- * to directly build a binary {@link Automaton} representation.
+ * to directly build a binary {@link Automaton} representation. Users should access this
+ * functionality through {@link Automata} static methods.
  *
- * @see #build(Collection)
- * @see #build(Collection, boolean)
- * @see #build(BytesRefIterator, boolean)
  * @see Automata#makeStringUnion(Collection)
  * @see Automata#makeBinaryStringUnion(Collection)
  * @see Automata#makeStringUnion(BytesRefIterator)
@@ -232,15 +230,6 @@ final class StringsToAutomaton {
     Automaton.Builder a = new Automaton.Builder();
     convert(a, root, new IdentityHashMap<>());
     return a.finish();
-  }
-
-  /**
-   * Build a minimal, deterministic automaton from a sorted list of {@link BytesRef} representing
-   * strings in UTF-8. These strings must be binary-sorted. Creates an {@link Automaton} with UTF-8
-   * codepoints as transition labels.
-   */
-  static Automaton build(Collection<BytesRef> input) {
-    return build(input, false);
   }
 
   /**

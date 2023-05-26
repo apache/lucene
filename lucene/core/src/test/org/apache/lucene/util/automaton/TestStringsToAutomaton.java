@@ -102,7 +102,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
         e.getMessage()
             .startsWith(
                 "This builder doesn't allow terms that are larger than "
-                    + StringsToAutomaton.MAX_TERM_LENGTH
+                    + Automata.MAX_STRING_UNION_TERM_LENGTH
                     + " characters"));
 
     byte[] b1k = ArrayUtil.copyOfSubArray(b10k, 0, 1000);
