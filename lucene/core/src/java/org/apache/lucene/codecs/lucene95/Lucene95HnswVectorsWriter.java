@@ -254,7 +254,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         vectorIndexOffset,
         vectorIndexLength,
         newDocsWithVectors,
-        fieldData.vectors.size(),
+        newDocsWithVectors.getVectorsCount(),
         mockGraph,
         graphLevelNodeOffsets);
   }
