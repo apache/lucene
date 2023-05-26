@@ -117,10 +117,18 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#11840, GITHUB#12304: Query rewrite now takes an IndexSearcher instead of
+  IndexReader to enable concurrent rewriting. Please note: This is implemented in
+  a backwards compatible way. A query overriding any of both rewrite methods is
+  supported. To implement this backwards layer in Lucene 9.x the
+  RuntimePermission "accessDeclaredMembers" is needed in applications using
+  SecurityManager.  (Patrick Zhai, Ben Trent, Uwe Schindler)
+
+* GITHUB#12321: DaciukMihovAutomatonBuilder has been marked deprecated in preparation of reducing its visibility in
+  a future release. (Greg Miller)
+
 * GITHUB#12268: Add BitSet.clear() without parameters for clearing the entire set
   (Jonathan Ellis)
-
-(No changes)
 
 New Features
 ---------------------
@@ -283,10 +291,15 @@ Other
 * GITHUB#11868: Add a FilterIndexInput and FilterIndexOutput class to more easily and safely create delegate
   IndexInput and IndexOutput classes (Marc D'Mello)
 
+* GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
+
 ======================== Lucene 9.5.0 =======================
 
 API Changes
 ---------------------
+* GITHUB#12093: Deprecate support for UTF8TaxonomyWriterCache and changed default to LruTaxonomyWriterCache.
+  Please use LruTaxonomyWriterCache instead. (Vigya Sharma)
+
 * GITHUB#11998: Add new stored fields and termvectors interfaces: IndexReader.storedFields()
   and IndexReader.termVectors(). Deprecate IndexReader.document() and IndexReader.getTermVector().
   The new APIs do not rely upon ThreadLocal storage for each index segment, which can greatly
@@ -304,7 +317,7 @@ API Changes
 * GITHUB#11761: TieredMergePolicy now allowed a maximum allowable deletes percentage of down to 5%, and the default
   maximum allowable deletes percentage is changed from 33% to 20%. (Marc D'Mello)
 
-* GITHUB#11822: Configure replicator PrimaryNode replica shutdown timeout. (Steven Schlansker)
+* GITHUB#11822: Configure replicator PrimaryNode replia shutdown timeout. (Steven Schlansker)
 
 * GITHUB#11930: Added IOContext#LOAD for files that are a small fraction of the
   total index size and heavily accessed with a random access pattern. Some
@@ -382,11 +395,11 @@ New Features
 * GITHUB#11869: RangeOnRangeFacetCounts added, supporting numeric range "relationship" faceting over docvalue-stored
   ranges. (Marc D'Mello)
 
+* LUCENE-10626 Hunspell: add tools to aid dictionary editing:
+  analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
+
 Improvements
 ---------------------
-* GITHUB#11778: Detailed part-of-speech information for particle(조사) and ending(어미) on Nori
-  is now tagged. (Namgyu Kim)
-
 * GITHUB#11785: Improve Tessellator performance by delaying calls to the method
   #isIntersectingPolygon (Ignacio Vera)
 
@@ -419,8 +432,6 @@ Bug Fixes
 * GITHUB#11768: Taxonomy and SSDV faceting now correctly breaks ties by preferring smaller ordinal
   values. (Greg Miller)
 
-* GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
-
 * GITHUB#11907: Fix latent casting bugs in BKDWriter. (Ben Trent)
 
 * GITHUB#11954: Remove QueryTimeout#isTimeoutEnabled method and move check to caller. (Shubham Chaudhary)
@@ -444,6 +455,8 @@ Bug Fixes
 
 * GITHUB#12072: Fix exponential runtime for nested BooleanQuery#rewrite when a
   BooleanClause is non-scoring. (Ben Trent)
+
+* GITHUB#11807: Don't rewrite queries in unified highlighter. (Alan Woodward)
 
 * GITHUB#12088: WeightedSpanTermExtractor should not throw UnsupportedOperationException
   when it encounters a FieldExistsQuery. (Alan Woodward)
@@ -498,6 +511,8 @@ Optimizations
 * GITHUB#12081: Small merging speedup on sorted indexes. (Adrien Grand)
 
 * GITHUB#12078: Enhance XXXField#newRangeQuery. (Lu Xugang)
+
+* GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
 Other
 ---------------------
@@ -628,7 +643,7 @@ Bug Fixes
 Build
 ---------------------
 
-* GITHUB#11720: Upgrade randomizedtesting to 2.8.1 (potential fix for odd wall clock - related 
+* GITHUB#11720: Upgrade randomizedtesting to 2.8.1 (potential fix for odd wall clock - related
   timeout failures). (Dawid Weiss)
 
 * LUCENE-10669: The build should be more helpful when generated resources are touched (Dawid Weiss)
