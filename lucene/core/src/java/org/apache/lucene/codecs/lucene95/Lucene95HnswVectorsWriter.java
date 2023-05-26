@@ -402,12 +402,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       int vectorsCount;
-      DocsWithVectorsSet docsWithVectors;
-      docsWithVectors =
+      // write the vector data to a temporary file
+      DocsWithVectorsSet docsWithVectors =
               switch (fieldInfo.getVectorEncoding()) {
-                case BYTE ->
-                        writeByteVectorData(
-                                tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+                case BYTE -> writeByteVectorData(
+                        tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
                 case FLOAT32 -> writeVectorData(
                         tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
               };
