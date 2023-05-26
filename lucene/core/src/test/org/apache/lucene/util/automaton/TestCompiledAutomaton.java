@@ -35,7 +35,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
       terms.add(new BytesRef(s));
     }
     Collections.sort(terms);
-    final Automaton a = DaciukMihovAutomatonBuilder.build(terms);
+    final Automaton a = Automata.makeStringUnion(terms);
     return new CompiledAutomaton(a, true, false, determinizeWorkLimit, false);
   }
 

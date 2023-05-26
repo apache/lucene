@@ -15,6 +15,9 @@ API Changes
   RuntimePermission "accessDeclaredMembers" is needed in applications using
   SecurityManager.  (Patrick Zhai, Ben Trent, Uwe Schindler)
 
+* GITHUB#xx: DaciukMihovAutomatonBuilder has been marked deprecated in preparation of reducing its visibility in
+  a future release. (Greg Miller)
+
 New Features
 ---------------------
 
