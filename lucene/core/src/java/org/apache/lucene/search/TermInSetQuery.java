@@ -34,9 +34,9 @@ import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
-import org.apache.lucene.util.automaton.StringsToAutomaton;
 
 /**
  * Specialization for a disjunction over many terms that, by default, behaves like a {@link
@@ -151,7 +151,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   // we won't have to do this (see GH#12176).
   private ByteRunAutomaton asByteRunAutomaton() {
     try {
-      Automaton a = StringsToAutomaton.build(termData.iterator(), true);
+      Automaton a = Automata.makeBinaryStringUnion(termData.iterator());
       return new ByteRunAutomaton(a, true);
     } catch (IOException e) {
       // Shouldn't happen since termData.iterator() provides an interator implementation that

@@ -38,6 +38,9 @@ import org.apache.lucene.util.UnicodeUtil;
  * @see #build(Collection, boolean)
  * @see #build(BytesRefIterator, boolean)
  * @see Automata#makeStringUnion(Collection)
+ * @see Automata#makeBinaryStringUnion(Collection)
+ * @see Automata#makeStringUnion(BytesRefIterator)
+ * @see Automata#makeBinaryStringUnion(BytesRefIterator)
  */
 final class StringsToAutomaton {
 
@@ -335,7 +338,7 @@ final class StringsToAutomaton {
    * Replace last child of <code>state</code> with an already registered state or stateRegistry the
    * last child state.
    */
-  protected void replaceOrRegister(State state) {
+  private void replaceOrRegister(State state) {
     final State child = state.lastChild();
 
     if (child.hasChildren()) replaceOrRegister(child);
