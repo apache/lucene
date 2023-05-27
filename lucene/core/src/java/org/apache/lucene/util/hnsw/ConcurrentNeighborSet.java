@@ -26,19 +26,22 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * A concurrent set of neighbors
- *
- * <p>Neighbors are stored in a concurrent navigable set by encoding ordinal and score together in a
- * long. This means we can quickly iterate either forwards, or backwards.
- *
- * <p>The maximum connection count is loosely maintained -- meaning, we tolerate temporarily
- * exceeding the max size by a number of elements up to the number of threads performing concurrent
- * inserts, but it will always be reduced back to the cap immediately afterwards. This avoids taking
- * out a Big Lock to impose a strict cap.
+ * A concurrent set of neighbors.
  */
 public class ConcurrentNeighborSet {
+  /** the node id whose neighbors we are storing */
   private final int nodeId;
+
+  /**
+   * We use a copy-on-write NeighborArray to store the neighbors. Even though updating this is expensive,
+   * it is still faster than using a concurrent Collection because "iterate through a node's neighbors"
+   * is a hot loop in adding to the graph, and NeighborArray can do that much faster: no boxing/unboxing,
+   * all the data is stored sequentially instead of having to follow references, and no fancy encoding
+   * necessary for node/score.
+   */
   private final AtomicReference<ConcurrentNeighborArray> neighborsRef;
+
+  /** the maximum number of neighbors we can store */
   private final int maxConnections;
 
   public ConcurrentNeighborSet(int nodeId, int maxConnections) {
@@ -49,7 +52,7 @@ public class ConcurrentNeighborSet {
 
   public PrimitiveIterator.OfInt nodeIterator() {
     // don't use a stream here. stream's implementation of iterator buffers
-    // very aggressively, which is a big waste for a lot of searches
+    // very aggressively, which is a big waste for a lot of searches.
     return new NeighborIterator(neighborsRef.get());
   }
 
@@ -196,7 +199,7 @@ public class ConcurrentNeighborSet {
     neighbors.removeIndex(neighbors.size() - 1);
   }
 
-  /** This is O(n) because we have to decode node ids! Only for testing. */
+  /** Only for testing; this is a linear search */
   boolean contains(int i) {
     var it = this.nodeIterator();
     while (it.hasNext()) {
