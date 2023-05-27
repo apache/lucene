@@ -17,9 +17,16 @@
 package org.apache.lucene.facet.taxonomy.directory;
 
 /**
+ * This class holds constants used by {@link DirectoryTaxonomyWriter}.
+ *
  * @lucene.experimental
  */
-abstract class Consts {
-  static final String FULL = "$full_path$";
-  static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
+public abstract class Consts {
+  /** The name of the field containing the full path of a taxonomy document. */
+  public static final String FULL = "$full_path$";
+  /** The name of the field containing the ordinal of the parent of a taxonomy document. */
+  public static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
+
+  /** This class is not meant to be instantiated. */
+  private Consts() {}
 }
