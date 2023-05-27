@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
@@ -785,16 +784,19 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
     VectorEncoding vectorEncoding = getVectorEncoding();
     random().nextLong();
     ConcurrentHnswGraphBuilder<T> builder =
-        new ConcurrentHnswGraphBuilder<>(vectors.copy(), vectorEncoding, similarityFunction, M, M * 2);
+        new ConcurrentHnswGraphBuilder<>(
+            vectors.copy(), vectorEncoding, similarityFunction, M, M * 2);
     AtomicLong bytesUsed = new AtomicLong(builder.getGraph().ramBytesUsed());
-    IntStream.range(0, vectors.size()).forEach(i -> {
-      try {
-        long bytes = builder.addGraphNode(i, vectors);
-        bytesUsed.addAndGet(bytes);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    });
+    IntStream.range(0, vectors.size())
+        .forEach(
+            i -> {
+              try {
+                long bytes = builder.addGraphNode(i, vectors);
+                bytesUsed.addAndGet(bytes);
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
     ConcurrentOnHeapHnswGraph hnsw = builder.getGraph();
     long estimated = RamUsageEstimator.sizeOfObject(hnsw);
     long actual = ramUsed(hnsw);

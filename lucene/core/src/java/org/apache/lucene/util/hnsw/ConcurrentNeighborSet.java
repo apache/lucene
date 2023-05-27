@@ -24,19 +24,17 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-/**
- * A concurrent set of neighbors.
- */
+/** A concurrent set of neighbors. */
 public class ConcurrentNeighborSet {
   /** the node id whose neighbors we are storing */
   private final int nodeId;
 
   /**
-   * We use a copy-on-write NeighborArray to store the neighbors. Even though updating this is expensive,
-   * it is still faster than using a concurrent Collection because "iterate through a node's neighbors"
-   * is a hot loop in adding to the graph, and NeighborArray can do that much faster: no boxing/unboxing,
-   * all the data is stored sequentially instead of having to follow references, and no fancy encoding
-   * necessary for node/score.
+   * We use a copy-on-write NeighborArray to store the neighbors. Even though updating this is
+   * expensive, it is still faster than using a concurrent Collection because "iterate through a
+   * node's neighbors" is a hot loop in adding to the graph, and NeighborArray can do that much
+   * faster: no boxing/unboxing, all the data is stored sequentially instead of having to follow
+   * references, and no fancy encoding necessary for node/score.
    */
   private final AtomicReference<ConcurrentNeighborArray> neighborsRef;
 
@@ -209,9 +207,7 @@ public class ConcurrentNeighborSet {
     return false;
   }
 
-  /**
-   * A NeighborArray that knows how to copy itself and that checks for duplicate entries
-   */
+  /** A NeighborArray that knows how to copy itself and that checks for duplicate entries */
   private static class ConcurrentNeighborArray extends NeighborArray {
     public ConcurrentNeighborArray(int maxSize, boolean descOrder) {
       super(maxSize, descOrder);
@@ -238,8 +234,7 @@ public class ConcurrentNeighborSet {
     }
 
     public ConcurrentNeighborArray copy() {
-      ConcurrentNeighborArray copy =
-          new ConcurrentNeighborArray(node.length, scoresDescOrder);
+      ConcurrentNeighborArray copy = new ConcurrentNeighborArray(node.length, scoresDescOrder);
       copy.size = size;
       System.arraycopy(node, 0, copy.node, 0, size);
       System.arraycopy(score, 0, copy.score, 0, size);
