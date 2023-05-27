@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
 import java.util.PrimitiveIterator;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -210,23 +209,12 @@ public class ConcurrentNeighborSet {
     return false;
   }
 
+  /**
+   * A NeighborArray that knows how to copy itself and that checks for duplicate entries
+   */
   private static class ConcurrentNeighborArray extends NeighborArray {
     public ConcurrentNeighborArray(int maxSize, boolean descOrder) {
-      this(maxSize, descOrder, true);
-    }
-
-    private ConcurrentNeighborArray(int maxSize, boolean descOrder, boolean fillNodes) {
       super(maxSize, descOrder);
-      if (fillNodes) {
-        Arrays.fill(node, -1);
-      }
-    }
-
-    @Override
-    protected void growArrays() {
-      int oldLength = node.length;
-      super.growArrays();
-      Arrays.fill(node, oldLength, node.length, -1);
     }
 
     @Override
@@ -240,7 +228,7 @@ public class ConcurrentNeighborSet {
               : ascSortFindRightMostInsertionPoint(newScore);
       // two nodes may attempt to add each other in the Concurrent classes,
       // so we need to check if the node is already present
-      if (node[insertionPoint] != newNode) {
+      if (insertionPoint == size || node[insertionPoint] != newNode) {
         System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
         System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
         node[insertionPoint] = newNode;
@@ -251,10 +239,9 @@ public class ConcurrentNeighborSet {
 
     public ConcurrentNeighborArray copy() {
       ConcurrentNeighborArray copy =
-          new ConcurrentNeighborArray(node.length, scoresDescOrder, false);
+          new ConcurrentNeighborArray(node.length, scoresDescOrder);
       copy.size = size;
       System.arraycopy(node, 0, copy.node, 0, size);
-      Arrays.fill(copy.node, size, node.length, -1);
       System.arraycopy(score, 0, copy.score, 0, size);
       return copy;
     }
