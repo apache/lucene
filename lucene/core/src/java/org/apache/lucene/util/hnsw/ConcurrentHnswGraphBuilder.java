@@ -272,8 +272,8 @@ public class ConcurrentHnswGraphBuilder<T> {
         });
   }
 
-  public void addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
-    addGraphNode(node, values.vectorValue(node));
+  public long addGraphNode(int node, RandomAccessVectorValues<T> values) throws IOException {
+    return addGraphNode(node, values.vectorValue(node));
   }
 
   /** Set info-stream to output debugging information * */
@@ -291,8 +291,12 @@ public class ConcurrentHnswGraphBuilder<T> {
    * <p>To allow correctness under concurrency, we track in-progress updates in a
    * ConcurrentSkipListSet. After adding ourselves, we take a snapshot of this set, and consider all
    * other in-progress updates as neighbor candidates (subject to normal level constraints).
+   *
+   * @param node the node ID to add
+   * @param value the vector value to add
+   * @return an estimate of the number of extra bytes used by the graph after adding the given node
    */
-  public void addGraphNode(int node, T value) throws IOException {
+  public long addGraphNode(int node, T value) throws IOException {
     // do this before adding to in-progress, so a concurrent writer checking
     // the in-progress set doesn't have to worry about uninitialized neighbor sets
     final int nodeLevel = getRandomGraphLevel(ml);
@@ -319,6 +323,7 @@ public class ConcurrentHnswGraphBuilder<T> {
             candidates, value, 1, level, eps, vectors, consistentView, null, Integer.MAX_VALUE);
         eps = new int[] {candidates.pop()};
       }
+
       // for levels <= nodeLevel search with topk = beamWidth, and add connections
       candidates = new NeighborQueue(beamWidth, false);
       for (int level = Math.min(nodeLevel, entry.level); level >= 0; level--) {
@@ -376,6 +381,8 @@ public class ConcurrentHnswGraphBuilder<T> {
     } finally {
       insertionsInProgress.remove(progressMarker);
     }
+
+    return hnsw.ramBytesUsedOneNode(nodeLevel);
   }
 
   private void addForwardLinks(int level, int newNode, NeighborQueue candidates)
