@@ -17,9 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.logging.Logger;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -36,7 +39,14 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
    *
    * @deprecated Expected to move to a codec specific limit.
    */
-  @Deprecated public static final int MAX_DIMENSIONS = initMaxDim();
+  @Deprecated public static final int MAX_DIMENSIONS = doPrivileged(FloatVectorValues::initMaxDim);
+
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
 
   private static int initMaxDim() {
     final var PROP_NAME = "org.apache.lucene.hnsw.maxDimensions";
