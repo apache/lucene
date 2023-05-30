@@ -90,7 +90,10 @@ for the currently-positioned document (doing so will result in undefined behavio
 Callers should remove the parameter when calling this method.
 
 
-### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton
+### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton and made package-private
+
+The former `DaciukMihovAutomatonBuilder#build` functionality is exposed through `Automata#makeStringUnion`.
+Users should be able to directly migrate to the `Automata` static method as a 1:1 replacement.
 
 
 ## Migration from Lucene 9.0 to Lucene 9.1
