@@ -27,10 +27,10 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.TermAndBoost;
-import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 
 /**
  * The Word2VecSynonymProvider generates the list of sysnonyms of a term.
@@ -43,7 +43,7 @@ public class Word2VecSynonymProvider {
       VectorSimilarityFunction.DOT_PRODUCT;
   private static final VectorEncoding VECTOR_ENCODING = VectorEncoding.FLOAT32;
   private final Word2VecModel word2VecModel;
-  private final HnswGraph hnswGraph;
+  private final OnHeapHnswGraph hnswGraph;
 
   /**
    * Word2VecSynonymProvider constructor
