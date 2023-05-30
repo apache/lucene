@@ -426,8 +426,11 @@ public class BytesRefToDataBlockTreeMap {
             // Note: use the least significant bit of right child offset to
             // encode whether the left child is null or not. If not null, the
             // left child is the consecutive node, so no need to write its address
+            // It is by construction always the case that a node with a non-null
+            // right child has also a non-null left child. Hence, the value 0 encodes a leaf
             int rightChildAddress = 0;
             if (rightChild != null) {
+                assert leftChild != null;
                 // the right child offset is the byte size of the left subtree
                 assert (leftChild.subTreeWriteByteSize & 0xC0000000) == 0;
                 rightChildAddress = leftChild.subTreeWriteByteSize << 2;
@@ -544,6 +547,7 @@ public class BytesRefToDataBlockTreeMap {
                 node.rightChild = buildTreeFromDataInput(indexInput);
                 node.subTreeWriteByteSize += node.rightChild.subTreeWriteByteSize;
             }
+            assert (node.leftChild != null) || (node.rightChild == null);
             node.subTreeWriteByteSize += node.getByteSize();
             return node;
         }

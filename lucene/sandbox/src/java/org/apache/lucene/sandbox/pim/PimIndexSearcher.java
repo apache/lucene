@@ -211,6 +211,7 @@ public class PimIndexSearcher implements Closeable {
         final int dpuId;
         final PimIndexInfo pimIndexInfo;
         int startDoc;
+        IndexInput indexInput;
         IndexInput fieldTableInput;
         IndexInput blockTableInput;
         IndexInput blocksInput;
@@ -223,6 +224,7 @@ public class PimIndexSearcher implements Closeable {
             this.dpuId = dpuId;
             this.pimIndexInfo = pimIndexInfo;
             this.startDoc = 0;
+            this.indexInput = null;
         }
 
         void switchToNewSegment(int leafIdx) {
@@ -230,10 +232,13 @@ public class PimIndexSearcher implements Closeable {
             try {
                 openFilesInput(pimIndexInfo, leafIdx);
                 // create field table
-                this.fieldTableTree = BytesRefToDataBlockTreeMap.read(fieldTableInput);
-            } catch (EOFException e) {
-                // it may be that the file is empty if the DPU was assigned no docs
+                // it may be that the DPU was assigned no docs and the fieldTableInput is null
                 // in this case this searcher will always return null for searchTerm/searchPhrase
+                if(fieldTableInput != null)
+                    this.fieldTableTree = BytesRefToDataBlockTreeMap.read(fieldTableInput);
+                else
+                    this.fieldTableTree = null;
+            } catch (EOFException e) {
                 this.fieldTableTree = null;
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -242,11 +247,15 @@ public class PimIndexSearcher implements Closeable {
 
         void openFilesInput(PimIndexInfo pimIndexInfo, int leafIdx) throws IOException {
 
+            if(indexInput != null)
+                indexInput.close();
+            indexInput = pimIndexInfo.getFileInput(leafIdx);
+
             startDoc = addStartDoc ? pimIndexInfo.getStartDoc(leafIdx) : 0;
-            fieldTableInput = pimIndexInfo.getFieldFileInput(leafIdx, dpuId);
-            blockTableInput = pimIndexInfo.getBlockTableFileInput(leafIdx, dpuId);
-            blocksInput = pimIndexInfo.getBlocksFileInput(leafIdx, dpuId);
-            postingsInput = pimIndexInfo.getPostingsFileInput(leafIdx, dpuId);
+            fieldTableInput = pimIndexInfo.getFieldFileInput(indexInput, dpuId);
+            blockTableInput = pimIndexInfo.getBlockTableFileInput(indexInput, dpuId);
+            blocksInput = pimIndexInfo.getBlocksFileInput(indexInput, dpuId);
+            postingsInput = pimIndexInfo.getPostingsFileInput(indexInput, dpuId);
         }
 
         ArrayList<PimMatch> SearchTerm(BytesRef field, BytesRef term, LeafSimScorer scorer) {
@@ -609,14 +618,8 @@ public class PimIndexSearcher implements Closeable {
         @Override
         public void close() throws IOException {
 
-            if (fieldTableInput != null)
-                fieldTableInput.close();
-            if (blockTableInput != null)
-                blockTableInput.close();
-            if (blocksInput != null)
-                blocksInput.close();
-            if (postingsInput != null)
-                postingsInput.close();
+            if(indexInput != null)
+                indexInput.close();
         }
     }
 }
