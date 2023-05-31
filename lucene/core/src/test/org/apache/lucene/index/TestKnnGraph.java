@@ -54,6 +54,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.junit.After;
 import org.junit.Before;
 
@@ -62,7 +63,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
-  private static int M = Lucene95HnswVectorsFormat.DEFAULT_MAX_CONN;
+  private static int M = HnswGraphBuilder.DEFAULT_MAX_CONN;
 
   private Codec codec;
   private Codec float32Codec;
@@ -80,7 +81,7 @@ public class TestKnnGraph extends LuceneTestCase {
         new Lucene95Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(M, Lucene95HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -92,7 +93,7 @@ public class TestKnnGraph extends LuceneTestCase {
         new Lucene95Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(M, Lucene95HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+            return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
           }
         };
 
@@ -103,7 +104,7 @@ public class TestKnnGraph extends LuceneTestCase {
           new Lucene95Codec() {
             @Override
             public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return new Lucene95HnswVectorsFormat(M, Lucene95HnswVectorsFormat.DEFAULT_BEAM_WIDTH);
+              return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
             }
           };
     }
@@ -115,7 +116,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   @After
   public void cleanup() {
-    M = Lucene95HnswVectorsFormat.DEFAULT_MAX_CONN;
+    M = HnswGraphBuilder.DEFAULT_MAX_CONN;
   }
 
   /** Basic test of creating documents in a graph */

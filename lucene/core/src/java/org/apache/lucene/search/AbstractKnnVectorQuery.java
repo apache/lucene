@@ -19,9 +19,13 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -29,6 +33,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -62,9 +67,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
-    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
 
-    Weight filterWeight = null;
+    final Weight filterWeight;
     if (filter != null) {
       BooleanQuery booleanQuery =
           new BooleanQuery.Builder()
@@ -73,17 +77,17 @@ abstract class AbstractKnnVectorQuery extends Query {
               .build();
       Query rewritten = indexSearcher.rewrite(booleanQuery);
       filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    } else {
+      filterWeight = null;
     }
 
-    for (LeafReaderContext ctx : reader.leaves()) {
-      TopDocs results = searchLeaf(ctx, filterWeight);
-      if (ctx.docBase > 0) {
-        for (ScoreDoc scoreDoc : results.scoreDocs) {
-          scoreDoc.doc += ctx.docBase;
-        }
-      }
-      perLeafResults[ctx.ord] = results;
-    }
+    SliceExecutor sliceExecutor = indexSearcher.getSliceExecutor();
+    // in case of parallel execution, the leaf results are not ordered by leaf context's ordinal
+    TopDocs[] perLeafResults =
+        (sliceExecutor == null)
+            ? sequentialSearch(reader.leaves(), filterWeight)
+            : parallelSearch(indexSearcher.getSlices(), filterWeight, sliceExecutor);
+
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
     if (topK.scoreDocs.length == 0) {
@@ -92,7 +96,67 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
+  private TopDocs[] sequentialSearch(
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) {
+    try {
+      TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+      for (LeafReaderContext ctx : leafReaderContexts) {
+        perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
+      }
+      return perLeafResults;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private TopDocs[] parallelSearch(
+      IndexSearcher.LeafSlice[] slices, Weight filterWeight, SliceExecutor sliceExecutor) {
+
+    List<FutureTask<TopDocs[]>> tasks = new ArrayList<>(slices.length);
+    int segmentsCount = 0;
+    for (IndexSearcher.LeafSlice slice : slices) {
+      segmentsCount += slice.leaves.length;
+      tasks.add(
+          new FutureTask<>(
+              () -> {
+                TopDocs[] results = new TopDocs[slice.leaves.length];
+                int i = 0;
+                for (LeafReaderContext context : slice.leaves) {
+                  results[i++] = searchLeaf(context, filterWeight);
+                }
+                return results;
+              }));
+    }
+
+    sliceExecutor.invokeAll(tasks);
+
+    TopDocs[] topDocs = new TopDocs[segmentsCount];
+    int i = 0;
+    for (FutureTask<TopDocs[]> task : tasks) {
+      try {
+        for (TopDocs docs : task.get()) {
+          topDocs[i++] = docs;
+        }
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e.getCause());
+      } catch (InterruptedException e) {
+        throw new ThreadInterruptedException(e);
+      }
+    }
+    return topDocs;
+  }
+
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+    TopDocs results = getLeafResults(ctx, filterWeight);
+    if (ctx.docBase > 0) {
+      for (ScoreDoc scoreDoc : results.scoreDocs) {
+        scoreDoc.doc += ctx.docBase;
+      }
+    }
+    return results;
+  }
+
+  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
@@ -189,6 +253,10 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
     int len = topK.scoreDocs.length;
+
+    assert len > 0;
+    float maxScore = topK.scoreDocs[0].score;
+
     Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
     int[] docs = new int[len];
     float[] scores = new float[len];
@@ -197,10 +265,10 @@ abstract class AbstractKnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader, docs);
-    return new DocAndScoreQuery(k, docs, scores, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
   }
 
-  private int[] findSegmentStarts(IndexReader reader, int[] docs) {
+  static int[] findSegmentStarts(IndexReader reader, int[] docs) {
     int[] starts = new int[reader.leaves().size() + 1];
     starts[starts.length - 1] = docs.length;
     if (starts.length == 2) {
@@ -263,16 +331,15 @@ abstract class AbstractKnnVectorQuery extends Query {
   /** Caches the results of a KnnVector search: a list of docs and their scores */
   static class DocAndScoreQuery extends Query {
 
-    private final int k;
     private final int[] docs;
     private final float[] scores;
+    private final float maxScore;
     private final int[] segmentStarts;
     private final Object contextIdentity;
 
     /**
      * Constructor
      *
-     * @param k the number of documents requested
      * @param docs the global docids of documents that match, in ascending order
      * @param scores the scores of the matching documents
      * @param segmentStarts the indexes in docs and scores corresponding to the first matching
@@ -283,10 +350,10 @@ abstract class AbstractKnnVectorQuery extends Query {
      *     query
      */
     DocAndScoreQuery(
-        int k, int[] docs, float[] scores, int[] segmentStarts, Object contextIdentity) {
-      this.k = k;
+        int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
       this.docs = docs;
       this.scores = scores;
+      this.maxScore = maxScore;
       this.segmentStarts = segmentStarts;
       this.contextIdentity = contextIdentity;
     }
@@ -302,14 +369,21 @@ abstract class AbstractKnnVectorQuery extends Query {
         public Explanation explain(LeafReaderContext context, int doc) {
           int found = Arrays.binarySearch(docs, doc + context.docBase);
           if (found < 0) {
-            return Explanation.noMatch("not in top " + k);
+            return Explanation.noMatch("not in top " + docs.length + " docs");
           }
-          return Explanation.match(scores[found] * boost, "within top " + k);
+          return Explanation.match(scores[found] * boost, "within top " + docs.length + " docs");
+        }
+
+        @Override
+        public int count(LeafReaderContext context) {
+          return segmentStarts[context.ord + 1] - segmentStarts[context.ord];
         }
 
         @Override
         public Scorer scorer(LeafReaderContext context) {
-
+          if (segmentStarts[context.ord] == segmentStarts[context.ord + 1]) {
+            return null;
+          }
           return new Scorer(this) {
             final int lower = segmentStarts[context.ord];
             final int upper = segmentStarts[context.ord + 1];
@@ -347,30 +421,12 @@ abstract class AbstractKnnVectorQuery extends Query {
 
             @Override
             public float getMaxScore(int docId) {
-              docId += context.docBase;
-              float maxScore = 0;
-              for (int idx = Math.max(0, upTo); idx < upper && docs[idx] <= docId; idx++) {
-                maxScore = Math.max(maxScore, scores[idx]);
-              }
               return maxScore * boost;
             }
 
             @Override
             public float score() {
               return scores[upTo] * boost;
-            }
-
-            @Override
-            public int advanceShallow(int docid) {
-              int start = Math.max(upTo, lower);
-              int docidIndex = Arrays.binarySearch(docs, start, upper, docid + context.docBase);
-              if (docidIndex < 0) {
-                docidIndex = -1 - docidIndex;
-              }
-              if (docidIndex >= upper) {
-                return NO_MORE_DOCS;
-              }
-              return docs[docidIndex];
             }
 
             /**
@@ -405,7 +461,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     @Override
     public String toString(String field) {
-      return "DocAndScore[" + k + "]";
+      return "DocAndScoreQuery[" + docs[0] + ",...][" + scores[0] + ",...]";
     }
 
     @Override

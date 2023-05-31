@@ -82,7 +82,8 @@ public abstract class QueryParserBase extends QueryBuilder
   /** The actual operator that parser uses to combine query terms */
   Operator operator = OR_OPERATOR;
 
-  MultiTermQuery.RewriteMethod multiTermRewriteMethod = MultiTermQuery.CONSTANT_SCORE_REWRITE;
+  MultiTermQuery.RewriteMethod multiTermRewriteMethod =
+      MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE;
   boolean allowLeadingWildcard = false;
 
   protected String field;
@@ -256,15 +257,6 @@ public abstract class QueryParserBase extends QueryBuilder
     return operator;
   }
 
-  /**
-   * By default QueryParser uses {@link
-   * org.apache.lucene.search.MultiTermQuery#CONSTANT_SCORE_REWRITE} when creating a {@link
-   * PrefixQuery}, {@link WildcardQuery} or {@link TermRangeQuery}. This implementation is generally
-   * preferable because it a) Runs faster b) Does not have the scarcity of terms unduly influence
-   * score c) avoids any {@link TooManyClauses} exception. However, if your application really needs
-   * to use the old-fashioned {@link BooleanQuery} expansion rewriting and the above points are not
-   * relevant then use this to change the rewrite method.
-   */
   @Override
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method) {
     multiTermRewriteMethod = method;

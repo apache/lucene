@@ -63,17 +63,13 @@ import org.apache.lucene.store.AlreadyClosedException;
  * synchronization, you should <b>not</b> synchronize on the <code>IndexReader</code> instance; use
  * your own (non-Lucene) objects instead.
  */
-public abstract class IndexReader implements Closeable {
+public abstract sealed class IndexReader implements Closeable permits CompositeReader, LeafReader {
 
   private boolean closed = false;
   private boolean closedByChild = false;
   private final AtomicInteger refCount = new AtomicInteger(1);
 
-  IndexReader() {
-    if (!(this instanceof CompositeReader || this instanceof LeafReader))
-      throw new Error(
-          "IndexReader should never be directly extended, subclass LeafReader or CompositeReader instead.");
-  }
+  IndexReader() {}
 
   /**
    * A utility class that gives hooks in order to help build a cache based on the data that is

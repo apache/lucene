@@ -26,6 +26,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestKeywordField extends LuceneTestCase {
@@ -121,5 +122,18 @@ public class TestKeywordField extends LuceneTestCase {
     assertEquals("value", storedDoc.get("field"));
     reader.close();
     dir.close();
+  }
+
+  public void testValueClone() {
+    BytesRef[] values = new BytesRef[100];
+    for (int i = 0; i < 100; i++) {
+      String s = TestUtil.randomSimpleString(random(), 10, 20);
+      values[i] = new BytesRef(s);
+    }
+
+    // Make sure we don't modify the input values array.
+    BytesRef[] expected = values.clone();
+    KeywordField.newSetQuery("f", values);
+    assertArrayEquals(expected, values);
   }
 }

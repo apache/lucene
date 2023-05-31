@@ -41,8 +41,17 @@ import org.apache.lucene.util.InfoStream;
  */
 public final class HnswGraphBuilder<T> {
 
+  /** Default number of maximum connections per node */
+  public static final int DEFAULT_MAX_CONN = 16;
+
+  /**
+   * Default number of the size of the queue maintained while searching during a graph construction.
+   */
+  public static final int DEFAULT_BEAM_WIDTH = 100;
+
   /** Default random seed for level generation * */
   private static final long DEFAULT_RAND_SEED = 42;
+
   /** A name for the HNSW component for the info-stream * */
   public static final String HNSW_COMPONENT = "HNSW";
 
@@ -209,7 +218,9 @@ public final class HnswGraphBuilder<T> {
                 case BYTE -> this.similarityFunction.compare(
                     binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
               };
-          newNeighbors.insertSorted(newNeighbor, score);
+          // we are not sure whether the previous graph contains
+          // unchecked nodes, so we have to assume they're all unchecked
+          newNeighbors.addOutOfOrder(newNeighbor, score);
         }
       }
     }
@@ -305,11 +316,11 @@ public final class HnswGraphBuilder<T> {
     int size = neighbors.size();
     for (int i = 0; i < size; i++) {
       int nbr = neighbors.node[i];
-      NeighborArray nbrNbr = hnsw.getNeighbors(level, nbr);
-      nbrNbr.insertSorted(node, neighbors.score[i]);
-      if (nbrNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrNbr);
-        nbrNbr.removeIndex(indexToRemove);
+      NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
+      nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
+      if (nbrsOfNbr.size() > maxConnOnLevel) {
+        int indexToRemove = findWorstNonDiverse(nbrsOfNbr);
+        nbrsOfNbr.removeIndex(indexToRemove);
       }
     }
   }
@@ -324,7 +335,7 @@ public final class HnswGraphBuilder<T> {
       float cScore = candidates.score[i];
       assert cNode < hnsw.size();
       if (diversityCheck(cNode, cScore, neighbors)) {
-        neighbors.add(cNode, cScore);
+        neighbors.addInOrder(cNode, cScore);
       }
     }
   }
@@ -336,7 +347,7 @@ public final class HnswGraphBuilder<T> {
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
       float maxSimilarity = candidates.topScore();
-      scratch.add(candidates.pop(), maxSimilarity);
+      scratch.addInOrder(candidates.pop(), maxSimilarity);
     }
   }
 
@@ -391,50 +402,116 @@ public final class HnswGraphBuilder<T> {
    * neighbours
    */
   private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
+    int[] uncheckedIndexes = neighbors.sort();
+    if (uncheckedIndexes == null) {
+      // all nodes are checked, we will directly return the most distant one
+      return neighbors.size() - 1;
+    }
+    int uncheckedCursor = uncheckedIndexes.length - 1;
     for (int i = neighbors.size() - 1; i > 0; i--) {
-      if (isWorstNonDiverse(i, neighbors)) {
+      if (uncheckedCursor < 0) {
+        // no unchecked node left
+        break;
+      }
+      if (isWorstNonDiverse(i, neighbors, uncheckedIndexes, uncheckedCursor)) {
         return i;
+      }
+      if (i == uncheckedIndexes[uncheckedCursor]) {
+        uncheckedCursor--;
       }
     }
     return neighbors.size() - 1;
   }
 
-  private boolean isWorstNonDiverse(int candidateIndex, NeighborArray neighbors)
+  private boolean isWorstNonDiverse(
+      int candidateIndex, NeighborArray neighbors, int[] uncheckedIndexes, int uncheckedCursor)
       throws IOException {
     int candidateNode = neighbors.node[candidateIndex];
     return switch (vectorEncoding) {
       case BYTE -> isWorstNonDiverse(
-          candidateIndex, (byte[]) vectors.vectorValue(candidateNode), neighbors);
+          candidateIndex,
+          (byte[]) vectors.vectorValue(candidateNode),
+          neighbors,
+          uncheckedIndexes,
+          uncheckedCursor);
       case FLOAT32 -> isWorstNonDiverse(
-          candidateIndex, (float[]) vectors.vectorValue(candidateNode), neighbors);
+          candidateIndex,
+          (float[]) vectors.vectorValue(candidateNode),
+          neighbors,
+          uncheckedIndexes,
+          uncheckedCursor);
     };
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, float[] candidateVector, NeighborArray neighbors) throws IOException {
+      int candidateIndex,
+      float[] candidateVector,
+      NeighborArray neighbors,
+      int[] uncheckedIndexes,
+      int uncheckedCursor)
+      throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    for (int i = candidateIndex - 1; i >= 0; i--) {
-      float neighborSimilarity =
-          similarityFunction.compare(
-              candidateVector, (float[]) vectorsCopy.vectorValue(neighbors.node[i]));
-      // candidate node is too similar to node i given its score relative to the base node
-      if (neighborSimilarity >= minAcceptedSimilarity) {
-        return true;
+    if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
+      // the candidate itself is unchecked
+      for (int i = candidateIndex - 1; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector, (float[]) vectorsCopy.vectorValue(neighbors.node[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
+      }
+    } else {
+      // else we just need to make sure candidate does not violate diversity with the (newly
+      // inserted) unchecked nodes
+      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
+      for (int i = uncheckedCursor; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector,
+                (float[]) vectorsCopy.vectorValue(neighbors.node[uncheckedIndexes[i]]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
       }
     }
     return false;
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, byte[] candidateVector, NeighborArray neighbors) throws IOException {
+      int candidateIndex,
+      byte[] candidateVector,
+      NeighborArray neighbors,
+      int[] uncheckedIndexes,
+      int uncheckedCursor)
+      throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    for (int i = candidateIndex - 1; i >= 0; i--) {
-      float neighborSimilarity =
-          similarityFunction.compare(
-              candidateVector, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
-      // candidate node is too similar to node i given its score relative to the base node
-      if (neighborSimilarity >= minAcceptedSimilarity) {
-        return true;
+    if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
+      // the candidate itself is unchecked
+      for (int i = candidateIndex - 1; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector, (byte[]) vectorsCopy.vectorValue(neighbors.node[i]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
+      }
+    } else {
+      // else we just need to make sure candidate does not violate diversity with the (newly
+      // inserted) unchecked nodes
+      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
+      for (int i = uncheckedCursor; i >= 0; i--) {
+        float neighborSimilarity =
+            similarityFunction.compare(
+                candidateVector,
+                (byte[]) vectorsCopy.vectorValue(neighbors.node[uncheckedIndexes[i]]));
+        // candidate node is too similar to node i given its score relative to the base node
+        if (neighborSimilarity >= minAcceptedSimilarity) {
+          return true;
+        }
       }
     }
     return false;

@@ -24,25 +24,20 @@ import java.util.IdentityHashMap;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.UnicodeUtil;
+import org.apache.lucene.util.CharsRefBuilder;
 
 /**
- * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings. The algorithm
- * requires sorted input data, but is very fast (nearly linear with the input size).
+ * Builds a minimal, deterministic {@link Automaton} that accepts a set of strings using the
+ * algorithm described in <a href="https://aclanthology.org/J00-1002.pdf">Incremental Construction
+ * of Minimal Acyclic Finite-State Automata by Daciuk, Mihov, Watson and Watson</a>. This requires
+ * sorted input data, but is very fast (nearly linear with the input size).
  *
- * @see #build(Collection)
  * @see Automata#makeStringUnion(Collection)
  */
-public final class DaciukMihovAutomatonBuilder {
-
-  /**
-   * This builder rejects terms that are more than 1k chars long since it then uses recursion based
-   * on the length of the string, which might cause stack overflows.
-   */
-  public static final int MAX_TERM_LENGTH = 1_000;
+final class StringsToAutomaton {
 
   /** The default constructor is private. Use static methods directly. */
-  private DaciukMihovAutomatonBuilder() {
+  private StringsToAutomaton() {
     super();
   }
 
@@ -179,10 +174,10 @@ public final class DaciukMihovAutomatonBuilder {
   private HashMap<State, State> stateRegistry = new HashMap<>();
 
   /** Root automaton state. */
-  private State root = new State();
+  private final State root = new State();
 
   /** Previous sequence added to the automaton in {@link #add(CharsRef)}. */
-  private CharsRef previous;
+  private CharsRefBuilder previous;
 
   /** A comparator used for enforcing sorted UTF8 order, used in assertions only. */
   @SuppressWarnings("deprecation")
@@ -192,23 +187,33 @@ public final class DaciukMihovAutomatonBuilder {
    * Add another character sequence to this automaton. The sequence must be lexicographically larger
    * or equal compared to any previous sequences added to this automaton (the input must be sorted).
    */
-  public void add(CharsRef current) {
-    if (current.length > MAX_TERM_LENGTH) {
+  private void add(CharsRef current) {
+    if (current.length > Automata.MAX_STRING_UNION_TERM_LENGTH) {
       throw new IllegalArgumentException(
           "This builder doesn't allow terms that are larger than 1,000 characters, got " + current);
     }
     assert stateRegistry != null : "Automaton already built.";
-    assert previous == null || comparator.compare(previous, current) <= 0
+    assert previous == null || comparator.compare(previous.get(), current) <= 0
         : "Input must be in sorted UTF-8 order: " + previous + " >= " + current;
     assert setPrevious(current);
 
     // Descend in the automaton (find matching prefix).
     int pos = 0, max = current.length();
-    State next, state = root;
-    while (pos < max && (next = state.lastChild(Character.codePointAt(current, pos))) != null) {
+    State state = root;
+    for (; ; ) {
+      assert pos <= max;
+      if (pos == max) {
+        break;
+      }
+
+      int codePoint = Character.codePointAt(current, pos);
+      State next = state.lastChild(codePoint);
+      if (next == null) {
+        break;
+      }
+
       state = next;
-      // todo, optimize me
-      pos += Character.charCount(Character.codePointAt(current, pos));
+      pos += Character.charCount(codePoint);
     }
 
     if (state.hasChildren()) replaceOrRegister(state);
@@ -222,7 +227,7 @@ public final class DaciukMihovAutomatonBuilder {
    *
    * @return Root automaton state.
    */
-  public State complete() {
+  private State complete() {
     if (this.stateRegistry == null) throw new IllegalStateException();
 
     if (root.hasChildren()) replaceOrRegister(root);
@@ -246,7 +251,7 @@ public final class DaciukMihovAutomatonBuilder {
     visited.put(s, converted);
     int i = 0;
     int[] labels = s.labels;
-    for (DaciukMihovAutomatonBuilder.State target : s.states) {
+    for (StringsToAutomaton.State target : s.states) {
       a.addTransition(converted, convert(a, target, visited), labels[i++]);
     }
 
@@ -257,30 +262,27 @@ public final class DaciukMihovAutomatonBuilder {
    * Build a minimal, deterministic automaton from a sorted list of {@link BytesRef} representing
    * strings in UTF-8. These strings must be binary-sorted.
    */
-  public static Automaton build(Collection<BytesRef> input) {
-    final DaciukMihovAutomatonBuilder builder = new DaciukMihovAutomatonBuilder();
+  static Automaton build(Collection<BytesRef> input) {
+    final StringsToAutomaton builder = new StringsToAutomaton();
 
-    char[] chars = new char[0];
-    CharsRef ref = new CharsRef();
+    CharsRefBuilder current = new CharsRefBuilder();
     for (BytesRef b : input) {
-      chars = ArrayUtil.grow(chars, b.length);
-      final int len = UnicodeUtil.UTF8toUTF16(b, chars);
-      ref.chars = chars;
-      ref.length = len;
-      builder.add(ref);
+      current.copyUTF8Bytes(b);
+      builder.add(current.get());
     }
 
     Automaton.Builder a = new Automaton.Builder();
-    convert(a, builder.complete(), new IdentityHashMap<State, Integer>());
+    convert(a, builder.complete(), new IdentityHashMap<>());
 
     return a.finish();
   }
 
   /** Copy <code>current</code> into an internal buffer. */
   private boolean setPrevious(CharsRef current) {
-    // don't need to copy, once we fix https://issues.apache.org/jira/browse/LUCENE-3277
-    // still, called only from assert
-    previous = CharsRef.deepCopyOf(current);
+    if (previous == null) {
+      previous = new CharsRefBuilder();
+    }
+    previous.copyChars(current);
     return true;
   }
 

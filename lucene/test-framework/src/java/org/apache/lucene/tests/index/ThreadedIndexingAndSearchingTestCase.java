@@ -451,9 +451,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                           // System.out.println(Thread.currentThread().getName() + " now search
                           // body:" + term.utf8ToString());
                           // }
-                          totHits.addAndGet(
-                              runQuery(
-                                  s, new TermQuery(new Term("body", BytesRef.deepCopyOf(term)))));
+                          totHits.addAndGet(runQuery(s, new TermQuery(new Term("body", term))));
                         }
                       }
                       // if (VERBOSE) {

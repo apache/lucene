@@ -34,7 +34,7 @@ allprojects {
           // asserts, debug output.
           [propName: 'tests.verbose', value: false, description: "Enables verbose mode (emits full test outputs immediately)."],
           [propName: 'tests.workDir',
-           value: { -> file("${buildDir}/tmp/tests-tmp") },
+           value: { -> project.relativePath(file("${buildDir}/tmp/tests-tmp")) },
            description: "Working directory for forked test JVMs",
            includeInReproLine: false
           ],
@@ -47,7 +47,7 @@ allprojects {
            description: "Number of forked test JVMs"],
           [propName: 'tests.haltonfailure', value: true, description: "Halt processing on test failure."],
           [propName: 'tests.jvmargs',
-           value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
+           value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", isCIBuild ? "" : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
            description: "Arguments passed to each forked JVM."],
           // Other settings.
           [propName: 'tests.neverUpToDate', value: true,
@@ -119,12 +119,25 @@ allprojects {
       if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
         jvmArgs '--illegal-access=deny'
       }
-      
+
       // Lucene needs to optional modules at runtime, which we want to enforce for testing
       // (if the runner JVM does not support them, it will fail tests):
       jvmArgs '--add-modules', 'jdk.unsupported,jdk.management'
 
-      systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
+      // Enable the vector incubator module on supported Java versions:
+      if (rootProject.vectorIncubatorJavaVersions.contains(rootProject.runtimeJavaVersion)) {
+        jvmArgs '--add-modules', 'jdk.incubator.vector'
+      }
+
+      def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
+      def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
+      jvmArgumentProviders.add(
+          new LoggingFileArgumentProvider(
+              loggingConfigFile: loggingConfigFile,
+              tempDir: tempDir
+          )
+      )
+
       systemProperty 'java.awt.headless', 'true'
       systemProperty 'jdk.map.althashing.threshold', '0'
 
@@ -145,7 +158,6 @@ allprojects {
 
       // Set up cwd and temp locations.
       systemProperty("java.io.tmpdir", testsTmpDir)
-      systemProperty("tempDir", testsTmpDir)
       doFirst {
         testsCwd.mkdirs()
         testsTmpDir.mkdirs()
@@ -187,5 +199,22 @@ allprojects {
         logger.info("Test folders for {}: cwd={}, tmp={}", project.path, testsCwd, testsTmpDir)
       }
     }
+  }
+}
+
+class LoggingFileArgumentProvider implements CommandLineArgumentProvider {
+  @InputFile
+  @PathSensitive(PathSensitivity.RELATIVE)
+  RegularFile loggingConfigFile
+
+  @Internal
+  Directory tempDir
+
+  @Override
+  Iterable<String> asArguments() {
+    [
+        "-Djava.util.logging.config.file=${loggingConfigFile.getAsFile()}",
+        "-DtempDir=${tempDir.getAsFile()}"
+    ]
   }
 }

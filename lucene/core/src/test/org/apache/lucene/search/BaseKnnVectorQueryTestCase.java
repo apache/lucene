@@ -210,7 +210,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 10);
       IllegalArgumentException e =
-          expectThrows(IllegalArgumentException.class, () -> searcher.search(kvq, 10));
+          expectThrows(
+              RuntimeException.class,
+              IllegalArgumentException.class,
+              () -> searcher.search(kvq, 10));
       assertEquals("vector query dimension: 1 differs from field dimension: 2", e.getMessage());
     }
   }
@@ -244,36 +247,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  public void testAdvanceShallow() throws IOException {
-    try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
-        for (int j = 0; j < 5; j++) {
-          Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j}));
-          w.addDocument(doc);
-        }
-      }
-      try (IndexReader reader = DirectoryReader.open(d)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
-        Query dasq = query.rewrite(searcher);
-        Scorer scorer =
-            dasq.createWeight(searcher, ScoreMode.COMPLETE, 1).scorer(reader.leaves().get(0));
-        // before advancing the iterator
-        assertEquals(1, scorer.advanceShallow(0));
-        assertEquals(1, scorer.advanceShallow(1));
-        assertEquals(NO_MORE_DOCS, scorer.advanceShallow(10));
-
-        // after advancing the iterator
-        scorer.iterator().advance(2);
-        assertEquals(2, scorer.advanceShallow(0));
-        assertEquals(2, scorer.advanceShallow(2));
-        assertEquals(3, scorer.advanceShallow(3));
-        assertEquals(NO_MORE_DOCS, scorer.advanceShallow(10));
-      }
-    }
-  }
-
   public void testScoreEuclidean() throws IOException {
     float[][] vectors = new float[5][];
     for (int j = 0; j < 5; j++) {
@@ -291,9 +264,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(-1, scorer.docID());
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
-      // test getMaxScore
-      assertEquals(0, scorer.getMaxScore(-1), 0);
-      assertEquals(0, scorer.getMaxScore(0), 0);
       // This is 1 / ((l2distance((2,3), (2, 2)) = 1) + 1) = 0.5
       assertEquals(1 / 2f, scorer.getMaxScore(2), 0);
       assertEquals(1 / 2f, scorer.getMaxScore(Integer.MAX_VALUE), 0);
@@ -304,6 +274,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(1 / 6f, scorer.score(), 0);
       assertEquals(3, it.advance(3));
       assertEquals(1 / 2f, scorer.score(), 0);
+
       assertEquals(NO_MORE_DOCS, it.advance(4));
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     }
@@ -330,32 +301,30 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(-1, scorer.docID());
         expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
-        // test getMaxScore
-        assertEquals(0, scorer.getMaxScore(-1), 0);
-        /* maxAtZero = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
+        /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
          * normalized by (1 + x) /2.
          */
-        float maxAtZero =
+        float score0 =
             (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
-        assertEquals(maxAtZero, scorer.getMaxScore(0), 0.001);
 
-        /* max at 2 is actually the score for doc 1 which is the highest (since doc 1 vector (2, 4)
-         * is the closest to (2, 3)). This is ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
+        /* score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
          * normalized by (1 + x) /2
          */
-        float expected =
+        float score1 =
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
-        assertEquals(expected, scorer.getMaxScore(2), 0);
-        assertEquals(expected, scorer.getMaxScore(Integer.MAX_VALUE), 0);
+
+        // doc 1 happens to have the maximum score
+        assertEquals(score1, scorer.getMaxScore(2), 0.0001);
+        assertEquals(score1, scorer.getMaxScore(Integer.MAX_VALUE), 0.0001);
 
         DocIdSetIterator it = scorer.iterator();
         assertEquals(3, it.cost());
         assertEquals(0, it.nextDoc());
         // doc 0 has (1, 1)
-        assertEquals(maxAtZero, scorer.score(), 0.0001);
+        assertEquals(score0, scorer.score(), 0.0001);
         assertEquals(1, it.advance(1));
-        assertEquals(expected, scorer.score(), 0);
-        assertEquals(2, it.nextDoc());
+        assertEquals(score1, scorer.score(), 0.0001);
+
         // since topK was 3
         assertEquals(NO_MORE_DOCS, it.advance(4));
         expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
@@ -379,13 +348,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertTrue(matched.isMatch());
         assertEquals(1 / 2f, matched.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("within top 3", matched.getDescription());
+        assertEquals("within top 3 docs", matched.getDescription());
 
         Explanation nomatch = searcher.explain(query, 4);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("not in top 3", nomatch.getDescription());
+        assertEquals("not in top 3 docs", nomatch.getDescription());
       }
     }
   }
@@ -407,13 +376,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertTrue(matched.isMatch());
         assertEquals(1 / 2f, matched.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("within top 3", matched.getDescription());
+        assertEquals("within top 3 docs", matched.getDescription());
 
         Explanation nomatch = searcher.explain(query, 4);
         assertFalse(nomatch.isMatch());
         assertEquals(0f, nomatch.getValue());
         assertEquals(0, matched.getDetails().length);
-        assertEquals("not in top 3", nomatch.getDescription());
+        assertEquals("not in top 3 docs", nomatch.getDescription());
       }
     }
   }
@@ -529,6 +498,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(9, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
+              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -543,6 +513,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(5, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
+              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -570,6 +541,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
           Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
           expectThrows(
+              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -742,6 +714,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
         Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
         expectThrows(
+            RuntimeException.class,
             UnsupportedOperationException.class,
             () ->
                 searcher.search(

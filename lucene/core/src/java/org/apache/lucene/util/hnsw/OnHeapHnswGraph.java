@@ -20,8 +20,9 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.Map;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -40,12 +41,12 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // added to HnswBuilder, and the node values are the ordinals of those vectors.
   // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
   private final List<NeighborArray> graphLevel0;
-  // Represents levels 1-N. Each level is represented with a TreeMap that maps a levels level 0
+  // Represents levels 1-N. Each level is represented with a Map that maps a levels level 0
   // ordinal to its neighbors on that level. All nodes are in level 0, so we do not need to maintain
   // it in this list. However, to avoid changing list indexing, we always will make the first
   // element
   // null.
-  private final List<TreeMap<Integer, NeighborArray>> graphUpperLevels;
+  private final List<Map<Integer, NeighborArray>> graphUpperLevels;
   private final int nsize;
   private final int nsize0;
 
@@ -76,7 +77,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     if (level == 0) {
       return graphLevel0.get(node);
     }
-    TreeMap<Integer, NeighborArray> levelMap = graphUpperLevels.get(level);
+    Map<Integer, NeighborArray> levelMap = graphUpperLevels.get(level);
     assert levelMap.containsKey(node);
     return levelMap.get(node);
   }
@@ -103,7 +104,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       // and make this node the graph's new entry point
       if (level >= numLevels) {
         for (int i = numLevels; i <= level; i++) {
-          graphUpperLevels.add(new TreeMap<>());
+          graphUpperLevels.add(new HashMap<>());
         }
         numLevels = level + 1;
         entryNode = node;
@@ -170,14 +171,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   public long ramBytesUsed() {
     long neighborArrayBytes0 =
         nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + Integer.BYTES * 3;
     long neighborArrayBytes =
         nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * 2
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-            + Integer.BYTES * 2;
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + Integer.BYTES * 3;
     long total = 0;
     for (int l = 0; l < numLevels; l++) {
       if (l == 0) {
@@ -203,5 +204,16 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       }
     }
     return total;
+  }
+
+  @Override
+  public String toString() {
+    return "OnHeapHnswGraph(size="
+        + size()
+        + ", numLevels="
+        + numLevels
+        + ", entryNode="
+        + entryNode
+        + ")";
   }
 }

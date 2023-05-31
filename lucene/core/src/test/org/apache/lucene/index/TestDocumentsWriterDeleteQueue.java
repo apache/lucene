@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -34,26 +33,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 /** Unit test for {@link DocumentsWriterDeleteQueue} */
 public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
 
-  public void testAdvanceReferencesOriginal() {
-    WeakAndNext weakAndNext = new WeakAndNext();
-    DocumentsWriterDeleteQueue next = weakAndNext.next;
-    assertNotNull(next);
-    System.gc();
-    assertNull(weakAndNext.weak.get());
-  }
-
-  class WeakAndNext {
-    final WeakReference<DocumentsWriterDeleteQueue> weak;
-    final DocumentsWriterDeleteQueue next;
-
-    WeakAndNext() {
-      DocumentsWriterDeleteQueue deleteQueue = new DocumentsWriterDeleteQueue(null);
-      weak = new WeakReference<>(deleteQueue);
-      next = deleteQueue.advanceQueue(2);
-    }
-  }
-
-  public void testUpdateDelteSlices() throws Exception {
+  public void testUpdateDeleteSlices() throws Exception {
     DocumentsWriterDeleteQueue queue = new DocumentsWriterDeleteQueue(null);
     final int size = 200 + random().nextInt(500) * RANDOM_MULTIPLIER;
     Integer[] ids = new Integer[size];
