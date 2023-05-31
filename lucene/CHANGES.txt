@@ -44,6 +44,9 @@ Improvements
 
 * GITHUB#12325: Parallelize AbstractKnnVectorQuery rewrite across slices rather than segments. (Luca Cavanna)
 
+* GITHUB#12333: NumericLeafComparator#competitiveIterator makes better use of a "search after" value when paginating.
+  (Chaitanya Gohel)
+
 Optimizations
 ---------------------
 
