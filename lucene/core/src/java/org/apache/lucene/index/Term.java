@@ -76,6 +76,16 @@ public final class Term implements Comparable<Term>, Accountable {
   }
 
   /**
+   * Constructs a Term with the given field and text.
+   *
+   * <p>Note that a null field or null text value results in undefined behavior for most Lucene APIs
+   * that accept a Term parameter.
+   */
+  public Term(String fld, CharSequence text) {
+    this(fld, new BytesRef(text));
+  }
+
+  /**
    * Constructs a Term with the given field and empty text. This serves two purposes: 1) reuse of a
    * Term with the same field. 2) pattern for a query.
    *
