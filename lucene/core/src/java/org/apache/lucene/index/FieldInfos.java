@@ -752,8 +752,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
         curFi.verifySameSchema(fi, globalFieldNumbers.strictlyConsistent);
 
         if (!globalFieldNumbers.strictlyConsistent) {
-          // For the not strictly consistent case (legacy index), we may need to update merge the
-          // FieldInfo
+          // For the not strictly consistent case (legacy index), we may need to merge the
+          // FieldInfo instances
           FieldInfo updatedFieldInfo = curFi.handleLegacySupportedUpdates(fi);
           if (updatedFieldInfo != null) {
             if (fi.getDocValuesType() != DocValuesType.NONE
@@ -771,8 +771,6 @@ public class FieldInfos implements Iterable<FieldInfo> {
           fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
         }
         if (fi.hasPayloads()) {
-          // nocommit: How about the validation happening in handleLegacySupportedUpdates? not
-          // needed here?
           curFi.setStorePayloads();
         }
         return curFi;
