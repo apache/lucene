@@ -763,6 +763,11 @@ public class IndexSearcher {
     for (Query rewrittenQuery = query.rewrite(this);
         rewrittenQuery != query;
         rewrittenQuery = query.rewrite(this)) {
+      if (queryTimeout != null) {
+        if (queryTimeout.shouldExit() == true) {
+          throw new RuntimeException("Time limit exceeded during query rewrite");
+        }
+      }
       query = rewrittenQuery;
     }
     query.visit(getNumClausesCheckVisitor());
