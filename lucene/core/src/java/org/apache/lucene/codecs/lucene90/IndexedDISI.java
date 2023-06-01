@@ -556,7 +556,6 @@ public final class IndexedDISI extends DocIdSetIterator {
             return true;
           }
         }
-        disi.nextExistDocInBlock = Integer.MAX_VALUE;
         return false;
       }
 
@@ -579,14 +578,12 @@ public final class IndexedDISI extends DocIdSetIterator {
             if (doc != targetInBlock) {
               disi.index--;
               disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-              disi.exists = false;
-              return false;
+              break;
             }
             disi.exists = true;
             return true;
           }
         }
-        disi.nextExistDocInBlock = Integer.MAX_VALUE;
         disi.exists = false;
         return false;
       }
