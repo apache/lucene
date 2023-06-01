@@ -100,30 +100,31 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    NeighborQueue results = new NeighborQueue(topK, false);
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
+  }
 
-    int initialEp = graph.entryNode();
-    if (initialEp == -1) {
-      return new NeighborQueue(1, true);
-    }
-    int[] eps = new int[] {initialEp};
-    int numVisited = 0;
-    for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results.clear();
-      graphSearcher.searchLevel(results, query, 1, level, eps, vectors, graph, null, visitedLimit);
-      numVisited += results.visitedCount();
-      visitedLimit -= results.visitedCount();
-      if (results.incomplete()) {
-        results.setVisitedCount(numVisited);
-        return results;
-      }
-      eps[0] = results.pop();
-    }
-    results.clear();
-    graphSearcher.searchLevel(
-        results, query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
-    results.setVisitedCount(results.visitedCount() + numVisited);
-    return results;
+  /**
+   * Search {@link OnHeapHnswGraph}, this method is thread safe, for parameters please refer to
+   * {@link #search(float[], int, RandomAccessVectorValues, VectorEncoding,
+   * VectorSimilarityFunction, HnswGraph, Bits, int)}
+   */
+  public static NeighborQueue search(
+      float[] query,
+      int topK,
+      RandomAccessVectorValues<float[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      OnHeapHnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    OnHeapHnswGraphSearcher<float[]> graphSearcher =
+        new OnHeapHnswGraphSearcher<>(
+            vectorEncoding,
+            similarityFunction,
+            new NeighborQueue(topK, true),
+            new SparseFixedBitSet(vectors.size()));
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
   }
 
   /**
@@ -163,12 +164,51 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    NeighborQueue results = new NeighborQueue(topK, false);
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
+  }
+
+  /**
+   * Search {@link OnHeapHnswGraph}, this method is thread safe, for parameters please refer to
+   * {@link #search(byte[], int, RandomAccessVectorValues, VectorEncoding, VectorSimilarityFunction,
+   * HnswGraph, Bits, int)}
+   */
+  public static NeighborQueue search(
+      byte[] query,
+      int topK,
+      RandomAccessVectorValues<byte[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      OnHeapHnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    OnHeapHnswGraphSearcher<byte[]> graphSearcher =
+        new OnHeapHnswGraphSearcher<>(
+            vectorEncoding,
+            similarityFunction,
+            new NeighborQueue(topK, true),
+            new SparseFixedBitSet(vectors.size()));
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
+  }
+
+  private static <T> NeighborQueue search(
+      T query,
+      int topK,
+      RandomAccessVectorValues<T> vectors,
+      HnswGraph graph,
+      HnswGraphSearcher<T> graphSearcher,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    int initialEp = graph.entryNode();
+    if (initialEp == -1) {
+      return new NeighborQueue(1, true);
+    }
+    NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results.clear();
-      graphSearcher.searchLevel(results, query, 1, level, eps, vectors, graph, null, visitedLimit);
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
@@ -179,9 +219,8 @@ public class HnswGraphSearcher<T> {
       }
       eps[0] = results.pop();
     }
-    results.clear();
-    graphSearcher.searchLevel(
-        results, query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
+    results =
+        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -209,19 +248,10 @@ public class HnswGraphSearcher<T> {
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
-    NeighborQueue results = new NeighborQueue(topK, false);
-    searchLevel(results, query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
-    return results;
+    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
   }
 
-  /**
-   * Add the closest neighbors found to a priority queue (heap). These are returned in REVERSE
-   * proximity order -- the most distant neighbor of the topK found, i.e. the one with the lowest
-   * score/comparison value, will be at the top of the heap, while the closest neighbor will be the
-   * last to be popped.
-   */
-  private void searchLevel(
-      NeighborQueue results,
+  private NeighborQueue searchLevel(
       T query,
       int topK,
       int level,
@@ -232,6 +262,7 @@ public class HnswGraphSearcher<T> {
       int visitedLimit)
       throws IOException {
     int size = graph.size();
+    NeighborQueue results = new NeighborQueue(topK, false);
     prepareScratchState(vectors.size());
 
     int numVisited = 0;
@@ -264,9 +295,9 @@ public class HnswGraphSearcher<T> {
       }
 
       int topCandidateNode = candidates.pop();
-      graph.seek(level, topCandidateNode);
+      graphSeek(graph, level, topCandidateNode);
       int friendOrd;
-      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
+      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
@@ -292,6 +323,7 @@ public class HnswGraphSearcher<T> {
       results.pop();
     }
     results.setVisitedCount(numVisited);
+    return results;
   }
 
   private float compare(T query, RandomAccessVectorValues<T> vectors, int ord) throws IOException {
@@ -307,6 +339,62 @@ public class HnswGraphSearcher<T> {
     if (visited.length() < capacity) {
       visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
     }
-    visited.clear(0, visited.length());
+    visited.clear();
+  }
+
+  /**
+   * Seek a specific node in the given graph. The default implementation will just call {@link
+   * HnswGraph#seek(int, int)}
+   *
+   * @throws IOException when seeking the graph
+   */
+  void graphSeek(HnswGraph graph, int level, int targetNode) throws IOException {
+    graph.seek(level, targetNode);
+  }
+
+  /**
+   * Get the next neighbor from the graph, you must call {@link #graphSeek(HnswGraph, int, int)}
+   * before calling this method. The default implementation will just call {@link
+   * HnswGraph#nextNeighbor()}
+   *
+   * @return see {@link HnswGraph#nextNeighbor()}
+   * @throws IOException when advance neighbors
+   */
+  int graphNextNeighbor(HnswGraph graph) throws IOException {
+    return graph.nextNeighbor();
+  }
+
+  /**
+   * This class allow {@link OnHeapHnswGraph} to be searched in a thread-safe manner.
+   *
+   * <p>Note the class itself is NOT thread safe, but since each search will create one new graph
+   * searcher the search method is thread safe.
+   */
+  private static class OnHeapHnswGraphSearcher<C> extends HnswGraphSearcher<C> {
+
+    private NeighborArray cur;
+    private int upto;
+
+    private OnHeapHnswGraphSearcher(
+        VectorEncoding vectorEncoding,
+        VectorSimilarityFunction similarityFunction,
+        NeighborQueue candidates,
+        BitSet visited) {
+      super(vectorEncoding, similarityFunction, candidates, visited);
+    }
+
+    @Override
+    void graphSeek(HnswGraph graph, int level, int targetNode) {
+      cur = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
+      upto = -1;
+    }
+
+    @Override
+    int graphNextNeighbor(HnswGraph graph) {
+      if (++upto < cur.size()) {
+        return cur.node[upto];
+      }
+      return NO_MORE_DOCS;
+    }
   }
 }

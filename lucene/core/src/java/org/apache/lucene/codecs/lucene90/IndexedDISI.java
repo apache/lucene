@@ -220,7 +220,7 @@ public final class IndexedDISI extends DocIdSetIterator {
         // Flush block
         flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
         // Reset for next block
-        buffer.clear(0, buffer.length());
+        buffer.clear();
         totalCardinality += blockCardinality;
         blockCardinality = 0;
       }
@@ -234,7 +234,7 @@ public final class IndexedDISI extends DocIdSetIterator {
               jumps, out.getFilePointer() - origo, totalCardinality, jumpBlockIndex, prevBlock + 1);
       totalCardinality += blockCardinality;
       flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
-      buffer.clear(0, buffer.length());
+      buffer.clear();
       prevBlock++;
     }
     final int lastBlock =
