@@ -156,6 +156,8 @@ Improvements
 * GITHUB#12333: NumericLeafComparator#competitiveIterator makes better use of a "search after" value when paginating.
   (Chaitanya Gohel)
 
+* GITHUB#12343 allow creation of `Term`s from `CharSequence`s
+
 Optimizations
 ---------------------
 
