@@ -62,7 +62,12 @@ final class ByteBufferGuard {
   public void invalidateAndUnmap(ByteBuffer... bufs) throws IOException {
     if (cleaner != null) {
       invalidated = true;
-      // Makes "invalidated" field visible to other threads.
+      // This call should hopefully flush any CPU caches and as a result make
+      // the "invalidated" field update visible to other threads. We specifically
+      // don't make "invalidated" field volatile for performance reasons, hoping the
+      // JVM won't optimize away reads of that field and hardware should ensure
+      // caches are in sync after this call.
+      // For previous implementation (based on `AtomicInteger#lazySet(0)`) see LUCENE-7409.
       VarHandle.fullFence();
       // we give other threads a bit of time to finish reads on their ByteBuffer...:
       Thread.yield();

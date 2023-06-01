@@ -119,7 +119,9 @@ New Features
 Improvements
 ---------------------
 
-GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+* GITHUB#12245: Add support for Score Mode to `ToParentBlockJoinQuery` explain. (Marcus Eagan via Mikhail Khludnev)
+
+* GITHUB#12290: Make memory fence in ByteBufferGuard explicit using `VarHandle.fullFence()`
 
 Optimizations
 ---------------------
