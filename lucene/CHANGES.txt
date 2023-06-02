@@ -130,7 +130,7 @@ API Changes
 * GITHUB#12268: Add BitSet.clear() without parameters for clearing the entire set
   (Jonathan Ellis)
 
-* GITHUB#12341: add new IndexWriter#updateDocuments(Query, Iterable<Document>) API
+* GITHUB#12346: add new IndexWriter#updateDocuments(Query, Iterable<Document>) API
   to update documents atomically, with respect to refresh and commit using a query. (Patrick Zhai)
 
 New Features
