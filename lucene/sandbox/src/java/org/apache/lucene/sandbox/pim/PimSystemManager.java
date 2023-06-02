@@ -126,6 +126,28 @@ public class PimSystemManager {
     }
 
     /**
+     * @return true if an index is currently loaded in the PIM system
+     */
+    public boolean isIndexLoaded() {
+        synchronized (PimSystemManager.class) {
+            return isIndexLoaded;
+        }
+    }
+
+    /**
+     * @return number of dpus used by the index if an index is currently loaded
+     * in the PIM system and zero otherwise
+     */
+    public int getNbDpus() {
+        synchronized (PimSystemManager.class) {
+            if(isIndexLoaded) {
+                return pimIndexInfo.getNumDpus();
+            }
+        }
+        return 0;
+    }
+
+    /**
      * NOT IMPLEMENTED
      * Tells whether the current PIM index loaded is
      * the right one to answer queries for the LeafReaderContext object
