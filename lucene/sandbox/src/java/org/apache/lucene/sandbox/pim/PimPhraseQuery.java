@@ -14,6 +14,7 @@ import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 
@@ -41,6 +42,10 @@ public class PimPhraseQuery extends PhraseQuery {
     super(field, terms);
   }
 
+  public PimPhraseQuery(String field, BytesRef... terms) {
+    super(field, terms);
+  }
+
   public PimPhraseQuery(int slop, String field, String... terms) {
     super(slop, field, terms);
   }
@@ -53,7 +58,8 @@ public class PimPhraseQuery extends PhraseQuery {
   public Query rewrite(IndexSearcher searcher) throws IOException {
     Query query = super.rewrite(searcher);
     if (query instanceof PhraseQuery pq) {
-      if (!(searcher.getSimilarity() instanceof BM25Similarity)) {
+      if (!(searcher.getSimilarity() instanceof BM25Similarity)
+              || (pq.getSlop() != 0)) {
         PhraseQuery.Builder builder = new PhraseQuery.Builder()
           .setSlop(pq.getSlop());
         for (int i = 0; i < pq.getTerms().length; i++) {

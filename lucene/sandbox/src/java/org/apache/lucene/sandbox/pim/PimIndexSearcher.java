@@ -250,7 +250,10 @@ public class PimIndexSearcher implements Closeable {
             if(indexInput != null)
                 indexInput.close();
             indexInput = pimIndexInfo.getFileInput(leafIdx);
-
+            if(indexInput == null) {
+                fieldTableInput = null;
+                return;
+            }
             startDoc = addStartDoc ? pimIndexInfo.getStartDoc(leafIdx) : 0;
             fieldTableInput = pimIndexInfo.getFieldFileInput(indexInput, dpuId);
             blockTableInput = pimIndexInfo.getBlockTableFileInput(indexInput, dpuId);

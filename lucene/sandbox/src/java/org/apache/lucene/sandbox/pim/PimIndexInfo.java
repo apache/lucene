@@ -167,6 +167,8 @@ public class PimIndexInfo implements Serializable {
      */
     public IndexInput getFileInput(int leafIdx) throws IOException {
 
+        if(leafIdx >= segmentCommitName.length)
+            return null;
         String fileName =
                 IndexFileNames.segmentFileName(
                         segmentCommitName[leafIdx], Integer.toString(numDpus), DPU_INDEX_COMPOUND_EXTENSION);

@@ -83,9 +83,24 @@ public class PimSystemManager {
                     isIndexBeingLoaded = false;
                     isIndexLoaded = true;
                 }
+                return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Load the pim index and can force load if an index is already loaded
+     *
+     * @param pimDirectory the directory containing the PIM index
+     * @param force when true, unload the currently loaded index to force load the new one
+     * @return true if the index was successfully loaded
+     */
+    public boolean loadPimIndex(Directory pimDirectory, boolean force) throws IOException {
+
+        if(force)
+            unloadPimIndex();
+        return loadPimIndex(pimDirectory);
     }
 
     /**

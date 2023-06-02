@@ -87,9 +87,40 @@ public class RandomIndexWriter implements Closeable {
         });
   }
 
+  /**
+   * Interface for a function that creates an IndexWriter from an IndexWriterConfig
+   * and can throw an IOException
+   */
+  public interface IndexWriterInstanceCreator {
+    public IndexWriter create(IndexWriterConfig c) throws IOException;
+  }
+
+  /**
+   * Returns an indexwriter that randomly mixes up thread scheduling (by yielding at test points)
+   * Takes as input an IndexWriterInstanceCreator, in order to give flexibility on which type of
+   * IndexWriter is created
+   */
+  private static IndexWriter mockIndexWriter(Directory dir, IndexWriterConfig conf, Random r,
+                                             IndexWriterInstanceCreator creator)
+          throws IOException {
+    // Randomly calls Thread.yield so we mixup thread scheduling
+    final Random random = new Random(r.nextLong());
+    return mockIndexWriter(
+            r,
+            dir,
+            conf,
+            new TestPoint() {
+              @Override
+              public void apply(String message) {
+                if (random.nextInt(4) == 2) Thread.yield();
+              }
+            }, creator);
+  }
+
   /** Returns an indexwriter that enables the specified test point */
-  public static IndexWriter mockIndexWriter(
-      Random r, Directory dir, IndexWriterConfig conf, TestPoint testPoint) throws IOException {
+  private static IndexWriter mockIndexWriter(
+      Random r, Directory dir, IndexWriterConfig conf, TestPoint testPoint,
+      IndexWriterInstanceCreator createWriter) throws IOException {
     conf.setInfoStream(new TestPointInfoStream(conf.getInfoStream(), testPoint));
     DirectoryReader reader = null;
     if (r.nextBoolean()
@@ -105,13 +136,7 @@ public class RandomIndexWriter implements Closeable {
     IndexWriter iw;
     boolean success = false;
     try {
-      iw =
-          new IndexWriter(dir, conf) {
-            @Override
-            protected boolean isEnableTestPoints() {
-              return true;
-            }
-          };
+      iw = createWriter.create(conf);
       success = true;
     } finally {
       if (reader != null) {
@@ -123,6 +148,23 @@ public class RandomIndexWriter implements Closeable {
       }
     }
     return iw;
+  }
+
+  /** Returns an indexwriter that enables the specified test point
+   * The indexwriter is of class IndexWriter
+   */
+  public static IndexWriter mockIndexWriter(
+          Random r, Directory dir, IndexWriterConfig conf, TestPoint testPoint) throws IOException {
+
+    return mockIndexWriter(r, dir, conf, testPoint, (c) -> {
+              return new IndexWriter(dir, c) {
+                @Override
+                protected boolean isEnableTestPoints() {
+                  return true;
+                }
+              };
+            }
+    );
   }
 
   /** create a RandomIndexWriter with a random config: Uses MockAnalyzer */
@@ -147,8 +189,47 @@ public class RandomIndexWriter implements Closeable {
     this(r, dir, c, false, useSoftDeletes);
   }
 
+  /** create a RandomIndexWriter with a random config: Uses MockAnalyzer
+   *  Uses an IndexWriterInstanceCreator to create the indexwriter
+   */
+  public RandomIndexWriter(Random r, Directory dir, IndexWriterInstanceCreator creator) throws IOException {
+    this(
+            r, dir, LuceneTestCase.newIndexWriterConfig(r, new MockAnalyzer(r)), true, r.nextBoolean(),
+            creator);
+  }
+
+  /** create a RandomIndexWriter with a random config
+   *  Uses an IndexWriterInstanceCreator to create the indexwriter
+   * */
+  public RandomIndexWriter(Random r, Directory dir, Analyzer a, IndexWriterInstanceCreator creator) throws IOException {
+    this(r, dir, LuceneTestCase.newIndexWriterConfig(r, a), false, r.nextBoolean(), creator);
+  }
+
+  /** create a RandomIndexWriter with the provided config
+   *  Uses an IndexWriterInstanceCreator to create the indexwriter
+   */
+  public RandomIndexWriter(Random r, Directory dir, IndexWriterConfig c,
+                           IndexWriterInstanceCreator creator) throws IOException {
+    this(r, dir, c, false, r.nextBoolean(), creator);
+  }
+
   private RandomIndexWriter(
-      Random r, Directory dir, IndexWriterConfig c, boolean closeAnalyzer, boolean useSoftDeletes)
+          Random r, Directory dir, IndexWriterConfig c, boolean closeAnalyzer, boolean useSoftDeletes)
+          throws IOException {
+    this(r, dir, c, closeAnalyzer, useSoftDeletes,
+    (conf) -> {
+      return new IndexWriter(dir, conf) {
+        @Override
+        protected boolean isEnableTestPoints() {
+          return true;
+        }
+      };
+    });
+  }
+
+  private RandomIndexWriter(
+      Random r, Directory dir, IndexWriterConfig c, boolean closeAnalyzer, boolean useSoftDeletes,
+      IndexWriterInstanceCreator creator)
       throws IOException {
     // TODO: this should be solved in a different way; Random should not be shared (!).
     this.r = new Random(r.nextLong());
@@ -158,7 +239,7 @@ public class RandomIndexWriter implements Closeable {
     } else {
       softDeletesRatio = 0d;
     }
-    w = mockIndexWriter(dir, c, r);
+    w = mockIndexWriter(dir, c, r, creator);
     config = w.getConfig();
     flushAt = TestUtil.nextInt(r, 10, 1000);
     if (closeAnalyzer) {
