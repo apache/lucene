@@ -110,12 +110,12 @@ public final class IndexedDISI extends DocIdSetIterator {
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
       throws IOException {
-    assert block >= 0 && block < 65536;
+    assert block >= 0 && block < BLOCK_SIZE;
     out.writeShort((short) block);
-    assert cardinality > 0 && cardinality <= 65536;
+    assert cardinality > 0 && cardinality <= BLOCK_SIZE;
     out.writeShort((short) (cardinality - 1));
     if (cardinality > MAX_ARRAY_LENGTH) {
-      if (cardinality != 65536) { // all docs are set
+      if (cardinality != BLOCK_SIZE) { // all docs are set
         if (denseRankPower != -1) {
           final byte[] rank = createRank(buffer, denseRankPower);
           out.writeBytes(rank, rank.length);
@@ -497,7 +497,7 @@ public final class IndexedDISI extends DocIdSetIterator {
       method = Method.SPARSE;
       blockEnd = slice.getFilePointer() + (numValues << 1);
       nextExistDocInBlock = -1;
-    } else if (numValues == 65536) {
+    } else if (numValues == BLOCK_SIZE) {
       method = Method.ALL;
       blockEnd = slice.getFilePointer();
       gap = block - index - 1;
