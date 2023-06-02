@@ -131,7 +131,7 @@ API Changes
   (Jonathan Ellis)
 
 * GITHUB#12341: add new IndexWriter#updateDocuments(Query, Iterable<Document>) API
-  to update documents using a query. (Patrick Zhai)
+  to update documents atomically, with respect to refresh and commit using a query. (Patrick Zhai)
 
 New Features
 ---------------------
