@@ -49,6 +49,9 @@ Improvements
 
 * GITHUB#12290: Make memory fence in ByteBufferGuard explicit using `VarHandle.fullFence()`
 
+* GITHUB#12320: Add "direct to binary" option for DaciukMihovAutomatonBuilder and use it in TermInSetQuery#visit.
+  (Greg Miller)
+
 Optimizations
 ---------------------
 

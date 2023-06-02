@@ -17,11 +17,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.SortedSet;
 import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.PrefixCodedTerms;
@@ -38,7 +37,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
 /**
@@ -150,13 +148,17 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     }
   }
 
+  // TODO: This is pretty heavy-weight. If we have TermInSetQuery directly extend AutomatonQuery
+  // we won't have to do this (see GH#12176).
   private ByteRunAutomaton asByteRunAutomaton() {
-    TermIterator iterator = termData.iterator();
-    List<Automaton> automata = new ArrayList<>();
-    for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-      automata.add(Automata.makeBinary(term));
+    try {
+      Automaton a = Automata.makeBinaryStringUnion(termData.iterator());
+      return new ByteRunAutomaton(a, true, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    } catch (IOException e) {
+      // Shouldn't happen since termData.iterator() provides an interator implementation that
+      // never throws:
+      throw new UncheckedIOException(e);
     }
-    return new CompiledAutomaton(Operations.union(automata)).runAutomaton;
   }
 
   @Override
