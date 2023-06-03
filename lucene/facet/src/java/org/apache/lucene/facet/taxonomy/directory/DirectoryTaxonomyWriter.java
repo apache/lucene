@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -120,8 +119,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   private volatile boolean isClosed = false;
   private volatile TaxonomyIndexArrays taxoArrays;
 
-  private BiConsumer<FacetLabel, Document> ordinalDataAppender;
-
   /**
    * Construct a Taxonomy writer.
    *
@@ -135,24 +132,16 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * @param cache A {@link TaxonomyWriterCache} implementation which determines the in-memory
    *     caching policy. See for example {@link LruTaxonomyWriterCache}. If null or missing, {@link
    *     #defaultTaxonomyWriterCache()} is used.
-   * @param ordinalDataAppender A {@link BiConsumer} that takes a {@link FacetLabel} and a {@link
-   *     Document} and adds custom fields to the document when called. This is used to index
-   *     additional ordinal data when the ordinal docs are indexed.
    * @throws CorruptIndexException if the taxonomy is corrupted.
    * @throws LockObtainFailedException if the taxonomy is locked by another writer.
    * @throws IOException if another error occurred.
    */
-  public DirectoryTaxonomyWriter(
-      Directory directory,
-      OpenMode openMode,
-      TaxonomyWriterCache cache,
-      BiConsumer<FacetLabel, Document> ordinalDataAppender)
+  public DirectoryTaxonomyWriter(Directory directory, OpenMode openMode, TaxonomyWriterCache cache)
       throws IOException {
 
     dir = directory;
     IndexWriterConfig config = createIndexWriterConfig(openMode);
     indexWriter = openIndexWriter(dir, config);
-    this.ordinalDataAppender = ordinalDataAppender;
 
     // verify (to some extent) that merge policy in effect would preserve category docids
     assert !(indexWriter.getConfig().getMergePolicy() instanceof TieredMergePolicy)
@@ -202,12 +191,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
       // notice a few cache misses.
       cacheIsComplete = false;
     }
-  }
-
-  /** Create a new instance where the ordinal docs will only have the default fields. */
-  public DirectoryTaxonomyWriter(Directory directory, OpenMode openMode, TaxonomyWriterCache cache)
-      throws IOException {
-    this(directory, openMode, cache, null);
   }
 
   /** Returns the {@link TaxonomyWriterCache} in use by this writer. */
@@ -281,13 +264,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     this(directory, openMode, defaultTaxonomyWriterCache());
   }
 
-  /** Create a new instance with default cache, but custom ordinal data appender. */
-  public DirectoryTaxonomyWriter(
-      Directory directory, OpenMode openMode, BiConsumer<FacetLabel, Document> ordinalDataAppender)
-      throws IOException {
-    this(directory, openMode, defaultTaxonomyWriterCache(), ordinalDataAppender);
-  }
-
   /**
    * Defines the default {@link TaxonomyWriterCache} to use in constructors which do not specify
    * one.
@@ -301,12 +277,6 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   /** Create this with {@code OpenMode.CREATE_OR_APPEND}. */
   public DirectoryTaxonomyWriter(Directory d) throws IOException {
     this(d, OpenMode.CREATE_OR_APPEND);
-  }
-
-  /** Create new instance with default configuration and a custom ordinal data appender. */
-  public DirectoryTaxonomyWriter(Directory d, BiConsumer<FacetLabel, Document> ordinalDataAppender)
-      throws IOException {
-    this(d, OpenMode.CREATE_OR_APPEND, ordinalDataAppender);
   }
 
   /**
@@ -467,6 +437,12 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
 
   /**
+   * Child classes can implement this method to modify the document corresponding to a category path
+   * before indexing it.
+   */
+  protected void enrichOrdinalDocument(Document d, FacetLabel categoryPath) {}
+
+  /**
    * Note that the methods calling addCategoryDocument() are synchronized, so this method is
    * effectively synchronized as well.
    */
@@ -484,9 +460,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     d.add(fullPathField);
 
     // add arbitrary ordinal data to the doc
-    if (ordinalDataAppender != null) {
-      ordinalDataAppender.accept(categoryPath, d);
-    }
+    enrichOrdinalDocument(d, categoryPath);
 
     indexWriter.addDocument(d);
     int id = nextID.getAndIncrement();
@@ -900,6 +874,26 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     initReaderManager(); // ensure that it's initialized
     refreshReaderManager();
     nextID.set(indexWriter.getDocStats().maxDoc);
+    taxoArrays = null; // must nullify so that it's re-computed next time it's needed
+
+    // need to clear the cache, so that addCategory won't accidentally return
+    // old categories that are in the cache.
+    cache.clear();
+    cacheIsComplete = false;
+    shouldFillCache = true;
+    cacheMisses.set(0);
+
+    // update indexEpoch as a taxonomy replace is just like it has be recreated
+    ++indexEpoch;
+  }
+
+  /** Delete all taxonomy data and start over. */
+  public synchronized void reset() throws IOException {
+    indexWriter.deleteAll();
+    shouldRefreshReaderManager = true;
+    initReaderManager(); // ensure that it's initialized
+    refreshReaderManager();
+    nextID.set(0);
     taxoArrays = null; // must nullify so that it's re-computed next time it's needed
 
     // need to clear the cache, so that addCategory won't accidentally return

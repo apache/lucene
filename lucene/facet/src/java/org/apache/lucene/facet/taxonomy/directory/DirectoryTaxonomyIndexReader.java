@@ -16,14 +16,28 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import java.io.IOException;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.store.Directory;
+
 /**
- * This class holds constants used by the directory taxonomy implementations.
- *
- * @lucene.experimental
+ * This is like a {@link DirectoryTaxonomyReader}, except it provides access to the underlying
+ * {@link DirectoryReader} and full path field name.
  */
-abstract class Consts {
-  /** The name of the field containing the full path of a taxonomy document. */
-  static final String FULL = "$full_path$";
-  /** The name of the field containing the ordinal of the parent of a taxonomy document. */
-  static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
+public class DirectoryTaxonomyIndexReader extends DirectoryTaxonomyReader {
+
+  /** Open a taxonomy reader on the provided {@link Directory}. */
+  public DirectoryTaxonomyIndexReader(Directory directory) throws IOException {
+    super(directory);
+  }
+
+  @Override
+  public DirectoryReader getInternalIndexReader() {
+    return super.getInternalIndexReader();
+  }
+
+  /** Get the name of the full path field. */
+  public String getFullPathFieldName() {
+    return Consts.FULL;
+  }
 }

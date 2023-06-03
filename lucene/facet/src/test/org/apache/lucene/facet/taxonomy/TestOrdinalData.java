@@ -28,10 +28,9 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.taxonomy.directory.Consts;
-import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyIndexReader;
+import org.apache.lucene.facet.taxonomy.directory.ReindexingEnrichedDirectoryTaxonomyWriter;
 import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -50,23 +49,28 @@ import org.junit.Before;
 
 public class TestOrdinalData extends FacetTestCase {
   Directory taxoDir;
+  DirectoryTaxonomyIndexReader taxoReader;
   IndexReader taxoIndexReader;
+  ReindexingEnrichedDirectoryTaxonomyWriter taxoWriter;
 
-  private static final Map<String, Long> labelToScore;
+  private static final Map<String, Long> labelToScore =
+      Map.of(
+          "Bob", 42L,
+          "Lisa", 35L);
 
-  static {
-    labelToScore = new HashMap<>();
-    labelToScore.put("Bob", 42L);
-    labelToScore.put("Lisa", 35L);
-  }
+  private static class OrdinalDataAppender implements BiConsumer<FacetLabel, Document> {
+    private final Map<String, Long> scores;
 
-  static class OrdinalDataAppender implements BiConsumer<FacetLabel, Document> {
+    private OrdinalDataAppender(Map<String, Long> scores) {
+      this.scores = scores;
+    }
+
     @Override
     public void accept(FacetLabel facetLabel, Document doc) {
       if (facetLabel.length == 0) {
         return;
       }
-      Long score = labelToScore.get(facetLabel.components[facetLabel.length - 1]);
+      Long score = scores.get(facetLabel.components[facetLabel.length - 1]);
       if (score != null) {
         doc.add(new NumericDocValuesField("score", score));
         doc.add(new StringField("hasScore?", "yes", Field.Store.NO));
@@ -85,7 +89,9 @@ public class TestOrdinalData extends FacetTestCase {
     taxoDir = newDirectory();
 
     IndexWriter indexWriter = new IndexWriter(indexDir, new IndexWriterConfig());
-    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir, new OrdinalDataAppender());
+    taxoWriter =
+        new ReindexingEnrichedDirectoryTaxonomyWriter(
+            taxoDir, new OrdinalDataAppender(labelToScore));
 
     FacetsConfig facetsConfig = new FacetsConfig();
     facetsConfig.setHierarchical("Author", true);
@@ -105,9 +111,11 @@ public class TestOrdinalData extends FacetTestCase {
     doc.add(new FacetField("Publish Date", "2010", "10", "20"));
     indexWriter.addDocument(facetsConfig.build(taxoWriter, doc));
 
-    IOUtils.close(taxoWriter, indexWriter, indexDir);
+    IOUtils.close(indexWriter, indexDir);
+    taxoWriter.commit();
 
-    taxoIndexReader = DirectoryReader.open(taxoDir);
+    taxoReader = new DirectoryTaxonomyIndexReader(taxoDir);
+    taxoIndexReader = taxoReader.getInternalIndexReader();
   }
 
   @After
@@ -115,7 +123,9 @@ public class TestOrdinalData extends FacetTestCase {
   public void tearDown() throws Exception {
     super.tearDown();
 
-    IOUtils.close(taxoIndexReader, taxoDir);
+    IOUtils.close(taxoWriter);
+    IOUtils.close(taxoReader);
+    IOUtils.close(taxoDir);
   }
 
   public void testDocValue() throws IOException {
@@ -124,7 +134,7 @@ public class TestOrdinalData extends FacetTestCase {
     assertEquals(9, taxoIndexReader.maxDoc());
     for (LeafReaderContext ctx : taxoIndexReader.leaves()) {
       LeafReader leafReader = ctx.reader();
-      BinaryDocValues fullPaths = leafReader.getBinaryDocValues(Consts.FULL);
+      BinaryDocValues fullPaths = leafReader.getBinaryDocValues(taxoReader.getFullPathFieldName());
       NumericDocValues scores = leafReader.getNumericDocValues("score");
       if (scores == null) {
         continue;
@@ -148,19 +158,36 @@ public class TestOrdinalData extends FacetTestCase {
     }
   }
 
+  private void validateSearchResults(IndexSearcher searcher, Map<Query, Integer> queriesAndCounts)
+      throws IOException {
+    for (Map.Entry<Query, Integer> queryAndCount : queriesAndCounts.entrySet()) {
+      Query q = queryAndCount.getKey();
+      int count = queryAndCount.getValue();
+      TopDocs td = searcher.search(q, Integer.MAX_VALUE);
+      assertEquals(count, td.totalHits.value);
+    }
+  }
+
   public void testSearchableField() throws IOException {
     IndexSearcher taxoSearcher = newSearcher(taxoIndexReader);
-    Query q;
-    TopDocs td;
+    validateSearchResults(
+        taxoSearcher,
+        Map.of(
+            new TermQuery(new Term("hasScore?", "yes")), 2,
+            new TermQuery(new Term("hasScore?", "no")), 6));
+  }
 
-    q = new TermQuery(new Term("hasScore?", "yes"));
-    td = taxoSearcher.search(q, 100);
-    // "Bob" and "Lisa" have scores
-    assertEquals(2, td.totalHits.value);
+  public void testReindex() throws IOException {
+    taxoWriter.reindexWithNewOrdinalData(new OrdinalDataAppender(new HashMap<>()));
+    taxoReader.close();
+    taxoReader = new DirectoryTaxonomyIndexReader(taxoDir);
+    taxoIndexReader = taxoReader.getInternalIndexReader();
 
-    q = new TermQuery(new Term("hasScore?", "no"));
-    td = taxoSearcher.search(q, 100);
-    // All the publishing date components and the dimensions do not have scores
-    assertEquals(6, td.totalHits.value);
+    IndexSearcher taxoSearcher = newSearcher(taxoIndexReader);
+    validateSearchResults(
+        taxoSearcher,
+        Map.of(
+            new TermQuery(new Term("hasScore?", "yes")), 0,
+            new TermQuery(new Term("hasScore?", "no")), 8));
   }
 }
