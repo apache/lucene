@@ -756,12 +756,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
           // FieldInfo instances
           FieldInfo updatedFieldInfo = curFi.handleLegacySupportedUpdates(fi);
           if (updatedFieldInfo != null) {
-            if (fi.getDocValuesType() != DocValuesType.NONE
-                && curFi.getDocValuesType() == fi.getDocValuesType()) {
+            if (curFi.getDocValuesType() == DocValuesType.NONE
+                && updatedFieldInfo.getDocValuesType() != DocValuesType.NONE) {
               // Must also update docValuesType map so it's
               // aware of this field's DocValuesType.  This will throw IllegalArgumentException if
               // an illegal type change was attempted.
-              globalFieldNumbers.setDocValuesType(fi.number, fi.getName(), fi.getDocValuesType());
+              globalFieldNumbers.setDocValuesType(
+                  updatedFieldInfo.number,
+                  updatedFieldInfo.getName(),
+                  updatedFieldInfo.getDocValuesType());
             }
             // Since the FieldInfo changed, update in map
             byName.put(fi.getName(), updatedFieldInfo);
