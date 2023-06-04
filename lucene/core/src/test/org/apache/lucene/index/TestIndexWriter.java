@@ -3473,7 +3473,12 @@ public class TestIndexWriter extends LuceneTestCase {
                       Document doc = new Document();
                       doc.add(new StringField("id", id, Field.Store.YES));
                       if (mixDeletes && random().nextBoolean()) {
-                        writer.updateDocuments(new Term("id", id), Arrays.asList(doc, doc));
+                        if (random().nextBoolean()) {
+                          writer.updateDocuments(new Term("id", id), Arrays.asList(doc, doc));
+                        } else {
+                          writer.updateDocuments(
+                              new TermQuery(new Term("id", id)), Arrays.asList(doc, doc));
+                        }
                       } else {
                         writer.softUpdateDocuments(
                             new Term("id", id),

@@ -1522,6 +1522,19 @@ public class IndexWriter
         delTerm == null ? null : DocumentsWriterDeleteQueue.newNode(delTerm), docs);
   }
 
+  /**
+   * Similar to {@link #updateDocuments(Term, Iterable)}, but take a query instead of a term to
+   * identify the documents to be updated
+   *
+   * @lucene.experimental
+   */
+  public long updateDocuments(
+      Query delQuery, Iterable<? extends Iterable<? extends IndexableField>> docs)
+      throws IOException {
+    return updateDocuments(
+        delQuery == null ? null : DocumentsWriterDeleteQueue.newNode(delQuery), docs);
+  }
+
   private long updateDocuments(
       final DocumentsWriterDeleteQueue.Node<?> delNode,
       Iterable<? extends Iterable<? extends IndexableField>> docs)
