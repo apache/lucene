@@ -101,14 +101,6 @@ public class IndexSearcher {
    */
   private static final int TOTAL_HITS_THRESHOLD = 1000;
 
-  /**
-   * Thresholds for index slice allocation logic. To change the default, extend <code> IndexSearcher
-   * </code> and use custom values
-   */
-  private static final int MAX_DOCS_PER_SLICE = 250_000;
-
-  private static final int MAX_SEGMENTS_PER_SLICE = 5;
-
   final IndexReader reader; // package private for testing!
 
   // NOTE: these members might change in incompatible ways
@@ -225,12 +217,24 @@ public class IndexSearcher {
     this(context, executor, getSliceExecutionControlPlane(executor));
   }
 
-  // Package private for testing
-  IndexSearcher(IndexReaderContext context, Executor executor, SliceExecutor sliceExecutor) {
+  /**
+   * Creates a searcher searching the provided top-level {@link IndexReaderContext}.
+   *
+   * <p>Given a non-<code>null</code> {@link Executor} and {@link SliceExecutor} this method runs
+   * searches for each segment separately, using the provided Executor. The provided {@link
+   * Executor} instance should be same as the one used in {@link SliceExecutor} NOTE: if you are
+   * using {@link NIOFSDirectory}, do not use the shutdownNow method of ExecutorService as this uses
+   * Thread.interrupt under-the-hood which can silently close file descriptors (see <a href=
+   * "https://issues.apache.org/jira/browse/LUCENE-2239">LUCENE-2239</a>).
+   *
+   * @lucene.experimental
+   */
+  public IndexSearcher(IndexReaderContext context, Executor executor, SliceExecutor sliceExecutor) {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
     assert (sliceExecutor == null) == (executor == null);
-
+    assert (sliceExecutor == null) || (sliceExecutor.getExecutor() == executor)
+        : "Passed in Executor and one used in SliceExecutor should be same";
     reader = context.reader();
     this.executor = executor;
     this.sliceExecutor = sliceExecutor;
@@ -319,11 +323,10 @@ public class IndexSearcher {
 
   /**
    * Expert: Creates an array of leaf slices each holding a subset of the given leaves. Each {@link
-   * LeafSlice} is executed in a single thread. By default, segments with more than
-   * MAX_DOCS_PER_SLICE will get their own thread
+   * LeafSlice} is executed in a single thread.
    */
   protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE);
+    return sliceExecutor.computeSlices(leaves);
   }
 
   /** Static method to segregate LeafReaderContexts amongst multiple slices */
@@ -671,7 +674,7 @@ public class IndexSearcher {
       }
       final List<FutureTask<C>> listTasks = new ArrayList<>();
       for (int i = 0; i < leafSlices.length; ++i) {
-        final LeafReaderContext[] leaves = leafSlices[i].leaves;
+        final LeafReaderContext[] leaves = leafSlices[i].getLeaves();
         final C collector = collectors.get(i);
         FutureTask<C> task =
             new FutureTask<>(
@@ -880,27 +883,6 @@ public class IndexSearcher {
   /* sugar for #getReader().getTopReaderContext() */
   public IndexReaderContext getTopReaderContext() {
     return readerContext;
-  }
-
-  /**
-   * A class holding a subset of the {@link IndexSearcher}s leaf contexts to be executed within a
-   * single thread.
-   *
-   * @lucene.experimental
-   */
-  public static class LeafSlice {
-
-    /**
-     * The leaves that make up this slice.
-     *
-     * @lucene.experimental
-     */
-    public final LeafReaderContext[] leaves;
-
-    public LeafSlice(List<LeafReaderContext> leavesList) {
-      Collections.sort(leavesList, Comparator.comparingInt(l -> l.docBase));
-      this.leaves = leavesList.toArray(new LeafReaderContext[0]);
-    }
   }
 
   @Override

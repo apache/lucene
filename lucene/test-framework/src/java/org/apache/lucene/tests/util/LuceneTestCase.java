@@ -155,9 +155,11 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LRUQueryCache;
+import org.apache.lucene.search.LeafSlice;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryCache;
 import org.apache.lucene.search.QueryCachingPolicy;
+import org.apache.lucene.search.SliceExecutor;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -1996,8 +1998,14 @@ public abstract class LuceneTestCase extends Assert {
               }
             };
       } else {
-        ret =
-            random.nextBoolean() ? new IndexSearcher(r, ex) : new IndexSearcher(r.getContext(), ex);
+        if (random.nextBoolean()) {
+          ret = new IndexSearcher(r, ex);
+        } else {
+          ret =
+              (random.nextBoolean() || ex == null)
+                  ? new IndexSearcher(r.getContext(), ex)
+                  : new IndexSearcher(r.getContext(), ex, new SliceExecutor(ex));
+        }
       }
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);

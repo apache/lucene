@@ -248,11 +248,11 @@ public class TestIndexSearcher extends LuceneTestCase {
             new LinkedBlockingQueue<Runnable>(),
             new NamedThreadFactory("TestIndexSearcher"));
     IndexSearcher s = new IndexSearcher(r, service);
-    IndexSearcher.LeafSlice[] slices = s.getSlices();
+    LeafSlice[] slices = s.getSlices();
     assertNotNull(slices);
     assertEquals(1, slices.length);
-    assertEquals(1, slices[0].leaves.length);
-    assertTrue(slices[0].leaves[0] == r.leaves().get(0));
+    assertEquals(1, slices[0].getLeaves().length);
+    assertTrue(slices[0].getLeaves()[0] == r.leaves().get(0));
     service.shutdown();
     IOUtils.close(r, dir);
   }
@@ -408,6 +408,30 @@ public class TestIndexSearcher extends LuceneTestCase {
     runSliceExecutorTest(service, true);
 
     TestUtil.shutdownExecutorService(service);
+  }
+
+  public void testDifferentExecutorAssertion() {
+    ThreadPoolExecutor service_1 =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestIndexSearcher_1"));
+    ThreadPoolExecutor service_2 =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestIndexSearcher_2"));
+    expectThrows(
+        AssertionError.class,
+        () -> new IndexSearcher(reader.getContext(), service_1, new SliceExecutor(service_2)));
+    TestUtil.shutdownExecutorService(service_1);
+    TestUtil.shutdownExecutorService(service_2);
   }
 
   private void runSliceExecutorTest(ThreadPoolExecutor service, boolean useRandomSliceExecutor)

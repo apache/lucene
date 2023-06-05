@@ -26,18 +26,45 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafSlice;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SliceExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.Version;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public class TestSegmentToThreadMapping extends LuceneTestCase {
+
+  private static ExecutorService testExecutor;
+
+  private static SliceExecutor testSliceExecutor;
+
+  @BeforeClass
+  public static void init() {
+    testExecutor =
+        new ThreadPoolExecutor(
+            4,
+            4,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("TestSegmentToThreadMapping"));
+    testSliceExecutor = new SliceExecutor(testExecutor);
+  }
+
+  @AfterClass
+  public static void clean() {
+    TestUtil.shutdownExecutorService(testExecutor);
+  }
 
   public LeafReader dummyIndexReader(final int maxDoc) {
     return new LeafReader() {
@@ -171,13 +198,16 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
     leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] sliceExecutorSlices = testSliceExecutor.computeSlices(leafReaderContexts);
 
-    assertTrue(resultSlices.length == 1);
+    assertEquals(1, resultSlices.length);
+    assertEquals(resultSlices.length, sliceExecutorSlices.length);
 
-    final LeafReaderContext[] leaves = resultSlices[0].leaves;
+    final LeafReaderContext[] leaves = resultSlices[0].getLeaves();
 
-    assertTrue(leaves.length == 4);
+    assertEquals(4, leaves.length);
+    assertArrayEquals(leaves, sliceExecutorSlices[0].getLeaves());
   }
 
   public void testSmallSegments() {
@@ -200,17 +230,22 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     leafReaderContexts.add(new LeafReaderContext(seventhLargeSegmentReader));
     leafReaderContexts.add(new LeafReaderContext(eigthLargeSegmentReader));
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] sliceExecutorSlices = testSliceExecutor.computeSlices(leafReaderContexts);
 
-    assertTrue(resultSlices.length == 3);
+    assertEquals(3, resultSlices.length);
+    assertEquals(resultSlices.length, sliceExecutorSlices.length);
 
-    final LeafReaderContext[] firstSliceleaves = resultSlices[0].leaves;
-    final LeafReaderContext[] secondSliceleaves = resultSlices[1].leaves;
-    final LeafReaderContext[] thirdSliceleaves = resultSlices[2].leaves;
+    final LeafReaderContext[] firstSliceleaves = resultSlices[0].getLeaves();
+    final LeafReaderContext[] secondSliceleaves = resultSlices[1].getLeaves();
+    final LeafReaderContext[] thirdSliceleaves = resultSlices[2].getLeaves();
 
-    assertTrue(firstSliceleaves.length == 2);
-    assertTrue(secondSliceleaves.length == 5);
-    assertTrue(thirdSliceleaves.length == 1);
+    assertEquals(2, firstSliceleaves.length);
+    assertArrayEquals(firstSliceleaves, sliceExecutorSlices[0].getLeaves());
+    assertEquals(5, secondSliceleaves.length);
+    assertArrayEquals(secondSliceleaves, sliceExecutorSlices[1].getLeaves());
+    assertEquals(1, thirdSliceleaves.length);
+    assertArrayEquals(thirdSliceleaves, sliceExecutorSlices[2].getLeaves());
   }
 
   public void testLargeSlices() {
@@ -225,17 +260,22 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     leafReaderContexts.add(new LeafReaderContext(secondMediumSegmentReader));
     leafReaderContexts.add(new LeafReaderContext(thirdMediumSegmentReader));
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] sliceExecutorSlices = testSliceExecutor.computeSlices(leafReaderContexts);
 
-    assertTrue(resultSlices.length == 3);
+    assertEquals(3, resultSlices.length);
+    assertEquals(resultSlices.length, sliceExecutorSlices.length);
 
-    final LeafReaderContext[] firstSliceleaves = resultSlices[0].leaves;
-    final LeafReaderContext[] secondSliceleaves = resultSlices[1].leaves;
-    final LeafReaderContext[] thirdSliceleaves = resultSlices[2].leaves;
+    final LeafReaderContext[] firstSliceleaves = resultSlices[0].getLeaves();
+    final LeafReaderContext[] secondSliceleaves = resultSlices[1].getLeaves();
+    final LeafReaderContext[] thirdSliceleaves = resultSlices[2].getLeaves();
 
-    assertTrue(firstSliceleaves.length == 1);
-    assertTrue(secondSliceleaves.length == 2);
-    assertTrue(thirdSliceleaves.length == 1);
+    assertEquals(1, firstSliceleaves.length);
+    assertArrayEquals(firstSliceleaves, sliceExecutorSlices[0].getLeaves());
+    assertEquals(2, secondSliceleaves.length);
+    assertArrayEquals(secondSliceleaves, sliceExecutorSlices[1].getLeaves());
+    assertEquals(1, thirdSliceleaves.length);
+    assertArrayEquals(thirdSliceleaves, sliceExecutorSlices[2].getLeaves());
   }
 
   public void testIntraSliceDocIDOrder() throws Exception {
@@ -250,24 +290,16 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
     IndexReader r = w.getReader();
     w.close();
 
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestSegmentToThreadMapping"));
-    IndexSearcher s = new IndexSearcher(r, service);
+    IndexSearcher s = new IndexSearcher(r, testExecutor);
     Query query = new MatchAllDocsQuery();
 
     s.search(query, Integer.MAX_VALUE);
 
-    IndexSearcher.LeafSlice[] slices = s.getSlices();
+    LeafSlice[] slices = s.getSlices();
     assertNotNull(slices);
 
-    for (IndexSearcher.LeafSlice leafSlice : slices) {
-      LeafReaderContext[] leafReaderContexts = leafSlice.leaves;
+    for (LeafSlice leafSlice : slices) {
+      LeafReaderContext[] leafReaderContexts = leafSlice.getLeaves();
       int previousDocBase = leafReaderContexts[0].docBase;
 
       for (LeafReaderContext leafReaderContext : leafReaderContexts) {
@@ -276,7 +308,6 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
     }
 
-    service.shutdown();
     IOUtils.close(r, dir);
   }
 
@@ -291,8 +322,13 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
           new LeafReaderContext(dummyIndexReader(random().nextInt((max - min) + 1) + min)));
     }
 
-    IndexSearcher.LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] resultSlices = IndexSearcher.slices(leafReaderContexts, 250_000, 5);
+    LeafSlice[] sliceExecutorSlices = testSliceExecutor.computeSlices(leafReaderContexts);
 
     assertTrue(resultSlices.length > 0);
+    assertEquals(resultSlices.length, sliceExecutorSlices.length);
+    for (int i = 0; i < resultSlices.length; ++i) {
+      assertArrayEquals(resultSlices[i].getLeaves(), sliceExecutorSlices[i].getLeaves());
+    }
   }
 }
