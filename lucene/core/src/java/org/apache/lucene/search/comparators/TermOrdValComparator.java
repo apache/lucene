@@ -244,7 +244,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
             throw new IllegalStateException("Field [" + field + "] cannot be found in field infos");
           }
           dense = false;
-          enableSkipping = true;
+          enableSkipping = false;
         } else if (fieldInfo.getIndexOptions() == IndexOptions.NONE) {
           // No terms index
           dense = false;
