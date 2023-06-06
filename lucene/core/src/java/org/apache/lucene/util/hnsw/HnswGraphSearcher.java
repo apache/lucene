@@ -88,6 +88,65 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
+    return search(
+        query,
+        topK,
+        vectors,
+        vectorEncoding,
+        similarityFunction,
+        graph,
+        acceptOrds,
+        visitedLimit,
+        new SparseFixedBitSet(vectors.size()));
+  }
+
+  /**
+   * Searches a concurrent HNSW graph for the nearest neighbors of a query vector.
+   *
+   * @param query search query vector
+   * @param topK the number of nodes to be returned
+   * @param vectors the vector values
+   * @param similarityFunction the similarity function to compare vectors
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @return a priority queue holding the closest neighbors found
+   */
+  public static NeighborQueue searchConcurrent(
+      float[] query,
+      int topK,
+      RandomAccessVectorValues<float[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      HnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    return search(
+        query,
+        topK,
+        vectors,
+        vectorEncoding,
+        similarityFunction,
+        graph,
+        acceptOrds,
+        visitedLimit,
+        new GrowableBitSet(vectors.size()));
+  }
+
+  private static NeighborQueue search(
+      float[] query,
+      int topK,
+      RandomAccessVectorValues<float[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      HnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit,
+      BitSet visited)
+      throws IOException {
     if (query.length != vectors.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -97,10 +156,7 @@ public class HnswGraphSearcher<T> {
     }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
-            vectorEncoding,
-            similarityFunction,
-            new NeighborQueue(topK, true),
-            new SparseFixedBitSet(vectors.size()));
+            vectorEncoding, similarityFunction, new NeighborQueue(topK, true), visited);
     NeighborQueue results = new NeighborQueue(topK, false);
 
     int initialEp = graph.entryNode();
