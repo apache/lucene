@@ -915,13 +915,14 @@ public class TieredMergePolicy extends MergePolicy {
     final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
 
     boolean haveWork = false;
+    List<SegmentSizeAndDocs> sortedInfos = new ArrayList<>();
     for (SegmentCommitInfo info : infos) {
       int delCount = mergeContext.numDeletesToMerge(info);
       assert assertDelCount(delCount, info);
+      sortedInfos.add(new SegmentSizeAndDocs(info, size(info, delCount), delCount));
       double pctDeletes = 100. * ((double) delCount) / info.info.maxDoc();
       if (pctDeletes > forceMergeDeletesPctAllowed && !merging.contains(info)) {
         haveWork = true;
-        break;
       }
     }
 
@@ -929,7 +930,15 @@ public class TieredMergePolicy extends MergePolicy {
       return null;
     }
 
-    List<SegmentSizeAndDocs> sortedInfos = getSortedBySegmentSize(infos, mergeContext);
+    sortedInfos.sort(
+        (o1, o2) -> {
+          // Sort by largest size:
+          int cmp = Long.compare(o2.sizeInBytes, o1.sizeInBytes);
+          if (cmp == 0) {
+            cmp = o1.name.compareTo(o2.name);
+          }
+          return cmp;
+        });
 
     Iterator<SegmentSizeAndDocs> iter = sortedInfos.iterator();
     while (iter.hasNext()) {
