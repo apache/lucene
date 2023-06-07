@@ -264,11 +264,25 @@ public class TermQuery extends Query {
   /** Returns true iff <code>other</code> is equal to <code>this</code>. */
   @Override
   public boolean equals(Object other) {
-    return sameClassAs(other) && term.equals(((TermQuery) other).term);
+    if (!sameClassAs(other)) {
+      return false;
+    }
+    TermQuery otherTermQuery = (TermQuery) other;
+    if (!term.equals(otherTermQuery.term)) {
+      return false;
+    }
+    if (perReaderTermState != null && otherTermQuery.perReaderTermState != null) {
+      return perReaderTermState.docFreq() == otherTermQuery.perReaderTermState.docFreq();
+    }
+    return perReaderTermState == null && otherTermQuery.perReaderTermState == null;
   }
 
   @Override
   public int hashCode() {
-    return classHash() ^ term.hashCode();
+    int hash = classHash() ^ term.hashCode();
+    if (perReaderTermState != null) {
+      hash ^= Integer.hashCode(perReaderTermState.docFreq());
+    }
+    return hash;
   }
 }

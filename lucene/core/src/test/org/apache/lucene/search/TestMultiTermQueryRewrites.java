@@ -135,8 +135,10 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
       System.out.println("multi segment with duplicates: " + q3);
     }
     assertEquals("The multi-segment case must produce same rewritten query", q1, q2);
-    assertEquals(
-        "The multi-segment case with duplicates must produce same rewritten query", q1, q3);
+    assertNotEquals(
+        "The multi-segment case with duplicates must produce rewritten query with different term freqs",
+        q1,
+        q3);
     checkBooleanQueryOrder(q1);
     checkBooleanQueryOrder(q2);
     checkBooleanQueryOrder(q3);
@@ -286,8 +288,11 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
 
     DirectoryReader reader = w.getReader();
     IndexSearcher searcher = newSearcher(reader);
-    BooleanQuery bq = new BooleanQuery.Builder()
-            .add(new BoostQuery(new TermQuery(new Term("text", "aaaa")), 2.0f), BooleanClause.Occur.SHOULD)
+    BooleanQuery bq =
+        new BooleanQuery.Builder()
+            .add(
+                new BoostQuery(new TermQuery(new Term("text", "aaaa")), 2.0f),
+                BooleanClause.Occur.SHOULD)
             .add(new FuzzyQuery(new Term("text", "aaaa"), 1), BooleanClause.Occur.SHOULD)
             .build();
 
@@ -295,7 +300,8 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     List<TermQuery> termQueries = extractTermQueries(rewritten, new ArrayList<>());
     // check if "aaaa" term query was kept and not merged with blended term query
     // with wrong docFreq produced from fuzzy query
-    boolean found = termQueries.stream()
+    boolean found =
+        termQueries.stream()
             .anyMatch(q -> q.getTerm().text().equals("aaaa") && q.getTermStates() == null);
     assertTrue(found);
 
