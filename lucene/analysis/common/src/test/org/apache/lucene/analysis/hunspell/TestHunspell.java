@@ -75,7 +75,7 @@ public class TestHunspell extends LuceneTestCase {
         };
 
     Hunspell hunspell = new Hunspell(dictionary, RETURN_PARTIAL_RESULT, checkCanceled);
-    // pass a long timeout so that slower CI servers are more predictable. 
+    // pass a long timeout so that slower CI servers are more predictable.
     assertEquals(expected, hunspell.suggest("apac", TimeUnit.DAYS.toMillis(1)));
 
     counter.set(0);
