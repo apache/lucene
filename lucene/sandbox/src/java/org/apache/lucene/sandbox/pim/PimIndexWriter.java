@@ -74,7 +74,7 @@ public class PimIndexWriter extends IndexWriter {
 
     private final PimConfig pimConfig;
     private final Directory pimDirectory;
-    private static final boolean enableStats = true;
+    private static final boolean enableStats = false;
     private PimIndexInfo pimIndexInfo;
 
     public PimIndexWriter(Directory directory, Directory pimDirectory,

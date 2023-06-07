@@ -25,12 +25,12 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public final class ByteArrayDataInput extends DataInput {
+public class ByteArrayDataInput extends DataInput {
 
-  private byte[] bytes;
+  protected byte[] bytes;
 
-  private int pos;
-  private int limit;
+  protected int pos;
+  protected int limit;
 
   public ByteArrayDataInput(byte[] bytes) {
     reset(bytes);

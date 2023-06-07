@@ -195,6 +195,34 @@ public class PimIndexSearcher implements Closeable {
         }
     }
 
+    /**
+     * Search a phrase in PIM index in one segment without scoring
+     * In this case the score is just the frequency
+     *
+     * @param query the PIM phrase query
+     * @return a list of matches with doc ID and freq
+     */
+    ArrayList<PimMatch> searchPhrase(int leafIdx, PimPhraseQuery query) {
+
+        try {
+            return searchPhrase(leafIdx, query,
+                    new LeafSimScorer(
+                            new Similarity.SimScorer() {
+                                @Override
+                                public float score(float freq, long norm) {
+                                    return freq;
+                                }
+                            },
+                            null,
+                            query.getField(),
+                            false
+                    )
+            );
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void close() throws IOException {
         for (DPUIndexSearcher s : searchers) {

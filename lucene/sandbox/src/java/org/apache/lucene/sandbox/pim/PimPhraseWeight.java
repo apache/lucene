@@ -67,7 +67,15 @@ public class PimPhraseWeight extends Weight {
                     new LeafSimScorer(scoreStats.similarity.scorer(scoreStats.boost,
                             scoreStats.collectionStats, scoreStats.termStats),
                             context.reader(), pimQuery.getField(), scoreStats.scoreMode.needsScores());
-            return PimSystemManager.get().search(context, pimQuery, simScorer);
+            try {
+                return PimSystemManager.get().search(context, pimQuery, simScorer);
+            } catch (PimSystemManager.PimQueryQueueFullException e) {
+                // PimSystemManager queue is full, handle the query on CPU
+                return matchWithPhraseQuery(context);
+                //for testing fail if this happens
+                //System.out.println(e.getMessage());
+                //throw new RuntimeException();
+            }
         } else {
             return matchWithPhraseQuery(context);
         }

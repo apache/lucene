@@ -327,6 +327,10 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
         System.out.println("");
         PimSystemManager.get().unloadPimIndex();
+        // Need an explicit PimSystemManager shutdown here
+        // The managing thread is normally killed with a hook at JVM shutdown
+        // But the test system verifies that threads are not leaked before JVM shutdowm
+        PimSystemManager.shutDown();
         reader.close();
         closeDirectories();
     }

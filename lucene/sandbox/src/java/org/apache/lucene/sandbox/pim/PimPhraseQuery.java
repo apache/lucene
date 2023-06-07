@@ -12,7 +12,10 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -24,7 +27,7 @@ import java.io.IOException;
  * Supports only {@link BM25Similarity}. If another similarity is required by the
  * {@link IndexSearcher}, then this query is rewritten to a regular {@link PhraseQuery}.
  */
-public class PimPhraseQuery extends PhraseQuery {
+public class PimPhraseQuery extends PhraseQuery implements PimQuery {
 
   /**
    * PIM phrase query builder
@@ -130,5 +133,30 @@ public class PimPhraseQuery extends PhraseQuery {
         return true;
       }
     };
+  }
+
+  @Override
+  public void writeToPim(DataOutput output) throws IOException {
+
+    // write field
+    BytesRef field = new BytesRef(getField());
+    output.writeVInt(field.length);
+    output.writeBytes(field.bytes, field.offset, field.length);
+    // write number of terms
+    output.writeVInt(getTerms().length);
+    // write terms
+    for(Term t : getTerms()) {
+      output.writeVInt(t.bytes().length);
+      output.writeBytes(t.bytes().bytes, t.bytes().offset, t.bytes().length);
+    }
+  }
+
+  @Override
+  public PimMatch readResult(ByteArrayDataInput input, LeafSimScorer scorer) throws IOException {
+
+    // a result for a phrase query is just a document id and a frequency as of now
+    int docId = input.readVInt();
+    int freq = input.readVInt();
+    return new PimMatch(docId, scorer.score(docId, freq));
   }
 }

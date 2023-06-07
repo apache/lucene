@@ -135,6 +135,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         pimDirectory.close();
         pimDirectory = null;
         PimSystemManager.get().unloadPimIndex();
+        PimSystemManager.shutDown();
     }
 
     public void testNotCloseEnough() throws Exception {
