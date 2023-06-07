@@ -26,6 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.StampedLock;
+
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -355,12 +357,13 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   /** Class to provide snapshot isolation for nodes in the progress of being added. */
   static final class CompletionTracker implements Accountable {
     private final AtomicInteger logicalClock = new AtomicInteger();
-    private final AtomicReference<AtomicIntegerArray> completionTimesRef;
+    private volatile AtomicIntegerArray completionTimes;
+    private final StampedLock sl = new StampedLock();
 
     public CompletionTracker(int initialSize) {
-      completionTimesRef = new AtomicReference<>(new AtomicIntegerArray(initialSize));
+      completionTimes = new AtomicIntegerArray(initialSize);
       for (int i = 0; i < initialSize; i++) {
-        completionTimesRef.get().set(i, Integer.MAX_VALUE);
+        completionTimes.set(i, Integer.MAX_VALUE);
       }
     }
 
@@ -368,8 +371,13 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
      * @param node ordinal
      */
     void markComplete(int node) {
+      int completionClock = logicalClock.getAndIncrement();
       ensureCapacity(node);
-      completionTimesRef.get().set(node, logicalClock.getAndIncrement());
+      long stamp;
+      do {
+        stamp = sl.tryOptimisticRead();
+        completionTimes.set(node, completionClock);
+      } while (!sl.validate(stamp));
     }
 
     /**
@@ -385,42 +393,44 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
      *     not yet been completed.
      */
     public int completedAt(int node) {
-      var completionTimes = completionTimesRef.get();
-      if (node >= completionTimes.length()) {
+      AtomicIntegerArray ct = completionTimes;
+      if (node >= ct.length()) {
         return Integer.MAX_VALUE;
       }
-      return completionTimes.get(node);
+      return ct.get(node);
     }
 
     @Override
     public long ramBytesUsed() {
-      var REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      int REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
       return REF_BYTES
           + Integer.BYTES // logicalClock
           + REF_BYTES
-          + REF_BYTES
-          + (long) Integer.BYTES * completionTimesRef.get().length();
+          + (long) Integer.BYTES * completionTimes.length();
     }
 
     private void ensureCapacity(int node) {
-      AtomicIntegerArray completedTime = completionTimesRef.get();
-      if (node >= completedTime.length()) {
-        completionTimesRef.updateAndGet(
-            existingArray -> {
-              if (node < existingArray.length()) {
-                return existingArray;
-              }
-              int newSize = (node + 1) * 2;
-              AtomicIntegerArray newArray = new AtomicIntegerArray(newSize);
-              for (int i = 0; i < newSize; i++) {
-                if (i < existingArray.length()) {
-                  newArray.set(i, existingArray.get(i));
-                } else {
-                  newArray.set(i, Integer.MAX_VALUE);
-                }
-              }
-              return newArray;
-            });
+      if (node < completionTimes.length()) {
+        return;
+      }
+
+      long stamp = sl.writeLock();
+      try {
+        AtomicIntegerArray oldArray = completionTimes;
+        if (node >= oldArray.length()) {
+          int newSize = (node + 1) * 2;
+          AtomicIntegerArray newArray = new AtomicIntegerArray(newSize);
+          for (int i = 0; i < newSize; i++) {
+            if (i < oldArray.length()) {
+              newArray.set(i, oldArray.get(i));
+            } else {
+              newArray.set(i, Integer.MAX_VALUE);
+            }
+          }
+          completionTimes = newArray;
+        }
+      } finally {
+        sl.unlockWrite(stamp);
       }
     }
   }

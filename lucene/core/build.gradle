@@ -28,6 +28,7 @@ test {
   // open jdk classes for inspection by ram usage estimator
   jvmArgs(
           '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-          '--add-opens', 'java.base/java.util.concurrent.atomic=ALL-UNNAMED'
+          '--add-opens', 'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+          '--add-opens', 'java.base/java.util.concurrent.locks=ALL-UNNAMED'
   )
 }
