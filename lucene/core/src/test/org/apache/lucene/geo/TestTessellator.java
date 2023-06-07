@@ -915,6 +915,28 @@ public class TestTessellator extends LuceneTestCase {
     }
   }
 
+  public void testComplexPolygon55() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-12352-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      // don't check edges as it takes several minutes
+    }
+  }
+
+  public void testComplexPolygon56() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-12352-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      // don't check edges as it takes several minutes
+    }
+  }
+
   private static class TestCountingMonitor implements Tessellator.Monitor {
     private int count = 0;
     private int splitsStarted = 0;
