@@ -361,4 +361,43 @@ public class TestFieldInfos extends LuceneTestCase {
       }
     }
   }
+
+  public void testFieldInfosMergeBehaviorOnOldIndices() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config =
+          new IndexWriterConfig()
+              .setIndexCreatedVersionMajor(8)
+              .setMergeScheduler(new SerialMergeScheduler())
+              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+      FieldType ft1 = new FieldType();
+      ft1.setIndexOptions(IndexOptions.NONE);
+      ft1.setStored(true);
+      FieldType ft2 = new FieldType();
+      ft2.setIndexOptions(IndexOptions.DOCS);
+      ft2.setStored(true);
+
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        Document d1 = new Document();
+        // Document 1 has my_field with IndexOptions.NONE
+        d1.add(new Field("my_field", "first", ft1));
+        writer.addDocument(d1);
+        for (int i = 0; i < 100; i++) {
+          // Add some more docs to make sure segment 0 is the biggest one
+          Document d = new Document();
+          d.add(new Field("foo", "bar" + i, ft2));
+          writer.addDocument(d);
+        }
+        writer.flush();
+
+        Document d2 = new Document();
+        // Document 2 has my_field with IndexOptions.DOCS
+        d2.add(new Field("my_field", "first", ft2));
+        writer.addDocument(d2);
+        writer.flush();
+
+        writer.commit();
+        writer.forceMerge(1);
+      }
+    }
+  }
 }

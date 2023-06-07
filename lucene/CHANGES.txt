@@ -73,6 +73,8 @@ Bug Fixes
 
 * GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
 
+* GITHUB#11350: Handle possible differences in FieldInfo when merging indices created with Lucene 8.x (Tomás Fernández Löbbe)
+
 Other
 ---------------------
 (No changes)
