@@ -203,7 +203,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
       // the same data over and over again
       bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
       if (bufferStart + bufferSize - pos <= 3) {
-        bufferStart += 4; // adjust buffer to include the whole long value at pos
+        bufferStart += 4; // adjust buffer to include the whole int value at pos
       }
       buffer.limit(0); // trigger refill() on read
       seekInternal(bufferStart);
