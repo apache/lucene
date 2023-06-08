@@ -43,7 +43,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   /** A buffer size for merges set to {@value #MERGE_BUFFER_SIZE}. */
   public static final int MERGE_BUFFER_SIZE = 4096;
 
-  private int bufferSize = BUFFER_SIZE;
+  private final int bufferSize;
 
   private ByteBuffer buffer = EMPTY_BYTEBUFFER;
 
@@ -163,11 +163,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   public final byte readByte(long pos) throws IOException {
     long index = pos - bufferStart;
     if (index < 0 || index >= buffer.limit()) {
-      bufferStart = pos;
+      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
       buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
+      seekInternal(bufferStart);
       refill();
-      index = 0;
+      index = pos - bufferStart;
     }
     return buffer.get((int) index);
   }

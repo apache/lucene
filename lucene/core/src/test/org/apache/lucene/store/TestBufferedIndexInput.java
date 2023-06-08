@@ -142,6 +142,16 @@ public class TestBufferedIndexInput extends LuceneTestCase {
         });
   }
 
+  // Test that when reading backwards, we page backwards rather than refilling
+  // on every call
+  public void testBackwardsReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    for (int i = 2048; i > 0; i -= random().nextInt(16)) {
+      assertEquals(byten(i), input.readByte(i));
+    }
+    assertEquals(3, input.readCount);
+  }
+
   // byten emulates a file - byten(n) returns the n'th byte in that file.
   // MyBufferedIndexInput reads this "file".
   private static byte byten(long n) {
@@ -150,7 +160,8 @@ public class TestBufferedIndexInput extends LuceneTestCase {
 
   private static class MyBufferedIndexInput extends BufferedIndexInput {
     private long pos;
-    private long len;
+    private final long len;
+    private long readCount = 0;
 
     public MyBufferedIndexInput(long len) {
       super("MyBufferedIndexInput(len=" + len + ")", BufferedIndexInput.BUFFER_SIZE);
@@ -164,14 +175,15 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
 
     @Override
-    protected void readInternal(ByteBuffer b) throws IOException {
+    protected void readInternal(ByteBuffer b) {
+      readCount++;
       while (b.hasRemaining()) {
         b.put(byten(pos++));
       }
     }
 
     @Override
-    protected void seekInternal(long pos) throws IOException {
+    protected void seekInternal(long pos) {
       this.pos = pos;
     }
 
