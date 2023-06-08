@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
@@ -144,12 +145,65 @@ public class TestBufferedIndexInput extends LuceneTestCase {
 
   // Test that when reading backwards, we page backwards rather than refilling
   // on every call
-  public void testBackwardsReads() throws IOException {
+  public void testBackwardsByteReads() throws IOException {
     MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
     for (int i = 2048; i > 0; i -= random().nextInt(16)) {
       assertEquals(byten(i), input.readByte(i));
     }
     assertEquals(3, input.readCount);
+  }
+
+  public void testBackwardsShortReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    ByteBuffer bb = ByteBuffer.allocate(2);
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 2048; i > 0; i -= (random().nextInt(16) + 1)) {
+      bb.clear();
+      bb.put(byten(i));
+      bb.put(byten(i + 1));
+      assertEquals(bb.getShort(0), input.readShort(i));
+    }
+    // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
+    // to include a whole short
+    assertTrue(input.readCount == 4 || input.readCount == 3);
+  }
+
+  public void testBackwardsIntReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    ByteBuffer bb = ByteBuffer.allocate(4);
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 2048; i > 0; i -= (random().nextInt(16) + 3)) {
+      bb.clear();
+      bb.put(byten(i));
+      bb.put(byten(i + 1));
+      bb.put(byten(i + 2));
+      bb.put(byten(i + 3));
+      assertEquals(bb.getInt(0), input.readInt(i));
+    }
+    // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
+    // to include a whole int
+    assertTrue(input.readCount == 4 || input.readCount == 3);
+  }
+
+  public void testBackwardsLongReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    ByteBuffer bb = ByteBuffer.allocate(8);
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 2048; i > 0; i -= (random().nextInt(16) + 7)) {
+      bb.clear();
+      bb.put(byten(i));
+      bb.put(byten(i + 1));
+      bb.put(byten(i + 2));
+      bb.put(byten(i + 3));
+      bb.put(byten(i + 4));
+      bb.put(byten(i + 5));
+      bb.put(byten(i + 6));
+      bb.put(byten(i + 7));
+      assertEquals(bb.getLong(0), input.readLong(i));
+    }
+    // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
+    // to include a whole long
+    assertTrue(input.readCount == 4 || input.readCount == 3);
   }
 
   // byten emulates a file - byten(n) returns the n'th byte in that file.

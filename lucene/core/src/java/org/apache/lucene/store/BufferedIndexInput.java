@@ -72,7 +72,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     this.bufferSize = bufferSize;
   }
 
-  /** Returns buffer size. @see #setBufferSize */
+  /** Returns buffer size */
   public final int getBufferSize() {
     return bufferSize;
   }
@@ -163,6 +163,9 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   public final byte readByte(long pos) throws IOException {
     long index = pos - bufferStart;
     if (index < 0 || index >= buffer.limit()) {
+      // if we're moving backwards, then try and fill up the previous page rather than
+      // starting again at the current pos, to avoid successive backwards reads reloading
+      // the same data over and over again
       bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
       buffer.limit(0); // trigger refill() on read
       seekInternal(bufferStart);
@@ -176,11 +179,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   public final short readShort(long pos) throws IOException {
     long index = pos - bufferStart;
     if (index < 0 || index >= buffer.limit() - 1) {
-      bufferStart = pos;
+      // if we're moving backwards, then try and fill up the previous page rather than
+      // starting again at the current pos, to avoid successive backwards reads reloading
+      // the same data over and over again
+      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
+      if (bufferStart + bufferSize - pos <= 1) {
+        bufferStart++; // adjust buffer to include the whole short value at pos
+      }
       buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
+      seekInternal(bufferStart);
       refill();
-      index = 0;
+      index = pos - bufferStart;
     }
     return buffer.getShort((int) index);
   }
@@ -189,11 +198,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   public final int readInt(long pos) throws IOException {
     long index = pos - bufferStart;
     if (index < 0 || index >= buffer.limit() - 3) {
-      bufferStart = pos;
+      // if we're moving backwards, then try and fill up the previous page rather than
+      // starting again at the current pos, to avoid successive backwards reads reloading
+      // the same data over and over again
+      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
+      if (bufferStart + bufferSize - pos <= 3) {
+        bufferStart += 4; // adjust buffer to include the whole long value at pos
+      }
       buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
+      seekInternal(bufferStart);
       refill();
-      index = 0;
+      index = pos - bufferStart;
     }
     return buffer.getInt((int) index);
   }
@@ -202,11 +217,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   public final long readLong(long pos) throws IOException {
     long index = pos - bufferStart;
     if (index < 0 || index >= buffer.limit() - 7) {
-      bufferStart = pos;
+      // if we're moving backwards, then try and fill up the previous page rather than
+      // starting again at the current pos, to avoid successive backwards reads reloading
+      // the same data over and over again
+      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
+      if (bufferStart + bufferSize - pos <= 7) {
+        bufferStart += 8; // adjust buffer to include the whole long value at pos
+      }
       buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
+      seekInternal(bufferStart);
       refill();
-      index = 0;
+      index = pos - bufferStart;
     }
     return buffer.getLong((int) index);
   }
