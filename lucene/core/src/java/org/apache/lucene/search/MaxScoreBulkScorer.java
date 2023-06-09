@@ -20,19 +20,23 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-
 import org.apache.lucene.util.Bits;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
+  // All scorers, sorted by increasing max score.
   private final DisiWrapper[] allScorers;
+  // These are the last scorers from `allScorers` that are "essential", ie. required for a match to
+  // have a competitive score.
   private final DisiPriorityQueue essentialQueue;
+  // Index of the first essential scorer, ie. essentialQueue contains all scorers from
+  // allScorers[firstEssentialScorer:]. All scorers below this index are non-essential.
+  private int firstEssentialScorer;
   private final MaxScoreSumPropagator maxScorePropagator;
   private final long cost;
   private float minCompetitiveScore;
   private boolean minCompetitiveScoreUpdated;
   private ScoreAndDoc scorable = new ScoreAndDoc();
-  private int firstEssentialScorer;
   private final double[] maxScoreSums;
 
   MaxScoreBulkScorer(List<Scorer> scorers) throws IOException {
@@ -150,15 +154,14 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private boolean partitionScorers() {
     Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxWindowScore));
-    firstEssentialScorer = 0;
     double maxScoreSum = 0;
-    for (; firstEssentialScorer < allScorers.length; ++firstEssentialScorer) {
+    for (firstEssentialScorer = 0;
+        firstEssentialScorer < allScorers.length;
+        ++firstEssentialScorer) {
       maxScoreSum += allScorers[firstEssentialScorer].maxWindowScore;
       maxScoreSums[firstEssentialScorer] = maxScoreSum;
       float maxScoreSumFloat =
-          MaxScoreSumPropagator.scoreSumUpperBound(
-              maxScoreSum,
-              firstEssentialScorer + 1);
+          MaxScoreSumPropagator.scoreSumUpperBound(maxScoreSum, firstEssentialScorer + 1);
       if (maxScoreSumFloat >= minCompetitiveScore) {
         break;
       }
