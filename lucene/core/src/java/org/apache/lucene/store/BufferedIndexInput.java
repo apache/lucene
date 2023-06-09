@@ -164,17 +164,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   // readjust the bufferStart and refill.
   private long resolvePositionInBuffer(long pos, int width) throws IOException {
     long index = pos - bufferStart;
-    if (index >= 0 && index < buffer.limit() - width + 1) {
+    if (index >= 0 && index <= buffer.limit() - width) {
       return index;
     }
     if (index < 0) {
       // if we're moving backwards, then try and fill up the previous page rather than
       // starting again at the current pos, to avoid successive backwards reads reloading
-      // the same data over and over again
-      bufferStart = Math.min(pos, Math.max(0, bufferStart - bufferSize));
-      if (bufferStart + bufferSize - pos < width) {
-        bufferStart += width - 1; // make sure we don't read over the end of the buffer
-      }
+      // the same data over and over again.  We also check that we can read `width`
+      // bytes without going over the end of the buffer
+      bufferStart = Math.max(bufferStart - bufferSize, pos + width - bufferSize);
+      bufferStart = Math.max(bufferStart, 0);
+      bufferStart = Math.min(bufferStart, pos);
     } else {
       // we're moving forwards, reset the buffer to start at pos
       bufferStart = pos;
