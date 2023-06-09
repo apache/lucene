@@ -159,76 +159,50 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     }
   }
 
-  @Override
-  public final byte readByte(long pos) throws IOException {
+  private long maybeRefillBuffer(long pos, int width) throws IOException {
     long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit()) {
+    if (index >= 0 && index < buffer.limit() - width + 1) {
+      return index;
+    }
+    if (index < 0) {
       // if we're moving backwards, then try and fill up the previous page rather than
       // starting again at the current pos, to avoid successive backwards reads reloading
       // the same data over and over again
-      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(bufferStart);
-      refill();
-      index = pos - bufferStart;
+      bufferStart = Math.min(pos, Math.max(0, bufferStart - bufferSize));
+      if (bufferStart + bufferSize - pos < width) {
+        bufferStart += width - 1; // make sure we don't read over the end of the buffer
+      }
+    } else {
+      // we're moving forwards, reset the buffer to start at pos
+      bufferStart = pos;
     }
+    buffer.limit(0); // trigger refill() on read
+    seekInternal(bufferStart);
+    refill();
+    return pos - bufferStart;
+  }
+
+  @Override
+  public final byte readByte(long pos) throws IOException {
+    long index = maybeRefillBuffer(pos, Byte.BYTES);
     return buffer.get((int) index);
   }
 
   @Override
   public final short readShort(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit() - 1) {
-      // if we're moving backwards, then try and fill up the previous page rather than
-      // starting again at the current pos, to avoid successive backwards reads reloading
-      // the same data over and over again
-      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
-      if (bufferStart + bufferSize - pos <= 1) {
-        bufferStart++; // adjust buffer to include the whole short value at pos
-      }
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(bufferStart);
-      refill();
-      index = pos - bufferStart;
-    }
+    long index = maybeRefillBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);
   }
 
   @Override
   public final int readInt(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit() - 3) {
-      // if we're moving backwards, then try and fill up the previous page rather than
-      // starting again at the current pos, to avoid successive backwards reads reloading
-      // the same data over and over again
-      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
-      if (bufferStart + bufferSize - pos <= 3) {
-        bufferStart += 4; // adjust buffer to include the whole int value at pos
-      }
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(bufferStart);
-      refill();
-      index = pos - bufferStart;
-    }
+    long index = maybeRefillBuffer(pos, Integer.BYTES);
     return buffer.getInt((int) index);
   }
 
   @Override
   public final long readLong(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit() - 7) {
-      // if we're moving backwards, then try and fill up the previous page rather than
-      // starting again at the current pos, to avoid successive backwards reads reloading
-      // the same data over and over again
-      bufferStart = index < 0 ? Math.min(pos, Math.max(0, bufferStart - bufferSize)) : pos;
-      if (bufferStart + bufferSize - pos <= 7) {
-        bufferStart += 8; // adjust buffer to include the whole long value at pos
-      }
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(bufferStart);
-      refill();
-      index = pos - bufferStart;
-    }
+    long index = maybeRefillBuffer(pos, Long.BYTES);
     return buffer.getLong((int) index);
   }
 

@@ -165,7 +165,8 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
     // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
     // to include a whole short
-    assertTrue(input.readCount == 4 || input.readCount == 3);
+    assertTrue(
+        "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
   }
 
   public void testBackwardsIntReads() throws IOException {
@@ -182,7 +183,8 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
     // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
     // to include a whole int
-    assertTrue(input.readCount == 4 || input.readCount == 3);
+    assertTrue(
+        "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
   }
 
   public void testBackwardsLongReads() throws IOException {
@@ -203,7 +205,8 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
     // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
     // to include a whole long
-    assertTrue(input.readCount == 4 || input.readCount == 3);
+    assertTrue(
+        "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
   }
 
   // byten emulates a file - byten(n) returns the n'th byte in that file.
