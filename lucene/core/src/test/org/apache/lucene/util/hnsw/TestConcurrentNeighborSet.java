@@ -21,19 +21,18 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestConcurrentNeighborSet extends LuceneTestCase {
-  private static final BiFunction<Integer, Integer, Float> simpleScore =
+  private static final ConcurrentNeighborSet.NeighborSimilarity simpleScore =
       (a, b) -> {
         return VectorSimilarityFunction.EUCLIDEAN.compare(new float[] {a}, new float[] {b});
       };
 
   private static float baseScore(int neighbor) throws IOException {
-    return simpleScore.apply(0, neighbor);
+    return simpleScore.score(0, neighbor);
   }
 
   public void testInsertAndSize() throws IOException {
@@ -69,7 +68,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     var similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     var vectors = new HnswGraphTestCase.CircularFloatVectorValues(10);
     var candidates = new NeighborArray(10, false);
-    BiFunction<Integer, Integer, Float> scoreBetween =
+    ConcurrentNeighborSet.NeighborSimilarity scoreBetween =
         (a, b) -> {
           return similarityFunction.compare(vectors.vectorValue(a), vectors.vectorValue(b));
         };
@@ -77,7 +76,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
         .filter(i -> i != 7)
         .forEach(
             i -> {
-              candidates.insertSorted(i, scoreBetween.apply(7, i));
+              candidates.insertSorted(i, scoreBetween.score(7, i));
             });
     assert candidates.size() == 9;
 
