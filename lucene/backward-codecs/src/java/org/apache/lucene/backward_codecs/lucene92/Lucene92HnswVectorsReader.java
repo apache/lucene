@@ -25,14 +25,15 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -54,13 +55,11 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  */
 public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
-  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
 
   Lucene92HnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -89,7 +88,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene92HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName, state.context)) {
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
         versionMeta =
@@ -215,9 +214,14 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String field) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
-    return OffHeapVectorValues.load(fieldEntry, vectorData);
+    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+  }
+
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -231,7 +235,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fieldEntry.size());
-    OffHeapVectorValues vectorValues = OffHeapVectorValues.load(fieldEntry, vectorData);
+    OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
 
     NeighborQueue results =
         HnswGraphSearcher.search(
@@ -260,18 +264,10 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
   }
 
-  /** Get knn graph values; used for testing */
-  public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
-    }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
-      return getGraph(entry);
-    } else {
-      return HnswGraph.EMPTY;
-    }
+  @Override
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    throw new UnsupportedOperationException();
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
@@ -449,21 +445,21 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public int numLevels() throws IOException {
+    public int numLevels() {
       return numLevels;
     }
 
     @Override
-    public int entryNode() throws IOException {
+    public int entryNode() {
       return entryNode;
     }
 
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new NodesIterator(size());
+        return new ArrayNodesIterator(size());
       } else {
-        return new NodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
       }
     }
   }

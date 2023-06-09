@@ -164,7 +164,7 @@ public class Hunspell {
   Root<CharsRef> findStem(
       char[] wordChars, int offset, int length, WordCase originalCase, WordContext context) {
     checkCanceled.run();
-    boolean checkCase = context != COMPOUND_MIDDLE && context != COMPOUND_END;
+    WordCase toCheck = context != COMPOUND_MIDDLE && context != COMPOUND_END ? originalCase : null;
     @SuppressWarnings({"rawtypes", "unchecked"})
     Root<CharsRef>[] result = new Root[1];
     stemmer.doStem(
@@ -173,7 +173,7 @@ public class Hunspell {
         length,
         context,
         (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
-          if (checkCase && !acceptCase(originalCase, formID, stem)) {
+          if (!acceptCase(toCheck, formID, stem)) {
             return dictionary.hasFlag(formID, Dictionary.HIDDEN_FLAG);
           }
           if (acceptsStem(formID)) {
@@ -450,7 +450,7 @@ public class Hunspell {
       if (forms != null) {
         words.add(forms);
 
-        if (dictionary.compoundRules.stream().anyMatch(r -> r.mayMatch(words))) {
+        if (mayHaveCompoundRule(words)) {
           if (checkLastCompoundPart(wordChars, offset + breakPos, length - breakPos, words)) {
             return true;
           }
@@ -467,6 +467,15 @@ public class Hunspell {
     return false;
   }
 
+  private boolean mayHaveCompoundRule(List<IntsRef> words) {
+    for (CompoundRule rule : dictionary.compoundRules) {
+      if (rule.mayMatch(words)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private boolean checkLastCompoundPart(
       char[] wordChars, int start, int length, List<IntsRef> words) {
     IntsRef ref = new IntsRef(new int[1], 0, 1);
@@ -475,7 +484,12 @@ public class Hunspell {
     Stemmer.RootProcessor stopOnMatching =
         (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
           ref.ints[0] = formID;
-          return dictionary.compoundRules.stream().noneMatch(r -> r.fullyMatches(words));
+          for (CompoundRule r : dictionary.compoundRules) {
+            if (r.fullyMatches(words)) {
+              return false;
+            }
+          }
+          return true;
         };
     boolean found = !stemmer.doStem(wordChars, start, length, COMPOUND_RULE_END, stopOnMatching);
     words.remove(words.size() - 1);

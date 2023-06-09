@@ -32,13 +32,13 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
@@ -352,7 +352,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(VectorValues.MAX_DIMENSIONS);
+      int dimension = 1 + r.nextInt(FloatVectorValues.MAX_DIMENSIONS);
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());

@@ -6,7 +6,6 @@ The Apache Software Foundation (http://www.apache.org/).
 
 Includes software from other Apache Software Foundation projects,
 including, but not limited to:
- - Apache Ant
  - Apache Jakarta Regexp
  - Apache Commons
  - Apache Xerces
@@ -37,9 +36,6 @@ under the 2-clause BSD license.
 
 The Google Code Prettify is Apache License 2.0.
 See http://code.google.com/p/google-code-prettify/
-
-JUnit (junit-4.10) is licensed under the Common Public License v. 1.0
-See http://junit.sourceforge.net/cpl-v10.html
 
 This product includes code (JaspellTernarySearchTrie) from Java Spelling Checkin
 g Package (jaspell): http://jaspell.sourceforge.net/
@@ -104,9 +100,6 @@ The Morfologik analyzer (morfologik) includes BSD-licensed software
 developed by Dawid Weiss and Marcin Miłkowski 
 (https://github.com/morfologik/morfologik-stemming) and uses
 data from the BSD-licensed dictionary of Polish (SGJP, http://sgjp.pl/morfeusz/).
-
-Servlet-api.jar and javax.servlet-*.jar are under the CDDL license, the original
-source code for this can be found at http://www.eclipse.org/jetty/downloads.php
 
 ===========================================================================
 Kuromoji Japanese Morphological Analyzer - Apache Lucene Integration
@@ -202,6 +195,3 @@ This software includes a binary and/or source version of data from
 which can be obtained from
 
   https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz
-
-The floating point precision conversion in NumericUtils.Float16Converter is derived from work by
-Jeroen van der Zijp, granted for use under the Apache license.

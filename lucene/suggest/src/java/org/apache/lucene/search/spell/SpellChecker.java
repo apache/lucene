@@ -31,6 +31,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -364,9 +365,10 @@ public class SpellChecker implements java.io.Closeable {
       // go thru more than 'maxr' matches in case the distance filter triggers
       int stop = Math.min(hits.length, maxHits);
       SuggestWord sugWord = new SuggestWord();
+      StoredFields storedFields = indexSearcher.storedFields();
       for (int i = 0; i < stop; i++) {
 
-        sugWord.string = indexSearcher.doc(hits[i].doc).get(F_WORD); // get orig word
+        sugWord.string = storedFields.document(hits[i].doc).get(F_WORD); // get orig word
 
         // don't suggest a word for itself, that would be silly
         if (sugWord.string.equals(word)) {

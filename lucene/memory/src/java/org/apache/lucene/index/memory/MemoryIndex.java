@@ -17,10 +17,12 @@
 package org.apache.lucene.index.memory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
@@ -389,6 +391,13 @@ public class MemoryIndex {
     }
     if (tokenStream != null) {
       storeTerms(info, tokenStream, positionIncrementGap, offsetGap);
+    } else if (field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0) {
+      BytesRef binaryValue = field.binaryValue();
+      if (binaryValue == null) {
+        throw new IllegalArgumentException(
+            "Indexed field must provide a TokenStream or a binary value");
+      }
+      storeTerm(info, binaryValue);
     }
 
     DocValuesType docValuesType = field.fieldType().docValuesType();
@@ -415,6 +424,10 @@ public class MemoryIndex {
 
     if (field.fieldType().pointDimensionCount() > 0) {
       storePointValues(info, field.binaryValue());
+    }
+
+    if (field.fieldType().stored()) {
+      storeValues(info, field);
     }
   }
 
@@ -527,6 +540,26 @@ public class MemoryIndex {
     info.pointValues[info.pointValuesCount++] = BytesRef.deepCopyOf(pointValue);
   }
 
+  private void storeValues(Info info, IndexableField field) {
+    if (info.storedValues == null) {
+      info.storedValues = new ArrayList<>();
+    }
+    BytesRef binaryValue = field.binaryValue();
+    if (binaryValue != null) {
+      info.storedValues.add(binaryValue);
+      return;
+    }
+    Number numberValue = field.numericValue();
+    if (numberValue != null) {
+      info.storedValues.add(numberValue);
+      return;
+    }
+    String stringValue = field.stringValue();
+    if (stringValue != null) {
+      info.storedValues.add(stringValue);
+    }
+  }
+
   private void storeDocValues(Info info, DocValuesType docValuesType, Object docValuesValue) {
     String fieldName = info.fieldInfo.name;
     DocValuesType existingDocValuesType = info.fieldInfo.getDocValuesType();
@@ -570,7 +603,7 @@ public class MemoryIndex {
                   + fieldName
                   + "]");
         }
-        info.numericProducer.dvLongValues = new long[] {(long) docValuesValue};
+        info.numericProducer.dvLongValues = new long[] {((Number) docValuesValue).longValue()};
         info.numericProducer.count++;
         break;
       case SORTED_NUMERIC:
@@ -579,7 +612,8 @@ public class MemoryIndex {
         }
         info.numericProducer.dvLongValues =
             ArrayUtil.grow(info.numericProducer.dvLongValues, info.numericProducer.count + 1);
-        info.numericProducer.dvLongValues[info.numericProducer.count++] = (long) docValuesValue;
+        info.numericProducer.dvLongValues[info.numericProducer.count++] =
+            ((Number) docValuesValue).longValue();
         break;
       case BINARY:
       case SORTED:
@@ -603,6 +637,29 @@ public class MemoryIndex {
       default:
         throw new UnsupportedOperationException("unknown doc values type [" + docValuesType + "]");
     }
+  }
+
+  private void storeTerm(Info info, BytesRef term) {
+    info.numTokens++;
+    int ord = info.terms.add(term);
+    if (ord < 0) {
+      ord = -ord - 1;
+      postingsWriter.reset(info.sliceArray.end[ord]);
+    } else {
+      info.sliceArray.start[ord] = postingsWriter.startNewSlice();
+    }
+    info.sliceArray.freq[ord]++;
+    info.maxTermFrequency = Math.max(info.maxTermFrequency, info.sliceArray.freq[ord]);
+    info.sumTotalTermFreq++;
+    postingsWriter.writeInt(info.lastPosition++); // fake position
+    if (storeOffsets) { // fake offsests
+      postingsWriter.writeInt(0);
+      postingsWriter.writeInt(0);
+    }
+    if (storePayloads) {
+      postingsWriter.writeInt(-1); // fake payload
+    }
+    info.sliceArray.end[ord] = postingsWriter.getCurrentOffset();
   }
 
   private void storeTerms(
@@ -874,6 +931,8 @@ public class MemoryIndex {
     private NumericDocValuesProducer numericProducer;
 
     private boolean preparedDocValuesAndPointValues;
+
+    private List<Object> storedValues;
 
     private BytesRef[] pointValues;
 
@@ -1363,13 +1422,24 @@ public class MemoryIndex {
     }
 
     @Override
-    public VectorValues getVectorValues(String fieldName) {
+    public FloatVectorValues getFloatVectorValues(String fieldName) {
+      return null;
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String fieldName) {
       return null;
     }
 
     @Override
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+      return null;
+    }
+
+    @Override
+    public TopDocs searchNearestVectors(
+        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
       return null;
     }
 
@@ -1776,12 +1846,17 @@ public class MemoryIndex {
     }
 
     @Override
-    public Fields getTermVectors(int docID) {
-      if (docID == 0) {
-        return memoryFields;
-      } else {
-        return null;
-      }
+    public TermVectors termVectors() {
+      return new TermVectors() {
+        @Override
+        public Fields get(int docID) {
+          if (docID == 0) {
+            return memoryFields;
+          } else {
+            return null;
+          }
+        }
+      };
     }
 
     @Override
@@ -1797,9 +1872,39 @@ public class MemoryIndex {
     }
 
     @Override
-    public void document(int docID, StoredFieldVisitor visitor) {
-      if (DEBUG) System.err.println("MemoryIndexReader.document");
-      // no-op: there are no stored fields
+    public StoredFields storedFields() {
+      return new StoredFields() {
+        @Override
+        public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+          if (DEBUG) System.err.println("MemoryIndexReader.document");
+          for (Info info : fields.values()) {
+            StoredFieldVisitor.Status status = visitor.needsField(info.fieldInfo);
+            if (status == StoredFieldVisitor.Status.STOP) {
+              return;
+            }
+            if (status == StoredFieldVisitor.Status.NO) {
+              continue;
+            }
+            if (info.storedValues != null) {
+              for (Object value : info.storedValues) {
+                if (value instanceof BytesRef bytes) {
+                  visitor.binaryField(info.fieldInfo, BytesRef.deepCopyOf(bytes).bytes);
+                } else if (value instanceof Double d) {
+                  visitor.doubleField(info.fieldInfo, d);
+                } else if (value instanceof Float f) {
+                  visitor.floatField(info.fieldInfo, f);
+                } else if (value instanceof Long l) {
+                  visitor.longField(info.fieldInfo, l);
+                } else if (value instanceof Integer i) {
+                  visitor.intField(info.fieldInfo, i);
+                } else if (value instanceof String s) {
+                  visitor.stringField(info.fieldInfo, s);
+                }
+              }
+            }
+          }
+        }
+      };
     }
 
     @Override

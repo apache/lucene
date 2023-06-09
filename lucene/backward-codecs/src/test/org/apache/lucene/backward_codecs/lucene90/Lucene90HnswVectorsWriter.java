@@ -20,21 +20,22 @@ package org.apache.lucene.backward_codecs.lucene90;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
+import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.index.BufferingKnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -106,10 +107,9 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, KnnVectorsReader knnVectorsReader, int maxDoc)
+  public void writeField(FieldInfo fieldInfo, FloatVectorValues floatVectorValues, int maxDoc)
       throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    VectorValues vectors = knnVectorsReader.getVectorValues(fieldInfo.name);
 
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -119,7 +119,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     try {
       // write the vector data to a temporary file
       // TODO - use a better data structure; a bitset? DocsWithFieldSet is p.p. in o.a.l.index
-      int[] docIds = writeVectorData(tempVectorData, vectors);
+      int[] docIds = writeVectorData(tempVectorData, floatVectorValues);
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -131,9 +131,9 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
       CodecUtil.retrieveChecksum(vectorDataInput);
 
       // build the graph using the temporary vector data
-      Lucene90HnswVectorsReader.OffHeapVectorValues offHeapVectors =
-          new Lucene90HnswVectorsReader.OffHeapVectorValues(
-              vectors.dimension(), docIds, vectorDataInput);
+      Lucene90HnswVectorsReader.OffHeapFloatVectorValues offHeapVectors =
+          new Lucene90HnswVectorsReader.OffHeapFloatVectorValues(
+              floatVectorValues.dimension(), docIds, vectorDataInput);
 
       long[] offsets = new long[docIds.length];
       long vectorIndexOffset = vectorIndex.getFilePointer();
@@ -169,20 +169,27 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     }
   }
 
+  @Override
+  protected void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc) {
+    throw new UnsupportedOperationException("byte vectors not supported in this version");
+  }
+
   /**
    * Writes the vector values to the output and returns a mapping from dense ordinals to document
    * IDs. The length of the returned array matches the total number of documents with a vector
-   * (which excludes deleted documents), so it may be less than {@link VectorValues#size()}.
+   * (which excludes deleted documents), so it may be less than {@link FloatVectorValues#size()}.
    */
-  private static int[] writeVectorData(IndexOutput output, VectorValues vectors)
+  private static int[] writeVectorData(IndexOutput output, FloatVectorValues vectors)
       throws IOException {
     int[] docIds = new int[vectors.size()];
     int count = 0;
+    ByteBuffer binaryVector =
+        ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
       // write vector
-      BytesRef binaryValue = vectors.binaryValue();
-      assert binaryValue.length == vectors.dimension() * Float.BYTES;
-      output.writeBytes(binaryValue.bytes, binaryValue.offset, binaryValue.length);
+      float[] vectorValue = vectors.vectorValue();
+      binaryVector.asFloatBuffer().put(vectorValue);
+      output.writeBytes(binaryVector.array(), binaryVector.limit());
       docIds[count] = docV;
     }
 
@@ -224,7 +231,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValues vectorValues,
+      RandomAccessVectorValues<float[]> vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,

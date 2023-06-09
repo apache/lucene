@@ -461,11 +461,28 @@ class GeoDegeneratePath extends GeoBasePath {
      * @param x is the point x.
      * @param y is the point y.
      * @param z is the point z.
-     * @return true of within.
+     * @return true if within.
      */
     @Override
     public boolean isWithin(final double x, final double y, final double z) {
       return this.point.isIdentical(x, y, z);
+    }
+
+    /**
+     * Check if point is within the section handled by this endpoint.
+     *
+     * @param x is the point x.
+     * @param y is the point y.
+     * @param z is the point z.
+     * @return true if within.
+     */
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      for (final Membership m : cutoffPlanes) {
+        if (!m.isWithin(x, y, z)) {
+          return false;
+        }
+      }
+      return true;
     }
 
     /**
@@ -497,10 +514,8 @@ class GeoDegeneratePath extends GeoBasePath {
      */
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership m : cutoffPlanes) {
-        if (!m.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
       return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }

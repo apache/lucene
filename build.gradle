@@ -22,7 +22,7 @@ plugins {
   id "base"
   id "com.palantir.consistent-versions" version "2.11.0"
   id "org.owasp.dependencycheck" version "7.2.0"
-  id 'de.thetaphi.forbiddenapis' version '3.4' apply false
+  id 'de.thetaphi.forbiddenapis' version '3.5' apply false
   id "de.undercouch.download" version "5.2.0" apply false
   id "net.ltgt.errorprone" version "3.0.1" apply false
   id 'com.diffplug.spotless' version "6.5.2" apply false
@@ -119,6 +119,7 @@ apply from: file('gradle/ide/eclipse.gradle')
 // (java, tests)
 apply from: file('gradle/java/folder-layout.gradle')
 apply from: file('gradle/java/javac.gradle')
+apply from: file('gradle/java/core-mrjar.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
@@ -157,6 +158,7 @@ apply from: file('gradle/generation/javacc.gradle')
 apply from: file('gradle/generation/forUtil.gradle')
 apply from: file('gradle/generation/antlr.gradle')
 apply from: file('gradle/generation/unicode-test-classes.gradle')
+apply from: file('gradle/generation/extract-jdk-apis.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 

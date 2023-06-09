@@ -95,7 +95,7 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
     w.close();
 
     IndexReader r = DirectoryReader.open(dir);
-    Terms vector = r.getTermVectors(0).terms("field");
+    Terms vector = r.termVectors().get(0).terms("field");
     assertEquals(1, vector.size());
     TermsEnum termsEnum = vector.iterator();
     termsEnum.next();

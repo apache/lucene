@@ -150,8 +150,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       Map<String, FieldReader> fieldMap = null;
       Throwable priorE = null;
       long indexLength = -1, termsLength = -1;
-      try (ChecksumIndexInput metaIn =
-          state.directory.openChecksumInput(metaName, IOContext.READONCE)) {
+      try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
         try {
           CodecUtil.checkIndexHeader(
               metaIn,

@@ -49,13 +49,7 @@ public final class TermStates {
     topReaderContextIdentity = context.identity;
     docFreq = 0;
     totalTermFreq = 0;
-    final int len;
-    if (context.leaves() == null) {
-      len = 1;
-    } else {
-      len = context.leaves().size();
-    }
-    states = new TermState[len];
+    states = new TermState[context.leaves().size()];
     this.term = term;
   }
 

@@ -1521,6 +1521,19 @@ public class IndexWriter
         delTerm == null ? null : DocumentsWriterDeleteQueue.newNode(delTerm), docs);
   }
 
+  /**
+   * Similar to {@link #updateDocuments(Term, Iterable)}, but take a query instead of a term to
+   * identify the documents to be updated
+   *
+   * @lucene.experimental
+   */
+  public long updateDocuments(
+      Query delQuery, Iterable<? extends Iterable<? extends IndexableField>> docs)
+      throws IOException {
+    return updateDocuments(
+        delQuery == null ? null : DocumentsWriterDeleteQueue.newNode(delQuery), docs);
+  }
+
   private long updateDocuments(
       final DocumentsWriterDeleteQueue.Node<?> delNode,
       Iterable<? extends Iterable<? extends IndexableField>> docs)
@@ -2201,10 +2214,11 @@ public class IndexWriter
     }
 
     final MergePolicy mergePolicy = config.getMergePolicy();
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     MergePolicy.MergeSpecification spec;
     boolean newMergesFound = false;
     synchronized (this) {
-      spec = mergePolicy.findForcedDeletesMerges(segmentInfos, this);
+      spec = mergePolicy.findForcedDeletesMerges(segmentInfos, cachingMergeContext);
       newMergesFound = spec != null;
       if (newMergesFound) {
         final int numMerges = spec.merges.size();
@@ -2314,6 +2328,7 @@ public class IndexWriter
     }
 
     final MergePolicy.MergeSpecification spec;
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     if (maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS) {
       assert trigger == MergeTrigger.EXPLICIT || trigger == MergeTrigger.MERGE_FINISHED
           : "Expected EXPLICT or MERGE_FINISHED as trigger even with maxNumSegments set but was: "
@@ -2321,7 +2336,10 @@ public class IndexWriter
 
       spec =
           mergePolicy.findForcedMerges(
-              segmentInfos, maxNumSegments, Collections.unmodifiableMap(segmentsToMerge), this);
+              segmentInfos,
+              maxNumSegments,
+              Collections.unmodifiableMap(segmentsToMerge),
+              cachingMergeContext);
       if (spec != null) {
         final int numMerges = spec.merges.size();
         for (int i = 0; i < numMerges; i++) {
@@ -2333,7 +2351,7 @@ public class IndexWriter
       switch (trigger) {
         case GET_READER:
         case COMMIT:
-          spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
+          spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, cachingMergeContext);
           break;
         case ADD_INDEXES:
           throw new IllegalStateException(
@@ -2345,7 +2363,7 @@ public class IndexWriter
         case SEGMENT_FLUSH:
         case CLOSING:
         default:
-          spec = mergePolicy.findMerges(trigger, segmentInfos, this);
+          spec = mergePolicy.findMerges(trigger, segmentInfos, cachingMergeContext);
       }
     }
     if (spec != null) {
@@ -5210,7 +5228,10 @@ public class IndexWriter
         success = false;
 
         Collection<String> filesToRemove = merge.info.files();
-        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(mergeDirectory);
+        // NOTE: Creation of the CFS file must be performed with the original
+        // directory rather than with the merging directory, so that it is not
+        // subject to merge throttling.
+        TrackingDirectoryWrapper trackingCFSDir = new TrackingDirectoryWrapper(directory);
         try {
           createCompoundFile(
               infoStream, trackingCFSDir, merge.info.info, context, this::deleteNewFiles);

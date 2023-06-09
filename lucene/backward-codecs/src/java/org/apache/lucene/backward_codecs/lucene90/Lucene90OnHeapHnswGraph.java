@@ -23,12 +23,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
@@ -74,7 +74,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
       float[] query,
       int topK,
       int numSeed,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graphValues,
       Bits acceptOrds,

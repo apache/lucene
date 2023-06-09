@@ -18,15 +18,12 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.VectorUtil.toBytesRef;
 
 import java.io.IOException;
-import org.apache.lucene.index.RandomAccessVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
@@ -83,7 +80,7 @@ public class HnswGraphSearcher<T> {
   public static NeighborQueue search(
       float[] query,
       int topK,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
@@ -97,58 +94,116 @@ public class HnswGraphSearcher<T> {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    if (vectorEncoding == VectorEncoding.BYTE) {
-      return search(
-          toBytesRef(query),
-          topK,
-          vectors,
-          vectorEncoding,
-          similarityFunction,
-          graph,
-          acceptOrds,
-          visitedLimit);
-    }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    NeighborQueue results;
-    int[] eps = new int[] {graph.entryNode()};
-    int numVisited = 0;
-    for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-      numVisited += results.visitedCount();
-      visitedLimit -= results.visitedCount();
-      if (results.incomplete()) {
-        results.setVisitedCount(numVisited);
-        return results;
-      }
-      eps[0] = results.pop();
-    }
-    results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
-    results.setVisitedCount(results.visitedCount() + numVisited);
-    return results;
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
   }
 
-  private static NeighborQueue search(
-      BytesRef query,
+  /**
+   * Search {@link OnHeapHnswGraph}, this method is thread safe, for parameters please refer to
+   * {@link #search(float[], int, RandomAccessVectorValues, VectorEncoding,
+   * VectorSimilarityFunction, HnswGraph, Bits, int)}
+   */
+  public static NeighborQueue search(
+      float[] query,
       int topK,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<float[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      OnHeapHnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    OnHeapHnswGraphSearcher<float[]> graphSearcher =
+        new OnHeapHnswGraphSearcher<>(
+            vectorEncoding,
+            similarityFunction,
+            new NeighborQueue(topK, true),
+            new SparseFixedBitSet(vectors.size()));
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
+  }
+
+  /**
+   * Searches HNSW graph for the nearest neighbors of a query vector.
+   *
+   * @param query search query vector
+   * @param topK the number of nodes to be returned
+   * @param vectors the vector values
+   * @param similarityFunction the similarity function to compare vectors
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @return a priority queue holding the closest neighbors found
+   */
+  public static NeighborQueue search(
+      byte[] query,
+      int topK,
+      RandomAccessVectorValues<byte[]> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    HnswGraphSearcher<BytesRef> graphSearcher =
+    if (query.length != vectors.dimension()) {
+      throw new IllegalArgumentException(
+          "vector query dimension: "
+              + query.length
+              + " differs from field dimension: "
+              + vectors.dimension());
+    }
+    HnswGraphSearcher<byte[]> graphSearcher =
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
+  }
+
+  /**
+   * Search {@link OnHeapHnswGraph}, this method is thread safe, for parameters please refer to
+   * {@link #search(byte[], int, RandomAccessVectorValues, VectorEncoding, VectorSimilarityFunction,
+   * HnswGraph, Bits, int)}
+   */
+  public static NeighborQueue search(
+      byte[] query,
+      int topK,
+      RandomAccessVectorValues<byte[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      OnHeapHnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    OnHeapHnswGraphSearcher<byte[]> graphSearcher =
+        new OnHeapHnswGraphSearcher<>(
+            vectorEncoding,
+            similarityFunction,
+            new NeighborQueue(topK, true),
+            new SparseFixedBitSet(vectors.size()));
+    return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
+  }
+
+  private static <T> NeighborQueue search(
+      T query,
+      int topK,
+      RandomAccessVectorValues<T> vectors,
+      HnswGraph graph,
+      HnswGraphSearcher<T> graphSearcher,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    int initialEp = graph.entryNode();
+    if (initialEp == -1) {
+      return new NeighborQueue(1, true);
+    }
     NeighborQueue results;
     int[] eps = new int[] {graph.entryNode()};
     int numVisited = 0;
@@ -190,7 +245,7 @@ public class HnswGraphSearcher<T> {
       int topK,
       int level,
       final int[] eps,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
     return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
@@ -201,7 +256,7 @@ public class HnswGraphSearcher<T> {
       int topK,
       int level,
       final int[] eps,
-      RandomAccessVectorValues vectors,
+      RandomAccessVectorValues<T> vectors,
       HnswGraph graph,
       Bits acceptOrds,
       int visitedLimit)
@@ -240,9 +295,9 @@ public class HnswGraphSearcher<T> {
       }
 
       int topCandidateNode = candidates.pop();
-      graph.seek(level, topCandidateNode);
+      graphSeek(graph, level, topCandidateNode);
       int friendOrd;
-      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
+      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
@@ -271,11 +326,11 @@ public class HnswGraphSearcher<T> {
     return results;
   }
 
-  private float compare(T query, RandomAccessVectorValues vectors, int ord) throws IOException {
+  private float compare(T query, RandomAccessVectorValues<T> vectors, int ord) throws IOException {
     if (vectorEncoding == VectorEncoding.BYTE) {
-      return similarityFunction.compare((BytesRef) query, vectors.binaryValue(ord));
+      return similarityFunction.compare((byte[]) query, (byte[]) vectors.vectorValue(ord));
     } else {
-      return similarityFunction.compare((float[]) query, vectors.vectorValue(ord));
+      return similarityFunction.compare((float[]) query, (float[]) vectors.vectorValue(ord));
     }
   }
 
@@ -284,6 +339,62 @@ public class HnswGraphSearcher<T> {
     if (visited.length() < capacity) {
       visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
     }
-    visited.clear(0, visited.length());
+    visited.clear();
+  }
+
+  /**
+   * Seek a specific node in the given graph. The default implementation will just call {@link
+   * HnswGraph#seek(int, int)}
+   *
+   * @throws IOException when seeking the graph
+   */
+  void graphSeek(HnswGraph graph, int level, int targetNode) throws IOException {
+    graph.seek(level, targetNode);
+  }
+
+  /**
+   * Get the next neighbor from the graph, you must call {@link #graphSeek(HnswGraph, int, int)}
+   * before calling this method. The default implementation will just call {@link
+   * HnswGraph#nextNeighbor()}
+   *
+   * @return see {@link HnswGraph#nextNeighbor()}
+   * @throws IOException when advance neighbors
+   */
+  int graphNextNeighbor(HnswGraph graph) throws IOException {
+    return graph.nextNeighbor();
+  }
+
+  /**
+   * This class allow {@link OnHeapHnswGraph} to be searched in a thread-safe manner.
+   *
+   * <p>Note the class itself is NOT thread safe, but since each search will create one new graph
+   * searcher the search method is thread safe.
+   */
+  private static class OnHeapHnswGraphSearcher<C> extends HnswGraphSearcher<C> {
+
+    private NeighborArray cur;
+    private int upto;
+
+    private OnHeapHnswGraphSearcher(
+        VectorEncoding vectorEncoding,
+        VectorSimilarityFunction similarityFunction,
+        NeighborQueue candidates,
+        BitSet visited) {
+      super(vectorEncoding, similarityFunction, candidates, visited);
+    }
+
+    @Override
+    void graphSeek(HnswGraph graph, int level, int targetNode) {
+      cur = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
+      upto = -1;
+    }
+
+    @Override
+    int graphNextNeighbor(HnswGraph graph) {
+      if (++upto < cur.size()) {
+        return cur.node[upto];
+      }
+      return NO_MORE_DOCS;
+    }
   }
 }

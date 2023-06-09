@@ -53,7 +53,7 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -65,6 +65,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexFormatTooOldException;
 import org.apache.lucene.index.IndexOptions;
@@ -91,16 +92,17 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StandardDirectoryReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -145,11 +147,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   //
   // -----
   //
-  // To generate backcompat indexes with the current default codec, run the following ant command:
-  //  ant test -Dtestcase=TestBackwardsCompatibility -Dtests.bwcdir=/path/to/store/indexes
-  //           -Dtests.codec=default -Dtests.useSecurityManager=false
+  // To generate backcompat indexes with the current default codec, run the following gradle
+  // command:
+  //  gradlew test -Ptests.bwcdir=/path/to/store/indexes -Ptests.codec=default
+  //               -Ptests.useSecurityManager=false --tests TestBackwardsCompatibility
   // Also add testmethod with one of the index creation methods below, for example:
-  //    -Dtestmethod=testCreateCFS
+  //    -Ptestmethod=testCreateCFS
   //
   // Zip up the generated indexes:
   //
@@ -165,7 +168,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
   private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
-      KnnVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
+      KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
   private static final float[] KNN_VECTOR = {0.2f, -0.1f, 0.1f};
 
   public void testCreateCFS() throws IOException {
@@ -225,8 +228,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     Thread.sleep(100000);
   }
 
-  // ant test -Dtestcase=TestBackwardsCompatibility -Dtestmethod=testCreateSortedIndex
-  // -Dtests.codec=default -Dtests.useSecurityManager=false -Dtests.bwcdir=/tmp/sorted
+  // gradlew test -Ptestmethod=testCreateSortedIndex -Ptests.codec=default
+  // -Ptests.useSecurityManager=false -Ptests.bwcdir=/tmp/sorted --tests TestBackwardsCompatibility
   public void testCreateSortedIndex() throws Exception {
 
     Path indexDir = getIndexDir().resolve("sorted");
@@ -363,7 +366,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "9.4.1-cfs",
     "9.4.1-nocfs",
     "9.4.2-cfs",
-    "9.4.2-nocfs"
+    "9.4.2-nocfs",
+    "9.5.0-cfs",
+    "9.5.0-nocfs"
   };
 
   public static String[] getOldNames() {
@@ -377,7 +382,8 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     "sorted.9.3.0",
     "sorted.9.4.0",
     "sorted.9.4.1",
-    "sorted.9.4.2"
+    "sorted.9.4.2",
+    "sorted.9.5.0"
   };
 
   public static String[] getOldSortedNames() {
@@ -1099,9 +1105,11 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       throws IOException {
     final int hitCount = hits.length;
     assertEquals("wrong number of hits", expectedCount, hitCount);
+    StoredFields storedFields = reader.storedFields();
+    TermVectors termVectors = reader.termVectors();
     for (int i = 0; i < hitCount; i++) {
-      reader.document(hits[i].doc);
-      reader.getTermVectors(hits[i].doc);
+      storedFields.document(hits[i].doc);
+      termVectors.get(hits[i].doc);
     }
   }
 
@@ -1118,10 +1126,12 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
 
     final Bits liveDocs = MultiBits.getLiveDocs(reader);
     assertNotNull(liveDocs);
+    StoredFields storedFields = reader.storedFields();
+    TermVectors termVectors = reader.termVectors();
 
     for (int i = 0; i < DOCS_COUNT; i++) {
       if (liveDocs.get(i)) {
-        Document d = reader.document(i);
+        Document d = storedFields.document(i);
         List<IndexableField> fields = d.getFields();
         boolean isProxDoc = d.getField("content3") == null;
         if (isProxDoc) {
@@ -1144,7 +1154,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           assertEquals("field with non-ascii name", f.stringValue());
         }
 
-        Fields tfvFields = reader.getTermVectors(i);
+        Fields tfvFields = termVectors.get(i);
         assertNotNull("i=" + i, tfvFields);
         Terms tfv = tfvFields.terms("utf8");
         assertNotNull("docID=" + i + " index=" + oldName, tfv);
@@ -1176,7 +1186,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         MultiDocValues.getSortedNumericValues(reader, "dvSortedNumeric");
 
     for (int i = 0; i < DOCS_COUNT; i++) {
-      int id = Integer.parseInt(reader.document(i).get("id"));
+      int id = Integer.parseInt(storedFields.document(i).get("id"));
       assertEquals(i, dvByte.nextDoc());
       assertEquals(id, dvByte.longValue());
 
@@ -1231,7 +1241,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
         searcher.search(new TermQuery(new Term(new String("content"), "aaa")), 1000).scoreDocs;
 
     // First document should be #0
-    Document d = searcher.getIndexReader().document(hits[0].doc);
+    Document d = storedFields.document(hits[0].doc);
     assertEquals("didn't get the right document first", "0", d.get("id"));
 
     doTestHits(hits, 34, searcher.getIndexReader());
@@ -1321,7 +1331,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       // test vector values
       int cnt = 0;
       for (LeafReaderContext ctx : reader.leaves()) {
-        VectorValues values = ctx.reader().getVectorValues(KNN_VECTOR_FIELD);
+        FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
@@ -1337,7 +1347,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       // test KNN search
       ScoreDoc[] scoreDocs = assertKNNSearch(searcher, KNN_VECTOR, 10, 10, "0");
       for (int i = 0; i < scoreDocs.length; i++) {
-        int id = Integer.parseInt(reader.document(scoreDocs[i].doc).get("id"));
+        int id = Integer.parseInt(storedFields.document(scoreDocs[i].doc).get("id"));
         int expectedId = i < DELETED_ID ? i : i + 1;
         assertEquals(expectedId, id);
       }
@@ -1354,9 +1364,9 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       String expectedFirstDocId)
       throws IOException {
     ScoreDoc[] hits =
-        searcher.search(new KnnVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
+        searcher.search(new KnnFloatVectorQuery(KNN_VECTOR_FIELD, queryVector, k), k).scoreDocs;
     assertEquals("wrong number of hits", expectedHitsCount, hits.length);
-    Document d = searcher.doc(hits[0].doc);
+    Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", expectedFirstDocId, d.get("id"));
     return hits;
   }
@@ -1388,7 +1398,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
-    Document d = searcher.getIndexReader().document(hits[0].doc);
+    Document d = searcher.getIndexReader().storedFields().document(hits[0].doc);
     assertEquals("wrong first document", "0", d.get("id"));
     doTestHits(hits, 44, searcher.getIndexReader());
 
@@ -1420,7 +1430,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     // make sure searching sees right # hits fot term search
     hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
     assertEquals("wrong number of hits", 44, hits.length);
-    d = searcher.doc(hits[0].doc);
+    d = searcher.storedFields().document(hits[0].doc);
     doTestHits(hits, 44, searcher.getIndexReader());
     assertEquals("wrong first document", "0", d.get("id"));
 
@@ -1445,7 +1455,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     ScoreDoc[] hits = searcher.search(new TermQuery(new Term("content", "aaa")), 1000).scoreDocs;
     assertEquals("wrong number of hits", 34, hits.length);
-    Document d = searcher.doc(hits[0].doc);
+    Document d = searcher.storedFields().document(hits[0].doc);
     assertEquals("wrong first document", "0", d.get("id"));
 
     if (nameVersion.major >= KNN_VECTOR_MIN_SUPPORTED_VERSION) {
@@ -1592,7 +1602,7 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
     doc.add(new Field("content6", "here is more content with aaa aaa aaa", customType4));
 
     float[] vector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * id};
-    doc.add(new KnnVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
+    doc.add(new KnnFloatVectorField(KNN_VECTOR_FIELD, vector, KNN_VECTOR_FIELD_TYPE));
 
     // TODO:
     //   index different norms types via similarity (we use a random one currently?!)
@@ -2229,6 +2239,20 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
       try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
         IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
         StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR, null).close();
+      }
+    }
+  }
+
+  @Nightly
+  public void testReadNMinusTwoSegmentInfos() throws IOException {
+    for (String name : binarySupportedNames) {
+      Path oldIndexDir = createTempDir(name);
+      TestUtil.unzip(getDataInputStream("unsupported." + name + ".zip"), oldIndexDir);
+      try (BaseDirectoryWrapper dir = newFSDirectory(oldIndexDir)) {
+        expectThrows(
+            IndexFormatTooOldException.class,
+            () -> SegmentInfos.readLatestCommit(dir, Version.MIN_SUPPORTED_MAJOR));
+        SegmentInfos.readLatestCommit(dir, MIN_BINARY_SUPPORTED_MAJOR);
       }
     }
   }

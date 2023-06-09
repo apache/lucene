@@ -60,7 +60,8 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
       String field,
       LongValuesSource weightsValueSource,
       String payload,
-      String contexts) {
+      String contexts)
+      throws IOException {
     super(reader, field, null, payload, contexts);
     this.weightsValueSource = weightsValueSource;
   }
@@ -71,7 +72,8 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
    * weightsValueSource</code> supplied to determine the score.
    */
   public DocumentValueSourceDictionary(
-      IndexReader reader, String field, LongValuesSource weightsValueSource, String payload) {
+      IndexReader reader, String field, LongValuesSource weightsValueSource, String payload)
+      throws IOException {
     super(reader, field, null, payload);
     this.weightsValueSource = weightsValueSource;
   }
@@ -81,7 +83,7 @@ public class DocumentValueSourceDictionary extends DocumentDictionary {
    * and uses the <code>weightsValueSource</code> supplied to determine the score.
    */
   public DocumentValueSourceDictionary(
-      IndexReader reader, String field, LongValuesSource weightsValueSource) {
+      IndexReader reader, String field, LongValuesSource weightsValueSource) throws IOException {
     super(reader, field, null, null);
     this.weightsValueSource = weightsValueSource;
   }

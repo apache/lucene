@@ -39,10 +39,10 @@ import org.apache.lucene.util.AttributeSource;
  * {@link #SCORING_BOOLEAN_REWRITE}, you may encounter a {@link IndexSearcher.TooManyClauses}
  * exception during searching, which happens when the number of terms to be searched exceeds {@link
  * IndexSearcher#getMaxClauseCount()}. Setting {@link RewriteMethod} to {@link
- * #CONSTANT_SCORE_REWRITE} prevents this.
+ * #CONSTANT_SCORE_BLENDED_REWRITE} or {@link #CONSTANT_SCORE_REWRITE} prevents this.
  *
- * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_REWRITE}: it doesn't spend CPU
- * computing unhelpful scores, and is the most performant rewrite method given the query. If you
+ * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_BLENDED_REWRITE}: it doesn't spend
+ * CPU computing unhelpful scores, and is the most performant rewrite method given the query. If you
  * need scoring (like {@link FuzzyQuery}, use {@link TopTermsScoringBooleanQueryRewrite} which uses
  * a priority queue to only collect competitive terms and not hit this limitation.
  *
@@ -70,6 +70,27 @@ public abstract class MultiTermQuery extends Query {
   }
 
   /**
+   * A rewrite method where documents are assigned a constant score equal to the query's boost.
+   * Maintains a boolean query-like implementation over the most costly terms while pre-processing
+   * the less costly terms into a filter bitset. Enforces an upper-limit on the number of terms
+   * allowed in the boolean query-like implementation.
+   *
+   * <p>This method aims to balance the benefits of both {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} and
+   * {@link #CONSTANT_SCORE_REWRITE} by enabling skipping and early termination over costly terms
+   * while limiting the overhead of a BooleanQuery with many terms. It also ensures you cannot hit
+   * {@link org.apache.lucene.search.IndexSearcher.TooManyClauses}. For some use-cases with all low
+   * cost terms, {@link #CONSTANT_SCORE_REWRITE} may be more performant. While for some use-cases
+   * with all high cost terms, {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} may be better.
+   */
+  public static final RewriteMethod CONSTANT_SCORE_BLENDED_REWRITE =
+      new RewriteMethod() {
+        @Override
+        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
+          return new MultiTermQueryConstantScoreBlendedWrapper<>(query);
+        }
+      };
+
+  /**
    * A rewrite method that first creates a private Filter, by visiting each term in sequence and
    * marking all docs for that term. Matching documents are assigned a constant score equal to the
    * query's boost.
@@ -85,6 +106,19 @@ public abstract class MultiTermQuery extends Query {
           return new MultiTermQueryConstantScoreWrapper<>(query);
         }
       };
+
+  /**
+   * A rewrite method that uses {@link org.apache.lucene.index.DocValuesType#SORTED} / {@link
+   * org.apache.lucene.index.DocValuesType#SORTED_SET} doc values to find matching docs through a
+   * post-filtering type approach. This will be very slow if used in isolation, but will likely be
+   * the most performant option when combined with a sparse query clause. All matching docs are
+   * assigned a constant score equal to the query's boost.
+   *
+   * <p>If you don't have doc values indexed, see the other rewrite methods that rely on postings
+   * alone (e.g., {@link #CONSTANT_SCORE_BLENDED_REWRITE}, {@link #SCORING_BOOLEAN_REWRITE}, etc.
+   * depending on scoring needs).
+   */
+  public static final RewriteMethod DOC_VALUES_REWRITE = new DocValuesRewriteMethod();
 
   /**
    * A rewrite method that first translates each term into {@link BooleanClause.Occur#SHOULD} clause
@@ -272,6 +306,14 @@ public abstract class MultiTermQuery extends Query {
    */
   public final TermsEnum getTermsEnum(Terms terms) throws IOException {
     return getTermsEnum(terms, new AttributeSource());
+  }
+
+  /**
+   * Return the number of unique terms contained in this query, if known up-front. If not known, -1
+   * will be returned.
+   */
+  public long getTermsCount() throws IOException {
+    return -1;
   }
 
   /**

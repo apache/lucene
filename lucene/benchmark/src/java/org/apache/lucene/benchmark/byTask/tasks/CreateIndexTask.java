@@ -27,7 +27,7 @@ import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.lucene94.Lucene94Codec;
+import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexDeletionPolicy;
@@ -152,7 +152,7 @@ public class CreateIndexTask extends PerfTask {
       try {
         final PostingsFormat postingsFormatChosen = PostingsFormat.forName(postingsFormat);
         iwConf.setCodec(
-            new Lucene94Codec() {
+            new Lucene95Codec() {
               @Override
               public PostingsFormat getPostingsFormatForField(String field) {
                 return postingsFormatChosen;
