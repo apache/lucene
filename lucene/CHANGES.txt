@@ -75,6 +75,10 @@ Bug Fixes
 
 * GITHUB#11350: Handle possible differences in FieldInfo when merging indices created with Lucene 8.x (Tomás Fernández Löbbe)
 
+* GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
+  the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
+
 Other
 ---------------------
 (No changes)
