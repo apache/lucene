@@ -25,7 +25,7 @@ import org.apache.lucene.util.InfoStream;
  * a wrapper of IndexWriter MergeContext. Try to cache the {@link
  * #numDeletesToMerge(SegmentCommitInfo)} result in merge phase, to avoid duplicate calculation
  */
-public class CachingMergeContext implements MergePolicy.MergeContext {
+class CachingMergeContext implements MergePolicy.MergeContext {
   final MergePolicy.MergeContext mergeContext;
   final HashMap<SegmentCommitInfo, Integer> cachedNumDeletesToMerge = new HashMap<>();
 
