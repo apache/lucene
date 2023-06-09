@@ -741,16 +741,8 @@ public abstract class MergePolicy {
    * non-deleted documents is set.
    */
   protected long size(SegmentCommitInfo info, MergeContext mergeContext) throws IOException {
-    int delCount = mergeContext.numDeletesToMerge(info);
-    return size(info, delCount);
-  }
-
-  /**
-   * Return the byte size of the provided {@link SegmentCommitInfo}, pro-rated by percentage of
-   * non-deleted documents is set.
-   */
-  protected final long size(SegmentCommitInfo info, int delCount) throws IOException {
     long byteSize = info.sizeInBytes();
+    int delCount = mergeContext.numDeletesToMerge(info);
     assert assertDelCount(delCount, info);
     double delRatio =
         info.info.maxDoc() <= 0 ? 0d : (double) delCount / (double) info.info.maxDoc();

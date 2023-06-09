@@ -295,8 +295,9 @@ public class TieredMergePolicy extends MergePolicy {
     List<SegmentSizeAndDocs> sortedBySize = new ArrayList<>();
 
     for (SegmentCommitInfo info : infos) {
-      final int delCount = mergeContext.numDeletesToMerge(info);
-      sortedBySize.add(new SegmentSizeAndDocs(info, size(info, delCount), delCount));
+      sortedBySize.add(
+          new SegmentSizeAndDocs(
+              info, size(info, mergeContext), mergeContext.numDeletesToMerge(info)));
     }
 
     sortedBySize.sort(
