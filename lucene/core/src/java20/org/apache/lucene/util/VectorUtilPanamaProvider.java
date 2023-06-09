@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.logging.Logger;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -62,11 +64,23 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     }
   }
 
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
+
   VectorUtilPanamaProvider() {
     if (INT_SPECIES_PREF_BIT_SIZE < 128) {
       throw new UnsupportedOperationException(
           "Vector bit size is less than 128: " + INT_SPECIES_PREF_BIT_SIZE);
     }
+
+    // hack to work around for JDK-8309727:
+    int size = 4 * PREF_FLOAT_SPECIES.length();
+    doPrivileged(() -> dotProduct(new float[size], new float[size]));
+
     var log = Logger.getLogger(getClass().getName());
     log.info(
         "Java vector incubator API enabled; uses preferredBitSize=" + INT_SPECIES_PREF_BIT_SIZE);
