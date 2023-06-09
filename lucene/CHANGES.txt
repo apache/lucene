@@ -68,6 +68,9 @@ Optimizations
 
 * GITHUB#12328: Optimize ConjunctionDISI.createConjunction (Armin Braun)
 
+* GITHUB#12357: Better paging when doing backwards random reads.  This speeds up
+  queries relying on terms in NIOFSDirectory and SimpleFSDirectory. (Alan Woodward)
+
 * GITHUB#12339: Optimize part of duplicate calculation numDeletesToMerge in merge phase (fudongying)
 
 Bug Fixes
