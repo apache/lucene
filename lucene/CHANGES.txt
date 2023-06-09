@@ -177,6 +177,9 @@ Optimizations
 
 * GITHUB#12328: Optimize ConjunctionDISI.createConjunction (Armin Braun)
 
+* GITHUB#12357: Better paging when doing backwards random reads.  This speeds up
+  queries relying on terms in NIOFSDirectory. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 
