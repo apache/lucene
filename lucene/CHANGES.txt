@@ -182,6 +182,9 @@ Bug Fixes
 
 * GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
 
+* GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
+  the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
 Other
 ---------------------
 (No changes)
