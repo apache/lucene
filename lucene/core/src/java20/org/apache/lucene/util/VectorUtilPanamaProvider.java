@@ -31,11 +31,7 @@ import jdk.incubator.vector.VectorSpecies;
 /** A VectorUtil provider implementation that leverages the Panama Vector API. */
 final class VectorUtilPanamaProvider implements VectorUtilProvider {
 
-  /**
-   * The bit size of the preferred species (this field is package private to allow the lookup to
-   * load it).
-   */
-  static final int INT_SPECIES_PREF_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
+  private static final int INT_SPECIES_PREF_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
 
   private static final VectorSpecies<Float> PREF_FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
   private static final VectorSpecies<Byte> PREF_BYTE_SPECIES;
