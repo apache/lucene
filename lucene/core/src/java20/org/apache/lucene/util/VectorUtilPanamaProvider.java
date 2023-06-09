@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.logging.Logger;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -29,11 +31,7 @@ import jdk.incubator.vector.VectorSpecies;
 /** A VectorUtil provider implementation that leverages the Panama Vector API. */
 final class VectorUtilPanamaProvider implements VectorUtilProvider {
 
-  /**
-   * The bit size of the preferred species (this field is package private to allow the lookup to
-   * load it).
-   */
-  static final int INT_SPECIES_PREF_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
+  private static final int INT_SPECIES_PREF_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
 
   private static final VectorSpecies<Float> PREF_FLOAT_SPECIES = FloatVector.SPECIES_PREFERRED;
   private static final VectorSpecies<Byte> PREF_BYTE_SPECIES;
@@ -62,11 +60,29 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     }
   }
 
+  // Extracted to a method to be able to apply the SuppressForbidden annotation
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
+  }
+
   VectorUtilPanamaProvider() {
     if (INT_SPECIES_PREF_BIT_SIZE < 128) {
       throw new UnsupportedOperationException(
           "Vector bit size is less than 128: " + INT_SPECIES_PREF_BIT_SIZE);
     }
+
+    // hack to work around for JDK-8309727:
+    try {
+      doPrivileged(
+          () ->
+              FloatVector.fromArray(PREF_FLOAT_SPECIES, new float[PREF_FLOAT_SPECIES.length()], 0));
+    } catch (SecurityException se) {
+      throw new UnsupportedOperationException(
+          "We hit initialization failure described in JDK-8309727: " + se);
+    }
+
     var log = Logger.getLogger(getClass().getName());
     log.info(
         "Java vector incubator API enabled; uses preferredBitSize=" + INT_SPECIES_PREF_BIT_SIZE);
