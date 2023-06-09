@@ -103,6 +103,16 @@ public class TestVectorUtil extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
   }
 
+  public void testCosineThrowsForNaN() {
+    float[] v = {1, 0, Float.NaN}, u = {0, 0, 0};
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
+  }
+
+  public void testCosineThrowsForInfinity() {
+    float[] v = {1, 0, Float.NEGATIVE_INFINITY}, u = {0, 0, 0};
+    expectThrows(IllegalArgumentException.class, () -> VectorUtil.cosine(u, v));
+  }
+
   public void testNormalize() {
     float[] v = randomVector();
     v[random().nextInt(v.length)] = 1; // ensure vector is not all zeroes
