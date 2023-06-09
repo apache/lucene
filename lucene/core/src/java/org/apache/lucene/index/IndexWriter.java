@@ -2215,10 +2215,11 @@ public class IndexWriter
     }
 
     final MergePolicy mergePolicy = config.getMergePolicy();
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     MergePolicy.MergeSpecification spec;
     boolean newMergesFound = false;
     synchronized (this) {
-      spec = mergePolicy.findForcedDeletesMerges(segmentInfos, this);
+      spec = mergePolicy.findForcedDeletesMerges(segmentInfos, cachingMergeContext);
       newMergesFound = spec != null;
       if (newMergesFound) {
         final int numMerges = spec.merges.size();
@@ -2328,6 +2329,7 @@ public class IndexWriter
     }
 
     final MergePolicy.MergeSpecification spec;
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
     if (maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS) {
       assert trigger == MergeTrigger.EXPLICIT || trigger == MergeTrigger.MERGE_FINISHED
           : "Expected EXPLICT or MERGE_FINISHED as trigger even with maxNumSegments set but was: "
@@ -2335,7 +2337,10 @@ public class IndexWriter
 
       spec =
           mergePolicy.findForcedMerges(
-              segmentInfos, maxNumSegments, Collections.unmodifiableMap(segmentsToMerge), this);
+              segmentInfos,
+              maxNumSegments,
+              Collections.unmodifiableMap(segmentsToMerge),
+              cachingMergeContext);
       if (spec != null) {
         final int numMerges = spec.merges.size();
         for (int i = 0; i < numMerges; i++) {
@@ -2347,7 +2352,7 @@ public class IndexWriter
       switch (trigger) {
         case GET_READER:
         case COMMIT:
-          spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, this);
+          spec = mergePolicy.findFullFlushMerges(trigger, segmentInfos, cachingMergeContext);
           break;
         case ADD_INDEXES:
           throw new IllegalStateException(
@@ -2359,7 +2364,7 @@ public class IndexWriter
         case SEGMENT_FLUSH:
         case CLOSING:
         default:
-          spec = mergePolicy.findMerges(trigger, segmentInfos, this);
+          spec = mergePolicy.findMerges(trigger, segmentInfos, cachingMergeContext);
       }
     }
     if (spec != null) {
