@@ -78,8 +78,13 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     }
 
     // hack to work around for JDK-8309727:
-    int size = 4 * PREF_FLOAT_SPECIES.length();
-    doPrivileged(() -> dotProduct(new float[size], new float[size]));
+    try {
+      int size = 4 * PREF_FLOAT_SPECIES.length();
+      doPrivileged(() -> dotProduct(new float[size], new float[size]));
+    } catch (SecurityException se) {
+      throw new UnsupportedOperationException(
+          "We hit initialization failure described in JDK-8309727: " + se);
+    }
 
     var log = Logger.getLogger(getClass().getName());
     log.info(
