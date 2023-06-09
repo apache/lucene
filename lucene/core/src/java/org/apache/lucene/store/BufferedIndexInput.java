@@ -159,7 +159,10 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     }
   }
 
-  private long maybeRefillBuffer(long pos, int width) throws IOException {
+  // Computes an offset into the current buffer from an absolute position to read
+  // `width` bytes from.  If the buffer does not contain the position, then we
+  // readjust the bufferStart and refill.
+  private long resolvePositionInBuffer(long pos, int width) throws IOException {
     long index = pos - bufferStart;
     if (index >= 0 && index < buffer.limit() - width + 1) {
       return index;
@@ -184,25 +187,25 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   @Override
   public final byte readByte(long pos) throws IOException {
-    long index = maybeRefillBuffer(pos, Byte.BYTES);
+    long index = resolvePositionInBuffer(pos, Byte.BYTES);
     return buffer.get((int) index);
   }
 
   @Override
   public final short readShort(long pos) throws IOException {
-    long index = maybeRefillBuffer(pos, Short.BYTES);
+    long index = resolvePositionInBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);
   }
 
   @Override
   public final int readInt(long pos) throws IOException {
-    long index = maybeRefillBuffer(pos, Integer.BYTES);
+    long index = resolvePositionInBuffer(pos, Integer.BYTES);
     return buffer.getInt((int) index);
   }
 
   @Override
   public final long readLong(long pos) throws IOException {
-    long index = maybeRefillBuffer(pos, Long.BYTES);
+    long index = resolvePositionInBuffer(pos, Long.BYTES);
     return buffer.getLong((int) index);
   }
 
