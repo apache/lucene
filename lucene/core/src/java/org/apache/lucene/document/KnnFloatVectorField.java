@@ -17,6 +17,8 @@
 
 package org.apache.lucene.document;
 
+import static org.apache.lucene.util.VectorUtil.checkFinite;
+
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -50,6 +52,7 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + FloatVectorValues.MAX_DIMENSIONS);
     }
+    checkFinite(v);
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }

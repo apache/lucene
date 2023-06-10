@@ -17,6 +17,8 @@
 
 package org.apache.lucene.util;
 
+import java.util.Arrays;
+
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
@@ -34,7 +36,9 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.dotProduct(a, b);
+    float r = PROVIDER.dotProduct(a, b);
+    checkFinite(r, a, b, "dot product");
+    return r;
   }
 
   /**
@@ -46,7 +50,9 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.cosine(a, b);
+    float r = PROVIDER.cosine(a, b);
+    checkFinite(r, a, b, "dot product");
+    return r;
   }
 
   /** Returns the cosine similarity between the two vectors. */
@@ -66,7 +72,9 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.squareDistance(a, b);
+    float r = PROVIDER.squareDistance(a, b);
+    checkFinite(r, a, b, "square distance");
+    return r;
   }
 
   /** Returns the sum of squared differences of the two vectors. */
@@ -153,5 +161,29 @@ public final class VectorUtil {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  private static void checkFinite(float r, float[] a, float[] b, String optype) {
+    if (!Float.isFinite(r)) {
+      checkFinite(a);
+      checkFinite(b);
+      throw new IllegalArgumentException(
+          "Non-finite ("
+              + r
+              + ") "
+              + optype
+              + " similarity from "
+              + Arrays.toString(a)
+              + " and "
+              + Arrays.toString(b));
+    }
+  }
+
+  public static void checkFinite(float[] a) {
+    for (int i = 0; i < a.length; i++) {
+      if (!Float.isFinite(a[i])) {
+        throw new IllegalArgumentException("non-finite value at vector[" + i + "]=" + a[i]);
+      }
+    }
   }
 }

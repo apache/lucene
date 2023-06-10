@@ -17,8 +17,6 @@
 
 package org.apache.lucene.util;
 
-import java.util.Arrays;
-
 /** The default VectorUtil provider implementation. */
 final class VectorUtilDefaultProvider implements VectorUtilProvider {
 
@@ -87,7 +85,6 @@ final class VectorUtilDefaultProvider implements VectorUtilProvider {
               + b[i + 6] * a[i + 6]
               + b[i + 7] * a[i + 7];
     }
-    checkFinite(res, a, b, "dot product");
     return res;
   }
 
@@ -105,9 +102,7 @@ final class VectorUtilDefaultProvider implements VectorUtilProvider {
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;
     }
-    var r = (float) (sum / Math.sqrt(norm1 * norm2));
-    checkFinite(r, a, b, "cosine");
-    return r;
+    return (float) (sum / Math.sqrt(norm1 * norm2));
   }
 
   @Override
@@ -122,30 +117,7 @@ final class VectorUtilDefaultProvider implements VectorUtilProvider {
       float diff = a[i] - b[i];
       squareSum += diff * diff;
     }
-    checkFinite(squareSum, a, b, "square distance");
     return squareSum;
-  }
-
-  private static void checkFinite(float r, float[] a, float[] b, String optype) {
-    if (!Float.isFinite(r)) {
-      for (int i = 0; i < a.length; i++) {
-        if (!Float.isFinite(a[i])) {
-          throw new IllegalArgumentException("v1[" + i + "]=" + a[i]);
-        }
-        if (!Float.isFinite(b[i])) {
-          throw new IllegalArgumentException("v2[" + i + "]=" + b[i]);
-        }
-      }
-      throw new IllegalArgumentException(
-          "Non-finite ("
-              + r
-              + ") "
-              + optype
-              + " similarity from "
-              + Arrays.toString(a)
-              + " and "
-              + Arrays.toString(b));
-    }
   }
 
   private static float squareDistanceUnrolled(float[] v1, float[] v2, int index) {
