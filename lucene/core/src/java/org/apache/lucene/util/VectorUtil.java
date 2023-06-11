@@ -166,6 +166,7 @@ public final class VectorUtil {
    *
    * @param v bytes containing a vector
    * @return the vector for call-chaining
+   * @throws IllegalArgumentException if any component of vector is not finite
    */
   public static float[] checkFinite(float[] v) {
     for (int i = 0; i < v.length; i++) {
