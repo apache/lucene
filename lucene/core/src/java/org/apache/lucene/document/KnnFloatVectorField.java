@@ -17,8 +17,7 @@
 
 package org.apache.lucene.document;
 
-import static org.apache.lucene.util.VectorUtil.checkFinite;
-
+import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -52,7 +51,6 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "cannot index vectors with dimension greater than " + FloatVectorValues.MAX_DIMENSIONS);
     }
-    checkFinite(v);
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }
@@ -104,7 +102,7 @@ public class KnnFloatVectorField extends Field {
   public KnnFloatVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
-    fieldsData = vector;
+    fieldsData = VectorUtil.checkFinite(vector); // null check done above
   }
 
   /**
@@ -140,7 +138,8 @@ public class KnnFloatVectorField extends Field {
               + " using float[] but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    fieldsData = vector;
+    fieldsData =
+        VectorUtil.checkFinite(Objects.requireNonNull(vector, "vector value must not be null"));
   }
 
   /** Return the vector value of this field */
