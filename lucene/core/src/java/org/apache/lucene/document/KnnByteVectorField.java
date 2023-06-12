@@ -137,7 +137,12 @@ public class KnnByteVectorField extends Field {
               + " using byte[] but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    fieldsData = Objects.requireNonNull(vector, "vector value must not be null");
+    Objects.requireNonNull(vector, "vector value must not be null");
+    if (vector.length != fieldType.vectorDimension()) {
+      throw new IllegalArgumentException(
+          "The number of vector dimensions does not match the field type");
+    }
+    fieldsData = vector;
   }
 
   /** Return the vector value of this field */

@@ -138,8 +138,12 @@ public class KnnFloatVectorField extends Field {
               + " using float[] but the field encoding is "
               + fieldType.vectorEncoding());
     }
-    fieldsData =
-        VectorUtil.checkFinite(Objects.requireNonNull(vector, "vector value must not be null"));
+    Objects.requireNonNull(vector, "vector value must not be null");
+    if (vector.length != fieldType.vectorDimension()) {
+      throw new IllegalArgumentException(
+          "The number of vector dimensions does not match the field type");
+    }
+    fieldsData = VectorUtil.checkFinite(vector);
   }
 
   /** Return the vector value of this field */
