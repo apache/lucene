@@ -76,9 +76,9 @@ import org.apache.lucene.util.SuppressForbidden;
  *   <li>{@code permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";}
  * </ul>
  *
- * <p>On exactly <b>Java 19</b> and <b>Java 20</b> this class will use the modern {@code
- * MemorySegment} API which allows to safely unmap (if you discover any problems with this preview
- * API, you can disable it by using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
+ * <p>On exactly <b>Java 19 / 20 / 21</b> this class will use the modern {@code MemorySegment} API
+ * which allows to safely unmap (if you discover any problems with this preview API, you can disable
+ * it by using system property {@link #ENABLE_MEMORY_SEGMENTS_SYSPROP}).
  *
  * <p><b>NOTE:</b> Accessing this class either directly or indirectly from a thread while it's
  * interrupted can close the underlying channel immediately if at the same time the thread is
@@ -123,7 +123,7 @@ public class MMapDirectory extends FSDirectory {
    * Default max chunk size:
    *
    * <ul>
-   *   <li>16 GiBytes for 64 bit <b>Java 19</b> and <b>Java 20</b> JVMs
+   *   <li>16 GiBytes for 64 bit <b>Java 19 / 20 / 21</b> JVMs
    *   <li>1 GiBytes for other 64 bit JVMs
    *   <li>256 MiBytes for 32 bit JVMs
    * </ul>
@@ -417,7 +417,7 @@ public class MMapDirectory extends FSDirectory {
     }
     final var lookup = MethodHandles.lookup();
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 19 || runtimeVersion == 20) {
+    if (runtimeVersion >= 19 && runtimeVersion <= 21) {
       try {
         final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
@@ -437,9 +437,9 @@ public class MMapDirectory extends FSDirectory {
         throw new LinkageError(
             "MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
       }
-    } else if (runtimeVersion >= 21) {
+    } else if (runtimeVersion >= 22) {
       LOG.warning(
-          "You are running with Java 21 or later. To make full use of MMapDirectory, please update Apache Lucene.");
+          "You are running with Java 22 or later. To make full use of MMapDirectory, please update Apache Lucene.");
     }
     return new MappedByteBufferIndexInputProvider();
   }

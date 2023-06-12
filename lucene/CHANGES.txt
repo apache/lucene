@@ -38,6 +38,12 @@ New Features
   thoroughly and report bugs/slowness to Lucene's mailing list.
   (Chris Hegarty, Robert Muir, Uwe Schindler)
 
+* GITHUB#12294: Add support for Java 21 foreign memory API. If Java 19 up to 21 is used,
+  MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and indexes
+  closed while queries are running can no longer crash the JVM. To disable this feature,
+  pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
 Improvements
 ---------------------
 
