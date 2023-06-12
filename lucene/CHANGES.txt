@@ -86,8 +86,6 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
-* LUCENE-10181: Restrict GraphTokenStreamFiniteStrings#articulationPointsRecurse recursion depth. (Chris Fournier)
-
 Other
 ---------------------
 
@@ -191,6 +189,8 @@ Bug Fixes
 
 * GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
   the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
+* LUCENE-10181: Restrict GraphTokenStreamFiniteStrings#articulationPointsRecurse recursion depth. (Chris Fournier)
 
 Other
 ---------------------

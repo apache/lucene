@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.graph;
 
-import static org.apache.lucene.util.automaton.Operations.MAX_RECURSION_LEVEL;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import org.apache.lucene.analysis.TokenStream;
@@ -677,13 +675,13 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
         };
 
     // Add in too many tokens to get a high depth graph
-    for (int i = 0; i < 1024 * 10; i++) {
+    for (int i = 0; i < 1024 + 1; i++) {
       tokens.add(token("network", 1, 1));
     }
 
     TokenStream ts = new CannedTokenStream(tokens.toArray(new Token[0]));
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(ts);
 
-    assertThrows(IllegalArgumentException.class, () -> graph.articulationPoints());
+    assertThrows(IllegalArgumentException.class, graph::articulationPoints);
   }
 }

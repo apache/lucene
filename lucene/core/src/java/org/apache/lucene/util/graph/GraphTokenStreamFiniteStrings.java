@@ -275,7 +275,8 @@ public final class GraphTokenStreamFiniteStrings {
         if (d < MAX_RECURSION_LEVEL) {
           articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
         } else {
-          throw new IllegalArgumentException("Exceeded maximum recursion level during graph analysis");
+          throw new IllegalArgumentException(
+              "Exceeded maximum recursion level during graph analysis");
         }
         childCount++;
         if (low[t.dest] >= depth[state]) {
