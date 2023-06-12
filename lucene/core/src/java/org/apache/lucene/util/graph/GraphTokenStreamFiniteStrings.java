@@ -46,7 +46,7 @@ import org.apache.lucene.util.automaton.Transition;
  */
 public final class GraphTokenStreamFiniteStrings {
   /** Maximum level of recursion allowed in recursive operations. */
-  public static final int MAX_RECURSION_LEVEL = 1000;
+  private static final int MAX_RECURSION_LEVEL = 1000;
 
   private AttributeSource[] tokens = new AttributeSource[4];
   private final Automaton det;
