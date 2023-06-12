@@ -190,6 +190,8 @@ Bug Fixes
 * GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
   the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
 
+* LUCENE-10181: Restrict GraphTokenStreamFiniteStrings#articulationPointsRecurse recursion depth. (Chris Fournier)
+
 Other
 ---------------------
 (No changes)
