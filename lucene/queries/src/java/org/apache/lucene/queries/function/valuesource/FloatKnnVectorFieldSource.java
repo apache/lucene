@@ -73,7 +73,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
   @Override
   public int hashCode() {
-    return getClass().hashCode() * 31 + Objects.hashCode(fieldName);
+    return Objects.hash(getClass().hashCode(), fieldName);
   }
 
   @Override

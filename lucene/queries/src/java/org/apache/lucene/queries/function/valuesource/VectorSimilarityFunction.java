@@ -81,10 +81,7 @@ public abstract class VectorSimilarityFunction extends ValueSource {
 
   @Override
   public int hashCode() {
-    int h = similarityFunction.hashCode();
-    h = 31 * h + Objects.hashCode(vector1);
-    h = 31 * h + Objects.hashCode(vector2);
-    return h;
+    return Objects.hash(similarityFunction, vector1, vector2);
   }
 
   @Override

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
@@ -66,7 +67,7 @@ public class ConstKnnByteVectorValueSource extends ValueSource {
 
   @Override
   public int hashCode() {
-    return getClass().hashCode() * 31 + Arrays.hashCode(vector);
+    return Objects.hash(getClass().hashCode(), Arrays.hashCode(vector));
   }
 
   @Override
