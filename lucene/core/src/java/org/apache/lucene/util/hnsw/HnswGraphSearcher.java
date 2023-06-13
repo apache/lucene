@@ -375,10 +375,12 @@ public class HnswGraphSearcher<T> {
   }
 
   /**
-   * This class allow {@link OnHeapHnswGraph} to be searched in a thread-safe manner.
+   * This class allows {@link OnHeapHnswGraph} to be searched in a thread-safe manner by avoiding
+   * the unsafe methods (seek and nextNeighbor, which maintain state in the graph object) and
+   * instead maintaining the state in the searcher object.
    *
-   * <p>Note the class itself is NOT thread safe, but since each search will create one new graph
-   * searcher the search method is thread safe.
+   * <p>Note the class itself is NOT thread safe, but since each search will create a new Searcher,
+   * the search methods using this class are thread safe.
    */
   private static class OnHeapHnswGraphSearcher<C> extends HnswGraphSearcher<C> {
 
