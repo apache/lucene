@@ -24,14 +24,14 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
-/** Function that returns a constant float vector value for every document. */
-public class FloatVectorValueSource extends ValueSource {
-  float[] vector;
+/** Function that returns a constant byte vector value for every document. */
+public class ConstByteVectorValueSource extends ValueSource {
+  byte[] vector;
 
-  public FloatVectorValueSource(List<Number> constVector) {
-    this.vector = new float[constVector.size()];
+  public ConstByteVectorValueSource(List<Number> constVector) {
+    this.vector = new byte[constVector.size()];
     for (int i = 0; i < constVector.size(); i++) {
-      vector[i] = constVector.get(i).floatValue();
+      vector[i] = constVector.get(i).byteValue();
     }
   }
 
@@ -40,7 +40,7 @@ public class FloatVectorValueSource extends ValueSource {
       throws IOException {
     return new FunctionValues() {
       @Override
-      public float[] floatVectorVal(int doc) {
+      public byte[] byteVectorVal(int doc) {
         return vector;
       }
 
@@ -58,8 +58,8 @@ public class FloatVectorValueSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof FloatVectorValueSource)) return false;
-    FloatVectorValueSource other = (FloatVectorValueSource) o;
+    if (!(o instanceof ConstByteVectorValueSource)) return false;
+    ConstByteVectorValueSource other = (ConstByteVectorValueSource) o;
     return Arrays.equals(vector, other.vector);
   }
 
