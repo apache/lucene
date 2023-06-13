@@ -25,10 +25,10 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
 /** Function that returns a constant byte vector value for every document. */
-public class ConstByteVectorValueSource extends ValueSource {
+public class ConstKnnByteVectorValueSource extends ValueSource {
   byte[] vector;
 
-  public ConstByteVectorValueSource(List<Number> constVector) {
+  public ConstKnnByteVectorValueSource(List<Number> constVector) {
     this.vector = new byte[constVector.size()];
     for (int i = 0; i < constVector.size(); i++) {
       vector[i] = constVector.get(i).byteValue();
@@ -58,8 +58,8 @@ public class ConstByteVectorValueSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ConstByteVectorValueSource)) return false;
-    ConstByteVectorValueSource other = (ConstByteVectorValueSource) o;
+    if (!(o instanceof ConstKnnByteVectorValueSource)) return false;
+    ConstKnnByteVectorValueSource other = (ConstKnnByteVectorValueSource) o;
     return Arrays.equals(vector, other.vector);
   }
 
@@ -70,6 +70,6 @@ public class ConstByteVectorValueSource extends ValueSource {
 
   @Override
   public String description() {
-    return "denseVectorConst(" + Arrays.toString(vector) + ')';
+    return "ConstKnnByteVectorValueSource(" + Arrays.toString(vector) + ')';
   }
 }

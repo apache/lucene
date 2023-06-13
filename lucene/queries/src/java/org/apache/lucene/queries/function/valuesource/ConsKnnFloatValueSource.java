@@ -17,65 +17,59 @@
 package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
-import org.apache.lucene.search.DocIdSetIterator;
 
-/**
- * An implementation for retrieving {@link FunctionValues} instances for float knn vectors fields.
- */
-public class FloatVectorFieldSource extends ValueSource {
-  private final String fieldName;
+/** Function that returns a constant float vector value for every document. */
+public class ConsKnnFloatValueSource extends ValueSource {
+  float[] vector;
 
-  public FloatVectorFieldSource(String fieldName) {
-    this.fieldName = fieldName;
+  public ConsKnnFloatValueSource(List<Number> constVector) {
+    this.vector = new float[constVector.size()];
+    for (int i = 0; i < constVector.size(); i++) {
+      vector[i] = constVector.get(i).floatValue();
+    }
   }
 
   @Override
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
-
-    final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
-
-    if (vectorValues == null) {
-      throw new IllegalArgumentException(
-          "no float vector value is indexed for field '" + fieldName + "'");
-    }
-    return new VectorFieldFunction(this) {
-
+    return new FunctionValues() {
       @Override
-      public float[] floatVectorVal(int doc) throws IOException {
-        if (exists(doc)) {
-          return vectorValues.vectorValue();
-        } else {
-          return null;
-        }
+      public float[] floatVectorVal(int doc) {
+        return vector;
       }
 
       @Override
-      protected DocIdSetIterator getVectorIterator() {
-        return vectorValues;
+      public String strVal(int doc) {
+        return Arrays.toString(vector);
+      }
+
+      @Override
+      public String toString(int doc) throws IOException {
+        return description() + '=' + strVal(doc);
       }
     };
   }
 
   @Override
   public boolean equals(Object o) {
-    if (o.getClass() != FloatVectorFieldSource.class) return false;
-    FloatVectorFieldSource other = (FloatVectorFieldSource) o;
-    return fieldName.equals(other.fieldName);
+    if (!(o instanceof ConsKnnFloatValueSource)) return false;
+    ConsKnnFloatValueSource other = (ConsKnnFloatValueSource) o;
+    return Arrays.equals(vector, other.vector);
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode() * 31 + fieldName.getClass().hashCode();
+    return getClass().hashCode() * 31 + Arrays.hashCode(vector);
   }
 
   @Override
   public String description() {
-    return "denseFloatVectorField(" + fieldName + ")";
+    return "ConsKnnFloatValueSource(" + Arrays.toString(vector) + ')';
   }
 }

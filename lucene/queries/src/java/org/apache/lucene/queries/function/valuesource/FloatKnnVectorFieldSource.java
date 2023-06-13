@@ -18,19 +18,19 @@ package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Map;
-import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * An implementation for retrieving {@link FunctionValues} instances for byte knn vectors fields.
+ * An implementation for retrieving {@link FunctionValues} instances for float knn vectors fields.
  */
-public class ByteVectorFieldSource extends ValueSource {
+public class FloatKnnVectorFieldSource extends ValueSource {
   private final String fieldName;
 
-  public ByteVectorFieldSource(String fieldName) {
+  public FloatKnnVectorFieldSource(String fieldName) {
     this.fieldName = fieldName;
   }
 
@@ -38,17 +38,16 @@ public class ByteVectorFieldSource extends ValueSource {
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
 
-    final ByteVectorValues vectorValues = readerContext.reader().getByteVectorValues(fieldName);
+    final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
 
     if (vectorValues == null) {
       throw new IllegalArgumentException(
-          "no byte vector value is indexed for field '" + fieldName + "'");
+          "no float vector value is indexed for field '" + fieldName + "'");
     }
-
     return new VectorFieldFunction(this) {
 
       @Override
-      public byte[] byteVectorVal(int doc) throws IOException {
+      public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
           return vectorValues.vectorValue();
         } else {
@@ -65,8 +64,8 @@ public class ByteVectorFieldSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (o.getClass() != ByteVectorFieldSource.class) return false;
-    ByteVectorFieldSource other = (ByteVectorFieldSource) o;
+    if (o.getClass() != FloatKnnVectorFieldSource.class) return false;
+    FloatKnnVectorFieldSource other = (FloatKnnVectorFieldSource) o;
     return fieldName.equals(other.fieldName);
   }
 
@@ -77,6 +76,6 @@ public class ByteVectorFieldSource extends ValueSource {
 
   @Override
   public String description() {
-    return "denseByteVectorField(" + fieldName + ")";
+    return "FloatKnnVectorFieldSource(" + fieldName + ")";
   }
 }
