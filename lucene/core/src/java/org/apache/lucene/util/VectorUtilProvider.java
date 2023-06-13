@@ -56,7 +56,7 @@ interface VectorUtilProvider {
 
   static VectorUtilProvider lookup() {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion == 20) {
+    if (runtimeVersion >= 20 && runtimeVersion <= 21) {
       // is locale sane (only buggy in Java 20)
       if (isAffectedByJDK8301190()) {
         LOG.warning(
@@ -98,9 +98,9 @@ interface VectorUtilProvider {
       } catch (ClassNotFoundException cnfe) {
         throw new LinkageError("VectorUtilPanamaProvider is missing in Lucene JAR file", cnfe);
       }
-    } else if (runtimeVersion >= 21) {
+    } else if (runtimeVersion >= 22) {
       LOG.warning(
-          "You are running with Java 21 or later. To make full use of the Vector API, please update Apache Lucene.");
+          "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
     }
     return new VectorUtilDefaultProvider();
   }
