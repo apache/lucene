@@ -58,7 +58,8 @@ public class ConstKnnFloatValueSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ConstKnnFloatValueSource)) return false;
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
     ConstKnnFloatValueSource other = (ConstKnnFloatValueSource) o;
     return Arrays.equals(vector, other.vector);
   }

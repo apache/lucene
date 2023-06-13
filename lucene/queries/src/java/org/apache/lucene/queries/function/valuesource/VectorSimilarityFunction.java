@@ -18,6 +18,7 @@ package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
@@ -72,17 +73,17 @@ public abstract class VectorSimilarityFunction extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof VectorSimilarityFunction
-        && similarityFunction.equals(((VectorSimilarityFunction) o).similarityFunction)
-        && vector1.equals(((VectorSimilarityFunction) o).vector1)
-        && vector2.equals(((VectorSimilarityFunction) o).vector2);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    return Objects.equals(vector1, ((VectorSimilarityFunction) o).vector1)
+        && Objects.equals(vector2, ((VectorSimilarityFunction) o).vector2);
   }
 
   @Override
   public int hashCode() {
     int h = similarityFunction.hashCode();
-    h = 31 * h + vector1.hashCode();
-    h = 31 * h + vector2.hashCode();
+    h = 31 * h + Objects.hashCode(vector1);
+    h = 31 * h + Objects.hashCode(vector2);
     return h;
   }
 

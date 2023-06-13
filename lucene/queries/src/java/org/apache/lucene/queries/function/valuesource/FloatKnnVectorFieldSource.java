@@ -18,6 +18,7 @@ package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
@@ -64,14 +65,15 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (o.getClass() != FloatKnnVectorFieldSource.class) return false;
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
     FloatKnnVectorFieldSource other = (FloatKnnVectorFieldSource) o;
-    return fieldName.equals(other.fieldName);
+    return Objects.equals(fieldName, other.fieldName);
   }
 
   @Override
   public int hashCode() {
-    return getClass().hashCode() * 31 + fieldName.getClass().hashCode();
+    return getClass().hashCode() * 31 + Objects.hashCode(fieldName);
   }
 
   @Override

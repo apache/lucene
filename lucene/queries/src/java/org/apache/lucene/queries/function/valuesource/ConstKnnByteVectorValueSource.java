@@ -58,7 +58,8 @@ public class ConstKnnByteVectorValueSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ConstKnnByteVectorValueSource)) return false;
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
     ConstKnnByteVectorValueSource other = (ConstKnnByteVectorValueSource) o;
     return Arrays.equals(vector, other.vector);
   }
