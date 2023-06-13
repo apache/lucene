@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.QueryBuilder.TermAndBoost;
 import org.apache.lucene.util.TermAndVector;
 import org.junit.Test;
 
