@@ -24,18 +24,18 @@ import org.apache.lucene.search.DocIdSetIterator;
 /** An implementation for retrieving {@link FunctionValues} instances for knn vectors fields. */
 public abstract class VectorFieldFunction extends FunctionValues {
 
-  protected final ValueSource vs;
+  protected final ValueSource valueSource;
   int lastDocID;
 
-  protected VectorFieldFunction(ValueSource vs) {
-    this.vs = vs;
+  protected VectorFieldFunction(ValueSource valueSource) {
+    this.valueSource = valueSource;
   }
 
   protected abstract DocIdSetIterator getVectorIterator();
 
   @Override
   public String toString(int doc) throws IOException {
-    return vs.description() + strVal(doc);
+    return valueSource.description() + strVal(doc);
   }
 
   @Override
