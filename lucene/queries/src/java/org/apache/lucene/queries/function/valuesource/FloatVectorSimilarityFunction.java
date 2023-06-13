@@ -42,8 +42,7 @@ public class FloatVectorSimilarityFunction extends VectorSimilarityFunction {
       return Float.NaN;
     }
 
-    assert f1.floatVectorVal(doc).length == f2.floatVectorVal(doc).length
-        : "Vectors must have the same length";
-    return similarityFunction.compare(f1.floatVectorVal(doc), f2.floatVectorVal(doc));
+    assert v1.length == v2.length : "Vectors must have the same length";
+    return similarityFunction.compare(v1, v2);
   }
 }

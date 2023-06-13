@@ -25,10 +25,10 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 
 /** Function that returns a constant float vector value for every document. */
-public class ConsKnnFloatValueSource extends ValueSource {
-  float[] vector;
+public class ConstKnnFloatValueSource extends ValueSource {
+  private final float[] vector;
 
-  public ConsKnnFloatValueSource(List<Number> constVector) {
+  public ConstKnnFloatValueSource(List<Number> constVector) {
     this.vector = new float[constVector.size()];
     for (int i = 0; i < constVector.size(); i++) {
       vector[i] = constVector.get(i).floatValue();
@@ -58,8 +58,8 @@ public class ConsKnnFloatValueSource extends ValueSource {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof ConsKnnFloatValueSource)) return false;
-    ConsKnnFloatValueSource other = (ConsKnnFloatValueSource) o;
+    if (!(o instanceof ConstKnnFloatValueSource)) return false;
+    ConstKnnFloatValueSource other = (ConstKnnFloatValueSource) o;
     return Arrays.equals(vector, other.vector);
   }
 
@@ -70,6 +70,6 @@ public class ConsKnnFloatValueSource extends ValueSource {
 
   @Override
   public String description() {
-    return "ConsKnnFloatValueSource(" + Arrays.toString(vector) + ')';
+    return "ConstKnnFloatValueSource(" + Arrays.toString(vector) + ')';
   }
 }

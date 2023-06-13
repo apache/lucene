@@ -26,7 +26,7 @@ import org.apache.lucene.queries.function.ValueSource;
 
 /** Function that returns a constant byte vector value for every document. */
 public class ConstKnnByteVectorValueSource extends ValueSource {
-  byte[] vector;
+  private final byte[] vector;
 
   public ConstKnnByteVectorValueSource(List<Number> constVector) {
     this.vector = new byte[constVector.size()];
