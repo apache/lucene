@@ -170,6 +170,8 @@ Improvements
 * GITHUB#12320: Add "direct to binary" option for DaciukMihovAutomatonBuilder and use it in TermInSetQuery#visit.
   (Greg Miller)
 
+* GITHUB#12281: Require indexed KNN float vectors and query vectors to be finite.  (Jonathan Ellis, Uwe Schindler)
+
 Optimizations
 ---------------------
 

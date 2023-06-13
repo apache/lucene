@@ -34,7 +34,9 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.dotProduct(a, b);
+    float r = PROVIDER.dotProduct(a, b);
+    assert Float.isFinite(r);
+    return r;
   }
 
   /**
@@ -46,7 +48,9 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.cosine(a, b);
+    float r = PROVIDER.cosine(a, b);
+    assert Float.isFinite(r);
+    return r;
   }
 
   /** Returns the cosine similarity between the two vectors. */
@@ -66,7 +70,9 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.squareDistance(a, b);
+    float r = PROVIDER.squareDistance(a, b);
+    assert Float.isFinite(r);
+    return r;
   }
 
   /** Returns the sum of squared differences of the two vectors. */
@@ -153,5 +159,21 @@ public final class VectorUtil {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  /**
+   * Checks if a float vector only has finite components.
+   *
+   * @param v bytes containing a vector
+   * @return the vector for call-chaining
+   * @throws IllegalArgumentException if any component of vector is not finite
+   */
+  public static float[] checkFinite(float[] v) {
+    for (int i = 0; i < v.length; i++) {
+      if (!Float.isFinite(v[i])) {
+        throw new IllegalArgumentException("non-finite value at vector[" + i + "]=" + v[i]);
+      }
+    }
+    return v;
   }
 }
