@@ -167,23 +167,23 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   }
 
   @Test
-  public void vectorSimilarity_missingFloatVectorField_shouldReturnNaN() throws Exception {
+  public void vectorSimilarity_missingFloatVectorField_shouldReturnZero() throws Exception {
     var v1 = new ConstKnnFloatValueSource(List.of(2.0, 1.0, 1.0));
     var v2 = new FloatKnnVectorFieldSource("knnFloatField3");
     assertHits(
         new FunctionQuery(
             new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
-        new float[] {0.5f, Float.NaN});
+        new float[] {0.5f, 0.f});
   }
 
   @Test
-  public void vectorSimilarity_missingByteVectorField_shouldReturnNaN() throws Exception {
+  public void vectorSimilarity_missingByteVectorField_shouldReturnZero() throws Exception {
     var v1 = new ConstKnnByteVectorValueSource(List.of(2.0, 1.0, 1.0));
     var v2 = new ByteKnnVectorFieldSource("knnByteField3");
     assertHits(
         new FunctionQuery(
             new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
-        new float[] {0.5f, Float.NaN});
+        new float[] {0.5f, 0.f});
   }
 
   @Test

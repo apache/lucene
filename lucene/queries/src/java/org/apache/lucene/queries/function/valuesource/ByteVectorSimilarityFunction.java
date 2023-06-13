@@ -39,7 +39,7 @@ public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
     var v2 = f2.byteVectorVal(doc);
 
     if (v1 == null || v2 == null) {
-      return Float.NaN;
+      return 0.f;
     }
 
     assert v1.length == v2.length : "Vectors must have the same length";
