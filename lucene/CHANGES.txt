@@ -130,6 +130,9 @@ API Changes
 * GITHUB#12268: Add BitSet.clear() without parameters for clearing the entire set
   (Jonathan Ellis)
 
+* GITHUB#12346: add new IndexWriter#updateDocuments(Query, Iterable<Document>) API
+  to update documents atomically, with respect to refresh and commit using a query. (Patrick Zhai)
+
 New Features
 ---------------------
 
@@ -144,6 +147,12 @@ New Features
   thoroughly and report bugs/slowness to Lucene's mailing list.
   (Chris Hegarty, Robert Muir, Uwe Schindler)
 
+* GITHUB#12294: Add support for Java 21 foreign memory API. If Java 19 up to 21 is used,
+  MMapDirectory will mmap Lucene indexes in chunks of 16 GiB (instead of 1 GiB) and indexes
+  closed while queries are running can no longer crash the JVM. To disable this feature,
+  pass the following sysprop on Java command line:
+  "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+
 Improvements
 ---------------------
 
@@ -153,8 +162,20 @@ Improvements
 
 * GITHUB#12325: Parallelize AbstractKnnVectorQuery rewrite across slices rather than segments. (Luca Cavanna)
 
+* GITHUB#12333: NumericLeafComparator#competitiveIterator makes better use of a "search after" value when paginating.
+  (Chaitanya Gohel)
+
+* GITHUB#12290: Make memory fence in ByteBufferGuard explicit using `VarHandle.fullFence()`
+
+* GITHUB#12320: Add "direct to binary" option for DaciukMihovAutomatonBuilder and use it in TermInSetQuery#visit.
+  (Greg Miller)
+
+* GITHUB#12281: Require indexed KNN float vectors and query vectors to be finite.  (Jonathan Ellis, Uwe Schindler)
+
 Optimizations
 ---------------------
+
+* GITHUB#12324: Speed up sparse block advanceExact with tiny step in IndexedDISI. (Guo Feng)
 
 * GITHUB#12270 Don't generate stacktrace in CollectionTerminatedException. (Armin Braun)
 
@@ -166,10 +187,20 @@ Optimizations
 
 * GITHUB#12328: Optimize ConjunctionDISI.createConjunction (Armin Braun)
 
+* GITHUB#12357: Better paging when doing backwards random reads.  This speeds up
+  queries relying on terms in NIOFSDirectory and SimpleFSDirectory. (Alan Woodward)
+
+* GITHUB#12339: Optimize part of duplicate calculation numDeletesToMerge in merge phase (fudongying)
+
 Bug Fixes
 ---------------------
 
 * GITHUB#12291: Skip blank lines from stopwords list. (Jerry Chin)
+
+* GITHUB#12352: [Tessellator] Improve the checks that validate the diagonal between two polygon nodes so
+  the resulting polygons are valid counter clockwise polygons. (Ignacio Vera)
+
+* LUCENE-10181: Restrict GraphTokenStreamFiniteStrings#articulationPointsRecurse recursion depth. (Chris Fournier)
 
 Other
 ---------------------

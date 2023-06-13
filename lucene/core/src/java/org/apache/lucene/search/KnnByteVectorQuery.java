@@ -71,7 +71,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
    */
   public KnnByteVectorQuery(String field, byte[] target, int k, Query filter) {
     super(field, k, filter);
-    this.target = target;
+    this.target = Objects.requireNonNull(target, "target");
   }
 
   @Override

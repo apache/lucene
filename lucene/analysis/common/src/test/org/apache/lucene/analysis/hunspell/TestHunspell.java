@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -74,7 +75,8 @@ public class TestHunspell extends LuceneTestCase {
         };
 
     Hunspell hunspell = new Hunspell(dictionary, RETURN_PARTIAL_RESULT, checkCanceled);
-    assertEquals(expected, hunspell.suggest("apac"));
+    // pass a long timeout so that slower CI servers are more predictable.
+    assertEquals(expected, hunspell.suggest("apac", TimeUnit.DAYS.toMillis(1)));
 
     counter.set(0);
     var e =

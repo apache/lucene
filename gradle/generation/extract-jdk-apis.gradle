@@ -27,7 +27,7 @@ configure(rootProject) {
 configure(project(":lucene:core")) {
   ext {
     apijars = file('src/generated/jdk');
-    mrjarJavaVersions = [ 19, 20 ]
+    mrjarJavaVersions = [ 19, 20, 21 ]
   }
   
   configurations {
