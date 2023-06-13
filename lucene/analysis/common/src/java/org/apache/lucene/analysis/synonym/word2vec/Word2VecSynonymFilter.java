@@ -29,7 +29,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.TermAndBoost;
+import org.apache.lucene.util.QueryBuilder.TermAndBoost;
 
 /**
  * Applies single-token synonyms from a Word2Vec trained network to an incoming {@link TokenStream}.
