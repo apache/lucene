@@ -42,8 +42,7 @@ public class ByteVectorSimilarityFunction extends VectorSimilarityFunction {
       return Float.NaN;
     }
 
-    assert v1.length == v2.length
-        : "Vectors must have the same length";
+    assert v1.length == v2.length : "Vectors must have the same length";
 
     return similarityFunction.compare(v1, v2);
   }
