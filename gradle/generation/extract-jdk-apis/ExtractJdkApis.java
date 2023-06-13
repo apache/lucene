@@ -56,7 +56,7 @@ public final class ExtractJdkApis {
   static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
       19, List.of(PATTERN_PANAMA_FOREIGN),
       20, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR),
-      21, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
+      21, List.of(PATTERN_PANAMA_FOREIGN)
   );
   
   public static void main(String... args) throws IOException {
