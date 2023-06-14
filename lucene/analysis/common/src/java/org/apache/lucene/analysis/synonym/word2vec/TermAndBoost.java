@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.synonym.word2vec;
 import org.apache.lucene.util.BytesRef;
 
 /** Wraps a term and boost */
-final class TermAndBoost {
+public class TermAndBoost {
   /** the term */
   public final BytesRef term;
   /** the boost */
