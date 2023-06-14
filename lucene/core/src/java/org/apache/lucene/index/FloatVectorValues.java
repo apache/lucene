@@ -31,6 +31,15 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
   /** The maximum length of a vector */
   public static final int MAX_DIMENSIONS = 1024;
 
+  /**
+   * This is the largest float vector value that we allow.
+   *
+   * <p>The largest float32 that you can square without overflowing is about 1.8E19. We reduce that
+   * further to accommodate the addition of multiple such components in similarity computations in
+   * vectors up to MAX_DIMENSIONS in length.
+   */
+  public static final float MAX_FLOAT32_COMPONENT = 1E17f;
+
   /** Sole constructor */
   protected FloatVectorValues() {}
 

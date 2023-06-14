@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import static org.apache.lucene.index.FloatVectorValues.MAX_FLOAT32_COMPONENT;
+
+import java.util.Arrays;
 import java.util.Random;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -261,5 +265,14 @@ public class TestVectorUtil extends LuceneTestCase {
     u[0] = v[1];
     u[1] = -v[0];
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+  }
+
+  public void testLargeVectorSimilarities() {
+    float[] v = new float[FloatVectorValues.MAX_DIMENSIONS];
+    Arrays.fill(v, MAX_FLOAT32_COMPONENT);
+
+    assertTrue(Float.isFinite(VectorUtil.cosine(v, v)));
+    assertTrue(Float.isFinite(VectorUtil.dotProduct(v, v)));
+    assertTrue(Float.isFinite(VectorUtil.squareDistance(v, v)));
   }
 }

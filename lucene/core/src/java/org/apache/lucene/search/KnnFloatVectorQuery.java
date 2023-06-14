@@ -72,7 +72,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    */
   public KnnFloatVectorQuery(String field, float[] target, int k, Query filter) {
     super(field, k, filter);
-    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+    this.target = VectorUtil.checkInBounds(Objects.requireNonNull(target, "target"));
   }
 
   @Override

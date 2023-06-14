@@ -30,7 +30,7 @@ public class ConstKnnFloatValueSource extends ValueSource {
   private final float[] vector;
 
   public ConstKnnFloatValueSource(float[] constVector) {
-    this.vector = VectorUtil.checkFinite(Objects.requireNonNull(constVector, "constVector"));
+    this.vector = VectorUtil.checkInBounds(Objects.requireNonNull(constVector, "constVector"));
   }
 
   @Override

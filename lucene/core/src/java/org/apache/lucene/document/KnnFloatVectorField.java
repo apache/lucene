@@ -102,7 +102,7 @@ public class KnnFloatVectorField extends Field {
   public KnnFloatVectorField(
       String name, float[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
-    fieldsData = VectorUtil.checkFinite(vector); // null check done above
+    fieldsData = VectorUtil.checkInBounds(vector); // null check done above
   }
 
   /**
@@ -143,7 +143,7 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "The number of vector dimensions does not match the field type");
     }
-    fieldsData = VectorUtil.checkFinite(vector);
+    fieldsData = VectorUtil.checkInBounds(vector);
   }
 
   /** Return the vector value of this field */

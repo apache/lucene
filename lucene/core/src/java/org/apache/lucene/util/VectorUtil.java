@@ -17,6 +17,8 @@
 
 package org.apache.lucene.util;
 
+import org.apache.lucene.index.FloatVectorValues;
+
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
@@ -162,16 +164,21 @@ public final class VectorUtil {
   }
 
   /**
-   * Checks if a float vector only has finite components.
+   * Checks if a float vector only has components with absolute value less than
+   * MAX_FLOAT32_COMPONENT. NaN is not allowed.
    *
    * @param v bytes containing a vector
    * @return the vector for call-chaining
    * @throws IllegalArgumentException if any component of vector is not finite
    */
-  public static float[] checkFinite(float[] v) {
+  public static float[] checkInBounds(float[] v) {
     for (int i = 0; i < v.length; i++) {
       if (!Float.isFinite(v[i])) {
         throw new IllegalArgumentException("non-finite value at vector[" + i + "]=" + v[i]);
+      }
+
+      if (Math.abs(v[i]) > FloatVectorValues.MAX_FLOAT32_COMPONENT) {
+        throw new IllegalArgumentException("Out-of-bounds value at vector[" + i + "]=" + v[i]);
       }
     }
     return v;
