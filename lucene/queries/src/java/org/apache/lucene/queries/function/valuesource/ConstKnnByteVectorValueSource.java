@@ -18,7 +18,6 @@ package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
@@ -29,11 +28,8 @@ import org.apache.lucene.queries.function.ValueSource;
 public class ConstKnnByteVectorValueSource extends ValueSource {
   private final byte[] vector;
 
-  public ConstKnnByteVectorValueSource(List<Number> constVector) {
-    this.vector = new byte[constVector.size()];
-    for (int i = 0; i < constVector.size(); i++) {
-      vector[i] = constVector.get(i).byteValue();
-    }
+  public ConstKnnByteVectorValueSource(byte[] constVector) {
+    this.vector = Objects.requireNonNull(constVector, "constVector");
   }
 
   @Override

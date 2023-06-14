@@ -106,8 +106,8 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_floatConstantVectors_shouldReturnFloatSimilarity() throws Exception {
-    var v1 = new ConstKnnFloatValueSource(List.of(1, 2, 3));
-    var v2 = new ConstKnnFloatValueSource(List.of(5, 4, 1));
+    var v1 = new ConstKnnFloatValueSource(new float[] {1, 2, 3});
+    var v2 = new ConstKnnFloatValueSource(new float[] {5, 4, 1});
     assertHits(
         new FunctionQuery(
             new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
@@ -116,8 +116,8 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_byteConstantVectors_shouldReturnFloatSimilarity() throws Exception {
-    var v1 = new ConstKnnByteVectorValueSource(List.of(1, 2, 3));
-    var v2 = new ConstKnnByteVectorValueSource(List.of(2, 5, 6));
+    var v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3});
+    var v2 = new ConstKnnByteVectorValueSource(new byte[] {2, 5, 6});
     assertHits(
         new FunctionQuery(
             new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2)),
@@ -147,7 +147,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   @Test
   public void vectorSimilarity_FloatConstAndFloatFieldVectors_shouldReturnFloatSimilarity()
       throws Exception {
-    var v1 = new ConstKnnFloatValueSource(List.of(1, 2, 4));
+    var v1 = new ConstKnnFloatValueSource(new float[] {1, 2, 4});
     var v2 = new FloatKnnVectorFieldSource("knnFloatField1");
     assertHits(
         new FunctionQuery(
@@ -158,7 +158,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
   @Test
   public void vectorSimilarity_ByteConstAndByteFieldVectors_shouldReturnFloatSimilarity()
       throws Exception {
-    var v1 = new ConstKnnByteVectorValueSource(List.of(1, 2, 4));
+    var v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 4});
     var v2 = new ByteKnnVectorFieldSource("knnByteField1");
     assertHits(
         new FunctionQuery(
@@ -168,7 +168,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_missingFloatVectorField_shouldReturnZero() throws Exception {
-    var v1 = new ConstKnnFloatValueSource(List.of(2.0, 1.0, 1.0));
+    var v1 = new ConstKnnFloatValueSource(new float[] {2.f, 1.f, 1.f});
     var v2 = new FloatKnnVectorFieldSource("knnFloatField3");
     assertHits(
         new FunctionQuery(
@@ -178,7 +178,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_missingByteVectorField_shouldReturnZero() throws Exception {
-    var v1 = new ConstKnnByteVectorValueSource(List.of(2.0, 1.0, 1.0));
+    var v1 = new ConstKnnByteVectorValueSource(new byte[] {2, 1, 1});
     var v2 = new ByteKnnVectorFieldSource("knnByteField3");
     assertHits(
         new FunctionQuery(
@@ -188,7 +188,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_twoVectorsWithDifferentDimensions_shouldRaiseException() {
-    ValueSource v1 = new ConstKnnByteVectorValueSource(List.of(1, 2, 3, 4));
+    ValueSource v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3, 4});
     ValueSource v2 = new ByteKnnVectorFieldSource("knnByteField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
         new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
@@ -196,7 +196,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         AssertionError.class,
         () -> searcher.search(new FunctionQuery(byteDenseVectorSimilarityFunction), 10));
 
-    v1 = new ConstKnnFloatValueSource(List.of(1, 2));
+    v1 = new ConstKnnFloatValueSource(new float[] {1.f, 2.f});
     v2 = new FloatKnnVectorFieldSource("knnFloatField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
         new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
@@ -207,7 +207,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
 
   @Test
   public void vectorSimilarity_byteAndFloatVectors_shouldRaiseException() {
-    var v1 = new ConstKnnByteVectorValueSource(List.of(1, 2, 3));
+    var v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3});
     ValueSource v2 = new ByteKnnVectorFieldSource("knnByteField1");
     FloatVectorSimilarityFunction floatDenseVectorSimilarityFunction =
         new FloatVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);
@@ -215,7 +215,7 @@ public class TestKnnVectorSimilarityFunctions extends LuceneTestCase {
         UnsupportedOperationException.class,
         () -> searcher.search(new FunctionQuery(floatDenseVectorSimilarityFunction), 10));
 
-    v1 = new ConstKnnByteVectorValueSource(List.of(1, 2, 3));
+    v1 = new ConstKnnByteVectorValueSource(new byte[] {1, 2, 3});
     v2 = new FloatKnnVectorFieldSource("knnFloatField1");
     ByteVectorSimilarityFunction byteDenseVectorSimilarityFunction =
         new ByteVectorSimilarityFunction(VectorSimilarityFunction.EUCLIDEAN, v1, v2);

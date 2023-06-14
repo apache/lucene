@@ -18,22 +18,19 @@ package org.apache.lucene.queries.function.valuesource;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
+import org.apache.lucene.util.VectorUtil;
 
 /** Function that returns a constant float vector value for every document. */
 public class ConstKnnFloatValueSource extends ValueSource {
   private final float[] vector;
 
-  public ConstKnnFloatValueSource(List<Number> constVector) {
-    this.vector = new float[constVector.size()];
-    for (int i = 0; i < constVector.size(); i++) {
-      vector[i] = constVector.get(i).floatValue();
-    }
+  public ConstKnnFloatValueSource(float[] constVector) {
+    this.vector = VectorUtil.checkFinite(Objects.requireNonNull(constVector, "constVector"));
   }
 
   @Override
