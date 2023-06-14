@@ -1986,7 +1986,7 @@ public abstract class LuceneTestCase extends Assert {
                 }
               };
         }
-      } else if (frequently()) {
+      } else {
         ret =
             new IndexSearcher(r, ex) {
               @Override
@@ -1994,9 +1994,6 @@ public abstract class LuceneTestCase extends Assert {
                 return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
               }
             };
-      } else {
-        ret =
-            random.nextBoolean() ? new IndexSearcher(r, ex) : new IndexSearcher(r.getContext(), ex);
       }
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
