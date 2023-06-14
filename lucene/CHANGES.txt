@@ -192,6 +192,8 @@ Optimizations
 
 * GITHUB#12339: Optimize part of duplicate calculation numDeletesToMerge in merge phase (fudongying)
 
+* GITHUB#12334: Honor after value for skipping documents even if queue is not full for PagingFieldCollector (Chaitanya Gohel)
+
 Bug Fixes
 ---------------------
 
