@@ -206,7 +206,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               ClassLoader loader = layer.findLoader(coreModuleId);
 
-              final Set<Integer> jarVersions = Set.of(19, 20);
+              final Set<Integer> jarVersions = Set.of(19, 20, 21);
               for (var v : jarVersions) {
                 Assertions.assertThat(
                         loader.getResource(

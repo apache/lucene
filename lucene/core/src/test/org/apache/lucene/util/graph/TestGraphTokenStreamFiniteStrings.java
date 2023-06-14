@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util.graph;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -659,5 +660,28 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
     assertTokenStream(
         it.next(), new String[] {"king", "alfred", "saxons", "ruled"}, new int[] {1, 1, 3, 1});
     assertFalse(it.hasNext());
+  }
+
+  public void testLongTokenStreamStackOverflowError() throws Exception {
+
+    ArrayList<Token> tokens =
+        new ArrayList<Token>() {
+          {
+            add(token("fast", 1, 1));
+            add(token("wi", 1, 1));
+            add(token("wifi", 0, 2));
+            add(token("fi", 1, 1));
+          }
+        };
+
+    // Add in too many tokens to get a high depth graph
+    for (int i = 0; i < 1024 + 1; i++) {
+      tokens.add(token("network", 1, 1));
+    }
+
+    TokenStream ts = new CannedTokenStream(tokens.toArray(new Token[0]));
+    GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(ts);
+
+    assertThrows(IllegalArgumentException.class, graph::articulationPoints);
   }
 }

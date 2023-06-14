@@ -17,6 +17,7 @@
 
 package org.apache.lucene.document;
 
+import java.util.Objects;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -100,7 +101,7 @@ public class KnnByteVectorField extends Field {
   public KnnByteVectorField(
       String name, byte[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
-    fieldsData = vector;
+    fieldsData = vector; // null-check done above
   }
 
   /**
@@ -135,6 +136,11 @@ public class KnnByteVectorField extends Field {
               + name
               + " using byte[] but the field encoding is "
               + fieldType.vectorEncoding());
+    }
+    Objects.requireNonNull(vector, "vector value must not be null");
+    if (vector.length != fieldType.vectorDimension()) {
+      throw new IllegalArgumentException(
+          "The number of vector dimensions does not match the field type");
     }
     fieldsData = vector;
   }

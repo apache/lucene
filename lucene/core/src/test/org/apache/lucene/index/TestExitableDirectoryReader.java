@@ -40,6 +40,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.TestVectorUtil;
 
 /**
  * Test that uses a default/lucene Implementation of {@link QueryTimeout} to exit out long running
@@ -463,13 +464,21 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
           ExitingReaderException.class,
           () ->
               leaf.searchNearestVectors(
-                  "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE));
+                  "vector",
+                  TestVectorUtil.randomVector(dimension),
+                  5,
+                  leaf.getLiveDocs(),
+                  Integer.MAX_VALUE));
     } else {
       DocIdSetIterator iter = leaf.getFloatVectorValues("vector");
       scanAndRetrieve(leaf, iter);
 
       leaf.searchNearestVectors(
-          "vector", new float[dimension], 5, leaf.getLiveDocs(), Integer.MAX_VALUE);
+          "vector",
+          TestVectorUtil.randomVector(dimension),
+          5,
+          leaf.getLiveDocs(),
+          Integer.MAX_VALUE);
     }
 
     reader.close();
