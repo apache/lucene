@@ -62,6 +62,20 @@ public class QueryBuilder {
   protected boolean enableGraphQueries = true;
   protected boolean autoGenerateMultiTermSynonymsPhraseQuery = false;
 
+  /** Wraps a term and boost */
+  public static class TermAndBoost {
+    /** the term */
+    public final BytesRef term;
+    /** the boost */
+    public final float boost;
+
+    /** Creates a new TermAndBoost */
+    public TermAndBoost(BytesRef term, float boost) {
+      this.term = BytesRef.deepCopyOf(term);
+      this.boost = boost;
+    }
+  }
+
   /** Creates a new QueryBuilder using the given analyzer. */
   public QueryBuilder(Analyzer analyzer) {
     this.analyzer = analyzer;
