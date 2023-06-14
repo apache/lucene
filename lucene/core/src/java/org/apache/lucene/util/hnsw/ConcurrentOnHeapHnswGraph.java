@@ -42,9 +42,9 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       entryPoint; // the current graph entry node on the top level. -1 if not set
 
   // Unlike OnHeapHnswGraph (OHHG), we use the same data structure for Level 0 and higher node
-  // lists,
-  // a ConcurrentHashMap.  While the ArrayList used for L0 in OHHG is faster for single-threaded
-  // workloads, it imposes an unacceptable contention burden for concurrent workloads.
+  // lists, a ConcurrentHashMap.  While the ArrayList used for L0 in OHHG is faster for
+  // single-threaded workloads, it imposes an unacceptable contention burden for concurrent
+  // graph building.
   private final Map<Integer, Map<Integer, ConcurrentNeighborSet>> graphLevels;
   private final CompletionTracker completions;
 
