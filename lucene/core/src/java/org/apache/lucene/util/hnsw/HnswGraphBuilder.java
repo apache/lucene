@@ -28,6 +28,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+
+import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
@@ -211,16 +214,21 @@ public final class HnswGraphBuilder<T> {
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          float score =
-              switch (this.vectorEncoding) {
-                case FLOAT32 -> this.similarityFunction.compare(
-                    vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor));
-                case BYTE -> this.similarityFunction.compare(
-                    binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
-              };
+//          float score =
+//              switch (this.vectorEncoding) {
+//                case FLOAT32 -> this.similarityFunction.compare(
+//                    vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor));
+//                case BYTE -> this.similarityFunction.compare(
+//                    binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
+//              };
+          ScoringFunction scoringFunction =
+                  switch (this.vectorEncoding) {
+                    case FLOAT32 -> new FloatVectorScoringFunction(vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor), this.similarityFunction);
+                    case BYTE -> new ByteVectorScoringFunction(binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor), this.similarityFunction);
+                  };
           // we are not sure whether the previous graph contains
           // unchecked nodes, so we have to assume they're all unchecked
-          newNeighbors.addOutOfOrder(newNeighbor, score);
+          newNeighbors.addOutOfOrder(newNeighbor, -1, scoringFunction);
         }
       }
     }

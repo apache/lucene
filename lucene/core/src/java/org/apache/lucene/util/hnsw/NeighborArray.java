@@ -18,6 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import java.util.Arrays;
+import java.util.HashMap;
+
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -31,20 +33,21 @@ import org.apache.lucene.util.ArrayUtil;
 public class NeighborArray {
   private final boolean scoresDescOrder;
   private int size;
-
   float[] score;
   int[] node;
   private int sortedNodeSize;
+  private HashMap<Integer, ScoringFunction> scoringContext;
 
   public NeighborArray(int maxSize, boolean descOrder) {
     node = new int[maxSize];
     score = new float[maxSize];
     this.scoresDescOrder = descOrder;
+    scoringContext = new HashMap<>();
   }
 
   /**
    * Add a new node to the NeighborArray. The new node must be worse than all previously stored
-   * nodes. This cannot be called after {@link #addOutOfOrder(int, float)}
+   * nodes. This cannot be called after {@link #addOutOfOrder(int, float, ScoringFunction)}
    */
   public void addInOrder(int newNode, float newScore) {
     assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
@@ -67,15 +70,30 @@ public class NeighborArray {
     ++sortedNodeSize;
   }
 
-  /** Add node and score but do not insert as sorted */
-  public void addOutOfOrder(int newNode, float newScore) {
+  /** Add node and scoringFunction (used to calculate the score later) but do not insert as sorted */
+  public void addOutOfOrder(int newNode, float newScore, ScoringFunction scoringFunction) {
     if (size == node.length) {
       node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
     }
+
+    // If scoringFunction is provided this implies we want to calculate the score at a later time
+    if (scoringFunction == null) {
+      score[size] = newScore;
+    } else {
+      // Add the scoringFunction to the scoringContext map to be used later
+      scoringContext.put(newNode, scoringFunction);
+      // Placeholder for score for now
+      score[size] = -1;
+    }
+
     node[size] = newNode;
-    score[size] = newScore;
     size++;
+  }
+
+  /** Add node and newScore but do not insert as sorted */
+  public void addOutOfOrder(int newNode, float newScore) {
+    addOutOfOrder(newNode, newScore, null);
   }
 
   /**
@@ -111,6 +129,12 @@ public class NeighborArray {
   private int insertSortedInternal() {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
     int tmpNode = node[sortedNodeSize];
+    // Now we compute all the missing score using scoringContext
+    for (Integer index : scoringContext.keySet()) {
+      score[index] = scoringContext.get(index).calculateScore();
+    }
+    // Reset scoringContext
+    scoringContext = new HashMap<>();
     float tmpScore = score[sortedNodeSize];
     int insertionPoint =
         scoresDescOrder
@@ -128,7 +152,7 @@ public class NeighborArray {
 
   /** This method is for test only. */
   void insertSorted(int newNode, float newScore) {
-    addOutOfOrder(newNode, newScore);
+    addOutOfOrder(newNode, newScore, null);
     insertSortedInternal();
   }
 
