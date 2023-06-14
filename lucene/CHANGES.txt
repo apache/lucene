@@ -58,8 +58,6 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#12252 Add function queries for computing similarity scores between knn vectors. (Elia Porciani, Alessandro Benedetti)
-
 * LUCENE-10010 Introduce NFARunAutomaton to run NFA directly. (Patrick Zhai)
 
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
@@ -154,6 +152,8 @@ New Features
   closed while queries are running can no longer crash the JVM. To disable this feature,
   pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+  
+* GITHUB#12252 Add function queries for computing similarity scores between knn vectors. (Elia Porciani, Alessandro Benedetti)
 
 Improvements
 ---------------------
