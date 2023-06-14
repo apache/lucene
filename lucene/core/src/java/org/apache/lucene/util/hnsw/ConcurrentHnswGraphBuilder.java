@@ -71,6 +71,7 @@ public class ConcurrentHnswGraphBuilder<T> {
   private final VectorEncoding vectorEncoding;
   private final RandomAccessVectorValues<T> vectors;
   private final ExplicitThreadLocal<HnswGraphSearcher<T>> graphSearcher;
+  private final ExplicitThreadLocal<NeighborQueue> beamCandidates;
 
   final ConcurrentOnHeapHnswGraph hnsw;
   private final ConcurrentSkipListSet<NodeAtLevel> insertionsInProgress =
@@ -135,8 +136,10 @@ public class ConcurrentHnswGraphBuilder<T> {
                   new GrowableBitSet(this.vectors.size()));
             });
     // in scratch we store candidates in reverse order: worse candidates are first
-    scratchNeighbors =
+    this.scratchNeighbors =
         ExplicitThreadLocal.withInitial(() -> new NeighborArray(Math.max(beamWidth, M + 1), false));
+    this.beamCandidates =
+        ExplicitThreadLocal.withInitial(() -> new NeighborQueue(beamWidth, false));
   }
 
   private abstract static class ExplicitThreadLocal<U> {
@@ -325,7 +328,7 @@ public class ConcurrentHnswGraphBuilder<T> {
       }
 
       // for levels <= nodeLevel search with topk = beamWidth, and add connections
-      candidates = new NeighborQueue(beamWidth, false);
+      candidates = beamCandidates.get();
       for (int level = Math.min(nodeLevel, entry.level); level >= 0; level--) {
         candidates.clear();
         // find best "natural" candidates at this level with a beam search
