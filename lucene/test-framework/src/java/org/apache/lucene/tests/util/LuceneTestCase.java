@@ -19,6 +19,7 @@ package org.apache.lucene.tests.util;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.scaledRandomIntBetween;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -1941,7 +1942,7 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       int threads = 0;
       final ThreadPoolExecutor ex;
-      if (r.getReaderCacheHelper() == null || random.nextBoolean()) {
+      if (r.getReaderCacheHelper() == null || rarely()) {
         ex = null;
       } else {
         threads = TestUtil.nextInt(random, 1, 8);
@@ -1965,9 +1966,9 @@ public abstract class LuceneTestCase extends Assert {
             .addClosedListener(cacheKey -> TestUtil.shutdownExecutorService(ex));
       }
       IndexSearcher ret;
+      int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
+      int maxSegmentsPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(10);
       if (wrapWithAssertions) {
-        int maxDocPerSlice = 1 + random.nextInt(1000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(10);
         if (random.nextBoolean()) {
           ret =
               new AssertingIndexSearcher(random, r, ex) {
@@ -1986,8 +1987,6 @@ public abstract class LuceneTestCase extends Assert {
               };
         }
       } else if (frequently()) {
-        int maxDocPerSlice = 1 + random.nextInt(1000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(10);
         ret =
             new IndexSearcher(r, ex) {
               @Override
