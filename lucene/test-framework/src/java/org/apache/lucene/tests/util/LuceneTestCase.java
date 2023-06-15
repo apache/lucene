@@ -1940,7 +1940,7 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       int threads = 0;
       final ThreadPoolExecutor ex;
-      if (r.getReaderCacheHelper() == null || rarely()) {
+      if (r.getReaderCacheHelper() == null || random.nextBoolean()) {
         ex = null;
       } else {
         threads = TestUtil.nextInt(random, 1, 8);
