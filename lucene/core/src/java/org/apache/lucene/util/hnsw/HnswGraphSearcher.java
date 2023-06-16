@@ -273,6 +273,8 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
+    assert results.isMinHeap();
+
     int size = graph.size();
     prepareScratchState(vectors.size());
 
