@@ -289,6 +289,13 @@ public class ConcurrentHnswGraphBuilder<T> {
   }
 
   /**
+   * Obviously not threadsafe, but useful for debugging.
+   */
+  public int insertsInProgress() {
+    return insertionsInProgress.size();
+  }
+
+  /**
    * Inserts a doc with vector value to the graph.
    *
    * <p>To allow correctness under concurrency, we track in-progress updates in a
