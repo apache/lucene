@@ -144,11 +144,11 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
 
   @Override
   public NodesIterator getNodesOnLevel(int level) {
-    if (level == 0) {
-      return new ArrayNodesIterator(size());
-    } else {
-      return new CollectionNodesIterator(graphLevels.get(level).keySet());
-    }
+    // We avoid the temptation to optimize L0 by using ArrayNodesIterator.
+    // This is because, while L0 will contain sequential ordinals once the graph is complete,
+    // and internally Lucene only calls getNodesOnLevel at that point, this is a public
+    // method so we cannot assume that that is the only time it will be called by third parties.
+    return new CollectionNodesIterator(graphLevels.get(level).keySet());
   }
 
   @Override
