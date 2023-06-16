@@ -1,7 +1,7 @@
 package org.apache.lucene.sandbox.pim;
 
 import org.apache.lucene.search.LeafSimScorer;
-import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 import java.io.IOException;
@@ -28,5 +28,5 @@ public interface PimQuery {
      * @return
      * @throws IOException
      */
-    PimMatch readResult(ByteArrayDataInput input, LeafSimScorer scorer) throws IOException;
+    PimMatch readResult(DataInput input, LeafSimScorer scorer) throws IOException;
 }

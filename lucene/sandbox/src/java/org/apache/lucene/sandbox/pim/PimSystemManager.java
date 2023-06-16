@@ -1,5 +1,6 @@
 package org.apache.lucene.sandbox.pim;
 
+import com.upmem.dpu.DpuSet;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.LeafSimScorer;
@@ -11,7 +12,9 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.DataInput;
 
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
@@ -37,12 +40,11 @@ import com.upmem.dpu.DpuException;
  * Singleton class used to manage the PIM system and offload Lucene queries to it.
  * TODO currently this uses a software model to answer queries, not the PIM HW.
  */
-public class PimSystemManager {
+public final class PimSystemManager {
 
     private static PimSystemManager instance;
 
     final int BYTE_BUFFER_QUEUE_LOG2_BYTE_SIZE = 11;
-    final int MAX_QUERY_ID = 1 << BYTE_BUFFER_QUEUE_LOG2_BYTE_SIZE;
     final int QUERY_BATCH_SIZE = 128;
 
     private boolean isIndexLoaded;
@@ -57,22 +59,22 @@ public class PimSystemManager {
     private PimIndexSearcher pimSearcher;
 
     private final Lock queryLock = new ReentrantLock();
-    final Condition queryPushedCond  = queryLock.newCondition();
+    private final Condition queryPushedCond  = queryLock.newCondition();
     private final ReentrantReadWriteLock resultsLock = new ReentrantReadWriteLock();
     private final Lock resultsPushedLock = new ReentrantLock();
-    final Condition resultsPushedCond = resultsPushedLock.newCondition();
-    final Lock idLock = new ReentrantLock();
-    private int queryId;
+    private final Condition resultsPushedCond = resultsPushedLock.newCondition();
 
-
-    // Note: let's assume we will use scatter/gather DPU->CPU transfers
-    // And all results for the same query will be in a continuous array in memory after the transfer
-    private TreeMap<Integer, byte[]> queryResultsMap;
+    private TreeMap<Integer, DataInput> queryResultsMap;
     private PimManagerThread pimThread;
     private ByteArrayOutputStream dpuStream = new ByteArrayOutputStream();
+
     private DpuSystem dpuSystem;
-    private Byte[][] dpuNbResults;
-    private Byte[][] dpuResults;
+    private byte[][] dpuQueryResultsAddr;
+    private byte[][] dpuResults;
+    private byte[][][] dpuResultsPerRank;
+    private int[] dpuIdOffset;
+    private final Lock resultBufferLock = new ReentrantLock();
+    private final Condition resultBufferCond = resultBufferLock.newCondition();
 
     private PimSystemManager() {
         isIndexLoaded = false;
@@ -84,7 +86,6 @@ public class PimSystemManager {
         } catch (ByteBufferBoundedQueue.BufferLog2SizeTooLargeException e) {
             throw new RuntimeException(e);
         }
-        queryId = 0;
         queryResultsMap = new TreeMap<>();
         pimThread = new PimManagerThread(queryBuffer);
         pimThread.start();
@@ -95,8 +96,18 @@ public class PimSystemManager {
             try {
                 dpuSystem = DpuSystem.allocate(nrDpus, "sgXferEnable=true", new PrintStream(dpuStream));
                 dpuSystem.load(dpuProgramPath);
-                dpuNbResults = new Byte[nrDpus][dpuQueryBatchByteSize];
-                dpuResults = new Byte[dpuQueryBatchByteSize][dpuQueryResultsByteSize];
+                dpuQueryResultsAddr = new byte[dpuSystem.dpus().size()][dpuQueryBatchByteSize];
+                dpuResults = new byte[dpuSystem.dpus().size()][dpuResultsMaxByteSize];
+                dpuResultsPerRank = new byte[dpuSystem.ranks().size()][][];
+                dpuIdOffset = new int[dpuSystem.dpus().size()];
+                int cnt = 0;
+                for(int i = 0; i < dpuSystem.ranks().size(); ++i) {
+                    dpuResultsPerRank[i] = new byte[dpuSystem.ranks().get(i).dpus().size()][];
+                    dpuIdOffset[i] = cnt;
+                    for(int j = 0; j < dpuSystem.ranks().get(i).dpus().size(); ++j) {
+                        dpuResultsPerRank[i][j] = dpuResults[cnt++];
+                    }
+                }
             } catch (DpuException e) {
                 throw new RuntimeException(e);
             }
@@ -289,14 +300,15 @@ public class PimSystemManager {
         try {
             // 1) push query in a queue
             // first request a buffer of the correct size
-            int id = getQueryId();
             ByteCountDataOutput countOutput = new ByteCountDataOutput();
-            writeQueryToPim(countOutput, query, id, context.ord);
+            writeQueryToPim(countOutput, query, context.ord);
             final int byteSize = Math.toIntExact(countOutput.getByteCount());
             var queryOutput = queryBuffer.add(byteSize);
+            // unique id identifying the query in the queue
+            int id = queryOutput.getUniqueId();
 
-            // write query id, leaf id, query type, then write query
-            writeQueryToPim(queryOutput, query, id, context.ord);
+            // write leaf id, query type, then write query
+            writeQueryToPim(queryOutput, query, context.ord);
 
             // 2) signal condition variable to wake up thread which handle queries to DPUs
             queryLock.lock();
@@ -369,16 +381,16 @@ public class PimSystemManager {
             QueryType q, int id, LeafSimScorer scorer) throws IOException {
 
         resultsLock.readLock().lock();
-        byte[] resultsArr;
+        DataInput resultsReader;
         try {
-            resultsArr = queryResultsMap.get(id);
+            resultsReader = queryResultsMap.get(id);
         }
         finally {
             resultsLock.readLock().unlock();
         }
-        assert resultsArr != null;
+        assert resultsReader != null;
 
-        List<PimMatch> matches = getMatches(q, resultsArr, scorer);
+        List<PimMatch> matches = getMatches(q, resultsReader, scorer);
 
         // remove results array from the map
         resultsLock.writeLock().lock();
@@ -395,10 +407,9 @@ public class PimSystemManager {
      * Used by method getQueryMatches
      */
     private <QueryType extends Query & PimQuery> List<PimMatch> getMatches(
-            QueryType q, byte[] resultsArr, LeafSimScorer scorer) throws IOException {
+            QueryType q, DataInput input, LeafSimScorer scorer) throws IOException {
 
         List<PimMatch> matches = new ArrayList<>();
-        ByteArrayDataInput input = new ByteArrayDataInput(resultsArr);
 
         // 1) read number of results
         int nbResults = input.readVInt();
@@ -416,15 +427,13 @@ public class PimSystemManager {
      * Write the query as a byte array in the PIM system format
      * @param output the output where to write the query
      * @param query the query to be written
-     * @param id the id of the query
      * @param leafIdx the leaf id
      * @param <QueryType> a type that is both a Query and a PimQuery
      * @throws IOException
      */
     private <QueryType extends Query & PimQuery>
-    void writeQueryToPim(DataOutput output, QueryType query, int id, int leafIdx) throws IOException {
+    void writeQueryToPim(DataOutput output, QueryType query, int leafIdx) throws IOException {
 
-        output.writeVInt(id);
         output.writeVInt(leafIdx);
         output.writeByte(PIM_PHRASE_QUERY_TYPE);
         query.writeToPim(output);
@@ -467,28 +476,6 @@ public class PimSystemManager {
         }
         objectInputStream.close();
         pimIndexInfo.setPimDir(pimDirectory);
-    }
-
-    /**
-     * Allocate an id for a new query
-     * @return the query id
-     */
-    private int getQueryId() {
-        idLock.lock();
-        int id = -1;
-        try {
-            id = queryId++;
-            if(queryId > MAX_QUERY_ID) {
-                // since the MAX_QUERY_ID is defined as being equal to
-                // the number of bytes in the queue, and a query is minimum 1 byte,
-                // query with id 0 is already handled whenever this condition happens
-                queryId = 0;
-            }
-        }
-        finally {
-            idLock.unlock();
-        }
-        return id;
     }
 
     /**
@@ -574,7 +561,6 @@ public class PimSystemManager {
                         for (int q = 0; q < slice.getNbElems(); ++q) {
 
                             // rebuild a query object for PimIndexSearcher
-                            int id = input.readVInt();
                             int segment = input.readVInt();
                             byte type = input.readByte();
                             assert type == PIM_PHRASE_QUERY_TYPE;
@@ -611,7 +597,7 @@ public class PimSystemManager {
 
                             resultsLock.writeLock().lock();
                             try {
-                                queryResultsMap.put(id, matchesByteArr);
+                                queryResultsMap.put(slice.getUniqueIdOf(q), new ByteArrayDataInput(matchesByteArr));
                             } finally {
                                 resultsLock.writeLock().unlock();
                             }
@@ -657,17 +643,40 @@ public class PimSystemManager {
         // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
         dpuSystem.async().exec();
 
-        // 3) scatter-gather transfer for the rank
-        //TODO first get the meta-data (nb of results per DPU for each query of the batch) and then the results
+        // 3) results transfer from DPUs to CPU
+        // first get the meta-data (index of query results in results array for each DPU)
+        // This meta-data has one integer per query in the batch
+        dpuSystem.async().copy(dpuQueryResultsAddr, dpuResultsIndexVarName,
+                queryBatch.getNbElems() * Integer.BYTES);
 
-        // 4) dpu_sync()
+        // then transfer the results
+        // use a callback to transfer a minimal number of results per rank
+        final int batchSize = queryBatch.getNbElems() * Integer.BYTES;
+        dpuSystem.async().call(
+                (DpuSet set, int rankId) -> {
+                    // find the max byte size of results for DPUs in this rank
+                    int resultsSize = 0;
+                    for(int i = 0; i < set.dpus().size(); ++i) {
+                        int dpuResultsSize = (int) BitUtil.VH_LE_INT.get(
+                                dpuQueryResultsAddr[dpuIdOffset[rankId] + i], batchSize);
+                        if(dpuResultsSize > resultsSize)
+                            resultsSize = dpuResultsSize;
+                    }
+                    // perform the transfer for this rank
+                    set.copy(dpuResultsPerRank[rankId], dpuResultsBatchVarName, resultsSize);
+                }
+        );
+
+        // 4) barrier to wait for all transfers to be finished
         dpuSystem.async().sync();
 
-        // 5) once transfer is finished, all queries have their results ready to be added in the treeMap
-        // Do it in this thread as the batch will be of small size
+        // 5) Update the results map for the client threads to read their results
         resultsLock.writeLock().lock();
         try {
-            //queryResultsMap.put(id, matches);
+            for(int q = 0; q < queryBatch.getNbElems(); ++q) {
+                queryResultsMap.put(queryBatch.getUniqueIdOf(q),
+                        new DpuResultsInput(dpuResults, dpuQueryResultsAddr, q));
+            }
         } finally {
             resultsLock.writeLock().unlock();
         }
@@ -696,13 +705,92 @@ public class PimSystemManager {
         }
     }
 
+    /**
+     * Class to read the results of a query from the DPU results array
+     * The purpose of this class is to be able to read the results of a query
+     * while abstracting out the fact that the results are scattered across the DPU results array.
+     */
+    public static class DpuResultsInput extends DataInput {
+
+        byte[][] dpuQueryResultsAddr;
+        byte[][] dpuResults;
+        int queryId;
+        int currDpuId;
+        int currByteIndex;
+        int byteIndexEnd;
+
+        DpuResultsInput(byte[][] dpuResults, byte[][] dpuQueryResultsAddr, int queryId) {
+            this.dpuResults = dpuResults;
+            this.dpuQueryResultsAddr = dpuQueryResultsAddr;
+            this.queryId = queryId;
+            this.currDpuId = 0;
+        }
+
+        private void nextDpu() throws IOException{
+
+            this.currDpuId++;
+
+            if(currDpuId >= dpuResults.length)
+                throw new IOException("No more DPU results");
+
+            this.currByteIndex = (int) BitUtil.VH_LE_INT.get(
+                    dpuQueryResultsAddr[currDpuId], queryId * Integer.BYTES);
+            this.byteIndexEnd = (int) BitUtil.VH_LE_INT.get(
+                    dpuQueryResultsAddr[currDpuId], (queryId + 1) * Integer.BYTES);
+        }
+
+        private boolean endOfDpuBuffer() {
+            return this.currByteIndex >= this.byteIndexEnd;
+        }
+
+        @Override
+        public byte readByte() throws IOException {
+            while(endOfDpuBuffer())
+                nextDpu();
+            return dpuResults[currDpuId][currByteIndex++];
+        }
+
+        @Override
+        public void readBytes(byte[] b, int offset, int len) throws IOException {
+
+            if(len <= (byteIndexEnd - currByteIndex)) {
+                System.arraycopy(dpuResults[currDpuId], currByteIndex, b, offset, len);
+                currByteIndex += len;
+            }
+            else {
+                int nbBytesToCopy = byteIndexEnd - currByteIndex;
+                if(nbBytesToCopy > 0)
+                    System.arraycopy(dpuResults[currDpuId], currByteIndex, b, offset, nbBytesToCopy);
+                nextDpu();
+                readBytes(b, offset + nbBytesToCopy, len - nbBytesToCopy);
+            }
+        }
+
+        @Override
+        public void skipBytes(long numBytes) throws IOException {
+
+            if(numBytes <= (byteIndexEnd - currByteIndex)) {
+                currByteIndex += numBytes;
+            }
+            else {
+                int nbBytesToSkip = byteIndexEnd - currByteIndex;
+                if(nbBytesToSkip > 0)
+                    currByteIndex += nbBytesToSkip;
+                nextDpu();
+                skipBytes(numBytes - nbBytesToSkip);
+            }
+        }
+    }
+
 
     // TODO some of the constants defined here should be common with the DPU code
     // encoding of query types for PIM
     private static final byte PIM_PHRASE_QUERY_TYPE = (byte)1;
     private static final String dpuQueryBatchVarName = "query_batch";
+    private static final String dpuResultsBatchVarName = "results_batch";
+    private static final String dpuResultsIndexVarName = "results_index";
     private static final int dpuQueryBatchByteSize = 1 << 18;
-    private static final int dpuQueryResultsByteSize = 1 << 18;
+    private static final int dpuResultsMaxByteSize = 1 << 13;
 
     private static final int nrDpus = 2048;
     private static final String dpuProgramPath = "../dpu/pim_index_searcher.dpu";

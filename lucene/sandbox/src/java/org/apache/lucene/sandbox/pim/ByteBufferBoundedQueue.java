@@ -224,7 +224,7 @@ public class ByteBufferBoundedQueue {
                         }
                         index++;
                     }
-                });
+                }, sliceId & sliceMask);
     }
 
     /**
@@ -306,7 +306,7 @@ public class ByteBufferBoundedQueue {
             // to free this slice
             byteArrayLock.lock();
             try {
-                readPointer = (currSlice.startIndexRel + currSlice.size) & mask;
+                readPointer = (currSlice.startIndex + currSlice.size) & mask;
                 writePointer &= mask;
                 sliceReadPointer = (sliceReadPointer + currSlice.nbElems) & sliceMask;
                 sliceWritePointer &= sliceMask;
@@ -343,10 +343,11 @@ public class ByteBufferBoundedQueue {
 
         private ByteBuffers(ByteBufferBoundedQueue buffer, int maxNbElems) {
             this.buffer = buffer.byteArray;
-            this.startIndexRel = buffer.readPointer;
             this.startIndex = buffer.readPointer & buffer.mask;
             int endIndex1 = buffer.readPointer;
             int index = buffer.sliceReadPointer;
+            this.startSliceIndex = index;
+            this.sliceMask = buffer.sliceMask;
             // The slice returned will be the largest slice at that point in time
             // At the time sliceWritePointer is incremented, the done field is already initialized to false
             // At the time done field is set to true, the data is already written
@@ -376,28 +377,55 @@ public class ByteBufferBoundedQueue {
             this.nbElems = nbElems;
         }
 
+        /**
+         * @return the byte array containing the byte buffers.
+         */
         final byte[] getBuffer() {
             return buffer;
         }
 
+        /**
+         * @return the index of the first byte of the slice in the byte array.
+         */
         final int getStartIndex() {
             return startIndex;
         }
 
+        /**
+         * @return the total size in bytes of the slice.
+         */
         final int getSize() {
             return size;
         }
 
+        /**
+         * @return the number of byte buffers in the slice.
+         */
         final int getNbElems() {
             return nbElems;
         }
 
+        /**
+         * Returns the unique id of the byte buffer at the given index in the slice.
+         * @throws RuntimeException if the index is out of bounds.
+         * @param elem the index of the byte buffer in the slice.
+         * @return the unique id
+         */
+        final int getUniqueIdOf(int elem) {
+            if(elem >= nbElems) throw new RuntimeException("Accessing this slice out of bounds");
+            return (this.startSliceIndex + elem) & this.sliceMask;
+        }
+
+        /**
+         * @return true if the slice is split between the end and the beginning of the byte array.
+         */
         boolean isSplitted() { return startIndex + size >= buffer.length; }
 
         private final byte[] buffer;
         private final int startIndex;
+        private final int startSliceIndex;
+        private final int sliceMask;
         private final int size;
-        private final int startIndexRel;
         private final int nbElems;
     }
 
@@ -446,10 +474,12 @@ public class ByteBufferBoundedQueue {
      */
     public static class QueueBufferOutput extends DataOutput {
 
-        final ByteBufferBoundedQueue.ByteWriter byteWriter;
+        final private ByteBufferBoundedQueue.ByteWriter byteWriter;
+        final private int uniqueId;
 
-        QueueBufferOutput(ByteBufferBoundedQueue.ByteWriter byteWriter) {
+        QueueBufferOutput(ByteBufferBoundedQueue.ByteWriter byteWriter, int uniqueId) {
             this.byteWriter = byteWriter;
+            this.uniqueId = uniqueId;
         }
 
         @Override
@@ -467,6 +497,16 @@ public class ByteBufferBoundedQueue {
             for (int i = 0; i < length; ++i) {
                 writeByte(barr[i]);
             }
+        }
+
+        /**
+         * Returns a unique id for the byte buffer, which is valid
+         * and unique as long as the byte buffer is in the queue (not deleted through remove() method).
+         * This enables to identify this byte buffer in the results of the peekMany method.
+         * @return the unique id of the byte buffer in the queue.
+         */
+        public int getUniqueId() {
+            return uniqueId;
         }
     }
 
