@@ -176,7 +176,6 @@ public class ByteBufferBoundedQueue {
         try {
             if ((writePointer + size > readPointer + (1 << log2ByteSize)) ||
                     sliceWritePointer + 1 > sliceReadPointer + maxNbElems) {
-                System.out.println("write pointer " + writePointer + " read pointer " + readPointer);
                 throw new InsufficientSpaceInQueueException(size,
                         (1 << log2ByteSize) - (writePointer - readPointer),
                         (sliceWritePointer - sliceReadPointer), maxNbElems);
@@ -392,6 +391,8 @@ public class ByteBufferBoundedQueue {
         final int getNbElems() {
             return nbElems;
         }
+
+        boolean isSplitted() { return startIndex + size >= buffer.length; }
 
         private final byte[] buffer;
         private final int startIndex;

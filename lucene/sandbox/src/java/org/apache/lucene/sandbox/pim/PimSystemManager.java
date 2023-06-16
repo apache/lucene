@@ -16,7 +16,10 @@ import org.apache.lucene.util.BytesRef;
 
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.io.ObjectInputStream;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -25,6 +28,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import com.upmem.dpu.DpuSystem;
+import com.upmem.dpu.DpuException;
 
 /**
  * PimSystemManager
@@ -44,25 +50,29 @@ public class PimSystemManager {
     private PimIndexInfo pimIndexInfo;
     private ByteBufferBoundedQueue queryBuffer;
 
-    private static final boolean use_software_model = false;
+    private static final boolean debug = false;
+    private static final boolean use_software_model = true;
     // for the moment, the PIM index search is performed on CPU
     // using this class, no PIM HW involved
     private PimIndexSearcher pimSearcher;
 
     private final Lock queryLock = new ReentrantLock();
     final Condition queryPushedCond  = queryLock.newCondition();
-    final Condition resultsPushedCond = queryLock.newCondition();
+    private final ReentrantReadWriteLock resultsLock = new ReentrantReadWriteLock();
+    private final Lock resultsPushedLock = new ReentrantLock();
+    final Condition resultsPushedCond = resultsPushedLock.newCondition();
     final Lock idLock = new ReentrantLock();
     private int queryId;
-    private final ReentrantReadWriteLock resultsLock = new ReentrantReadWriteLock();
 
 
     // Note: let's assume we will use scatter/gather DPU->CPU transfers
     // And all results for the same query will be in a continuous array in memory after the transfer
     private TreeMap<Integer, byte[]> queryResultsMap;
     private PimManagerThread pimThread;
-
-    private static final boolean debug = false;
+    private ByteArrayOutputStream dpuStream = new ByteArrayOutputStream();
+    private DpuSystem dpuSystem;
+    private Byte[][] dpuNbResults;
+    private Byte[][] dpuResults;
 
     private PimSystemManager() {
         isIndexLoaded = false;
@@ -79,6 +89,18 @@ public class PimSystemManager {
         pimThread = new PimManagerThread(queryBuffer);
         pimThread.start();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> PimSystemManager.shutDown()));
+
+        if(!use_software_model) {
+            // allocate DPUs, load the program, allocate space for DPU results
+            try {
+                dpuSystem = DpuSystem.allocate(nrDpus, "sgXferEnable=true", new PrintStream(dpuStream));
+                dpuSystem.load(dpuProgramPath);
+                dpuNbResults = new Byte[nrDpus][dpuQueryBatchByteSize];
+                dpuResults = new Byte[dpuQueryBatchByteSize][dpuQueryResultsByteSize];
+            } catch (DpuException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
@@ -261,67 +283,61 @@ public class PimSystemManager {
     public <QueryType extends Query & PimQuery>  List<PimMatch> search(LeafReaderContext context,
                                               QueryType query, LeafSimScorer scorer) throws PimQueryQueueFullException {
 
-        if(!isQuerySupported(query))
+        if (!isQuerySupported(query))
             return null;
 
-        if(use_software_model) {
-            if(query instanceof PimPhraseQuery) {
-                synchronized (this) {
-                    return pimSearcher.searchPhrase(context.ord, (PimPhraseQuery) query, scorer);
-                }
-            }
-            else
-                return null;
-        }
-        else {
+        try {
+            // 1) push query in a queue
+            // first request a buffer of the correct size
+            int id = getQueryId();
+            ByteCountDataOutput countOutput = new ByteCountDataOutput();
+            writeQueryToPim(countOutput, query, id, context.ord);
+            final int byteSize = Math.toIntExact(countOutput.getByteCount());
+            var queryOutput = queryBuffer.add(byteSize);
 
+            // write query id, leaf id, query type, then write query
+            writeQueryToPim(queryOutput, query, id, context.ord);
+
+            // 2) signal condition variable to wake up thread which handle queries to DPUs
+            queryLock.lock();
             try {
-                // 1) push query in a queue
-                // first request a buffer of the correct size
-                int id = getQueryId();
-                ByteCountDataOutput countOutput = new ByteCountDataOutput();
-                writeQueryToPim(countOutput, query, id, context.ord);
-                final int byteSize = Math.toIntExact(countOutput.getByteCount());
-                var queryOutput = queryBuffer.add(byteSize);
-
-                // write query id, leaf id, query type, then write query
-                writeQueryToPim(queryOutput, query, id, context.ord);
-
-                // 2) signal condition variable to wake up thread which should send queries to DPUs
-                // 3) wait on condition variable
-                // wake up when condition signaled (meaning some results were collected)
-                // 4) check if the result is present, if not wait again on condition variable
-                queryLock.lock();
-                try {
-                    if(debug)
-                        System.out.println("Signal query");
-                    queryPushedCond.signal();
-                    if(debug)
-                        System.out.println("Waiting for result");
-                    while(!queryResultsAvailable(id))
-                        resultsPushedCond.await();
-
-                    if(debug)
-                        System.out.println("Reading result");
-
-                    // results are available
-                    return getQueryMatches(query, id, scorer);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } finally {
-                    queryLock.unlock();
-                }
-
-            } catch (ByteBufferBoundedQueue.InsufficientSpaceInQueueException e) {
-                // not enough capacity in queue
-                // throw an exception that the user should catch, and
-                // issue the query later or use the CPU instead of PIM system
-                throw new PimQueryQueueFullException();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                if (debug)
+                    System.out.println("Signal query");
+                queryPushedCond.signal();
+            } finally {
+                queryLock.unlock();
             }
+            if (debug)
+                System.out.println("Waiting for result");
+
+            // 3) wait on condition variable until new results were collected
+            // 4) check if the result is present, if not wait again on condition variable
+            resultsPushedLock.lock();
+            try {
+                while (!queryResultsAvailable(id))
+                    resultsPushedCond.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                resultsPushedLock.unlock();
+            }
+
+            if (debug)
+                System.out.println("Reading result");
+
+            // results are available
+            return getQueryMatches(query, id, scorer);
+
+        } catch (ByteBufferBoundedQueue.InsufficientSpaceInQueueException e) {
+            // not enough capacity in queue
+            // throw an exception that the user should catch, and
+            // issue the query later or use the CPU instead of PIM system
+            throw new PimQueryQueueFullException();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
+
 
     /**
      * Check if the results of a query are ready (i.e., returned by the PIM system)
@@ -423,7 +439,11 @@ public class PimSystemManager {
         // TODO copy the PIM index files here to mimic transfer
         // to DPU and be safe searching it while the index is overwritten
         // Lock the pim index to avoid it to be overwritten ?
-        pimSearcher = new PimIndexSearcher(pimIndexInfo);
+        if(use_software_model)
+            pimSearcher = new PimIndexSearcher(pimIndexInfo);
+        else {
+            // TODO copy the PIM index in each DPU
+        }
     }
 
     /**
@@ -482,6 +502,8 @@ public class PimSystemManager {
         private AtomicBoolean running = new AtomicBoolean(false);
         ByteBufferBoundedQueue buffer;
         static final int minNbQuery = 8;
+        static final int waitForBatchNanoTime = 0;
+        //static final int waitForBatchNanoTime = 10000;
 
         PimManagerThread(ByteBufferBoundedQueue buffer) {
             this.buffer = buffer;
@@ -505,23 +527,39 @@ public class PimSystemManager {
 
             while (running.get()) {
 
-                // 1) wait for queries to be pushed
-                queryLock.lock();
                 try {
-                    while (buffer.peekMany(QUERY_BATCH_SIZE).getNbElems() == 0) {
-                        buffer.release();
-                        if(debug)
-                            System.out.println("Waiting for query");
-                        queryPushedCond.await();
-                    }
-                    buffer.release();
+                    // wait for a query to be pushed
                     ByteBufferBoundedQueue.ByteBuffers slice = buffer.peekMany(QUERY_BATCH_SIZE);
-                    if (slice.getNbElems() < minNbQuery) {
-                        // give a second chance to accumulate more queries
+                    while (slice.getNbElems() == 0) {
+                        buffer.release();
+                        // found no query, need to wait for one
+                        // take the lock, verify that still no query and wait on condition variable
+                        queryLock.lock();
+                        try {
+                            slice = buffer.peekMany(QUERY_BATCH_SIZE);
+                            if(slice.getNbElems() == 0) {
+                                buffer.release();
+                                if(debug)
+                                    System.out.println("Waiting for query");
+                                queryPushedCond.await();
+                            }
+                        } finally {
+                            queryLock.unlock();
+                        }
+                        if(slice.getNbElems() == 0) {
+                            buffer.release();
+                            slice = buffer.peekMany(QUERY_BATCH_SIZE);
+                        }
+                    }
+
+                    // if the number of queries is under a minimum threshold, wait a bit more
+                    // to give a second chance to accumulate more queries and send a larger batch to DPUs
+                    // this is a throughput oriented strategy
+                    if (waitForBatchNanoTime != 0 && slice.getNbElems() < minNbQuery) {
                         buffer.release();
                         if(debug)
                             System.out.println("Handling query but waiting a bit more");
-                        Thread.sleep(0, 10000);
+                        Thread.sleep(0, waitForBatchNanoTime);
                         slice = buffer.peekMany(QUERY_BATCH_SIZE);
                     }
                     if(debug)
@@ -529,63 +567,69 @@ public class PimSystemManager {
 
                     // TODO send the query batch to the DPUs, launch, get results
                     // for now use software model instead
-                    ByteArrayCircularDataInput input = new ByteArrayCircularDataInput(slice.getBuffer(),
-                            slice.getStartIndex(), slice.getSize());
+                    if (use_software_model) {
+                        ByteArrayCircularDataInput input = new ByteArrayCircularDataInput(slice.getBuffer(),
+                                slice.getStartIndex(), slice.getSize());
 
-                    for(int q = 0; q < slice.getNbElems(); ++q) {
+                        for (int q = 0; q < slice.getNbElems(); ++q) {
 
-                        // rebuild a query object for PimIndexSearcher
-                        int id = input.readVInt();
-                        int segment = input.readVInt();
-                        byte type = input.readByte();
-                        assert type == PIM_PHRASE_QUERY_TYPE;
-                        int fieldSz = input.readVInt();
-                        byte[] fieldBytes = new byte[fieldSz];
-                        input.readBytes(fieldBytes, 0, fieldSz);
-                        BytesRef field = new BytesRef(fieldBytes);
-                        PimPhraseQuery.Builder builder = new PimPhraseQuery.Builder();
-                        int nbTerms = input.readVInt();
-                        for (int i = 0; i < nbTerms; ++i) {
-                            int termByteSize = input.readVInt();
-                            byte[] termBytes = new byte[termByteSize];
-                            input.readBytes(termBytes, 0, termByteSize);
-                            builder.add(new Term(field.utf8ToString(), new BytesRef(termBytes)));
-                        }
+                            // rebuild a query object for PimIndexSearcher
+                            int id = input.readVInt();
+                            int segment = input.readVInt();
+                            byte type = input.readByte();
+                            assert type == PIM_PHRASE_QUERY_TYPE;
+                            int fieldSz = input.readVInt();
+                            byte[] fieldBytes = new byte[fieldSz];
+                            input.readBytes(fieldBytes, 0, fieldSz);
+                            BytesRef field = new BytesRef(fieldBytes);
+                            PimPhraseQuery.Builder builder = new PimPhraseQuery.Builder();
+                            int nbTerms = input.readVInt();
+                            for (int i = 0; i < nbTerms; ++i) {
+                                int termByteSize = input.readVInt();
+                                byte[] termBytes = new byte[termByteSize];
+                                input.readBytes(termBytes, 0, termByteSize);
+                                builder.add(new Term(field.utf8ToString(), new BytesRef(termBytes)));
+                            }
 
-                        // use PimIndexSearcher to handle the query (software model)
-                        List<PimMatch> matches = pimSearcher.searchPhrase(segment, builder.build());
+                            // use PimIndexSearcher to handle the query (software model)
+                            List<PimMatch> matches = pimSearcher.searchPhrase(segment, builder.build());
 
-                        // write the results in the results queue
-                        ByteCountDataOutput countOut = new ByteCountDataOutput();
-                        countOut.writeVInt(matches.size());
-                        for (PimMatch m : matches) {
-                            countOut.writeVInt(m.docId);
-                            countOut.writeVInt((int) m.score);
-                        }
-                        byte[] matchesByteArr = new byte[Math.toIntExact(countOut.getByteCount())];
-                        ByteArrayDataOutput byteOut = new ByteArrayDataOutput(matchesByteArr);
-                        byteOut.writeVInt(matches.size());
-                        for (PimMatch m : matches) {
-                            byteOut.writeVInt(m.docId);
-                            byteOut.writeVInt((int) m.score);
-                        }
+                            // write the results in the results queue
+                            ByteCountDataOutput countOut = new ByteCountDataOutput();
+                            countOut.writeVInt(matches.size());
+                            for (PimMatch m : matches) {
+                                countOut.writeVInt(m.docId);
+                                countOut.writeVInt((int) m.score);
+                            }
+                            byte[] matchesByteArr = new byte[Math.toIntExact(countOut.getByteCount())];
+                            ByteArrayDataOutput byteOut = new ByteArrayDataOutput(matchesByteArr);
+                            byteOut.writeVInt(matches.size());
+                            for (PimMatch m : matches) {
+                                byteOut.writeVInt(m.docId);
+                                byteOut.writeVInt((int) m.score);
+                            }
 
-                        resultsLock.writeLock().lock();
-                        try {
-                            queryResultsMap.put(id, matchesByteArr);
-                        } finally {
-                            resultsLock.writeLock().unlock();
+                            resultsLock.writeLock().lock();
+                            try {
+                                queryResultsMap.put(id, matchesByteArr);
+                            } finally {
+                                resultsLock.writeLock().unlock();
+                            }
                         }
                     }
+                    else {
+                        // TODO send the query batch to the DPUs, launch, get results
+                        executeQueriesOnPIM(slice);
+                    }
 
-                    queryLock.lock();
+                    resultsPushedLock.lock();
                     try {
                         // signal client threads that some results are available
                         if(debug)
                             System.out.println("Signal results, nb res:" + queryResultsMap.size());
                         resultsPushedCond.signalAll();
                     } finally {
-                        queryLock.unlock();
+                        resultsPushedLock.unlock();
                     }
 
                     // remove the slice handled
@@ -598,13 +642,68 @@ public class PimSystemManager {
                     throw new RuntimeException(e);
                 } catch (ByteBufferBoundedQueue.ParallelPeekException e) {
                     throw new RuntimeException(e);
-                } finally {
-                    queryLock.unlock();
+                } catch (DpuException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
     }
 
+    private void executeQueriesOnPIM(ByteBufferBoundedQueue.ByteBuffers queryBatch) throws DpuException {
+
+        // 1) send queries to PIM
+        sendQueriesToPIM(queryBatch);
+
+        // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
+        dpuSystem.async().exec();
+
+        // 3) scatter-gather transfer for the rank
+        //TODO first get the meta-data (nb of results per DPU for each query of the batch) and then the results
+
+        // 4) dpu_sync()
+        dpuSystem.async().sync();
+
+        // 5) once transfer is finished, all queries have their results ready to be added in the treeMap
+        // Do it in this thread as the batch will be of small size
+        resultsLock.writeLock().lock();
+        try {
+            //queryResultsMap.put(id, matches);
+        } finally {
+            resultsLock.writeLock().unlock();
+        }
+
+    }
+
+    private void sendQueriesToPIM(ByteBufferBoundedQueue.ByteBuffers queryBatch) throws DpuException {
+
+        // if the query is too big for the limit on DPU, throw an exception
+        // The query would have to be handled by the CPU
+        if(queryBatch.getSize() > dpuQueryBatchByteSize)
+            throw new DpuException("Query too big: size=" + queryBatch.getSize() + " limit=" +dpuQueryBatchByteSize);
+
+        // there is a special case when the byte buffer slice spans ends and beginning of the byte buffer
+        if(queryBatch.isSplitted()) {
+            int firstSliceNbElems = queryBatch.getBuffer().length - queryBatch.getStartIndex();
+            int secondSliceNbElems = queryBatch.getSize() - firstSliceNbElems;
+            dpuSystem.async().copy(dpuQueryBatchVarName, queryBatch.getBuffer(), queryBatch.getStartIndex(),
+                    firstSliceNbElems, 0);
+            dpuSystem.async().copy(dpuQueryBatchVarName, queryBatch.getBuffer(), 0,
+                    secondSliceNbElems, firstSliceNbElems);
+        }
+        else {
+            dpuSystem.async().copy(dpuQueryBatchVarName, queryBatch.getBuffer(), queryBatch.getStartIndex(),
+                    queryBatch.getSize(), 0);
+        }
+    }
+
+
+    // TODO some of the constants defined here should be common with the DPU code
     // encoding of query types for PIM
-    static final byte PIM_PHRASE_QUERY_TYPE = (byte)1;
+    private static final byte PIM_PHRASE_QUERY_TYPE = (byte)1;
+    private static final String dpuQueryBatchVarName = "query_batch";
+    private static final int dpuQueryBatchByteSize = 1 << 18;
+    private static final int dpuQueryResultsByteSize = 1 << 18;
+
+    private static final int nrDpus = 2048;
+    private static final String dpuProgramPath = "../dpu/pim_index_searcher.dpu";
 }

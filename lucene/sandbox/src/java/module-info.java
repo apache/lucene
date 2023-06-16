@@ -19,6 +19,7 @@
 module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
+  requires com.upmem.dpu;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
