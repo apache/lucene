@@ -43,8 +43,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
    * <p>it could be that it has only AVX1 and integer vectors are fast. it could also be that it has
    * no AVX and integer vectors are extremely slow. don't use integer vectors to avoid landmines.
    */
-  private static final boolean IS_AMD64_WITHOUT_AVX2 =
-      Constants.OS_ARCH.equals("amd64") && INT_SPECIES_PREF_BIT_SIZE < 256;
+  private final boolean hasFastIntegerVectors;
 
   static {
     if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
@@ -67,8 +66,8 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     return AccessController.doPrivileged(action);
   }
 
-  VectorUtilPanamaProvider() {
-    if (INT_SPECIES_PREF_BIT_SIZE < 128) {
+  VectorUtilPanamaProvider(boolean testMode) {
+    if (!testMode && INT_SPECIES_PREF_BIT_SIZE < 128) {
       throw new UnsupportedOperationException(
           "Vector bit size is less than 128: " + INT_SPECIES_PREF_BIT_SIZE);
     }
@@ -83,9 +82,16 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
           "We hit initialization failure described in JDK-8309727: " + se);
     }
 
+    // check if the system is x86 and less than 256-bit vectors:
+    var isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && INT_SPECIES_PREF_BIT_SIZE < 256;
+    this.hasFastIntegerVectors = testMode || false == isAMD64withoutAVX2;
+
     var log = Logger.getLogger(getClass().getName());
     log.info(
-        "Java vector incubator API enabled; uses preferredBitSize=" + INT_SPECIES_PREF_BIT_SIZE);
+        "Java vector incubator API enabled"
+            + (testMode ? " (test mode)" : "")
+            + "; uses preferredBitSize="
+            + INT_SPECIES_PREF_BIT_SIZE);
   }
 
   @Override
@@ -295,7 +301,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.length >= 16 && IS_AMD64_WITHOUT_AVX2 == false) {
+    if (a.length >= 16 && hasFastIntegerVectors) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
@@ -352,7 +358,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int norm2 = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.length >= 16 && IS_AMD64_WITHOUT_AVX2 == false) {
+    if (a.length >= 16 && hasFastIntegerVectors) {
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);
@@ -442,7 +448,7 @@ final class VectorUtilPanamaProvider implements VectorUtilProvider {
     int res = 0;
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.length >= 16 && IS_AMD64_WITHOUT_AVX2 == false) {
+    if (a.length >= 16 && hasFastIntegerVectors) {
       if (INT_SPECIES_PREF_BIT_SIZE >= 256) {
         // optimized 256/512 bit implementation, processes 8/16 bytes at a time
         int upperBound = PREF_BYTE_SPECIES.loopBound(a.length);

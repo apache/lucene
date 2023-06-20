@@ -54,7 +54,7 @@ interface VectorUtilProvider {
   /** The minimal version of Java that has the bugfix for JDK-8301190. */
   static final Version VERSION_JDK8301190_FIXED = Version.parse("20.0.2");
 
-  static VectorUtilProvider lookup() {
+  static VectorUtilProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion >= 20 && runtimeVersion <= 21) {
       // is locale sane (only buggy in Java 20)
@@ -71,7 +71,7 @@ interface VectorUtilProvider {
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
         return new VectorUtilDefaultProvider();
       }
-      if (isClientVM()) {
+      if (!testMode && isClientVM()) {
         LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
         return new VectorUtilDefaultProvider();
       }
@@ -80,9 +80,10 @@ interface VectorUtilProvider {
         // have private access through the lookup:
         final var lookup = MethodHandles.lookup();
         final var cls = lookup.findClass("org.apache.lucene.util.VectorUtilPanamaProvider");
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+        final var constr =
+            lookup.findConstructor(cls, MethodType.methodType(void.class, boolean.class));
         try {
-          return (VectorUtilProvider) constr.invoke();
+          return (VectorUtilProvider) constr.invoke(testMode);
         } catch (UnsupportedOperationException uoe) {
           // not supported because preferred vector size too small or similar
           LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());

@@ -112,6 +112,32 @@ Other
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
+======================== Lucene 9.8.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.7.0 =======================
 
 API Changes
@@ -152,6 +178,8 @@ New Features
   closed while queries are running can no longer crash the JVM. To disable this feature,
   pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+  
+* GITHUB#12252 Add function queries for computing similarity scores between knn vectors. (Elia Porciani, Alessandro Benedetti)
 
 Improvements
 ---------------------
@@ -191,6 +219,8 @@ Optimizations
   queries relying on terms in NIOFSDirectory and SimpleFSDirectory. (Alan Woodward)
 
 * GITHUB#12339: Optimize part of duplicate calculation numDeletesToMerge in merge phase (fudongying)
+
+* GITHUB#12334: Honor after value for skipping documents even if queue is not full for PagingFieldCollector (Chaitanya Gohel)
 
 Bug Fixes
 ---------------------
