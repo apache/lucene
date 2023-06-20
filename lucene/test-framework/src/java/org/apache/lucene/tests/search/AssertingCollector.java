@@ -30,6 +30,7 @@ class AssertingCollector extends FilterCollector {
   private boolean weightSet = false;
   private int maxDoc = -1;
   private int previousLeafMaxDoc = 0;
+  private boolean hasFinishedCollectingPreviousLeaf = true;
 
   /** Wrap the given collector in order to add assertions. */
   public static Collector wrap(Collector in) {
@@ -49,7 +50,9 @@ class AssertingCollector extends FilterCollector {
     assert context.docBase >= previousLeafMaxDoc;
     previousLeafMaxDoc = context.docBase + context.reader().maxDoc();
 
+    assert hasFinishedCollectingPreviousLeaf;
     final LeafCollector in = super.getLeafCollector(context);
+    hasFinishedCollectingPreviousLeaf = false;
     final int docBase = context.docBase;
     return new AssertingLeafCollector(in, 0, DocIdSetIterator.NO_MORE_DOCS) {
       @Override
@@ -65,6 +68,11 @@ class AssertingCollector extends FilterCollector {
 
         super.collect(doc);
         maxDoc = docBase + doc;
+      }
+      @Override
+      public void finish() throws IOException {
+        hasFinishedCollectingPreviousLeaf = true;
+        super.finish();
       }
     };
   }
