@@ -78,6 +78,8 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
 Bug Fixes
 ---------------------
 
