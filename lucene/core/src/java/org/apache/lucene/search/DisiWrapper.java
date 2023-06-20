@@ -39,9 +39,6 @@ public class DisiWrapper {
   // For WANDScorer
   long scaledMaxScore;
 
-  // For BlockMaxMaxscoreScorer
-  float maxScore;
-
   // for MaxScoreBulkScorer
   float maxWindowScore;
 
