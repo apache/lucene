@@ -19,7 +19,11 @@ Improvements
 
 Optimizations
 ---------------------
+
 * GITHUB#12377: Avoid redundant loop for compute min value in DirectMonotonicWriter. (Chao Zhang)
+
+* GITHUB#12361: Faster top-level disjunctions sorted by descending score.
+  (Adrien Grand)
 
 Bug Fixes
 ---------------------
