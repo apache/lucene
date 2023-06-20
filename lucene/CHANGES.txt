@@ -25,6 +25,8 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
 Bug Fixes
 ---------------------
 (No changes)
