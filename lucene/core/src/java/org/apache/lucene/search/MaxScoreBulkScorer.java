@@ -129,6 +129,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
   }
 
   private int updateMaxWindowScores(int windowMin) throws IOException {
+    // Only use essential scorers to compute the window's max doc ID, in order to avoid constantly
+    // recomputing max scores over small windows
     final int firstWindowLead = Math.min(firstEssentialScorer, allScorers.length - 1);
     for (int i = 0; i < firstWindowLead; ++i) {
       final DisiWrapper scorer = allScorers[i];
