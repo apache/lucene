@@ -56,7 +56,10 @@ public class NeighborArray {
       float previousScore = score[size - 1];
       assert ((scoresDescOrder && (previousScore >= newScore))
               || (scoresDescOrder == false && (previousScore <= newScore)))
-          : "Nodes are added in the incorrect order!";
+          : "Nodes are added in the incorrect order! Comparing "
+              + newScore
+              + " to "
+              + Arrays.toString(ArrayUtil.copyOfSubArray(score, 0, size));
     }
     node[size] = newNode;
     score[size] = newScore;
