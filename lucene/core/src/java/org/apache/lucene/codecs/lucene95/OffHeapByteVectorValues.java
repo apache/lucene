@@ -154,6 +154,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
         throws IOException {
 
       super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
+      this.multiValued = fieldEntry.vectorMultiValued;
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);

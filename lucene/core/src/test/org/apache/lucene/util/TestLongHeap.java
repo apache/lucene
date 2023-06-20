@@ -141,7 +141,7 @@ public class TestLongHeap extends LuceneTestCase {
         count++;
       } else {
         boolean full = pq.size() >= initialSize;
-        if (pq.insertWithOverflow(value)) {
+        if (pq.insertWithOverflow(value) != -1) {
           if (full == false) {
             count++;
           }

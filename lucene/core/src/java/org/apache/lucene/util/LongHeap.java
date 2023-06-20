@@ -55,16 +55,15 @@ public final class LongHeap {
   /**
    * Adds a value in log(size) time. Grows unbounded as needed to accommodate new values.
    *
-   * @return the new 'top' element in the queue.
+   * @return the index of the heap array where the node was added.
    */
-  public final long push(long element) {
+  public final int push(long element) {
     size++;
     if (size == heap.length) {
       heap = ArrayUtil.grow(heap, (size * 3 + 1) / 2);
     }
     heap[size] = element;
-    upHeap(size);
-    return heap[1];
+    return upHeap(size);
   }
 
   /**
@@ -74,16 +73,15 @@ public final class LongHeap {
    * @return whether the value was added (unless the heap is full, or the new value is less than the
    *     top value)
    */
-  public boolean insertWithOverflow(long value) {
+  public int insertWithOverflow(long value) {
     if (size >= maxSize) {
       if (value < heap[1]) {
-        return false;
+        return -1;
       }
-      updateTop(value);
-      return true;
+      
+      return (int)updateTop(value)[1];
     }
-    push(value);
-    return true;
+    return push(value);
   }
 
   /**
@@ -130,12 +128,37 @@ public final class LongHeap {
    * Calling this method on an empty LongHeap has no visible effect.
    *
    * @param value the new element that is less than the current top.
-   * @return the new 'top' element after shuffling the heap.
+   * @return the new 'top' element after shuffling the heap, the index where the value has been saved
    */
-  public final long updateTop(long value) {
+  public final long[] updateTop(long value) {
     heap[1] = value;
-    downHeap(1);
-    return heap[1];
+    int valueIndex = downHeap(1);
+    return new long[]{heap[1],valueIndex};
+  }
+
+  /**
+   * Replace the top of the pq with {@code newTop}. Should be called when the top value changes.
+   * Still log(n) worst case, but it's at least twice as fast to
+   *
+   * <pre class="prettyprint">
+   * pq.updateTop(value);
+   * </pre>
+   *
+   * instead of
+   *
+   * <pre class="prettyprint">
+   * pq.pop();
+   * pq.push(value);
+   * </pre>
+   *
+   * Calling this method on an empty LongHeap has no visible effect.
+   *
+   * @param value the new element that is less than the current top.
+   * @return the new heap index where the value has been saved.
+   */
+  public final int updateElement(int heapIndex, long value) {
+    heap[heapIndex] = value;
+    return downHeap(heapIndex);
   }
 
   /** Returns the number of elements currently stored in the PriorityQueue. */
@@ -143,12 +166,17 @@ public final class LongHeap {
     return size;
   }
 
+  /** Returns the number of elements currently stored in the PriorityQueue. */
+  public final int maxSize() {
+    return maxSize;
+  }
+
   /** Removes all entries from the PriorityQueue. */
   public final void clear() {
     size = 0;
   }
 
-  private void upHeap(int origPos) {
+  private int upHeap(int origPos) {
     int i = origPos;
     long value = heap[i]; // save bottom value
     int j = i >>> 1;
@@ -158,9 +186,10 @@ public final class LongHeap {
       j = j >>> 1;
     }
     heap[i] = value; // install saved value
+    return i;
   }
 
-  private void downHeap(int i) {
+  private int downHeap(int i) {
     long value = heap[i]; // save top value
     int j = i << 1; // find smaller child
     int k = j + 1;
@@ -177,6 +206,7 @@ public final class LongHeap {
       }
     }
     heap[i] = value; // install saved value
+    return i;
   }
 
   public void pushAll(LongHeap other) {

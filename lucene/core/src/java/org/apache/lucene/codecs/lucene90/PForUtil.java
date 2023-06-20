@@ -67,7 +67,7 @@ final class PForUtil {
     long topValue = top.top();
     for (int i = MAX_EXCEPTIONS + 1; i < ForUtil.BLOCK_SIZE; ++i) {
       if (longs[i] > topValue) {
-        topValue = top.updateTop(longs[i]);
+        topValue = top.updateTop(longs[i])[0];
       }
     }
 

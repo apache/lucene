@@ -26,14 +26,14 @@ import org.apache.lucene.util.RamUsageEstimator;
  * Accumulator for documents that have a value for a field. This is optimized for the case that all
  * documents have a value.
  */
-public final class DocsWithFieldSet extends DocIdSet {
+public class DocsWithFieldSet extends DocIdSet {
 
-  private static long BASE_RAM_BYTES_USED =
+  protected static long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(DocsWithFieldSet.class);
 
-  private FixedBitSet set;
-  private int cardinality = 0;
-  private int lastDocId = -1;
+  protected FixedBitSet set;
+  protected int cardinality = 0;
+  protected int lastDocId = -1;
 
   /** Creates an empty DocsWithFieldSet. */
   public DocsWithFieldSet() {}

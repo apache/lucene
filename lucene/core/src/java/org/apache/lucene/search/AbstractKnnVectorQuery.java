@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -175,7 +176,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (cost <= k) {
       // If there are <= k possible matches, short-circuit and perform exact search, since HNSW
       // must always visit at least k documents
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, acceptDocs, cost);
     }
 
     // Perform the approximate kNN search
@@ -184,7 +185,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       return results;
     } else {
       // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost));
+      return exactSearch(ctx, acceptDocs, cost);
     }
   }
 
@@ -213,8 +214,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       throws IOException;
 
   // We allow this to be overridden so that tests can check what search strategy is used
-  protected TopDocs exactSearch(LeafReaderContext context, DocIdSetIterator acceptIterator)
-      throws IOException {
+  protected TopDocs exactSearch(LeafReaderContext context, BitSet acceptDocs, long cost)
+          throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       // The field does not exist or does not index vectors
@@ -222,6 +223,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
+    if (vectorScorer.isMultiValued()) {
+      return exactSearchMultiValued(acceptDocs, cost, vectorScorer);
+    } else {
+      return exactSearchSingleValued(acceptDocs, cost, vectorScorer);
+    }
+  }
+
+  private TopDocs exactSearchSingleValued(BitSet acceptDocs, long cost, VectorScorer vectorScorer) throws IOException {
+    BitSetIterator acceptIterator = new BitSetIterator(acceptDocs, cost);
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
     int doc;
@@ -248,6 +258,34 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     TotalHits totalHits = new TotalHits(acceptIterator.cost(), TotalHits.Relation.EQUAL_TO);
+    return new TopDocs(totalHits, topScoreDocs);
+  }
+
+  private TopDocs exactSearchMultiValued(BitSet acceptedDocs, long cost, VectorScorer vectorScorer) throws IOException {
+    Map<Integer, Float> docToScore = vectorScorer.scoreMultiValued(acceptedDocs);
+    HitQueue queue = new HitQueue(k, true);
+    ScoreDoc topDoc = queue.top();
+
+    for(int doc:docToScore.keySet()){
+      float score = docToScore.get(doc);
+      if (score > topDoc.score) {
+        topDoc.score = score;
+        topDoc.doc = doc;
+        topDoc = queue.updateTop();
+      }
+    }
+
+    // Remove any remaining sentinel values
+    while (queue.size() > 0 && queue.top().score < 0) {
+      queue.pop();
+    }
+
+    ScoreDoc[] topScoreDocs = new ScoreDoc[queue.size()];
+    for (int i = topScoreDocs.length - 1; i >= 0; i--) {
+      topScoreDocs[i] = queue.pop();
+    }
+
+    TotalHits totalHits = new TotalHits(cost, TotalHits.Relation.EQUAL_TO);
     return new TopDocs(totalHits, topScoreDocs);
   }
 

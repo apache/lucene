@@ -119,6 +119,63 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     }
   }
 
+  public void testTwoFieldsTwoFormats_multiValued() throws IOException {
+    try (Directory directory = newDirectory()) {
+      // we don't use RandomIndexWriter because it might add more values than we expect !!!!1
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      WriteRecordingKnnVectorsFormat format1 =
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      WriteRecordingKnnVectorsFormat format2 =
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      iwc.setCodec(
+              new AssertingCodec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  if ("field1".equals(field)) {
+                    return format1;
+                  } else {
+                    return format2;
+                  }
+                }
+              });
+
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.add(newTextField("id", "1", Field.Store.YES));
+        doc.add(new KnnFloatVectorField("field1", new float[] {1, 2, 3}));
+        doc.add(new KnnFloatVectorField("field1", new float[] {1, 2, 3}));
+
+        iwriter.addDocument(doc);
+
+        doc.clear();
+        doc.add(newTextField("id", "2", Field.Store.YES));
+        doc.add(new KnnFloatVectorField("field2", new float[] {4, 5, 6}));
+        doc.add(new KnnFloatVectorField("field2", new float[] {4, 5, 6}));
+        doc.add(new KnnFloatVectorField("field2", new float[] {4, 5, 6}));
+
+        iwriter.addDocument(doc);
+      }
+
+      // Check that each format was used to write the expected field
+      MatcherAssert.assertThat(format1.fieldsWritten, equalTo(Set.of("field1")));
+      MatcherAssert.assertThat(format2.fieldsWritten, equalTo(Set.of("field2")));
+
+      // Double-check the vectors were written
+      try (IndexReader ireader = DirectoryReader.open(directory)) {
+        LeafReader reader = ireader.leaves().get(0).reader();
+        TopDocs hits1 =
+                reader.searchNearestVectors(
+                        "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+        assertEquals(1, hits1.scoreDocs.length);
+
+        TopDocs hits2 =
+                reader.searchNearestVectors(
+                        "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+        assertEquals(1, hits2.scoreDocs.length);
+      }
+    }
+  }
+
   public void testMergeUsesNewFormat() throws IOException {
     try (Directory directory = newDirectory()) {
       IndexWriterConfig initialConfig = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -137,20 +194,66 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
       WriteRecordingKnnVectorsFormat format1 =
-          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       WriteRecordingKnnVectorsFormat format2 =
-          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       newConfig.setCodec(
-          new AssertingCodec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              if ("field1".equals(field)) {
-                return format1;
-              } else {
-                return format2;
-              }
-            }
-          });
+              new AssertingCodec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  if ("field1".equals(field)) {
+                    return format1;
+                  } else {
+                    return format2;
+                  }
+                }
+              });
+
+      try (IndexWriter iw = new IndexWriter(directory, newConfig)) {
+        iw.forceMerge(1);
+      }
+
+      // Check that the new format was used while merging
+      MatcherAssert.assertThat(format1.fieldsWritten, contains("field1"));
+      MatcherAssert.assertThat(format2.fieldsWritten, contains("field2"));
+    }
+  }
+
+  public void testMergeUsesNewFormat_multiValued() throws IOException {
+    try (Directory directory = newDirectory()) {
+      IndexWriterConfig initialConfig = newIndexWriterConfig(new MockAnalyzer(random()));
+      initialConfig.setMergePolicy(NoMergePolicy.INSTANCE);
+
+      try (IndexWriter iw = new IndexWriter(directory, initialConfig)) {
+        for (int i = 0; i < 3; i++) {
+          Document doc = new Document();
+          doc.add(newTextField("id", "1", Field.Store.YES));
+          doc.add(new KnnFloatVectorField("field1", new float[] {1, 2, 3}));
+          doc.add(new KnnFloatVectorField("field1", new float[] {1, 2, 3}));
+          doc.add(new KnnFloatVectorField("field2", new float[] {1, 2, 3}));
+          doc.add(new KnnFloatVectorField("field2", new float[] {1, 2, 3}));
+          doc.add(new KnnFloatVectorField("field2", new float[] {1, 2, 3}));
+          iw.addDocument(doc);
+          iw.commit();
+        }
+      }
+
+      IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
+      WriteRecordingKnnVectorsFormat format1 =
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      WriteRecordingKnnVectorsFormat format2 =
+              new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      newConfig.setCodec(
+              new AssertingCodec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  if ("field1".equals(field)) {
+                    return format1;
+                  } else {
+                    return format2;
+                  }
+                }
+              });
 
       try (IndexWriter iw = new IndexWriter(directory, newConfig)) {
         iw.forceMerge(1);

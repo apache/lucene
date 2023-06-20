@@ -31,6 +31,12 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
   /** The maximum length of a vector */
   public static final int MAX_DIMENSIONS = 1024;
 
+  protected boolean multiValued = false;
+
+  public boolean isMultiValued() {
+    return multiValued;
+  }
+  
   /** Sole constructor */
   protected FloatVectorValues() {}
 
@@ -57,4 +63,13 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
    * @return the vector value
    */
   public abstract float[] vectorValue() throws IOException;
+
+  /**
+   * Return the document ID corresponding to the input vector id(ordinal)
+   * @param ord vector ID(ordinal)
+   * @return the document ID
+   */
+  public int ordToDoc(int ord){
+    return ord;
+  }
 }

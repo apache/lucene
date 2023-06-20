@@ -109,23 +109,24 @@ public class HnswGraphSearcher<T> {
    * VectorSimilarityFunction, HnswGraph, Bits, int)}
    */
   public static NeighborQueue search(
-      float[] query,
-      int topK,
-      RandomAccessVectorValues<float[]> vectors,
-      VectorEncoding vectorEncoding,
-      VectorSimilarityFunction similarityFunction,
-      OnHeapHnswGraph graph,
-      Bits acceptOrds,
-      int visitedLimit)
-      throws IOException {
+          float[] query,
+          int topK,
+          RandomAccessVectorValues<float[]> vectors,
+          VectorEncoding vectorEncoding,
+          VectorSimilarityFunction similarityFunction,
+          OnHeapHnswGraph graph,
+          Bits acceptOrds,
+          int visitedLimit)
+          throws IOException {
     OnHeapHnswGraphSearcher<float[]> graphSearcher =
-        new OnHeapHnswGraphSearcher<>(
-            vectorEncoding,
-            similarityFunction,
-            new NeighborQueue(topK, true),
-            new SparseFixedBitSet(vectors.size()));
+            new OnHeapHnswGraphSearcher<>(
+                    vectorEncoding,
+                    similarityFunction,
+                    new NeighborQueue(topK, true),
+                    new SparseFixedBitSet(vectors.size()));
     return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
   }
+  
 
   /**
    * Searches HNSW graph for the nearest neighbors of a query vector.
@@ -205,14 +206,12 @@ public class HnswGraphSearcher<T> {
       return new NeighborQueue(1, true);
     }
     NeighborQueue results;
-    int[] eps = new int[] {graph.entryNode()};
+    int[] eps = new int[] {initialEp};
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit);
-
+      results = graphSearcher.searchLevel(query, 1, level, eps, vectors, graph, null, visitedLimit, vectors.isMultiValued());
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();
-
       if (results.incomplete()) {
         results.setVisitedCount(numVisited);
         return results;
@@ -220,7 +219,7 @@ public class HnswGraphSearcher<T> {
       eps[0] = results.pop();
     }
     results =
-        graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit);
+            graphSearcher.searchLevel(query, topK, 0, eps, vectors, graph, acceptOrds, visitedLimit, vectors.isMultiValued());
     results.setVisitedCount(results.visitedCount() + numVisited);
     return results;
   }
@@ -248,35 +247,41 @@ public class HnswGraphSearcher<T> {
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
-    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE);
+    return searchLevel(query, topK, level, eps, vectors, graph, null, Integer.MAX_VALUE, false);
   }
 
   private NeighborQueue searchLevel(
-      T query,
-      int topK,
-      int level,
-      final int[] eps,
-      RandomAccessVectorValues<T> vectors,
-      HnswGraph graph,
-      Bits acceptOrds,
-      int visitedLimit)
-      throws IOException {
+          T query,
+          int topK,
+          int level,
+          final int[] entryPoints,
+          RandomAccessVectorValues<T> vectors,
+          HnswGraph graph,
+          Bits acceptOrds,
+          int visitedLimit,
+          boolean multiValued)
+          throws IOException {
     int size = graph.size();
     NeighborQueue results = new NeighborQueue(topK, false);
     prepareScratchState(vectors.size());
 
-    int numVisited = 0;
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (numVisited >= visitedLimit) {
+    int vectorIdsVisited = 0;
+    for (int vectorId : entryPoints) {
+      if (visited.getAndSet(vectorId) == false) {
+        if (vectorIdsVisited >= visitedLimit) {
           results.markIncomplete();
           break;
         }
-        float score = compare(query, vectors, ep);
-        numVisited++;
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.add(ep, score);
+        float score = compare(query, vectors, vectorId);
+        vectorIdsVisited++;
+        candidates.add(vectorId, score);
+        int docId = vectors.ordToDoc(vectorId);
+        if (acceptOrds == null || acceptOrds.get(vectorId)) {
+          if (level == 0) { // final result list of Lucene Documents
+            results.add(docId, score, multiValued);
+          } else {
+            results.add(vectorId, score, multiValued); // next entry point, it is a vector
+          }
         }
       }
     }
@@ -294,25 +299,31 @@ public class HnswGraphSearcher<T> {
         break;
       }
 
-      int topCandidateNode = candidates.pop();
-      graphSeek(graph, level, topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
+      int topCandidateVectorId = candidates.pop();
+      graphSeek(graph, level, topCandidateVectorId);
+      int friendVectorId;
+      while ((friendVectorId = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+        assert friendVectorId < size : "friendOrd=" + friendVectorId + "; size=" + size;
+        if (visited.getAndSet(friendVectorId)) {
           continue;
         }
 
-        if (numVisited >= visitedLimit) {
+        if (vectorIdsVisited >= visitedLimit) {
           results.markIncomplete();
           break;
         }
-        float friendSimilarity = compare(query, vectors, friendOrd);
-        numVisited++;
+        float friendSimilarity = compare(query, vectors, friendVectorId);
+        vectorIdsVisited++;
         if (friendSimilarity >= minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= topK) {
+          candidates.add(friendVectorId, friendSimilarity);
+          if (acceptOrds == null || acceptOrds.get(friendVectorId)) {
+            boolean nodeInserted = false;
+            if (level == 0) {
+              nodeInserted = results.insertWithOverflow(vectors.ordToDoc(friendVectorId), friendSimilarity, multiValued);
+            } else {
+              nodeInserted = results.insertWithOverflow(friendVectorId, friendSimilarity, multiValued);
+            }
+            if (nodeInserted && results.size() >= topK) {
               minAcceptedSimilarity = results.topScore();
             }
           }
@@ -322,7 +333,7 @@ public class HnswGraphSearcher<T> {
     while (results.size() > topK) {
       results.pop();
     }
-    results.setVisitedCount(numVisited);
+    results.setVisitedCount(vectorIdsVisited);
     return results;
   }
 

@@ -226,6 +226,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
+      public int ordToDoc(int ord) {
+        int localDocId = current.values.ordToDoc(ord);
+        return current.docMap.get(localDocId);
+      }
+
+      @Override
       public int advance(int target) {
         throw new UnsupportedOperationException();
       }
@@ -280,6 +286,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           docId = current.mappedDocID;
         }
         return docId;
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        int localDocId = current.values.ordToDoc(ord);
+        return current.docMap.get(localDocId);
       }
 
       @Override

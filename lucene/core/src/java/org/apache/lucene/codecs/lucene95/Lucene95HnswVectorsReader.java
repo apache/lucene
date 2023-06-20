@@ -216,10 +216,19 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     return VectorEncoding.values()[encodingId];
   }
 
+  private boolean readVectorMultiValued(DataInput input) throws IOException {
+    byte multiValued = input.readByte();
+    if (multiValued < 0 || multiValued > 1) {
+      throw new CorruptIndexException("Invalid boolean for vector multiValued: " + multiValued, input);
+    }
+    return multiValued != 0;
+  }
+
   private FieldEntry readField(IndexInput input) throws IOException {
     VectorEncoding vectorEncoding = readVectorEncoding(input);
     VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
+    boolean multiValued = readVectorMultiValued(input);
+    return new FieldEntry(input, vectorEncoding, similarityFunction, multiValued);
   }
 
   @Override
@@ -295,10 +304,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
-      int node = results.topNode();
+      int docId = results.topNode();
       float score = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(docId, score);
     }
 
     TotalHits.Relation relation =
@@ -338,10 +347,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
     while (results.size() > 0) {
-      int node = results.topNode();
+      int docId = results.topNode();
       float score = results.topScore();
       results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(docId, score);
     }
 
     TotalHits.Relation relation =
@@ -379,6 +388,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
     final VectorSimilarityFunction similarityFunction;
     final VectorEncoding vectorEncoding;
+    final boolean vectorMultiValued;
     final long vectorDataOffset;
     final long vectorDataLength;
     final long vectorIndexOffset;
@@ -414,10 +424,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     FieldEntry(
         IndexInput input,
         VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
+        VectorSimilarityFunction similarityFunction,
+        boolean vectorMultiValued
+        )
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;
+      this.vectorMultiValued = vectorMultiValued;
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
       vectorIndexOffset = input.readVLong();
