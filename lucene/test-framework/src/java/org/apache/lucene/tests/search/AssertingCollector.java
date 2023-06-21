@@ -69,6 +69,7 @@ class AssertingCollector extends FilterCollector {
         super.collect(doc);
         maxDoc = docBase + doc;
       }
+
       @Override
       public void finish() throws IOException {
         hasFinishedCollectingPreviousLeaf = true;
