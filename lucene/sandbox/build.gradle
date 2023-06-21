@@ -25,3 +25,16 @@ dependencies {
   moduleApi project(':lucene:queries')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+task compileDpu (type: Exec) {
+  inputs.files('dpu/src/exact_phrase/dpu.c')
+  outputs.files("dpu/build/dpu_program_exact_phrase")
+
+  doFirst {
+    file('dpu/build').mkdirs()
+  }
+
+  commandLine 'dpu-clang', '-o', 'dpu/build/dpu_program_exact_phrase', 'dpu/src/exact_phrase/dpu.c'
+}
+
+compileJava.dependsOn(compileDpu)
