@@ -26,6 +26,8 @@ import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -46,6 +48,7 @@ public final class PimSystemManager {
 
     final int BYTE_BUFFER_QUEUE_LOG2_BYTE_SIZE = 11;
     final int QUERY_BATCH_SIZE = 128;
+    final int numThreadsDpuLoad = 16;
 
     private boolean isIndexLoaded;
     private boolean isIndexBeingLoaded;
@@ -73,8 +76,6 @@ public final class PimSystemManager {
     private byte[][] dpuResults;
     private byte[][][] dpuResultsPerRank;
     private int[] dpuIdOffset;
-    private final Lock resultBufferLock = new ReentrantLock();
-    private final Condition resultBufferCond = resultBufferLock.newCondition();
 
     private PimSystemManager() {
         isIndexLoaded = false;
@@ -94,7 +95,7 @@ public final class PimSystemManager {
         if(!use_software_model) {
             // allocate DPUs, load the program, allocate space for DPU results
             try {
-                dpuSystem = DpuSystem.allocate(nrDpus, "sgXferEnable=true", new PrintStream(dpuStream));
+                dpuSystem = DpuSystem.allocate(nrDpus, "", new PrintStream(dpuStream));
                 dpuSystem.load(dpuProgramPath);
                 dpuQueryResultsAddr = new byte[dpuSystem.dpus().size()][dpuQueryBatchByteSize];
                 dpuResults = new byte[dpuSystem.dpus().size()][dpuResultsMaxByteSize];
@@ -134,12 +135,24 @@ public final class PimSystemManager {
     }
 
     /**
+     * Custom Exception to be thrown when the index loaded has more DPUs than available in the system
+     */
+    public static final class TooManyDpusInIndexException extends Exception {
+
+        public TooManyDpusInIndexException(int nbDpusIndex, int nbDpusSys) {
+            super(
+                    "cannot load an index with " + nbDpusIndex + " dpus (" + nbDpusSys +
+                    " dpus available in the system");
+        }
+    }
+
+    /**
      * Load the pim index unless one is already loaded
      *
      * @param pimDirectory the directory containing the PIM index
      * @return true if the index was successfully loaded
      */
-    public boolean loadPimIndex(Directory pimDirectory) throws IOException {
+    public boolean loadPimIndex(Directory pimDirectory) throws IOException, TooManyDpusInIndexException {
 
         if (!isIndexLoaded && !isIndexBeingLoaded) {
             boolean loadSuccess = false;
@@ -171,7 +184,8 @@ public final class PimSystemManager {
      * @param force when true, unload the currently loaded index to force load the new one
      * @return true if the index was successfully loaded
      */
-    public boolean loadPimIndex(Directory pimDirectory, boolean force) throws IOException {
+    public boolean loadPimIndex(Directory pimDirectory, boolean force)
+            throws IOException, TooManyDpusInIndexException {
 
         if(force)
             unloadPimIndex();
@@ -440,18 +454,85 @@ public final class PimSystemManager {
     }
 
     /**
+     * Runnable used to transfer the index to a DPU
+     */
+    private class IndexTransferThread implements Runnable {
+
+        IndexInput input;
+        byte[] transferBuffer;
+        int dpuId;
+        PimIndexInfo pimIndexInfo;
+        DpuSystem dpuSystem;
+
+        IndexTransferThread(IndexInput input, int dpuId, byte[] transferBuffer,
+                            PimIndexInfo pimIndexInfo, DpuSystem dpuSystem) {
+
+            assert (transferBuffer.length & 7) == 0;
+            this.input = input;
+            this.transferBuffer = transferBuffer;
+            this.dpuId = dpuId;
+            this.pimIndexInfo = pimIndexInfo;
+            this.dpuSystem = dpuSystem;
+        }
+
+        @Override
+        public void run() {
+
+            try {
+                long nextAddress = pimIndexInfo.switchToDpu(input, dpuId);
+                long offset = 0;
+                while(input.getFilePointer() + transferBuffer.length < nextAddress) {
+                    input.readBytes(transferBuffer, 0, transferBuffer.length);
+                    dpuSystem.copy(dpuIndexVarName, transferBuffer, 0,
+                            transferBuffer.length, (int) offset);
+                    offset += transferBuffer.length;
+                }
+                if(input.getFilePointer() < nextAddress) {
+                    // the size is the next multiple of 8 bytes
+                    int size = (((int)(nextAddress - input.getFilePointer()) + 7) >> 3) << 3;
+                    input.readBytes(transferBuffer, 0, size);
+                    dpuSystem.copy(dpuIndexVarName, transferBuffer, 0,
+                            size, (int) offset);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (DpuException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
      * Copy the PIM index to the PIM system
      */
-    private void transferPimIndex() {
-        // TODO load index to PIM system
-        // create a new PimIndexSearcher for this index
-        // TODO copy the PIM index files here to mimic transfer
-        // to DPU and be safe searching it while the index is overwritten
-        // Lock the pim index to avoid it to be overwritten ?
-        if(use_software_model)
+    private void transferPimIndex() throws IOException, TooManyDpusInIndexException {
+
+        if(use_software_model) {
+            // create a new PimIndexSearcher for this index
+            // TODO be safe searching it while the index is overwritten
+            // Lock the pim index to avoid it to be overwritten ?
             pimSearcher = new PimIndexSearcher(pimIndexInfo);
+        }
         else {
-            // TODO copy the PIM index in each DPU
+            // first check if the number of DPUs in index is lower or equal
+            // to the number of DPUs in the system
+            if(getNbDpus() > dpuSystem.dpus().size()) {
+                throw new TooManyDpusInIndexException(getNbDpus(), dpuSystem.dpus().size());
+            }
+            // Copy the PIM index in each DPU memory
+            // Use multiple threads to copy in different DPUs in parallel
+            // Do not perform a copy on the complete dpu system at once to avoid IO bottleneck
+            ExecutorService executor = Executors.newFixedThreadPool(numThreadsDpuLoad);
+            ThreadLocal<byte[]> bufferThreadLocal = ThreadLocal.withInitial(() -> { return new byte[2 << 20]; });
+            for(int s = 0; s < pimIndexInfo.getNumSegments(); ++s) {
+                IndexInput input = pimIndexInfo.getFileInput(s);
+                for (int i = 0; i < getNbDpus(); ++i) {
+                    final IndexInput dpuInput = input.clone();
+                    byte[] buffer = bufferThreadLocal.get();
+                    executor.execute(new IndexTransferThread(dpuInput, i, buffer, pimIndexInfo, dpuSystem));
+                }
+            }
+            executor.shutdown();
         }
     }
 
@@ -604,7 +685,7 @@ public final class PimSystemManager {
                         }
                     }
                     else {
-                        // TODO send the query batch to the DPUs, launch, get results
+                        // send the query batch to the DPUs, launch, get results
                         executeQueriesOnPIM(slice);
                     }
 
@@ -646,19 +727,19 @@ public final class PimSystemManager {
         // 3) results transfer from DPUs to CPU
         // first get the meta-data (index of query results in results array for each DPU)
         // This meta-data has one integer per query in the batch
-        dpuSystem.async().copy(dpuQueryResultsAddr, dpuResultsIndexVarName,
-                queryBatch.getNbElems() * Integer.BYTES);
+        final int batchSize = queryBatch.getNbElems() * Integer.BYTES;
+        dpuSystem.async().copy(dpuQueryResultsAddr, dpuResultsIndexVarName, batchSize);
 
         // then transfer the results
         // use a callback to transfer a minimal number of results per rank
-        final int batchSize = queryBatch.getNbElems() * Integer.BYTES;
         dpuSystem.async().call(
                 (DpuSet set, int rankId) -> {
                     // find the max byte size of results for DPUs in this rank
                     int resultsSize = 0;
                     for(int i = 0; i < set.dpus().size(); ++i) {
                         int dpuResultsSize = (int) BitUtil.VH_LE_INT.get(
-                                dpuQueryResultsAddr[dpuIdOffset[rankId] + i], batchSize);
+                                dpuQueryResultsAddr[dpuIdOffset[rankId] + i],
+                                0 /*TODO check if endianess is correct */);
                         if(dpuResultsSize > resultsSize)
                             resultsSize = dpuResultsSize;
                     }
@@ -789,6 +870,7 @@ public final class PimSystemManager {
     private static final String dpuQueryBatchVarName = "query_batch";
     private static final String dpuResultsBatchVarName = "results_batch";
     private static final String dpuResultsIndexVarName = "results_index";
+    private static final String dpuIndexVarName = "index";
     private static final int dpuQueryBatchByteSize = 1 << 18;
     private static final int dpuResultsMaxByteSize = 1 << 13;
 

@@ -407,7 +407,11 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         writer.close();
 
         if(pimMode) {
-            PimSystemManager.get().loadPimIndex(pimDir, true);
+            try {
+                PimSystemManager.get().loadPimIndex(pimDir, true);
+            } catch (PimSystemManager.TooManyDpusInIndexException e) {
+                throw new RuntimeException(e);
+            }
         }
         IndexSearcher searcher = newSearcher(reader);
         searcher.setSimilarity(new ClassicSimilarity());
@@ -427,7 +431,11 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         directory.close();
         if(pimMode) {
             pimDir.close();
-            PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            try {
+                PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            } catch (PimSystemManager.TooManyDpusInIndexException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -680,7 +688,11 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         IndexReader r = writer.getReader();
         writer.close();
         if(pimMode) {
-            PimSystemManager.get().loadPimIndex(pimDir, true);
+            try {
+                PimSystemManager.get().loadPimIndex(pimDir, true);
+            } catch (PimSystemManager.TooManyDpusInIndexException e) {
+                throw new RuntimeException(e);
+            }
         }
         IndexSearcher searcher = newSearcher(r);
 
@@ -708,7 +720,11 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         dir.close();
         if(pimMode) {
             pimDir.close();
-            PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            try {
+                PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            } catch (PimSystemManager.TooManyDpusInIndexException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
