@@ -72,7 +72,16 @@ public class TermQuery extends Query {
       if (termStats == null) {
         this.simScorer = null; // term doesn't exist in any segment, we won't use similarity at all
       } else {
-        this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+        if (scoreMode.needsScores()) {
+          this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+        } else {
+          this.simScorer = new Similarity.SimScorer() {
+            @Override
+            public float score(float freq, long norm) {
+              return 0f;
+            }
+          };
+        }
       }
     }
 
