@@ -19,9 +19,12 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
@@ -157,6 +160,7 @@ final class BooleanWeight extends Weight {
   }
 
   static BulkScorer disableScoring(final BulkScorer scorer) {
+    Objects.requireNonNull(scorer);
     return new BulkScorer() {
 
       @Override
@@ -251,31 +255,108 @@ final class BooleanWeight extends Weight {
         this, optional, Math.max(1, query.getMinimumNumberShouldMatch()), scoreMode.needsScores());
   }
 
-  // Return a BulkScorer for the required clauses only,
-  // or null if it is not applicable
+  // Return a BulkScorer for the required clauses only
   private BulkScorer requiredBulkScorer(LeafReaderContext context) throws IOException {
-    BulkScorer scorer = null;
+    // Is there a single required clause by any chance? Then pull its bulk scorer.
+    Optional<WeightedBooleanClause> singleRequiredClause = null;
+    for (WeightedBooleanClause wc : weightedClauses) {
+      if (wc.clause.isRequired() == false) {
+        continue;
+      }
+      if (singleRequiredClause == null) {
+        singleRequiredClause = Optional.of(wc);
+      } else {
+        singleRequiredClause = Optional.empty();
+        break;
+      }
+    }
 
+    if (singleRequiredClause == null) {
+      // No required clauses at all.
+      return null;
+    } else if (singleRequiredClause.isPresent()) {
+      BulkScorer scorer = singleRequiredClause.get().weight.bulkScorer(context);
+      if (scorer == null) {
+        return null;
+      }
+      if (singleRequiredClause.get().clause.isScoring() == false && scoreMode.needsScores()) {
+        scorer = disableScoring(scorer);
+      }
+      return scorer;
+    }
+
+    List<ScorerSupplier> requiredNoScoringSupplier = new ArrayList<>();
+    List<ScorerSupplier> requiredScoringSupplier = new ArrayList<>();
+
+    long leadCost = Long.MAX_VALUE;
     for (WeightedBooleanClause wc : weightedClauses) {
       Weight w = wc.weight;
       BooleanClause c = wc.clause;
       if (c.isRequired() == false) {
         continue;
       }
-      if (scorer != null) {
-        // we don't have a BulkScorer for conjunctions
+      ScorerSupplier scorerSupplier = w.scorerSupplier(context);
+      if (scorerSupplier == null) {
+        // One clause doesn't have matches, so the entire conjunction doesn't have matches.
         return null;
       }
-      scorer = w.bulkScorer(context);
-      if (scorer == null) {
-        // no matches
-        return null;
-      }
-      if (c.isScoring() == false && scoreMode.needsScores()) {
-        scorer = disableScoring(scorer);
+      leadCost = Math.min(leadCost, scorerSupplier.cost());
+
+      if (c.isScoring() && scoreMode.needsScores()) {
+        requiredScoringSupplier.add(scorerSupplier);
+      } else {
+        requiredNoScoringSupplier.add(scorerSupplier);
       }
     }
-    return scorer;
+
+    List<Scorer> requiredNoScoring = new ArrayList<>();
+    for (ScorerSupplier ss : requiredNoScoringSupplier) {
+      requiredNoScoring.add(ss.get(leadCost));
+    }
+    List<Scorer> requiredScoring = new ArrayList<>();
+    for (ScorerSupplier ss : requiredScoringSupplier) {
+      requiredScoring.add(ss.get(leadCost));
+    }
+    if (scoreMode == ScoreMode.TOP_SCORES
+        && requiredNoScoringSupplier.isEmpty()
+        && requiredScoring.size() > 1
+        // Only specialize top-level conjunctions for clauses that don't have a two-phase iterator.
+        && requiredScoring.stream().map(Scorer::twoPhaseIterator).noneMatch(Objects::isNull)) {
+      return new BlockMaxConjunctionBulkScorer(requiredScoring);
+    }
+    if (scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() > 1) {
+      requiredScoring =
+          Collections.singletonList(new BlockMaxConjunctionScorer(this, requiredScoring));
+    }
+    Scorer conjunctionScorer;
+    if (requiredNoScoring.size() + requiredScoring.size() == 1) {
+      if (requiredScoring.size() == 1) {
+        conjunctionScorer = requiredScoring.get(0);
+      } else {
+        conjunctionScorer = requiredNoScoring.get(0);
+        if (scoreMode.needsScores()) {
+          Scorer inner = conjunctionScorer;
+          conjunctionScorer =
+              new FilterScorer(inner) {
+                @Override
+                public float score() throws IOException {
+                  return 0f;
+                }
+
+                @Override
+                public float getMaxScore(int upTo) throws IOException {
+                  return 0f;
+                }
+              };
+        }
+      }
+    } else {
+      List<Scorer> required = new ArrayList<>();
+      required.addAll(requiredScoring);
+      required.addAll(requiredNoScoring);
+      conjunctionScorer = new ConjunctionScorer(this, required, requiredScoring);
+    }
+    return new DefaultBulkScorer(conjunctionScorer);
   }
 
   /**
@@ -315,7 +396,7 @@ final class BooleanWeight extends Weight {
         return null;
       }
 
-    } else if (numRequiredClauses == 1
+    } else if (numRequiredClauses > 0
         && numOptionalClauses == 0
         && query.getMinimumNumberShouldMatch() == 0) {
       positiveScorer = requiredBulkScorer(context);
