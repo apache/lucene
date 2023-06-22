@@ -276,7 +276,7 @@ public class HnswGraphSearcher<T> {
         vectorIdsVisited++;
         candidates.add(vectorId, score);
         int docId = vectors.ordToDoc(vectorId);
-        if (acceptOrds == null || acceptOrds.get(vectorId)) {
+        if (acceptOrds == null || acceptOrds.get(docId)) {
           if (level == 0) { // final result list of Lucene Documents
             results.add(docId, score, multiValued);
           } else {
