@@ -75,4 +75,9 @@ public final class DocsWithFieldSet extends DocIdSet {
   public int cardinality() {
     return cardinality;
   }
+
+  /** Return the FixedBitSet of this set. */
+  public FixedBitSet bitSet() {
+    return set;
+  }
 }

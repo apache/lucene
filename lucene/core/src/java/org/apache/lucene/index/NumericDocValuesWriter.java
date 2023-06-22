@@ -78,9 +78,14 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     return new BufferedNumericDocValues(finalValues, docsWithField.iterator());
   }
 
-  static NumericDVs sortDocValues(int maxDoc, Sorter.DocMap sortMap, NumericDocValues oldDocValues)
+  static NumericDVs sortDocValues(
+      int maxDoc, Sorter.DocMap sortMap, NumericDocValues oldDocValues, boolean dense)
       throws IOException {
-    FixedBitSet docsWithField = new FixedBitSet(maxDoc);
+    FixedBitSet docsWithField = null;
+    if (dense == false) {
+      docsWithField = new FixedBitSet(maxDoc);
+    }
+
     long[] values = new long[maxDoc];
     while (true) {
       int docID = oldDocValues.nextDoc();
@@ -88,10 +93,12 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
         break;
       }
       int newDocID = sortMap.oldToNew(docID);
-      docsWithField.set(newDocID);
+      if (docsWithField != null) {
+        docsWithField.set(newDocID);
+      }
       values[newDocID] = oldDocValues.longValue();
     }
-    return new NumericDVs(values, docsWithField);
+    return new NumericDVs(values, docsWithField != null ? docsWithField : BitSet.all(maxDoc));
   }
 
   @Override
@@ -114,7 +121,12 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     final NumericDVs sorted;
     if (sortMap != null) {
       NumericDocValues oldValues = new BufferedNumericDocValues(values, docsWithField.iterator());
-      sorted = sortDocValues(sortMap.size(), sortMap, oldValues);
+      sorted =
+          sortDocValues(
+              sortMap.size(),
+              sortMap,
+              oldValues,
+              docsWithField.bitSet() == null && sortMap.size() == docsWithField.cardinality());
     } else {
       sorted = null;
     }

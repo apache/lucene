@@ -111,4 +111,70 @@ public abstract class BitSet implements Bits, Accountable {
       set(doc);
     }
   }
+
+  public static final BitSet all(int maxDoc) {
+    return new BitSet() {
+
+      @Override
+      public boolean get(int index) {
+        return true;
+      }
+
+      @Override
+      public int length() {
+        return maxDoc;
+      }
+
+      @Override
+      public void set(int i) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean getAndSet(int i) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void clear(int i) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void clear(int startIndex, int endIndex) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int cardinality() {
+        return maxDoc;
+      }
+
+      @Override
+      public int approximateCardinality() {
+        return maxDoc;
+      }
+
+      @Override
+      public int prevSetBit(int index) {
+        if (index < maxDoc) {
+          return index;
+        }
+        return -1;
+      }
+
+      @Override
+      public int nextSetBit(int index) {
+        if (index < maxDoc) {
+          return index;
+        }
+        return DocIdSetIterator.NO_MORE_DOCS;
+      }
+
+      @Override
+      public long ramBytesUsed() {
+        return 0;
+      }
+    };
+  }
 }
