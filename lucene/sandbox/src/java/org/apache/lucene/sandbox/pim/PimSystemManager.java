@@ -25,7 +25,8 @@ import java.io.ObjectInputStream;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -66,8 +67,11 @@ public final class PimSystemManager {
     private final ReentrantReadWriteLock resultsLock = new ReentrantReadWriteLock();
     private final Lock resultsPushedLock = new ReentrantLock();
     private final Condition resultsPushedCond = resultsPushedLock.newCondition();
+    private final Lock queryIdsLock = new ReentrantLock();
+    private final Condition queryIdsCond = queryIdsLock.newCondition();
 
-    private TreeMap<Integer, DataInput> queryResultsMap;
+    private HashMap<Integer, DataInput> queryResultsMap;
+    private HashSet<Integer> queryProcessedIds;
     private PimManagerThread pimThread;
     private ByteArrayOutputStream dpuStream = new ByteArrayOutputStream();
 
@@ -87,7 +91,8 @@ public final class PimSystemManager {
         } catch (ByteBufferBoundedQueue.BufferLog2SizeTooLargeException e) {
             throw new RuntimeException(e);
         }
-        queryResultsMap = new TreeMap<>();
+        queryResultsMap = new HashMap<>();
+        queryProcessedIds = new HashSet<>();
         pimThread = new PimManagerThread(queryBuffer);
         pimThread.start();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> PimSystemManager.shutDown()));
@@ -320,6 +325,7 @@ public final class PimSystemManager {
             var queryOutput = queryBuffer.add(byteSize);
             // unique id identifying the query in the queue
             int id = queryOutput.getUniqueId();
+            registerQueryId(id);
 
             // write leaf id, query type, then write query
             writeQueryToPim(queryOutput, query, context.ord);
@@ -414,6 +420,9 @@ public final class PimSystemManager {
         finally {
             resultsLock.writeLock().unlock();
         }
+
+        unregisterQueryId(id);
+
         return matches;
     }
 
@@ -451,6 +460,46 @@ public final class PimSystemManager {
         output.writeVInt(leafIdx);
         output.writeByte(PIM_PHRASE_QUERY_TYPE);
         query.writeToPim(output);
+    }
+
+    /**
+     * Register a query id in the map of processed queries. This is used to avoid query id
+     * clashes when a query is out of the query queue but its results not yet processed.
+     * @param id
+     */
+    void registerQueryId(int id) {
+
+        // the unique id belongs to the query queue, so there cannot be any other
+        // query in the queue with the same id. However, there could be a query with the
+        // same id that has been removed from the queue, but which client thread has not
+        // yet read the result in the map. So we need to register the id and wait
+        // if it is still in use.
+        queryIdsLock.lock();
+        try {
+            while(queryProcessedIds.contains(id)) {
+                queryIdsCond.await();
+            }
+            queryProcessedIds.add(id);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            queryIdsLock.unlock();
+        }
+    }
+
+    /**
+     * unregister a query id from the map of processed queries
+     * @param id
+     */
+    void unregisterQueryId(int id) {
+
+            queryIdsLock.lock();
+            try {
+                queryProcessedIds.remove(id);
+                queryIdsCond.signalAll();
+            } finally {
+                queryIdsLock.unlock();
+            }
     }
 
     /**
