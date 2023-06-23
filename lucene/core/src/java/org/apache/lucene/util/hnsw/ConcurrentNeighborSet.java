@@ -17,6 +17,9 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.FixedBitSet;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.PrimitiveIterator;
@@ -98,28 +101,30 @@ public class ConcurrentNeighborSet {
    * were selected by this method, or were added as a "backlink" to a node inserted concurrently
    * that chose this one as a neighbor.
    */
-  public void insertDiverse(NeighborArray candidates, NeighborSimilarity scoreBetween)
-      throws IOException {
-    NeighborArray selected = new NeighborArray(candidates.size(), true);
+  public void insertDiverse(NeighborArray candidates, NeighborSimilarity scoreBetween) {
+    BitSet selected = new FixedBitSet(candidates.size());
     for (int i = candidates.size() - 1; i >= 0; i--) {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      if (isDiverse(cNode, cScore, selected, scoreBetween)) {
-        selected.add(cNode, cScore);
+      if (isDiverse(cNode, cScore, candidates, selected, scoreBetween)) {
+        selected.set(i);
       }
     }
-    insertMultiple(selected, scoreBetween);
+    insertMultiple(candidates, selected, scoreBetween);
     // This leaves the paper's keepPrunedConnection option out; we might want to add that
     // as an option in the future.
   }
 
-  private void insertMultiple(NeighborArray selected, NeighborSimilarity scoreBetween) {
+  private void insertMultiple(NeighborArray others, BitSet selected, NeighborSimilarity scoreBetween) {
     neighborsRef.getAndUpdate(
         current -> {
           ConcurrentNeighborArray next = current.copy();
-          for (int i = 0; i < selected.size(); i++) {
-            int node = selected.node[i];
-            float score = selected.score[i];
+          for (int i = others.size() - 1; i >= 0; i--) {
+            if (!selected.get(i)) {
+              continue;
+            }
+            int node = others.node[i];
+            float score = others.score[i];
             next.insertSorted(node, score);
           }
           enforceMaxConnLimit(next, scoreBetween);
@@ -146,10 +151,15 @@ public class ConcurrentNeighborSet {
   // is the candidate node with the given score closer to the base node than it is to any of the
   // existing neighbors
   private boolean isDiverse(
-      int node, float score, NeighborArray others, NeighborSimilarity scoreBetween)
-      throws IOException {
-    for (int i = 0; i < others.size(); i++) {
+      int node, float score, NeighborArray others, BitSet selected, NeighborSimilarity scoreBetween) {
+    for (int i = others.size() - 1; i >= 0; i--) {
+      if (!selected.get(i)) {
+        continue;
+      }
       int candidateNode = others.node[i];
+      if (node == candidateNode) {
+        break;
+      }
       if (scoreBetween.score(candidateNode, node) > score) {
         return false;
       }
