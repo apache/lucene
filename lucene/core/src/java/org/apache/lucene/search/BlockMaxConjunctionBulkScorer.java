@@ -27,6 +27,10 @@ import org.apache.lucene.util.Bits;
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
  * conjunctions over clauses that do not have two-phase iterators. Use a {@link DefaultBulkScorer}
  * around a {@link BlockMaxConjunctionScorer} if you need two-phase support.
+ * Another difference with {@link BlockMaxConjunctionScorer} is that this scorer computes scores on
+ * the fly in order to be able to skip evaluating more clauses if the total score would be under the
+ * minimum competitive score anyway. This generally works well because computing a score is cheaper
+ * than
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
@@ -35,6 +39,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final DocIdSetIterator lead;
   private final MaxScoreSumPropagator maxScorePropagator;
   private final DocAndScore scorable = new DocAndScore();
+  private final double[] sumOfOtherClauses;
 
   BlockMaxConjunctionBulkScorer(List<Scorer> scorers) throws IOException {
     if (scorers.size() <= 1) {
@@ -46,6 +51,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
     lead = iterators[0];
     this.maxScorePropagator = new MaxScoreSumPropagator(Arrays.asList(this.scorers));
+    this.sumOfOtherClauses = new double[this.scorers.length];
   }
 
   @Override
@@ -61,9 +67,15 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         scorers[i].advanceShallow(windowMin);
       }
 
+      for (int i = 0; i < scorers.length; ++i) {
+        sumOfOtherClauses[i] = scorers[i].getMaxScore(windowMax);
+      }
       double maxWindowScore = 0;
-      for (Scorer scorer : scorers) {
-        maxWindowScore += scorer.getMaxScore(windowMax);
+      for (double maxScore : sumOfOtherClauses) {
+        maxWindowScore += maxScore;
+      }
+      for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
+        sumOfOtherClauses[i] += sumOfOtherClauses[i+1];
       }
       scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
       windowMin = Math.max(lead.docID(), windowMax + 1);
@@ -85,9 +97,29 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     }
     advanceHead:
     for (int doc = lead.docID(); doc < max; ) {
+      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+        doc = lead.nextDoc();
+        continue;
+      }
+
+      // Compute the score as we find more matching clauses, in order to skip advancing other clauses if the total score has no chance of being competitive. This works well because computing a score is usually cheaper than decoding a full block of postings and frequencies.
+      final boolean hasMinCompetitiveScore = scorable.minCompetitiveScore > 0;
+      double currentScore;
+      if (hasMinCompetitiveScore) {
+        currentScore = scorers[0].score();
+      } else {
+        currentScore = 0;
+      }
+
       for (int i = 1; i < iterators.length; ++i) {
-        // NOTE: these iterators may already be on `doc` if we called `continue advanceHead` on the
-        // previous loop iteration.
+        // First check if we have a chance of having a match
+        if (hasMinCompetitiveScore && maxScorePropagator.scoreSumUpperBound(currentScore + sumOfOtherClauses[i]) < scorable.minCompetitiveScore) {
+          doc = lead.nextDoc();
+          continue advanceHead;
+        }
+
+        // NOTE: these iterators may already be on `doc` already if we called `continue advanceHead`
+        // on the previous loop iteration.
         if (iterators[i].docID() < doc) {
           int next = iterators[i].advance(doc);
           if (next != doc) {
@@ -95,21 +127,24 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
             continue advanceHead;
           }
         }
+        assert iterators[i].docID() == doc;
+        if (hasMinCompetitiveScore) {
+          currentScore += scorers[i].score();
+        }
       }
 
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        double score = 0;
+      if (hasMinCompetitiveScore == false) {
         for (Scorer scorer : scorers) {
-          score += scorer.score();
+          currentScore += scorer.score();
         }
-        scorable.doc = doc;
-        scorable.score = (float) score;
-        collector.collect(doc);
-        // The collect() call may have updated the minimum competitive score.
-        if (maxWindowScore < scorable.minCompetitiveScore) {
-          // no more hits are competitive
-          return;
-        }
+      }
+      scorable.doc = doc;
+      scorable.score = (float) currentScore;
+      collector.collect(doc);
+      // The collect() call may have updated the minimum competitive score.
+      if (maxWindowScore < scorable.minCompetitiveScore) {
+        // no more hits are competitive
+        return;
       }
 
       doc = lead.nextDoc();
