@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.ko.dict;
+package org.apache.lucene.analysis.util;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -88,6 +88,19 @@ public final class CSVUtil {
       }
     }
 
+    return result;
+  }
+
+  /** Quote and escape input value for CSV */
+  public static String quoteEscape(String original) {
+    String result = original;
+
+    if (result.indexOf('\"') >= 0) {
+      result = result.replace("\"", ESCAPED_QUOTE);
+    }
+    if (result.indexOf(COMMA) >= 0) {
+      result = "\"" + result + "\"";
+    }
     return result;
   }
 }
