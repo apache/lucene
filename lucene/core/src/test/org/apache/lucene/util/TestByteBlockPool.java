@@ -135,4 +135,34 @@ public class TestByteBlockPool extends LuceneTestCase {
       }
     }
   }
+
+  public void testTooManyAllocs() {
+    // Use a mock allocator that doesn't waste memory
+    ByteBlockPool pool =
+        new ByteBlockPool(
+            new ByteBlockPool.Allocator(0) {
+              final byte[] buffer = new byte[0];
+
+              @Override
+              public void recycleByteBlocks(byte[][] blocks, int start, int end) {}
+
+              @Override
+              public byte[] getByteBlock() {
+                return buffer;
+              }
+            });
+    pool.nextBuffer();
+
+    for (int i = 0; i < Integer.MAX_VALUE / ByteBlockPool.BYTE_BLOCK_SIZE + 1; i++) {
+      try {
+        pool.nextBuffer();
+      } catch (
+          @SuppressWarnings("unused")
+          ArithmeticException ignored) {
+        // The offset overflows on the last attempt to call nextBuffer()
+        break;
+      }
+    }
+    assertTrue(pool.byteOffset + ByteBlockPool.BYTE_BLOCK_SIZE < 0);
+  }
 }

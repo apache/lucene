@@ -138,7 +138,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#9660: Throw and ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
 
 Other
 ---------------------
