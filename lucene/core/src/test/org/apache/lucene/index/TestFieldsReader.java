@@ -165,7 +165,7 @@ public class TestFieldsReader extends LuceneTestCase {
     }
 
     @Override
-    public void seekInternal(long pos) throws IOException {}
+    public void seekInternal(long pos) {}
 
     @Override
     public long length() {

@@ -33,7 +33,7 @@ public class RepSumByNameRoundTask extends ReportTask {
   }
 
   @Override
-  public int doLogic() throws Exception {
+  public int doLogic() {
     Report rp = reportSumByNameRound(getRunData().getPoints().taskStats());
 
     System.out.println();

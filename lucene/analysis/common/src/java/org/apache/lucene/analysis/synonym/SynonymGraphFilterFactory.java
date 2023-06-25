@@ -194,8 +194,7 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
   }
 
   // (there are no tests for this functionality)
-  private TokenizerFactory loadTokenizerFactory(ResourceLoader loader, String cname)
-      throws IOException {
+  private TokenizerFactory loadTokenizerFactory(ResourceLoader loader, String cname) {
     Class<? extends TokenizerFactory> clazz = loader.findClass(cname, TokenizerFactory.class);
     try {
       TokenizerFactory tokFactory = clazz.getConstructor(Map.class).newInstance(tokArgs);
@@ -208,7 +207,7 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
     }
   }
 
-  private Analyzer loadAnalyzer(ResourceLoader loader, String cname) throws IOException {
+  private Analyzer loadAnalyzer(ResourceLoader loader, String cname) {
     Class<? extends Analyzer> clazz = loader.findClass(cname, Analyzer.class);
     try {
       Analyzer analyzer = clazz.getConstructor().newInstance();

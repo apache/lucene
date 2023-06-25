@@ -17,7 +17,6 @@
 
 package org.apache.lucene.analysis.synonym.word2vec;
 
-import java.io.IOException;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.TermAndVector;
@@ -88,7 +87,7 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   }
 
   @Override
-  public RandomAccessVectorValues<float[]> copy() throws IOException {
+  public RandomAccessVectorValues<float[]> copy() {
     return new Word2VecModel(
         this.dictionarySize, this.vectorDimension, this.termsAndVectors, this.word2Vec);
   }

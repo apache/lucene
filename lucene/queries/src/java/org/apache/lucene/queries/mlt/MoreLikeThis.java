@@ -292,11 +292,11 @@ public final class MoreLikeThis {
   }
 
   /** Constructor requiring an IndexReader. */
-  public MoreLikeThis(IndexReader ir) throws IOException {
+  public MoreLikeThis(IndexReader ir) {
     this(ir, new ClassicSimilarity());
   }
 
-  public MoreLikeThis(IndexReader ir, TFIDFSimilarity sim) throws IOException {
+  public MoreLikeThis(IndexReader ir, TFIDFSimilarity sim) {
     this.ir = ir;
     this.similarity = sim;
   }

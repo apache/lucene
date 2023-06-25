@@ -194,7 +194,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       // no-op
     }
   }

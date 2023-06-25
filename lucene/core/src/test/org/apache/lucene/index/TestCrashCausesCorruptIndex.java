@@ -134,7 +134,7 @@ public class TestCrashCausesCorruptIndex extends LuceneTestCase {
 
     private String crashAfterCreateOutput;
 
-    public CrashAfterCreateOutput(Directory realDirectory) throws IOException {
+    public CrashAfterCreateOutput(Directory realDirectory) {
       super(realDirectory);
     }
 

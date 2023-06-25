@@ -199,7 +199,7 @@ public class Lucene50StoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       // no-op
     }
   }

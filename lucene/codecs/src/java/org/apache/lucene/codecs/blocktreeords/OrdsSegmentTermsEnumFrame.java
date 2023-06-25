@@ -591,7 +591,7 @@ final class OrdsSegmentTermsEnumFrame {
 
   // Target's prefix matches this block's prefix; we
   // scan the entries check if the suffix matches.
-  public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
+  public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) {
 
     // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix + "
     // nextEnt=" + nextEnt + " (of " + entCount + ") target=" +

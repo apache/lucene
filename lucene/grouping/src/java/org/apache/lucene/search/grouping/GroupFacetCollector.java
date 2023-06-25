@@ -112,7 +112,7 @@ public abstract class GroupFacetCollector extends SimpleCollector {
   protected abstract SegmentResult createSegmentResult() throws IOException;
 
   @Override
-  public void setScorer(Scorable scorer) throws IOException {}
+  public void setScorer(Scorable scorer) {}
 
   @Override
   public ScoreMode scoreMode() {

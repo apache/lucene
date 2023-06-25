@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.benchmark.byTask.tasks;
 
-import java.io.IOException;
 import java.io.StreamTokenizer;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
@@ -56,7 +55,7 @@ public class NewAnalyzerTask extends PerfTask {
   }
 
   @Override
-  public int doLogic() throws IOException {
+  public int doLogic() {
     String analyzerName = null;
     try {
       if (current >= analyzerNames.size()) {

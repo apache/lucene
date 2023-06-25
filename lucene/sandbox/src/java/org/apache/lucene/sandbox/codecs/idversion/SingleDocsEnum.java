@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.codecs.idversion;
 
-import java.io.IOException;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.util.BytesRef;
 
@@ -68,22 +67,22 @@ class SingleDocsEnum extends PostingsEnum {
   }
 
   @Override
-  public int nextPosition() throws IOException {
+  public int nextPosition() {
     return -1;
   }
 
   @Override
-  public int startOffset() throws IOException {
+  public int startOffset() {
     return -1;
   }
 
   @Override
-  public int endOffset() throws IOException {
+  public int endOffset() {
     return -1;
   }
 
   @Override
-  public BytesRef getPayload() throws IOException {
+  public BytesRef getPayload() {
     throw new UnsupportedOperationException();
   }
 }

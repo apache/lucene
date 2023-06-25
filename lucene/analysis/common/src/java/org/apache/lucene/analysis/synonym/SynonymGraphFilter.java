@@ -250,7 +250,7 @@ public final class SynonymGraphFilter extends TokenFilter {
     return true;
   }
 
-  private void releaseBufferedToken() throws IOException {
+  private void releaseBufferedToken() {
     // System.out.println("  releaseBufferedToken");
 
     BufferedOutputToken token = outputBuffer.pollFirst();

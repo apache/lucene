@@ -318,7 +318,7 @@ public class FixedGapTermsIndexReader extends TermsIndexReaderBase {
   }
 
   @Override
-  public void close() throws IOException {}
+  public void close() {}
 
   private void seekDir(IndexInput input) throws IOException {
     input.seek(input.length() - CodecUtil.footerLength() - 8);
