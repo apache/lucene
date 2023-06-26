@@ -540,6 +540,7 @@ public class TestJoinUtil extends LuceneTestCase {
       String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(lowestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
+    checkBoost(joinQuery, searcher);
 
     joinQuery =
         JoinUtil.createJoinQuery(
@@ -551,6 +552,7 @@ public class TestJoinUtil extends LuceneTestCase {
       String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(highestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
+    checkBoost(joinQuery, searcher);
 
     searcher.getIndexReader().close();
     dir.close();
@@ -1052,6 +1054,9 @@ public class TestJoinUtil extends LuceneTestCase {
 
   private void checkBoost(Query query, IndexSearcher searcher) throws IOException {
     TopDocs result = searcher.search(query, 10);
+    if (result.scoreDocs.length == 0) {
+      return;
+    }
     Query boostedQuery = new BoostQuery(query, 10);
     TopDocs boostedResult = searcher.search(boostedQuery, 10);
     assertEquals(result.scoreDocs[0].score * 10, boostedResult.scoreDocs[0].score, 0.000001f);
