@@ -61,7 +61,7 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
     assertEquals(offset, terms.length);
   }
 
-  public void testIllegalState() throws Exception {
+  public void testIllegalState() {
     expectThrows(
         IllegalStateException.class,
         () -> {

@@ -765,7 +765,7 @@ public class TestCodecs extends LuceneTestCase {
     }
 
     @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
+    public ImpactsEnum impacts(int flags) {
       throw new UnsupportedOperationException();
     }
   }
@@ -852,10 +852,10 @@ public class TestCodecs extends LuceneTestCase {
         new NormsProducer() {
 
           @Override
-          public void close() throws IOException {}
+          public void close() {}
 
           @Override
-          public NumericDocValues getNorms(FieldInfo field) throws IOException {
+          public NumericDocValues getNorms(FieldInfo field) {
             return new NumericDocValues() {
 
               int doc = -1;
@@ -876,7 +876,7 @@ public class TestCodecs extends LuceneTestCase {
               }
 
               @Override
-              public int advance(int target) throws IOException {
+              public int advance(int target) {
                 if (target >= si.maxDoc()) {
                   return doc = NO_MORE_DOCS;
                 } else {
@@ -885,20 +885,20 @@ public class TestCodecs extends LuceneTestCase {
               }
 
               @Override
-              public boolean advanceExact(int target) throws IOException {
+              public boolean advanceExact(int target) {
                 doc = target;
                 return true;
               }
 
               @Override
-              public long longValue() throws IOException {
+              public long longValue() {
                 return 1;
               }
             };
           }
 
           @Override
-          public void checkIntegrity() throws IOException {}
+          public void checkIntegrity() {}
         };
     boolean success = false;
     try {

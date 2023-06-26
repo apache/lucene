@@ -167,8 +167,7 @@ public class BKDWriter60 implements Closeable {
       int bytesPerDim,
       int maxPointsInLeafNode,
       double maxMBSortInHeap,
-      long totalPointCount)
-      throws IOException {
+      long totalPointCount) {
     verifyParams(numDataDims, numIndexDims, maxPointsInLeafNode, maxMBSortInHeap, totalPointCount);
     // We use tracking dir to deal with removing files on exception, so each place that
     // creates temp files doesn't need crazy try/finally/sucess logic:
@@ -617,7 +616,7 @@ public class BKDWriter60 implements Closeable {
           }
 
           @Override
-          public void visit(int docID) throws IOException {
+          public void visit(int docID) {
             throw new IllegalStateException();
           }
 
@@ -1103,8 +1102,7 @@ public class BKDWriter60 implements Closeable {
   }
 
   /** Appends the current contents of writeBuffer as another block on the growing in-memory file */
-  private int appendBlock(ByteBuffersDataOutput writeBuffer, List<byte[]> blocks)
-      throws IOException {
+  private int appendBlock(ByteBuffersDataOutput writeBuffer, List<byte[]> blocks) {
     byte[] block = writeBuffer.toArrayCopy();
     blocks.add(block);
     writeBuffer.reset();
@@ -2219,8 +2217,7 @@ public class BKDWriter60 implements Closeable {
       byte[] maxPackedValue,
       IntFunction<BytesRef> values,
       int[] docs,
-      int docsOffset)
-      throws IOException {
+      int docsOffset) {
     byte[] lastPackedValue = new byte[packedBytesLength];
     int lastDoc = -1;
     for (int i = 0; i < count; i++) {

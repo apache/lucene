@@ -34,7 +34,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 /** Tests QueryParser. */
 public class TestStandardQP extends QueryParserTestBase {
 
-  public StandardQueryParser getParser(Analyzer a) throws Exception {
+  public StandardQueryParser getParser(Analyzer a) {
     if (a == null) a = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     StandardQueryParser qp = new StandardQueryParser(a);
     qp.setDefaultOperator(Operator.OR);
@@ -141,7 +141,7 @@ public class TestStandardQP extends QueryParserTestBase {
   }
 
   @Override
-  public void testAutoGeneratePhraseQueriesOn() throws Exception {
+  public void testAutoGeneratePhraseQueriesOn() {
     expectThrows(
         UnsupportedOperationException.class,
         () -> {
@@ -151,7 +151,7 @@ public class TestStandardQP extends QueryParserTestBase {
   }
 
   @Override
-  public void testStarParsing() throws Exception {}
+  public void testStarParsing() {}
 
   @Override
   public void testDefaultOperator() throws Exception {

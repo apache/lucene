@@ -269,8 +269,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     DirectoryTaxonomyWriter writer =
         new DirectoryTaxonomyWriter(dir) {
           @Override
-          protected IndexWriter openIndexWriter(Directory directory, IndexWriterConfig config)
-              throws IOException {
+          protected IndexWriter openIndexWriter(Directory directory, IndexWriterConfig config) {
             return iw;
           }
         };
@@ -315,8 +314,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     DirectoryTaxonomyWriter writer =
         new DirectoryTaxonomyWriter(dir) {
           @Override
-          protected IndexWriter openIndexWriter(Directory directory, IndexWriterConfig config)
-              throws IOException {
+          protected IndexWriter openIndexWriter(Directory directory, IndexWriterConfig config) {
             return iw;
           }
         };

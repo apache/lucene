@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -31,7 +30,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -215,7 +213,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     QueryCachingPolicy dummyPolicy =
         new QueryCachingPolicy() {
           @Override
-          public boolean shouldCache(Query query) throws IOException {
+          public boolean shouldCache(Query query) {
             return false;
           }
 
@@ -328,8 +326,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     }
 
     @Override
-    public boolean awaitTermination(final long l, final TimeUnit timeUnit)
-        throws InterruptedException {
+    public boolean awaitTermination(final long l, final TimeUnit timeUnit) {
       throw new UnsupportedOperationException();
     }
 
@@ -349,28 +346,24 @@ public class TestIndexSearcher extends LuceneTestCase {
     }
 
     @Override
-    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables)
-        throws InterruptedException {
+    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public <T> List<Future<T>> invokeAll(
-        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
-        throws InterruptedException {
+        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public <T> T invokeAny(final Collection<? extends Callable<T>> callables)
-        throws InterruptedException, ExecutionException {
+    public <T> T invokeAny(final Collection<? extends Callable<T>> callables) {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public <T> T invokeAny(
-        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
-        throws InterruptedException, ExecutionException, TimeoutException {
+        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit) {
       throw new UnsupportedOperationException();
     }
 

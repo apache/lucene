@@ -538,7 +538,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     return terms;
   }
 
-  public void testNegativeSlop() throws Exception {
+  public void testNegativeSlop() {
     MultiPhraseQuery.Builder queryBuilder = new MultiPhraseQuery.Builder();
     queryBuilder.add(new Term("field", "two"));
     queryBuilder.add(new Term("field", "one"));

@@ -45,7 +45,7 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
   static final String CONTENT2 = "Aa bb Cc dd X Ee ff Gg hh.";
   static final String CONTENT3 = "Aa bbcc ddxyzee ffgg hh.";
 
-  public void testFragmentAlignmentConstructor() throws IOException {
+  public void testFragmentAlignmentConstructor() {
     BreakIterator baseBI = new CustomSeparatorBreakIterator('.');
     // test fragmentAlignment validation
     float[] valid_aligns = {0.f, 0.3333f, 0.5f, 0.99f, 1.f};

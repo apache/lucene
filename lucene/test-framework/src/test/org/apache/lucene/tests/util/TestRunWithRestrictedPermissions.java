@@ -27,18 +27,18 @@ public class TestRunWithRestrictedPermissions extends LuceneTestCase {
     runWithRestrictedPermissions(this::doSomeForbiddenStuff, new AllPermission());
   }
 
-  public void testNormallyAllowedStuff() throws Exception {
+  public void testNormallyAllowedStuff() {
     expectThrows(
         SecurityException.class, () -> runWithRestrictedPermissions(this::doSomeForbiddenStuff));
   }
 
-  public void testCompletelyForbidden1() throws Exception {
+  public void testCompletelyForbidden1() {
     expectThrows(
         SecurityException.class,
         () -> runWithRestrictedPermissions(this::doSomeCompletelyForbiddenStuff));
   }
 
-  public void testCompletelyForbidden2() throws Exception {
+  public void testCompletelyForbidden2() {
     expectThrows(
         SecurityException.class,
         () ->
@@ -46,7 +46,7 @@ public class TestRunWithRestrictedPermissions extends LuceneTestCase {
                 this::doSomeCompletelyForbiddenStuff, new AllPermission()));
   }
 
-  private Void doSomeForbiddenStuff() throws IOException {
+  private Void doSomeForbiddenStuff() {
     createTempDir("cannot_create_temp_folder");
     return null; // Void
   }

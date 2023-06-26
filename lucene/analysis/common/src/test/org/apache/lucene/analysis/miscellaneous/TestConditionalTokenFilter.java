@@ -102,7 +102,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
     }
 
     @Override
-    protected boolean shouldFilter() throws IOException {
+    protected boolean shouldFilter() {
       return pattern.matcher(termAtt.toString()).matches() == false;
     }
   }
@@ -160,7 +160,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
     }
 
     @Override
-    protected boolean accept() throws IOException {
+    protected boolean accept() {
       return true;
     }
 
@@ -178,7 +178,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
     TokenStream ts2 =
         new ConditionalTokenFilter(cts2, EndTrimmingFilter::new) {
           @Override
-          protected boolean shouldFilter() throws IOException {
+          protected boolean shouldFilter() {
             return true;
           }
         };
@@ -189,7 +189,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
     TokenStream ts1 =
         new ConditionalTokenFilter(cts1, EndTrimmingFilter::new) {
           @Override
-          protected boolean shouldFilter() throws IOException {
+          protected boolean shouldFilter() {
             return false;
           }
         };
@@ -229,7 +229,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
             TokenStream sink =
                 new ConditionalTokenFilter(source, in -> new ShingleFilter(in, 2)) {
                   @Override
-                  protected boolean shouldFilter() throws IOException {
+                  protected boolean shouldFilter() {
                     return true;
                   }
                 };
@@ -434,7 +434,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
     }
 
     @Override
-    protected boolean shouldFilter() throws IOException {
+    protected boolean shouldFilter() {
       return random.nextBoolean();
     }
 
@@ -465,7 +465,7 @@ public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
     }
 
     @Override
-    protected boolean shouldFilter() throws IOException {
+    protected boolean shouldFilter() {
       return shouldFilters[pos++ % shouldFilters.length];
     }
 

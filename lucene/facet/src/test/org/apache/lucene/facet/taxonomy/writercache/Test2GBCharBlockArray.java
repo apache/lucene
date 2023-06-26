@@ -23,7 +23,7 @@ import org.apache.lucene.tests.util.TestUtil;
 @Monster("uses lots of space and takes a few minutes")
 public class Test2GBCharBlockArray extends LuceneTestCase {
 
-  public void test2GBChars() throws Exception {
+  public void test2GBChars() {
     int blockSize = 32768;
     CharBlockArray array = new CharBlockArray(blockSize);
 

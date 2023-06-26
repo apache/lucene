@@ -31,7 +31,7 @@ import org.apache.lucene.util.ResourceLoader;
 public class TestMorfologikFilterFactory extends BaseTokenStreamTestCase {
   private static class ForbidResourcesLoader implements ResourceLoader {
     @Override
-    public InputStream openResource(String resource) throws IOException {
+    public InputStream openResource(String resource) {
       throw new UnsupportedOperationException();
     }
 
@@ -64,7 +64,7 @@ public class TestMorfologikFilterFactory extends BaseTokenStreamTestCase {
     assertTokenStreamContents(stream, new String[] {"lemma1", "lemma2"});
   }
 
-  public void testMissingDictionary() throws Exception {
+  public void testMissingDictionary() {
     final ResourceLoader loader = new ClasspathResourceLoader(TestMorfologikFilterFactory.class);
 
     IOException expected =
@@ -81,7 +81,7 @@ public class TestMorfologikFilterFactory extends BaseTokenStreamTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

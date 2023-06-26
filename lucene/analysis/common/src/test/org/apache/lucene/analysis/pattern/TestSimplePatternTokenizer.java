@@ -128,7 +128,7 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
     }
   }
 
-  public void testNotDeterminized() throws Exception {
+  public void testNotDeterminized() {
     Automaton a = new Automaton();
     int start = a.createState();
     int mid1 = a.createState();

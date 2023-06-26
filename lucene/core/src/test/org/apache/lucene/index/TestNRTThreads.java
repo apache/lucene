@@ -118,7 +118,7 @@ public class TestNRTThreads extends ThreadedIndexingAndSearchingTestCase {
   private IndexSearcher fixedSearcher;
 
   @Override
-  protected IndexSearcher getCurrentSearcher() throws Exception {
+  protected IndexSearcher getCurrentSearcher() {
     return fixedSearcher;
   }
 

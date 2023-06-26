@@ -79,7 +79,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       }
     }
 
-    public TestReader(LeafReader reader) throws IOException {
+    public TestReader(LeafReader reader) {
       super(reader);
     }
 

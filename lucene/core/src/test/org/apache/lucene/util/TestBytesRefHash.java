@@ -231,7 +231,7 @@ public class TestBytesRefHash extends LuceneTestCase {
     }
   }
 
-  public void testFind() throws Exception {
+  public void testFind() {
     BytesRefBuilder ref = new BytesRefBuilder();
     BytesRef scratch = new BytesRef();
     int num = atLeast(2);

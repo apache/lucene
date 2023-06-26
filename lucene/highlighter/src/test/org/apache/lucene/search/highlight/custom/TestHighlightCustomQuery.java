@@ -85,8 +85,7 @@ public class TestHighlightCustomQuery extends LuceneTestCase {
     WeightedSpanTermExtractor extractor =
         new WeightedSpanTermExtractor() {
           @Override
-          protected void extractUnknownQuery(Query query, Map<String, WeightedSpanTerm> terms)
-              throws IOException {
+          protected void extractUnknownQuery(Query query, Map<String, WeightedSpanTerm> terms) {
             terms.put("foo", new WeightedSpanTerm(3, "foo"));
           }
         };
@@ -167,7 +166,7 @@ public class TestHighlightCustomQuery extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    public Query rewrite(IndexSearcher indexSearcher) {
       return new TermQuery(term);
     }
 

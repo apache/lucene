@@ -563,7 +563,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
                     new FilterMergePolicy(mp) {
                       @Override
                       public boolean keepFullyDeletedSegment(
-                          IOSupplier<CodecReader> readerIOSupplier) throws IOException {
+                          IOSupplier<CodecReader> readerIOSupplier) {
                         // we can do this because we add/delete/add (and dont merge to "nothing")
                         return true;
                       }

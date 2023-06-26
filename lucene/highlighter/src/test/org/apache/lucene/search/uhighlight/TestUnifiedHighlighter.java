@@ -80,7 +80,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
   }
 
   @Before
-  public void doBefore() throws IOException {
+  public void doBefore() {
     indexAnalyzer =
         new MockAnalyzer(
             random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase

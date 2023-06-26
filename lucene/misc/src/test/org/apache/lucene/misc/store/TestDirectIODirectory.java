@@ -35,7 +35,7 @@ import org.junit.BeforeClass;
 public class TestDirectIODirectory extends BaseDirectoryTestCase {
 
   @BeforeClass
-  public static void checkSupported() throws IOException {
+  public static void checkSupported() {
     assumeTrue(
         "This test required a JDK version that has support for ExtendedOpenOption.DIRECT",
         DirectIODirectory.ExtendedOpenOption_DIRECT != null);

@@ -38,7 +38,7 @@ import org.apache.lucene.tests.util.TestUtil;
 /** */
 public class TestStemmerOverrideFilter extends BaseTokenStreamTestCase {
 
-  private KeywordTokenizer keywordTokenizer(String data) throws IOException {
+  private KeywordTokenizer keywordTokenizer(String data) {
     KeywordTokenizer tokenizer = new KeywordTokenizer();
     tokenizer.setReader(new StringReader(data));
     return tokenizer;

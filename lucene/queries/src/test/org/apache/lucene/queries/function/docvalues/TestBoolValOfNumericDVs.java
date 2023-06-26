@@ -42,25 +42,25 @@ public class TestBoolValOfNumericDVs extends LuceneTestCase {
         new FunctionValues[] {
           new FloatDocValues(null) {
             @Override
-            public float floatVal(int doc) throws IOException {
+            public float floatVal(int doc) {
               return expected ? Float.MIN_VALUE : 0.0F;
             }
           },
           new DoubleDocValues(null) {
             @Override
-            public double doubleVal(int doc) throws IOException {
+            public double doubleVal(int doc) {
               return expected ? Double.MIN_VALUE : 0.0D;
             }
           },
           new IntDocValues(null) {
             @Override
-            public int intVal(int doc) throws IOException {
+            public int intVal(int doc) {
               return expected ? 1 : 0;
             }
           },
           new LongDocValues(null) {
             @Override
-            public long longVal(int doc) throws IOException {
+            public long longVal(int doc) {
               return expected ? 1L : 0L;
             }
           },

@@ -221,7 +221,7 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     return shape.getBoundingBox();
   }
 
-  private BBoxStrategy setupNeedsDocValuesOnly() throws IOException {
+  private BBoxStrategy setupNeedsDocValuesOnly() {
     this.ctx = SpatialContext.GEO;
     FieldType fieldType;
     // random  legacy or not legacy

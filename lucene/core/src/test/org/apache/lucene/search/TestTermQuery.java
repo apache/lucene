@@ -204,22 +204,22 @@ public class TestTermQuery extends LuceneTestCase {
             public TermsEnum iterator() throws IOException {
               return new FilterTermsEnum(super.iterator()) {
                 @Override
-                public SeekStatus seekCeil(BytesRef text) throws IOException {
+                public SeekStatus seekCeil(BytesRef text) {
                   throw new AssertionError("no seek");
                 }
 
                 @Override
-                public void seekExact(BytesRef term, TermState state) throws IOException {
+                public void seekExact(BytesRef term, TermState state) {
                   throw new AssertionError("no seek");
                 }
 
                 @Override
-                public boolean seekExact(BytesRef text) throws IOException {
+                public boolean seekExact(BytesRef text) {
                   throw new AssertionError("no seek");
                 }
 
                 @Override
-                public void seekExact(long ord) throws IOException {
+                public void seekExact(long ord) {
                   throw new AssertionError("no seek");
                 }
               };

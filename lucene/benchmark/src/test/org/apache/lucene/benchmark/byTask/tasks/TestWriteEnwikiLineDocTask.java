@@ -40,7 +40,7 @@ public class TestWriteEnwikiLineDocTask extends BenchmarkTestCase {
     AtomicInteger flip = new AtomicInteger(0);
 
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       boolean isCategory = (flip.incrementAndGet() % 2 == 0);
       Document doc = new Document();
       doc.add(new StringField(BODY_FIELD, "body text", Field.Store.NO));

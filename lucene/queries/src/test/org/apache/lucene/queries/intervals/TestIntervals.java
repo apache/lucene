@@ -257,7 +257,7 @@ public class TestIntervals extends LuceneTestCase {
     }
   }
 
-  public void testIntervalsOnFieldWithNoPositions() throws IOException {
+  public void testIntervalsOnFieldWithNoPositions() {
     IllegalArgumentException e =
         expectThrows(
             IllegalArgumentException.class,

@@ -273,8 +273,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     }
   }
 
-  public void testTermVectorWithoutOffsetsDoesntWork()
-      throws IOException, InvalidTokenOffsetsException {
+  public void testTermVectorWithoutOffsetsDoesntWork() throws IOException {
     final Directory directory = newDirectory();
     final IndexWriter indexWriter = new IndexWriter(directory, newIndexWriterConfig(null));
     try {

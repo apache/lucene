@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -33,12 +32,12 @@ public class TestUpgradeIndexMergePolicy extends BaseMergePolicyTestCase {
   }
 
   @Override
-  protected void assertSegmentInfos(MergePolicy policy, SegmentInfos infos) throws IOException {
+  protected void assertSegmentInfos(MergePolicy policy, SegmentInfos infos) {
     // no-op
   }
 
   @Override
-  protected void assertMerge(MergePolicy policy, MergeSpecification merge) throws IOException {
+  protected void assertMerge(MergePolicy policy, MergeSpecification merge) {
     // no-op
   }
 }

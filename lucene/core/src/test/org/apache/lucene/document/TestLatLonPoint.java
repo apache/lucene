@@ -21,7 +21,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 /** Simple tests for {@link LatLonPoint} TODO: move this lone test and remove class? */
 public class TestLatLonPoint extends LuceneTestCase {
 
-  public void testToString() throws Exception {
+  public void testToString() {
     // looks crazy due to lossiness
     assertEquals(
         "LatLonPoint <field:18.313693958334625,-65.22744401358068>",

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queries.spans;
 
-import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -232,8 +231,7 @@ public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
     wrapper.setRewriteMethod(
         new SpanMultiTermQueryWrapper.SpanRewriteMethod() {
           @Override
-          public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
-              throws IOException {
+          public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
             return null;
           }
         });

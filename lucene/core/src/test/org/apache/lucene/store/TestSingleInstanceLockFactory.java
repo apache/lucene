@@ -28,7 +28,7 @@ import org.apache.lucene.tests.store.BaseLockFactoryTestCase;
 public class TestSingleInstanceLockFactory extends BaseLockFactoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return newDirectory(random(), new SingleInstanceLockFactory());
   }
 

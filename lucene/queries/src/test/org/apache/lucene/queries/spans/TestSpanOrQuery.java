@@ -35,13 +35,13 @@ public class TestSpanOrQuery extends LuceneTestCase {
     QueryUtils.checkUnequal(or1, or2);
   }
 
-  public void testSpanOrEmpty() throws Exception {
+  public void testSpanOrEmpty() {
     SpanOrQuery a = new SpanOrQuery();
     SpanOrQuery b = new SpanOrQuery();
     assertTrue("empty should equal", a.equals(b));
   }
 
-  public void testDifferentField() throws Exception {
+  public void testDifferentField() {
     SpanTermQuery q1 = new SpanTermQuery(new Term("field1", "foo"));
     SpanTermQuery q2 = new SpanTermQuery(new Term("field2", "bar"));
     IllegalArgumentException expected =

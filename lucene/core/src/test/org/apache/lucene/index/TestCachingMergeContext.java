@@ -46,7 +46,7 @@ public class TestCachingMergeContext extends LuceneTestCase {
     int count = 0;
 
     @Override
-    public final int numDeletesToMerge(SegmentCommitInfo info) throws IOException {
+    public final int numDeletesToMerge(SegmentCommitInfo info) {
       this.count += 1;
       return this.count;
     }

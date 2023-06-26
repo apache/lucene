@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +24,7 @@ import org.apache.lucene.tests.util.TestUtil;
 
 public class TestByteBlockPool extends LuceneTestCase {
 
-  public void testReadAndWrite() throws IOException {
+  public void testReadAndWrite() {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
@@ -74,7 +73,7 @@ public class TestByteBlockPool extends LuceneTestCase {
     }
   }
 
-  public void testLargeRandomBlocks() throws IOException {
+  public void testLargeRandomBlocks() {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();
@@ -102,7 +101,7 @@ public class TestByteBlockPool extends LuceneTestCase {
     }
   }
 
-  public void testAllocKnowSizeSlice() throws IOException {
+  public void testAllocKnowSizeSlice() {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     pool.nextBuffer();

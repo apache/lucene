@@ -34,7 +34,7 @@ public class TestByteArrayDataInput extends LuceneTestCase {
     assertTrue(in.eof());
   }
 
-  public void testDatatypes() throws Exception {
+  public void testDatatypes() {
     // write some primitives using ByteArrayDataOutput:
     final byte[] bytes = new byte[32];
     final ByteArrayDataOutput out = new ByteArrayDataOutput(bytes);

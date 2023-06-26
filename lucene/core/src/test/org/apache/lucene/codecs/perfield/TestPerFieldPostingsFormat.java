@@ -31,12 +31,12 @@ public class TestPerFieldPostingsFormat extends BasePostingsFormatTestCase {
   }
 
   @Override
-  public void testMergeStability() throws Exception {
+  public void testMergeStability() {
     assumeTrue("The MockRandom PF randomizes content on the fly, so we can't check it", false);
   }
 
   @Override
-  public void testPostingsEnumReuse() throws Exception {
+  public void testPostingsEnumReuse() {
     assumeTrue("The MockRandom PF randomizes content on the fly, so we can't check it", false);
   }
 }

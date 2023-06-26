@@ -128,7 +128,7 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
     assertTrue(actual.contains(scratch.get()));
   }
 
-  public void testWithCycle() throws Exception {
+  public void testWithCycle() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

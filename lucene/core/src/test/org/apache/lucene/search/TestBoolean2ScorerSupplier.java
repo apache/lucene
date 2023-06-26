@@ -37,12 +37,12 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     }
 
     @Override
-    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+    public Explanation explain(LeafReaderContext context, int doc) {
       return null;
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public Scorer scorer(LeafReaderContext context) {
       return null;
     }
 
@@ -67,12 +67,12 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     }
 
     @Override
-    public float score() throws IOException {
+    public float score() {
       return 1;
     }
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       return 1;
     }
 
@@ -103,7 +103,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     }
 
     @Override
-    public Scorer get(long leadCost) throws IOException {
+    public Scorer get(long leadCost) {
       if (this.leadCost != null) {
         assertEquals(this.toString(), this.leadCost.longValue(), leadCost);
       }

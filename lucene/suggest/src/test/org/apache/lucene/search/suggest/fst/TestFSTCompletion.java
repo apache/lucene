@@ -82,15 +82,15 @@ public class TestFSTCompletion extends LuceneTestCase {
     return keys;
   }
 
-  public void testExactMatchHighPriority() throws Exception {
+  public void testExactMatchHighPriority() {
     assertMatchEquals(completion.lookup(stringToCharSequence("two"), 1), "two/1.0");
   }
 
-  public void testExactMatchLowPriority() throws Exception {
+  public void testExactMatchLowPriority() {
     assertMatchEquals(completion.lookup(stringToCharSequence("one"), 2), "one/0.0", "oneness/1.0");
   }
 
-  public void testCompletionStream() throws Exception {
+  public void testCompletionStream() {
     var completions =
         completion
             .lookup("fo")
@@ -104,7 +104,7 @@ public class TestFSTCompletion extends LuceneTestCase {
         completions, "foundation/1", "four/0", "fourblah/1", "fourier/0", "fourty/1.0");
   }
 
-  public void testExactMatchReordering() throws Exception {
+  public void testExactMatchReordering() {
     // Check reordering of exact matches.
     assertMatchEquals(
         completion.lookup(stringToCharSequence("four"), 4),
@@ -114,7 +114,7 @@ public class TestFSTCompletion extends LuceneTestCase {
         "fourier/0.0");
   }
 
-  public void testRequestedCount() throws Exception {
+  public void testRequestedCount() {
     // 'one' is promoted after collecting two higher ranking results.
     assertMatchEquals(completion.lookup(stringToCharSequence("one"), 2), "one/0.0", "oneness/1.0");
 
@@ -144,15 +144,15 @@ public class TestFSTCompletion extends LuceneTestCase {
         completionAlphabetical.lookup(stringToCharSequence("one"), 2), "one/0.0", "oneness/1.0");
   }
 
-  public void testMiss() throws Exception {
+  public void testMiss() {
     assertMatchEquals(completion.lookup(stringToCharSequence("xyz"), 1));
   }
 
-  public void testAlphabeticWithWeights() throws Exception {
+  public void testAlphabeticWithWeights() {
     assertEquals(0, completionAlphabetical.lookup(stringToCharSequence("xyz"), 1).size());
   }
 
-  public void testFullMatchList() throws Exception {
+  public void testFullMatchList() {
     // one/0.0 is returned first because it's an exact match.
     assertMatchEquals(
         completion.lookup(stringToCharSequence("one"), Integer.MAX_VALUE),

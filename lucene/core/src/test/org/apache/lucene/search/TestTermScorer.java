@@ -114,7 +114,7 @@ public class TestTermScorer extends LuceneTestCase {
           }
 
           @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
+          protected void doSetNextReader(LeafReaderContext context) {
             base = context.docBase;
           }
 
@@ -185,7 +185,7 @@ public class TestTermScorer extends LuceneTestCase {
     LeafReader forbiddenNorms =
         new FilterLeafReader(indexReader) {
           @Override
-          public NumericDocValues getNormValues(String field) throws IOException {
+          public NumericDocValues getNormValues(String field) {
             fail("Norms should not be loaded");
             // unreachable
             return null;

@@ -169,7 +169,7 @@ class ElevationComparatorSource extends FieldComparatorSource {
       int bottomVal;
 
       @Override
-      public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
+      public LeafFieldComparator getLeafComparator(LeafReaderContext context) {
         return new LeafFieldComparator() {
 
           @Override

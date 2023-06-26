@@ -151,7 +151,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       mgr = new ReaderManager(new ParallelLeafDirectoryReader(DirectoryReader.open(w)));
     }
 
-    protected abstract IndexWriterConfig getIndexWriterConfig() throws IOException;
+    protected abstract IndexWriterConfig getIndexWriterConfig();
 
     /**
      * Optional method to validate that the provided parallell reader in fact reflects the changes
@@ -767,7 +767,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
   private ReindexingReader getReindexer(Path root) throws IOException {
     return new ReindexingReader(root) {
       @Override
-      protected IndexWriterConfig getIndexWriterConfig() throws IOException {
+      protected IndexWriterConfig getIndexWriterConfig() {
         IndexWriterConfig iwc = newIndexWriterConfig();
         TieredMergePolicy tmp = new TieredMergePolicy();
         // We write tiny docs, so we need tiny floor to avoid O(N^2) merging:
@@ -777,7 +777,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       }
 
       @Override
-      protected Directory openDirectory(Path path) throws IOException {
+      protected Directory openDirectory(Path path) {
         MockDirectoryWrapper dir = newMockFSDirectory(path);
         dir.setUseSlowOpenClosers(false);
         dir.setThrottling(Throttling.NEVER);
@@ -824,7 +824,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       throws IOException {
     return new ReindexingReader(root) {
       @Override
-      protected IndexWriterConfig getIndexWriterConfig() throws IOException {
+      protected IndexWriterConfig getIndexWriterConfig() {
         IndexWriterConfig iwc = newIndexWriterConfig();
         TieredMergePolicy tmp = new TieredMergePolicy();
         // We write tiny docs, so we need tiny floor to avoid O(N^2) merging:
@@ -834,7 +834,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       }
 
       @Override
-      protected Directory openDirectory(Path path) throws IOException {
+      protected Directory openDirectory(Path path) {
         MockDirectoryWrapper dir = newMockFSDirectory(path);
         dir.setUseSlowOpenClosers(false);
         dir.setThrottling(Throttling.NEVER);
@@ -950,7 +950,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       throws IOException {
     return new ReindexingReader(root) {
       @Override
-      protected IndexWriterConfig getIndexWriterConfig() throws IOException {
+      protected IndexWriterConfig getIndexWriterConfig() {
         IndexWriterConfig iwc = newIndexWriterConfig();
         TieredMergePolicy tmp = new TieredMergePolicy();
         // We write tiny docs, so we need tiny floor to avoid O(N^2) merging:
@@ -964,7 +964,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       }
 
       @Override
-      protected Directory openDirectory(Path path) throws IOException {
+      protected Directory openDirectory(Path path) {
         MockDirectoryWrapper dir = newMockFSDirectory(path);
         dir.setUseSlowOpenClosers(false);
         dir.setThrottling(Throttling.NEVER);

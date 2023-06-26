@@ -44,7 +44,7 @@ public class TestFloatRangeFieldQueries extends BaseRangeFieldQueryTestCase {
   }
 
   @Override
-  protected Range nextRange(int dimensions) throws Exception {
+  protected Range nextRange(int dimensions) {
     float[] min = new float[dimensions];
     float[] max = new float[dimensions];
 

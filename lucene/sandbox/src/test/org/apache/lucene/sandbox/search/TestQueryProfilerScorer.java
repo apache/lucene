@@ -44,12 +44,12 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
     }
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       return maxScore;
     }
 
     @Override
-    public float score() throws IOException {
+    public float score() {
       return 1f;
     }
 

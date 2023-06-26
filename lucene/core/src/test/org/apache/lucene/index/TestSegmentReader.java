@@ -202,7 +202,7 @@ public class TestSegmentReader extends LuceneTestCase {
     assertEquals("We do not have 3 term freq vectors", 3, results.size());
   }
 
-  public void testOutOfBoundsAccess() throws IOException {
+  public void testOutOfBoundsAccess() {
     int numDocs = reader.maxDoc();
 
     expectThrows(

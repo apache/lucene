@@ -230,7 +230,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   /** Test bad parameters */
-  public void testIllegalArguments() throws IOException {
+  public void testIllegalArguments() {
     expectThrows(IllegalArgumentException.class, () -> getKnnVectorQuery("xx", new float[] {1}, 0));
   }
 
@@ -841,11 +841,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           BitSetIterator bitSetIterator =
               new BitSetIterator(docs, docs.approximateCardinality()) {
                 @Override

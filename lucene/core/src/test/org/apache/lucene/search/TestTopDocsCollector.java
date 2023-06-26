@@ -59,7 +59,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
     }
 
     @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    public LeafCollector getLeafCollector(LeafReaderContext context) {
       final int base = context.docBase;
       return new LeafCollector() {
 
@@ -204,7 +204,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
         "Number of hits requested must be greater than 0 but value was -1", exception.getMessage());
   }
 
-  public void testZeroResults() throws Exception {
+  public void testZeroResults() {
     TopDocsCollector<ScoreDoc> tdc = new MyTopDocsCollector(5);
     assertEquals(0, tdc.topDocs(0, 1).scoreDocs.length);
   }
@@ -296,7 +296,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
     }
 
     @Override
-    public float score() throws IOException {
+    public float score() {
       return score;
     }
   }

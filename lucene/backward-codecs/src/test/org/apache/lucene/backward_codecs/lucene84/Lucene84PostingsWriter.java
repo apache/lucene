@@ -344,7 +344,7 @@ public final class Lucene84PostingsWriter extends PushPostingsWriterBase {
   }
 
   @Override
-  public void finishDoc() throws IOException {
+  public void finishDoc() {
     // Since we don't know df for current term, we had to buffer
     // those skip data for each block, and when a new doc comes,
     // write them to skip file.

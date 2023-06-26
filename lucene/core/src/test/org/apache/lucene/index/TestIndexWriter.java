@@ -2361,8 +2361,7 @@ public class TestIndexWriter extends LuceneTestCase {
     iwc.setMergePolicy(
         new FilterMergePolicy(iwc.getMergePolicy()) {
           @Override
-          public boolean keepFullyDeletedSegment(IOSupplier<CodecReader> readerIOSupplier)
-              throws IOException {
+          public boolean keepFullyDeletedSegment(IOSupplier<CodecReader> readerIOSupplier) {
             return keepFullyDeletedSegments.get();
           }
         });
@@ -3210,7 +3209,7 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.failOn(
         new MockDirectoryWrapper.Failure() {
           @Override
-          public void eval(MockDirectoryWrapper dir) throws IOException {
+          public void eval(MockDirectoryWrapper dir) {
             if (callStackContains(DocumentsWriterPerThread.class, "flush")) {
               flushingThreads.add(Thread.currentThread().getName());
             }
@@ -4357,7 +4356,7 @@ public class TestIndexWriter extends LuceneTestCase {
           }
 
           @Override
-          public void close() throws IOException {}
+          public void close() {}
         };
     IndexWriterConfig indexWriterConfig = newIndexWriterConfig();
     indexWriterConfig.setInfoStream(stream);

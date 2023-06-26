@@ -97,7 +97,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     MatcherAssert.assertThat(indexes, Matchers.containsInAnyOrder(0, 1, 2, 3, 4));
   }
 
-  public void testPQ() throws Exception {
+  public void testPQ() {
     testPQ(atLeast(10000), random());
   }
 

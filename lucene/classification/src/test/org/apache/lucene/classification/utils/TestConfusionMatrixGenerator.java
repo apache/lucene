@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.classification.utils;
 
-import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.classification.BM25NBClassifier;
 import org.apache.lucene.classification.BooleanPerceptronClassifier;
@@ -44,19 +43,18 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
       Classifier<BytesRef> classifier =
           new Classifier<BytesRef>() {
             @Override
-            public ClassificationResult<BytesRef> assignClass(String text) throws IOException {
+            public ClassificationResult<BytesRef> assignClass(String text) {
               return new ClassificationResult<>(
                   new BytesRef(), 1 / (1 + Math.exp(-random().nextInt())));
             }
 
             @Override
-            public List<ClassificationResult<BytesRef>> getClasses(String text) throws IOException {
+            public List<ClassificationResult<BytesRef>> getClasses(String text) {
               return null;
             }
 
             @Override
-            public List<ClassificationResult<BytesRef>> getClasses(String text, int max)
-                throws IOException {
+            public List<ClassificationResult<BytesRef>> getClasses(String text, int max) {
               return null;
             }
           };

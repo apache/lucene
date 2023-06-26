@@ -43,7 +43,7 @@ public class TestLimitTokenPositionFilterFactory extends BaseTokenStreamFactoryT
     }
   }
 
-  public void testMissingParam() throws Exception {
+  public void testMissingParam() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -79,7 +79,7 @@ public class TestLimitTokenPositionFilterFactory extends BaseTokenStreamFactoryT
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

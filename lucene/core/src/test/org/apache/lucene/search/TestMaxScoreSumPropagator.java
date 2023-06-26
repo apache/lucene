@@ -37,12 +37,12 @@ public class TestMaxScoreSumPropagator extends LuceneTestCase {
     }
 
     @Override
-    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+    public Explanation explain(LeafReaderContext context, int doc) {
       return null;
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public Scorer scorer(LeafReaderContext context) {
       return null;
     }
 
@@ -57,7 +57,7 @@ public class TestMaxScoreSumPropagator extends LuceneTestCase {
     final float maxScore;
     float minCompetitiveScore;
 
-    FakeScorer(float maxScore) throws IOException {
+    FakeScorer(float maxScore) {
       super(new FakeWeight());
       this.maxScore = maxScore;
     }
@@ -83,7 +83,7 @@ public class TestMaxScoreSumPropagator extends LuceneTestCase {
     }
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       assert upTo == NO_MORE_DOCS;
       return maxScore;
     }

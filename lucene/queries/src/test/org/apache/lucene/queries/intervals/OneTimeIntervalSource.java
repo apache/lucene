@@ -17,7 +17,6 @@
 
 package org.apache.lucene.queries.intervals;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import org.apache.lucene.index.LeafReaderContext;
@@ -28,7 +27,7 @@ import org.apache.lucene.search.QueryVisitor;
 /** A mock interval source that will only return a constant position for all documents */
 public class OneTimeIntervalSource extends IntervalsSource {
   @Override
-  public IntervalIterator intervals(String field, LeafReaderContext ctx) throws IOException {
+  public IntervalIterator intervals(String field, LeafReaderContext ctx) {
     return new IntervalIterator() {
       int doc = -1;
       boolean flag;
@@ -51,7 +50,7 @@ public class OneTimeIntervalSource extends IntervalsSource {
 
       /* only returns valid position every first time called per doc */
       @Override
-      public int nextInterval() throws IOException {
+      public int nextInterval() {
         if (doc != NO_MORE_DOCS) {
           if (flag) {
             flag = false;
@@ -74,7 +73,7 @@ public class OneTimeIntervalSource extends IntervalsSource {
       }
 
       @Override
-      public int nextDoc() throws IOException {
+      public int nextDoc() {
         doc++;
         if (doc >= maxDoc) {
           doc = NO_MORE_DOCS;
@@ -84,7 +83,7 @@ public class OneTimeIntervalSource extends IntervalsSource {
       }
 
       @Override
-      public int advance(int target) throws IOException {
+      public int advance(int target) {
         doc = target;
         if (doc >= maxDoc) {
           doc = NO_MORE_DOCS;
@@ -101,8 +100,7 @@ public class OneTimeIntervalSource extends IntervalsSource {
   }
 
   @Override
-  public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
-      throws IOException {
+  public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc) {
     return new IntervalMatchesIterator() {
       boolean next = true;
 
@@ -117,7 +115,7 @@ public class OneTimeIntervalSource extends IntervalsSource {
       }
 
       @Override
-      public boolean next() throws IOException {
+      public boolean next() {
         if (next) {
           next = false;
           return true;
@@ -136,17 +134,17 @@ public class OneTimeIntervalSource extends IntervalsSource {
       }
 
       @Override
-      public int startOffset() throws IOException {
+      public int startOffset() {
         return 0;
       }
 
       @Override
-      public int endOffset() throws IOException {
+      public int endOffset() {
         return 0;
       }
 
       @Override
-      public MatchesIterator getSubMatches() throws IOException {
+      public MatchesIterator getSubMatches() {
         return null;
       }
 

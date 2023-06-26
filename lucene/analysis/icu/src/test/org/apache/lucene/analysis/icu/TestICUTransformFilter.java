@@ -56,7 +56,7 @@ public class TestICUTransformFilter extends BaseTokenStreamTestCase {
     checkToken(Transliterator.createFromRules("test", rules, Transliterator.FORWARD), "caa", "cbd");
   }
 
-  public void testOptimizer() throws Exception {
+  public void testOptimizer() {
     String rules = "a > b; b > c;"; // convert a's to b's and b's to c's
     Transliterator custom = Transliterator.createFromRules("test", rules, Transliterator.FORWARD);
     assertTrue(custom.getFilter() == null);
@@ -70,7 +70,7 @@ public class TestICUTransformFilter extends BaseTokenStreamTestCase {
     checkToken(Transliterator.getInstance("Traditional-Simplified; CaseFold"), "ABCDE", "abcde");
   }
 
-  public void testOptimizerSurrogate() throws Exception {
+  public void testOptimizerSurrogate() {
     String rules = "\\U00020087 > x;"; // convert CJK UNIFIED IDEOGRAPH-20087 to an x
     Transliterator custom = Transliterator.createFromRules("test", rules, Transliterator.FORWARD);
     assertTrue(custom.getFilter() == null);

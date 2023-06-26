@@ -43,7 +43,7 @@ public class TestSpanNearQuery extends LuceneTestCase {
     QueryUtils.checkUnequal(near1, near2);
   }
 
-  public void testDifferentField() throws Exception {
+  public void testDifferentField() {
     SpanTermQuery q1 = new SpanTermQuery(new Term("field1", "foo"));
     SpanTermQuery q2 = new SpanTermQuery(new Term("field2", "bar"));
     IllegalArgumentException expected =
@@ -81,7 +81,7 @@ public class TestSpanNearQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testBuilder() throws Exception {
+  public void testBuilder() {
 
     // Can't add subclauses from different fields
     expectThrows(

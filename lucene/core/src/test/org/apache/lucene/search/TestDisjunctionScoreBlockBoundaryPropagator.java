@@ -32,12 +32,12 @@ public class TestDisjunctionScoreBlockBoundaryPropagator extends LuceneTestCase 
     }
 
     @Override
-    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+    public Explanation explain(LeafReaderContext context, int doc) {
       return null;
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public Scorer scorer(LeafReaderContext context) {
       return null;
     }
 
@@ -52,7 +52,7 @@ public class TestDisjunctionScoreBlockBoundaryPropagator extends LuceneTestCase 
     final int boundary;
     final float maxScore;
 
-    FakeScorer(int boundary, float maxScore) throws IOException {
+    FakeScorer(int boundary, float maxScore) {
       super(new FakeWeight());
       this.boundary = boundary;
       this.maxScore = maxScore;
@@ -77,7 +77,7 @@ public class TestDisjunctionScoreBlockBoundaryPropagator extends LuceneTestCase 
     public void setMinCompetitiveScore(float minCompetitiveScore) {}
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       return maxScore;
     }
 

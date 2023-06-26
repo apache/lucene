@@ -43,7 +43,7 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     }
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       return Float.POSITIVE_INFINITY;
     }
 
@@ -157,11 +157,11 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     directory.close();
   }
 
-  public void testNoUnnecessaryWrap() throws Exception {
+  public void testNoUnnecessaryWrap() {
     Scorable base =
         new Scorable() {
           @Override
-          public float score() throws IOException {
+          public float score() {
             return -1;
           }
 

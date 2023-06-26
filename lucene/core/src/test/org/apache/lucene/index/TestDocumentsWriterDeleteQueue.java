@@ -33,7 +33,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
 /** Unit test for {@link DocumentsWriterDeleteQueue} */
 public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
 
-  public void testUpdateDeleteSlices() throws Exception {
+  public void testUpdateDeleteSlices() {
     DocumentsWriterDeleteQueue queue = new DocumentsWriterDeleteQueue(null);
     final int size = 200 + random().nextInt(500) * RANDOM_MULTIPLIER;
     Integer[] ids = new Integer[size];

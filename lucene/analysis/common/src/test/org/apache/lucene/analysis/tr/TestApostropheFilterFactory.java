@@ -35,7 +35,7 @@ public class TestApostropheFilterFactory extends BaseTokenStreamFactoryTestCase 
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

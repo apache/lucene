@@ -23,7 +23,7 @@ import org.apache.lucene.benchmark.byTask.Benchmark;
 public class TestAltPackageTask extends BenchmarkTestCase {
 
   /** Benchmark should fail loading the algorithm when alt is not specified */
-  public void testWithoutAlt() throws Exception {
+  public void testWithoutAlt() {
     expectThrows(
         Exception.class,
         () -> {

@@ -130,13 +130,13 @@ public class TestCollectorManager extends LuceneTestCase {
     }
 
     @Override
-    public Collector newCollector() throws IOException {
+    public Collector newCollector() {
       return MultiCollector.wrap(
           predicates.stream().map(SimpleListCollector::new).toArray(Collector[]::new));
     }
 
     @Override
-    public List<Integer> reduce(Collection<Collector> collectors) throws IOException {
+    public List<Integer> reduce(Collection<Collector> collectors) {
       List<Integer> all = new ArrayList<>();
       for (Collector m : collectors) {
         for (Collector c : ((MultiCollector) m).getCollectors()) {
@@ -157,13 +157,13 @@ public class TestCollectorManager extends LuceneTestCase {
     }
 
     @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    public LeafCollector getLeafCollector(LeafReaderContext context) {
       return new LeafCollector() {
         @Override
-        public void setScorer(Scorable scorer) throws IOException {}
+        public void setScorer(Scorable scorer) {}
 
         @Override
-        public void collect(int doc) throws IOException {
+        public void collect(int doc) {
           if (predicate.test(doc)) {
             collected.add(doc);
           }

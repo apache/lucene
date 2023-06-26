@@ -38,7 +38,7 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -54,7 +54,7 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
   }
 
   /** Test that negative prefix length result in exception */
-  public void testNonPositivePrefixLengthArgument() throws Exception {
+  public void testNonPositivePrefixLengthArgument() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

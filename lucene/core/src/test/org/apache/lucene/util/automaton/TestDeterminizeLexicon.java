@@ -46,7 +46,7 @@ public class TestDeterminizeLexicon extends LuceneTestCase {
     }
   }
 
-  public void assertLexicon() throws Exception {
+  public void assertLexicon() {
     Collections.shuffle(automata, random());
     Automaton lex = Operations.union(automata);
     lex = Operations.determinize(lex, 1000000);

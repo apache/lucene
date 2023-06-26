@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search.grouping;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -436,8 +435,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     return true;
   }
 
-  private boolean openBitSetContains(int[] expectedDocs, Bits actual, int maxDoc)
-      throws IOException {
+  private boolean openBitSetContains(int[] expectedDocs, Bits actual, int maxDoc) {
     assert actual instanceof FixedBitSet;
     if (expectedDocs.length != ((FixedBitSet) actual).cardinality()) {
       return false;

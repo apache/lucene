@@ -36,7 +36,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 public class TestMockDirectoryWrapper extends BaseDirectoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     final MockDirectoryWrapper dir;
     if (random().nextBoolean()) {
       dir = newMockDirectory();

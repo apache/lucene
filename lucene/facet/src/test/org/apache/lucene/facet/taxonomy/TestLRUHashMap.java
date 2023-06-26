@@ -24,7 +24,7 @@ public class TestLRUHashMap extends FacetTestCase {
   // the remaining objects in the map are indeed those that have been most
   // recently used
   @Test
-  public void testLRU() throws Exception {
+  public void testLRU() {
     LRUHashMap<String, String> lru = new LRUHashMap<>(3);
     assertEquals(0, lru.size());
     lru.put("one", "Hello world");

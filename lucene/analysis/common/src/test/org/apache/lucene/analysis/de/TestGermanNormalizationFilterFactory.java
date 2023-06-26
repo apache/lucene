@@ -34,7 +34,7 @@ public class TestGermanNormalizationFilterFactory extends BaseTokenStreamFactory
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

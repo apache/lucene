@@ -20,7 +20,7 @@ package org.apache.lucene.search.uhighlight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDefaultPassageFormatter extends LuceneTestCase {
-  public void testBasic() throws Exception {
+  public void testBasic() {
     String text =
         "Test customization & <div class=\"xy\">&quot;escaping&quot;</div> of this very formatter. Unrelated part. It's not very N/A!";
     // fabricate passages with matches to format

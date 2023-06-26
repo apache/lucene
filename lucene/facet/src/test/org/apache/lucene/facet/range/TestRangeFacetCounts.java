@@ -1593,17 +1593,17 @@ public class TestRangeFacetCounts extends FacetTestCase {
   private static class PlusOneValuesSource extends DoubleValuesSource {
 
     @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) {
       return new DoubleValues() {
         int doc = -1;
 
         @Override
-        public double doubleValue() throws IOException {
+        public double doubleValue() {
           return doc + 1;
         }
 
         @Override
-        public boolean advanceExact(int doc) throws IOException {
+        public boolean advanceExact(int doc) {
           this.doc = doc;
           return true;
         }
@@ -1621,13 +1621,12 @@ public class TestRangeFacetCounts extends FacetTestCase {
     }
 
     @Override
-    public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation)
-        throws IOException {
+    public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation) {
       return Explanation.match(docId + 1, "");
     }
 
     @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
+    public DoubleValuesSource rewrite(IndexSearcher searcher) {
       return this;
     }
 
@@ -1762,7 +1761,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
     IOUtils.close(r, dir);
   }
 
-  public void testLongRangeEquals() throws Exception {
+  public void testLongRangeEquals() {
     assertEquals(
         new LongRange("field", -7, true, 17, false), new LongRange("field", -7, true, 17, false));
     assertEquals(
@@ -1782,7 +1781,7 @@ public class TestRangeFacetCounts extends FacetTestCase {
             == new LongRange("field", -7, true, 18, false).hashCode());
   }
 
-  public void testDoubleRangeEquals() throws Exception {
+  public void testDoubleRangeEquals() {
     assertEquals(
         new DoubleRange("field", -7d, true, 17d, false),
         new DoubleRange("field", -7d, true, 17d, false));

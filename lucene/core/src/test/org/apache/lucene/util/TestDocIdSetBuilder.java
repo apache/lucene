@@ -266,27 +266,27 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public TermsEnum iterator() throws IOException {
+    public TermsEnum iterator() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long size() throws IOException {
+    public long size() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return numValues;
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -327,27 +327,27 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public byte[] getMinPackedValue() throws IOException {
+    public byte[] getMinPackedValue() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public byte[] getMaxPackedValue() throws IOException {
+    public byte[] getMaxPackedValue() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getNumDimensions() throws IOException {
+    public int getNumDimensions() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getNumIndexDimensions() throws IOException {
+    public int getNumIndexDimensions() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int getBytesPerDimension() throws IOException {
+    public int getBytesPerDimension() {
       throw new UnsupportedOperationException();
     }
 

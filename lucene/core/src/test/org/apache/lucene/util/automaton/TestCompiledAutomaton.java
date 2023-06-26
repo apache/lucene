@@ -53,7 +53,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     }
   }
 
-  private void testTerms(int determinizeWorkLimit, String[] terms) throws Exception {
+  private void testTerms(int determinizeWorkLimit, String[] terms) {
     final CompiledAutomaton c = build(determinizeWorkLimit, terms);
     final BytesRef[] termBytes = new BytesRef[terms.length];
     for (int idx = 0; idx < terms.length; idx++) {
@@ -109,7 +109,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     return TestUtil.randomRealisticUnicodeString(random());
   }
 
-  public void testBasic() throws Exception {
+  public void testBasic() {
     CompiledAutomaton c = build(Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, "fob", "foo", "goo");
     testFloor(c, "goo", "goo");
     testFloor(c, "ga", "foo");
@@ -123,7 +123,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   }
 
   // LUCENE-6367
-  public void testBinaryAll() throws Exception {
+  public void testBinaryAll() {
     Automaton a = new Automaton();
     int state = a.createState();
     a.setAccept(state, true);
@@ -135,7 +135,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   }
 
   // LUCENE-6367
-  public void testUnicodeAll() throws Exception {
+  public void testUnicodeAll() {
     Automaton a = new Automaton();
     int state = a.createState();
     a.setAccept(state, true);
@@ -147,7 +147,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   }
 
   // LUCENE-6367
-  public void testBinarySingleton() throws Exception {
+  public void testBinarySingleton() {
     // This is just ascii so we can pretend it's binary:
     Automaton a = Automata.makeString("foobar");
     CompiledAutomaton ca = new CompiledAutomaton(a, true, true, true);
@@ -155,7 +155,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   }
 
   // LUCENE-6367
-  public void testUnicodeSingleton() throws Exception {
+  public void testUnicodeSingleton() {
     Automaton a = Automata.makeString(TestUtil.randomRealisticUnicodeString(random()));
     CompiledAutomaton ca = new CompiledAutomaton(a, true, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);

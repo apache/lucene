@@ -146,7 +146,7 @@ public class TestFacetLabel extends FacetTestCase {
   }
 
   @Test
-  public void testEmptyNullComponents() throws Exception {
+  public void testEmptyNullComponents() {
     // LUCENE-4724: CategoryPath should not allow empty or null components
     String[][] components_tests =
         new String[][] {
@@ -245,7 +245,7 @@ public class TestFacetLabel extends FacetTestCase {
   }
 
   @Test
-  public void testLongPath() throws Exception {
+  public void testLongPath() {
     String bigComp = null;
     while (true) {
       int len = FacetLabel.MAX_CATEGORY_PATH_LENGTH;

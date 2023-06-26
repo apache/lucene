@@ -812,7 +812,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
           }
 
           @Override
-          public void eval(MockDirectoryWrapper dir) throws IOException {
+          public void eval(MockDirectoryWrapper dir) {
             if (Thread.currentThread() != thread) {
               // don't fail during merging
               return;

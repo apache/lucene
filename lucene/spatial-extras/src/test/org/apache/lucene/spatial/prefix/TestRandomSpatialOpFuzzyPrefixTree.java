@@ -71,7 +71,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
   protected SpatialPrefixTree grid;
   private SpatialContext ctx2D;
 
-  public void setupGrid(int maxLevels) throws IOException {
+  public void setupGrid(int maxLevels) {
     if (randomBoolean()) setupQuadGrid(maxLevels, randomBoolean());
     else setupGeohashGrid(maxLevels);
     setupCtx2D(ctx);

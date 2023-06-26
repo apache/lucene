@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.misc.document;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -208,7 +207,7 @@ public class TestLazyDocument extends LuceneTestCase {
     }
 
     @Override
-    public void stringField(FieldInfo fieldInfo, String value) throws IOException {
+    public void stringField(FieldInfo fieldInfo, String value) {
       final FieldType ft = new FieldType(TextField.TYPE_STORED);
       ft.setStoreTermVectors(fieldInfo.hasVectors());
       ft.setOmitNorms(fieldInfo.omitsNorms());

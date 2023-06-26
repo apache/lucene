@@ -216,7 +216,7 @@ public class TestMultiCollector extends LuceneTestCase {
           }
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {
+          public void setScorer(Scorable scorer) {
             this.scorer = scorer;
           }
 
@@ -271,7 +271,7 @@ public class TestMultiCollector extends LuceneTestCase {
           }
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {
+          public void setScorer(Scorable scorer) {
             this.scorer = scorer;
           }
 
@@ -310,12 +310,12 @@ public class TestMultiCollector extends LuceneTestCase {
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       setNextReaderCalled = true;
     }
 
     @Override
-    public void setScorer(Scorable scorer) throws IOException {
+    public void setScorer(Scorable scorer) {
       setScorerCalled = true;
     }
 
@@ -345,7 +345,7 @@ public class TestMultiCollector extends LuceneTestCase {
   }
 
   @Test
-  public void testSingleCollector() throws Exception {
+  public void testSingleCollector() {
     // Tests that if a single Collector is input, it is returned (and not MultiCollector).
     DummyCollector dc = new DummyCollector();
     assertSame(dc, MultiCollector.wrap(dc));
@@ -376,11 +376,11 @@ public class TestMultiCollector extends LuceneTestCase {
     return new Collector() {
 
       @Override
-      public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      public LeafCollector getLeafCollector(LeafReaderContext context) {
         return new LeafCollector() {
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {
+          public void setScorer(Scorable scorer) {
             while (expectedScorer.equals(scorer.getClass()) == false
                 && scorer instanceof FilterScorable) {
               scorer = ((FilterScorable) scorer).in;
@@ -389,7 +389,7 @@ public class TestMultiCollector extends LuceneTestCase {
           }
 
           @Override
-          public void collect(int doc) throws IOException {}
+          public void collect(int doc) {}
         };
       }
 
@@ -465,7 +465,7 @@ public class TestMultiCollector extends LuceneTestCase {
         new Scorable() {
 
           @Override
-          public float score() throws IOException {
+          public float score() {
             return 0;
           }
 
@@ -475,7 +475,7 @@ public class TestMultiCollector extends LuceneTestCase {
           }
 
           @Override
-          public void setMinCompetitiveScore(float minScore) throws IOException {
+          public void setMinCompetitiveScore(float minScore) {
             minCompetitiveScore[0] = minScore;
           }
         };

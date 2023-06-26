@@ -187,7 +187,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     }
 
     @Override
-    public BytesRef next() throws IOException {
+    public BytesRef next() {
       if (it.hasNext() == false) {
         return null;
       }

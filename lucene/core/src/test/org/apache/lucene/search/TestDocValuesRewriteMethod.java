@@ -131,7 +131,7 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
     CheckHits.checkEqual(inverted, invertedDocs.scoreDocs, docValuesDocs.scoreDocs);
   }
 
-  public void testEquals() throws Exception {
+  public void testEquals() {
     {
       RegexpQuery a1 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
       RegexpQuery a2 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);

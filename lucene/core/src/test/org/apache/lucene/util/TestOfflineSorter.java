@@ -650,7 +650,7 @@ public class TestOfflineSorter extends LuceneTestCase {
     dir.close();
   }
 
-  public void testInvalidFixedLength() throws Exception {
+  public void testInvalidFixedLength() {
     IllegalArgumentException e;
     e =
         expectThrows(

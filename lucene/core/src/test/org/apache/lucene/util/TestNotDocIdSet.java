@@ -24,7 +24,7 @@ import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 public class TestNotDocIdSet extends BaseDocIdSetTestCase<NotDocIdSet> {
 
   @Override
-  public NotDocIdSet copyOf(BitSet bs, int length) throws IOException {
+  public NotDocIdSet copyOf(BitSet bs, int length) {
     final FixedBitSet set = new FixedBitSet(length);
     for (int doc = bs.nextClearBit(0); doc < length; doc = bs.nextClearBit(doc + 1)) {
       set.set(doc);

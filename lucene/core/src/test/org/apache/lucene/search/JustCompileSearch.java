@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.similarities.Similarity;
@@ -40,7 +39,7 @@ final class JustCompileSearch {
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
@@ -104,7 +103,7 @@ final class JustCompileSearch {
     }
 
     @Override
-    public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
+    public LeafFieldComparator getLeafComparator(LeafReaderContext context) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
@@ -175,7 +174,7 @@ final class JustCompileSearch {
     }
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
@@ -211,7 +210,7 @@ final class JustCompileSearch {
     }
 
     @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    public LeafCollector getLeafCollector(LeafReaderContext context) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 

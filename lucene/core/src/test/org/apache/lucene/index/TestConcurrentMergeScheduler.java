@@ -304,8 +304,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
         new ConcurrentMergeScheduler() {
 
           @Override
-          protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
-              throws IOException {
+          protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge) {
             try {
               // Stall all incoming merges until we see
               // maxMergeCount:
@@ -408,7 +407,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     d.close();
   }
 
-  public void testInvalidMaxMergeCountAndThreads() throws Exception {
+  public void testInvalidMaxMergeCountAndThreads() {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     expectThrows(
         IllegalArgumentException.class,
@@ -430,15 +429,14 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
           @Override
           public MergeSpecification findMerges(
-              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
-              throws IOException {
+              MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext) {
             // no natural merges
             return null;
           }
 
           @Override
           public MergeSpecification findForcedDeletesMerges(
-              SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
+              SegmentInfos segmentInfos, MergeContext mergeContext) {
             // not needed
             return null;
           }
@@ -448,8 +446,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
               SegmentInfos segmentInfos,
               int maxSegmentCount,
               Map<SegmentCommitInfo, Boolean> segmentsToMerge,
-              MergeContext mergeContext)
-              throws IOException {
+              MergeContext mergeContext) {
             // The test is about testing that CMS bounds the number of merging threads, so we just
             // return many merges.
             MergeSpecification spec = new MergeSpecification();
@@ -726,7 +723,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     dir.close();
   }
 
-  public void testResetToAutoDefault() throws Exception {
+  public void testResetToAutoDefault() {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     assertEquals(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, cms.getMaxMergeCount());
     assertEquals(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, cms.getMaxThreadCount());
@@ -753,14 +750,14 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     assertEquals(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, cms.getMaxThreadCount());
   }
 
-  public void testSpinningDefaults() throws Exception {
+  public void testSpinningDefaults() {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     cms.setDefaultMaxMergesAndThreads(true);
     assertEquals(1, cms.getMaxThreadCount());
     assertEquals(6, cms.getMaxMergeCount());
   }
 
-  public void testAutoIOThrottleGetter() throws Exception {
+  public void testAutoIOThrottleGetter() {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     cms.disableAutoIOThrottle();
     assertFalse(cms.getAutoIOThrottle());
@@ -768,7 +765,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     assertTrue(cms.getAutoIOThrottle());
   }
 
-  public void testNonSpinningDefaults() throws Exception {
+  public void testNonSpinningDefaults() {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     cms.setDefaultMaxMergesAndThreads(false);
     int threadCount = cms.getMaxThreadCount();

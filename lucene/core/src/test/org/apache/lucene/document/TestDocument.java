@@ -43,7 +43,7 @@ public class TestDocument extends LuceneTestCase {
   String binaryVal = "this text will be stored as a byte array in the index";
   String binaryVal2 = "this text will be also stored as a byte array in the index";
 
-  public void testBinaryField() throws Exception {
+  public void testBinaryField() {
     Document doc = new Document();
 
     FieldType ft = new FieldType();
@@ -93,10 +93,8 @@ public class TestDocument extends LuceneTestCase {
   /**
    * Tests {@link Document#removeField(String)} method for a brand new Document that has not been
    * indexed yet.
-   *
-   * @throws Exception on error
    */
-  public void testRemoveForNewDocument() throws Exception {
+  public void testRemoveForNewDocument() {
     Document doc = makeDocumentWithFields();
     assertEquals(10, doc.getFields().size());
     doc.removeFields("keyword");
@@ -182,10 +180,8 @@ public class TestDocument extends LuceneTestCase {
   /**
    * Tests {@link Document#getValues(String)} method for a brand new Document that has not been
    * indexed yet.
-   *
-   * @throws Exception on error
    */
-  public void testGetValuesForNewDocument() throws Exception {
+  public void testGetValuesForNewDocument() {
     doAssert(makeDocumentWithFields(), false);
   }
 

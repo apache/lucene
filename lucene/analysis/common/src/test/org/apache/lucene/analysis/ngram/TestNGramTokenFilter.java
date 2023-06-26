@@ -43,7 +43,7 @@ public class TestNGramTokenFilter extends BaseTokenStreamTestCase {
     input = whitespaceMockTokenizer("abcde");
   }
 
-  public void testInvalidInput() throws Exception {
+  public void testInvalidInput() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -51,7 +51,7 @@ public class TestNGramTokenFilter extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testInvalidInput2() throws Exception {
+  public void testInvalidInput2() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

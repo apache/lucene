@@ -571,7 +571,7 @@ public class TestJoinUtil extends LuceneTestCase {
         return new Weight(this) {
 
           @Override
-          public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+          public Explanation explain(LeafReaderContext context, int doc) {
             return null;
           }
 
@@ -590,7 +590,7 @@ public class TestJoinUtil extends LuceneTestCase {
               }
 
               @Override
-              public float getMaxScore(int upTo) throws IOException {
+              public float getMaxScore(int upTo) {
                 return Float.POSITIVE_INFINITY;
               }
             };
@@ -2112,12 +2112,12 @@ public class TestJoinUtil extends LuceneTestCase {
     }
 
     @Override
-    public void collect(int doc) throws IOException {
+    public void collect(int doc) {
       bitSet.set(docBase + doc);
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       docBase = context.docBase;
     }
 

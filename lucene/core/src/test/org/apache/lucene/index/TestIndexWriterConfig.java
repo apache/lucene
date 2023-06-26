@@ -41,7 +41,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   }
 
   @Test
-  public void testDefaults() throws Exception {
+  public void testDefaults() {
     IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
     assertEquals(MockAnalyzer.class, conf.getAnalyzer().getClass());
     assertNull(conf.getIndexCommit());
@@ -98,7 +98,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   }
 
   @Test
-  public void testSettersChaining() throws Exception {
+  public void testSettersChaining() {
     // Ensures that every setter returns IndexWriterConfig to allow chaining.
     HashSet<String> liveSetters = new HashSet<>();
     HashSet<String> allSetters = new HashSet<>();
@@ -144,7 +144,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   }
 
   @Test
-  public void testOverrideGetters() throws Exception {
+  public void testOverrideGetters() {
     // Test that IndexWriterConfig overrides all getters, so that javadocs
     // contain all methods for the users. Also, ensures that IndexWriterConfig
     // doesn't declare getters that are not declared on LiveIWC.
@@ -169,7 +169,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   }
 
   @Test
-  public void testConstants() throws Exception {
+  public void testConstants() {
     // Tests that the values of the constants does not change
     assertEquals(-1, IndexWriterConfig.DISABLE_AUTO_FLUSH);
     assertEquals(
@@ -181,7 +181,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   }
 
   @Test
-  public void testToString() throws Exception {
+  public void testToString() {
     String str = new IndexWriterConfig(new MockAnalyzer(random())).toString();
     for (Field f : IndexWriterConfig.class.getDeclaredFields()) {
       int modifiers = f.getModifiers();
@@ -201,7 +201,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   }
 
   @Test
-  public void testInvalidValues() throws Exception {
+  public void testInvalidValues() {
     IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
 
     // Test IndexDeletionPolicy

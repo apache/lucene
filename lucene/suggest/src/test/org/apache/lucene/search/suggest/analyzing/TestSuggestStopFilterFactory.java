@@ -66,7 +66,7 @@ public class TestSuggestStopFilterFactory extends BaseTokenStreamTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -77,7 +77,7 @@ public class TestSuggestStopFilterFactory extends BaseTokenStreamTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusFormats() throws Exception {
+  public void testBogusFormats() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

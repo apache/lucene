@@ -2204,7 +2204,7 @@ public class TestIndexSorting extends LuceneTestCase {
     testAddIndexes(true, false);
   }
 
-  public void testBadSort() throws Exception {
+  public void testBadSort() {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IllegalArgumentException expected =
         expectThrows(
@@ -2280,7 +2280,7 @@ public class TestIndexSorting extends LuceneTestCase {
     }
 
     @Override
-    public boolean incrementToken() throws IOException {
+    public boolean incrementToken() {
       if (pos == 0) {
         return false;
       }

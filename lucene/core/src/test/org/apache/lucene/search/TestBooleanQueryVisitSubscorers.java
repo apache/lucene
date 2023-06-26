@@ -199,7 +199,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
       return ((TopDocsCollector<?>) in).topDocs();
     }
 
-    public int freq(int doc) throws IOException {
+    public int freq(int doc) {
       return docCounts.get(doc);
     }
   }
@@ -289,8 +289,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     }
 
     @Override
-    public ScoreSummary reduce(Collection<ScorerSummarizingCollector> collectors)
-        throws IOException {
+    public ScoreSummary reduce(Collection<ScorerSummarizingCollector> collectors) {
       ScoreSummary scoreSummary = new ScoreSummary();
       for (ScorerSummarizingCollector collector : collectors) {
         scoreSummary.summaries.addAll(collector.scoreSummary.summaries);
@@ -309,7 +308,7 @@ public class TestBooleanQueryVisitSubscorers extends LuceneTestCase {
     }
 
     @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    public LeafCollector getLeafCollector(LeafReaderContext context) {
       return new LeafCollector() {
 
         @Override

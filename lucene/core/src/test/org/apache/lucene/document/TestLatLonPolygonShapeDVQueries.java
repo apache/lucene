@@ -42,26 +42,25 @@ public class TestLatLonPolygonShapeDVQueries extends BaseLatLonShapeDocValueTest
 
   /** test random line queries */
   @Override
-  protected void verifyRandomLineQueries(IndexReader reader, Object... shapes) throws Exception {
+  protected void verifyRandomLineQueries(IndexReader reader, Object... shapes) {
     // NOT IMPLEMENTED YET
   }
 
   /** test random polygon queries */
   @Override
-  protected void verifyRandomPolygonQueries(IndexReader reader, Object... shapes) throws Exception {
+  protected void verifyRandomPolygonQueries(IndexReader reader, Object... shapes) {
     // NOT IMPLEMENTED YET
   }
 
   /** test random point queries */
   @Override
-  protected void verifyRandomPointQueries(IndexReader reader, Object... shapes) throws Exception {
+  protected void verifyRandomPointQueries(IndexReader reader, Object... shapes) {
     // NOT IMPLEMENTED YET
   }
 
   /** test random distance queries */
   @Override
-  protected void verifyRandomDistanceQueries(IndexReader reader, Object... shapes)
-      throws Exception {
+  protected void verifyRandomDistanceQueries(IndexReader reader, Object... shapes) {
     // NOT IMPLEMENTED YET
   }
 }

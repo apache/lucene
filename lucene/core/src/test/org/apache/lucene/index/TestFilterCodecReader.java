@@ -45,8 +45,7 @@ public class TestFilterCodecReader extends LuceneTestCase {
     }
   }
 
-  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass)
-      throws Exception {
+  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass) {
     for (final Method superClassMethod : superClass.getDeclaredMethods()) {
       final int modifiers = superClassMethod.getModifiers();
       if (Modifier.isPrivate(modifiers)) continue;

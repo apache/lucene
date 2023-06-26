@@ -35,13 +35,13 @@ public class TestRegExp extends LuceneTestCase {
   }
 
   // LUCENE-6046
-  public void testRepeatWithEmptyString() throws Exception {
+  public void testRepeatWithEmptyString() {
     Automaton a = new RegExp("[^y]*{1,2}").toAutomaton();
     // paranoia:
     assertTrue(a.toString().length() > 0);
   }
 
-  public void testRepeatWithEmptyLanguage() throws Exception {
+  public void testRepeatWithEmptyLanguage() {
     Automaton a = new RegExp("#*").toAutomaton();
     // paranoia:
     assertTrue(a.toString().length() > 0);

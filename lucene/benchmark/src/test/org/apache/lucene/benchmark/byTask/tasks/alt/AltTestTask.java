@@ -27,7 +27,7 @@ public class AltTestTask extends PerfTask {
   }
 
   @Override
-  public int doLogic() throws Exception {
+  public int doLogic() {
     return 0;
   }
 }

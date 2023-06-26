@@ -118,7 +118,7 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
   }
 
   @Test
-  public void testBasics() throws IOException {
+  public void testBasics() {
     for (MultiTermQuery.RewriteMethod rw : CONSTANT_SCORE_REWRITES) {
       QueryUtils.check(csrq("data", "1", "6", T, T, rw));
       QueryUtils.check(csrq("data", "A", "Z", T, T, rw));

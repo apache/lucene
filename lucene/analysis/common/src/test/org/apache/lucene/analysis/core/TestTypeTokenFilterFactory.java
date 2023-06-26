@@ -55,7 +55,7 @@ public class TestTypeTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
     factory.create(input);
   }
 
-  public void testMissingTypesParameter() throws Exception {
+  public void testMissingTypesParameter() {
     // not supplying 'types' parameter should cause an IllegalArgumentException
     expectThrows(
         IllegalArgumentException.class,
@@ -65,7 +65,7 @@ public class TestTypeTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

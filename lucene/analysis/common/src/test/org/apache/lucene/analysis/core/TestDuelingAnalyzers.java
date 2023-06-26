@@ -47,7 +47,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
   private static CharacterRunAutomaton jvmLetter;
 
   @BeforeClass
-  public static void beforeClass() throws Exception {
+  public static void beforeClass() {
     Automaton single = new Automaton();
     int initial = single.createState();
     int accept = single.createState();
@@ -64,7 +64,7 @@ public class TestDuelingAnalyzers extends BaseTokenStreamTestCase {
   }
 
   @AfterClass
-  public static void afterClass() throws Exception {
+  public static void afterClass() {
     jvmLetter = null;
   }
 

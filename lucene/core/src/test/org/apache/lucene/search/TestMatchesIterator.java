@@ -526,7 +526,7 @@ public class TestMatchesIterator extends MatchesTestBase {
       }
 
       @Override
-      public boolean next() throws IOException {
+      public boolean next() {
         if (count == 0) {
           return false;
         } else {
@@ -546,17 +546,17 @@ public class TestMatchesIterator extends MatchesTestBase {
       }
 
       @Override
-      public int startOffset() throws IOException {
+      public int startOffset() {
         throw new AssertionError();
       }
 
       @Override
-      public int endOffset() throws IOException {
+      public int endOffset() {
         throw new AssertionError();
       }
 
       @Override
-      public MatchesIterator getSubMatches() throws IOException {
+      public MatchesIterator getSubMatches() {
         throw new AssertionError();
       }
 

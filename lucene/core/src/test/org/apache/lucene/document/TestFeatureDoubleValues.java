@@ -212,7 +212,7 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
           }
 
           @Override
-          public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
+          public DoubleValuesSource rewrite(IndexSearcher reader) {
             return null;
           }
 
@@ -227,8 +227,7 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
           }
 
           @Override
-          public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
-              throws IOException {
+          public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) {
             return null;
           }
 

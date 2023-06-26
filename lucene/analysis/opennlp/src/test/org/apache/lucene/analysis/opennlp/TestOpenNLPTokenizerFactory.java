@@ -77,7 +77,7 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
   }
 
   @Test
-  public void testTokenizerNoSentenceDetector() throws IOException {
+  public void testTokenizerNoSentenceDetector() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -91,7 +91,7 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
   }
 
   @Test
-  public void testTokenizerNoTokenizer() throws IOException {
+  public void testTokenizerNoTokenizer() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

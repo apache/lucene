@@ -467,7 +467,7 @@ public class TestBooleanRewrites extends LuceneTestCase {
     final IndexSearcher searcher2 =
         new IndexSearcher(reader) {
           @Override
-          public Query rewrite(Query original) throws IOException {
+          public Query rewrite(Query original) {
             // no-op: disable rewriting
             return original;
           }

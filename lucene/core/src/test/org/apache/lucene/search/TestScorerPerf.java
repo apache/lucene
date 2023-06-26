@@ -95,8 +95,7 @@ public class TestScorerPerf extends LuceneTestCase {
     }
 
     @Override
-    public CountingHitCollector reduce(Collection<CountingHitCollector> collectors)
-        throws IOException {
+    public CountingHitCollector reduce(Collection<CountingHitCollector> collectors) {
       CountingHitCollector result = new CountingHitCollector();
       for (CountingHitCollector collector : collectors) {
         result.count += collector.count;
@@ -126,7 +125,7 @@ public class TestScorerPerf extends LuceneTestCase {
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       docBase = context.docBase;
     }
 
@@ -163,11 +162,10 @@ public class TestScorerPerf extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           return new ConstantScoreScorer(
               this, score(), scoreMode, new BitSetIterator(docs, docs.approximateCardinality()));
         }

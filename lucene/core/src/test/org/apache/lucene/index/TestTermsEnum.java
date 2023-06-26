@@ -1069,7 +1069,7 @@ public class TestTermsEnum extends LuceneTestCase {
   }
 
   // LUCENE-7576
-  public void testInvalidAutomatonTermsEnum() throws Exception {
+  public void testInvalidAutomatonTermsEnum() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

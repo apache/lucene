@@ -314,7 +314,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testInvalidLeadWithAny() throws Exception {
+  public void testInvalidLeadWithAny() {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int s0 = q.createState();
     int s1 = q.createState();
@@ -329,7 +329,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
         });
   }
 
-  public void testInvalidTrailWithAny() throws Exception {
+  public void testInvalidTrailWithAny() {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int s0 = q.createState();
     int s1 = q.createState();
@@ -607,11 +607,10 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           int maxDoc = context.reader().maxDoc();
           FixedBitSet bits = new FixedBitSet(maxDoc);
           Random random = new Random(seed ^ context.docBase);
@@ -769,7 +768,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     IOUtils.close(w, r, dir);
   }
 
-  public void testEmptyString() throws Exception {
+  public void testEmptyString() {
     TermAutomatonQuery q = new TermAutomatonQuery("field");
     int initState = q.createState();
     q.setAccept(initState, true);
@@ -855,7 +854,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexSearcher searcher) throws IOException {
+    public Query rewrite(IndexSearcher searcher) {
       return this;
     }
   }

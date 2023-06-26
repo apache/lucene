@@ -61,7 +61,7 @@ public class TestStringHelper extends LuceneTestCase {
     assertTrue(StringHelper.endsWith(ref, slice));
   }
 
-  public void testMurmurHash3() throws Exception {
+  public void testMurmurHash3() {
     // Hashes computed using murmur3_32 from https://code.google.com/p/pyfasthash
     assertEquals(0xf6a5c420, StringHelper.murmurhash3_x86_32(newBytesRef("foo"), 0));
     assertEquals(0xcd018ef6, StringHelper.murmurhash3_x86_32(newBytesRef("foo"), 16));
@@ -79,7 +79,7 @@ public class TestStringHelper extends LuceneTestCase {
             3476));
   }
 
-  public void testSortKeyLength() throws Exception {
+  public void testSortKeyLength() {
     assertEquals(3, StringHelper.sortKeyLength(newBytesRef("foo"), newBytesRef("for")));
     assertEquals(3, StringHelper.sortKeyLength(newBytesRef("foo1234"), newBytesRef("for1234")));
     assertEquals(2, StringHelper.sortKeyLength(newBytesRef("foo"), newBytesRef("fz")));

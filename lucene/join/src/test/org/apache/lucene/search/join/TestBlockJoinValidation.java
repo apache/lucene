@@ -78,7 +78,7 @@ public class TestBlockJoinValidation extends LuceneTestCase {
     super.tearDown();
   }
 
-  public void testNextDocValidationForToParentBjq() throws Exception {
+  public void testNextDocValidationForToParentBjq() {
     Query parentQueryWithRandomChild = createChildrenQueryWithOneParent(getRandomChildNumber(0));
     ToParentBlockJoinQuery blockJoinQuery =
         new ToParentBlockJoinQuery(parentQueryWithRandomChild, parentsFilter, ScoreMode.None);
@@ -95,7 +95,7 @@ public class TestBlockJoinValidation extends LuceneTestCase {
                 .contains("Child query must not match same docs with parent filter"));
   }
 
-  public void testNextDocValidationForToChildBjq() throws Exception {
+  public void testNextDocValidationForToChildBjq() {
     Query parentQueryWithRandomChild = createParentsQueryWithOneChild(getRandomChildNumber(0));
 
     ToChildBlockJoinQuery blockJoinQuery =

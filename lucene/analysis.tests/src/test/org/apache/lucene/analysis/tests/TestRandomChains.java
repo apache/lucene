@@ -889,7 +889,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   }
 
                   @Override
-                  protected boolean shouldFilter() throws IOException {
+                  protected boolean shouldFilter() {
                     return random.nextBoolean();
                   }
                 };

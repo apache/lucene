@@ -171,7 +171,7 @@ public class TestQPHelper extends LuceneTestCase {
     private static class QPTestParserQueryNodeProcessor extends QueryNodeProcessorImpl {
 
       @Override
-      protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
+      protected QueryNode postProcessNode(QueryNode node) {
 
         return node;
       }
@@ -188,8 +188,7 @@ public class TestQPHelper extends LuceneTestCase {
       }
 
       @Override
-      protected List<QueryNode> setChildrenOrder(List<QueryNode> children)
-          throws QueryNodeException {
+      protected List<QueryNode> setChildrenOrder(List<QueryNode> children) {
 
         return children;
       }
@@ -204,7 +203,7 @@ public class TestQPHelper extends LuceneTestCase {
     originalMaxClauses = IndexSearcher.getMaxClauseCount();
   }
 
-  public StandardQueryParser getParser(Analyzer a) throws Exception {
+  public StandardQueryParser getParser(Analyzer a) {
     if (a == null) a = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     StandardQueryParser qp = new StandardQueryParser();
     qp.setAnalyzer(a);
@@ -236,7 +235,7 @@ public class TestQPHelper extends LuceneTestCase {
     assertMatchNoDocsQuery(getQuery(queryString, a));
   }
 
-  public void assertMatchNoDocsQuery(Query query) throws Exception {
+  public void assertMatchNoDocsQuery(Query query) {
     if (query instanceof MatchNoDocsQuery) {
       // good
     } else if (query instanceof BooleanQuery && ((BooleanQuery) query).clauses().size() == 0) {
@@ -264,7 +263,7 @@ public class TestQPHelper extends LuceneTestCase {
     }
   }
 
-  public void assertEscapedQueryEquals(String query, Analyzer a, String result) throws Exception {
+  public void assertEscapedQueryEquals(String query, Analyzer a, String result) {
     String escapedQuery = QueryParserUtil.escape(query);
     if (!escapedQuery.equals(result)) {
       fail("Query /" + query + "/ yielded /" + escapedQuery + "/, expecting /" + result + "/");
@@ -992,7 +991,7 @@ public class TestQPHelper extends LuceneTestCase {
     assertFalse(q instanceof BoostQuery);
   }
 
-  public void assertQueryNodeException(String queryString) throws Exception {
+  public void assertQueryNodeException(String queryString) {
     expectThrows(
         QueryNodeException.class,
         () -> {
@@ -1021,7 +1020,7 @@ public class TestQPHelper extends LuceneTestCase {
   }
 
   // Fuzzy queries should not be allowed"
-  public void testCustomQueryParserFuzzy() throws Exception {
+  public void testCustomQueryParserFuzzy() {
     expectThrows(
         QueryNodeException.class,
         () -> {
@@ -1031,7 +1030,7 @@ public class TestQPHelper extends LuceneTestCase {
   }
 
   // too many boolean clauses, so ParseException is expected
-  public void testBooleanQuery() throws Exception {
+  public void testBooleanQuery() {
     IndexSearcher.setMaxClauseCount(2);
     expectThrows(
         QueryNodeException.class,
@@ -1084,7 +1083,7 @@ public class TestQPHelper extends LuceneTestCase {
   //    iw.addDocument(d);
   //  }
 
-  public void testStarParsing() throws Exception {
+  public void testStarParsing() {
     // final int[] type = new int[1];
     // StandardQueryParser qp = new StandardQueryParser("field", new
     // WhitespaceAnalyzer()) {

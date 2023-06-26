@@ -43,7 +43,7 @@ public class TestSpanNotQuery extends LuceneTestCase {
     QueryUtils.checkUnequal(not1, not2);
   }
 
-  public void testDifferentField() throws Exception {
+  public void testDifferentField() {
     SpanTermQuery q1 = new SpanTermQuery(new Term("field1", "foo"));
     SpanTermQuery q2 = new SpanTermQuery(new Term("field2", "bar"));
     IllegalArgumentException expected =

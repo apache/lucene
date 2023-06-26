@@ -76,8 +76,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
           }
 
           @Override
-          public OffsetsEnum getOffsetsEnum(LeafReader reader, int docId, String content)
-              throws IOException {
+          public OffsetsEnum getOffsetsEnum(LeafReader reader, int docId, String content) {
             return OffsetsEnum.EMPTY;
           }
 

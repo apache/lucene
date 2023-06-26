@@ -37,7 +37,7 @@ public class TestLengthFilterFactory extends BaseTokenStreamFactoryTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -55,7 +55,7 @@ public class TestLengthFilterFactory extends BaseTokenStreamFactoryTestCase {
   }
 
   /** Test that invalid arguments result in exception */
-  public void testInvalidArguments() throws Exception {
+  public void testInvalidArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

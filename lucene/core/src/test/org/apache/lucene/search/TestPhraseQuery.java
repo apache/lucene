@@ -351,7 +351,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     directory.close();
   }
 
-  public void testToString() throws Exception {
+  public void testToString() {
     PhraseQuery q = new PhraseQuery("field", new String[0]);
     assertEquals("\"\"", q.toString());
 
@@ -558,7 +558,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   }
 
   // LUCENE-1280
-  public void testEmptyPhraseQuery() throws Throwable {
+  public void testEmptyPhraseQuery() {
     final BooleanQuery.Builder q2 = new BooleanQuery.Builder();
     q2.add(new PhraseQuery("field", new String[0]), BooleanClause.Occur.MUST);
     q2.build().toString();
@@ -714,7 +714,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     dir.close();
   }
 
-  public void testNegativeSlop() throws Exception {
+  public void testNegativeSlop() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -722,7 +722,7 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
-  public void testNegativePosition() throws Exception {
+  public void testNegativePosition() {
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     expectThrows(
         IllegalArgumentException.class,
@@ -731,7 +731,7 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
-  public void testBackwardPositions() throws Exception {
+  public void testBackwardPositions() {
     PhraseQuery.Builder builder = new PhraseQuery.Builder();
     builder.add(new Term("field", "one"), 1);
     builder.add(new Term("field", "two"), 5);
@@ -933,12 +933,12 @@ public class TestPhraseQuery extends LuceneTestCase {
     }
 
     @Override
-    public void advanceShallow(int target) throws IOException {
+    public void advanceShallow(int target) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public Impacts getImpacts() throws IOException {
+    public Impacts getImpacts() {
       return new Impacts() {
 
         @Override
@@ -959,27 +959,27 @@ public class TestPhraseQuery extends LuceneTestCase {
     }
 
     @Override
-    public int freq() throws IOException {
+    public int freq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int nextPosition() throws IOException {
+    public int nextPosition() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int startOffset() throws IOException {
+    public int startOffset() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int endOffset() throws IOException {
+    public int endOffset() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public BytesRef getPayload() throws IOException {
+    public BytesRef getPayload() {
       throw new UnsupportedOperationException();
     }
 
@@ -989,12 +989,12 @@ public class TestPhraseQuery extends LuceneTestCase {
     }
 
     @Override
-    public int nextDoc() throws IOException {
+    public int nextDoc() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int advance(int target) throws IOException {
+    public int advance(int target) {
       throw new UnsupportedOperationException();
     }
 

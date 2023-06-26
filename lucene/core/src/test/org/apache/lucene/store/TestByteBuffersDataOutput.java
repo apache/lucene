@@ -241,7 +241,7 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
   }
 
   @Test
-  public void testToBufferListReturnsReadOnlyBuffers() throws Exception {
+  public void testToBufferListReturnsReadOnlyBuffers() {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     dst.writeBytes(new byte[100]);
     for (ByteBuffer bb : dst.toBufferList()) {
@@ -250,7 +250,7 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
   }
 
   @Test
-  public void testToWriteableBufferListReturnsOriginalBuffers() throws Exception {
+  public void testToWriteableBufferListReturnsOriginalBuffers() {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     for (ByteBuffer bb : dst.toWriteableBufferList()) {
       assertTrue(!bb.isReadOnly());

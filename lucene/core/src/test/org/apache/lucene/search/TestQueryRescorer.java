@@ -488,13 +488,12 @@ public class TestQueryRescorer extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
 
       return new Weight(FixedScoreQuery.this) {
 
         @Override
-        public Scorer scorer(final LeafReaderContext context) throws IOException {
+        public Scorer scorer(final LeafReaderContext context) {
 
           return new Scorer(this) {
             int docID = -1;
@@ -550,7 +549,7 @@ public class TestQueryRescorer extends LuceneTestCase {
             }
 
             @Override
-            public float getMaxScore(int upTo) throws IOException {
+            public float getMaxScore(int upTo) {
               return Float.POSITIVE_INFINITY;
             }
           };
@@ -562,7 +561,7 @@ public class TestQueryRescorer extends LuceneTestCase {
         }
 
         @Override
-        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+        public Explanation explain(LeafReaderContext context, int doc) {
           return null;
         }
       };

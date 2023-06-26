@@ -180,7 +180,7 @@ public class TestRegexpQuery extends LuceneTestCase {
   }
 
   /** Test worst-case for getCommonSuffix optimization */
-  public void testSlowCommonSuffix() throws Exception {
+  public void testSlowCommonSuffix() {
     expectThrows(
         TooComplexToDeterminizeException.class,
         () -> {

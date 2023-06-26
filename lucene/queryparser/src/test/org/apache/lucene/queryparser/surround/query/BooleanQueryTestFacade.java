@@ -72,12 +72,12 @@ public class BooleanQueryTestFacade {
     }
 
     @Override
-    public void setScorer(Scorable scorer) throws IOException {
+    public void setScorer(Scorable scorer) {
       this.scorer = scorer;
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       docBase = context.docBase;
     }
 

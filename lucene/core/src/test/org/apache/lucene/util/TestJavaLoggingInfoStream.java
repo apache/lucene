@@ -28,7 +28,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestJavaLoggingInfoStream extends LuceneTestCase {
 
-  public void test() throws Exception {
+  public void test() {
     assumeTrue(
         "invalid logging configuration for testing", Logger.getGlobal().isLoggable(Level.WARNING));
     final var component = "TESTCOMPONENT" + random().nextInt();

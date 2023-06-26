@@ -264,7 +264,7 @@ public class TestTeeSinkTokenFilter extends BaseTokenStreamTestCase {
     }
 
     @Override
-    protected boolean accept() throws IOException {
+    protected boolean accept() {
       boolean b = count % modCount == 0;
       count++;
       return b;

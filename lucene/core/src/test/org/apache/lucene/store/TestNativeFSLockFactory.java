@@ -35,7 +35,7 @@ import org.apache.lucene.util.IOUtils;
 public class TestNativeFSLockFactory extends BaseLockFactoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return newFSDirectory(path, NativeFSLockFactory.INSTANCE);
   }
 

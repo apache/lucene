@@ -82,10 +82,10 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
       reqExcl.score(
           new LeafCollector() {
             @Override
-            public void setScorer(Scorable scorer) throws IOException {}
+            public void setScorer(Scorable scorer) {}
 
             @Override
-            public void collect(int doc) throws IOException {
+            public void collect(int doc) {
               actualMatches.set(doc);
             }
           },
@@ -99,10 +99,10 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
             reqExcl.score(
                 new LeafCollector() {
                   @Override
-                  public void setScorer(Scorable scorer) throws IOException {}
+                  public void setScorer(Scorable scorer) {}
 
                   @Override
-                  public void collect(int doc) throws IOException {
+                  public void collect(int doc) {
                     actualMatches.set(doc);
                   }
                 },

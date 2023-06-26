@@ -37,7 +37,7 @@ public class TestNoDeletionPolicy extends LuceneTestCase {
   }
 
   @Test
-  public void testFinalSingleton() throws Exception {
+  public void testFinalSingleton() {
     assertTrue(Modifier.isFinal(NoDeletionPolicy.class.getModifiers()));
     Constructor<?>[] ctors = NoDeletionPolicy.class.getDeclaredConstructors();
     assertEquals("expected 1 private ctor only: " + Arrays.toString(ctors), 1, ctors.length);
@@ -46,7 +46,7 @@ public class TestNoDeletionPolicy extends LuceneTestCase {
   }
 
   @Test
-  public void testMethodsOverridden() throws Exception {
+  public void testMethodsOverridden() {
     // Ensures that all methods of IndexDeletionPolicy are
     // overridden/implemented. That's important to ensure that NoDeletionPolicy
     // overrides everything, so that no unexpected behavior/error occurs.

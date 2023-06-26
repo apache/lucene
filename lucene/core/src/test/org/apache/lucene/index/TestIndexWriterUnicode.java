@@ -168,7 +168,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
   }
 
   // LUCENE-510
-  public void testRandomUnicodeStrings() throws Throwable {
+  public void testRandomUnicodeStrings() {
     char[] buffer = new char[20];
     char[] expected = new char[20];
 
@@ -192,7 +192,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
   }
 
   // LUCENE-510
-  public void testAllUnicodeChars() throws Throwable {
+  public void testAllUnicodeChars() {
 
     CharsRefBuilder utf16 = new CharsRefBuilder();
     char[] chars = new char[2];

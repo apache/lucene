@@ -108,7 +108,7 @@ public class TestConcatenatingTokenStream extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testInconsistentAttributeFactories() throws IOException {
+  public void testInconsistentAttributeFactories() {
 
     final MockTokenizer first =
         new MockTokenizer(

@@ -227,7 +227,7 @@ public class TestMultiTermQueryRewrites extends LuceneTestCase {
     checkBoosts(new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(1024));
   }
 
-  private void checkMaxClauseLimitation(MultiTermQuery.RewriteMethod method) throws Exception {
+  private void checkMaxClauseLimitation(MultiTermQuery.RewriteMethod method) {
     int savedMaxClauseCount = IndexSearcher.getMaxClauseCount();
     IndexSearcher.setMaxClauseCount(3);
 

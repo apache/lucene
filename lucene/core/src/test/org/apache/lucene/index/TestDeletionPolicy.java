@@ -68,7 +68,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     }
 
     @Override
-    public void onInit(List<? extends IndexCommit> commits) throws IOException {
+    public void onInit(List<? extends IndexCommit> commits) {
       verifyCommitOrder(commits);
       numOnInit++;
     }
@@ -96,7 +96,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     int numOnCommit;
 
     @Override
-    public void onInit(List<? extends IndexCommit> commits) throws IOException {
+    public void onInit(List<? extends IndexCommit> commits) {
       verifyCommitOrder(commits);
       numOnInit++;
       // On init, delete all commit points:
@@ -107,7 +107,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     }
 
     @Override
-    public void onCommit(List<? extends IndexCommit> commits) throws IOException {
+    public void onCommit(List<? extends IndexCommit> commits) {
       verifyCommitOrder(commits);
       int size = commits.size();
       // Delete all but last one:
@@ -130,7 +130,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     }
 
     @Override
-    public void onInit(List<? extends IndexCommit> commits) throws IOException {
+    public void onInit(List<? extends IndexCommit> commits) {
       if (VERBOSE) {
         System.out.println("TEST: onInit");
       }
@@ -141,7 +141,7 @@ public class TestDeletionPolicy extends LuceneTestCase {
     }
 
     @Override
-    public void onCommit(List<? extends IndexCommit> commits) throws IOException {
+    public void onCommit(List<? extends IndexCommit> commits) {
       if (VERBOSE) {
         System.out.println("TEST: onCommit");
       }

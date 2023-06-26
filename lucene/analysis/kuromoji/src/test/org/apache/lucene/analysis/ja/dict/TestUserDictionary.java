@@ -75,13 +75,13 @@ public class TestUserDictionary extends LuceneTestCase {
   }
 
   @Test
-  public void testRead() throws IOException {
+  public void testRead() {
     UserDictionary dictionary = TestJapaneseTokenizer.readDict();
     assertNotNull(dictionary);
   }
 
   @Test
-  public void testReadInvalid1() throws IOException {
+  public void testReadInvalid1() {
     // the concatenated segment must be the same as the surface form
     String invalidEntry = "日経新聞,日本 経済 新聞,ニホン ケイザイ シンブン,カスタム名詞";
     RuntimeException e =
@@ -93,7 +93,7 @@ public class TestUserDictionary extends LuceneTestCase {
   }
 
   @Test
-  public void testReadInvalid2() throws IOException {
+  public void testReadInvalid2() {
     // the concatenated segment must be the same as the surface form
     String invalidEntry = "日本経済新聞,日経 新聞,ニッケイ シンブン,カスタム名詞";
     RuntimeException e =

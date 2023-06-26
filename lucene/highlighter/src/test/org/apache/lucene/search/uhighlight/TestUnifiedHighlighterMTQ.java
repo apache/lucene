@@ -89,7 +89,7 @@ public class TestUnifiedHighlighterMTQ extends LuceneTestCase {
   }
 
   @Before
-  public void doBefore() throws IOException {
+  public void doBefore() {
     dir = newDirectory();
     indexAnalyzer =
         new MockAnalyzer(

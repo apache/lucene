@@ -541,7 +541,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
             }
 
             @Override
-            public float getMaxScore(int upTo) throws IOException {
+            public float getMaxScore(int upTo) {
               return Float.POSITIVE_INFINITY;
             }
 

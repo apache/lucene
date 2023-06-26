@@ -54,7 +54,7 @@ public class TestLongRangeFieldQueries extends BaseRangeFieldQueryTestCase {
   }
 
   @Override
-  protected Range nextRange(int dimensions) throws Exception {
+  protected Range nextRange(int dimensions) {
     long[] min = new long[dimensions];
     long[] max = new long[dimensions];
 

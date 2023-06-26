@@ -42,7 +42,7 @@ public class TestJapaneseCompletionFilterFactory extends BaseTokenStreamFactoryT
 
   /** Test that bogus arguments result in exception */
   @Test
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

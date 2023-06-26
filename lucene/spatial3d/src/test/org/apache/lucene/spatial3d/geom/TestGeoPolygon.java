@@ -1246,7 +1246,7 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  public void testLUCENE8140() throws Exception {
+  public void testLUCENE8140() {
     // POINT(15.426026 68.35078) is coplanar
     // "POLYGON((15.426411 68.35069,15.4261 68.35078,15.426026 68.35078,15.425868 68.35078,15.425745
     // 68.350746,15.426411 68.35069))";
@@ -1303,7 +1303,7 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  public void testCoplanarityTileConvex() throws Exception {
+  public void testCoplanarityTileConvex() {
     // This test has been disabled because it is possible that the polygon specified actually
     // intersects itself.
     // POLYGON((24.39398 65.77519,24.3941 65.77498,24.394024 65.77497,24.393976 65.77495,24.393963
@@ -1366,7 +1366,7 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  public void testCoplanarityConcave() throws Exception {
+  public void testCoplanarityConcave() {
     // POLYGON((-52.18851 64.53777,-52.18853 64.53828,-52.18675 64.53829,-52.18676
     // 64.53855,-52.18736 64.53855,-52.18737 64.53881,-52.18677 64.53881,-52.18683
     // 64.54009,-52.18919 64.53981,-52.18916 64.53905,-52.19093 64.53878,-52.19148
@@ -1414,7 +1414,7 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   @Test
-  public void testCoplanarityConvex2() throws Exception {
+  public void testCoplanarityConvex2() {
     // POLYGON((-3.488658 50.45564,-3.4898987 50.455627,-3.489865 50.455585,-3.489833
     // 50.45551,-3.489808 50.455433,-3.489806 50.455406,-3.4898643 50.45525,-3.4892037
     // 50.455162,-3.4891756 50.455166,-3.4891088 50.455147,-3.4890108 50.455166,-3.4889853
@@ -1522,7 +1522,7 @@ public class TestGeoPolygon extends LuceneTestCase {
    [junit4]   1>       quantized=[X=-0.9951793580415914, Y=-0.10888987641797832, Z=-2.3309121299774915E-10]
   */
   @Test
-  public void testLUCENE8227() throws Exception {
+  public void testLUCENE8227() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -0.63542308910253, 0.9853722928232957));
     points.add(new GeoPoint(PlanetModel.WGS84, 0.0, 0.0));

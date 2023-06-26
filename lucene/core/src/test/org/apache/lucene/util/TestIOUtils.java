@@ -47,7 +47,7 @@ public class TestIOUtils extends LuceneTestCase {
     // actually deletes
   }
 
-  public void testDontDeleteFileIgnoringExceptions() throws Exception {
+  public void testDontDeleteFileIgnoringExceptions() {
     Path dir = createTempDir();
     Path file1 = dir.resolve("file1");
     IOUtils.deleteFilesIgnoringExceptions(file1);

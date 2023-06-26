@@ -131,7 +131,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
       }
 
       @Override
-      protected AcceptStatus accept(BytesRef term) throws IOException {
+      protected AcceptStatus accept(BytesRef term) {
         utf16.copyUTF8Bytes(term.bytes, term.offset, term.length);
         return runAutomaton.run(utf16.chars(), 0, utf16.length())
             ? AcceptStatus.YES

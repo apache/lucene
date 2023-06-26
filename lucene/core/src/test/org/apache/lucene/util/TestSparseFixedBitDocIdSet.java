@@ -26,7 +26,7 @@ import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 public class TestSparseFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet> {
 
   @Override
-  public BitDocIdSet copyOf(BitSet bs, int length) throws IOException {
+  public BitDocIdSet copyOf(BitSet bs, int length) {
     final SparseFixedBitSet set = new SparseFixedBitSet(length);
     // SparseFixedBitSet can be sensitive to the order of insertion so
     // randomize insertion a bit

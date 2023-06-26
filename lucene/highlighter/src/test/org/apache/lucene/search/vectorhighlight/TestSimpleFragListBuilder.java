@@ -28,7 +28,7 @@ public class TestSimpleFragListBuilder extends AbstractTestCase {
     assertEquals(0, ffl.getFragInfos().size());
   }
 
-  public void testTooSmallFragSize() throws Exception {
+  public void testTooSmallFragSize() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

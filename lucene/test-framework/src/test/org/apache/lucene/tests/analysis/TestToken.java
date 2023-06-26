@@ -38,7 +38,7 @@ import org.apache.lucene.util.BytesRef;
 
 public class TestToken extends LuceneTestCase {
 
-  public void testCtor() throws Exception {
+  public void testCtor() {
     Token t = new Token("hello", 0, 0);
     assertEquals(0, t.startOffset());
     assertEquals(0, t.endOffset());
@@ -52,7 +52,7 @@ public class TestToken extends LuceneTestCase {
 
   /* the CharTermAttributeStuff is tested by TestCharTermAttributeImpl */
 
-  public void testClone() throws Exception {
+  public void testClone() {
     Token t = new Token();
     t.setOffset(0, 5);
     char[] content = "hello".toCharArray();
@@ -115,7 +115,7 @@ public class TestToken extends LuceneTestCase {
     public void reflectWith(AttributeReflector reflector) {}
   }
 
-  public void testTokenAttributeFactory() throws Exception {
+  public void testTokenAttributeFactory() {
     TokenStream ts =
         new MockTokenizer(
             Token.TOKEN_ATTRIBUTE_FACTORY,
@@ -148,7 +148,7 @@ public class TestToken extends LuceneTestCase {
         ts.addAttribute(TypeAttribute.class) instanceof Token);
   }
 
-  public void testAttributeReflection() throws Exception {
+  public void testAttributeReflection() {
     Token t = new Token("foobar", 6, 22);
     t.setFlags(8);
     t.setPositionIncrement(3);

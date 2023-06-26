@@ -23,7 +23,7 @@ import org.junit.Test;
 public class TestConfig extends LuceneTestCase {
 
   @Test
-  public void testAbsolutePathNamesWindows() throws Exception {
+  public void testAbsolutePathNamesWindows() {
     Properties props = new Properties();
     props.setProperty("work.dir1", "c:\\temp");
     props.setProperty("work.dir2", "c:/temp");

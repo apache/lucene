@@ -147,7 +147,7 @@ public class TestSpanQueryParser extends LuceneTestCase {
     assertTrue(getSpanQuery("term1 term2") instanceof SpanOrQuery);
   }
 
-  public void testQueryValidator() throws QueryNodeException {
+  public void testQueryValidator() {
 
     expectThrows(
         QueryNodeException.class,

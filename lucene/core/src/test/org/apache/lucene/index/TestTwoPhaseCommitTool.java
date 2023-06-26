@@ -53,7 +53,7 @@ public class TestTwoPhaseCommitTool extends LuceneTestCase {
       return commit(null);
     }
 
-    public long commit(Map<String, String> commitData) throws IOException {
+    public long commit(Map<String, String> commitData) {
       commitCalled = true;
       if (failOnCommit) {
         throw new RuntimeException("failOnCommit");
@@ -62,7 +62,7 @@ public class TestTwoPhaseCommitTool extends LuceneTestCase {
     }
 
     @Override
-    public void rollback() throws IOException {
+    public void rollback() {
       rollbackCalled = true;
       if (failOnRollback) {
         throw new Error("failOnRollback");
@@ -87,7 +87,7 @@ public class TestTwoPhaseCommitTool extends LuceneTestCase {
     TwoPhaseCommitTool.execute(objects);
   }
 
-  public void testRollback() throws Exception {
+  public void testRollback() {
     // tests that rollback is called if failure occurs at any stage
     int numObjects = random().nextInt(8) + 3; // between [3, 10]
     TwoPhaseCommitImpl[] objects = new TwoPhaseCommitImpl[numObjects];

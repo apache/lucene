@@ -1353,8 +1353,7 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     a.close();
   }
 
-  private String pfmToString(AnalyzingInfixSuggester suggester, String surface, String prefix)
-      throws IOException {
+  private String pfmToString(AnalyzingInfixSuggester suggester, String surface, String prefix) {
     StringBuilder sb = new StringBuilder();
     suggester.addPrefixMatch(sb, surface, "", prefix);
     return sb.toString();

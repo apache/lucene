@@ -25,7 +25,7 @@ import org.apache.lucene.util.IOUtils;
 public class TestSimpleFSLockFactory extends BaseLockFactoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return newFSDirectory(path, SimpleFSLockFactory.INSTANCE);
   }
 

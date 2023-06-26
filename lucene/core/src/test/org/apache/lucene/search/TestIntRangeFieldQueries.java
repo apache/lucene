@@ -52,7 +52,7 @@ public class TestIntRangeFieldQueries extends BaseRangeFieldQueryTestCase {
   }
 
   @Override
-  protected Range nextRange(int dimensions) throws Exception {
+  protected Range nextRange(int dimensions) {
     int[] min = new int[dimensions];
     int[] max = new int[dimensions];
 

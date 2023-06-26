@@ -78,21 +78,21 @@ public class TestCoreParser extends LuceneTestCase {
     dumpResults("TermQuery", q, 5);
   }
 
-  public void test_DOCTYPE_TermQueryXML() throws ParserException, IOException {
+  public void test_DOCTYPE_TermQueryXML() {
     SAXException saxe =
         LuceneTestCase.expectThrows(
             ParserException.class, SAXException.class, () -> parse("DOCTYPE_TermQuery.xml"));
     assertTrue(saxe.getMessage().startsWith("External Entity resolving unsupported:"));
   }
 
-  public void test_ENTITY_TermQueryXML() throws ParserException, IOException {
+  public void test_ENTITY_TermQueryXML() {
     SAXException saxe =
         LuceneTestCase.expectThrows(
             ParserException.class, SAXException.class, () -> parse("ENTITY_TermQuery.xml"));
     assertTrue(saxe.getMessage().startsWith("External Entity resolving unsupported:"));
   }
 
-  public void testTermQueryEmptyXML() throws ParserException, IOException {
+  public void testTermQueryEmptyXML() throws IOException {
     parseShouldFail("TermQueryEmpty.xml", "TermQuery has no text");
   }
 
@@ -156,7 +156,7 @@ public class TestCoreParser extends LuceneTestCase {
     assertEquals(q, sq);
   }
 
-  public void testSpanNearQueryWithoutSlopXML() throws Exception {
+  public void testSpanNearQueryWithoutSlopXML() {
     Exception expectedException = new NumberFormatException("For input string: \"\"");
     try {
       Query q = parse("SpanNearQueryWithoutSlop.xml");

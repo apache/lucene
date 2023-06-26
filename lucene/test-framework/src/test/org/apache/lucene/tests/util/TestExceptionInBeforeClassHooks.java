@@ -103,7 +103,7 @@ public class TestExceptionInBeforeClassHooks extends WithNestedTests {
       t.join();
     }
 
-    public void test1() throws Exception {}
+    public void test1() {}
   }
 
   @Test

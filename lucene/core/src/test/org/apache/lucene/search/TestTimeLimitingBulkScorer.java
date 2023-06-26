@@ -17,7 +17,6 @@
 
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -74,8 +73,7 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
           int lastInterval = 0;
 
           @Override
-          public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-              throws IOException {
+          public int score(LeafCollector collector, Bits acceptDocs, int min, int max) {
             var difference = max - min;
             // the rate shouldn't overflow - only increase or remain equal
             assertTrue("Rate should only go up", difference >= lastInterval);
@@ -134,7 +132,7 @@ public class TestTimeLimitingBulkScorer extends LuceneTestCase {
       }
 
       @Override
-      public void collect(int doc) throws IOException {}
+      public void collect(int doc) {}
     };
   }
 }

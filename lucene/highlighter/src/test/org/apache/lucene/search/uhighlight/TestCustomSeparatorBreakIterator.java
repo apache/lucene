@@ -28,7 +28,7 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
 
   private static final Character[] SEPARATORS = new Character[] {' ', '\u0000', 8233};
 
-  public void testBreakOnCustomSeparator() throws Exception {
+  public void testBreakOnCustomSeparator() {
     Character separator = randomSeparator();
     BreakIterator bi = new CustomSeparatorBreakIterator(separator);
     String source =
@@ -78,7 +78,7 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
         equalTo("this" + separator + "is" + separator + "the" + separator));
   }
 
-  public void testSingleSentences() throws Exception {
+  public void testSingleSentences() {
     BreakIterator expected = BreakIterator.getSentenceInstance(Locale.ROOT);
     BreakIterator actual = new CustomSeparatorBreakIterator(randomSeparator());
     assertSameBreaks("a", expected, actual);
@@ -87,7 +87,7 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
     assertSameBreaks("", expected, actual);
   }
 
-  public void testSliceEnd() throws Exception {
+  public void testSliceEnd() {
     BreakIterator expected = BreakIterator.getSentenceInstance(Locale.ROOT);
     BreakIterator actual = new CustomSeparatorBreakIterator(randomSeparator());
     assertSameBreaks("a000", 0, 1, expected, actual);
@@ -96,7 +96,7 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
     assertSameBreaks("000", 0, 0, expected, actual);
   }
 
-  public void testSliceStart() throws Exception {
+  public void testSliceStart() {
     BreakIterator expected = BreakIterator.getSentenceInstance(Locale.ROOT);
     BreakIterator actual = new CustomSeparatorBreakIterator(randomSeparator());
     assertSameBreaks("000a", 3, 1, expected, actual);
@@ -105,7 +105,7 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
     assertSameBreaks("000", 3, 0, expected, actual);
   }
 
-  public void testSliceMiddle() throws Exception {
+  public void testSliceMiddle() {
     BreakIterator expected = BreakIterator.getSentenceInstance(Locale.ROOT);
     BreakIterator actual = new CustomSeparatorBreakIterator(randomSeparator());
     assertSameBreaks("000a000", 3, 1, expected, actual);
@@ -115,7 +115,7 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
   }
 
   /** the current position must be ignored, initial position is always first() */
-  public void testFirstPosition() throws Exception {
+  public void testFirstPosition() {
     BreakIterator expected = BreakIterator.getSentenceInstance(Locale.ROOT);
     BreakIterator actual = new CustomSeparatorBreakIterator(randomSeparator());
     assertSameBreaks("000ab000", 3, 2, 4, expected, actual);

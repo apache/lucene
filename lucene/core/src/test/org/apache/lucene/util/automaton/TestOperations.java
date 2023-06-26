@@ -126,7 +126,7 @@ public class TestOperations extends LuceneTestCase {
             Operations.determinize(nfa, 100), Operations.determinize(concat2, 100)));
   }
 
-  public void testGetRandomAcceptedString() throws Throwable {
+  public void testGetRandomAcceptedString() {
     final int ITER1 = atLeast(100);
     final int ITER2 = atLeast(100);
     for (int i = 0; i < ITER1; i++) {

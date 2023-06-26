@@ -43,7 +43,7 @@ import org.apache.lucene.util.NumericUtils;
 // sanity check some basics of fields
 public class TestField extends LuceneTestCase {
 
-  public void testDoublePoint() throws Exception {
+  public void testDoublePoint() {
     Field field = new DoublePoint("foo", 5d);
 
     trySetByteValue(field);
@@ -62,7 +62,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("DoublePoint <foo:6.0>", field.toString());
   }
 
-  public void testDoublePoint2D() throws Exception {
+  public void testDoublePoint2D() {
     DoublePoint field = new DoublePoint("foo", 5d, 4d);
 
     trySetByteValue(field);
@@ -88,7 +88,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("DoublePoint <foo:6.0,7.0>", field.toString());
   }
 
-  public void testDoubleDocValuesField() throws Exception {
+  public void testDoubleDocValuesField() {
     DoubleDocValuesField field = new DoubleDocValuesField("foo", 5d);
 
     trySetByteValue(field);
@@ -106,7 +106,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(6d, Double.longBitsToDouble(field.numericValue().longValue()), 0.0d);
   }
 
-  public void testFloatDocValuesField() throws Exception {
+  public void testFloatDocValuesField() {
     FloatDocValuesField field = new FloatDocValuesField("foo", 5f);
 
     trySetByteValue(field);
@@ -124,7 +124,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(6f, Float.intBitsToFloat(field.numericValue().intValue()), 0.0f);
   }
 
-  public void testFloatPoint() throws Exception {
+  public void testFloatPoint() {
     Field field = new FloatPoint("foo", 5f);
 
     trySetByteValue(field);
@@ -143,7 +143,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("FloatPoint <foo:6.0>", field.toString());
   }
 
-  public void testFloatPoint2D() throws Exception {
+  public void testFloatPoint2D() {
     FloatPoint field = new FloatPoint("foo", 5f, 4f);
 
     trySetByteValue(field);
@@ -169,7 +169,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("FloatPoint <foo:6.0,7.0>", field.toString());
   }
 
-  public void testIntPoint() throws Exception {
+  public void testIntPoint() {
     Field field = new IntPoint("foo", 5);
 
     trySetByteValue(field);
@@ -188,7 +188,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("IntPoint <foo:6>", field.toString());
   }
 
-  public void testIntPoint2D() throws Exception {
+  public void testIntPoint2D() {
     IntPoint field = new IntPoint("foo", 5, 4);
 
     trySetByteValue(field);
@@ -214,7 +214,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("IntPoint <foo:6,7>", field.toString());
   }
 
-  public void testIntField() throws Exception {
+  public void testIntField() {
     Field[] fields =
         new Field[] {
           new IntField("foo", 12, Field.Store.NO), new IntField("foo", 12, Field.Store.YES),
@@ -245,7 +245,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testLongField() throws Exception {
+  public void testLongField() {
     Field[] fields =
         new Field[] {
           new LongField("foo", 12, Field.Store.NO), new LongField("foo", 12, Field.Store.YES),
@@ -275,7 +275,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testFloatField() throws Exception {
+  public void testFloatField() {
     Field[] fields =
         new Field[] {
           new FloatField("foo", 12.6f, Field.Store.NO),
@@ -310,7 +310,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testDoubleField() throws Exception {
+  public void testDoubleField() {
     Field[] fields =
         new Field[] {
           new DoubleField("foo", 12.7, Field.Store.NO),
@@ -346,7 +346,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testNumericDocValuesField() throws Exception {
+  public void testNumericDocValuesField() {
     NumericDocValuesField field = new NumericDocValuesField("foo", 5L);
 
     trySetByteValue(field);
@@ -364,7 +364,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(6L, field.numericValue().longValue());
   }
 
-  public void testLongPoint() throws Exception {
+  public void testLongPoint() {
     Field field = new LongPoint("foo", 5);
 
     trySetByteValue(field);
@@ -383,7 +383,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("LongPoint <foo:6>", field.toString());
   }
 
-  public void testLongPoint2D() throws Exception {
+  public void testLongPoint2D() {
     LongPoint field = new LongPoint("foo", 5, 4);
 
     trySetByteValue(field);
@@ -409,7 +409,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("LongPoint <foo:6,7>", field.toString());
   }
 
-  public void testSortedBytesDocValuesField() throws Exception {
+  public void testSortedBytesDocValuesField() {
     SortedDocValuesField field = new SortedDocValuesField("foo", newBytesRef("bar"));
 
     trySetByteValue(field);
@@ -427,7 +427,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(newBytesRef("baz"), field.binaryValue());
   }
 
-  public void testBinaryDocValuesField() throws Exception {
+  public void testBinaryDocValuesField() {
     BinaryDocValuesField field = new BinaryDocValuesField("foo", newBytesRef("bar"));
 
     trySetByteValue(field);
@@ -445,7 +445,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(newBytesRef("baz"), field.binaryValue());
   }
 
-  public void testStringField() throws Exception {
+  public void testStringField() {
     Field[] fields =
         new Field[] {
           new StringField("foo", "bar", Field.Store.NO),
@@ -474,7 +474,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testBinaryStringField() throws Exception {
+  public void testBinaryStringField() {
     Field[] fields =
         new Field[] {
           new StringField("foo", new BytesRef("bar"), Field.Store.NO),
@@ -504,7 +504,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testTextFieldString() throws Exception {
+  public void testTextFieldString() {
     Field[] fields =
         new Field[] {
           new TextField("foo", "bar", Field.Store.NO), new TextField("foo", "bar", Field.Store.YES)
@@ -532,7 +532,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testTextFieldReader() throws Exception {
+  public void testTextFieldReader() {
     Field field = new TextField("foo", new StringReader("bar"));
 
     trySetByteValue(field);
@@ -557,7 +557,7 @@ public class TestField extends LuceneTestCase {
   }
   */
 
-  public void testStoredFieldBytes() throws Exception {
+  public void testStoredFieldBytes() {
     Field[] fields =
         new Field[] {
           new StoredField("foo", "bar".getBytes(StandardCharsets.UTF_8)),
@@ -582,7 +582,7 @@ public class TestField extends LuceneTestCase {
     }
   }
 
-  public void testStoredFieldString() throws Exception {
+  public void testStoredFieldString() {
     Field field = new StoredField("foo", "bar");
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -599,7 +599,7 @@ public class TestField extends LuceneTestCase {
     assertEquals("baz", field.stringValue());
   }
 
-  public void testStoredFieldInt() throws Exception {
+  public void testStoredFieldInt() {
     Field field = new StoredField("foo", 1);
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -616,7 +616,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(5, field.numericValue().intValue());
   }
 
-  public void testStoredFieldDouble() throws Exception {
+  public void testStoredFieldDouble() {
     Field field = new StoredField("foo", 1D);
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -633,7 +633,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(5D, field.numericValue().doubleValue(), 0.0D);
   }
 
-  public void testStoredFieldFloat() throws Exception {
+  public void testStoredFieldFloat() {
     Field field = new StoredField("foo", 1F);
     trySetByteValue(field);
     trySetBytesValue(field);
@@ -650,7 +650,7 @@ public class TestField extends LuceneTestCase {
     assertEquals(5f, field.numericValue().floatValue(), 0.0f);
   }
 
-  public void testStoredFieldLong() throws Exception {
+  public void testStoredFieldLong() {
     Field field = new StoredField("foo", 1L);
     trySetByteValue(field);
     trySetBytesValue(field);

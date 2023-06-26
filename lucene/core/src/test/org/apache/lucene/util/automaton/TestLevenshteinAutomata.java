@@ -25,23 +25,23 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 public class TestLevenshteinAutomata extends LuceneTestCase {
 
-  public void testLev0() throws Exception {
+  public void testLev0() {
     assertLev("", 0);
     assertCharVectors(0);
   }
 
-  public void testLev1() throws Exception {
+  public void testLev1() {
     assertLev("", 1);
     assertCharVectors(1);
   }
 
-  public void testLev2() throws Exception {
+  public void testLev2() {
     assertLev("", 2);
     assertCharVectors(2);
   }
 
   // LUCENE-3094
-  public void testNoWastedStates() throws Exception {
+  public void testNoWastedStates() {
     assertFalse(
         Operations.hasDeadStatesFromInitial(new LevenshteinAutomata("abc", false).toAutomaton(1)));
   }

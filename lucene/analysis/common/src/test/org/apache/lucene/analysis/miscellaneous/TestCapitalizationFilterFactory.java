@@ -354,7 +354,7 @@ public class TestCapitalizationFilterFactory extends BaseTokenStreamFactoryTestC
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -365,7 +365,7 @@ public class TestCapitalizationFilterFactory extends BaseTokenStreamFactoryTestC
   }
 
   /** Test that invalid arguments result in exception */
-  public void testInvalidArguments() throws Exception {
+  public void testInvalidArguments() {
     for (final String arg : new String[] {"minWordLength", "maxTokenLength", "maxWordCount"}) {
       IllegalArgumentException expected =
           expectThrows(

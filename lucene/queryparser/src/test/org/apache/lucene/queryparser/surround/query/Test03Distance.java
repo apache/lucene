@@ -40,7 +40,7 @@ public class Test03Distance extends LuceneTestCase {
     "(aa or (bb and dd)) w cc"
   };
 
-  public void test00Exceptions() throws Exception {
+  public void test00Exceptions() {
     String m = ExceptionQueryTestFacade.getFailQueries(exceptionQueries, verbose);
     if (m.length() > 0) {
       fail("No ParseException for:\n" + m);

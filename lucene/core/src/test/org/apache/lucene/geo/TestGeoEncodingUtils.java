@@ -40,7 +40,7 @@ public class TestGeoEncodingUtils extends LuceneTestCase {
    * start at -90 and increase by LATITUDE_DECODE for each integer. check edge cases within the
    * double range and random doubles within the range too.
    */
-  public void testLatitudeQuantization() throws Exception {
+  public void testLatitudeQuantization() {
     final double LATITUDE_DECODE = 180.0D / (0x1L << 32);
     Random random = random();
     for (int i = 0; i < 10000; i++) {
@@ -90,7 +90,7 @@ public class TestGeoEncodingUtils extends LuceneTestCase {
    * start at -180 and increase by LONGITUDE_DECODE for each integer. check edge cases within the
    * double range and a random doubles within the range too.
    */
-  public void testLongitudeQuantization() throws Exception {
+  public void testLongitudeQuantization() {
     final double LONGITUDE_DECODE = 360.0D / (0x1L << 32);
     Random random = random();
     for (int i = 0; i < 10000; i++) {

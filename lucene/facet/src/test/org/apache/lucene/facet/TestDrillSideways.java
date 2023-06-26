@@ -1207,12 +1207,11 @@ public class TestDrillSideways extends FacetTestCase {
             new Query() {
 
               @Override
-              public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-                  throws IOException {
+              public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
                 return new ConstantScoreWeight(this, boost) {
 
                   @Override
-                  public Scorer scorer(LeafReaderContext context) throws IOException {
+                  public Scorer scorer(LeafReaderContext context) {
                     DocIdSetIterator approximation =
                         DocIdSetIterator.all(context.reader().maxDoc());
                     return new ConstantScoreScorer(

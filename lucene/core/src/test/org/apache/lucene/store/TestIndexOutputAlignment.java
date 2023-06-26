@@ -65,7 +65,7 @@ public class TestIndexOutputAlignment extends LuceneTestCase {
     assertThrows(IllegalArgumentException.class, () -> IndexOutput.alignOffset(1L, size));
   }
 
-  public void testOutputAlignment() throws IOException {
+  public void testOutputAlignment() {
     IntStream.of(Long.BYTES, Integer.BYTES, Short.BYTES, Byte.BYTES)
         .forEach(TestIndexOutputAlignment::runTestOutputAlignment);
   }

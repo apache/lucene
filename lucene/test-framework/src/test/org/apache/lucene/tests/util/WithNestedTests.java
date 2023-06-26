@@ -122,7 +122,7 @@ public abstract class WithNestedTests {
             .around(
                 new TestRuleAdapter() {
                   @Override
-                  protected void afterAlways(List<Throwable> errors) throws Throwable {
+                  protected void afterAlways(List<Throwable> errors) {
                     if (marker.hadFailures() && suppressOutputStreams) {
                       System.out.println("sysout from nested test: " + getSysOut() + "\n");
                       System.out.println("syserr from nested test: " + getSysErr());

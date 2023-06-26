@@ -90,7 +90,7 @@ public class TestShingleAnalyzerWrapper extends BaseTokenStreamTestCase {
     super.tearDown();
   }
 
-  protected void compareRanks(ScoreDoc[] hits, int[] ranks) throws Exception {
+  protected void compareRanks(ScoreDoc[] hits, int[] ranks) {
     assertEquals(ranks.length, hits.length);
     for (int i = 0; i < ranks.length; i++) {
       assertEquals(ranks[i], hits[i].doc);

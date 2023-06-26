@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
@@ -24,7 +23,7 @@ import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 public class TestIntArrayDocIdSet extends BaseDocIdSetTestCase<IntArrayDocIdSet> {
 
   @Override
-  public IntArrayDocIdSet copyOf(BitSet bs, int length) throws IOException {
+  public IntArrayDocIdSet copyOf(BitSet bs, int length) {
     int[] docs = new int[0];
     int l = 0;
     for (int i = bs.nextSetBit(0); i != -1; i = bs.nextSetBit(i + 1)) {

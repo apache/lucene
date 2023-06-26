@@ -134,7 +134,7 @@ public class TestAttributeSource extends LuceneTestCase {
     assertEquals("TypeAttribute of original and clone must be equal", typeAtt2, typeAtt);
   }
 
-  public void testDefaultAttributeFactory() throws Exception {
+  public void testDefaultAttributeFactory() {
     AttributeSource src = new AttributeSource();
 
     assertTrue(
@@ -159,7 +159,7 @@ public class TestAttributeSource extends LuceneTestCase {
   }
 
   @SuppressWarnings({"rawtypes", "unchecked"})
-  public void testInvalidArguments() throws Exception {
+  public void testInvalidArguments() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -184,7 +184,7 @@ public class TestAttributeSource extends LuceneTestCase {
         });
   }
 
-  public void testLUCENE_3042() throws Exception {
+  public void testLUCENE_3042() {
     final AttributeSource src1 = new AttributeSource();
     src1.addAttribute(CharTermAttribute.class).append("foo");
     int hash1 = src1.hashCode(); // this triggers a cached state
@@ -196,7 +196,7 @@ public class TestAttributeSource extends LuceneTestCase {
     assertEquals(src2.hashCode(), src1.hashCode());
   }
 
-  public void testClonePayloadAttribute() throws Exception {
+  public void testClonePayloadAttribute() {
     // LUCENE-6055: verify that PayloadAttribute.clone() does deep cloning.
     PayloadAttributeImpl src = new PayloadAttributeImpl(new BytesRef(new byte[] {1, 2, 3}));
 

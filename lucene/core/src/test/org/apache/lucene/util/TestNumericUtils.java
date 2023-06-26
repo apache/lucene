@@ -28,7 +28,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * generate a series of encoded longs, each numerical one bigger than the one before. check for
    * correct ordering of the encoded bytes and that values round-trip.
    */
-  public void testLongConversionAndOrdering() throws Exception {
+  public void testLongConversionAndOrdering() {
     BytesRef previous = null;
     BytesRef current = new BytesRef(new byte[Long.BYTES]);
     for (long value = -100000L; value < 100000L; value++) {
@@ -54,7 +54,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * generate a series of encoded ints, each numerical one bigger than the one before. check for
    * correct ordering of the encoded bytes and that values round-trip.
    */
-  public void testIntConversionAndOrdering() throws Exception {
+  public void testIntConversionAndOrdering() {
     BytesRef previous = null;
     BytesRef current = new BytesRef(new byte[Integer.BYTES]);
     for (int value = -100000; value < 100000; value++) {
@@ -80,7 +80,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * generate a series of encoded BigIntegers, each numerical one bigger than the one before. check
    * for correct ordering of the encoded bytes and that values round-trip.
    */
-  public void testBigIntConversionAndOrdering() throws Exception {
+  public void testBigIntConversionAndOrdering() {
     // we need at least 3 bytes of storage.
     int size = TestUtil.nextInt(random(), 3, 16);
     BytesRef previous = null;
@@ -109,7 +109,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * check extreme values of longs check for correct ordering of the encoded bytes and that values
    * round-trip.
    */
-  public void testLongSpecialValues() throws Exception {
+  public void testLongSpecialValues() {
     long[] values =
         new long[] {
           Long.MIN_VALUE,
@@ -153,7 +153,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * check extreme values of ints check for correct ordering of the encoded bytes and that values
    * round-trip.
    */
-  public void testIntSpecialValues() throws Exception {
+  public void testIntSpecialValues() {
     int[] values =
         new int[] {
           Integer.MIN_VALUE,
@@ -197,7 +197,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * check extreme values of big integers (4 bytes) check for correct ordering of the encoded bytes
    * and that values round-trip.
    */
-  public void testBigIntSpecialValues() throws Exception {
+  public void testBigIntSpecialValues() {
     BigInteger[] values =
         new BigInteger[] {
           BigInteger.valueOf(Integer.MIN_VALUE),
@@ -242,7 +242,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * check various sorted values of doubles (including extreme values) check for correct ordering of
    * the encoded bytes and that values round-trip.
    */
-  public void testDoubles() throws Exception {
+  public void testDoubles() {
     double[] values =
         new double[] {
           Double.NEGATIVE_INFINITY,
@@ -305,7 +305,7 @@ public class TestNumericUtils extends LuceneTestCase {
    * check various sorted values of floats (including extreme values) check for correct ordering of
    * the encoded bytes and that values round-trip.
    */
-  public void testFloats() throws Exception {
+  public void testFloats() {
     float[] values =
         new float[] {
           Float.NEGATIVE_INFINITY,
@@ -364,7 +364,7 @@ public class TestNumericUtils extends LuceneTestCase {
     }
   }
 
-  public void testAdd() throws Exception {
+  public void testAdd() {
     int iters = atLeast(1000);
     int numBytes = TestUtil.nextInt(random(), 1, 100);
     for (int iter = 0; iter < iters; iter++) {
@@ -393,7 +393,7 @@ public class TestNumericUtils extends LuceneTestCase {
     }
   }
 
-  public void testIllegalAdd() throws Exception {
+  public void testIllegalAdd() {
     byte[] bytes = new byte[4];
     Arrays.fill(bytes, (byte) 0xff);
     byte[] one = new byte[4];
@@ -407,7 +407,7 @@ public class TestNumericUtils extends LuceneTestCase {
     assertEquals("a + b overflows bytesPerDim=4", expected.getMessage());
   }
 
-  public void testSubtract() throws Exception {
+  public void testSubtract() {
     int iters = atLeast(1000);
     int numBytes = TestUtil.nextInt(random(), 1, 100);
     for (int iter = 0; iter < iters; iter++) {
@@ -445,7 +445,7 @@ public class TestNumericUtils extends LuceneTestCase {
     }
   }
 
-  public void testIllegalSubtract() throws Exception {
+  public void testIllegalSubtract() {
     byte[] v1 = new byte[4];
     v1[3] = (byte) 0xf0;
     byte[] v2 = new byte[4];

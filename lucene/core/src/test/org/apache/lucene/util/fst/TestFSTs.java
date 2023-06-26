@@ -522,7 +522,7 @@ public class TestFSTs extends LuceneTestCase {
               .build();
     }
 
-    protected abstract T getOutput(IntsRef input, int ord) throws IOException;
+    protected abstract T getOutput(IntsRef input, int ord);
 
     public void run(int limit, boolean verify) throws IOException {
 

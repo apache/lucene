@@ -70,7 +70,7 @@ public class TestMaxFailuresRule extends WithNestedTests {
           char lastTest;
 
           @Override
-          public void testStarted(Description description) throws Exception {
+          public void testStarted(Description description) {
             lastTest = 'S'; // success.
           }
 
@@ -80,12 +80,12 @@ public class TestMaxFailuresRule extends WithNestedTests {
           }
 
           @Override
-          public void testFailure(Failure failure) throws Exception {
+          public void testFailure(Failure failure) {
             lastTest = 'F'; // failure
           }
 
           @Override
-          public void testFinished(Description description) throws Exception {
+          public void testFinished(Description description) {
             results.append(lastTest);
           }
         });
@@ -151,7 +151,7 @@ public class TestMaxFailuresRule extends WithNestedTests {
           char lastTest;
 
           @Override
-          public void testStarted(Description description) throws Exception {
+          public void testStarted(Description description) {
             lastTest = 'S'; // success.
           }
 
@@ -161,13 +161,13 @@ public class TestMaxFailuresRule extends WithNestedTests {
           }
 
           @Override
-          public void testFailure(Failure failure) throws Exception {
+          public void testFailure(Failure failure) {
             lastTest = 'F'; // failure
             System.out.println(failure.getMessage());
           }
 
           @Override
-          public void testFinished(Description description) throws Exception {
+          public void testFinished(Description description) {
             results.append(lastTest);
           }
         });

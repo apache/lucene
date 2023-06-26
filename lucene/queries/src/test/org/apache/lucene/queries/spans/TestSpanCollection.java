@@ -80,7 +80,7 @@ public class TestSpanCollection extends LuceneTestCase {
     final Set<Term> terms = new HashSet<>();
 
     @Override
-    public void collectLeaf(PostingsEnum postings, int position, Term term) throws IOException {
+    public void collectLeaf(PostingsEnum postings, int position, Term term) {
       terms.add(term);
     }
 

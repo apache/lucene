@@ -110,7 +110,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
   }
 
   /** Test construction time. */
-  public void testConstructionTime() throws Exception {
+  public void testConstructionTime() {
     System.err.println("-- construction time");
     for (final Class<? extends Lookup> cls : benchmarkClasses) {
       BenchmarkResult result =

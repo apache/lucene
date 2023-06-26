@@ -44,7 +44,7 @@ public class TestCSVUtil extends LuceneTestCase {
     implTestQuoteEscape(input, expectedOutput);
   }
 
-  private void implTestQuoteEscape(String input, String expectedOutput) throws IOException {
+  private void implTestQuoteEscape(String input, String expectedOutput) {
     final String actualOutput = CSVUtil.quoteEscape(input);
     assertEquals(expectedOutput, actualOutput);
   }

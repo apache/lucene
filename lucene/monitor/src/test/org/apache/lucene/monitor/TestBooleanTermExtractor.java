@@ -99,7 +99,7 @@ public class TestBooleanTermExtractor extends LuceneTestCase {
     assertEquals(TermFilteredPresearcher.ANYTOKEN_FIELD, t.field());
   }
 
-  public void testMatchAllDocsMustWithKeywordNot() throws Exception {
+  public void testMatchAllDocsMustWithKeywordNot() {
     Query q = MonitorTestBase.parse("+*:* -field1:notterm");
 
     // Because field1:notterm is negated, only the mandatory MatchAllDocsQuery is collected.
@@ -109,7 +109,7 @@ public class TestBooleanTermExtractor extends LuceneTestCase {
     assertEquals(TermFilteredPresearcher.ANYTOKEN_FIELD, t.field());
   }
 
-  public void testMatchAllDocsMustWithKeywordShouldAndKeywordNot() throws Exception {
+  public void testMatchAllDocsMustWithKeywordShouldAndKeywordNot() {
     Query q = MonitorTestBase.parse("+*:* field1:term1 -field2:notterm");
 
     // Because field1:notterm is negated and field1:term1 is optional, only the mandatory
@@ -120,7 +120,7 @@ public class TestBooleanTermExtractor extends LuceneTestCase {
     assertEquals(TermFilteredPresearcher.ANYTOKEN_FIELD, t.field());
   }
 
-  public void testMatchAllDocsMustAndOtherMustWithKeywordShouldAndKeywordNot() throws Exception {
+  public void testMatchAllDocsMustAndOtherMustWithKeywordShouldAndKeywordNot() {
     Query q = MonitorTestBase.parse("+*:* +field9:term9 field1:term1 -field2:notterm");
 
     // The queryterm collected by weight is the non-anynode, so field9:term9 shows up before

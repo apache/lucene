@@ -46,7 +46,7 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
           }
 
           @Override
-          protected void onOpen(Path path, Object stream) throws IOException {
+          protected void onOpen(Path path, Object stream) {
             //
           }
         };
@@ -67,14 +67,14 @@ public class TestHandleTrackingFS extends MockFileSystemTestCase {
   }
 
   /** Test that the delegate gets closed on exception in HandleTrackingFS#onOpen */
-  public void testOnOpenThrowsException() throws IOException {
+  public void testOnOpenThrowsException() {
     Path path =
         wrap(createTempDir()); // we are using LeakFS under the hood if we don't get closed the test
     // fails
     HandleTrackingFS provider =
         new HandleTrackingFS("test://", path.getFileSystem()) {
           @Override
-          protected void onClose(Path path, Object stream) throws IOException {}
+          protected void onClose(Path path, Object stream) {}
 
           @Override
           protected void onOpen(Path path, Object stream) throws IOException {

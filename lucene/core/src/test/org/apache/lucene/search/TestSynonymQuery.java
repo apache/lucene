@@ -354,12 +354,12 @@ public class TestSynonymQuery extends LuceneTestCase {
     }
 
     @Override
-    public void advanceShallow(int target) throws IOException {
+    public void advanceShallow(int target) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public Impacts getImpacts() throws IOException {
+    public Impacts getImpacts() {
       return new Impacts() {
 
         @Override
@@ -380,27 +380,27 @@ public class TestSynonymQuery extends LuceneTestCase {
     }
 
     @Override
-    public int freq() throws IOException {
+    public int freq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int nextPosition() throws IOException {
+    public int nextPosition() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int startOffset() throws IOException {
+    public int startOffset() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int endOffset() throws IOException {
+    public int endOffset() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public BytesRef getPayload() throws IOException {
+    public BytesRef getPayload() {
       throw new UnsupportedOperationException();
     }
 
@@ -410,12 +410,12 @@ public class TestSynonymQuery extends LuceneTestCase {
     }
 
     @Override
-    public int nextDoc() throws IOException {
+    public int nextDoc() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public int advance(int target) throws IOException {
+    public int advance(int target) {
       throw new UnsupportedOperationException();
     }
 

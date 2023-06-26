@@ -33,7 +33,7 @@ import org.apache.lucene.search.Weight;
  */
 public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
 
-  public void testQueryNoMatchWhenExpected() throws Exception {
+  public void testQueryNoMatchWhenExpected() {
     expectThrows(
         AssertionError.class,
         () -> {
@@ -41,7 +41,7 @@ public class TestBaseExplanationTestCase extends BaseExplanationTestCase {
         });
   }
 
-  public void testQueryMatchWhenNotExpected() throws Exception {
+  public void testQueryMatchWhenNotExpected() {
     expectThrows(
         AssertionError.class,
         () -> {

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.classification.utils;
 
-import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -152,7 +151,7 @@ public class TestDataSplitter extends LuceneTestCase {
     }
   }
 
-  private static void closeQuietly(IndexReader reader) throws IOException {
+  private static void closeQuietly(IndexReader reader) {
     try {
       if (reader != null) reader.close();
     } catch (

@@ -784,7 +784,7 @@ public class TestAddIndexes extends LuceneTestCase {
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() {}
   }
 
   public void testAddIndexesWithPartialMergeFailures() throws Exception {
@@ -821,7 +821,7 @@ public class TestAddIndexes extends LuceneTestCase {
     MergePolicy mp =
         new TieredMergePolicy() {
           @Override
-          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+          public MergeSpecification findMerges(CodecReader... readers) {
             return null;
           }
         };
@@ -839,7 +839,7 @@ public class TestAddIndexes extends LuceneTestCase {
     MergePolicy mp =
         new TieredMergePolicy() {
           @Override
-          public MergeSpecification findMerges(CodecReader... readers) throws IOException {
+          public MergeSpecification findMerges(CodecReader... readers) {
             return new MergeSpecification();
           }
         };
@@ -876,7 +876,7 @@ public class TestAddIndexes extends LuceneTestCase {
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() {}
   }
 
   public void testAddIndexesWithEmptyReaders() throws Exception {

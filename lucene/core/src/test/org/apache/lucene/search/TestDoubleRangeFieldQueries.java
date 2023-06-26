@@ -44,7 +44,7 @@ public class TestDoubleRangeFieldQueries extends BaseRangeFieldQueryTestCase {
   }
 
   @Override
-  protected Range nextRange(int dimensions) throws Exception {
+  protected Range nextRange(int dimensions) {
     double[] min = new double[dimensions];
     double[] max = new double[dimensions];
 

@@ -201,7 +201,7 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
   }
 
   @Test
-  public void testSlicingWindow() throws Exception {
+  public void testSlicingWindow() {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     assertEquals(0, dst.toDataInput().slice(0, 0).size());
     ;
@@ -220,7 +220,7 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
 
   @Test
   @Timeout(millis = 5000)
-  public void testEofOnArrayReadPastBufferSize() throws Exception {
+  public void testEofOnArrayReadPastBufferSize() {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     dst.writeBytes(new byte[10]);
 
@@ -241,7 +241,7 @@ public final class TestByteBuffersDataInput extends RandomizedTest {
 
   // https://issues.apache.org/jira/browse/LUCENE-8625
   @Test
-  public void testSlicingLargeBuffers() throws IOException {
+  public void testSlicingLargeBuffers() {
     // Simulate a "large" (> 4GB) input by duplicating
     // buffers with the same content.
     int MB = 1024 * 1024;

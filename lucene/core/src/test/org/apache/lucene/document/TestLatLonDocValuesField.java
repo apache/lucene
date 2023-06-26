@@ -20,7 +20,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for LatLonDocValuesField */
 public class TestLatLonDocValuesField extends LuceneTestCase {
-  public void testToString() throws Exception {
+  public void testToString() {
     // looks crazy due to lossiness
     assertEquals(
         "LatLonDocValuesField <field:18.313693958334625,-65.22744401358068>",

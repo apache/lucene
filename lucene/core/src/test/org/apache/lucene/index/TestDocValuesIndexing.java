@@ -889,7 +889,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
             return new TokenStream() {
               @Override
-              public boolean incrementToken() throws IOException {
+              public boolean incrementToken() {
                 throw new RuntimeException();
               }
             };

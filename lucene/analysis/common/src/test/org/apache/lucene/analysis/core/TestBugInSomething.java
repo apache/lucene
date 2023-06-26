@@ -136,7 +136,7 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
         }
       };
 
-  public void testWrapping() throws Exception {
+  public void testWrapping() {
     CharFilter cs = new CheckThatYouDidntReadAnythingReaderWrapper(wrappedStream);
     Exception expected =
         expectThrows(

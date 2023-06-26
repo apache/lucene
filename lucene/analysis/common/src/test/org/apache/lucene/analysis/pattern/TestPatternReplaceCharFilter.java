@@ -252,7 +252,7 @@ public class TestPatternReplaceCharFilter extends BaseTokenStreamTestCase {
    *     href="http://swtch.com/~rsc/regexp/regexp1.html">"http://swtch.com/~rsc/regexp/regexp1.html"</a>
    */
   @Ignore
-  public void testNastyPattern() throws Exception {
+  public void testNastyPattern() {
     Pattern p = Pattern.compile("(c.+)*xy");
     String input =
         "[;<!--aecbbaa--><    febcfdc fbb = \"fbeeebff\" fc = dd   >\\';<eefceceaa e= babae\" eacbaff =\"fcfaccacd\" = bcced>>><  bccaafe edb = ecfccdff\"   <?</script><    edbd ebbcd=\"faacfcc\" aeca= bedbc ceeaac =adeafde aadccdaf = \"afcc ffda=aafbe &#x16921ed5\"1843785582']";

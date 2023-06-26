@@ -1515,7 +1515,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
     IOUtils.close(r, d);
   }
 
-  public void testLongRangeEquals() throws Exception {
+  public void testLongRangeEquals() {
     assertEquals(
         new LongRange("field", -7, true, 17, false), new LongRange("field", -7, true, 17, false));
     assertEquals(
@@ -1549,7 +1549,7 @@ public class TestRangeOnRangeFacetCounts extends FacetTestCase {
         new LongRange("field", longArray(-7, -8), longArray(17, 18)).hashCode());
   }
 
-  public void testDoubleRangeEquals() throws Exception {
+  public void testDoubleRangeEquals() {
     assertEquals(
         new DoubleRange("field", -7d, true, 17d, false),
         new DoubleRange("field", -7d, true, 17d, false));

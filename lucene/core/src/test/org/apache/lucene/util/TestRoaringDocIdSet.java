@@ -23,7 +23,7 @@ import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
 
   @Override
-  public RoaringDocIdSet copyOf(BitSet bs, int length) throws IOException {
+  public RoaringDocIdSet copyOf(BitSet bs, int length) {
     final RoaringDocIdSet.Builder builder = new RoaringDocIdSet.Builder(length);
     for (int i = bs.nextSetBit(0); i != -1; i = bs.nextSetBit(i + 1)) {
       builder.add(i);

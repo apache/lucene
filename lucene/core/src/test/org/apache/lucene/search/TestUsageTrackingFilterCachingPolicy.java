@@ -129,11 +129,10 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(DummyQuery.this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           return new ConstantScoreScorer(this, score(), scoreMode, DocIdSetIterator.all(1));
         }
 

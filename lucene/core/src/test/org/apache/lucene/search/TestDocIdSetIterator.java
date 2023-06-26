@@ -31,7 +31,7 @@ public class TestDocIdSetIterator extends LuceneTestCase {
     assertEquals(NO_MORE_DOCS, disi.nextDoc());
   }
 
-  public void testInvalidRange() throws Exception {
+  public void testInvalidRange() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -39,7 +39,7 @@ public class TestDocIdSetIterator extends LuceneTestCase {
         });
   }
 
-  public void testInvalidMin() throws Exception {
+  public void testInvalidMin() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -47,7 +47,7 @@ public class TestDocIdSetIterator extends LuceneTestCase {
         });
   }
 
-  public void testEmpty() throws Exception {
+  public void testEmpty() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

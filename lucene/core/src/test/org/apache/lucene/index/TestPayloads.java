@@ -48,7 +48,7 @@ import org.apache.lucene.util.BytesRef;
 public class TestPayloads extends LuceneTestCase {
 
   // Simple tests to test the Payload class
-  public void testPayload() throws Exception {
+  public void testPayload() {
     BytesRef payload = new BytesRef("This is a test!");
     assertEquals("Wrong payload length.", "This is a test!".length(), payload.length);
 
@@ -500,7 +500,7 @@ public class TestPayloads extends LuceneTestCase {
     }
 
     @Override
-    public boolean incrementToken() throws IOException {
+    public boolean incrementToken() {
       if (!first) return false;
       first = false;
       clearAttributes();
@@ -510,7 +510,7 @@ public class TestPayloads extends LuceneTestCase {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       pool.release(payload);
     }
   }

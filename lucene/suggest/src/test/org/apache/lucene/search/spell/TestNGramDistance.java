@@ -121,7 +121,7 @@ public class TestNGramDistance extends LuceneTestCase {
     assertTrue(d1 < d2);
   }
 
-  public void testEmpty() throws Exception {
+  public void testEmpty() {
     StringDistance nsd = new NGramDistance(1);
     float d = nsd.getDistance("", "al");
     assertEquals(d, 0.0f, 0.001);

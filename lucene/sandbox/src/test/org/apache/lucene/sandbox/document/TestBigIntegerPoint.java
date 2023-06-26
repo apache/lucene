@@ -86,7 +86,7 @@ public class TestBigIntegerPoint extends LuceneTestCase {
   }
 
   /** Test if we add a too-large value */
-  public void testTooLarge() throws Exception {
+  public void testTooLarge() {
     BigInteger tooLarge = BigInteger.ONE.shiftLeft(128);
     IllegalArgumentException expected =
         expectThrows(
@@ -97,7 +97,7 @@ public class TestBigIntegerPoint extends LuceneTestCase {
     assertTrue(expected.getMessage().contains("requires more than 16 bytes storage"));
   }
 
-  public void testToString() throws Exception {
+  public void testToString() {
     assertEquals(
         "BigIntegerPoint <field:1>", new BigIntegerPoint("field", BigInteger.ONE).toString());
     assertEquals(
@@ -118,7 +118,7 @@ public class TestBigIntegerPoint extends LuceneTestCase {
     assertEquals("field:{1}", BigIntegerPoint.newSetQuery("field", BigInteger.ONE).toString());
   }
 
-  public void testQueryEquals() throws Exception {
+  public void testQueryEquals() {
     Query q1, q2;
     q1 = BigIntegerPoint.newRangeQuery("a", BigInteger.valueOf(0), BigInteger.valueOf(1000));
     q2 = BigIntegerPoint.newRangeQuery("a", BigInteger.valueOf(0), BigInteger.valueOf(1000));

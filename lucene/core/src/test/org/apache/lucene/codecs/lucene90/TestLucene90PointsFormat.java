@@ -142,10 +142,10 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     IntersectVisitor allPointsVisitor =
         new IntersectVisitor() {
           @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {}
+          public void visit(int docID, byte[] packedValue) {}
 
           @Override
-          public void visit(int docID) throws IOException {}
+          public void visit(int docID) {}
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -159,10 +159,10 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     IntersectVisitor noPointsVisitor =
         new IntersectVisitor() {
           @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {}
+          public void visit(int docID, byte[] packedValue) {}
 
           @Override
-          public void visit(int docID) throws IOException {}
+          public void visit(int docID) {}
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -177,10 +177,10 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     IntersectVisitor onePointMatchVisitor =
         new IntersectVisitor() {
           @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {}
+          public void visit(int docID, byte[] packedValue) {}
 
           @Override
-          public void visit(int docID) throws IOException {}
+          public void visit(int docID) {}
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -272,10 +272,10 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     IntersectVisitor allPointsVisitor =
         new IntersectVisitor() {
           @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {}
+          public void visit(int docID, byte[] packedValue) {}
 
           @Override
-          public void visit(int docID) throws IOException {}
+          public void visit(int docID) {}
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -289,10 +289,10 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     IntersectVisitor noPointsVisitor =
         new IntersectVisitor() {
           @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {}
+          public void visit(int docID, byte[] packedValue) {}
 
           @Override
-          public void visit(int docID) throws IOException {}
+          public void visit(int docID) {}
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -307,10 +307,10 @@ public class TestLucene90PointsFormat extends BasePointsFormatTestCase {
     IntersectVisitor onePointMatchVisitor =
         new IntersectVisitor() {
           @Override
-          public void visit(int docID, byte[] packedValue) throws IOException {}
+          public void visit(int docID, byte[] packedValue) {}
 
           @Override
-          public void visit(int docID) throws IOException {}
+          public void visit(int docID) {}
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {

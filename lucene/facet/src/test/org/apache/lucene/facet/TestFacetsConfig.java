@@ -31,7 +31,7 @@ import org.apache.lucene.util.IOUtils;
 
 public class TestFacetsConfig extends FacetTestCase {
 
-  public void testPathToStringAndBack() throws Exception {
+  public void testPathToStringAndBack() {
     int iters = atLeast(1000);
     for (int i = 0; i < iters; i++) {
       int numParts = TestUtil.nextInt(random(), 1, 6);

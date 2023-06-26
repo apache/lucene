@@ -480,7 +480,7 @@ public class TestWordDelimiterGraphFilter extends BaseTokenStreamTestCase {
         false);
   }
 
-  private Analyzer keywordTestAnalyzer(int flags) throws Exception {
+  private Analyzer keywordTestAnalyzer(int flags) {
     return new Analyzer() {
       @Override
       public TokenStreamComponents createComponents(String field) {
@@ -1137,7 +1137,7 @@ public class TestWordDelimiterGraphFilter extends BaseTokenStreamTestCase {
     return b.toString();
   }
 
-  public void testInvalidFlag() throws Exception {
+  public void testInvalidFlag() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

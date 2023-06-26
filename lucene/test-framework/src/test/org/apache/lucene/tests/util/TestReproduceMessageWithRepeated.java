@@ -35,7 +35,7 @@ public class TestReproduceMessageWithRepeated extends WithNestedTests {
   }
 
   @Test
-  public void testRepeatedMessage() throws Exception {
+  public void testRepeatedMessage() {
     TestReproduceMessage.checkTestName(
         runAndReturnSyserr(), Nested.class.getSimpleName() + ".testMe");
   }

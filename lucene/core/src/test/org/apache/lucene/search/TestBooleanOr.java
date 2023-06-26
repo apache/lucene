@@ -252,10 +252,10 @@ public class TestBooleanOr extends LuceneTestCase {
         new LeafCollector() {
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+          public void setScorer(Scorable scorer) {}
 
           @Override
-          public void collect(int doc) throws IOException {
+          public void collect(int doc) {
             matches.add(doc);
           }
         },

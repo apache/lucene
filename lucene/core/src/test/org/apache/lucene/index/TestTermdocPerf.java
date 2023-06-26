@@ -50,7 +50,7 @@ class RepeatingTokenizer extends Tokenizer {
   }
 
   @Override
-  public boolean incrementToken() throws IOException {
+  public boolean incrementToken() {
     num--;
     if (num >= 0) {
       clearAttributes();
@@ -152,7 +152,7 @@ public class TestTermdocPerf extends LuceneTestCase {
     return ret;
   }
 
-  public void testTermDocPerf() throws IOException {
+  public void testTermDocPerf() {
     // performance test for 10% of documents containing a term
     // doTest(100000, 10000,3,.1f);
   }

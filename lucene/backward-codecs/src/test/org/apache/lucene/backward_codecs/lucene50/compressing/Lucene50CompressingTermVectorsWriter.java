@@ -301,7 +301,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   @Override
-  public void startDocument(int numVectorFields) throws IOException {
+  public void startDocument(int numVectorFields) {
     curDoc = addDocData(numVectorFields);
   }
 
@@ -319,19 +319,18 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
 
   @Override
   public void startField(
-      FieldInfo info, int numTerms, boolean positions, boolean offsets, boolean payloads)
-      throws IOException {
+      FieldInfo info, int numTerms, boolean positions, boolean offsets, boolean payloads) {
     curField = curDoc.addField(info.number, numTerms, positions, offsets, payloads);
     lastTerm.length = 0;
   }
 
   @Override
-  public void finishField() throws IOException {
+  public void finishField() {
     curField = null;
   }
 
   @Override
-  public void startTerm(BytesRef term, int freq) throws IOException {
+  public void startTerm(BytesRef term, int freq) {
     assert freq >= 1;
     final int prefix;
     if (lastTerm.length == 0) {
@@ -352,8 +351,7 @@ public final class Lucene50CompressingTermVectorsWriter extends TermVectorsWrite
   }
 
   @Override
-  public void addPosition(int position, int startOffset, int endOffset, BytesRef payload)
-      throws IOException {
+  public void addPosition(int position, int startOffset, int endOffset, BytesRef payload) {
     assert curField.flags != 0;
     curField.addPosition(
         position, startOffset, endOffset - startOffset, payload == null ? 0 : payload.length);

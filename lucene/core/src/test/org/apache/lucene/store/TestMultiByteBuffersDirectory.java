@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.store;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
@@ -26,7 +25,7 @@ import org.apache.lucene.util.BitUtil;
 public class TestMultiByteBuffersDirectory extends BaseChunkedDirectoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path, int maxChunkSize) throws IOException {
+  protected Directory getDirectory(Path path, int maxChunkSize) {
     // round down huge values (above 20) to keep RAM usage low in tests (especially in nightly)
     int bitsPerBlock =
         Math.min(

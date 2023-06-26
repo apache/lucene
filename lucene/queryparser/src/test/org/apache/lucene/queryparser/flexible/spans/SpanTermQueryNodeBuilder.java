@@ -18,7 +18,6 @@ package org.apache.lucene.queryparser.flexible.spans;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanTermQuery;
-import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.standard.builders.StandardQueryBuilder;
@@ -27,7 +26,7 @@ import org.apache.lucene.queryparser.flexible.standard.builders.StandardQueryBui
 public class SpanTermQueryNodeBuilder implements StandardQueryBuilder {
 
   @Override
-  public SpanTermQuery build(QueryNode node) throws QueryNodeException {
+  public SpanTermQuery build(QueryNode node) {
     FieldQueryNode fieldQueryNode = (FieldQueryNode) node;
 
     return new SpanTermQuery(

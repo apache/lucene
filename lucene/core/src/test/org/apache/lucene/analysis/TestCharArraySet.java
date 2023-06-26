@@ -34,7 +34,7 @@ public class TestCharArraySet extends LuceneTestCase {
     "this", "to", "was", "will", "with"
   };
 
-  public void testRehash() throws Exception {
+  public void testRehash() {
     CharArraySet cas = new CharArraySet(0, true);
     for (int i = 0; i < TEST_STOP_WORDS.length; i++) {
       cas.add(TEST_STOP_WORDS[i]);

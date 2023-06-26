@@ -61,8 +61,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     @Override
     public MergeSpecification findMerges(
-        MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
-        throws IOException {
+        MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext) {
       List<SegmentCommitInfo> segments = new ArrayList<>();
       for (SegmentCommitInfo sci : segmentInfos) {
         segments.add(sci);
@@ -101,14 +100,13 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         SegmentInfos segmentInfos,
         int maxSegmentCount,
         Map<SegmentCommitInfo, Boolean> segmentsToMerge,
-        MergeContext mergeContext)
-        throws IOException {
+        MergeContext mergeContext) {
       return null;
     }
 
     @Override
     public MergeSpecification findForcedDeletesMerges(
-        SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
+        SegmentInfos segmentInfos, MergeContext mergeContext) {
       return null;
     }
   }

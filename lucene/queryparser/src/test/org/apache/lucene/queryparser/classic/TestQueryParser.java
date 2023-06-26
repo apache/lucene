@@ -158,7 +158,7 @@ public class TestQueryParser extends QueryParserTestBase {
   // This test is here as a safety, in case that ant step
   // doesn't work for some reason.
   @SuppressWarnings("rawtype")
-  public void testProtectedCtors() throws Exception {
+  public void testProtectedCtors() {
     expectThrows(
         NoSuchMethodException.class, () -> QueryParser.class.getConstructor(CharStream.class));
     expectThrows(
@@ -301,7 +301,7 @@ public class TestQueryParser extends QueryParserTestBase {
   }
 
   // Fuzzy queries should not be allowed
-  public void testCustomQueryParserFuzzy() throws Exception {
+  public void testCustomQueryParserFuzzy() {
     expectThrows(
         ParseException.class,
         () -> {
@@ -531,7 +531,7 @@ public class TestQueryParser extends QueryParserTestBase {
   }
 
   /** LUCENE-6677: make sure wildcard query respects determinizeWorkLimit. */
-  public void testWildcardDeterminizeWorkLimit() throws Exception {
+  public void testWildcardDeterminizeWorkLimit() {
     QueryParser qp = new QueryParser(FIELD, new MockAnalyzer(random()));
     qp.setDeterminizeWorkLimit(1);
     expectThrows(

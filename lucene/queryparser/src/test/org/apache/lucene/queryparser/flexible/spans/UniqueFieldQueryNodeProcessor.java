@@ -17,7 +17,6 @@
 package org.apache.lucene.queryparser.flexible.spans;
 
 import java.util.List;
-import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.config.QueryConfigHandler;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldableNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
@@ -34,13 +33,13 @@ import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessor
 public class UniqueFieldQueryNodeProcessor extends QueryNodeProcessorImpl {
 
   @Override
-  protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
+  protected QueryNode postProcessNode(QueryNode node) {
 
     return node;
   }
 
   @Override
-  protected QueryNode preProcessNode(QueryNode node) throws QueryNodeException {
+  protected QueryNode preProcessNode(QueryNode node) {
 
     if (node instanceof FieldableNode) {
       FieldableNode fieldNode = (FieldableNode) node;
@@ -65,7 +64,7 @@ public class UniqueFieldQueryNodeProcessor extends QueryNodeProcessorImpl {
   }
 
   @Override
-  protected List<QueryNode> setChildrenOrder(List<QueryNode> children) throws QueryNodeException {
+  protected List<QueryNode> setChildrenOrder(List<QueryNode> children) {
 
     return children;
   }

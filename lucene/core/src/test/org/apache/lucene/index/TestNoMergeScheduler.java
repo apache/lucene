@@ -34,7 +34,7 @@ public class TestNoMergeScheduler extends LuceneTestCase {
   }
 
   @Test
-  public void testFinalSingleton() throws Exception {
+  public void testFinalSingleton() {
     assertTrue(Modifier.isFinal(NoMergeScheduler.class.getModifiers()));
     Constructor<?>[] ctors = NoMergeScheduler.class.getDeclaredConstructors();
     assertEquals("expected 1 private ctor only: " + Arrays.toString(ctors), 1, ctors.length);
@@ -43,7 +43,7 @@ public class TestNoMergeScheduler extends LuceneTestCase {
   }
 
   @Test
-  public void testMethodsOverridden() throws Exception {
+  public void testMethodsOverridden() {
     // Ensures that all methods of MergeScheduler are overridden. That's
     // important to ensure that NoMergeScheduler overrides everything, so that
     // no unexpected behavior/error occurs

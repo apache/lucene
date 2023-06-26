@@ -234,7 +234,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
   }
 
   /** Tests consistency of GeoArea.getRelationship vs GeoShape.isWithin */
-  public void testGeo3DRelations() throws Exception {
+  public void testGeo3DRelations() {
 
     int numDocs = atLeast(200);
     if (VERBOSE) {
@@ -1429,7 +1429,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
     return index;
   }
 
-  public void testEncodeDecodeCeil() throws Exception {
+  public void testEncodeDecodeCeil() {
     PlanetModel planetModel = randomPlanetModel();
     // just for testing quantization error
     final double ENCODING_TOLERANCE = planetModel.DECODE;
@@ -1472,7 +1472,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
   }
 
   /** make sure values always go down: this is important for edge case consistency */
-  public void testEncodeDecodeRoundsDown() throws Exception {
+  public void testEncodeDecodeRoundsDown() {
     PlanetModel planetModel = randomPlanetModel();
     int iters = atLeast(1000);
     for (int iter = 0; iter < iters; iter++) {
@@ -1558,7 +1558,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
    * start at -planetMax and increase by Geo3DUtil.DECODE for each integer. check edge cases within
    * the double range and random doubles within the range too.
    */
-  public void testQuantization() throws Exception {
+  public void testQuantization() {
     Random random = random();
     PlanetModel planetModel = randomPlanetModel();
     for (int i = 0; i < 10000; i++) {
@@ -1602,7 +1602,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
     }
   }
 
-  public void testEncodeDecodeIsStable() throws Exception {
+  public void testEncodeDecodeIsStable() {
     PlanetModel planetModel = randomPlanetModel();
     int iters = atLeast(1000);
     for (int iter = 0; iter < iters; iter++) {
@@ -1723,7 +1723,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
     }
 
     @Override
-    public void visit(int docID) throws IOException {
+    public void visit(int docID) {
       assert firstPhase == false;
       if (docID == targetDocID) {
         b.append("leaf visit docID=" + docID + "\n");

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
@@ -33,7 +32,7 @@ public class TestInfoStream extends LuceneTestCase {
     iwc.setInfoStream(
         new InfoStream() {
           @Override
-          public void close() throws IOException {}
+          public void close() {}
 
           @Override
           public void message(String component, String message) {
@@ -60,7 +59,7 @@ public class TestInfoStream extends LuceneTestCase {
     iwc.setInfoStream(
         new InfoStream() {
           @Override
-          public void close() throws IOException {}
+          public void close() {}
 
           @Override
           public void message(String component, String message) {

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCachingCollector extends LuceneTestCase {
@@ -39,7 +38,7 @@ public class TestCachingCollector extends LuceneTestCase {
   private static class NoOpCollector extends SimpleCollector {
 
     @Override
-    public void collect(int doc) throws IOException {}
+    public void collect(int doc) {}
 
     @Override
     public ScoreMode scoreMode() {

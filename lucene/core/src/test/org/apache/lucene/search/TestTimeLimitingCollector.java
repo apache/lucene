@@ -294,7 +294,7 @@ public class TestTimeLimitingCollector extends LuceneTestCase {
     }
   }
 
-  public void testNoHits() throws IOException {
+  public void testNoHits() {
     MyHitCollector myHc = new MyHitCollector();
     Collector collector = createTimedCollector(myHc, -1, random().nextBoolean());
     // search: must get exception
@@ -373,12 +373,12 @@ public class TestTimeLimitingCollector extends LuceneTestCase {
     }
 
     @Override
-    public void setScorer(Scorable scorer) throws IOException {
+    public void setScorer(Scorable scorer) {
       // scorer is not needed
     }
 
     @Override
-    public void collect(final int doc) throws IOException {
+    public void collect(final int doc) {
       int docId = doc + docBase;
       if (slowdown > 0) {
         try {
@@ -393,7 +393,7 @@ public class TestTimeLimitingCollector extends LuceneTestCase {
     }
 
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       docBase = context.docBase;
     }
 

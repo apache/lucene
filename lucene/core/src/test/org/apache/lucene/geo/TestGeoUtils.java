@@ -31,7 +31,7 @@ import org.apache.lucene.util.SloppyMath;
 public class TestGeoUtils extends LuceneTestCase {
 
   // We rely heavily on GeoUtils.circleToBBox so we test it here:
-  public void testRandomCircleToBBox() throws Exception {
+  public void testRandomCircleToBBox() {
     int iters = atLeast(100);
     for (int iter = 0; iter < iters; iter++) {
 
@@ -217,7 +217,7 @@ public class TestGeoUtils extends LuceneTestCase {
 
   // TODO: does not really belong here, but we test it like this for now
   // we can make a fake IndexReader to send boxes directly to Point visitors instead?
-  public void testCircleOpto() throws Exception {
+  public void testCircleOpto() {
     Random random = random();
     int iters = atLeast(random, 3);
     for (int i = 0; i < iters; i++) {

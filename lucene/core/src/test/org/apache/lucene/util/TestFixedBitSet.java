@@ -26,7 +26,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
   @Override
-  public FixedBitSet copyOf(BitSet bs, int length) throws IOException {
+  public FixedBitSet copyOf(BitSet bs, int length) {
     final FixedBitSet set = new FixedBitSet(length);
     for (int doc = bs.nextSetBit(0);
         doc != DocIdSetIterator.NO_MORE_DOCS;

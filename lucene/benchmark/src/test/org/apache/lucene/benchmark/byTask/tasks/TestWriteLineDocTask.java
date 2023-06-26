@@ -42,7 +42,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   public static final class WriteLineDocMaker extends DocMaker {
 
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       doc.add(new StringField(BODY_FIELD, "body", Field.Store.NO));
       doc.add(new StringField(TITLE_FIELD, "title", Field.Store.NO));
@@ -55,7 +55,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   public static final class NewLinesDocMaker extends DocMaker {
 
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       doc.add(new StringField(BODY_FIELD, "body\r\ntext\ttwo", Field.Store.NO));
       doc.add(new StringField(TITLE_FIELD, "title\r\ntext", Field.Store.NO));
@@ -67,7 +67,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   // class has to be public so that Class.forName.newInstance() will work
   public static final class NoBodyDocMaker extends DocMaker {
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       doc.add(new StringField(TITLE_FIELD, "title", Field.Store.NO));
       doc.add(new StringField(DATE_FIELD, "date", Field.Store.NO));
@@ -78,7 +78,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   // class has to be public so that Class.forName.newInstance() will work
   public static final class NoTitleDocMaker extends DocMaker {
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       doc.add(new StringField(BODY_FIELD, "body", Field.Store.NO));
       doc.add(new StringField(DATE_FIELD, "date", Field.Store.NO));
@@ -89,7 +89,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   // class has to be public so that Class.forName.newInstance() will work
   public static final class JustDateDocMaker extends DocMaker {
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       doc.add(new StringField(DATE_FIELD, "date", Field.Store.NO));
       return doc;
@@ -100,7 +100,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   // same as JustDate just that this one is treated as legal
   public static final class LegalJustDateDocMaker extends DocMaker {
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       doc.add(new StringField(DATE_FIELD, "date", Field.Store.NO));
       return doc;
@@ -110,7 +110,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   // class has to be public so that Class.forName.newInstance() will work
   public static final class EmptyDocMaker extends DocMaker {
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       return new Document();
     }
   }
@@ -119,7 +119,7 @@ public class TestWriteLineDocTask extends BenchmarkTestCase {
   public static final class ThreadingDocMaker extends DocMaker {
 
     @Override
-    public Document makeDocument() throws Exception {
+    public Document makeDocument() {
       Document doc = new Document();
       String name = Thread.currentThread().getName();
       doc.add(new StringField(BODY_FIELD, "body_" + name, Field.Store.NO));

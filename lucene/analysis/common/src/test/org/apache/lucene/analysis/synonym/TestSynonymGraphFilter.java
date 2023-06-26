@@ -164,7 +164,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidAnalyzesToNothingOutput() throws Exception {
+  public void testInvalidAnalyzesToNothingOutput() {
     String testFile = "a => 1";
     Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, false);
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);
@@ -173,7 +173,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidDoubleMap() throws Exception {
+  public void testInvalidDoubleMap() {
     String testFile = "a => b => c";
     Analyzer analyzer = new MockAnalyzer(random());
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);
@@ -553,7 +553,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
     a.close();
   }
 
-  public void testZeroSyns() throws Exception {
+  public void testZeroSyns() {
     Tokenizer tokenizer = new MockTokenizer();
     tokenizer.setReader(new StringReader("aa bb"));
 

@@ -25,7 +25,7 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 public class TestDeterminism extends LuceneTestCase {
 
   /** test a bunch of random regular expressions */
-  public void testRegexps() throws Exception {
+  public void testRegexps() {
     int num = atLeast(500);
     for (int i = 0; i < num; i++) {
       assertAutomaton(
@@ -34,7 +34,7 @@ public class TestDeterminism extends LuceneTestCase {
   }
 
   /** test against a simple, unoptimized det */
-  public void testAgainstSimple() throws Exception {
+  public void testAgainstSimple() {
     int num = atLeast(200);
     for (int i = 0; i < num; i++) {
       Automaton a = AutomatonTestUtil.randomAutomaton(random());

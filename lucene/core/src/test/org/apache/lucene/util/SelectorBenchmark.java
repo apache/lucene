@@ -71,7 +71,7 @@ public class SelectorBenchmark {
     }
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     assert false : "Disable assertions to run the benchmark";
     Random random = new Random(System.nanoTime());
     long seed = random.nextLong();

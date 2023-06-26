@@ -38,7 +38,7 @@ import org.apache.lucene.util.IOUtils;
  */
 public class TestConstantScoreQuery extends LuceneTestCase {
 
-  public void testCSQ() throws Exception {
+  public void testCSQ() {
     final Query q1 = new ConstantScoreQuery(new TermQuery(new Term("a", "b")));
     final Query q2 = new ConstantScoreQuery(new TermQuery(new Term("a", "c")));
     final Query q3 =

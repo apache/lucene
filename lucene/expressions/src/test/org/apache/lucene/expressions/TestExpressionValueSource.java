@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.expressions;
 
-import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -180,7 +179,7 @@ public class TestExpressionValueSource extends LuceneTestCase {
   private static DoubleValuesSource createDoubleValuesSourceMock(boolean rewriting) {
     return new DoubleValuesSource() {
       @Override
-      public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) {
         return null;
       }
 
@@ -190,7 +189,7 @@ public class TestExpressionValueSource extends LuceneTestCase {
       }
 
       @Override
-      public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
+      public DoubleValuesSource rewrite(IndexSearcher reader) {
         return rewriting ? createDoubleValuesSourceMock(true) : this;
       }
 

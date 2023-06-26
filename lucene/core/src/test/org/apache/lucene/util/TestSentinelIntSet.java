@@ -24,7 +24,7 @@ import org.junit.Test;
 public class TestSentinelIntSet extends LuceneTestCase {
 
   @Test
-  public void test() throws Exception {
+  public void test() {
     SentinelIntSet set = new SentinelIntSet(10, -1);
     assertFalse(set.exists(50));
     set.put(50);
@@ -44,7 +44,7 @@ public class TestSentinelIntSet extends LuceneTestCase {
   }
 
   @Test
-  public void testRandom() throws Exception {
+  public void testRandom() {
     for (int i = 0; i < 10000; i++) {
       int initSz = random().nextInt(20);
       int num = random().nextInt(30);

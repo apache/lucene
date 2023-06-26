@@ -137,7 +137,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     return code >= UnicodeUtil.UNI_SUR_HIGH_START && code <= UnicodeUtil.UNI_SUR_LOW_END;
   }
 
-  public void testRandomRanges() throws Exception {
+  public void testRandomRanges() {
     final Random r = random();
     int ITERS = atLeast(10);
     int ITERS_PER_DFA = atLeast(100);
@@ -179,7 +179,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     assertTrue(bra.run(new byte[0], 0, 0));
   }
 
-  public void testSpecialCase2() throws Exception {
+  public void testSpecialCase2() {
     RegExp re = new RegExp(".+\u0775");
     String input = "\ufadc\ufffd\ub80b\uda5a\udc68\uf234\u0056\uda5b\udcc1\ufffd\ufffd\u0775";
     Automaton automaton = re.toAutomaton();
@@ -193,7 +193,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     assertTrue(bra.run(bytes, 0, bytes.length)); // this one fails!
   }
 
-  public void testSpecialCase3() throws Exception {
+  public void testSpecialCase3() {
     RegExp re = new RegExp("(\\鯺)*(.)*\\Ӕ");
     String input =
         "\u5cfd\ufffd\ub2f7\u0033\ue304\u51d7\u3692\udb50\udfb3\u0576\udae2\udc62\u0053\u0449\u04d4";
@@ -218,7 +218,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     }
   }
 
-  public void testSingleton() throws Exception {
+  public void testSingleton() {
     int iters = atLeast(100);
     for (int iter = 0; iter < iters; iter++) {
       String s = TestUtil.randomRealisticUnicodeString(random());
@@ -232,7 +232,7 @@ public class TestUTF32ToUTF8 extends LuceneTestCase {
     }
   }
 
-  private void assertAutomaton(Automaton automaton) throws Exception {
+  private void assertAutomaton(Automaton automaton) {
     CharacterRunAutomaton cra = new CharacterRunAutomaton(automaton);
     ByteRunAutomaton bra = new ByteRunAutomaton(automaton);
     final AutomatonTestUtil.RandomAcceptedStrings ras =

@@ -162,7 +162,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     }
   }
 
-  Sort randomSort() throws Exception {
+  Sort randomSort() {
     boolean reversed = random().nextBoolean();
     SortField[] fields =
         new SortField[] {

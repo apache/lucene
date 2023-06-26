@@ -38,7 +38,7 @@ import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
 public class SpansValidatorQueryNodeProcessor extends QueryNodeProcessorImpl {
 
   @Override
-  protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
+  protected QueryNode postProcessNode(QueryNode node) {
 
     return node;
   }
@@ -55,7 +55,7 @@ public class SpansValidatorQueryNodeProcessor extends QueryNodeProcessorImpl {
   }
 
   @Override
-  protected List<QueryNode> setChildrenOrder(List<QueryNode> children) throws QueryNodeException {
+  protected List<QueryNode> setChildrenOrder(List<QueryNode> children) {
 
     return children;
   }

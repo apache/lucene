@@ -53,20 +53,20 @@ public class TestSetOnce extends LuceneTestCase {
   }
 
   @Test
-  public void testEmptyCtor() throws Exception {
+  public void testEmptyCtor() {
     SetOnce<Integer> set = new SetOnce<>();
     assertNull(set.get());
   }
 
   @Test(expected = AlreadySetException.class)
-  public void testSettingCtor() throws Exception {
+  public void testSettingCtor() {
     SetOnce<Integer> set = new SetOnce<>(5);
     assertEquals(5, set.get().intValue());
     set.set(7);
   }
 
   @Test(expected = AlreadySetException.class)
-  public void testSetOnce() throws Exception {
+  public void testSetOnce() {
     SetOnce<Integer> set = new SetOnce<>();
     set.set(5);
     assertEquals(5, set.get().intValue());

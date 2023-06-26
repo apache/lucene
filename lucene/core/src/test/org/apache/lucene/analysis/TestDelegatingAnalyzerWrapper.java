@@ -49,7 +49,7 @@ public class TestDelegatingAnalyzerWrapper extends LuceneTestCase {
     assertEquals(new BytesRef("ab c"), w2.normalize("foo", "Ab C"));
   }
 
-  public void testDelegatesAttributeFactory() throws Exception {
+  public void testDelegatesAttributeFactory() {
     Analyzer analyzer1 = new MockBytesAnalyzer();
     DelegatingAnalyzerWrapper w1 =
         new DelegatingAnalyzerWrapper(Analyzer.GLOBAL_REUSE_STRATEGY) {
@@ -62,7 +62,7 @@ public class TestDelegatingAnalyzerWrapper extends LuceneTestCase {
         new BytesRef("Ab C".getBytes(StandardCharsets.UTF_16LE)), w1.normalize("foo", "Ab C"));
   }
 
-  public void testDelegatesCharFilter() throws Exception {
+  public void testDelegatesCharFilter() {
     Analyzer analyzer1 =
         new Analyzer() {
           @Override

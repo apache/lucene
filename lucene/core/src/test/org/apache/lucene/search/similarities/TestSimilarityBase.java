@@ -221,12 +221,12 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Runs the unit test with the default statistics. */
-  public void testDefault() throws IOException {
+  public void testDefault() {
     unitTestCore(createStats(), FREQ, DOC_LEN);
   }
 
   /** Tests correct behavior when {@code numberOfDocuments = numberOfFieldTokens}. */
-  public void testSparseDocuments() throws IOException {
+  public void testSparseDocuments() {
     BasicStats stats = createStats();
     stats.setNumberOfFieldTokens(stats.getNumberOfDocuments());
     stats.setTotalTermFreq(stats.getDocFreq());
@@ -235,7 +235,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code numberOfDocuments > numberOfFieldTokens}. */
-  public void testVerySparseDocuments() throws IOException {
+  public void testVerySparseDocuments() {
     BasicStats stats = createStats();
     stats.setNumberOfFieldTokens(stats.getNumberOfDocuments() * 2 / 3);
     stats.setTotalTermFreq(stats.getDocFreq());
@@ -244,7 +244,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code NumberOfDocuments = 1}. */
-  public void testOneDocument() throws IOException {
+  public void testOneDocument() {
     BasicStats stats = createStats();
     stats.setNumberOfDocuments(1);
     stats.setNumberOfFieldTokens(DOC_LEN);
@@ -255,7 +255,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code docFreq = numberOfDocuments}. */
-  public void testAllDocumentsRelevant() throws IOException {
+  public void testAllDocumentsRelevant() {
     BasicStats stats = createStats();
     float mult = (0.0f + stats.getNumberOfDocuments()) / stats.getDocFreq();
     stats.setTotalTermFreq((int) (stats.getTotalTermFreq() * mult));
@@ -264,7 +264,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code docFreq > numberOfDocuments / 2}. */
-  public void testMostDocumentsRelevant() throws IOException {
+  public void testMostDocumentsRelevant() {
     BasicStats stats = createStats();
     float mult = (0.6f * stats.getNumberOfDocuments()) / stats.getDocFreq();
     stats.setTotalTermFreq((int) (stats.getTotalTermFreq() * mult));
@@ -273,7 +273,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code docFreq = 1}. */
-  public void testOnlyOneRelevantDocument() throws IOException {
+  public void testOnlyOneRelevantDocument() {
     BasicStats stats = createStats();
     stats.setDocFreq(1);
     stats.setTotalTermFreq((int) FREQ + 3);
@@ -281,7 +281,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code totalTermFreq = numberOfFieldTokens}. */
-  public void testAllTermsRelevant() throws IOException {
+  public void testAllTermsRelevant() {
     BasicStats stats = createStats();
     stats.setTotalTermFreq(stats.getNumberOfFieldTokens());
     unitTestCore(stats, DOC_LEN, DOC_LEN);
@@ -290,21 +290,21 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code totalTermFreq > numberOfDocuments}. */
-  public void testMoreTermsThanDocuments() throws IOException {
+  public void testMoreTermsThanDocuments() {
     BasicStats stats = createStats();
     stats.setTotalTermFreq(stats.getTotalTermFreq() + stats.getNumberOfDocuments());
     unitTestCore(stats, 2 * FREQ, DOC_LEN);
   }
 
   /** Tests correct behavior when {@code totalTermFreq = numberOfDocuments}. */
-  public void testNumberOfTermsAsDocuments() throws IOException {
+  public void testNumberOfTermsAsDocuments() {
     BasicStats stats = createStats();
     stats.setTotalTermFreq(stats.getNumberOfDocuments());
     unitTestCore(stats, FREQ, DOC_LEN);
   }
 
   /** Tests correct behavior when {@code totalTermFreq = 1}. */
-  public void testOneTerm() throws IOException {
+  public void testOneTerm() {
     BasicStats stats = createStats();
     stats.setDocFreq(1);
     stats.setTotalTermFreq(1);
@@ -312,7 +312,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code totalTermFreq = freq}. */
-  public void testOneRelevantDocument() throws IOException {
+  public void testOneRelevantDocument() {
     BasicStats stats = createStats();
     stats.setDocFreq(1);
     stats.setTotalTermFreq((int) FREQ);
@@ -320,7 +320,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code numberOfFieldTokens = freq}. */
-  public void testAllTermsRelevantOnlyOneDocument() throws IOException {
+  public void testAllTermsRelevantOnlyOneDocument() {
     BasicStats stats = createStats();
     stats.setNumberOfDocuments(10);
     stats.setNumberOfFieldTokens(50);
@@ -333,7 +333,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   /**
    * Tests correct behavior when there is only one document with a single term in the collection.
    */
-  public void testOnlyOneTermOneDocument() throws IOException {
+  public void testOnlyOneTermOneDocument() {
     BasicStats stats = createStats();
     stats.setNumberOfDocuments(1);
     stats.setNumberOfFieldTokens(1);
@@ -346,7 +346,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   /**
    * Tests correct behavior when there is only one term in the field, but more than one documents.
    */
-  public void testOnlyOneTerm() throws IOException {
+  public void testOnlyOneTerm() {
     BasicStats stats = createStats();
     stats.setNumberOfFieldTokens(1);
     stats.setAvgFieldLength(1.0f / stats.getNumberOfDocuments());
@@ -356,7 +356,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Tests correct behavior when {@code avgFieldLength = docLen}. */
-  public void testDocumentLengthAverage() throws IOException {
+  public void testDocumentLengthAverage() {
     BasicStats stats = createStats();
     unitTestCore(stats, FREQ, (int) stats.getAvgFieldLength());
   }
@@ -364,7 +364,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   // ---------------------------- Correctness tests ----------------------------
 
   /** Correctness test for the Dirichlet LM model. */
-  public void testLMDirichlet() throws IOException {
+  public void testLMDirichlet() {
     float p =
         (FREQ + 2000.0f * (TOTAL_TERM_FREQ + 1) / (NUMBER_OF_FIELD_TOKENS + 1.0f))
             / (DOC_LEN + 2000.0f);
@@ -377,7 +377,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Correctness test for the Jelinek-Mercer LM model. */
-  public void testLMJelinekMercer() throws IOException {
+  public void testLMJelinekMercer() {
     float p =
         (1 - 0.1f) * FREQ / DOC_LEN
             + 0.1f * (TOTAL_TERM_FREQ + 1) / (NUMBER_OF_FIELD_TOKENS + 1.0f);
@@ -387,14 +387,14 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Correctness test for the LL IB model with DF-based lambda and no normalization. */
-  public void testLLForIB() throws IOException {
+  public void testLLForIB() {
     SimilarityBase sim =
         new IBSimilarity(new DistributionLL(), new LambdaDF(), new Normalization.NoNormalization());
     correctnessTestCore(sim, 4.178574562072754f);
   }
 
   /** Correctness test for the SPL IB model with TTF-based lambda and no normalization. */
-  public void testSPLForIB() throws IOException {
+  public void testSPLForIB() {
     SimilarityBase sim =
         new IBSimilarity(
             new DistributionSPL(), new LambdaTTF(), new Normalization.NoNormalization());
@@ -402,21 +402,21 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Correctness test for the IneB2 DFR model. */
-  public void testIneB2() throws IOException {
+  public void testIneB2() {
     SimilarityBase sim =
         new DFRSimilarity(new BasicModelIne(), new AfterEffectB(), new NormalizationH2());
     correctnessTestCore(sim, 5.747603416442871f);
   }
 
   /** Correctness test for the GL1 DFR model. */
-  public void testGL1() throws IOException {
+  public void testGL1() {
     SimilarityBase sim =
         new DFRSimilarity(new BasicModelG(), new AfterEffectL(), new NormalizationH1());
     correctnessTestCore(sim, 1.6390540599822998f);
   }
 
   /** Correctness test for the In2 DFR model with no aftereffect. */
-  public void testIn2() throws IOException {
+  public void testIn2() {
     SimilarityBase sim =
         new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2());
     float tfn =
@@ -434,7 +434,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   /** Correctness test for the IFB DFR model with no normalization. */
-  public void testIFB() throws IOException {
+  public void testIFB() {
     SimilarityBase sim =
         new DFRSimilarity(
             new BasicModelIF(), new AfterEffectB(), new Normalization.NoNormalization());
@@ -511,7 +511,7 @@ public class TestSimilarityBase extends LuceneTestCase {
   }
 
   // LUCENE-5221
-  public void testDiscountOverlapsBoost() throws IOException {
+  public void testDiscountOverlapsBoost() {
     BM25Similarity expected = new BM25Similarity(false);
     SimilarityBase actual =
         new DFRSimilarity(new BasicModelIne(), new AfterEffectB(), new NormalizationH2());

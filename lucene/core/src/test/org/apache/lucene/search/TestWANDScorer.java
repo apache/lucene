@@ -1008,12 +1008,11 @@ public class TestWANDScorer extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new Weight(query) {
 
         @Override
-        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+        public Explanation explain(LeafReaderContext context, int doc) {
           // no-ops
           return null;
         }

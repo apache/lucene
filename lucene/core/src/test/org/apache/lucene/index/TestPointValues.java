@@ -515,7 +515,7 @@ public class TestPointValues extends LuceneTestCase {
     dir.close();
   }
 
-  public void testInvalidIntPointUsage() throws Exception {
+  public void testInvalidIntPointUsage() {
     IntPoint field = new IntPoint("field", 17, 42);
 
     expectThrows(
@@ -531,7 +531,7 @@ public class TestPointValues extends LuceneTestCase {
         });
   }
 
-  public void testInvalidLongPointUsage() throws Exception {
+  public void testInvalidLongPointUsage() {
     LongPoint field = new LongPoint("field", 17, 42);
 
     expectThrows(
@@ -547,7 +547,7 @@ public class TestPointValues extends LuceneTestCase {
         });
   }
 
-  public void testInvalidFloatPointUsage() throws Exception {
+  public void testInvalidFloatPointUsage() {
     FloatPoint field = new FloatPoint("field", 17, 42);
 
     expectThrows(
@@ -563,7 +563,7 @@ public class TestPointValues extends LuceneTestCase {
         });
   }
 
-  public void testInvalidDoublePointUsage() throws Exception {
+  public void testInvalidDoublePointUsage() {
     DoublePoint field = new DoublePoint("field", 17, 42);
 
     expectThrows(

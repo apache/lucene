@@ -76,7 +76,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     }
   }
 
-  protected SnapshotDeletionPolicy getDeletionPolicy() throws IOException {
+  protected SnapshotDeletionPolicy getDeletionPolicy() {
     return new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
   }
 

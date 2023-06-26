@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.benchmark.byTask;
 
-import java.io.IOException;
 import java.io.StringReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -28,7 +27,6 @@ import java.util.ArrayList;
 import org.apache.lucene.benchmark.byTask.feeds.AbstractQueryMaker;
 import org.apache.lucene.benchmark.byTask.feeds.ContentSource;
 import org.apache.lucene.benchmark.byTask.feeds.DocData;
-import org.apache.lucene.benchmark.byTask.feeds.NoMoreDataException;
 import org.apache.lucene.benchmark.byTask.tasks.PerfTask;
 import org.apache.lucene.benchmark.byTask.tasks.TaskSequence;
 import org.apache.lucene.benchmark.byTask.utils.Algorithm;
@@ -106,17 +104,17 @@ public class TestPerfTasksParse extends LuceneTestCase {
 
   public static class MockContentSource extends ContentSource {
     @Override
-    public DocData getNextDocData(DocData docData) throws NoMoreDataException, IOException {
+    public DocData getNextDocData(DocData docData) {
       return docData;
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() {}
   }
 
   public static class MockQueryMaker extends AbstractQueryMaker {
     @Override
-    protected Query[] prepareQueries() throws Exception {
+    protected Query[] prepareQueries() {
       return new Query[0];
     }
   }

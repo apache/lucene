@@ -83,7 +83,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               private Scorable scorer;
 
               @Override
-              public void setScorer(Scorable scorer) throws IOException {
+              public void setScorer(Scorable scorer) {
                 this.scorer = scorer;
               }
 
@@ -150,7 +150,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               private Scorable scorer;
 
               @Override
-              public void setScorer(Scorable scorer) throws IOException {
+              public void setScorer(Scorable scorer) {
                 this.scorer = scorer;
               }
 
@@ -215,7 +215,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               private Scorable scorer;
 
               @Override
-              public void setScorer(Scorable scorer) throws IOException {
+              public void setScorer(Scorable scorer) {
                 this.scorer = scorer;
               }
 
@@ -285,7 +285,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               private Scorable scorer;
 
               @Override
-              public void setScorer(Scorable scorer) throws IOException {
+              public void setScorer(Scorable scorer) {
                 this.scorer = scorer;
               }
 

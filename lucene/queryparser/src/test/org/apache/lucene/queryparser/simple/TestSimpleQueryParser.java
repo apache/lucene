@@ -75,14 +75,14 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test a simple term */
-  public void testTerm() throws Exception {
+  public void testTerm() {
     Query expected = new TermQuery(new Term("field", "foobar"));
 
     assertEquals(expected, parse("foobar"));
   }
 
   /** test a fuzzy query */
-  public void testFuzzy() throws Exception {
+  public void testFuzzy() {
     Query regular = new TermQuery(new Term("field", "foobar"));
     Query expected = new FuzzyQuery(new Term("field", "foobar"), 2);
 
@@ -102,14 +102,14 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test a simple phrase */
-  public void testPhrase() throws Exception {
+  public void testPhrase() {
     PhraseQuery expected = new PhraseQuery("field", "foo", "bar");
 
     assertEquals(expected, parse("\"foo bar\""));
   }
 
   /** test a simple phrase with various slop settings */
-  public void testPhraseWithSlop() throws Exception {
+  public void testPhraseWithSlop() {
     PhraseQuery expectedWithSlop = new PhraseQuery(2, "field", "foo", "bar");
 
     assertEquals(expectedWithSlop, parse("\"foo bar\"~2"));
@@ -135,14 +135,14 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test a simple prefix */
-  public void testPrefix() throws Exception {
+  public void testPrefix() {
     PrefixQuery expected = new PrefixQuery(new Term("field", "foobar"));
 
     assertEquals(expected, parse("foobar*"));
   }
 
   /** test some AND'd terms using '+' operator */
-  public void testAND() throws Exception {
+  public void testAND() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), Occur.MUST);
     expected.add(new TermQuery(new Term("field", "bar")), Occur.MUST);
@@ -151,7 +151,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test some AND'd phrases using '+' operator */
-  public void testANDPhrase() throws Exception {
+  public void testANDPhrase() {
     PhraseQuery phrase1 = new PhraseQuery("field", "foo", "bar");
     PhraseQuery phrase2 = new PhraseQuery("field", "star", "wars");
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
@@ -162,7 +162,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test some AND'd terms (just using whitespace) */
-  public void testANDImplicit() throws Exception {
+  public void testANDImplicit() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), Occur.MUST);
     expected.add(new TermQuery(new Term("field", "bar")), Occur.MUST);
@@ -171,7 +171,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test some OR'd terms */
-  public void testOR() throws Exception {
+  public void testOR() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), Occur.SHOULD);
     expected.add(new TermQuery(new Term("field", "bar")), Occur.SHOULD);
@@ -181,7 +181,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test some OR'd terms (just using whitespace) */
-  public void testORImplicit() throws Exception {
+  public void testORImplicit() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), Occur.SHOULD);
     expected.add(new TermQuery(new Term("field", "bar")), Occur.SHOULD);
@@ -191,7 +191,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test some OR'd phrases using '|' operator */
-  public void testORPhrase() throws Exception {
+  public void testORPhrase() {
     PhraseQuery phrase1 = new PhraseQuery("field", "foo", "bar");
     PhraseQuery phrase2 = new PhraseQuery("field", "star", "wars");
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
@@ -202,7 +202,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test negated term */
-  public void testNOT() throws Exception {
+  public void testNOT() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), Occur.MUST_NOT);
     expected.add(new MatchAllDocsQuery(), Occur.SHOULD);
@@ -213,21 +213,21 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test crazy prefixes with multiple asterisks */
-  public void testCrazyPrefixes1() throws Exception {
+  public void testCrazyPrefixes1() {
     Query expected = new PrefixQuery(new Term("field", "st*ar"));
 
     assertEquals(expected, parse("st*ar*"));
   }
 
   /** test prefixes with some escaping */
-  public void testCrazyPrefixes2() throws Exception {
+  public void testCrazyPrefixes2() {
     Query expected = new PrefixQuery(new Term("field", "st*ar\\*"));
 
     assertEquals(expected, parse("st*ar\\\\**"));
   }
 
   /** not a prefix query! the prefix operator is escaped */
-  public void testTermInDisguise() throws Exception {
+  public void testTermInDisguise() {
     Query expected = new TermQuery(new Term("field", "st*ar\\*"));
 
     assertEquals(expected, parse("sT*Ar\\\\\\*"));
@@ -238,7 +238,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   // still be interpreted as a guess to what the human
   // input was trying to be
 
-  public void testGarbageTerm() throws Exception {
+  public void testGarbageTerm() {
     Query expected = new TermQuery(new Term("field", "star"));
 
     assertEquals(expected, parse("star"));
@@ -252,7 +252,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected, parse("- + \"\" - star \\"));
   }
 
-  public void testGarbageEmpty() throws Exception {
+  public void testGarbageEmpty() {
     MatchNoDocsQuery expected = new MatchNoDocsQuery();
 
     assertEquals(expected, parse(""));
@@ -268,7 +268,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected, parse("(\" \" \" \")"));
   }
 
-  public void testGarbageAND() throws Exception {
+  public void testGarbageAND() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "star")), Occur.MUST);
     expected.add(new TermQuery(new Term("field", "wars")), Occur.MUST);
@@ -281,7 +281,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("  |     star + + |   wars   \\"));
   }
 
-  public void testGarbageOR() throws Exception {
+  public void testGarbageOR() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "star")), Occur.SHOULD);
     expected.add(new TermQuery(new Term("field", "wars")), Occur.SHOULD);
@@ -292,7 +292,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("  +     star | + +   wars   \\"));
   }
 
-  public void testGarbageNOT() throws Exception {
+  public void testGarbageNOT() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "star")), Occur.MUST_NOT);
     expected.add(new MatchAllDocsQuery(), Occur.SHOULD);
@@ -302,7 +302,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("- -star -"));
   }
 
-  public void testGarbagePhrase() throws Exception {
+  public void testGarbagePhrase() {
     PhraseQuery expected = new PhraseQuery("field", "star", "wars");
 
     assertEquals(expected, parse("\"star wars\""));
@@ -311,7 +311,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected, parse("          \"star wars\"        \"\"\\"));
   }
 
-  public void testGarbageSubquery() throws Exception {
+  public void testGarbageSubquery() {
     Query expected = new TermQuery(new Term("field", "star"));
 
     assertEquals(expected, parse("(star)"));
@@ -321,7 +321,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected, parse("| + - ( + - |      star    \n      ) \n"));
   }
 
-  public void testCompoundAnd() throws Exception {
+  public void testCompoundAnd() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "star")), Occur.MUST);
     expected.add(new TermQuery(new Term("field", "wars")), Occur.MUST);
@@ -332,7 +332,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse(" | --star wars empire \n\\"));
   }
 
-  public void testCompoundOr() throws Exception {
+  public void testCompoundOr() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "star")), Occur.SHOULD);
     expected.add(new TermQuery(new Term("field", "wars")), Occur.SHOULD);
@@ -343,7 +343,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse(" | --star|wars|empire \n\\"));
   }
 
-  public void testComplex00() throws Exception {
+  public void testComplex00() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner = new BooleanQuery.Builder();
     inner.add(new TermQuery(new Term("field", "star")), Occur.SHOULD);
@@ -356,7 +356,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("star| + wars + ----empire |"));
   }
 
-  public void testComplex01() throws Exception {
+  public void testComplex01() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner = new BooleanQuery.Builder();
     inner.add(new TermQuery(new Term("field", "star")), Occur.MUST);
@@ -369,7 +369,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("star + | wars | ----empire +"));
   }
 
-  public void testComplex02() throws Exception {
+  public void testComplex02() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner = new BooleanQuery.Builder();
     inner.add(new TermQuery(new Term("field", "star")), Occur.MUST);
@@ -383,7 +383,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("star + | wars | ----empire | + --strikes \\"));
   }
 
-  public void testComplex03() throws Exception {
+  public void testComplex03() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner = new BooleanQuery.Builder();
     BooleanQuery.Builder inner2 = new BooleanQuery.Builder();
@@ -400,7 +400,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     assertEquals(expected.build(), parse("star + | wars | ----empire | + --strikes + | --back \\"));
   }
 
-  public void testComplex04() throws Exception {
+  public void testComplex04() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner = new BooleanQuery.Builder();
     BooleanQuery.Builder inner2 = new BooleanQuery.Builder();
@@ -418,7 +418,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
         expected.build(), parse("(star + | wars |) | ----empire | + --(strikes + | --back) \\"));
   }
 
-  public void testComplex05() throws Exception {
+  public void testComplex05() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner1 = new BooleanQuery.Builder();
     BooleanQuery.Builder inner2 = new BooleanQuery.Builder();
@@ -449,7 +449,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
         parse("(star + | wars |) | --(--empire | + --(strikes + | --back + -jarjar) \"\" ) \""));
   }
 
-  public void testComplex06() throws Exception {
+  public void testComplex06() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     BooleanQuery.Builder inner1 = new BooleanQuery.Builder();
     BooleanQuery.Builder inner2 = new BooleanQuery.Builder();
@@ -478,7 +478,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test a term with field weights */
-  public void testWeightedTerm() throws Exception {
+  public void testWeightedTerm() {
     Map<String, Float> weights = new LinkedHashMap<>();
     weights.put("field0", 5f);
     weights.put("field1", 10f);
@@ -497,7 +497,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   /** test a more complex query with field weights */
-  public void testWeightedOR() throws Exception {
+  public void testWeightedOR() {
     Map<String, Float> weights = new LinkedHashMap<>();
     weights.put("field0", 5f);
     weights.put("field1", 10f);
@@ -608,7 +608,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
   }
 
   // we aren't supposed to barf on any input...
-  public void testRandomQueries() throws Exception {
+  public void testRandomQueries() {
     for (int i = 0; i < 1000; i++) {
       String query = TestUtil.randomUnicodeString(random());
       parse(query); // no exception
@@ -616,7 +616,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     }
   }
 
-  public void testRandomQueries2() throws Exception {
+  public void testRandomQueries2() {
     char[] chars = new char[] {'a', '1', '|', '&', ' ', '(', ')', '"', '-', '~'};
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 1000; i++) {
@@ -630,7 +630,7 @@ public class TestSimpleQueryParser extends LuceneTestCase {
     }
   }
 
-  public void testStarBecomesMatchAll() throws Exception {
+  public void testStarBecomesMatchAll() {
     Query q = parse("*");
     assertEquals(q, new MatchAllDocsQuery());
     q = parse(" *   ");

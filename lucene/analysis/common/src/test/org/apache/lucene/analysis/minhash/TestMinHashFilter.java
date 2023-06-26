@@ -56,7 +56,7 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
   }
 
   @Test
-  public void testSimpleOrder() throws UnsupportedEncodingException {
+  public void testSimpleOrder() {
     LongPair hash1 = new LongPair();
     hash1.val1 = 1;
     hash1.val2 = 2;

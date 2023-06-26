@@ -439,7 +439,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     dir.failOn(
         new MockDirectoryWrapper.Failure() {
           @Override
-          public void eval(MockDirectoryWrapper dir) throws IOException {
+          public void eval(MockDirectoryWrapper dir) {
             if (doFailExc.get() && random().nextInt(4) == 1) {
               if (callStackContains(IndexFileDeleter.class, "decRef")) {
                 throw new RuntimeException("fake fail");

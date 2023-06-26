@@ -56,7 +56,7 @@ public class TestTessellator extends LuceneTestCase {
             rect.maxLat));
   }
 
-  public void testSimpleTessellation() throws Exception {
+  public void testSimpleTessellation() {
     Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 100000, 100000);
     Polygon inner =
         new Polygon(
@@ -71,7 +71,7 @@ public class TestTessellator extends LuceneTestCase {
   }
 
   @Nightly
-  public void testSimpleTessellationAtNight() throws Exception {
+  public void testSimpleTessellationAtNight() {
     Polygon poly = GeoTestUtil.createRegularPolygon(0.0, 0.0, 1000000, 1000000);
     Polygon inner =
         new Polygon(

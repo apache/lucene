@@ -32,7 +32,7 @@ import org.apache.lucene.util.ResourceLoader;
 
 public class TestFilesystemResourceLoader extends LuceneTestCase {
 
-  private void assertNotFound(ResourceLoader rl) throws Exception {
+  private void assertNotFound(ResourceLoader rl) {
     // the resource does not exist, should fail!
     expectThrows(
         IOException.class,

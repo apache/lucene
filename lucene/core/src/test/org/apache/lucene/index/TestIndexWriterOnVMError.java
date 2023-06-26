@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Random;
@@ -254,7 +253,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
     doTest(
         new Failure() {
           @Override
-          public void eval(MockDirectoryWrapper dir) throws IOException {
+          public void eval(MockDirectoryWrapper dir) {
             if (r.nextInt(3000) == 0) {
               if (callStackContains(IndexWriter.class)) {
                 throw new OutOfMemoryError("Fake OutOfMemoryError");
@@ -269,7 +268,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
     doTest(
         new Failure() {
           @Override
-          public void eval(MockDirectoryWrapper dir) throws IOException {
+          public void eval(MockDirectoryWrapper dir) {
             if (r.nextInt(3000) == 0) {
               if (callStackContains(IndexWriter.class)) {
                 throw new UnknownError("Fake UnknownError");
@@ -285,7 +284,7 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
     doTest(
         new Failure() {
           @Override
-          public void eval(MockDirectoryWrapper dir) throws IOException {
+          public void eval(MockDirectoryWrapper dir) {
             if (r.nextInt(4) == 0) {
               if (callStackContains(IndexFileDeleter.class, "checkpoint")) {
                 throw new OutOfMemoryError("Fake OutOfMemoryError");

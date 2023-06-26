@@ -359,7 +359,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     }
   }
 
-  public void testInvalidDocValuesUsage() throws Exception {
+  public void testInvalidDocValuesUsage() {
     Document doc = new Document();
     doc.add(new NumericDocValuesField("field", 29L));
     doc.add(new BinaryDocValuesField("field", new BytesRef("30")));

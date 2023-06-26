@@ -198,7 +198,7 @@ public class TestDocumentValueSourceDictionary extends LuceneTestCase {
       }
 
       @Override
-      public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      public LongValuesSource rewrite(IndexSearcher searcher) {
         return this;
       }
     };

@@ -26,7 +26,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 /** simple testcases for concrete impl of IndexableFieldType */
 public class TestFieldType extends LuceneTestCase {
 
-  public void testEquals() throws Exception {
+  public void testEquals() {
     FieldType ft = new FieldType();
     assertEquals(ft, ft);
     assertFalse(ft.equals(null));

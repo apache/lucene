@@ -17,7 +17,6 @@
 package org.apache.lucene.benchmark.byTask.feeds;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Path;
 import java.text.ParseException;
@@ -44,7 +43,7 @@ public class TestTrecContentSource extends LuceneTestCase {
     }
 
     @Override
-    void openNextFile() throws NoMoreDataException, IOException {
+    void openNextFile() throws NoMoreDataException {
       if (reader != null) {
         if (!forever) {
           throw new NoMoreDataException();
@@ -72,7 +71,7 @@ public class TestTrecContentSource extends LuceneTestCase {
     assertEquals(expDate, date);
   }
 
-  private void assertNoMoreDataException(StringableTrecSource stdm) throws Exception {
+  private void assertNoMoreDataException(StringableTrecSource stdm) {
     expectThrows(
         NoMoreDataException.class,
         () -> {

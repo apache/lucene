@@ -17,14 +17,13 @@
 package org.apache.lucene.queryparser.ext;
 
 import org.apache.lucene.index.Term;
-import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 
 class ExtensionStub extends ParserExtension {
 
   @Override
-  public Query parse(ExtensionQuery components) throws ParseException {
+  public Query parse(ExtensionQuery components) {
     return new TermQuery(new Term(components.getField(), components.getRawQueryString()));
   }
 }

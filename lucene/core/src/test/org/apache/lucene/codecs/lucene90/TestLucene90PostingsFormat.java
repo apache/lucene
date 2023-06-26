@@ -81,7 +81,7 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
         });
   }
 
-  public void testInvalidBlockSizes() throws Exception {
+  public void testInvalidBlockSizes() {
     shouldFail(0, 0);
     shouldFail(10, 8);
     shouldFail(-1, 10);

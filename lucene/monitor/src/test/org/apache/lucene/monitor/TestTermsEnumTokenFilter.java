@@ -53,7 +53,7 @@ public class TestTermsEnumTokenFilter extends LuceneTestCase {
           long count = 1000;
 
           @Override
-          public BytesRef next() throws IOException {
+          public BytesRef next() {
             if (count-- > 100) return foo;
             if (count-- > 0) return bar;
             return null;

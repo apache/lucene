@@ -63,8 +63,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     }
 
     @Override
-    protected MergeThread getMergeThread(MergeSource mergeSource, MergePolicy.OneMerge merge)
-        throws IOException {
+    protected MergeThread getMergeThread(MergeSource mergeSource, MergePolicy.OneMerge merge) {
       MergeThread thread = new MyMergeThread(mergeSource, merge);
       thread.setDaemon(true);
       thread.setName("MyMergeThread");
@@ -175,7 +174,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() {}
   }
 
   public void testCustomMergeScheduler() throws Exception {

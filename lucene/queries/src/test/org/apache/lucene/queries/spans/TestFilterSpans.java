@@ -23,7 +23,7 @@ import org.junit.Test;
 public class TestFilterSpans extends LuceneTestCase {
 
   @Test
-  public void testOverrides() throws Exception {
+  public void testOverrides() {
     // verify that all methods of Spans are overridden by FilterSpans,
     for (Method m : FilterSpans.class.getMethods()) {
       if (m.getDeclaringClass() == Spans.class) {

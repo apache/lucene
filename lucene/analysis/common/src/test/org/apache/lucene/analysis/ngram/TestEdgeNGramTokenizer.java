@@ -35,7 +35,7 @@ public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {
     input = new StringReader("abcde");
   }
 
-  public void testInvalidInput() throws Exception {
+  public void testInvalidInput() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -43,7 +43,7 @@ public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testInvalidInput2() throws Exception {
+  public void testInvalidInput2() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -51,7 +51,7 @@ public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testInvalidInput3() throws Exception {
+  public void testInvalidInput3() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

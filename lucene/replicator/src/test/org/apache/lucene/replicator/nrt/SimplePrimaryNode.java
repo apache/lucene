@@ -176,8 +176,8 @@ class SimplePrimaryNode extends PrimaryNode {
   }
 
   @Override
-  protected void preCopyMergedSegmentFiles(SegmentCommitInfo info, Map<String, FileMetaData> files)
-      throws IOException {
+  protected void preCopyMergedSegmentFiles(
+      SegmentCommitInfo info, Map<String, FileMetaData> files) {
     int[] replicaTCPPorts = this.replicaTCPPorts;
     if (replicaTCPPorts == null) {
       message("no replicas; skip warming " + info);

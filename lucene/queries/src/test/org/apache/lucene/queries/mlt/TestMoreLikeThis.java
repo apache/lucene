@@ -382,7 +382,7 @@ public class TestMoreLikeThis extends LuceneTestCase {
   }
 
   // just basic equals/hashcode etc
-  public void testMoreLikeThisQuery() throws Exception {
+  public void testMoreLikeThisQuery() {
     Analyzer analyzer = new MockAnalyzer(random());
     Query query = new MoreLikeThisQuery("this is a test", new String[] {"text"}, analyzer, "text");
     QueryUtils.check(random(), query, searcher);

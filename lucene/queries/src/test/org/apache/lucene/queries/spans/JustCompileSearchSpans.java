@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queries.spans;
 
-import java.io.IOException;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -39,12 +38,12 @@ final class JustCompileSearchSpans {
     }
 
     @Override
-    public int nextDoc() throws IOException {
+    public int nextDoc() {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
     @Override
-    public int advance(int target) throws IOException {
+    public int advance(int target) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
@@ -64,10 +63,10 @@ final class JustCompileSearchSpans {
     }
 
     @Override
-    public void collect(SpanCollector collector) throws IOException {}
+    public void collect(SpanCollector collector) {}
 
     @Override
-    public int nextStartPosition() throws IOException {
+    public int nextStartPosition() {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
@@ -90,8 +89,7 @@ final class JustCompileSearchSpans {
     }
 
     @Override
-    public SpanWeight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public SpanWeight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 

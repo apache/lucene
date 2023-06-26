@@ -383,7 +383,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
   }
 
   // NOTE: the next two tests aren't that good as we need an EvilToken...
-  public void testNegativeOffsets() throws Exception {
+  public void testNegativeOffsets() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -391,7 +391,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
         });
   }
 
-  public void testIllegalOffsets() throws Exception {
+  public void testIllegalOffsets() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -399,7 +399,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
         });
   }
 
-  public void testIllegalOffsetsAcrossFieldInstances() throws Exception {
+  public void testIllegalOffsetsAcrossFieldInstances() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -409,7 +409,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
         });
   }
 
-  public void testBackwardsOffsets() throws Exception {
+  public void testBackwardsOffsets() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

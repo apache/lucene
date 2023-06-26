@@ -118,7 +118,7 @@ public class TestFreeTextSuggester extends LuceneTestCase {
     a.close();
   }
 
-  public void testIllegalByteDuringBuild() throws Exception {
+  public void testIllegalByteDuringBuild() {
     // Default separator is INFORMATION SEPARATOR TWO
     // (0x1e), so no input token is allowed to contain it
     Iterable<Input> keys = TestAnalyzingSuggester.shuffle(new Input("foo\u001ebar baz", 50));

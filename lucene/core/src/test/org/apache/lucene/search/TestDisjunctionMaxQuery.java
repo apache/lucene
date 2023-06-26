@@ -480,7 +480,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     assertEquals(expected, rewritten);
   }
 
-  public void testDisjunctOrderAndEquals() throws Exception {
+  public void testDisjunctOrderAndEquals() {
     // the order that disjuncts are provided in should not matter for equals() comparisons
     Query sub1 = tq("hed", "albino");
     Query sub2 = tq("hed", "elephant");

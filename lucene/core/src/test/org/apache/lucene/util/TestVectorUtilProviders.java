@@ -45,7 +45,7 @@ public class TestVectorUtilProviders extends LuceneTestCase {
   }
 
   @BeforeClass
-  public static void beforeClass() throws Exception {
+  public static void beforeClass() {
     assumeFalse(
         "Test only works when JDK's vector incubator module is enabled.",
         JDK_PROVIDER instanceof VectorUtilDefaultProvider);

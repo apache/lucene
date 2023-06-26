@@ -381,7 +381,7 @@ class SimpleReplicaNode extends ReplicaNode {
   }
 
   @Override
-  protected void sendNewReplica() throws IOException {
+  protected void sendNewReplica() {
     message("send new_replica to primary tcpPort=" + curPrimaryTCPPort);
     try (Connection c = new Connection(curPrimaryTCPPort)) {
       c.out.writeByte(SimplePrimaryNode.CMD_NEW_REPLICA);

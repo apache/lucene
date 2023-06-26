@@ -377,13 +377,13 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     }
 
     @Override
-    public float score() throws IOException {
+    public float score() {
       assert score != 0 : currentMatched;
       return (float) score;
     }
 
     @Override
-    public float getMaxScore(int upTo) throws IOException {
+    public float getMaxScore(int upTo) {
       return Float.POSITIVE_INFINITY;
     }
 

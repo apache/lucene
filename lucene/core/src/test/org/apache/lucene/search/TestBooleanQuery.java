@@ -60,7 +60,7 @@ import org.apache.lucene.util.automaton.Operations;
 
 public class TestBooleanQuery extends LuceneTestCase {
 
-  public void testEquality() throws Exception {
+  public void testEquality() {
     BooleanQuery.Builder bq1 = new BooleanQuery.Builder();
     bq1.add(new TermQuery(new Term("field", "value1")), BooleanClause.Occur.SHOULD);
     bq1.add(new TermQuery(new Term("field", "value2")), BooleanClause.Occur.SHOULD);
@@ -1201,7 +1201,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     assertEquals("a +b -c #d", bq.build().toString("field"));
   }
 
-  public void testQueryVisitor() throws IOException {
+  public void testQueryVisitor() {
     Term a = new Term("f", "a");
     Term b = new Term("f", "b");
     Term c = new Term("f", "c");

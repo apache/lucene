@@ -23,7 +23,7 @@ import org.apache.lucene.util.PrintStreamInfoStream;
 
 public class TestIndexMergeTool extends LuceneTestCase {
 
-  public void testNoParameters() throws Exception {
+  public void testNoParameters() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -31,7 +31,7 @@ public class TestIndexMergeTool extends LuceneTestCase {
         });
   }
 
-  public void testOneParameter() throws Exception {
+  public void testOneParameter() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
@@ -39,7 +39,7 @@ public class TestIndexMergeTool extends LuceneTestCase {
         });
   }
 
-  public void testTwoParameters() throws Exception {
+  public void testTwoParameters() {
     expectThrows(
         IllegalArgumentException.class,
         () -> {

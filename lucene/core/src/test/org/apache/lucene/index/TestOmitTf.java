@@ -350,7 +350,7 @@ public class TestOmitTf extends LuceneTestCase {
     }
 
     @Override
-    public void setScorer(Scorable scorer) throws IOException {
+    public void setScorer(Scorable scorer) {
       this.scorer = scorer;
     }
   }

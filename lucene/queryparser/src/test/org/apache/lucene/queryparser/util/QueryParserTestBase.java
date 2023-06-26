@@ -191,7 +191,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertMatchNoDocsQuery(getQuery(queryString, a));
   }
 
-  public void assertMatchNoDocsQuery(Query query) throws Exception {
+  public void assertMatchNoDocsQuery(Query query) {
     if (query instanceof MatchNoDocsQuery) {
       // good
     } else if (query instanceof BooleanQuery && ((BooleanQuery) query).clauses().size() == 0) {
@@ -211,7 +211,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     }
   }
 
-  public void assertEscapedQueryEquals(String query, Analyzer a, String result) throws Exception {
+  public void assertEscapedQueryEquals(String query, Analyzer a, String result) {
     String escapedQuery = QueryParserBase.escape(query);
     if (!escapedQuery.equals(result)) {
       fail("Query /" + query + "/ yielded /" + escapedQuery + "/, expecting /" + result + "/");
@@ -943,7 +943,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertFalse(q instanceof BoostQuery);
   }
 
-  public void assertParseException(String queryString) throws Exception {
+  public void assertParseException(String queryString) {
     try {
       getQuery(queryString);
     } catch (Exception expected) {
@@ -954,7 +954,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     fail("ParseException expected, not thrown");
   }
 
-  public void assertParseException(String queryString, Analyzer a) throws Exception {
+  public void assertParseException(String queryString, Analyzer a) {
     try {
       getQuery(queryString, a);
     } catch (Exception expected) {

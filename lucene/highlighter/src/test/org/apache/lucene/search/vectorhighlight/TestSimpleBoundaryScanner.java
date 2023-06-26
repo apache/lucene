@@ -22,7 +22,7 @@ public class TestSimpleBoundaryScanner extends LuceneTestCase {
   static final String TEXT =
       "Apache Lucene(TM) is a high-performance, full-featured\ntext search engine library written entirely in Java.";
 
-  public void testFindStartOffset() throws Exception {
+  public void testFindStartOffset() {
     StringBuilder text = new StringBuilder(TEXT);
     BoundaryScanner scanner = new SimpleBoundaryScanner();
 
@@ -41,7 +41,7 @@ public class TestSimpleBoundaryScanner extends LuceneTestCase {
     assertEquals(expected, scanner.findStartOffset(text, start));
   }
 
-  public void testFindEndOffset() throws Exception {
+  public void testFindEndOffset() {
     StringBuilder text = new StringBuilder(TEXT);
     BoundaryScanner scanner = new SimpleBoundaryScanner();
 

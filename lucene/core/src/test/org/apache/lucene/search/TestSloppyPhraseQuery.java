@@ -196,12 +196,12 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
 
   static class MaxFreqCollectorManager implements CollectorManager<MaxFreqCollector, Result> {
     @Override
-    public MaxFreqCollector newCollector() throws IOException {
+    public MaxFreqCollector newCollector() {
       return new MaxFreqCollector();
     }
 
     @Override
-    public Result reduce(Collection<MaxFreqCollector> collectors) throws IOException {
+    public Result reduce(Collection<MaxFreqCollector> collectors) {
       Result result = new Result();
       for (MaxFreqCollector collector : collectors) {
         result.max = Math.max(result.max, collector.max);
@@ -217,7 +217,7 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     Scorer scorer;
 
     @Override
-    public void setScorer(Scorable scorer) throws IOException {
+    public void setScorer(Scorable scorer) {
       this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
     }
 

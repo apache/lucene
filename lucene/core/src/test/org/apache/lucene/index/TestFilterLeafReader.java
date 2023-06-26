@@ -84,7 +84,7 @@ public class TestFilterLeafReader extends LuceneTestCase {
       }
     }
 
-    public TestReader(LeafReader reader) throws IOException {
+    public TestReader(LeafReader reader) {
       super(reader);
     }
 

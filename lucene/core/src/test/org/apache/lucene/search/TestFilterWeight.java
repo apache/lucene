@@ -30,8 +30,7 @@ public class TestFilterWeight extends LuceneTestCase {
     implTestDeclaredMethodsOverridden(subClass.getSuperclass(), subClass);
   }
 
-  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass)
-      throws Exception {
+  private void implTestDeclaredMethodsOverridden(Class<?> superClass, Class<?> subClass) {
     for (final Method superClassMethod : superClass.getDeclaredMethods()) {
       final int modifiers = superClassMethod.getModifiers();
       if (Modifier.isFinal(modifiers)) continue;

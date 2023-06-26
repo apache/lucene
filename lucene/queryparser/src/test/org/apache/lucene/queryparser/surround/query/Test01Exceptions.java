@@ -56,7 +56,7 @@ public class Test01Exceptions extends LuceneTestCase {
     ""
   };
 
-  public void test01Exceptions() throws Exception {
+  public void test01Exceptions() {
     String m = ExceptionQueryTestFacade.getFailQueries(exceptionQueries, verbose);
     if (m.length() > 0) {
       fail("No ParseException for:\n" + m);

@@ -84,7 +84,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         public void onUse(Query query) {}
 
         @Override
-        public boolean shouldCache(Query query) throws IOException {
+        public boolean shouldCache(Query query) {
           return true;
         }
       };
@@ -96,7 +96,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         public void onUse(Query query) {}
 
         @Override
-        public boolean shouldCache(Query query) throws IOException {
+        public boolean shouldCache(Query query) {
           return false;
         }
       };
@@ -113,8 +113,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final SearcherFactory searcherFactory =
         new SearcherFactory() {
           @Override
-          public IndexSearcher newSearcher(IndexReader reader, IndexReader previous)
-              throws IOException {
+          public IndexSearcher newSearcher(IndexReader reader, IndexReader previous) {
             IndexSearcher searcher = new IndexSearcher(reader);
             searcher.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
             searcher.setQueryCache(queryCache);
@@ -457,11 +456,10 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           return null;
         }
 
@@ -626,7 +624,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new QueryCachingPolicy() {
 
           @Override
-          public boolean shouldCache(Query query) throws IOException {
+          public boolean shouldCache(Query query) {
             return random().nextBoolean();
           }
 
@@ -950,7 +948,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new QueryCachingPolicy() {
 
           @Override
-          public boolean shouldCache(Query query) throws IOException {
+          public boolean shouldCache(Query query) {
             assertEquals(expectedCacheKey, query);
             return true;
           }
@@ -1136,11 +1134,10 @@ public class TestLRUQueryCache extends LuceneTestCase {
     int[] i = new int[] {42}; // an array so that clone keeps the reference
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           return null;
         }
 
@@ -1304,7 +1301,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     @Override
-    public boolean shouldCache(Query query) throws IOException {
+    public boolean shouldCache(Query query) {
       return true;
     }
   }
@@ -1493,16 +1490,15 @@ public class TestLRUQueryCache extends LuceneTestCase {
   private static class NoCacheQuery extends Query {
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new Weight(this) {
         @Override
-        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+        public Explanation explain(LeafReaderContext context, int doc) {
           return null;
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           return null;
         }
 
@@ -1570,8 +1566,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
         public Scorer scorer(LeafReaderContext context) throws IOException {
@@ -1584,11 +1579,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
 
         @Override
-        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) {
           final Weight weight = this;
           return new ScorerSupplier() {
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            public Scorer get(long leadCost) {
               scorerCreated.set(true);
               return new ConstantScoreScorer(weight, boost, scoreMode, DocIdSetIterator.all(1));
             }
@@ -1672,12 +1667,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, 1) {
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public Scorer scorer(LeafReaderContext context) {
           scorerCreatedCount.incrementAndGet();
           return new ConstantScoreScorer(
               this, 1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
@@ -1972,7 +1966,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new QueryCachingPolicy() {
 
           @Override
-          public boolean shouldCache(Query query) throws IOException {
+          public boolean shouldCache(Query query) {
             return query.getClass() != TermQuery.class;
           }
 

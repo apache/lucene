@@ -66,7 +66,7 @@ public class TestLongBitSet extends LuceneTestCase {
     } while (aa >= 0);
   }
 
-  void doRandomSets(int maxSize, int iter, int mode) throws IOException {
+  void doRandomSets(int maxSize, int iter, int mode) {
     java.util.BitSet a0 = null;
     LongBitSet b0 = null;
 

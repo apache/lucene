@@ -28,7 +28,7 @@ import org.junit.runner.notification.Failure;
 public class TestSetupTeardownChaining extends WithNestedTests {
   public static class NestedSetupChain extends AbstractNestedTest {
     @Override
-    public void setUp() throws Exception {
+    public void setUp() {
       // missing call.
       System.out.println("Hello.");
     }
@@ -39,7 +39,7 @@ public class TestSetupTeardownChaining extends WithNestedTests {
 
   public static class NestedTeardownChain extends AbstractNestedTest {
     @Override
-    public void tearDown() throws Exception {
+    public void tearDown() {
       // missing call.
     }
 

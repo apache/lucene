@@ -1091,7 +1091,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     @Override
-    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) {
       throw new UnsupportedOperationException();
     }
 
@@ -1118,12 +1118,12 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return null;
     }
 
     @Override
-    public PointValues getPointValues(String field) throws IOException {
+    public PointValues getPointValues(String field) {
       return null;
     }
 

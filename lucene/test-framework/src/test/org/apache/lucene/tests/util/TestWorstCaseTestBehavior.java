@@ -46,7 +46,7 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
   }
 
   @Ignore
-  public void testLaaaaaargeOutput() throws Exception {
+  public void testLaaaaaargeOutput() {
     String message = "I will not OOM on large output";
     int howMuch = 250 * 1024 * 1024;
     for (int i = 0; i < howMuch; i++) {
@@ -58,7 +58,7 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
   }
 
   @Ignore
-  public void testProgressiveOutput() throws Exception {
+  public void testProgressiveOutput() {
     for (int i = 0; i < 20; i++) {
       System.out.println("Emitting sysout line: " + i);
       System.err.println("Emitting syserr line: " + i);
@@ -89,7 +89,7 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
 
   @Ignore
   @Timeout(millis = 1000)
-  public void testZombie() throws Exception {
+  public void testZombie() {
     while (true) {
       try {
         Thread.sleep(1000);

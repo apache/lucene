@@ -260,7 +260,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     }
 
     @Override
-    public float score() throws IOException {
+    public float score() {
       return score;
     }
   }
@@ -388,7 +388,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSortNoResults() throws Exception {
+  public void testSortNoResults() {
 
     // Two Sort criteria to instantiate the multi/single comparators.
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};

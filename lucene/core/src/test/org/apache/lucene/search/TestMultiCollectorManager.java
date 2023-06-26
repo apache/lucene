@@ -236,12 +236,12 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     }
 
     @Override
-    public SimpleListCollector newCollector() throws IOException {
+    public SimpleListCollector newCollector() {
       return new SimpleListCollector(predicate);
     }
 
     @Override
-    public List<Integer> reduce(Collection<SimpleListCollector> collectors) throws IOException {
+    public List<Integer> reduce(Collection<SimpleListCollector> collectors) {
       List<Integer> all = new ArrayList<>();
       for (SimpleListCollector c : collectors) {
         all.addAll(c.collected);
@@ -260,13 +260,13 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     }
 
     @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    public LeafCollector getLeafCollector(LeafReaderContext context) {
       return new LeafCollector() {
         @Override
-        public void setScorer(Scorable scorer) throws IOException {}
+        public void setScorer(Scorable scorer) {}
 
         @Override
-        public void collect(int doc) throws IOException {
+        public void collect(int doc) {
           if (predicate.test(doc)) {
             collected.add(doc);
           }
@@ -284,10 +284,10 @@ public class TestMultiCollectorManager extends LuceneTestCase {
       implements CollectorManager<Collector, Object> {
 
     @Override
-    public Collector newCollector() throws IOException {
+    public Collector newCollector() {
       return new SimpleCollector() {
         @Override
-        public void collect(int doc) throws IOException {
+        public void collect(int doc) {
           throw new CollectionTerminatedException();
         }
 
@@ -299,7 +299,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     }
 
     @Override
-    public Object reduce(Collection<Collector> collectors) throws IOException {
+    public Object reduce(Collection<Collector> collectors) {
       return null;
     }
   }
@@ -309,7 +309,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     return new CollectorManager<Collector, Object>() {
 
       @Override
-      public Collector newCollector() throws IOException {
+      public Collector newCollector() {
 
         return new Collector() {
           @Override
@@ -318,11 +318,11 @@ public class TestMultiCollectorManager extends LuceneTestCase {
           }
 
           @Override
-          public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+          public LeafCollector getLeafCollector(LeafReaderContext context) {
             return new LeafCollector() {
 
               @Override
-              public void setScorer(Scorable scorer) throws IOException {
+              public void setScorer(Scorable scorer) {
                 while (expectedScorer.equals(scorer.getClass()) == false
                     && scorer instanceof FilterScorable) {
                   scorer = ((FilterScorable) scorer).in;
@@ -331,14 +331,14 @@ public class TestMultiCollectorManager extends LuceneTestCase {
               }
 
               @Override
-              public void collect(int doc) throws IOException {}
+              public void collect(int doc) {}
             };
           }
         };
       }
 
       @Override
-      public Object reduce(Collection<Collector> collectors) throws IOException {
+      public Object reduce(Collection<Collector> collectors) {
         return null;
       }
     };

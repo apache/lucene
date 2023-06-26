@@ -57,7 +57,7 @@ public class TestPhoneticFilterFactory extends BaseTokenStreamTestCase {
   }
 
   /** Case: Failures and Exceptions */
-  public void testMissingEncoder() throws IOException {
+  public void testMissingEncoder() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -67,7 +67,7 @@ public class TestPhoneticFilterFactory extends BaseTokenStreamTestCase {
     assertTrue(expected.getMessage().contains("Configuration Error: missing parameter 'encoder'"));
   }
 
-  public void testUnknownEncoder() throws IOException {
+  public void testUnknownEncoder() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -80,7 +80,7 @@ public class TestPhoneticFilterFactory extends BaseTokenStreamTestCase {
     assertTrue(expected.getMessage().contains("Error loading encoder"));
   }
 
-  public void testUnknownEncoderReflection() throws IOException {
+  public void testUnknownEncoderReflection() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -205,7 +205,7 @@ public class TestPhoneticFilterFactory extends BaseTokenStreamTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

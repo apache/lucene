@@ -71,7 +71,7 @@ public class TestBengaliNormalizer extends BaseTokenStreamTestCase {
   /**
    * creates random strings in the bengali block and ensures the normalizer doesn't trip up on them
    */
-  public void testRandom() throws IOException {
+  public void testRandom() {
     BengaliNormalizer normalizer = new BengaliNormalizer();
     for (int i = 0; i < 100000; i++) {
       String randomBengali = TestUtil.randomSimpleStringRange(random(), '\u0980', '\u09FF', 7);

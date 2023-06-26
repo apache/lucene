@@ -122,8 +122,8 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     doc.add(new StringField(A.field(), A.text(), Store.NO));
   }
 
-  private static void addFacets(Document doc, FacetsConfig config, boolean updateTermExpectedCounts)
-      throws IOException {
+  private static void addFacets(
+      Document doc, FacetsConfig config, boolean updateTermExpectedCounts) {
     List<FacetField> docCategories = randomCategories(random());
     for (FacetField ff : docCategories) {
       doc.add(ff);

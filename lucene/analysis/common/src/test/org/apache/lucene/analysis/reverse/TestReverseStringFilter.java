@@ -41,19 +41,19 @@ public class TestReverseStringFilter extends BaseTokenStreamTestCase {
         filter, new String[] {"\u0001oD", "\u0001evah", "\u0001a", "\u0001ecin", "\u0001yad"});
   }
 
-  public void testReverseString() throws Exception {
+  public void testReverseString() {
     assertEquals("A", ReverseStringFilter.reverse("A"));
     assertEquals("BA", ReverseStringFilter.reverse("AB"));
     assertEquals("CBA", ReverseStringFilter.reverse("ABC"));
   }
 
-  public void testReverseChar() throws Exception {
+  public void testReverseChar() {
     char[] buffer = {'A', 'B', 'C', 'D', 'E', 'F'};
     ReverseStringFilter.reverse(buffer, 2, 3);
     assertEquals("ABEDCF", new String(buffer));
   }
 
-  public void testReverseSupplementary() throws Exception {
+  public void testReverseSupplementary() {
     // supplementary at end
     assertEquals("𩬅艱鍟䇹愯瀛", ReverseStringFilter.reverse("瀛愯䇹鍟艱𩬅"));
     // supplementary at end - 1
@@ -66,7 +66,7 @@ public class TestReverseStringFilter extends BaseTokenStreamTestCase {
     assertEquals("gfe𩬅dcba", ReverseStringFilter.reverse("abcd𩬅efg"));
   }
 
-  public void testReverseSupplementaryChar() throws Exception {
+  public void testReverseSupplementaryChar() {
     // supplementary at end
     char[] buffer = "abc瀛愯䇹鍟艱𩬅".toCharArray();
     ReverseStringFilter.reverse(buffer, 3, 7);

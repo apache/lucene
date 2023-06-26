@@ -1036,7 +1036,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     InfoStream infoStream =
         new InfoStream() {
           @Override
-          public void close() throws IOException {}
+          public void close() {}
 
           @Override
           public void message(String component, String message) {

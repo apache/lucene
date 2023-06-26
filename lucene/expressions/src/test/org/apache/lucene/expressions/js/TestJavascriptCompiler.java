@@ -21,7 +21,7 @@ import org.apache.lucene.expressions.Expression;
 
 public class TestJavascriptCompiler extends CompilerTestCase {
 
-  public void testNullExpression() throws Exception {
+  public void testNullExpression() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -29,7 +29,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
-  public void testNullFunctions() throws Exception {
+  public void testNullFunctions() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -37,7 +37,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
-  public void testNullLoader() throws Exception {
+  public void testNullLoader() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -100,7 +100,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     assertEquals(output, e.variables[0]);
   }
 
-  public void testInvalidVariables() throws Exception {
+  public void testInvalidVariables() {
     doTestInvalidVariable("object.0invalid");
     doTestInvalidVariable("0.invalid");
     doTestInvalidVariable("object..invalid");
@@ -125,7 +125,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
-  public void testInvalidLexer() throws Exception {
+  public void testInvalidLexer() {
     ParseException expected =
         expectThrows(
             ParseException.class,
@@ -135,7 +135,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     assertTrue(expected.getMessage().contains("unexpected character '.' on line (2) position (1)"));
   }
 
-  public void testInvalidCompiles() throws Exception {
+  public void testInvalidCompiles() {
     expectThrows(
         ParseException.class,
         () -> {
@@ -187,7 +187,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
-  public void testNull() throws Exception {
+  public void testNull() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -195,7 +195,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
-  public void testWrongArity() throws Exception {
+  public void testWrongArity() {
     ParseException expected =
         expectThrows(
             ParseException.class,

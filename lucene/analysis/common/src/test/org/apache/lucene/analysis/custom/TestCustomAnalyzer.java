@@ -297,7 +297,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
 
   // Now test misconfigurations:
 
-  public void testIncorrectOrder() throws Exception {
+  public void testIncorrectOrder() {
     expectThrows(
         IllegalStateException.class,
         () -> {
@@ -309,7 +309,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testMissingSPI() throws Exception {
+  public void testMissingSPI() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -320,7 +320,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
     assertTrue(expected.getMessage().contains("does not exist"));
   }
 
-  public void testSetTokenizerTwice() throws Exception {
+  public void testSetTokenizerTwice() {
     expectThrows(
         AlreadySetException.class,
         () -> {
@@ -331,7 +331,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testSetMatchVersionTwice() throws Exception {
+  public void testSetMatchVersionTwice() {
     expectThrows(
         AlreadySetException.class,
         () -> {
@@ -343,7 +343,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testSetPosIncTwice() throws Exception {
+  public void testSetPosIncTwice() {
     expectThrows(
         AlreadySetException.class,
         () -> {
@@ -355,7 +355,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testSetOfsGapTwice() throws Exception {
+  public void testSetOfsGapTwice() {
     expectThrows(
         AlreadySetException.class,
         () -> {
@@ -367,7 +367,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testNoTokenizer() throws Exception {
+  public void testNoTokenizer() {
     expectThrows(
         IllegalStateException.class,
         () -> {
@@ -375,7 +375,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testNullTokenizer() throws Exception {
+  public void testNullTokenizer() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -383,7 +383,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testNullTokenizerFactory() throws Exception {
+  public void testNullTokenizerFactory() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -391,7 +391,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testNullParamKey() throws Exception {
+  public void testNullParamKey() {
     expectThrows(
         NullPointerException.class,
         () -> {
@@ -399,7 +399,7 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         });
   }
 
-  public void testNullMatchVersion() throws Exception {
+  public void testNullMatchVersion() {
     expectThrows(
         NullPointerException.class,
         () -> {

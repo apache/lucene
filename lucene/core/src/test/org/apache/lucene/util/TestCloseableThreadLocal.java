@@ -27,7 +27,7 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
     assertEquals(TEST_VALUE, str);
   }
 
-  public void testNullValue() throws Exception {
+  public void testNullValue() {
     // Tests that null can be set as a valid value (LUCENE-1805). This
     // previously failed in get().
     CloseableThreadLocal<Object> ctl = new CloseableThreadLocal<>();
@@ -35,7 +35,7 @@ public class TestCloseableThreadLocal extends LuceneTestCase {
     assertNull(ctl.get());
   }
 
-  public void testDefaultValueWithoutSetting() throws Exception {
+  public void testDefaultValueWithoutSetting() {
     // LUCENE-1805: make sure default get returns null,
     // twice in a row
     CloseableThreadLocal<Object> ctl = new CloseableThreadLocal<>();

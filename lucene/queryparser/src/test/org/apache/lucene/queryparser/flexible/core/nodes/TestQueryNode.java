@@ -23,7 +23,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestQueryNode extends LuceneTestCase {
 
   /* LUCENE-2227 bug in QueryNodeImpl.add() */
-  public void testAddChildren() throws Exception {
+  public void testAddChildren() {
     QueryNode nodeA = new FieldQueryNode("foo", "A", 0, 1);
     QueryNode nodeB = new FieldQueryNode("foo", "B", 1, 2);
     BooleanQueryNode bq = new BooleanQueryNode(Arrays.asList(nodeA));
@@ -32,7 +32,7 @@ public class TestQueryNode extends LuceneTestCase {
   }
 
   /* LUCENE-3045 bug in QueryNodeImpl.containsTag(String key)*/
-  public void testTags() throws Exception {
+  public void testTags() {
     QueryNode node = new FieldQueryNode("foo", "A", 0, 1);
 
     node.setTag("TaG", new Object());
@@ -42,7 +42,7 @@ public class TestQueryNode extends LuceneTestCase {
   }
 
   /* LUCENE-5099 - QueryNodeProcessorImpl should set parent to null before returning on processing */
-  public void testRemoveFromParent() throws Exception {
+  public void testRemoveFromParent() {
     BooleanQueryNode booleanNode = new BooleanQueryNode(Collections.<QueryNode>emptyList());
     FieldQueryNode fieldNode = new FieldQueryNode("foo", "A", 0, 1);
     assertNull(fieldNode.getParent());
@@ -62,7 +62,7 @@ public class TestQueryNode extends LuceneTestCase {
     assertNull(fieldNode.getParent());
   }
 
-  public void testRemoveChildren() throws Exception {
+  public void testRemoveChildren() {
     BooleanQueryNode booleanNode = new BooleanQueryNode(Collections.<QueryNode>emptyList());
     FieldQueryNode fieldNode = new FieldQueryNode("foo", "A", 0, 1);
 

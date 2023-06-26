@@ -240,7 +240,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     assertEquals(new Term(bField, "b"), termB);
   }
 
-  public void testClone() throws Exception {
+  public void testClone() {
     DrillDownQuery q = new DrillDownQuery(config, new MatchAllDocsQuery());
     q.add("a");
 
@@ -489,7 +489,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     IOUtils.close(taxoReader, reader, writer, dir, taxoDir);
   }
 
-  public void testGetDrillDownQueries() throws Exception {
+  public void testGetDrillDownQueries() {
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("a", "1");
     q.add("b", "1");

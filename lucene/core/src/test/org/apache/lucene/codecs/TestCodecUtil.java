@@ -48,7 +48,7 @@ public class TestCodecUtil extends LuceneTestCase {
     input.close();
   }
 
-  public void testWriteTooLongHeader() throws Exception {
+  public void testWriteTooLongHeader() {
     StringBuilder tooLong = new StringBuilder();
     for (int i = 0; i < 128; i++) {
       tooLong.append('a');
@@ -62,7 +62,7 @@ public class TestCodecUtil extends LuceneTestCase {
         });
   }
 
-  public void testWriteNonAsciiHeader() throws Exception {
+  public void testWriteNonAsciiHeader() {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     IndexOutput output = new ByteBuffersIndexOutput(out, "temp", "temp");
     expectThrows(
@@ -218,7 +218,7 @@ public class TestCodecUtil extends LuceneTestCase {
     input.close();
   }
 
-  public void testWriteTooLongSuffix() throws Exception {
+  public void testWriteTooLongSuffix() {
     StringBuilder tooLong = new StringBuilder();
     for (int i = 0; i < 256; i++) {
       tooLong.append('a');
@@ -252,7 +252,7 @@ public class TestCodecUtil extends LuceneTestCase {
     input.close();
   }
 
-  public void testWriteNonAsciiSuffix() throws Exception {
+  public void testWriteNonAsciiSuffix() {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     IndexOutput output = new ByteBuffersIndexOutput(out, "temp", "temp");
     expectThrows(
@@ -303,7 +303,7 @@ public class TestCodecUtil extends LuceneTestCase {
           }
 
           @Override
-          public long getChecksum() throws IOException {
+          public long getChecksum() {
             return fakeChecksum.get();
           }
 

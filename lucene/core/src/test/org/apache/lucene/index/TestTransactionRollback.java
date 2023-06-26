@@ -166,7 +166,7 @@ public class TestTransactionRollback extends LuceneTestCase {
     }
 
     @Override
-    public void onCommit(List<? extends IndexCommit> commits) throws IOException {}
+    public void onCommit(List<? extends IndexCommit> commits) {}
 
     @Override
     public void onInit(List<? extends IndexCommit> commits) throws IOException {
@@ -200,10 +200,10 @@ public class TestTransactionRollback extends LuceneTestCase {
   static class DeleteLastCommitPolicy extends IndexDeletionPolicy {
 
     @Override
-    public void onCommit(List<? extends IndexCommit> commits) throws IOException {}
+    public void onCommit(List<? extends IndexCommit> commits) {}
 
     @Override
-    public void onInit(List<? extends IndexCommit> commits) throws IOException {
+    public void onInit(List<? extends IndexCommit> commits) {
       commits.get(commits.size() - 1).delete();
     }
   }
@@ -227,9 +227,9 @@ public class TestTransactionRollback extends LuceneTestCase {
   // Keeps all commit points (used to build index)
   static class KeepAllDeletionPolicy extends IndexDeletionPolicy {
     @Override
-    public void onCommit(List<? extends IndexCommit> commits) throws IOException {}
+    public void onCommit(List<? extends IndexCommit> commits) {}
 
     @Override
-    public void onInit(List<? extends IndexCommit> commits) throws IOException {}
+    public void onInit(List<? extends IndexCommit> commits) {}
   }
 }

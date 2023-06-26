@@ -1296,7 +1296,7 @@ public class TestPointQueries extends LuceneTestCase {
     dir.close();
   }
 
-  public void testToString() throws Exception {
+  public void testToString() {
 
     // ints
     assertEquals("field:[1 TO 2]", IntPoint.newRangeQuery("field", 1, 2).toString());
@@ -1476,8 +1476,7 @@ public class TestPointQueries extends LuceneTestCase {
   // TODO: in the future, if there is demand for real usage, we can "graduate" this test-only query
   // factory as IntPoint.newMultiSetQuery or
   // something (and same for other XXXPoint classes):
-  private static Query newMultiDimIntSetQuery(String field, final int numDims, int... valuesIn)
-      throws IOException {
+  private static Query newMultiDimIntSetQuery(String field, final int numDims, int... valuesIn) {
     if (valuesIn.length % numDims != 0) {
       throw new IllegalArgumentException(
           "incongruent number of values: valuesIn.length="
@@ -1620,7 +1619,7 @@ public class TestPointQueries extends LuceneTestCase {
     dir.close();
   }
 
-  public void testInvalidMultiDimPointInSetQuery() throws Exception {
+  public void testInvalidMultiDimPointInSetQuery() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -1732,7 +1731,7 @@ public class TestPointQueries extends LuceneTestCase {
   }
 
   /** Boxed methods for primitive types should behave the same as unboxed: just sugar */
-  public void testPointIntSetBoxed() throws Exception {
+  public void testPointIntSetBoxed() {
     assertEquals(
         IntPoint.newSetQuery("foo", 1, 2, 3), IntPoint.newSetQuery("foo", Arrays.asList(1, 2, 3)));
     assertEquals(
@@ -2040,7 +2039,7 @@ public class TestPointQueries extends LuceneTestCase {
     dir.close();
   }
 
-  public void testInvalidPointInSetQuery() throws Exception {
+  public void testInvalidPointInSetQuery() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -2066,7 +2065,7 @@ public class TestPointQueries extends LuceneTestCase {
         expected.getMessage());
   }
 
-  public void testInvalidPointInSetBinaryQuery() throws Exception {
+  public void testInvalidPointInSetBinaryQuery() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -2076,7 +2075,7 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals("all byte[] must be the same length, but saw 1 and 0", expected.getMessage());
   }
 
-  public void testPointInSetQueryToString() throws Exception {
+  public void testPointInSetQueryToString() {
     // int
     assertEquals("int:{-42 18}", IntPoint.newSetQuery("int", -42, 18).toString());
 
@@ -2095,7 +2094,7 @@ public class TestPointQueries extends LuceneTestCase {
         BinaryPoint.newSetQuery("bytes", new byte[] {42}, new byte[] {18}).toString());
   }
 
-  public void testPointInSetQueryGetPackedPoints() throws Exception {
+  public void testPointInSetQueryGetPackedPoints() {
     int numValues = randomIntValue(1, 32);
     List<byte[]> values = new ArrayList<>(numValues);
     for (byte i = 0; i < numValues; i++) {

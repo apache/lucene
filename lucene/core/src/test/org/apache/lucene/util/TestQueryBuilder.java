@@ -113,7 +113,7 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertEquals(expected, builder.createMinShouldMatchQuery("field", "one two three four", 0.99f));
   }
 
-  public void testPhraseQueryPositionIncrements() throws Exception {
+  public void testPhraseQueryPositionIncrements() {
     PhraseQuery.Builder pqBuilder = new PhraseQuery.Builder();
     pqBuilder.add(new Term("field", "1"), 0);
     pqBuilder.add(new Term("field", "2"), 2);
@@ -142,7 +142,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** simple synonyms test */
-  public void testSynonyms() throws Exception {
+  public void testSynonyms() {
     SynonymQuery expected =
         new SynonymQuery.Builder("field")
             .addTerm(new Term("field", "dogs"))
@@ -156,7 +156,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** forms multiphrase query */
-  public void testSynonymsPhrase() throws Exception {
+  public void testSynonymsPhrase() {
     MultiPhraseQuery.Builder expectedBuilder = new MultiPhraseQuery.Builder();
     expectedBuilder.add(new Term("field", "old"));
     expectedBuilder.add(new Term[] {new Term("field", "dogs"), new Term("field", "dog")});
@@ -176,7 +176,7 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertEquals(expected, queryBuilder.createPhraseQuery("field", "guinea pig"));
   }
 
-  public void testMultiWordSynonymsPhraseWithSlop() throws Exception {
+  public void testMultiWordSynonymsPhraseWithSlop() {
     BooleanQuery expected =
         new BooleanQuery.Builder()
             .add(
@@ -193,7 +193,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** forms graph query */
-  public void testMultiWordSynonymsBoolean() throws Exception {
+  public void testMultiWordSynonymsBoolean() {
     for (BooleanClause.Occur occur :
         new BooleanClause.Occur[] {BooleanClause.Occur.SHOULD, BooleanClause.Occur.MUST}) {
       Query syn1 =
@@ -248,7 +248,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** forms graph query */
-  public void testMultiWordPhraseSynonymsBoolean() throws Exception {
+  public void testMultiWordPhraseSynonymsBoolean() {
     for (BooleanClause.Occur occur :
         new BooleanClause.Occur[] {BooleanClause.Occur.SHOULD, BooleanClause.Occur.MUST}) {
       Query syn1 =
@@ -325,7 +325,7 @@ public class TestQueryBuilder extends LuceneTestCase {
     }
   }
 
-  public void testCJKTerm() throws Exception {
+  public void testCJKTerm() {
     // individual CJK chars as terms
     SimpleCJKAnalyzer analyzer = new SimpleCJKAnalyzer();
 
@@ -337,7 +337,7 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertEquals(expected.build(), builder.createBooleanQuery("field", "中国"));
   }
 
-  public void testCJKPhrase() throws Exception {
+  public void testCJKPhrase() {
     // individual CJK chars as terms
     SimpleCJKAnalyzer analyzer = new SimpleCJKAnalyzer();
 
@@ -347,7 +347,7 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertEquals(expected, builder.createPhraseQuery("field", "中国"));
   }
 
-  public void testCJKSloppyPhrase() throws Exception {
+  public void testCJKSloppyPhrase() {
     // individual CJK chars as terms
     SimpleCJKAnalyzer analyzer = new SimpleCJKAnalyzer();
 
@@ -395,7 +395,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** simple CJK synonym test */
-  public void testCJKSynonym() throws Exception {
+  public void testCJKSynonym() {
     SynonymQuery expected =
         new SynonymQuery.Builder("field")
             .addTerm(new Term("field", "国"))
@@ -408,7 +408,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** synonyms with default OR operator */
-  public void testCJKSynonymsOR() throws Exception {
+  public void testCJKSynonymsOR() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "中")), BooleanClause.Occur.SHOULD);
     SynonymQuery inner =
@@ -422,7 +422,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** more complex synonyms with default OR operator */
-  public void testCJKSynonymsOR2() throws Exception {
+  public void testCJKSynonymsOR2() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "中")), BooleanClause.Occur.SHOULD);
     SynonymQuery inner =
@@ -442,7 +442,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** synonyms with default AND operator */
-  public void testCJKSynonymsAND() throws Exception {
+  public void testCJKSynonymsAND() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "中")), BooleanClause.Occur.MUST);
     SynonymQuery inner =
@@ -457,7 +457,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** more complex synonyms with default AND operator */
-  public void testCJKSynonymsAND2() throws Exception {
+  public void testCJKSynonymsAND2() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "中")), BooleanClause.Occur.MUST);
     SynonymQuery inner =
@@ -478,7 +478,7 @@ public class TestQueryBuilder extends LuceneTestCase {
   }
 
   /** forms multiphrase query */
-  public void testCJKSynonymsPhrase() throws Exception {
+  public void testCJKSynonymsPhrase() {
     MultiPhraseQuery.Builder expectedBuilder = new MultiPhraseQuery.Builder();
     expectedBuilder.add(new Term("field", "中"));
     expectedBuilder.add(new Term[] {new Term("field", "国"), new Term("field", "國")});
@@ -506,7 +506,7 @@ public class TestQueryBuilder extends LuceneTestCase {
                   }
 
                   @Override
-                  public boolean incrementToken() throws IOException {
+                  public boolean incrementToken() {
                     assertTrue(wasReset);
                     return false;
                   }

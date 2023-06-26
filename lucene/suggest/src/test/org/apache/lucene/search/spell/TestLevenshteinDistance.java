@@ -45,7 +45,7 @@ public class TestLevenshteinDistance extends LuceneTestCase {
     assertTrue(d1 > d2);
   }
 
-  public void testEmpty() throws Exception {
+  public void testEmpty() {
     float d = sd.getDistance("", "al");
     assertEquals(d, 0.0f, 0.001);
   }

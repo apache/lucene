@@ -48,7 +48,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
   }
 
   @Override
-  protected void assertMerge(MergePolicy policy, MergeSpecification merge) throws IOException {
+  protected void assertMerge(MergePolicy policy, MergeSpecification merge) {
     LogMergePolicy lmp = (LogMergePolicy) policy;
     for (OneMerge oneMerge : merge.merges) {
       assertTrue(oneMerge.segments.size() <= lmp.getMergeFactor());

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.misc.store;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -28,7 +27,7 @@ import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
 public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCase {
 
-  public void testEmptyDir() throws Exception {
+  public void testEmptyDir() {
     ByteWritesTrackingDirectoryWrapper dir =
         new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
     assertEquals(0, dir.getFlushedBytes());
@@ -105,7 +104,7 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
   }
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return new ByteWritesTrackingDirectoryWrapper(new ByteBuffersDirectory());
   }
 }

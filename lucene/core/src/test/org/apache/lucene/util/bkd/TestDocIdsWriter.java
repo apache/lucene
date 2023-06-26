@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.bkd;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Set;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
@@ -131,12 +130,12 @@ public class TestDocIdsWriter extends LuceneTestCase {
             int i = 0;
 
             @Override
-            public void visit(int docID) throws IOException {
+            public void visit(int docID) {
               read[i++] = docID;
             }
 
             @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
+            public void visit(int docID, byte[] packedValue) {
               throw new UnsupportedOperationException();
             }
 
