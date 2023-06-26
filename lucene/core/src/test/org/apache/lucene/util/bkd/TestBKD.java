@@ -1495,10 +1495,10 @@ public class TestBKD extends LuceneTestCase {
         points.estimatePointCount(
             new IntersectVisitor() {
               @Override
-              public void visit(int docID, byte[] packedValue) throws IOException {}
+              public void visit(int docID, byte[] packedValue) {}
 
               @Override
-              public void visit(int docID) throws IOException {}
+              public void visit(int docID) {}
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -1512,10 +1512,10 @@ public class TestBKD extends LuceneTestCase {
         points.estimatePointCount(
             new IntersectVisitor() {
               @Override
-              public void visit(int docID, byte[] packedValue) throws IOException {}
+              public void visit(int docID, byte[] packedValue) {}
 
               @Override
-              public void visit(int docID) throws IOException {}
+              public void visit(int docID) {}
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -1529,10 +1529,10 @@ public class TestBKD extends LuceneTestCase {
         points.estimatePointCount(
             new IntersectVisitor() {
               @Override
-              public void visit(int docID, byte[] packedValue) throws IOException {}
+              public void visit(int docID, byte[] packedValue) {}
 
               @Override
-              public void visit(int docID) throws IOException {}
+              public void visit(int docID) {}
 
               @Override
               public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -1562,7 +1562,7 @@ public class TestBKD extends LuceneTestCase {
     dir.close();
   }
 
-  public void testTotalPointCountValidation() throws IOException {
+  public void testTotalPointCountValidation() {
     Directory dir = newDirectory();
     final int numValues = 10;
     final int numPointsAdded = 50; // exceeds totalPointCount

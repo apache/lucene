@@ -60,7 +60,7 @@ public class TestPolygon2D extends LuceneTestCase {
     assertEquals(Relation.CELL_CROSSES_QUERY, polygon.relate(5, 6, 5, 6)); // overlapping the island
   }
 
-  public void testPacMan() throws Exception {
+  public void testPacMan() {
     // pacman
     double[] px = {0, 10, 10, 0, -8, -10, -8, 0, 10, 10, 0};
     double[] py = {0, 5, 9, 10, 9, 0, -9, -10, -9, -5, 0};
@@ -76,7 +76,7 @@ public class TestPolygon2D extends LuceneTestCase {
     assertEquals(Relation.CELL_CROSSES_QUERY, polygon.relate(yMin, yMax, xMin, xMax));
   }
 
-  public void testBoundingBox() throws Exception {
+  public void testBoundingBox() {
     for (int i = 0; i < 100; i++) {
       Component2D polygon = Polygon2D.create(nextPolygon());
 
@@ -93,7 +93,7 @@ public class TestPolygon2D extends LuceneTestCase {
   }
 
   // targets the bounding box directly
-  public void testBoundingBoxEdgeCases() throws Exception {
+  public void testBoundingBoxEdgeCases() {
     for (int i = 0; i < 100; i++) {
       Polygon polygon = nextPolygon();
       Component2D impl = Polygon2D.create(polygon);
@@ -114,7 +114,7 @@ public class TestPolygon2D extends LuceneTestCase {
   /**
    * If polygon.contains(box) returns true, then any point in that box should return true as well
    */
-  public void testContainsRandom() throws Exception {
+  public void testContainsRandom() {
     int iters = atLeast(50);
     for (int i = 0; i < iters; i++) {
       Polygon polygon = nextPolygon();
@@ -164,7 +164,7 @@ public class TestPolygon2D extends LuceneTestCase {
   // different from testContainsRandom in that its not a purely random test. we iterate the vertices
   // of the polygon
   // and generate boxes near each one of those to try to be more efficient.
-  public void testContainsEdgeCases() throws Exception {
+  public void testContainsEdgeCases() {
     for (int i = 0; i < 1000; i++) {
       Polygon polygon = nextPolygon();
       Component2D impl = Polygon2D.create(polygon);

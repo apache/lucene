@@ -26,7 +26,7 @@ public class TestBreakIteratorBoundaryScanner extends LuceneTestCase {
           + "\nIt is a technology suitable for nearly any application that requires\n"
           + "full-text search, especially cross-platform. \nApache Lucene is an open source project available for free download.";
 
-  public void testOutOfRange() throws Exception {
+  public void testOutOfRange() {
     StringBuilder text = new StringBuilder(TEXT);
     BreakIterator bi = BreakIterator.getWordInstance(Locale.ROOT);
     BoundaryScanner scanner = new BreakIteratorBoundaryScanner(bi);
@@ -82,12 +82,12 @@ public class TestBreakIteratorBoundaryScanner extends LuceneTestCase {
   }
 
   private void testFindStartOffset(
-      StringBuilder text, int start, int expected, BoundaryScanner scanner) throws Exception {
+      StringBuilder text, int start, int expected, BoundaryScanner scanner) {
     assertEquals(expected, scanner.findStartOffset(text, start));
   }
 
   private void testFindEndOffset(
-      StringBuilder text, int start, int expected, BoundaryScanner scanner) throws Exception {
+      StringBuilder text, int start, int expected, BoundaryScanner scanner) {
     assertEquals(expected, scanner.findEndOffset(text, start));
   }
 }

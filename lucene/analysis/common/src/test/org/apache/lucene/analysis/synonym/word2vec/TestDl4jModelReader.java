@@ -72,7 +72,7 @@ public class TestDl4jModelReader extends LuceneTestCase {
   }
 
   @Test
-  public void decodeTerm_encodedTerm_shouldReturnDecodedTerm() throws Exception {
+  public void decodeTerm_encodedTerm_shouldReturnDecodedTerm() {
     byte[] originalInput = "lucene".getBytes(StandardCharsets.UTF_8);
     String B64encodedLuceneTerm = Base64.getEncoder().encodeToString(originalInput);
     String word2vecEncodedLuceneTerm = "B64:" + B64encodedLuceneTerm;

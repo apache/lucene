@@ -947,7 +947,7 @@ public class TestSynonymMapFilter extends BaseTokenStreamTestCase {
     a.close();
   }
 
-  public void testEmpty() throws Exception {
+  public void testEmpty() {
     Tokenizer tokenizer = new MockTokenizer();
     tokenizer.setReader(new StringReader("aa bb"));
     IllegalArgumentException expected =

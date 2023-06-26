@@ -41,7 +41,7 @@ public class TestWord2VecSynonymFilterFactory extends BaseTokenStreamFactoryTest
   }
 
   @Test
-  public void missingRequiredArgument_shouldThrowException() throws Exception {
+  public void missingRequiredArgument_shouldThrowException() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -59,7 +59,7 @@ public class TestWord2VecSynonymFilterFactory extends BaseTokenStreamFactoryTest
   }
 
   @Test
-  public void unsupportedModelFormat_shouldThrowException() throws Exception {
+  public void unsupportedModelFormat_shouldThrowException() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -71,7 +71,7 @@ public class TestWord2VecSynonymFilterFactory extends BaseTokenStreamFactoryTest
   }
 
   @Test
-  public void bogusArgument_shouldThrowException() throws Exception {
+  public void bogusArgument_shouldThrowException() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -83,7 +83,7 @@ public class TestWord2VecSynonymFilterFactory extends BaseTokenStreamFactoryTest
   }
 
   @Test
-  public void illegalArguments_shouldThrowException() throws Exception {
+  public void illegalArguments_shouldThrowException() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

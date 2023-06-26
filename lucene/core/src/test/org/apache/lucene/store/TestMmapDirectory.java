@@ -37,7 +37,7 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
   }
 
   @BeforeClass
-  public static void beforeClass() throws Exception {
+  public static void beforeClass() {
     assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 

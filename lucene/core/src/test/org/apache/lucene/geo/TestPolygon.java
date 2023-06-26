@@ -265,7 +265,7 @@ public class TestPolygon extends LuceneTestCase {
   }
 
   // stuff after the object is not allowed
-  public void testIllegalGeoJSONExtraCrapAtEnd() throws Exception {
+  public void testIllegalGeoJSONExtraCrapAtEnd() {
     StringBuilder b = new StringBuilder();
     b.append("{\n");
     b.append("  \"type\": \"Polygon\",\n");
@@ -280,7 +280,7 @@ public class TestPolygon extends LuceneTestCase {
     assertTrue(e.getMessage().contains("unexpected character 'f' after end of GeoJSON object"));
   }
 
-  public void testIllegalGeoJSONLinkedCRS() throws Exception {
+  public void testIllegalGeoJSONLinkedCRS() {
 
     StringBuilder b = new StringBuilder();
     b.append("{\n");
@@ -302,7 +302,7 @@ public class TestPolygon extends LuceneTestCase {
   }
 
   // FeatureCollection with more than one geometry is not supported:
-  public void testIllegalGeoJSONMultipleFeatures() throws Exception {
+  public void testIllegalGeoJSONMultipleFeatures() {
     StringBuilder b = new StringBuilder();
     b.append("{ \"type\": \"FeatureCollection\",\n");
     b.append("  \"features\": [\n");

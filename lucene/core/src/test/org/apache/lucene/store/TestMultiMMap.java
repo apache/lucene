@@ -39,7 +39,7 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
   }
 
   @BeforeClass
-  public static void beforeClass() throws Exception {
+  public static void beforeClass() {
     assertTrue(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON, MMapDirectory.UNMAP_SUPPORTED);
   }
 

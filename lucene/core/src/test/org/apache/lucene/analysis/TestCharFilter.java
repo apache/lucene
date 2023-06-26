@@ -23,22 +23,22 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCharFilter extends LuceneTestCase {
 
-  public void testCharFilter1() throws Exception {
+  public void testCharFilter1() {
     CharFilter cs = new CharFilter1(new StringReader(""));
     assertEquals("corrected offset is invalid", 1, cs.correctOffset(0));
   }
 
-  public void testCharFilter2() throws Exception {
+  public void testCharFilter2() {
     CharFilter cs = new CharFilter2(new StringReader(""));
     assertEquals("corrected offset is invalid", 2, cs.correctOffset(0));
   }
 
-  public void testCharFilter12() throws Exception {
+  public void testCharFilter12() {
     CharFilter cs = new CharFilter2(new CharFilter1(new StringReader("")));
     assertEquals("corrected offset is invalid", 3, cs.correctOffset(0));
   }
 
-  public void testCharFilter11() throws Exception {
+  public void testCharFilter11() {
     CharFilter cs = new CharFilter1(new CharFilter1(new StringReader("")));
     assertEquals("corrected offset is invalid", 2, cs.correctOffset(0));
   }

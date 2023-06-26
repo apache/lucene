@@ -34,7 +34,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   private static double DELTA = 0.0000001;
 
   /** empty list of methods */
-  public void testEmpty() throws Exception {
+  public void testEmpty() {
     Map<String, Method> functions = Collections.emptyMap();
     ParseException expected =
         expectThrows(

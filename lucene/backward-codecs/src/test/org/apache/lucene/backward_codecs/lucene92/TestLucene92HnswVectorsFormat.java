@@ -49,12 +49,12 @@ public class TestLucene92HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   }
 
   @Override
-  public void testRandomBytes() throws Exception {
+  public void testRandomBytes() {
     // unimplemented
   }
 
   @Override
-  public void testSortedIndexBytes() throws Exception {
+  public void testSortedIndexBytes() {
     // unimplemented
   }
 }

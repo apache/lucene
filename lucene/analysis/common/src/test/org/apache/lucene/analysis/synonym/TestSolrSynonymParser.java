@@ -68,7 +68,7 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidDoubleMap() throws Exception {
+  public void testInvalidDoubleMap() {
     String testFile = "a => b => c";
     Analyzer analyzer = new MockAnalyzer(random());
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);
@@ -81,7 +81,7 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidAnalyzesToNothingOutput() throws Exception {
+  public void testInvalidAnalyzesToNothingOutput() {
     String testFile = "a => 1";
     Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, false);
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);
@@ -94,7 +94,7 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidAnalyzesToNothingInput() throws Exception {
+  public void testInvalidAnalyzesToNothingInput() {
     String testFile = "1 => a";
     Analyzer analyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, false);
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);
@@ -107,7 +107,7 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidPositionsInput() throws Exception {
+  public void testInvalidPositionsInput() {
     String testFile = "testola => the test";
     Analyzer analyzer = new EnglishAnalyzer();
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);
@@ -120,7 +120,7 @@ public class TestSolrSynonymParser extends BaseSynonymParserTestCase {
   }
 
   /** parse a syn file with bad syntax */
-  public void testInvalidPositionsOutput() throws Exception {
+  public void testInvalidPositionsOutput() {
     String testFile = "the test => testola";
     Analyzer analyzer = new EnglishAnalyzer();
     SolrSynonymParser parser = new SolrSynonymParser(true, true, analyzer);

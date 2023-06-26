@@ -41,7 +41,7 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
   // for the threads tests... maybe because of the synchronization in listAll?
   // would be good to investigate further...
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return new NRTCachingDirectory(
         new ByteBuffersDirectory(),
         .1 + 2.0 * random().nextDouble(),

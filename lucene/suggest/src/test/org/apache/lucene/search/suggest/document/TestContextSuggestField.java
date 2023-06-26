@@ -45,7 +45,7 @@ public class TestContextSuggestField extends LuceneTestCase {
   public Directory dir;
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     dir = newDirectory();
   }
 
@@ -55,7 +55,7 @@ public class TestContextSuggestField extends LuceneTestCase {
   }
 
   @Test
-  public void testEmptySuggestion() throws Exception {
+  public void testEmptySuggestion() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

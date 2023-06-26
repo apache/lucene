@@ -40,7 +40,7 @@ public class TestByteBuffersDirectory extends BaseDirectoryTestCase {
   }
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return implSupplier.get();
   }
 

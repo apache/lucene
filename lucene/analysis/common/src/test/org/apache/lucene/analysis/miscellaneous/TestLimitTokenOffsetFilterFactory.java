@@ -43,7 +43,7 @@ public class TestLimitTokenOffsetFilterFactory extends BaseTokenStreamFactoryTes
     }
   }
 
-  public void testRequired() throws Exception {
+  public void testRequired() {
     // param is required
     IllegalArgumentException expected =
         expectThrows(
@@ -57,7 +57,7 @@ public class TestLimitTokenOffsetFilterFactory extends BaseTokenStreamFactoryTes
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

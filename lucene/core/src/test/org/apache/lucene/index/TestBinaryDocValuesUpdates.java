@@ -89,7 +89,7 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
     return doc;
   }
 
-  public void testUpdatesAreFlushed() throws IOException, InterruptedException {
+  public void testUpdatesAreFlushed() throws IOException {
     Directory dir = newDirectory();
     IndexWriter writer =
         new IndexWriter(

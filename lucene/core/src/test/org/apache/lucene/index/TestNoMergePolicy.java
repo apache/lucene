@@ -41,7 +41,7 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
   }
 
   @Test
-  public void testFinalSingleton() throws Exception {
+  public void testFinalSingleton() {
     assertTrue(Modifier.isFinal(NoMergePolicy.class.getModifiers()));
     Constructor<?>[] ctors = NoMergePolicy.class.getDeclaredConstructors();
     assertEquals("expected 1 private ctor only: " + Arrays.toString(ctors), 1, ctors.length);
@@ -50,7 +50,7 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
   }
 
   @Test
-  public void testMethodsOverridden() throws Exception {
+  public void testMethodsOverridden() {
     // Ensures that all methods of MergePolicy are overridden. That's important
     // to ensure that NoMergePolicy overrides everything, so that no unexpected
     // behavior/error occurs
@@ -70,14 +70,14 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
   }
 
   @Override
-  protected void assertSegmentInfos(MergePolicy policy, SegmentInfos infos) throws IOException {
+  protected void assertSegmentInfos(MergePolicy policy, SegmentInfos infos) {
     for (SegmentCommitInfo info : infos) {
       assertEquals(IndexWriter.SOURCE_FLUSH, info.info.getAttribute(IndexWriter.SOURCE));
     }
   }
 
   @Override
-  protected void assertMerge(MergePolicy policy, MergeSpecification merge) throws IOException {
+  protected void assertMerge(MergePolicy policy, MergeSpecification merge) {
     fail(); // should never happen
   }
 

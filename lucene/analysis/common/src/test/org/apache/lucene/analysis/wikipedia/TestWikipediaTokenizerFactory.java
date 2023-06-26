@@ -141,7 +141,7 @@ public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCas
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() throws Exception {
+  public void testBogusArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -151,7 +151,7 @@ public class TestWikipediaTokenizerFactory extends BaseTokenStreamFactoryTestCas
     assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 
-  public void testIllegalArguments() throws Exception {
+  public void testIllegalArguments() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

@@ -245,7 +245,7 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() {}
 
     @Override
     public long length() {
@@ -253,7 +253,7 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
 
     @Override
-    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+    public IndexInput slice(String sliceDescription, long offset, long length) {
       throw new UnsupportedOperationException();
     }
   }

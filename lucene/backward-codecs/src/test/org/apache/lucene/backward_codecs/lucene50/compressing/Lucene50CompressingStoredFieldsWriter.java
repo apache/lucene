@@ -156,7 +156,7 @@ public final class Lucene50CompressingStoredFieldsWriter extends StoredFieldsWri
   private int numStoredFieldsInDoc;
 
   @Override
-  public void startDocument() throws IOException {}
+  public void startDocument() {}
 
   @Override
   public void finishDocument() throws IOException {

@@ -43,7 +43,7 @@ public class TestContextQuery extends LuceneTestCase {
   public Directory dir;
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     dir = newDirectory();
   }
 
@@ -53,7 +53,7 @@ public class TestContextQuery extends LuceneTestCase {
   }
 
   @Test
-  public void testIllegalInnerQuery() throws Exception {
+  public void testIllegalInnerQuery() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

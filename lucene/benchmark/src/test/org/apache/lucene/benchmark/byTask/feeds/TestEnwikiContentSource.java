@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
 import java.util.Properties;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -38,14 +37,13 @@ public class TestEnwikiContentSource extends LuceneTestCase {
     }
 
     @Override
-    protected InputStream openInputStream() throws IOException {
+    protected InputStream openInputStream() {
       return new ByteArrayInputStream(docs.getBytes(StandardCharsets.UTF_8));
     }
   }
 
   private void assertDocData(
-      DocData dd, String expName, String expTitle, String expBody, String expDate)
-      throws ParseException {
+      DocData dd, String expName, String expTitle, String expBody, String expDate) {
     assertNotNull(dd);
     assertEquals(expName, dd.getName());
     assertEquals(expTitle, dd.getTitle());
@@ -53,7 +51,7 @@ public class TestEnwikiContentSource extends LuceneTestCase {
     assertEquals(expDate, dd.getDate());
   }
 
-  private void assertNoMoreDataException(EnwikiContentSource stdm) throws Exception {
+  private void assertNoMoreDataException(EnwikiContentSource stdm) {
     expectThrows(
         NoMoreDataException.class,
         () -> {

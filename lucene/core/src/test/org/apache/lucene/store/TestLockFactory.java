@@ -99,7 +99,7 @@ public class TestLockFactory extends LuceneTestCase {
       }
 
       @Override
-      public void ensureValid() throws IOException {
+      public void ensureValid() {
         // do nothing
       }
     }

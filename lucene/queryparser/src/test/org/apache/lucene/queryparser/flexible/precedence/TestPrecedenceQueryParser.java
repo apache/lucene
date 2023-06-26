@@ -146,7 +146,7 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
     originalMaxClauses = IndexSearcher.getMaxClauseCount();
   }
 
-  public PrecedenceQueryParser getParser(Analyzer a) throws Exception {
+  public PrecedenceQueryParser getParser(Analyzer a) {
     if (a == null) a = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     PrecedenceQueryParser qp = new PrecedenceQueryParser();
     qp.setAnalyzer(a);
@@ -170,7 +170,7 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
     assertMatchNoDocsQuery(getQuery(queryString, a));
   }
 
-  public void assertMatchNoDocsQuery(Query query) throws Exception {
+  public void assertMatchNoDocsQuery(Query query) {
     if (query instanceof MatchNoDocsQuery) {
       // good
     } else if (query instanceof BooleanQuery && ((BooleanQuery) query).clauses().size() == 0) {
@@ -572,7 +572,7 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
     assertNotNull(q);
   }
 
-  public void testException() throws Exception {
+  public void testException() {
     expectThrows(
         QueryNodeParseException.class,
         () -> {
@@ -581,7 +581,7 @@ public class TestPrecedenceQueryParser extends LuceneTestCase {
   }
 
   // ParseException expected due to too many boolean clauses
-  public void testBooleanQuery() throws Exception {
+  public void testBooleanQuery() {
     IndexSearcher.setMaxClauseCount(2);
     expectThrows(
         QueryNodeException.class,

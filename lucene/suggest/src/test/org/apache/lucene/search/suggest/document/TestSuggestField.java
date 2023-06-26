@@ -75,7 +75,7 @@ public class TestSuggestField extends LuceneTestCase {
   public Directory dir;
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     dir = newDirectory();
   }
 
@@ -85,7 +85,7 @@ public class TestSuggestField extends LuceneTestCase {
   }
 
   @Test
-  public void testEmptySuggestion() throws Exception {
+  public void testEmptySuggestion() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -96,7 +96,7 @@ public class TestSuggestField extends LuceneTestCase {
   }
 
   @Test
-  public void testNegativeWeight() throws Exception {
+  public void testNegativeWeight() {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
@@ -107,7 +107,7 @@ public class TestSuggestField extends LuceneTestCase {
   }
 
   @Test
-  public void testReservedChars() throws Exception {
+  public void testReservedChars() {
     CharsRefBuilder charsRefBuilder = new CharsRefBuilder();
     charsRefBuilder.append("sugg");
     charsRefBuilder.setCharAt(2, (char) ConcatenateGraphFilter.SEP_LABEL);
@@ -510,7 +510,7 @@ public class TestSuggestField extends LuceneTestCase {
     BitsProducer filter =
         new BitsProducer() {
           @Override
-          public Bits getBits(LeafReaderContext context) throws IOException {
+          public Bits getBits(LeafReaderContext context) {
             return new Bits.MatchNoBits(context.reader().maxDoc());
           }
         };

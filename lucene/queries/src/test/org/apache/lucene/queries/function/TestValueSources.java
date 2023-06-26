@@ -647,7 +647,7 @@ public class TestValueSources extends LuceneTestCase {
           }
 
           @Override
-          protected boolean func(int doc, FunctionValues[] vals) throws IOException {
+          protected boolean func(int doc, FunctionValues[] vals) {
             return false;
           }
         };
@@ -823,8 +823,8 @@ public class TestValueSources extends LuceneTestCase {
     // a VS that yields the score
     class ScoreValueSource extends ValueSource {
       @Override
-      public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
-          throws IOException {
+      public FunctionValues getValues(
+          Map<Object, Object> context, LeafReaderContext readerContext) {
         var scorer = (Scorable) context.get("scorer");
         assertNotNull(scorer);
         return new FloatDocValues(this) {

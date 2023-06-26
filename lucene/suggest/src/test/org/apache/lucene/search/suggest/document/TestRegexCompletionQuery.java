@@ -37,7 +37,7 @@ public class TestRegexCompletionQuery extends LuceneTestCase {
   public Directory dir;
 
   @Before
-  public void before() throws Exception {
+  public void before() {
     dir = newDirectory();
   }
 

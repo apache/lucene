@@ -24,11 +24,11 @@ import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 public class TestTrackingDirectoryWrapper extends BaseDirectoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     return new TrackingDirectoryWrapper(new ByteBuffersDirectory());
   }
 
-  public void testTrackEmpty() throws IOException {
+  public void testTrackEmpty() {
     TrackingDirectoryWrapper dir = new TrackingDirectoryWrapper(new ByteBuffersDirectory());
     assertEquals(Collections.emptySet(), dir.getCreatedFiles());
   }

@@ -17,7 +17,6 @@
 
 package org.apache.lucene.index;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -62,7 +61,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return null;
       }
 
@@ -140,7 +139,7 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {}
+      public void checkIntegrity() {}
 
       @Override
       public LeafMetaData getMetaData() {

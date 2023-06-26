@@ -369,7 +369,7 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   private <T> FirstPassGroupingCollector<T> createRandomFirstPassCollector(
-      Sort groupSort, String groupField, int topNGroups) throws IOException {
+      Sort groupSort, String groupField, int topNGroups) {
     Random random = random();
     if (random.nextBoolean()) {
       return (FirstPassGroupingCollector<T>)

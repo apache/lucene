@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.store;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.tests.store.BaseLockFactoryTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -25,7 +24,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestSleepingLockWrapper extends BaseLockFactoryTestCase {
 
   @Override
-  protected Directory getDirectory(Path path) throws IOException {
+  protected Directory getDirectory(Path path) {
     long lockWaitTimeout = TestUtil.nextLong(random(), 20, 100);
     long pollInterval = TestUtil.nextLong(random(), 2, 10);
 

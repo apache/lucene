@@ -197,7 +197,7 @@ public class TestGrouping extends LuceneTestCase {
   }
 
   private FirstPassGroupingCollector<?> createRandomFirstPassCollector(
-      String groupField, Sort groupSort, int topDocs) throws IOException {
+      String groupField, Sort groupSort, int topDocs) {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);
       return new FirstPassGroupingCollector<>(
@@ -212,8 +212,7 @@ public class TestGrouping extends LuceneTestCase {
       String groupField,
       Sort groupSort,
       int topDocs,
-      FirstPassGroupingCollector<?> firstPassGroupingCollector)
-      throws IOException {
+      FirstPassGroupingCollector<?> firstPassGroupingCollector) {
     GroupSelector<?> selector = firstPassGroupingCollector.getGroupSelector();
     if (TermGroupSelector.class.isAssignableFrom(selector.getClass())) {
       ValueSource vs = new BytesRefFieldSource(groupField);
@@ -254,8 +253,7 @@ public class TestGrouping extends LuceneTestCase {
       Sort groupSort,
       Sort sortWithinGroup,
       int maxDocsPerGroup,
-      boolean getMaxScores)
-      throws IOException {
+      boolean getMaxScores) {
     if (firstPassGroupingCollector
         .getGroupSelector()
         .getClass()
