@@ -29,8 +29,8 @@ import java.util.concurrent.RunnableFuture;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
- * Executor wrapper responsible for the execution of concurrent tasks. Used to parallelize
- * search across segments as well as query rewrite in some cases.
+ * Executor wrapper responsible for the execution of concurrent tasks. Used to parallelize search
+ * across segments as well as query rewrite in some cases.
  */
 class TaskExecutor {
   private final Executor executor;
