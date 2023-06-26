@@ -114,12 +114,12 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       int index = -1;
 
       @Override
-      public double doubleValue() {
+      public double doubleValue() throws IOException {
         return hits.scores[index];
       }
 
       @Override
-      public boolean advanceExact(int doc) {
+      public boolean advanceExact(int doc) throws IOException {
         index = doc;
         return true;
       }

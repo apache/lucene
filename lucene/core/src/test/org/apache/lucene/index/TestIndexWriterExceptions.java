@@ -1473,7 +1473,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     }
 
     @Override
-    public void eval(MockDirectoryWrapper dir) {
+    public void eval(MockDirectoryWrapper dir) throws IOException {
       if (callStackContains(TermVectorsConsumer.class, stage)) {
         throw new RuntimeException(EXC_MSG);
       }
@@ -1943,7 +1943,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
               long num = 0;
 
               @Override
-              public boolean incrementToken() {
+              public boolean incrementToken() throws IOException {
                 if (num == Integer.MAX_VALUE + 1) {
                   return false;
                 }
@@ -1996,7 +1996,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           }
 
           @Override
-          public void close() {}
+          public void close() throws IOException {}
         };
 
     Directory dir = newMockDirectory(); // we want to ensure we don't leak any locks or file handles

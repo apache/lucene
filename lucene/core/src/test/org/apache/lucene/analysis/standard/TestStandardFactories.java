@@ -47,7 +47,7 @@ public class TestStandardFactories extends BaseTokenStreamFactoryTestCase {
   }
 
   /** Test that bogus arguments result in exception */
-  public void testBogusArguments() {
+  public void testBogusArguments() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,

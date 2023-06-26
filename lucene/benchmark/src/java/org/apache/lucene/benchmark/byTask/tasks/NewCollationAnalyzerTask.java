@@ -69,7 +69,7 @@ public class NewCollationAnalyzerTask extends PerfTask {
   }
 
   @Override
-  public int doLogic() {
+  public int doLogic() throws Exception {
     try {
       Locale locale = getRunData().getLocale();
       if (locale == null) throw new RuntimeException("Locale must be set with the NewLocale task!");

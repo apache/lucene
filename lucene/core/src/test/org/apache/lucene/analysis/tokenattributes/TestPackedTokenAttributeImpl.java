@@ -29,7 +29,7 @@ public class TestPackedTokenAttributeImpl extends LuceneTestCase {
 
   /* the CharTermAttributeStuff is tested by TestCharTermAttributeImpl */
 
-  public void testClone() {
+  public void testClone() throws Exception {
     PackedTokenAttributeImpl t = new PackedTokenAttributeImpl();
     t.setOffset(0, 5);
     char[] content = "hello".toCharArray();
@@ -56,7 +56,7 @@ public class TestPackedTokenAttributeImpl extends LuceneTestCase {
     assertNotSame(buf, copy.buffer());
   }
 
-  public void testPackedTokenAttributeFactory() {
+  public void testPackedTokenAttributeFactory() throws Exception {
     TokenStream ts =
         new MockTokenizer(
             TokenStream.DEFAULT_TOKEN_ATTRIBUTE_FACTORY,
@@ -83,7 +83,7 @@ public class TestPackedTokenAttributeImpl extends LuceneTestCase {
         ts.addAttribute(FlagsAttribute.class) instanceof FlagsAttributeImpl);
   }
 
-  public void testAttributeReflection() {
+  public void testAttributeReflection() throws Exception {
     PackedTokenAttributeImpl t = new PackedTokenAttributeImpl();
     t.append("foobar");
     t.setOffset(6, 22);

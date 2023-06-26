@@ -218,7 +218,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
       if (closed == false) {
         compressor.end();
         closed = true;

@@ -408,7 +408,7 @@ public class WeightedSpanTermExtractor {
     return rv;
   }
 
-  protected LeafReaderContext getLeafContext() {
+  protected LeafReaderContext getLeafContext() throws IOException {
     if (internalReader == null) {
       boolean cacheIt = wrapToCaching && !(tokenStream instanceof CachingTokenFilter);
 

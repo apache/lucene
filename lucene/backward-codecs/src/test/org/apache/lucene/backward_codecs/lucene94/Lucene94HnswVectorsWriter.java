@@ -730,12 +730,12 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public T vectorValue(int targetOrd) {
+    public T vectorValue(int targetOrd) throws IOException {
       return vectors.get(targetOrd);
     }
 
     @Override
-    public RAVectorValues<T> copy() {
+    public RAVectorValues<T> copy() throws IOException {
       return this;
     }
   }

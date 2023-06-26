@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;
@@ -49,7 +50,7 @@ public class TestDocInverterPerFieldErrorInfo extends LuceneTestCase {
         TokenFilter tosser =
             new TokenFilter(tokenizer) {
               @Override
-              public boolean incrementToken() {
+              public boolean incrementToken() throws IOException {
                 throw new BadNews("Something is icky.");
               }
             };

@@ -85,7 +85,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertEquals(20000, t.length());
   }
 
-  public void testToString() {
+  public void testToString() throws Exception {
     char[] b = {'a', 'l', 'o', 'h', 'a'};
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     t.copyBuffer(b, 0, 5);
@@ -95,7 +95,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertEquals("hi there", t.toString());
   }
 
-  public void testClone() {
+  public void testClone() throws Exception {
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     char[] content = "hello".toCharArray();
     t.copyBuffer(content, 0, 5);
@@ -105,7 +105,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertNotSame(buf, copy.buffer());
   }
 
-  public void testEquals() {
+  public void testEquals() throws Exception {
     CharTermAttributeImpl t1a = new CharTermAttributeImpl();
     char[] content1a = "hello".toCharArray();
     t1a.copyBuffer(content1a, 0, 5);
@@ -135,7 +135,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertNotSame(buf, copy.buffer());
   }
 
-  public void testAttributeReflection() {
+  public void testAttributeReflection() throws Exception {
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     t.append("foobar");
     TestUtil.assertAttributeReflection(

@@ -61,7 +61,7 @@ public class TestReadOnlyIndex extends LuceneTestCase {
   }
 
   @AfterClass
-  public static void afterClass() {
+  public static void afterClass() throws Exception {
     indexPath = null;
   }
 

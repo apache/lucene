@@ -55,7 +55,8 @@ public class CompletionScorer extends BulkScorer {
       final LeafReader reader,
       final Bits filterDocs,
       final boolean filtered,
-      final Automaton automaton) {
+      final Automaton automaton)
+      throws IOException {
     this.weight = weight;
     this.suggester = suggester;
     this.reader = reader;

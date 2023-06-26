@@ -86,7 +86,7 @@ public class TestArrayUtil extends LuceneTestCase {
     return ArrayUtil.parseInt(chars, start, s.length());
   }
 
-  public void testParseInt() {
+  public void testParseInt() throws Exception {
     expectThrows(
         NumberFormatException.class,
         () -> {

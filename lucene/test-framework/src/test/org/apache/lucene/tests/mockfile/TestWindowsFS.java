@@ -101,7 +101,7 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     is.close();
   }
 
-  public void testOpenDeleteConcurrently() throws Exception {
+  public void testOpenDeleteConcurrently() throws IOException, Exception {
     final Path dir = wrap(createTempDir());
     final Path file = dir.resolve("thefile");
     final CyclicBarrier barrier = new CyclicBarrier(2);

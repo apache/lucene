@@ -216,7 +216,7 @@ class SimpleTransLog implements Closeable {
    * Encodes doc into buffer. NOTE: this is NOT general purpose! It only handles the fields used in
    * this test!
    */
-  private synchronized void encode(String id, Document doc) {
+  private synchronized void encode(String id, Document doc) throws IOException {
     assert id.equals(doc.get("docid")) : "id=" + id + " vs docid=" + doc.get("docid");
     buffer.writeString(id);
     writeNullableString(doc.get("title"));
@@ -224,7 +224,7 @@ class SimpleTransLog implements Closeable {
     writeNullableString(doc.get("marker"));
   }
 
-  private synchronized void writeNullableString(String s) {
+  private synchronized void writeNullableString(String s) throws IOException {
     if (s == null) {
       buffer.writeByte((byte) 0);
     } else {
