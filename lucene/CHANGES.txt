@@ -27,6 +27,8 @@ Optimizations
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
+* GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
 Bug Fixes
 ---------------------
 
