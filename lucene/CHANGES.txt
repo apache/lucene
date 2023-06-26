@@ -29,7 +29,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
 Other
 ---------------------
