@@ -61,6 +61,10 @@ class ConjunctionScorer extends Scorer {
         scoringDisi = ConjunctionUtils.intersectScorers(scoringScorers);
         this.disi =
             new DocIdSetIterator() {
+              private int THRESHOLD = 128;
+              private int counter = 0;
+              private int cachedLastNonMatchingDocID;
+
               @Override
               public int docID() {
                 return scoringDisi.docID();
@@ -95,11 +99,26 @@ class ConjunctionScorer extends Scorer {
                   if (doc == filteringDisi.docID()) {
                     assert doc == scoringDisi.docID();
                     return doc;
-                  } else if (doc < filteringDisi.peekNextNonMatchingDocID()) {
+                  } else if (doc < cachedLastNonMatchingDocID) {
+                    // last call to peekNextNonMatchingDocID found continuous match, make sure to
+                    // set counter to THRESHOLD value so that peekNextNonMatchingDocID can be
+                    // invoked again as soon as doc exceeds cachedLastNonMatchingDocID
+                    assert filteringDisi.docID() + 1 < cachedLastNonMatchingDocID;
+                    counter = THRESHOLD;
                     return doc;
-                  } else {
-                    // filteringDisi.doc <= doc
+                  } else if (counter++ < THRESHOLD) {
+                    // reduce peekNextNonMatchingDocID usage when index not sorted / no continuous
+                    // match
                     filteringDisi.advance(doc);
+                  } else {
+                    counter = 0;
+                    cachedLastNonMatchingDocID = filteringDisi.peekNextNonMatchingDocID();
+
+                    if (doc < cachedLastNonMatchingDocID) {
+                      return doc;
+                    } else {
+                      filteringDisi.advance(doc);
+                    }
                   }
                 }
               }
