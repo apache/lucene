@@ -76,11 +76,6 @@ public final class TermScorer extends Scorer {
   }
 
   @Override
-  public float smoothingScore(int docId) throws IOException {
-    return docScorer.score(docId, 0);
-  }
-
-  @Override
   public int advanceShallow(int target) throws IOException {
     return impactsDisi.advanceShallow(target);
   }
