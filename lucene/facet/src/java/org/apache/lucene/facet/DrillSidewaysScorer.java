@@ -712,13 +712,7 @@ class DrillSidewaysScorer extends BulkScorer {
       nextChunkStart += CHUNK;
     }
 
-    collector.finish();
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.finish();
-    }
-    for (DocsAndCost dac : dims) {
-      dac.sidewaysLeafCollector.finish();
-    }
+    finish(collector, Arrays.asList(dims));
   }
 
   private void collectHit(LeafCollector collector, DocsAndCost[] dims) throws IOException {

@@ -98,9 +98,10 @@ public interface LeafCollector {
 
   /**
    * Hook that gets called once the leaf that is associated with this collector has finished
-   * collecting successfully. This is typically useful to compile data that has been collected on
-   * this leaf, e.g. to convert facet counts on leaf ordinals to facet counts on global ordinals.
-   * The default implementation does nothing.
+   * collecting successfully, including when a {@link CollectionTerminatedException} is thrown. This
+   * is typically useful to compile data that has been collected on this leaf, e.g. to convert facet
+   * counts on leaf ordinals to facet counts on global ordinals. The default implementation does
+   * nothing.
    */
   default void finish() throws IOException {}
 }
