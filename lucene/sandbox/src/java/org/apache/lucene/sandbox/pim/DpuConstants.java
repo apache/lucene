@@ -7,6 +7,7 @@ class DpuConstants {
     static final String dpuQueryBatchVarName = "query_batch";
     static final String dpuResultsBatchVarName = "results_batch";
     static final String dpuResultsIndexVarName = "results_index";
+    static final String dpuIndexVarName = "__sys_used_mram_end";
     static final int dpuQueryBatchByteSize = 1 << 18;
     static final int dpuResultsMaxByteSize = 1 << 13;
     static final int nrDpus = 2048;
