@@ -110,5 +110,12 @@ public class FloatComparator extends NumericComparator<Float> {
     protected void encodeTop(byte[] packedValue) {
       FloatPoint.encodeDimension(topValue, packedValue, 0);
     }
+
+    @Override
+    protected boolean isMissingValueNotCompetitive(byte[] minPackedValue, byte[] maxPackedValue) {
+      final float min = FloatPoint.decodeDimension(minPackedValue, 0);
+      final float max = FloatPoint.decodeDimension(maxPackedValue, 0);
+      return reverse ? missingValue < min : missingValue > max;
+    }
   }
 }

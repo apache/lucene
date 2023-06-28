@@ -110,5 +110,12 @@ public class DoubleComparator extends NumericComparator<Double> {
     protected void encodeTop(byte[] packedValue) {
       DoublePoint.encodeDimension(topValue, packedValue, 0);
     }
+
+    @Override
+    protected boolean isMissingValueNotCompetitive(byte[] minPackedValue, byte[] maxPackedValue) {
+      final double min = DoublePoint.decodeDimension(minPackedValue, 0);
+      final double max = DoublePoint.decodeDimension(maxPackedValue, 0);
+      return reverse ? missingValue < min : missingValue > max;
+    }
   }
 }
