@@ -33,8 +33,8 @@ import org.apache.lucene.search.SortField;
  *
  *   // SimpleBindings just maps variables to SortField instances
  *   SimpleBindings bindings = new SimpleBindings();
- *   bindings.add(new SortField("_score", SortField.Type.SCORE));
- *   bindings.add(new SortField("popularity", SortField.Type.INT));
+ *   bindings.add("_score", DoubleValuesSource.SCORES);
+ *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
  *
  *   // create a sort field and sort by it (reverse order)
  *   Sort sort = new Sort(expr.getSortField(bindings, true));
@@ -50,8 +50,8 @@ import org.apache.lucene.search.SortField;
  *
  *   // SimpleBindings just maps variables to SortField instances
  *   SimpleBindings bindings = new SimpleBindings();
- *   bindings.add(new SortField("_score", SortField.Type.SCORE));
- *   bindings.add(new SortField("popularity", SortField.Type.INT));
+ *   bindings.add("_score", DoubleValuesSource.SCORES);
+ *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
  *
  *   // create a query that matches based on body:contents but
  *   // scores using expr
