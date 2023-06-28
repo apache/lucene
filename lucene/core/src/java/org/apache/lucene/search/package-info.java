@@ -301,7 +301,7 @@
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("_score * ln(popularity)");
  *
- *   // SimpleBindings just maps variables to SortField instances
+ *   // SimpleBindings just maps variables to DoubleValuesSource
  *   SimpleBindings bindings = new SimpleBindings();
  *   bindings.add("_score", DoubleValuesSource.SCORES);
  *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));

@@ -31,7 +31,7 @@ import org.apache.lucene.search.SortField;
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
  *
- *   // SimpleBindings just maps variables to SortField instances
+ *   // SimpleBindings just maps variables to DoubleValuesSource instances
  *   SimpleBindings bindings = new SimpleBindings();
  *   bindings.add("_score", DoubleValuesSource.SCORES);
  *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
@@ -48,7 +48,7 @@ import org.apache.lucene.search.SortField;
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
  *
- *   // SimpleBindings just maps variables to SortField instances
+ *   // SimpleBindings just maps variables to DoubleValuesSource instances
  *   SimpleBindings bindings = new SimpleBindings();
  *   bindings.add("_score", DoubleValuesSource.SCORES);
  *   bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
