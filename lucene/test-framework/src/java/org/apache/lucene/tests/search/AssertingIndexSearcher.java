@@ -75,7 +75,9 @@ public class AssertingIndexSearcher extends IndexSearcher {
   protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
       throws IOException {
     assert weight instanceof AssertingWeight;
-    super.search(leaves, weight, AssertingCollector.wrap(collector));
+    AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
+    super.search(leaves, weight, assertingCollector);
+    assert assertingCollector.hasFinishedCollectingPreviousLeaf;
   }
 
   @Override
