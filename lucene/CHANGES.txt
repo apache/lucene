@@ -136,10 +136,16 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
+* GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
 Bug Fixes
 ---------------------
 
 * GITHUB#9660: Throw and ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
+
+* GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
 Other
 ---------------------
