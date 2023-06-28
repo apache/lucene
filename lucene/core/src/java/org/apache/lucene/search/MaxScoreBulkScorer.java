@@ -24,6 +24,7 @@ import org.apache.lucene.util.Bits;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
+  private final int maxDoc;
   // All scorers, sorted by increasing max score.
   private final DisiWrapper[] allScorers;
   // These are the last scorers from `allScorers` that are "essential", ie. required for a match to
@@ -39,7 +40,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private ScoreAndDoc scorable = new ScoreAndDoc();
   private final double[] maxScoreSums;
 
-  MaxScoreBulkScorer(List<Scorer> scorers) throws IOException {
+  MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {
+    this.maxDoc = maxDoc;
     allScorers = new DisiWrapper[scorers.size()];
     int i = 0;
     long cost = 0;
@@ -181,6 +183,10 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   /** Return the next candidate on or after {@code rangeEnd}. */
   private int nextCandidate(int rangeEnd) {
+    if (rangeEnd >= maxDoc) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    }
+
     int next = DocIdSetIterator.NO_MORE_DOCS;
     for (DisiWrapper scorer : allScorers) {
       if (scorer.doc < rangeEnd) {
