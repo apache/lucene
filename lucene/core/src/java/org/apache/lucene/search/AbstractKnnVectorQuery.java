@@ -19,14 +19,13 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
-import java.util.stream.Collectors;
+import java.util.concurrent.RunnableFuture;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -34,7 +33,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -82,11 +80,11 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    Executor executor = indexSearcher.getExecutor();
+    TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     TopDocs[] perLeafResults =
-        (executor == null)
+        (taskExecutor == null)
             ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(reader.leaves(), filterWeight, executor);
+            : parallelSearch(reader.leaves(), filterWeight, taskExecutor);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -110,27 +108,12 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, Executor executor) {
-    List<FutureTask<TopDocs>> tasks =
-        leafReaderContexts.stream()
-            .map(ctx -> new FutureTask<>(() -> searchLeaf(ctx, filterWeight)))
-            .collect(Collectors.toList());
-
-    SliceExecutor sliceExecutor = new SliceExecutor(executor);
-    sliceExecutor.invokeAll(tasks);
-
-    return tasks.stream()
-        .map(
-            task -> {
-              try {
-                return task.get();
-              } catch (ExecutionException e) {
-                throw new RuntimeException(e.getCause());
-              } catch (InterruptedException e) {
-                throw new ThreadInterruptedException(e);
-              }
-            })
-        .toArray(TopDocs[]::new);
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor) {
+    List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
+    for (LeafReaderContext context : leafReaderContexts) {
+      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
+    }
+    return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {

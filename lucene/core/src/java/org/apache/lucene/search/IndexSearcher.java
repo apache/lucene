@@ -25,10 +25,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
@@ -47,7 +46,6 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 /**
@@ -126,7 +124,7 @@ public class IndexSearcher {
   private final Executor executor;
 
   // Used internally for load balancing threads executing for the query
-  private final SliceExecutor sliceExecutor;
+  private final TaskExecutor taskExecutor;
 
   // the default Similarity
   private static final Similarity defaultSimilarity = new BM25Similarity();
@@ -229,14 +227,14 @@ public class IndexSearcher {
   }
 
   // Package private for testing
-  IndexSearcher(IndexReaderContext context, Executor executor, SliceExecutor sliceExecutor) {
+  IndexSearcher(IndexReaderContext context, Executor executor, TaskExecutor taskExecutor) {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
-    assert (sliceExecutor == null) == (executor == null);
+    assert (taskExecutor == null) == (executor == null);
 
     reader = context.reader();
     this.executor = executor;
-    this.sliceExecutor = sliceExecutor;
+    this.taskExecutor = taskExecutor;
     this.readerContext = context;
     leafContexts = context.leaves();
     this.leafSlices = executor == null ? null : slices(leafContexts);
@@ -705,7 +703,7 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<FutureTask<C>> listTasks = new ArrayList<>();
+      final List<RunnableFuture<C>> listTasks = new ArrayList<>();
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
@@ -718,19 +716,8 @@ public class IndexSearcher {
 
         listTasks.add(task);
       }
-
-      sliceExecutor.invokeAll(listTasks);
-      final List<C> collectedCollectors = new ArrayList<>();
-      for (Future<C> future : listTasks) {
-        try {
-          collectedCollectors.add(future.get());
-        } catch (InterruptedException e) {
-          throw new ThreadInterruptedException(e);
-        } catch (ExecutionException e) {
-          throw new RuntimeException(e);
-        }
-      }
-      return collectorManager.reduce(collectedCollectors);
+      List<C> results = taskExecutor.invokeAll(listTasks);
+      return collectorManager.reduce(results);
     }
   }
 
@@ -946,7 +933,7 @@ public class IndexSearcher {
         + "; executor="
         + executor
         + "; sliceExecutionControlPlane "
-        + sliceExecutor
+        + taskExecutor
         + ")";
   }
 
@@ -998,6 +985,10 @@ public class IndexSearcher {
     return executor;
   }
 
+  TaskExecutor getTaskExecutor() {
+    return taskExecutor;
+  }
+
   /**
    * Thrown when an attempt is made to add more than {@link #getMaxClauseCount()} clauses. This
    * typically happens if a PrefixQuery, FuzzyQuery, WildcardQuery, or TermRangeQuery is expanded to
@@ -1035,7 +1026,7 @@ public class IndexSearcher {
   }
 
   /** Return the SliceExecutionControlPlane instance to be used for this IndexSearcher instance */
-  private static SliceExecutor getSliceExecutionControlPlane(Executor executor) {
+  private static TaskExecutor getSliceExecutionControlPlane(Executor executor) {
     if (executor == null) {
       return null;
     }
@@ -1044,6 +1035,6 @@ public class IndexSearcher {
       return new QueueSizeBasedExecutor((ThreadPoolExecutor) executor);
     }
 
-    return new SliceExecutor(executor);
+    return new TaskExecutor(executor);
   }
 }
