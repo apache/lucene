@@ -965,10 +965,6 @@ public class IndexSearcher {
     return executor;
   }
 
-  SliceExecutor getSliceExecutor() {
-    return sliceExecutor;
-  }
-
   /**
    * Thrown when an attempt is made to add more than {@link #getMaxClauseCount()} clauses. This
    * typically happens if a PrefixQuery, FuzzyQuery, WildcardQuery, or TermRangeQuery is expanded to

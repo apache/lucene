@@ -78,6 +78,8 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
 Bug Fixes
 ---------------------
 
@@ -134,9 +136,14 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
+* GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
 Other
 ---------------------
