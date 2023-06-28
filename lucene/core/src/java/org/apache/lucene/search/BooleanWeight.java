@@ -218,7 +218,7 @@ final class BooleanWeight extends Weight {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
       }
 
-      return new MaxScoreBulkScorer(optionalScorers);
+      return new MaxScoreBulkScorer(context.reader().maxDoc(), optionalScorers);
     }
 
     List<BulkScorer> optional = new ArrayList<BulkScorer>();
