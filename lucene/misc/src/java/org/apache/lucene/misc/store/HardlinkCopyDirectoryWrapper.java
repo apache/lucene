@@ -92,7 +92,7 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
     }
     if (tryCopy) {
       try {
-        super.copyFrom(from, srcFile, destFile, context);
+        getDelegate().copyFrom(from, srcFile, destFile, context);
       } catch (Exception ex) {
         if (suppressedException != null) {
           ex.addSuppressed(suppressedException);
