@@ -150,7 +150,7 @@ Bug Fixes
 Other
 ---------------------
 
-* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector) .
+* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
   (Uwe Schindler)
 
 ======================== Lucene 9.7.0 =======================
