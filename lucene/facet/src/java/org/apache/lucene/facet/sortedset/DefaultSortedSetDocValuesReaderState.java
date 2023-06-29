@@ -17,6 +17,7 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,7 +25,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
@@ -138,7 +138,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     List<Integer> siblings = new ArrayList<>();
 
     // stack of paths with unfulfilled siblings
-    Stack<OrdAndComponent> siblingStack = new Stack<>();
+    ArrayDeque<OrdAndComponent> siblingStack = new ArrayDeque<>();
 
     int dimEndOrd = dimStartOrd;
 
@@ -151,7 +151,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
 
       int ord = dimEndOrd - dimStartOrd;
 
-      while (siblingStack.empty() == false
+      while (siblingStack.isEmpty() == false
           && siblingStack.peek().component.length >= components.length) {
         OrdAndComponent possibleSibling = siblingStack.pop();
         if (possibleSibling.component.length == components.length) {
