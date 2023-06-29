@@ -72,15 +72,21 @@ public class TermQuery extends Query {
       if (termStats == null) {
         this.simScorer = null; // term doesn't exist in any segment, we won't use similarity at all
       } else {
+        // Assigning a dummy simScorer in case score is not needed to avoid unnecessary float[]
+        // allocations in case default BM25Scorer is used.
+        // See: https://github.com/apache/lucene/issues/12297
         if (scoreMode.needsScores()) {
           this.simScorer = similarity.scorer(boost, collectionStats, termStats);
         } else {
-          this.simScorer = new Similarity.SimScorer() {
-            @Override
-            public float score(float freq, long norm) {
-              return 0f;
-            }
-          };
+          // Assigning a dummy scorer as this is not expected to be called since scores are not
+          // needed.
+          this.simScorer =
+              new Similarity.SimScorer() {
+                @Override
+                public float score(float freq, long norm) {
+                  return 0f;
+                }
+              };
         }
       }
     }

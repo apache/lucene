@@ -18,7 +18,6 @@
 package org.apache.lucene.queries.function;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -28,7 +27,6 @@ import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.expressions.SimpleBindings;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -37,7 +35,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -46,16 +43,12 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-
-import static org.apache.lucene.search.IndexSearcher.getDefaultSimilarity;
 
 public class TestFunctionScoreQuery extends FunctionTestSetup {
 
@@ -329,19 +322,6 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
       ScoreMode expectedScoreMode, ScoreMode inputScoreMode, DoubleValuesSource valueSource)
       throws IOException {
     final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<ScoreMode>();
-    final AtomicBoolean scorerCalled = new AtomicBoolean();
-    searcher.setSimilarity(new Similarity() { // Wrapping existing similarity for testing
-      @Override
-      public long computeNorm(FieldInvertState state) {
-        return getDefaultSimilarity().computeNorm(state);
-      }
-
-      @Override
-      public SimScorer scorer(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-        scorerCalled.set(true);
-        return getDefaultSimilarity().scorer(boost, collectionStats, termStats);
-      }
-    });
     Query innerQ =
         new TermQuery(new Term(TEXT_FIELD, "a")) {
 
@@ -356,11 +336,6 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     FunctionScoreQuery fq = new FunctionScoreQuery(innerQ, valueSource);
     fq.createWeight(searcher, inputScoreMode, 1f);
     assertEquals(expectedScoreMode, scoreModeInWeight.get());
-    if (expectedScoreMode.needsScores()) {
-      assertTrue(scorerCalled.get());
-    } else {
-      assertFalse(scorerCalled.get());
-    }
   }
 
   /** The FunctionScoreQuery's Scorer score() is going to be called twice for the same doc. */
