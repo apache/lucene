@@ -251,17 +251,17 @@ public class TestSortOptimization extends LuceneTestCase {
   public void testNumericDocValuesOptimizationWithMissingValues() throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
-            new IndexWriterConfig()
-                    // Make sure to use the default codec, otherwise some random points formats that have
-                    // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
-                    .setCodec(TestUtil.getDefaultCodec());
+        new IndexWriterConfig()
+            // Make sure to use the default codec, otherwise some random points formats that have
+            // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+            .setCodec(TestUtil.getDefaultCodec());
     final IndexWriter writer = new IndexWriter(dir, config);
     final int numDocs = atLeast(10000);
     final int missValuesNumDocs = numDocs / 2;
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
       if (i <= missValuesNumDocs) { // missing value document
-      }else {
+      } else {
         doc.add(new NumericDocValuesField("my_field", i));
         doc.add(new LongPoint("my_field", i));
       }
@@ -271,7 +271,7 @@ public class TestSortOptimization extends LuceneTestCase {
     writer.close();
     // single threaded so totalHits is deterministic
     IndexSearcher searcher =
-            newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
@@ -280,7 +280,7 @@ public class TestSortOptimization extends LuceneTestCase {
       sortField.setMissingValue(0L); // missing value is not competitive
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-              TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
       TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
       assertEquals(topDocs.scoreDocs.length, numHits);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
