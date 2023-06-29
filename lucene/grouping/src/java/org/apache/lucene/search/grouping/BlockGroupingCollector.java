@@ -275,7 +275,7 @@ public class BlockGroupingCollector extends SimpleCollector {
     }
     int totalGroupedHitCount = 0;
 
-    final ScoreAndDoc fakeScorer = new ScoreAndDoc();
+    final Score fakeScorer = new Score();
 
     float maxScore = Float.MIN_VALUE;
 
@@ -306,7 +306,6 @@ public class BlockGroupingCollector extends SimpleCollector {
       leafCollector.setScorer(fakeScorer);
       for (int docIDX = 0; docIDX < og.count; docIDX++) {
         final int doc = og.docs[docIDX];
-        fakeScorer.doc = doc;
         if (needsScores) {
           fakeScorer.score = og.scores[docIDX];
           groupMaxScore = Math.max(groupMaxScore, fakeScorer.score);
@@ -498,15 +497,9 @@ public class BlockGroupingCollector extends SimpleCollector {
     return needsScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
   }
 
-  private static class ScoreAndDoc extends Scorable {
+  private static class Score extends Scorable {
 
     float score;
-    int doc = -1;
-
-    @Override
-    public int docID() {
-      return doc;
-    }
 
     @Override
     public float score() {

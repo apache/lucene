@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -79,7 +80,7 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     }
   }
 
-  private static final class ScoreCachingCollector extends SimpleCollector {
+  private static final class ScoreCachingCollector implements Collector {
 
     private int idx = 0;
     private Scorable scorer;
@@ -90,22 +91,29 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     }
 
     @Override
-    public void collect(int doc) throws IOException {
-      // just a sanity check to avoid IOOB.
-      if (idx == mscores.length) {
-        return;
-      }
+    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      return ScoreCachingWrappingScorer.wrap(
+          new LeafCollector() {
 
-      // just call score() a couple of times and record the score.
-      mscores[idx] = scorer.score();
-      mscores[idx] = scorer.score();
-      mscores[idx] = scorer.score();
-      ++idx;
-    }
+            @Override
+            public void setScorer(Scorable scorer) {
+              ScoreCachingCollector.this.scorer = scorer;
+            }
 
-    @Override
-    public void setScorer(Scorable scorer) {
-      this.scorer = ScoreCachingWrappingScorer.wrap(scorer);
+            @Override
+            public void collect(int doc) throws IOException {
+              // just a sanity check to avoid IOOB.
+              if (idx == mscores.length) {
+                return;
+              }
+
+              // just call score() a couple of times and record the score.
+              mscores[idx] = scorer.score();
+              mscores[idx] = scorer.score();
+              mscores[idx] = scorer.score();
+              ++idx;
+            }
+          });
     }
 
     @Override
@@ -142,12 +150,13 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
         new TermQuery(new Term("fake", "weight")).createWeight(searcher, ScoreMode.COMPLETE, 1f);
     Scorer s = new SimpleScorer(fake);
     ScoreCachingCollector scc = new ScoreCachingCollector(scores.length);
-    scc.setScorer(s);
+    LeafCollector lc = scc.getLeafCollector(null);
+    lc.setScorer(s);
 
     // We need to iterate on the scorer so that its doc() advances.
     int doc;
     while ((doc = s.iterator().nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-      scc.collect(doc);
+      lc.collect(doc);
     }
 
     for (int i = 0; i < scores.length; i++) {
@@ -155,29 +164,5 @@ public class TestScoreCachingWrappingScorer extends LuceneTestCase {
     }
     ir.close();
     directory.close();
-  }
-
-  public void testNoUnnecessaryWrap() throws Exception {
-    Scorable base =
-        new Scorable() {
-          @Override
-          public float score() throws IOException {
-            return -1;
-          }
-
-          @Override
-          public int docID() {
-            return -1;
-          }
-        };
-
-    // Wrapping the first time should produce a different instance:
-    Scorable wrapped = ScoreCachingWrappingScorer.wrap(base);
-    assertNotEquals(base, wrapped);
-
-    // But if we try to wrap an instance of ScoreCachingWrappingScorer, it shouldn't unnecessarily
-    // wrap again:
-    Scorable doubleWrapped = ScoreCachingWrappingScorer.wrap(wrapped);
-    assertSame(wrapped, doubleWrapped);
   }
 }

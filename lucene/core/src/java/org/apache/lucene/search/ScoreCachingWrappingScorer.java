@@ -31,6 +31,7 @@ import java.util.Collections;
  */
 public final class ScoreCachingWrappingScorer extends Scorable {
 
+  private int lastDoc = -1;
   private int curDoc = -1;
   private float curScore;
   private final Scorable in;
@@ -49,6 +50,36 @@ public final class ScoreCachingWrappingScorer extends Scorable {
     return new ScoreCachingWrappingScorer(scorer);
   }
 
+  /**
+   * Wrap the provided {@link LeafCollector} so that scores are computed lazily and cached if
+   * accessed multiple times.
+   */
+  public static LeafCollector wrap(LeafCollector collector) {
+    return new FilterLeafCollector(collector) {
+
+      private ScoreCachingWrappingScorer score;
+
+      @Override
+      public void setScorer(Scorable scorer) throws IOException {
+        score = new ScoreCachingWrappingScorer(scorer);
+        super.setScorer(this.score);
+      }
+
+      @Override
+      public void collect(int doc) throws IOException {
+        if (score != null) {
+          score.curDoc = doc;
+        }
+        super.collect(doc);
+      }
+
+      @Override
+      public DocIdSetIterator competitiveIterator() throws IOException {
+        return in.competitiveIterator();
+      }
+    };
+  }
+
   /** Creates a new instance by wrapping the given scorer. */
   private ScoreCachingWrappingScorer(Scorable scorer) {
     this.in = scorer;
@@ -56,10 +87,9 @@ public final class ScoreCachingWrappingScorer extends Scorable {
 
   @Override
   public float score() throws IOException {
-    int doc = in.docID();
-    if (doc != curDoc) {
+    if (lastDoc != curDoc) {
       curScore = in.score();
-      curDoc = doc;
+      curDoc = lastDoc;
     }
 
     return curScore;
@@ -68,11 +98,6 @@ public final class ScoreCachingWrappingScorer extends Scorable {
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
     in.setMinCompetitiveScore(minScore);
-  }
-
-  @Override
-  public int docID() {
-    return in.docID();
   }
 
   @Override

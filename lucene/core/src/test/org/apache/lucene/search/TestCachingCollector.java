@@ -29,11 +29,6 @@ public class TestCachingCollector extends LuceneTestCase {
     public float score() {
       return 0;
     }
-
-    @Override
-    public int docID() {
-      return 0;
-    }
   }
 
   private static class NoOpCollector extends SimpleCollector {

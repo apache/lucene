@@ -20,14 +20,8 @@ package org.apache.lucene.search;
  * Used by {@link BulkScorer}s that need to pass a {@link Scorable} to {@link
  * LeafCollector#setScorer}.
  */
-final class ScoreAndDoc extends Scorable {
+final class Score extends Scorable {
   float score;
-  int doc = -1;
-
-  @Override
-  public int docID() {
-    return doc;
-  }
 
   @Override
   public float score() {

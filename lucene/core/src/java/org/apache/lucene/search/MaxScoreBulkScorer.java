@@ -37,7 +37,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final long cost;
   private float minCompetitiveScore;
   private boolean minCompetitiveScoreUpdated;
-  private ScoreAndDoc scorable = new ScoreAndDoc();
+  private Score scorable = new Score();
   private final double[] maxScoreSums;
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {
@@ -103,7 +103,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
           }
 
           if (possibleMatch) {
-            scorable.doc = top.doc;
             scorable.score = (float) score;
             collector.collect(top.doc);
           }
@@ -203,15 +202,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
     return cost;
   }
 
-  private class ScoreAndDoc extends Scorable {
+  private class Score extends Scorable {
 
     float score;
-    int doc = -1;
-
-    @Override
-    public int docID() {
-      return doc;
-    }
 
     @Override
     public float score() {
