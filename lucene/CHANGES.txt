@@ -136,6 +136,8 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
+
 Bug Fixes
 ---------------------
 (No changes)
