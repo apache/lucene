@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.tests.util;
 
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -35,7 +35,7 @@ import org.junit.runners.model.Statement;
  * This should be the case from JUnit 4.10 on.
  */
 public class TestJUnitRuleOrder extends WithNestedTests {
-  static ArrayDeque<String> stack;
+  static ArrayList<String> stack;
 
   public TestJUnitRuleOrder() {
     super(true);
@@ -44,12 +44,12 @@ public class TestJUnitRuleOrder extends WithNestedTests {
   public static class Nested extends WithNestedTests.AbstractNestedTest {
     @Before
     public void before() {
-      stack.push("@Before");
+      stack.add("@Before");
     }
 
     @After
     public void after() {
-      stack.push("@After");
+      stack.add("@After");
     }
 
     @Rule
@@ -60,9 +60,9 @@ public class TestJUnitRuleOrder extends WithNestedTests {
             return new Statement() {
               @Override
               public void evaluate() throws Throwable {
-                stack.push("@Rule before");
+                stack.add("@Rule before");
                 base.evaluate();
-                stack.push("@Rule after");
+                stack.add("@Rule after");
               }
             };
           }
@@ -75,12 +75,12 @@ public class TestJUnitRuleOrder extends WithNestedTests {
 
     @BeforeClass
     public static void beforeClassCleanup() {
-      stack = new ArrayDeque<>();
+      stack = new ArrayList<>();
     }
 
     @AfterClass
     public static void afterClassCheck() {
-      stack.push("@AfterClass");
+      stack.add("@AfterClass");
     }
   }
 

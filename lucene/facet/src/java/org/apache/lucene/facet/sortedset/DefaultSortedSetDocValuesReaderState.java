@@ -21,7 +21,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -113,7 +112,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     List<Integer> siblings = new ArrayList<>();
 
     // stack of paths with unfulfilled siblings
-    Deque<OrdAndComponent> siblingStack = new ArrayDeque<>();
+    ArrayDeque<OrdAndComponent> siblingStack = new ArrayDeque<>();
 
     int dimEndOrd = dimStartOrd;
 
