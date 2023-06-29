@@ -83,7 +83,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher = newSearcher(reader, true, true, false);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
     final Sort sort = new Sort(sortField);
@@ -170,7 +170,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final SortField sortField = new SortField("my_field", SortField.Type.LONG);
@@ -215,7 +215,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
@@ -248,6 +248,48 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  public void testNumericDocValuesOptimizationWithMissingValues() throws IOException {
+    final Directory dir = newDirectory();
+    IndexWriterConfig config =
+            new IndexWriterConfig()
+                    // Make sure to use the default codec, otherwise some random points formats that have
+                    // large values for maxPointsPerLeaf might not enable skipping with only 10k docs
+                    .setCodec(TestUtil.getDefaultCodec());
+    final IndexWriter writer = new IndexWriter(dir, config);
+    final int numDocs = atLeast(10000);
+    final int missValuesNumDocs = numDocs / 2;
+    for (int i = 0; i < numDocs; ++i) {
+      final Document doc = new Document();
+      if (i <= missValuesNumDocs) { // missing value document
+      }else {
+        doc.add(new NumericDocValuesField("my_field", i));
+        doc.add(new LongPoint("my_field", i));
+      }
+      writer.addDocument(doc);
+    }
+    final IndexReader reader = DirectoryReader.open(writer);
+    writer.close();
+    // single threaded so totalHits is deterministic
+    IndexSearcher searcher =
+            newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
+    final int numHits = 3;
+    final int totalHitsThreshold = 3;
+
+    { // test that optimization is run with NumericDocValues when missing value is NOT competitive
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
+      sortField.setMissingValue(0L); // missing value is not competitive
+      final Sort sort = new Sort(sortField);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+              TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   public void testSortOptimizationEqualValues() throws IOException {
     final Directory dir = newDirectory();
     IndexWriterConfig config =
@@ -270,7 +312,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
@@ -346,7 +388,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final SortField sortField = new SortField("my_field", SortField.Type.FLOAT);
@@ -409,7 +451,7 @@ public class TestSortOptimization extends LuceneTestCase {
     int numHits = 0;
     do {
       for (int i = 0; i < numIndices; i++) {
-        // single threaded so totalhits is deterministic
+        // single threaded so totalHits is deterministic
         IndexSearcher searcher =
             newSearcher(readers[i], random().nextBoolean(), random().nextBoolean(), false);
         CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -453,7 +495,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 10;
@@ -572,7 +614,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher =
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
 
@@ -819,7 +861,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher = newSearcher(reader, true, true, false);
 
     SortedNumericSelector.Type type =
@@ -1069,7 +1111,7 @@ public class TestSortOptimization extends LuceneTestCase {
 
   private TopDocs assertSearchHits(DirectoryReader reader, Sort sort, int n, FieldDoc after)
       throws IOException {
-    // single threaded so totalhits is deterministic
+    // single threaded so totalHits is deterministic
     IndexSearcher searcher = newSearcher(reader, true, true, false);
     Query query = new MatchAllDocsQuery();
     CollectorManager<TopFieldCollector, TopFieldDocs> manager =
