@@ -48,7 +48,7 @@ public class NeighborQueue {
     abstract long apply(long v);
   }
 
-  private final LongHeap heap;
+  protected final LongHeap heap;
   private final Order order;
 
   // Used to track the number of neighbors visited during a single graph traversal
@@ -113,16 +113,16 @@ public class NeighborQueue {
    * @param score the node score
    * @return the encoded score, node ID
    */
-  private long encode(int node, float score) {
+  protected long encode(int node, float score) {
     return order.apply(
         (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node));
   }
 
-  private float decodeScore(long heapValue) {
+  protected float decodeScore(long heapValue) {
     return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
   }
 
-  private int decodeNodeId(long heapValue) {
+  protected int decodeNodeId(long heapValue) {
     return (int) ~(order.apply(heapValue));
   }
 
