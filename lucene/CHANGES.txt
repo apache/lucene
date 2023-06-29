@@ -138,13 +138,22 @@ Optimizations
 
 * GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
 
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
+* GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#9660: Throw and ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
+
+* GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
+  (Uwe Schindler)
 
 ======================== Lucene 9.7.0 =======================
 
