@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.tests.util;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Stack;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -35,7 +35,7 @@ import org.junit.runners.model.Statement;
  * This should be the case from JUnit 4.10 on.
  */
 public class TestJUnitRuleOrder extends WithNestedTests {
-  static Stack<String> stack;
+  static ArrayDeque<String> stack;
 
   public TestJUnitRuleOrder() {
     super(true);
@@ -75,7 +75,7 @@ public class TestJUnitRuleOrder extends WithNestedTests {
 
     @BeforeClass
     public static void beforeClassCleanup() {
-      stack = new Stack<>();
+      stack = new ArrayDeque<>();
     }
 
     @AfterClass
