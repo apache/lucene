@@ -98,7 +98,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
       }
       values[newDocID] = oldDocValues.longValue();
     }
-    return new NumericDVs(values, docsWithField != null ? docsWithField : BitSet.all(maxDoc));
+    return new NumericDVs(values, docsWithField);
   }
 
   @Override
@@ -126,7 +126,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
               sortMap.size(),
               sortMap,
               oldValues,
-              docsWithField.bitSet() == null && sortMap.size() == docsWithField.cardinality());
+              docsWithField.dense() && sortMap.size() == docsWithField.cardinality());
     } else {
       sorted = null;
     }
@@ -209,10 +209,10 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
 
     @Override
     public int nextDoc() {
-      if (docID + 1 == dvs.docsWithField.length()) {
+      if (docID + 1 == dvs.maxDoc()) {
         docID = NO_MORE_DOCS;
       } else {
-        docID = dvs.docsWithField.nextSetBit(docID + 1);
+        docID = dvs.advance(docID + 1);
       }
       return docID;
     }
@@ -226,7 +226,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     public boolean advanceExact(int target) throws IOException {
       // needed in IndexSorter#{Long|Int|Double|Float}Sorter
       docID = target;
-      return dvs.docsWithField.get(target);
+      return dvs.advanceExact(target);
     }
 
     @Override
@@ -237,7 +237,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     @Override
     public long cost() {
       if (cost == -1) {
-        cost = dvs.docsWithField.cardinality();
+        cost = dvs.cost();
       }
       return cost;
     }
@@ -246,10 +246,41 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
   static class NumericDVs {
     private final long[] values;
     private final BitSet docsWithField;
+    private final int maxDoc;
 
     NumericDVs(long[] values, BitSet docsWithField) {
       this.values = values;
       this.docsWithField = docsWithField;
+      this.maxDoc = values.length;
+    }
+
+    int maxDoc() {
+      return maxDoc;
+    }
+
+    private boolean advanceExact(int target) {
+      if (docsWithField != null) {
+        return docsWithField.get(target);
+      }
+      return true;
+    }
+
+    private int advance(int target) {
+      if (docsWithField != null) {
+        return docsWithField.nextSetBit(target);
+      }
+
+      if (target < maxDoc) {
+        return target;
+      }
+      return DocIdSetIterator.NO_MORE_DOCS;
+    }
+
+    private long cost() {
+      if (docsWithField != null) {
+        return docsWithField.cardinality();
+      }
+      return maxDoc;
     }
   }
 }

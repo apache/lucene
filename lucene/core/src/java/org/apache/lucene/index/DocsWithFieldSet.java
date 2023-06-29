@@ -76,8 +76,8 @@ public final class DocsWithFieldSet extends DocIdSet {
     return cardinality;
   }
 
-  /** Return the FixedBitSet of this set. */
-  public FixedBitSet bitSet() {
-    return set;
+  /** Return true if the set is null, it means dense case. */
+  public boolean dense() {
+    return set == null;
   }
 }

@@ -77,7 +77,7 @@ class NormValuesWriter {
               state.segmentInfo.maxDoc(),
               sortMap,
               new BufferedNorms(values, docsWithField.iterator()),
-              docsWithField.bitSet() == null && sortMap.size() == docsWithField.cardinality());
+              docsWithField.dense() && sortMap.size() == docsWithField.cardinality());
     } else {
       sorted = null;
     }
