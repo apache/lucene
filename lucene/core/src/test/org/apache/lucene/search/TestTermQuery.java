@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.IndexSearcher.getDefaultSimilarity;
-
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -191,7 +189,7 @@ public class TestTermQuery extends LuceneTestCase {
           new Similarity() { // Wrapping existing similarity for testing
             @Override
             public long computeNorm(FieldInvertState state) {
-              return getDefaultSimilarity().computeNorm(state);
+              return existingSimilarity.computeNorm(state);
             }
 
             @Override
@@ -212,11 +210,7 @@ public class TestTermQuery extends LuceneTestCase {
           };
       termQuery.createWeight(searcher, scoreMode, 1f);
       assertEquals(scoreMode, scoreModeInWeight.get());
-      if (scoreMode.needsScores()) {
-        assertTrue(scorerCalled.get());
-      } else {
-        assertFalse(scorerCalled.get());
-      }
+      assertEquals(scoreMode.needsScores(), scorerCalled.get());
     }
     IOUtils.close(reader, w, dir);
   }
