@@ -17,7 +17,7 @@
 package org.apache.lucene.tests.util;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -88,7 +88,6 @@ public class TestJUnitRuleOrder extends WithNestedTests {
   public void testRuleOrder() {
     JUnitCore.runClasses(Nested.class);
     Assert.assertEquals(
-        Arrays.toString(stack.toArray()),
-        "[@Rule before, @Before, @After, @Rule after, @AfterClass]");
+        List.of("@Rule before", "@Before", "@After", "@Rule after", "@AfterClass"), stack);
   }
 }
