@@ -39,7 +39,7 @@ public class ParentJoinNeighborQueue extends NeighborQueue {
             }
             newHeapIndex = heap.updateElement(existingHeapIndex, encode(nodeId, nodeScore));
         }
-        this.updateHeapIndexesCache(existingHeapIndex == null || newHeapIndex > existingHeapIndex, newHeapIndex, nodeId);
+        this.shiftDownIndexesCache(newHeapIndex, nodeId);
     }
 
     /**
@@ -60,38 +60,44 @@ public class ParentJoinNeighborQueue extends NeighborQueue {
             heapIndex = heap.insertWithOverflow(encode(nodeId, nodeScore));
             if (heapIndex != -1) {
                 nodeAdded = true;
-                this.updateHeapIndexesCache(full, true, heapIndex, nodeId);
+                if (full) {
+                    this.shiftUpIndexesCache(heapIndex, nodeId);
+                    nodeIdToHeapIndex.remove(minNodeId);
+                } else {
+                    this.shiftDownIndexesCache(heapIndex, nodeId);
+                }
             }
+            return nodeAdded;
         } else {
+            // We are not removing a node, so no overflow detected in this branch
             float originalScore = decodeScore(heap.get(heapIndex));
-            float updatedScore = Math.max(originalScore, nodeScore);
-            heapIndex = heap.updateElement(heapIndex, encode(nodeId, updatedScore));
-            this.updateHeapIndexesCache(full, false, heapIndex, nodeId);
+            if (originalScore > nodeScore) {
+                return true;
+            }
+            heapIndex = heap.updateElement(heapIndex, encode(nodeId, nodeScore));
+            this.shiftDownIndexesCache(heapIndex, nodeId);
+            return true;
         }
-        if (nodeAdded && full) {
-            nodeIdToHeapIndex.remove(minNodeId);
-        }
-        return nodeAdded;
     }
 
     /**
      * This can be optimised if heap indexes have not changed, no update would be necessary
      *
-     * @param shiftUp shift up or down from the heapIndex
      * @param heapIndex
      * @param nodeId
      */
-    private void updateHeapIndexesCache(boolean shiftUp, Integer heapIndex, int nodeId) {
-        if (shiftUp) {
-            for (int i = heapIndex - 1; i > 0; i--) {
-                int nodeIdToShift = decodeNodeId(heap.get(i));
-                nodeIdToHeapIndex.put(nodeIdToShift, i);
-            }
-        } else {
-            for (int i = heapIndex + 1; i <= heap.size(); i++) {
-                int nodeIdToShift = decodeNodeId(heap.get(i));
-                nodeIdToHeapIndex.put(nodeIdToShift, i);
-            }
+    private void shiftUpIndexesCache(Integer heapIndex, int nodeId) {
+        for (int i = heapIndex - 1; i > 0; i--) {
+            int nodeIdToShift = decodeNodeId(heap.get(i));
+            nodeIdToHeapIndex.put(nodeIdToShift, i);
+        }
+        nodeIdToHeapIndex.put(nodeId, heapIndex);
+    }
+
+    private void shiftDownIndexesCache(Integer heapIndex, int nodeId) {
+        for (int i = heapIndex + 1; i <= heap.size(); i++) {
+            int nodeIdToShift = decodeNodeId(heap.get(i));
+            nodeIdToHeapIndex.put(nodeIdToShift, i);
         }
         nodeIdToHeapIndex.put(nodeId, heapIndex);
     }
@@ -100,12 +106,11 @@ public class ParentJoinNeighborQueue extends NeighborQueue {
     public int pop() {
         long popped = heap.pop();
         int nodeId = decodeNodeId(popped);
-        int heapIndex = nodeIdToHeapIndex.remove(nodeId);
-
+        nodeIdToHeapIndex.remove(nodeId);
         // Shift all node IDs above the popped index down by 1
-        for (int i = heapIndex; i <= heap.size(); i++) {
+        for (int i = 1; i < heap.size(); i++) {
             int nodeIdToShift = decodeNodeId(heap.get(i));
-            nodeIdToHeapIndex.put(nodeIdToShift, i - 1);
+            nodeIdToHeapIndex.put(nodeIdToShift, i);
         }
         return nodeId;
     }
