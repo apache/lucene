@@ -75,9 +75,4 @@ public final class DocsWithFieldSet extends DocIdSet {
   public int cardinality() {
     return cardinality;
   }
-
-  /** Return true if the set is null, it means dense case. */
-  public boolean dense() {
-    return set == null;
-  }
 }

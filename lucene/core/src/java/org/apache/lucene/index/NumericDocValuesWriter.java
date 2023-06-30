@@ -123,10 +123,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
       NumericDocValues oldValues = new BufferedNumericDocValues(values, docsWithField.iterator());
       sorted =
           sortDocValues(
-              sortMap.size(),
-              sortMap,
-              oldValues,
-              docsWithField.dense() && sortMap.size() == docsWithField.cardinality());
+              sortMap.size(), sortMap, oldValues, sortMap.size() == docsWithField.cardinality());
     } else {
       sorted = null;
     }
