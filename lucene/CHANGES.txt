@@ -15,7 +15,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
 
 Optimizations
 ---------------------
