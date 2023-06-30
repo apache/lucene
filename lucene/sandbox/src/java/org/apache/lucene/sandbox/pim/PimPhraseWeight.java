@@ -75,6 +75,9 @@ public class PimPhraseWeight extends Weight {
                 //for testing fail if this happens
                 //System.out.println(e.getMessage());
                 //throw new RuntimeException();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return Collections.emptyList();
             }
         } else {
             return matchWithPhraseQuery(context);

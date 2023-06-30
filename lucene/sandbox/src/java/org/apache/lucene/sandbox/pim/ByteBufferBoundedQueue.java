@@ -64,81 +64,73 @@ public class ByteBufferBoundedQueue {
     /* static limit for the size in bytes allocated for this queue */
     final static int MAX_LOG2_BYTE_SIZE = 24;
 
+    private final int maxNbElems;
     /**
      * The byte array has always a number of bytes which is a power of 2.
      * This enables to implement a circular behavior using bit masks.
-     * log2ByteSize defines the size as being 2^(log2ByteSize)
+     * log2ByteCapacity defines the capacity as being 2^(log2ByteCapacity)
      */
-    private final int log2ByteSize;
-    private final int maxNbElems;
-    private byte[] byteArray;
+    private final byte[] byteArray;
     private int writePointer;
     private int readPointer;
     private final int mask;
-    private ByteBufferInfo[] sliceInfos;
+    private final ByteBufferInfo[] sliceInfos;
     private final int sliceMask;
     private int sliceWritePointer;
     private int sliceReadPointer;
     private ByteBuffers currSlice;
 
-    private ReentrantLock byteArrayLock = new ReentrantLock();
-    private ReentrantLock sliceLock = new ReentrantLock();
-    private ReentrantLock peekLock = new ReentrantLock();
+    private final ReentrantLock byteArrayLock = new ReentrantLock();
+    private final ReentrantLock sliceLock = new ReentrantLock();
+    private final ReentrantLock peekLock = new ReentrantLock();
     private boolean isPeeked;
 
-
     /**
-     * Custom Exception to be thrown when the input to the constructor is too large
-     * As the input is the log2 of the byte size, we impose a static limit to avoid blowing up
-     * the memory with a wrong input
-     */
-    public static final class BufferLog2SizeTooLargeException extends Exception {
-
-        public BufferLog2SizeTooLargeException(int log2ByteSize) {
-            super(
-                    "Cannot create a circular buffer with log2(size)=" + log2ByteSize
-                            + "as this value is larger than the maximum allowed (" + MAX_LOG2_BYTE_SIZE + ")");
-        }
-    }
-
-    /**
-     * Build a queue with {@code size=(1 << log2ByteSize)}
+     * Build a queue with {@code capacity=(1 << log2ByteCapacity)}
      *
-     * @param log2ByteSize    the log2 of the byte array size allocated for this queue
+     * @param log2ByteCapacity the log2 of the byte array capacity allocated for this queue
      * @param nbElemsCapacity the maximum number of elements (byte buffers) in this queue
-     * @throws BufferLog2SizeTooLargeException in case the log2ByteSize is bigger than the maximum allowed
+     * @throws IllegalArgumentException in case the log2ByteCapacity is bigger than the maximum allowed
      */
-    public ByteBufferBoundedQueue(int log2ByteSize, int nbElemsCapacity) throws BufferLog2SizeTooLargeException {
+    public ByteBufferBoundedQueue(int log2ByteCapacity, int nbElemsCapacity) {
 
-        if (log2ByteSize > MAX_LOG2_BYTE_SIZE)
-            throw new BufferLog2SizeTooLargeException(log2ByteSize);
+        if (log2ByteCapacity > MAX_LOG2_BYTE_SIZE) {
+            // we impose a static limit to avoid blowing up the memory with a wrong input
+            throw new IllegalArgumentException("Cannot create a circular buffer with log2(size)="
+                    + log2ByteCapacity
+                    + "as this value is larger than the maximum allowed ("
+                    + MAX_LOG2_BYTE_SIZE
+                    + ")");
+        }
+        if (log2ByteCapacity <= 0) {
+            throw new IllegalArgumentException("Invalid parameter log2ByteCapacity=" + log2ByteCapacity);
+        }
+        if (nbElemsCapacity <= 0) {
+            throw new IllegalArgumentException("Invalid parameter nbElemsCapacity=" + nbElemsCapacity);
+        }
 
-        if(log2ByteSize <= 0 || nbElemsCapacity <= 0)
-            throw new RuntimeException("Invalid parameters to ByteBufferBoundedQueue constructor");
-
-        this.log2ByteSize = log2ByteSize;
-        this.byteArray = new byte[1 << log2ByteSize];
+        this.byteArray = new byte[1 << log2ByteCapacity];
         this.maxNbElems = nbElemsCapacity;
-        this.sliceInfos = new ByteBufferInfo[getSmallerPowerOf2GreaterThan(nbElemsCapacity)];
-        this.sliceMask = this.sliceInfos.length - 1;
-        Arrays.setAll(this.sliceInfos, i -> new ByteBufferInfo());
+        this.sliceInfos = new ByteBufferInfo[getSmallestPowerOf2GreaterThan(nbElemsCapacity)];
+        this.sliceMask = sliceInfos.length - 1;
+        Arrays.setAll(sliceInfos, i -> new ByteBufferInfo());
         this.sliceWritePointer = 0;
         this.sliceReadPointer = 0;
         this.writePointer = 0;
         this.readPointer = 0;
         this.currSlice = null;
-        this.mask = (1 << log2ByteSize) - 1;
+        this.mask = byteArray.length - 1;
         this.isPeeked = false;
     }
 
     /**
-     * Build a queue with {@code size=(1 << log2ByteSize)} and no limit on the maximum number of elements
+     * Build a queue with {@code capacity=(1 << log2ByteCapacity)} and no limit on the maximum number of elements
      *
-     * @param log2ByteSize the log2 of the byte array size allocated for this queue
-     * @throws BufferLog2SizeTooLargeException in case the log2ByteSize is bigger than the maximum allowed
+     * @param log2ByteCapacity the log2 of the byte array capacity allocated for this queue
+     * @throws IllegalArgumentException in case the log2ByteCapacity is bigger than the maximum allowed
      */
-    public ByteBufferBoundedQueue(int log2ByteSize) throws BufferLog2SizeTooLargeException {
-        this(log2ByteSize, 1 << log2ByteSize);
+    public ByteBufferBoundedQueue(int log2ByteCapacity) {
+        this(log2ByteCapacity, 1 << log2ByteCapacity);
     }
 
     /**
@@ -165,7 +157,8 @@ public class ByteBufferBoundedQueue {
      */
     public QueueBufferOutput add(int size) throws InsufficientSpaceInQueueException {
 
-        if (size <= 0) throw new RuntimeException("Cannot call ByteBufferBoundedQueue.add " +
+        if (size <= 0) throw new IllegalArgumentException(
+                "Cannot call ByteBufferBoundedQueue.add " +
                 "with a size lower than zero:" + size);
 
         // get a buffer of required size
@@ -174,17 +167,18 @@ public class ByteBufferBoundedQueue {
         int sliceId = -1;
         byteArrayLock.lock();
         try {
-            if ((writePointer + size > readPointer + (1 << log2ByteSize)) ||
-                    sliceWritePointer + 1 > sliceReadPointer + maxNbElems) {
+            int remainingSize = byteArray.length - (writePointer - readPointer);
+            int nbElems = sliceWritePointer - sliceReadPointer;
+            if (size > remainingSize || nbElems >= maxNbElems) {
                 throw new InsufficientSpaceInQueueException(size,
-                        (1 << log2ByteSize) - (writePointer - readPointer),
-                        (sliceWritePointer - sliceReadPointer), maxNbElems);
+                        remainingSize,
+                        nbElems, maxNbElems);
             }
 
             start = writePointer;
             // Note: sliceInfos need to be updated before incrementing the sliceWritePointer
             // Otherwise the peekMany method can read garbage BufferSliceInfo.done field through race condition
-            // With the Java Memory Model, there is no garantee that the two statements won't be reordered,
+            // With the Java Memory Model, there is no guarantee that the two statements won't be reordered,
             // which is why it is mandatory to take a lock to enforce the order
             sliceId = sliceWritePointer;
             sliceLock.lock();
@@ -462,6 +456,9 @@ public class ByteBufferBoundedQueue {
 
         abstract void writeNext(byte b) throws ByteBufferOutOfBound;
 
+        // TODO
+        //abstract void write(byte[] bytes, int offset, int length) throws ByteBufferOutOfBound;
+
         protected int index;
         final protected int endIndex;
         final protected int sliceId;
@@ -511,11 +508,11 @@ public class ByteBufferBoundedQueue {
     }
 
     /**
-     * Finds the smaller power of 2 larger than the provided integer
+     * Finds the smallest power of 2 larger than the provided integer
      * @param n a positive integer
      * @return an integer, the smallest power of 2
      */
-    private static int getSmallerPowerOf2GreaterThan(int n) {
+    private static int getSmallestPowerOf2GreaterThan(int n) {
 
         if(n < 0)
             throw new RuntimeException("Invalid argument passed to getSmallerPowerOf2GreaterThan");

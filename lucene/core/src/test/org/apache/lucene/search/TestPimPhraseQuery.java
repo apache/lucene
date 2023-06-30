@@ -135,7 +135,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         pimDirectory.close();
         pimDirectory = null;
         PimSystemManager.get().unloadPimIndex();
-        PimSystemManager.shutDown();
+        PimSystemManager.get().shutDown();
     }
 
     public void testNotCloseEnough() throws Exception {
@@ -237,7 +237,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
 
         IndexSearcher searcher = newSearcher(reader);
         if(pimMode) {
-            PimSystemManager.get().loadPimIndex(pimDir, true);
+            forceLoadPimIndex(pimDir);
         }
 
         // valid exact phrase query
@@ -250,8 +250,13 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         directory.close();
         if(pimMode) {
             pimDir.close();
-            PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            forceLoadPimIndex(pimDirectory);
         }
+    }
+
+    private void forceLoadPimIndex(Directory pimDirectory) throws IOException {
+        PimSystemManager.get().unloadPimIndex();
+        PimSystemManager.get().loadPimIndex(pimDirectory);
     }
 
     private static RandomIndexWriter.IndexWriterInstanceCreator
@@ -304,7 +309,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
 
         IndexSearcher searcher = newSearcher(reader);
         if(pimMode) {
-            PimSystemManager.get().loadPimIndex(pimDir, true);
+            forceLoadPimIndex(pimDir);
         }
 
         PhraseQuery phraseQuery = new PimPhraseQuery("source", "marketing", "info");
@@ -369,7 +374,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         directory.close();
         if(pimMode) {
             pimDir.close();
-            PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            forceLoadPimIndex(pimDirectory);
         }
     }
 
@@ -407,11 +412,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         writer.close();
 
         if(pimMode) {
-            try {
-                PimSystemManager.get().loadPimIndex(pimDir, true);
-            } catch (PimSystemManager.TooManyDpusInIndexException e) {
-                throw new RuntimeException(e);
-            }
+            forceLoadPimIndex(pimDir);
         }
         IndexSearcher searcher = newSearcher(reader);
         searcher.setSimilarity(new ClassicSimilarity());
@@ -431,11 +432,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         directory.close();
         if(pimMode) {
             pimDir.close();
-            try {
-                PimSystemManager.get().loadPimIndex(pimDirectory, true);
-            } catch (PimSystemManager.TooManyDpusInIndexException e) {
-                throw new RuntimeException(e);
-            }
+            forceLoadPimIndex(pimDirectory);
         }
     }
 
@@ -688,11 +685,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         IndexReader r = writer.getReader();
         writer.close();
         if(pimMode) {
-            try {
-                PimSystemManager.get().loadPimIndex(pimDir, true);
-            } catch (PimSystemManager.TooManyDpusInIndexException e) {
-                throw new RuntimeException(e);
-            }
+            forceLoadPimIndex(pimDir);
         }
         IndexSearcher searcher = newSearcher(r);
 
@@ -720,11 +713,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         dir.close();
         if(pimMode) {
             pimDir.close();
-            try {
-                PimSystemManager.get().loadPimIndex(pimDirectory, true);
-            } catch (PimSystemManager.TooManyDpusInIndexException e) {
-                throw new RuntimeException(e);
-            }
+            forceLoadPimIndex(pimDirectory);
         }
     }
 
@@ -799,7 +788,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         IndexSearcher s = newSearcher(reader);
         w.close();
         if(pimMode) {
-            PimSystemManager.get().loadPimIndex(pimDir, true);
+            forceLoadPimIndex(pimDir);
         }
 
         // now search
@@ -836,7 +825,7 @@ public class TestPimPhraseQuery extends LuceneTestCase {
         dir.close();
         if(pimMode) {
             pimDir.close();
-            PimSystemManager.get().loadPimIndex(pimDirectory, true);
+            forceLoadPimIndex(pimDirectory);
         }
     }
 
