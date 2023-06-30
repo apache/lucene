@@ -55,6 +55,8 @@ API Changes
 
 * GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
 
+* GITHUB#12407: Removed Scorable#docID. (Adrien Grand)
+
 New Features
 ---------------------
 
