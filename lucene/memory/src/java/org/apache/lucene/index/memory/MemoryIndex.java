@@ -166,8 +166,8 @@ import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_SIZE;
  * </a>).
  */
 public class MemoryIndex {
-  private static class SlicedIntBlockPool {
-    private IntBlockPool pool;
+  static class SlicedIntBlockPool {
+    IntBlockPool pool;
 
     /**
      * An array holding the offset into the {@link IntBlockPool#LEVEL_SIZE_ARRAY} to quickly navigate
@@ -181,7 +181,7 @@ public class MemoryIndex {
     /** The first level size for new slices */
     private static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
 
-    private SlicedIntBlockPool(IntBlockPool pool) {
+    SlicedIntBlockPool(IntBlockPool pool) {
       this.pool = pool;
     }
 
@@ -240,7 +240,7 @@ public class MemoryIndex {
      * @see SliceReader
      * @lucene.internal
      */
-    private static class SliceWriter {
+    static class SliceWriter {
 
       private int offset;
       private final SlicedIntBlockPool slicedIntBlockPool;
@@ -291,7 +291,7 @@ public class MemoryIndex {
      *
      * @lucene.internal
      */
-    private static class SliceReader {
+    static class SliceReader {
 
       private final SlicedIntBlockPool slicedIntBlockPool;
       private int upto;
