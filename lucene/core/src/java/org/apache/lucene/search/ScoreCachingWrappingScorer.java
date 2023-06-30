@@ -41,29 +41,38 @@ public final class ScoreCachingWrappingScorer extends Scorable {
    * accessed multiple times.
    */
   public static LeafCollector wrap(LeafCollector collector) {
-    return new FilterLeafCollector(collector) {
+    if (collector instanceof ScoreCachingWrappingLeafCollector) {
+      return collector;
+    }
+    return new ScoreCachingWrappingLeafCollector(collector);
+  }
 
-      private ScoreCachingWrappingScorer score;
+  private static class ScoreCachingWrappingLeafCollector extends FilterLeafCollector {
 
-      @Override
-      public void setScorer(Scorable scorer) throws IOException {
-        score = new ScoreCachingWrappingScorer(scorer);
-        super.setScorer(this.score);
+    ScoreCachingWrappingLeafCollector(LeafCollector in) {
+      super(in);
+    }
+
+    private ScoreCachingWrappingScorer score;
+
+    @Override
+    public void setScorer(Scorable scorer) throws IOException {
+      score = new ScoreCachingWrappingScorer(scorer);
+      super.setScorer(this.score);
+    }
+
+    @Override
+    public void collect(int doc) throws IOException {
+      if (score != null) {
+        score.curDoc = doc;
       }
+      super.collect(doc);
+    }
 
-      @Override
-      public void collect(int doc) throws IOException {
-        if (score != null) {
-          score.curDoc = doc;
-        }
-        super.collect(doc);
-      }
-
-      @Override
-      public DocIdSetIterator competitiveIterator() throws IOException {
-        return in.competitiveIterator();
-      }
-    };
+    @Override
+    public DocIdSetIterator competitiveIterator() throws IOException {
+      return in.competitiveIterator();
+    }
   }
 
   /** Creates a new instance by wrapping the given scorer. */
