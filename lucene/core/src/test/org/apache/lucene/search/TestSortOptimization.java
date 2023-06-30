@@ -286,13 +286,14 @@ public class TestSortOptimization extends LuceneTestCase {
       topDocs1 = searcher.search(new MatchAllDocsQuery(), manager);
       assertNonCompetitiveHitsAreSkipped(topDocs1.totalHits.value, numDocs);
     }
-    {// Test that sort on sorted numeric field without sort optimization and with sort optimization produce the same results
+    { // Test that sort on sorted numeric field without sort optimization and with sort optimization
+      // produce the same results
       final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
       sortField.setMissingValue(0L); // missing value is not competitive
       final Sort sort = new Sort(sortField);
       sortField.setOptimizeSortWithPoints(false);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-              TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+          TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
       topDocs2 = searcher.search(new MatchAllDocsQuery(), manager);
       // assert that the resulting hits are the same
       assertEquals(topDocs1.scoreDocs.length, topDocs2.scoreDocs.length);
@@ -308,7 +309,6 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     assertTrue(topDocs1.totalHits.value < topDocs2.totalHits.value);
-
 
     reader.close();
     dir.close();
