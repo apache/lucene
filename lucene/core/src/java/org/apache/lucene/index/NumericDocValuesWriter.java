@@ -270,10 +270,8 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
         return docsWithField.nextSetBit(target);
       }
 
-      if (target < maxDoc) {
-        return target;
-      }
-      return DocIdSetIterator.NO_MORE_DOCS;
+      // Only called when target is less than maxDoc
+      return target;
     }
 
     private long cost() {
