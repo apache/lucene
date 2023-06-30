@@ -126,7 +126,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
 
 Optimizations
 ---------------------
@@ -140,14 +140,20 @@ Optimizations
 
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
 
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
+
 Bug Fixes
 ---------------------
+
+* GITHUB#9660: Throw and ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
 
 * GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
+  (Uwe Schindler)
 
 ======================== Lucene 9.7.0 =======================
 

@@ -412,12 +412,12 @@ public class TestIndexSearcher extends LuceneTestCase {
 
   private void runSliceExecutorTest(ThreadPoolExecutor service, boolean useRandomSliceExecutor)
       throws Exception {
-    SliceExecutor sliceExecutor =
+    TaskExecutor taskExecutor =
         useRandomSliceExecutor == true
-            ? new RandomBlockingSliceExecutor(service)
+            ? new RandomBlockingTaskExecutor(service)
             : new QueueSizeBasedExecutor(service);
 
-    IndexSearcher searcher = new IndexSearcher(reader.getContext(), service, sliceExecutor);
+    IndexSearcher searcher = new IndexSearcher(reader.getContext(), service, taskExecutor);
 
     Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
     Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
@@ -453,9 +453,9 @@ public class TestIndexSearcher extends LuceneTestCase {
     }
   }
 
-  private static class RandomBlockingSliceExecutor extends SliceExecutor {
+  private static class RandomBlockingTaskExecutor extends TaskExecutor {
 
-    RandomBlockingSliceExecutor(Executor executor) {
+    RandomBlockingTaskExecutor(Executor executor) {
       super(executor);
     }
 

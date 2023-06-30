@@ -17,23 +17,29 @@
 
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.RunnableFuture;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
- * Executor which is responsible for execution of slices based on the current status of the system
- * and current system load
+ * Executor wrapper responsible for the execution of concurrent tasks. Used to parallelize search
+ * across segments as well as query rewrite in some cases.
  */
-class SliceExecutor {
+class TaskExecutor {
   private final Executor executor;
 
-  SliceExecutor(Executor executor) {
+  TaskExecutor(Executor executor) {
     this.executor = Objects.requireNonNull(executor, "Executor is null");
   }
 
-  final void invokeAll(Collection<? extends Runnable> tasks) {
+  final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) {
     int i = 0;
     for (Runnable task : tasks) {
       if (shouldExecuteOnCallerThread(i, tasks.size())) {
@@ -49,6 +55,17 @@ class SliceExecutor {
       }
       ++i;
     }
+    final List<T> results = new ArrayList<>();
+    for (Future<T> future : tasks) {
+      try {
+        results.add(future.get());
+      } catch (InterruptedException e) {
+        throw new ThreadInterruptedException(e);
+      } catch (ExecutionException e) {
+        throw new RuntimeException(e.getCause());
+      }
+    }
+    return results;
   }
 
   boolean shouldExecuteOnCallerThread(int index, int numTasks) {
