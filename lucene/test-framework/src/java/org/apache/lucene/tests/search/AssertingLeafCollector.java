@@ -30,6 +30,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   private Scorable scorer;
   private int lastCollected = -1;
+  private boolean finishCalled;
 
   AssertingLeafCollector(LeafCollector collector, int min, int max) {
     super(collector);
@@ -56,5 +57,12 @@ class AssertingLeafCollector extends FilterLeafCollector {
   @Override
   public DocIdSetIterator competitiveIterator() throws IOException {
     return in.competitiveIterator();
+  }
+
+  @Override
+  public void finish() throws IOException {
+    assert finishCalled == false;
+    finishCalled = true;
+    super.finish();
   }
 }

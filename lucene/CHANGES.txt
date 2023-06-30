@@ -11,7 +11,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
+  collection has finished running on a leaf. (Adrien Grand)
 
 Improvements
 ---------------------
