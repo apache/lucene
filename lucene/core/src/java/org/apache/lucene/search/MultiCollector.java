@@ -223,11 +223,21 @@ public class MultiCollector implements Collector {
           } catch (
               @SuppressWarnings("unused")
               CollectionTerminatedException e) {
+            collectors[i].finish();
             collectors[i] = null;
             if (allCollectorsTerminated()) {
               throw new CollectionTerminatedException();
             }
           }
+        }
+      }
+    }
+
+    @Override
+    public void finish() throws IOException {
+      for (LeafCollector collector : collectors) {
+        if (collector != null) {
+          collector.finish();
         }
       }
     }

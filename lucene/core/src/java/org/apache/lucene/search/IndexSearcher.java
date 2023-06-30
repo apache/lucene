@@ -746,6 +746,9 @@ public class IndexSearcher {
           partialResult = true;
         }
       }
+      // Note: this is called if collection ran successfully, including the above special cases of
+      // CollectionTerminatedException and TimeExceededException, but no other exception.
+      leafCollector.finish();
     }
   }
 

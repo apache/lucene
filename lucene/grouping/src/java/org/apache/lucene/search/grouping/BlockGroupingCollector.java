@@ -270,9 +270,6 @@ public class BlockGroupingCollector extends SimpleCollector {
     // if (queueFull) {
     // System.out.println("getTopGroups groupOffset=" + groupOffset + " topNGroups=" + topNGroups);
     // }
-    if (subDocUpto != 0) {
-      processGroup();
-    }
     if (groupOffset >= groupQueue.size()) {
       return null;
     }
@@ -472,9 +469,6 @@ public class BlockGroupingCollector extends SimpleCollector {
 
   @Override
   protected void doSetNextReader(LeafReaderContext readerContext) throws IOException {
-    if (subDocUpto != 0) {
-      processGroup();
-    }
     subDocUpto = 0;
     docBase = readerContext.docBase;
     // System.out.println("setNextReader base=" + docBase + " r=" + readerContext.reader);
@@ -489,6 +483,13 @@ public class BlockGroupingCollector extends SimpleCollector {
     currentReaderContext = readerContext;
     for (int i = 0; i < comparators.length; i++) {
       leafComparators[i] = comparators[i].getLeafComparator(readerContext);
+    }
+  }
+
+  @Override
+  public void finish() throws IOException {
+    if (subDocUpto != 0) {
+      processGroup();
     }
   }
 
