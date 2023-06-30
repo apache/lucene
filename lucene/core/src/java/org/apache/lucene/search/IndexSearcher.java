@@ -28,6 +28,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -114,8 +115,13 @@ public class IndexSearcher {
   protected final IndexReaderContext readerContext;
   protected final List<LeafReaderContext> leafContexts;
 
-  /** used with executor - each slice holds a set of leafs executed within one thread */
-  private final LeafSlice[] leafSlices;
+  /**
+   * used with executor - LeafSlice supplier where each slice holds a set of leafs executed within
+   * one thread. We are caching it instead of creating it eagerly to avoid calling a protected
+   * method from constructor, which is a bad practice. This is {@code null} if no executor is
+   * provided
+   */
+  private final CachingLeafSlicesSupplier leafSlicesSupplier;
 
   // These are only used for multi-threaded search
   private final Executor executor;
@@ -234,7 +240,8 @@ public class IndexSearcher {
     this.taskExecutor = taskExecutor;
     this.readerContext = context;
     leafContexts = context.leaves();
-    this.leafSlices = executor == null ? null : slices(leafContexts);
+    leafSlicesSupplier =
+        (executor == null) ? null : new CachingLeafSlicesSupplier(this::slices, leafContexts);
   }
 
   /**
@@ -429,7 +436,7 @@ public class IndexSearcher {
    * @lucene.experimental
    */
   public LeafSlice[] getSlices() {
-    return leafSlices;
+    return (executor == null) ? null : leafSlicesSupplier.get();
   }
 
   /**
@@ -454,16 +461,17 @@ public class IndexSearcher {
 
     final int cappedNumHits = Math.min(numHits, limit);
 
+    final LeafSlice[] leafSlices = getSlices();
     final CollectorManager<TopScoreDocCollector, TopDocs> manager =
         new CollectorManager<TopScoreDocCollector, TopDocs>() {
 
           private final HitsThresholdChecker hitsThresholdChecker =
-              (executor == null || leafSlices.length <= 1)
+              (leafSlices == null || leafSlices.length <= 1)
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
-              (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
+              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
 
           @Override
           public TopScoreDocCollector newCollector() throws IOException {
@@ -597,17 +605,18 @@ public class IndexSearcher {
     }
     final int cappedNumHits = Math.min(numHits, limit);
     final Sort rewrittenSort = sort.rewrite(this);
+    final LeafSlice[] leafSlices = getSlices();
 
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
         new CollectorManager<>() {
 
           private final HitsThresholdChecker hitsThresholdChecker =
-              (executor == null || leafSlices.length <= 1)
+              (leafSlices == null || leafSlices.length <= 1)
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
-              (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
+              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
 
           @Override
           public TopFieldCollector newCollector() throws IOException {
@@ -637,7 +646,7 @@ public class IndexSearcher {
   /**
    * Lower-level search API. Search all leaves using the given {@link CollectorManager}. In contrast
    * to {@link #search(Query, Collector)}, this method will use the searcher's {@link Executor} in
-   * order to parallelize execution of the collection on the configured {@link #leafSlices}.
+   * order to parallelize execution of the collection on the configured {@link #getSlices()}.
    *
    * @see CollectorManager
    * @lucene.experimental
@@ -652,7 +661,8 @@ public class IndexSearcher {
 
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
-    if (executor == null || leafSlices.length <= 1) {
+    final LeafSlice[] leafSlices = getSlices();
+    if (leafSlices == null || leafSlices.length <= 1) {
       search(leafContexts, weight, firstCollector);
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
@@ -1000,5 +1010,44 @@ public class IndexSearcher {
     }
 
     return new TaskExecutor(executor);
+  }
+
+  /**
+   * Supplier for {@link LeafSlice} slices which computes and caches the value on first invocation
+   * and returns cached value on subsequent invocation. If the passed in provider for slice
+   * computation throws exception then same will be passed to the caller of this supplier on each
+   * invocation. If the provider returns null then {@link NullPointerException} will be thrown to
+   * the caller.
+   *
+   * <p>NOTE: To provide thread safe caching mechanism this class is implementing the (subtle) <a
+   * href="https://shipilev.net/blog/2014/safe-public-construction/">double-checked locking
+   * idiom</a>
+   */
+  private static class CachingLeafSlicesSupplier implements Supplier<LeafSlice[]> {
+    private volatile LeafSlice[] leafSlices;
+
+    private final Function<List<LeafReaderContext>, LeafSlice[]> sliceProvider;
+
+    private final List<LeafReaderContext> leaves;
+
+    private CachingLeafSlicesSupplier(
+        Function<List<LeafReaderContext>, LeafSlice[]> provider, List<LeafReaderContext> leaves) {
+      this.sliceProvider = Objects.requireNonNull(provider, "leaf slice provider cannot be null");
+      this.leaves = Objects.requireNonNull(leaves, "list of LeafReaderContext cannot be null");
+    }
+
+    @Override
+    public LeafSlice[] get() {
+      if (leafSlices == null) {
+        synchronized (this) {
+          if (leafSlices == null) {
+            leafSlices =
+                Objects.requireNonNull(
+                    sliceProvider.apply(leaves), "slices computed by the provider is null");
+          }
+        }
+      }
+      return leafSlices;
+    }
   }
 }
