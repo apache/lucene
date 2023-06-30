@@ -51,10 +51,13 @@ import org.apache.lucene.util.PriorityQueue;
 public class LongValueFacetCounts extends Facets {
 
   /** Used for all values that are < 1K. */
-  private final int[] counts = new int[1024];
+  private int[] counts;
 
   /** Used for all values that are >= 1K. */
-  private final LongIntHashMap hashCounts = new LongIntHashMap();
+  private LongIntHashMap hashCounts;
+
+  /** Whether-or-not counters have been initialized. */
+  private boolean initialized;
 
   /** Field being counted. */
   private final String field;
@@ -125,6 +128,7 @@ public class LongValueFacetCounts extends Facets {
   public LongValueFacetCounts(String field, LongValuesSource valueSource, IndexReader reader)
       throws IOException {
     this.field = field;
+    initializeCounters();
     if (valueSource != null) {
       countAll(reader, valueSource);
     } else {
@@ -141,6 +145,7 @@ public class LongValueFacetCounts extends Facets {
   public LongValueFacetCounts(String field, MultiLongValuesSource valuesSource, IndexReader reader)
       throws IOException {
     this.field = field;
+    initializeCounters();
     if (valuesSource != null) {
       LongValuesSource singleValued = MultiLongValuesSource.unwrapSingleton(valuesSource);
       if (singleValued != null) {
@@ -153,11 +158,25 @@ public class LongValueFacetCounts extends Facets {
     }
   }
 
+  private void initializeCounters() {
+    if (initialized) {
+      return;
+    }
+    assert counts == null && hashCounts == null;
+    initialized = true;
+    counts = new int[1024];
+    hashCounts = new LongIntHashMap();
+  }
+
   /** Counts from the provided valueSource. */
   private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeCounters();
 
       LongValues fv = valueSource.getValues(hits.context, null);
 
@@ -183,6 +202,10 @@ public class LongValueFacetCounts extends Facets {
   private void count(MultiLongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeCounters();
 
       MultiLongValues multiValues = valuesSource.getValues(hits.context);
 
@@ -213,6 +236,10 @@ public class LongValueFacetCounts extends Facets {
   /** Counts from the field's indexed doc values. */
   private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeCounters();
 
       SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
@@ -350,6 +377,13 @@ public class LongValueFacetCounts extends Facets {
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
     validateDimAndPathForGetChildren(dim, path);
+
+    if (initialized == false) {
+      // nothing was counted (either no hits or no values for all hits):
+      assert totCount == 0;
+      return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
+    }
+
     List<LabelAndValue> labelValues = new ArrayList<>();
     for (int i = 0; i < counts.length; i++) {
       if (counts[i] != 0) {
@@ -377,6 +411,12 @@ public class LongValueFacetCounts extends Facets {
   public FacetResult getTopChildren(int topN, String dim, String... path) {
     validateTopN(topN);
     validateDimAndPathForGetChildren(dim, path);
+
+    if (initialized == false) {
+      // nothing was counted (either no hits or no values for all hits):
+      assert totCount == 0;
+      return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
+    }
 
     PriorityQueue<Entry> pq =
         new PriorityQueue<>(Math.min(topN, counts.length + hashCounts.size())) {
@@ -440,6 +480,12 @@ public class LongValueFacetCounts extends Facets {
    * efficient to use {@link #getAllChildren(String, String...)}.
    */
   public FacetResult getAllChildrenSortByValue() {
+    if (initialized == false) {
+      // nothing was counted (either no hits or no values for all hits):
+      assert totCount == 0;
+      return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
+    }
+
     List<LabelAndValue> labelValues = new ArrayList<>();
 
     // compact & sort hash table's arrays by value
@@ -478,6 +524,7 @@ public class LongValueFacetCounts extends Facets {
 
     boolean countsAdded = false;
     for (int i = 0; i < upto; i++) {
+      // nocommit: shouldn't hash counts always follow the dense counts?
       if (countsAdded == false && hashValues[i] >= counts.length) {
         countsAdded = true;
         appendCounts(labelValues);
@@ -533,25 +580,27 @@ public class LongValueFacetCounts extends Facets {
     StringBuilder b = new StringBuilder();
     b.append("LongValueFacetCounts totCount=");
     b.append(totCount);
-    b.append(":\n");
-    for (int i = 0; i < counts.length; i++) {
-      if (counts[i] != 0) {
-        b.append("  ");
-        b.append(i);
-        b.append(" -> count=");
-        b.append(counts[i]);
-        b.append('\n');
-      }
-    }
-
-    if (hashCounts.size() != 0) {
-      for (LongIntCursor c : hashCounts) {
-        if (c.value != 0) {
+    if (initialized) {
+      b.append(":\n");
+      for (int i = 0; i < counts.length; i++) {
+        if (counts[i] != 0) {
           b.append("  ");
-          b.append(c.key);
+          b.append(i);
           b.append(" -> count=");
-          b.append(c.value);
+          b.append(counts[i]);
           b.append('\n');
+        }
+      }
+
+      if (hashCounts.size() != 0) {
+        for (LongIntCursor c : hashCounts) {
+          if (c.value != 0) {
+            b.append("  ");
+            b.append(c.key);
+            b.append(" -> count=");
+            b.append(c.value);
+            b.append('\n');
+          }
         }
       }
     }
