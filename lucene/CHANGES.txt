@@ -29,6 +29,8 @@ Optimizations
 
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
 
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
+
 Bug Fixes
 ---------------------
 
