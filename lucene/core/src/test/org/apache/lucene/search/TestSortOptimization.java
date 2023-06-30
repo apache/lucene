@@ -274,17 +274,41 @@ public class TestSortOptimization extends LuceneTestCase {
         newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
     final int numHits = 3;
     final int totalHitsThreshold = 3;
+    TopDocs topDocs1;
+    TopDocs topDocs2;
 
-    { // test that optimization is run with NumericDocValues when missing value is NOT competitive
+    { // Test that optimization is run with NumericDocValues when missing value is NOT competitive
       final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
       sortField.setMissingValue(0L); // missing value is not competitive
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
           TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
-      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
-      assertEquals(topDocs.scoreDocs.length, numHits);
-      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
+      topDocs1 = searcher.search(new MatchAllDocsQuery(), manager);
+      assertNonCompetitiveHitsAreSkipped(topDocs1.totalHits.value, numDocs);
     }
+    {// Test that sort on sorted numeric field without sort optimization and with sort optimization produce the same results
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
+      sortField.setMissingValue(0L); // missing value is not competitive
+      final Sort sort = new Sort(sortField);
+      sortField.setOptimizeSortWithPoints(false);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+              TopFieldCollector.createSharedManager(sort, numHits, null, totalHitsThreshold);
+      topDocs2 = searcher.search(new MatchAllDocsQuery(), manager);
+      // assert that the resulting hits are the same
+      assertEquals(topDocs1.scoreDocs.length, topDocs2.scoreDocs.length);
+      assertEquals(topDocs1.scoreDocs.length, numHits);
+      ScoreDoc[] scoreDocs1 = topDocs1.scoreDocs;
+      ScoreDoc[] scoreDocs2 = topDocs2.scoreDocs;
+      for (int i = 0; i < numHits; i++) {
+        FieldDoc fieldDoc = (FieldDoc) scoreDocs1[i];
+        FieldDoc fieldDoc2 = (FieldDoc) scoreDocs2[i];
+        assertEquals(fieldDoc.fields[0], fieldDoc2.fields[0]);
+        assertEquals(fieldDoc.doc, fieldDoc2.doc);
+      }
+    }
+
+    assertTrue(topDocs1.totalHits.value < topDocs2.totalHits.value);
+
 
     reader.close();
     dir.close();
