@@ -20,8 +20,6 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.util.LongHeap;
 import org.apache.lucene.util.NumericUtils;
 
-import java.util.Map;
-
 /**
  * NeighborQueue uses a {@link LongHeap} to store lists of arcs in an HNSW graph, represented as a
  * neighbor node id with an associated score packed together as a sortable long, which is sorted

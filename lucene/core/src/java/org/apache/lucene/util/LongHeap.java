@@ -44,7 +44,7 @@ public final class LongHeap {
     if (maxSize < 1 || maxSize >= ArrayUtil.MAX_ARRAY_LENGTH) {
       // Throw exception to prevent confusing OOME:
       throw new IllegalArgumentException(
-              "maxSize must be > 0 and < " + (ArrayUtil.MAX_ARRAY_LENGTH - 1) + "; got: " + maxSize);
+          "maxSize must be > 0 and < " + (ArrayUtil.MAX_ARRAY_LENGTH - 1) + "; got: " + maxSize);
     }
     // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
     heapSize = maxSize + 1;
@@ -138,9 +138,8 @@ public final class LongHeap {
   }
 
   /**
-   * Replace the value at {@code heapIndex} of the pq with {@code value}.
-   * Should be called when an element value changes.
-   * Still log(n) worst case, but it's at least twice as fast to
+   * Replace the value at {@code heapIndex} of the pq with {@code value}. Should be called when an
+   * element value changes. Still log(n) worst case, but it's at least twice as fast to
    *
    * <pre class="prettyprint">
    * pq.updateTop(value);
