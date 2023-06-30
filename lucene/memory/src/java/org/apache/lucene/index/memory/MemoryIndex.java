@@ -166,10 +166,8 @@ import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_SIZE;
  * </a>).
  */
 public class MemoryIndex {
-  private class SlicedIntBlockPool {
+  private static class SlicedIntBlockPool {
     private IntBlockPool pool;
-    private SliceWriter writer;
-    private SliceReader reader;
 
     /**
      * An array holding the offset into the {@link IntBlockPool#LEVEL_SIZE_ARRAY} to quickly navigate
@@ -185,8 +183,6 @@ public class MemoryIndex {
 
     private SlicedIntBlockPool(IntBlockPool pool) {
       this.pool = pool;
-      writer = new SliceWriter(pool);
-      reader = new SliceReader(pool);
     }
 
     /**
@@ -244,13 +240,13 @@ public class MemoryIndex {
      * @see SliceReader
      * @lucene.internal
      */
-    private class SliceWriter {
+    private static class SliceWriter {
 
       private int offset;
-      private final IntBlockPool pool;
+      private final SlicedIntBlockPool slicedIntBlockPool;
 
-      public SliceWriter(IntBlockPool pool) {
-        this.pool = pool;
+      public SliceWriter(SlicedIntBlockPool slicedIntBlockPool) {
+        this.slicedIntBlockPool = slicedIntBlockPool;
       }
       /** */
       public void reset(int sliceOffset) {
@@ -259,14 +255,14 @@ public class MemoryIndex {
 
       /** Writes the given value into the slice and resizes the slice if needed */
       public void writeInt(int value) {
-        int[] ints = pool.buffers[offset >> INT_BLOCK_SHIFT];
+        int[] ints = slicedIntBlockPool.pool.buffers[offset >> INT_BLOCK_SHIFT];
         assert ints != null;
         int relativeOffset = offset & INT_BLOCK_MASK;
         if (ints[relativeOffset] != 0) {
           // End of slice; allocate a new one
-          relativeOffset = allocSlice(ints, relativeOffset);
-          ints = pool.buffer;
-          offset = relativeOffset + pool.intOffset;
+          relativeOffset = slicedIntBlockPool.allocSlice(ints, relativeOffset);
+          ints = slicedIntBlockPool.pool.buffer;
+          offset = relativeOffset + slicedIntBlockPool.pool.intOffset;
         }
         ints[relativeOffset] = value;
         offset++;
@@ -277,7 +273,7 @@ public class MemoryIndex {
        * start offset to initialize a {@link SliceReader}.
        */
       public int startNewSlice() {
-        return offset = newSlice(FIRST_LEVEL_SIZE) + pool.intOffset;
+        return offset = slicedIntBlockPool.newSlice(FIRST_LEVEL_SIZE) + slicedIntBlockPool.pool.intOffset;
       }
 
       /**
@@ -295,9 +291,9 @@ public class MemoryIndex {
      *
      * @lucene.internal
      */
-    private class SliceReader {
+    private static class SliceReader {
 
-      private final IntBlockPool pool;
+      private final SlicedIntBlockPool slicedIntBlockPool;
       private int upto;
       private int bufferUpto;
       private int bufferOffset;
@@ -307,8 +303,8 @@ public class MemoryIndex {
       private int end;
 
       /** Creates a new {@link SliceReader} on the given pool */
-      public SliceReader(IntBlockPool pool) {
-        this.pool = pool;
+      public SliceReader(SlicedIntBlockPool slicedIntBlockPool) {
+        this.slicedIntBlockPool = slicedIntBlockPool;
       }
 
       /** Resets the reader to a slice give the slices absolute start and end offset in the pool */
@@ -318,7 +314,7 @@ public class MemoryIndex {
         this.end = endOffset;
         level = 0;
 
-        buffer = pool.buffers[bufferUpto];
+        buffer = slicedIntBlockPool.pool.buffers[bufferUpto];
         upto = startOffset & INT_BLOCK_MASK;
 
         final int firstSize = LEVEL_SIZE_ARRAY[0];
@@ -360,7 +356,7 @@ public class MemoryIndex {
         bufferUpto = nextIndex / INT_BLOCK_SIZE;
         bufferOffset = bufferUpto * INT_BLOCK_SIZE;
 
-        buffer = pool.buffers[bufferUpto];
+        buffer = slicedIntBlockPool.pool.buffers[bufferUpto];
         upto = nextIndex & INT_BLOCK_MASK;
 
         if (nextIndex + newSize >= end) {
@@ -459,7 +455,7 @@ public class MemoryIndex {
         new IntBlockPool(
             new RecyclingIntBlockAllocator(
                 INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed)));
-    postingsWriter = slicedIntBlockPool.writer;
+    postingsWriter = new SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
     // TODO refactor BytesRefArray to allow us to apply maxReusedBytes option
     payloadsBytesRefs = storePayloads ? new BytesRefArray(bytesUsed) : null;
   }
@@ -1052,7 +1048,7 @@ public class MemoryIndex {
       result.append(fieldName).append(":\n");
       SliceByteStartArray sliceArray = info.sliceArray;
       int numPositions = 0;
-      SlicedIntBlockPool.SliceReader postingsReader = slicedIntBlockPool.reader;
+      SlicedIntBlockPool.SliceReader postingsReader = new SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
       for (int j = 0; j < info.terms.size(); j++) {
         int ord = info.sortedTerms[j];
         info.terms.get(ord, spare);
@@ -1873,7 +1869,7 @@ public class MemoryIndex {
       private final BytesRefBuilder payloadBuilder; // only non-null when storePayloads
 
       public MemoryPostingsEnum() {
-        this.sliceReader = slicedIntBlockPool.reader;
+        this.sliceReader = new SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
         this.payloadBuilder = storePayloads ? new BytesRefBuilder() : null;
       }
 
