@@ -23,7 +23,7 @@ import java.util.Arrays;
  *
  * @lucene.internal
  */
-public final class IntBlockPool {
+public class IntBlockPool {
   public static final int INT_BLOCK_SHIFT = 13;
   public static final int INT_BLOCK_SIZE = 1 << INT_BLOCK_SHIFT;
   public static final int INT_BLOCK_MASK = INT_BLOCK_SIZE - 1;

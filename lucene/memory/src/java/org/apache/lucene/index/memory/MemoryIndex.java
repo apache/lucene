@@ -166,9 +166,7 @@ import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_SIZE;
  * </a>).
  */
 public class MemoryIndex {
-  static class SlicedIntBlockPool {
-    IntBlockPool pool;
-
+  static class SlicedIntBlockPool extends IntBlockPool {
     /**
      * An array holding the offset into the {@link IntBlockPool#LEVEL_SIZE_ARRAY} to quickly navigate
      * to the next slice level.
@@ -181,8 +179,8 @@ public class MemoryIndex {
     /** The first level size for new slices */
     private static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
 
-    SlicedIntBlockPool(IntBlockPool pool) {
-      this.pool = pool;
+    SlicedIntBlockPool(Allocator allocator) {
+      super(allocator);
     }
 
     /**
@@ -191,14 +189,14 @@ public class MemoryIndex {
      * @see SliceReader
      */
     private int newSlice(final int size) {
-      if (pool.intUpto > INT_BLOCK_SIZE - size) {
-        pool.nextBuffer();
-        assert assertSliceBuffer(pool.buffer);
+      if (intUpto > INT_BLOCK_SIZE - size) {
+        nextBuffer();
+        assert assertSliceBuffer(buffer);
       }
 
-      final int upto = pool.intUpto;
-      pool.intUpto += size;
-      pool.buffer[pool.intUpto - 1] = 16;
+      final int upto = intUpto;
+      intUpto += size;
+      buffer[intUpto - 1] = 16;
       return upto;
     }
 
@@ -216,19 +214,19 @@ public class MemoryIndex {
       final int newLevel = NEXT_LEVEL_ARRAY[level];
       final int newSize = LEVEL_SIZE_ARRAY[newLevel];
       // Maybe allocate another block
-      if (pool.intUpto > INT_BLOCK_SIZE - newSize) {
-        pool.nextBuffer();
-        assert assertSliceBuffer(pool.buffer);
+      if (intUpto > INT_BLOCK_SIZE - newSize) {
+        nextBuffer();
+        assert assertSliceBuffer(buffer);
       }
 
-      final int newUpto = pool.intUpto;
-      final int offset = newUpto + pool.intOffset;
-      pool.intUpto += newSize;
+      final int newUpto = intUpto;
+      final int offset = newUpto + intOffset;
+      intUpto += newSize;
       // Write forwarding address at end of last slice:
       slice[sliceOffset] = offset;
 
       // Write new level:
-      pool.buffer[pool.intUpto - 1] = 16 | newLevel;
+      buffer[intUpto - 1] = 16 | newLevel;
 
       return newUpto;
     }
@@ -255,14 +253,14 @@ public class MemoryIndex {
 
       /** Writes the given value into the slice and resizes the slice if needed */
       public void writeInt(int value) {
-        int[] ints = slicedIntBlockPool.pool.buffers[offset >> INT_BLOCK_SHIFT];
+        int[] ints = slicedIntBlockPool.buffers[offset >> INT_BLOCK_SHIFT];
         assert ints != null;
         int relativeOffset = offset & INT_BLOCK_MASK;
         if (ints[relativeOffset] != 0) {
           // End of slice; allocate a new one
           relativeOffset = slicedIntBlockPool.allocSlice(ints, relativeOffset);
-          ints = slicedIntBlockPool.pool.buffer;
-          offset = relativeOffset + slicedIntBlockPool.pool.intOffset;
+          ints = slicedIntBlockPool.buffer;
+          offset = relativeOffset + slicedIntBlockPool.intOffset;
         }
         ints[relativeOffset] = value;
         offset++;
@@ -273,7 +271,7 @@ public class MemoryIndex {
        * start offset to initialize a {@link SliceReader}.
        */
       public int startNewSlice() {
-        return offset = slicedIntBlockPool.newSlice(FIRST_LEVEL_SIZE) + slicedIntBlockPool.pool.intOffset;
+        return offset = slicedIntBlockPool.newSlice(FIRST_LEVEL_SIZE) + slicedIntBlockPool.intOffset;
       }
 
       /**
@@ -314,7 +312,7 @@ public class MemoryIndex {
         this.end = endOffset;
         level = 0;
 
-        buffer = slicedIntBlockPool.pool.buffers[bufferUpto];
+        buffer = slicedIntBlockPool.buffers[bufferUpto];
         upto = startOffset & INT_BLOCK_MASK;
 
         final int firstSize = LEVEL_SIZE_ARRAY[0];
@@ -356,7 +354,7 @@ public class MemoryIndex {
         bufferUpto = nextIndex / INT_BLOCK_SIZE;
         bufferOffset = bufferUpto * INT_BLOCK_SIZE;
 
-        buffer = slicedIntBlockPool.pool.buffers[bufferUpto];
+        buffer = slicedIntBlockPool.buffers[bufferUpto];
         upto = nextIndex & INT_BLOCK_MASK;
 
         if (nextIndex + newSize >= end) {
@@ -452,9 +450,8 @@ public class MemoryIndex {
             new RecyclingByteBlockAllocator(
                 ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
     slicedIntBlockPool = new SlicedIntBlockPool(
-        new IntBlockPool(
             new RecyclingIntBlockAllocator(
-                INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed)));
+                INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed));
     postingsWriter = new SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
     // TODO refactor BytesRefArray to allow us to apply maxReusedBytes option
     payloadsBytesRefs = storePayloads ? new BytesRefArray(bytesUsed) : null;
@@ -2148,7 +2145,7 @@ public class MemoryIndex {
     fields.clear();
     this.normSimilarity = IndexSearcher.getDefaultSimilarity();
     byteBlockPool.reset(false, false); // no need to 0-fill the buffers
-    slicedIntBlockPool.pool.reset(true, false); // here must must 0-fill since we use slices
+    slicedIntBlockPool.reset(true, false); // here must must 0-fill since we use slices
     if (payloadsBytesRefs != null) {
       payloadsBytesRefs.clear();
     }

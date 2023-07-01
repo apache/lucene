@@ -10,7 +10,7 @@ import java.util.List;
 public class TestSlicedIntBlockPool extends LuceneTestCase {
     public void testSingleWriterReader() {
         Counter bytesUsed = Counter.newCounter();
-        MemoryIndex.SlicedIntBlockPool slicedIntBlockPool = new MemoryIndex.SlicedIntBlockPool(new IntBlockPool(new ByteTrackingAllocator(bytesUsed)));
+        MemoryIndex.SlicedIntBlockPool slicedIntBlockPool = new MemoryIndex.SlicedIntBlockPool(new ByteTrackingAllocator(bytesUsed));
 
         for (int j = 0; j < 2; j++) {
             MemoryIndex.SlicedIntBlockPool.SliceWriter writer = new MemoryIndex.SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
@@ -28,10 +28,10 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
             }
             assertTrue(reader.endOfSlice());
             if (random().nextBoolean()) {
-                slicedIntBlockPool.pool.reset(true, false);
+                slicedIntBlockPool.reset(true, false);
                 assertEquals(0, bytesUsed.get());
             } else {
-                slicedIntBlockPool.pool.reset(true, true);
+                slicedIntBlockPool.reset(true, true);
                 assertEquals(IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES, bytesUsed.get());
             }
         }
@@ -39,7 +39,7 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
 
     public void testMultipleWriterReader() {
         Counter bytesUsed = Counter.newCounter();
-        MemoryIndex.SlicedIntBlockPool slicedIntBlockPool = new MemoryIndex.SlicedIntBlockPool(new IntBlockPool(new ByteTrackingAllocator(bytesUsed)));
+        MemoryIndex.SlicedIntBlockPool slicedIntBlockPool = new MemoryIndex.SlicedIntBlockPool(new ByteTrackingAllocator(bytesUsed));
         for (int j = 0; j < 2; j++) {
             List<StartEndAndValues> holders = new ArrayList<>();
             int num = atLeast(4);
@@ -70,10 +70,10 @@ public class TestSlicedIntBlockPool extends LuceneTestCase {
                 assertReader(reader, values);
             }
             if (random().nextBoolean()) {
-                slicedIntBlockPool.pool.reset(true, false);
+                slicedIntBlockPool.reset(true, false);
                 assertEquals(0, bytesUsed.get());
             } else {
-                slicedIntBlockPool.pool.reset(true, true);
+                slicedIntBlockPool.reset(true, true);
                 assertEquals(IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES, bytesUsed.get());
             }
         }
