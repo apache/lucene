@@ -153,6 +153,7 @@ public class TestByteBlockPool extends LuceneTestCase {
             });
     pool.nextBuffer();
 
+    boolean throwsException = false;
     for (int i = 0; i < Integer.MAX_VALUE / ByteBlockPool.BYTE_BLOCK_SIZE + 1; i++) {
       try {
         pool.nextBuffer();
@@ -160,9 +161,11 @@ public class TestByteBlockPool extends LuceneTestCase {
           @SuppressWarnings("unused")
           ArithmeticException ignored) {
         // The offset overflows on the last attempt to call nextBuffer()
+        throwsException = true;
         break;
       }
     }
-    assertTrue(pool.byteOffset + ByteBlockPool.BYTE_BLOCK_SIZE < 0);
+    assertTrue(throwsException);
+    assertTrue(pool.byteOffset + ByteBlockPool.BYTE_BLOCK_SIZE < pool.byteOffset);
   }
 }

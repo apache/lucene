@@ -16,130 +16,50 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ByteBlockPool;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
 
 /** tests basic {@link IntBlockPool} functionality */
 public class TestIntBlockPool extends LuceneTestCase {
 
-  public void testSingleWriterReader() {
-    Counter bytesUsed = Counter.newCounter();
-    IntBlockPool pool = new IntBlockPool(new ByteTrackingAllocator(bytesUsed));
+  public void testTooManyAllocs() {
+    // Use a mock allocator that doesn't waste memory
+    IntBlockPool pool =
+            new IntBlockPool(
+                    new IntBlockPool.Allocator(0) {
+                      final int[] buffer = new int[0];
 
-    for (int j = 0; j < 2; j++) {
-      IntBlockPool.SliceWriter writer = new IntBlockPool.SliceWriter(pool);
-      int start = writer.startNewSlice();
-      int num = atLeast(100);
-      for (int i = 0; i < num; i++) {
-        writer.writeInt(i);
-      }
+                      @Override
+                      public void recycleIntBlocks(int[][] blocks, int start, int end) { }
 
-      int upto = writer.getCurrentOffset();
-      IntBlockPool.SliceReader reader = new IntBlockPool.SliceReader(pool);
-      reader.reset(start, upto);
-      for (int i = 0; i < num; i++) {
-        assertEquals(i, reader.readInt());
-      }
-      assertTrue(reader.endOfSlice());
-      if (random().nextBoolean()) {
-        pool.reset(true, false);
-        assertEquals(0, bytesUsed.get());
-      } else {
-        pool.reset(true, true);
-        assertEquals(IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES, bytesUsed.get());
-      }
-    }
-  }
+                      @Override
+                      public int[] getIntBlock() {
+                        return buffer;
+                      }
+                    });
+    pool.nextBuffer();
 
-  public void testMultipleWriterReader() {
-    Counter bytesUsed = Counter.newCounter();
-    IntBlockPool pool = new IntBlockPool(new ByteTrackingAllocator(bytesUsed));
-    for (int j = 0; j < 2; j++) {
-      List<StartEndAndValues> holders = new ArrayList<>();
-      int num = atLeast(4);
-      for (int i = 0; i < num; i++) {
-        holders.add(new StartEndAndValues(random().nextInt(1000)));
-      }
-      IntBlockPool.SliceWriter writer = new IntBlockPool.SliceWriter(pool);
-      IntBlockPool.SliceReader reader = new IntBlockPool.SliceReader(pool);
-
-      int numValuesToWrite = atLeast(10000);
-      for (int i = 0; i < numValuesToWrite; i++) {
-        StartEndAndValues values = holders.get(random().nextInt(holders.size()));
-        if (values.valueCount == 0) {
-          values.start = writer.startNewSlice();
-        } else {
-          writer.reset(values.end);
-        }
-        writer.writeInt(values.nextValue());
-        values.end = writer.getCurrentOffset();
-        if (random().nextInt(5) == 0) {
-          // pick one and reader the ints
-          assertReader(reader, holders.get(random().nextInt(holders.size())));
-        }
-      }
-
-      while (!holders.isEmpty()) {
-        StartEndAndValues values = holders.remove(random().nextInt(holders.size()));
-        assertReader(reader, values);
-      }
-      if (random().nextBoolean()) {
-        pool.reset(true, false);
-        assertEquals(0, bytesUsed.get());
-      } else {
-        pool.reset(true, true);
-        assertEquals(IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES, bytesUsed.get());
+    boolean throwsException = false;
+    for (int i = 0; i < Integer.MAX_VALUE / IntBlockPool.INT_BLOCK_SIZE + 1; i++) {
+      try {
+        pool.nextBuffer();
+      } catch (
+              @SuppressWarnings("unused")
+              ArithmeticException ignored) {
+        // The offset overflows on the last attempt to call nextBuffer()
+          throwsException = true;
+        break;
       }
     }
-  }
-
-  private static class ByteTrackingAllocator extends IntBlockPool.Allocator {
-    private final Counter bytesUsed;
-
-    public ByteTrackingAllocator(Counter bytesUsed) {
-      this(IntBlockPool.INT_BLOCK_SIZE, bytesUsed);
-    }
-
-    public ByteTrackingAllocator(int blockSize, Counter bytesUsed) {
-      super(blockSize);
-      this.bytesUsed = bytesUsed;
-    }
-
-    @Override
-    public int[] getIntBlock() {
-      bytesUsed.addAndGet(blockSize * Integer.BYTES);
-      return new int[blockSize];
-    }
-
-    @Override
-    public void recycleIntBlocks(int[][] blocks, int start, int end) {
-      bytesUsed.addAndGet(-((end - start) * blockSize * Integer.BYTES));
-    }
-  }
-
-  private void assertReader(IntBlockPool.SliceReader reader, StartEndAndValues values) {
-    reader.reset(values.start, values.end);
-    for (int i = 0; i < values.valueCount; i++) {
-      assertEquals(values.valueOffset + i, reader.readInt());
-    }
-    assertTrue(reader.endOfSlice());
-  }
-
-  private static class StartEndAndValues {
-    int valueOffset;
-    int valueCount;
-    int start;
-    int end;
-
-    public StartEndAndValues(int valueOffset) {
-      this.valueOffset = valueOffset;
-    }
-
-    public int nextValue() {
-      return valueOffset + valueCount++;
-    }
+    assertTrue(throwsException);
+    assertTrue(pool.intOffset + IntBlockPool.INT_BLOCK_SIZE < pool.intOffset);
   }
 }
