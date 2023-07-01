@@ -61,10 +61,6 @@ import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.RecyclingIntBlockAllocator;
 import org.apache.lucene.util.Version;
 
-import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_MASK;
-import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_SHIFT;
-import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_SIZE;
-
 /**
  * High-performance single-document main memory Apache Lucene fulltext search index.
  *
@@ -168,8 +164,8 @@ import static org.apache.lucene.util.IntBlockPool.INT_BLOCK_SIZE;
 public class MemoryIndex {
   static class SlicedIntBlockPool extends IntBlockPool {
     /**
-     * An array holding the offset into the {@link IntBlockPool#LEVEL_SIZE_ARRAY} to quickly navigate
-     * to the next slice level.
+     * An array holding the offset into the {@link SlicedIntBlockPool#LEVEL_SIZE_ARRAY} to quickly
+     * navigate to the next slice level.
      */
     private static final int[] NEXT_LEVEL_ARRAY = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9};
 
@@ -184,7 +180,8 @@ public class MemoryIndex {
     }
 
     /**
-     * Creates a new int slice with the given starting size and returns the slices offset in the pool.
+     * Creates a new int slice with the given starting size and returns the slices offset in the
+     * pool.
      *
      * @see SliceReader
      */
@@ -271,7 +268,8 @@ public class MemoryIndex {
        * start offset to initialize a {@link SliceReader}.
        */
       public int startNewSlice() {
-        return offset = slicedIntBlockPool.newSlice(FIRST_LEVEL_SIZE) + slicedIntBlockPool.intOffset;
+        return offset =
+            slicedIntBlockPool.newSlice(FIRST_LEVEL_SIZE) + slicedIntBlockPool.intOffset;
       }
 
       /**
@@ -325,7 +323,8 @@ public class MemoryIndex {
       }
 
       /**
-       * Returns <code>true</code> iff the current slice is fully read. If this method returns <code>
+       * Returns <code>true</code> iff the current slice is fully read. If this method returns
+       * <code>
        * true</code> {@link SliceReader#readInt()} should not be called again on this slice.
        */
       public boolean endOfSlice() {
@@ -441,17 +440,18 @@ public class MemoryIndex {
     final int maxBufferedIntBlocks =
         (int)
             ((maxReusedBytes - (maxBufferedByteBlocks * (long) ByteBlockPool.BYTE_BLOCK_SIZE))
-                / (INT_BLOCK_SIZE * (long) Integer.BYTES));
+                / (SlicedIntBlockPool.INT_BLOCK_SIZE * (long) Integer.BYTES));
     assert (maxBufferedByteBlocks * ByteBlockPool.BYTE_BLOCK_SIZE)
-            + (maxBufferedIntBlocks * INT_BLOCK_SIZE * Integer.BYTES)
+            + (maxBufferedIntBlocks * SlicedIntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
     byteBlockPool =
         new ByteBlockPool(
             new RecyclingByteBlockAllocator(
                 ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
-    slicedIntBlockPool = new SlicedIntBlockPool(
+    slicedIntBlockPool =
+        new SlicedIntBlockPool(
             new RecyclingIntBlockAllocator(
-                INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed));
+                SlicedIntBlockPool.INT_BLOCK_SIZE, maxBufferedIntBlocks, bytesUsed));
     postingsWriter = new SlicedIntBlockPool.SliceWriter(slicedIntBlockPool);
     // TODO refactor BytesRefArray to allow us to apply maxReusedBytes option
     payloadsBytesRefs = storePayloads ? new BytesRefArray(bytesUsed) : null;
@@ -1045,7 +1045,8 @@ public class MemoryIndex {
       result.append(fieldName).append(":\n");
       SliceByteStartArray sliceArray = info.sliceArray;
       int numPositions = 0;
-      SlicedIntBlockPool.SliceReader postingsReader = new SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
+      SlicedIntBlockPool.SliceReader postingsReader =
+          new SlicedIntBlockPool.SliceReader(slicedIntBlockPool);
       for (int j = 0; j < info.terms.size(); j++) {
         int ord = info.sortedTerms[j];
         info.terms.get(ord, spare);
