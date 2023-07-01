@@ -155,7 +155,6 @@ public final class IntBlockPool {
     bufferUpto++;
 
     intUpto = 0;
-//    intOffset += INT_BLOCK_SIZE;
     intOffset = Math.addExact(intOffset, INT_BLOCK_SIZE);
   }
 }
