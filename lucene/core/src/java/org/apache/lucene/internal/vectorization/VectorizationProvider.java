@@ -57,10 +57,10 @@ public abstract class VectorizationProvider {
   }
 
   /**
-   * Returns a singleton (stateless) {@link VectorUtilImpl} to support SIMD usage in {@link
+   * Returns a singleton (stateless) {@link VectorUtilSupport} to support SIMD usage in {@link
    * VectorUtil}.
    */
-  public abstract VectorUtilImpl getVectorUtilImpl();
+  public abstract VectorUtilSupport getVectorUtilSupport();
 
   // *** Lookup mechanism: ***
 
@@ -78,18 +78,18 @@ public abstract class VectorizationProvider {
         LOG.warning(
             "Java runtime is using a buggy default locale; Java vector incubator API can't be enabled: "
                 + Locale.getDefault());
-        return new VectorizationDefaultProvider();
+        return new DefaultVectorizationProvider();
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
       if (!vectorModulePresentAndReadable()) {
         LOG.warning(
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
-        return new VectorizationDefaultProvider();
+        return new DefaultVectorizationProvider();
       }
       if (!testMode && isClientVM()) {
         LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
-        return new VectorizationDefaultProvider();
+        return new DefaultVectorizationProvider();
       }
       try {
         // we use method handles with lookup, so we do not need to deal with setAccessible as we
@@ -97,7 +97,7 @@ public abstract class VectorizationProvider {
         final var lookup = MethodHandles.lookup();
         final var cls =
             lookup.findClass(
-                "org.apache.lucene.internal.vectorization.VectorizationPanamaProvider");
+                "org.apache.lucene.internal.vectorization.PanamaVectorizationProvider");
         final var constr =
             lookup.findConstructor(cls, MethodType.methodType(void.class, boolean.class));
         try {
@@ -105,7 +105,7 @@ public abstract class VectorizationProvider {
         } catch (UnsupportedOperationException uoe) {
           // not supported because preferred vector size too small or similar
           LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
-          return new VectorizationDefaultProvider();
+          return new DefaultVectorizationProvider();
         } catch (RuntimeException | Error e) {
           throw e;
         } catch (Throwable th) {
@@ -113,15 +113,15 @@ public abstract class VectorizationProvider {
         }
       } catch (NoSuchMethodException | IllegalAccessException e) {
         throw new LinkageError(
-            "VectorUtilPanamaProvider is missing correctly typed constructor", e);
+            "PanamaVectorizationProvider is missing correctly typed constructor", e);
       } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("VectorUtilPanamaProvider is missing in Lucene JAR file", cnfe);
+        throw new LinkageError("PanamaVectorizationProvider is missing in Lucene JAR file", cnfe);
       }
     } else if (runtimeVersion >= 22) {
       LOG.warning(
           "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
     }
-    return new VectorizationDefaultProvider();
+    return new DefaultVectorizationProvider();
   }
 
   private static boolean vectorModulePresentAndReadable() {

@@ -23,12 +23,12 @@ import java.util.stream.IntStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.BeforeClass;
 
-public class TestVectorUtilImpls extends LuceneTestCase {
+public class TestVectorUtilSupport extends LuceneTestCase {
 
   private static final double DELTA = 1e-3;
-  private static final VectorUtilImpl LUCENE_IMPL = new VectorUtilDefaultImpl();
-  private static final VectorUtilImpl JDK_IMPL =
-      VectorizationProvider.lookup(true).getVectorUtilImpl();
+  private static final VectorUtilSupport LUCENE_SUPP = new DefaultVectorUtilSupport();
+  private static final VectorUtilSupport JDK_SUPP =
+      VectorizationProvider.lookup(true).getVectorUtilSupport();
 
   private static final int[] VECTOR_SIZES = {
     1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024
@@ -36,7 +36,7 @@ public class TestVectorUtilImpls extends LuceneTestCase {
 
   private final int size;
 
-  public TestVectorUtilImpls(int size) {
+  public TestVectorUtilSupport(int size) {
     this.size = size;
   }
 
@@ -49,7 +49,7 @@ public class TestVectorUtilImpls extends LuceneTestCase {
   public static void beforeClass() throws Exception {
     assumeFalse(
         "Test only works when JDK's vector incubator module is enabled.",
-        JDK_IMPL instanceof VectorUtilDefaultImpl);
+        JDK_SUPP instanceof DefaultVectorUtilSupport);
   }
 
   public void testFloatVectors() {
@@ -74,11 +74,11 @@ public class TestVectorUtilImpls extends LuceneTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
-  private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilImpl> func) {
-    assertEquals(func.applyAsDouble(LUCENE_IMPL), func.applyAsDouble(JDK_IMPL), DELTA);
+  private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
+    assertEquals(func.applyAsDouble(LUCENE_SUPP), func.applyAsDouble(JDK_SUPP), DELTA);
   }
 
-  private void assertIntReturningProviders(ToIntFunction<VectorUtilImpl> func) {
-    assertEquals(func.applyAsInt(LUCENE_IMPL), func.applyAsInt(JDK_IMPL));
+  private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
+    assertEquals(func.applyAsInt(LUCENE_SUPP), func.applyAsInt(JDK_SUPP));
   }
 }

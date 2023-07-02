@@ -18,16 +18,16 @@
 package org.apache.lucene.internal.vectorization;
 
 /** Default provider returning scalar implementations. */
-final class VectorizationDefaultProvider extends VectorizationProvider {
+final class DefaultVectorizationProvider extends VectorizationProvider {
 
-  private final VectorUtilImpl vectorUtilDefaultImpl;
+  private final VectorUtilSupport vectorUtilDefaultImpl;
 
-  VectorizationDefaultProvider() {
-    vectorUtilDefaultImpl = new VectorUtilDefaultImpl();
+  DefaultVectorizationProvider() {
+    vectorUtilDefaultImpl = new DefaultVectorUtilSupport();
   }
 
   @Override
-  public VectorUtilImpl getVectorUtilImpl() {
+  public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilDefaultImpl;
   }
 }

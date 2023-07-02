@@ -22,7 +22,7 @@ package org.apache.lucene.internal.vectorization;
  *
  * @lucene.internal
  */
-public interface VectorUtilImpl {
+public interface VectorUtilSupport {
 
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);

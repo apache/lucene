@@ -17,9 +17,9 @@
 
 package org.apache.lucene.internal.vectorization;
 
-final class VectorUtilDefaultImpl implements VectorUtilImpl {
+final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
-  VectorUtilDefaultImpl() {}
+  DefaultVectorUtilSupport() {}
 
   @Override
   public float dotProduct(float[] a, float[] b) {

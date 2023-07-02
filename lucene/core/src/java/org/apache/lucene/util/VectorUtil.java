@@ -17,14 +17,14 @@
 
 package org.apache.lucene.util;
 
-import org.apache.lucene.internal.vectorization.VectorUtilImpl;
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
-  private static final VectorUtilImpl IMPL =
-      VectorizationProvider.getInstance().getVectorUtilImpl();
+  private static final VectorUtilSupport IMPL =
+      VectorizationProvider.getInstance().getVectorUtilSupport();
 
   private VectorUtil() {}
 

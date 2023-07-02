@@ -25,9 +25,9 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
-final class VectorizationPanamaProvider extends VectorizationProvider {
+final class PanamaVectorizationProvider extends VectorizationProvider {
 
-  private final VectorUtilImpl vectorUtilImpl;
+  private final VectorUtilSupport vectorUtilImpl;
 
   /**
    * x86 and less than 256-bit vectors.
@@ -44,7 +44,7 @@ final class VectorizationPanamaProvider extends VectorizationProvider {
     return AccessController.doPrivileged(action);
   }
 
-  VectorizationPanamaProvider(boolean testMode) {
+  PanamaVectorizationProvider(boolean testMode) {
     final int intPreferredBitSize = IntVector.SPECIES_PREFERRED.vectorBitSize();
     if (!testMode && intPreferredBitSize < 128) {
       throw new UnsupportedOperationException(
@@ -68,7 +68,7 @@ final class VectorizationPanamaProvider extends VectorizationProvider {
     var isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && intPreferredBitSize < 256;
     this.hasFastIntegerVectors = testMode || false == isAMD64withoutAVX2;
 
-    this.vectorUtilImpl = new VectorUtilPanamaImpl(hasFastIntegerVectors);
+    this.vectorUtilImpl = new PanamaVectorUtilSupport(hasFastIntegerVectors);
 
     var log = Logger.getLogger(getClass().getName());
     log.info(
@@ -79,7 +79,7 @@ final class VectorizationPanamaProvider extends VectorizationProvider {
   }
 
   @Override
-  public VectorUtilImpl getVectorUtilImpl() {
+  public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilImpl;
   }
 }

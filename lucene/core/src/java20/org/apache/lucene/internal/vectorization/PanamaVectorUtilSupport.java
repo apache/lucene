@@ -25,7 +25,7 @@ import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 
-final class VectorUtilPanamaImpl implements VectorUtilImpl {
+final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   private static final int INT_SPECIES_PREF_BIT_SIZE = IntVector.SPECIES_PREFERRED.vectorBitSize();
 
@@ -49,7 +49,7 @@ final class VectorUtilPanamaImpl implements VectorUtilImpl {
 
   private final boolean useIntegerVectors;
 
-  VectorUtilPanamaImpl(boolean useIntegerVectors) {
+  PanamaVectorUtilSupport(boolean useIntegerVectors) {
     this.useIntegerVectors = useIntegerVectors;
   }
 
