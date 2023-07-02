@@ -27,7 +27,7 @@ import org.apache.lucene.util.SuppressForbidden;
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
-  private final VectorUtilSupport vectorUtilImpl;
+  private final VectorUtilSupport vectorUtilSupport;
 
   /**
    * x86 and less than 256-bit vectors.
@@ -68,7 +68,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     var isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && intPreferredBitSize < 256;
     this.hasFastIntegerVectors = testMode || false == isAMD64withoutAVX2;
 
-    this.vectorUtilImpl = new PanamaVectorUtilSupport(hasFastIntegerVectors);
+    this.vectorUtilSupport = new PanamaVectorUtilSupport(hasFastIntegerVectors);
 
     var log = Logger.getLogger(getClass().getName());
     log.info(
@@ -80,6 +80,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public VectorUtilSupport getVectorUtilSupport() {
-    return vectorUtilImpl;
+    return vectorUtilSupport;
   }
 }
