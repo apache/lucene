@@ -17,10 +17,14 @@
 
 package org.apache.lucene.util;
 
+import org.apache.lucene.internal.vectorization.VectorUtilImpl;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
+
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
-  private static final VectorUtilProvider PROVIDER = VectorUtilProvider.lookup(false);
+  private static final VectorUtilImpl IMPL =
+      VectorizationProvider.getInstance().getVectorUtilImpl();
 
   private VectorUtil() {}
 
@@ -33,7 +37,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = PROVIDER.dotProduct(a, b);
+    float r = IMPL.dotProduct(a, b);
     assert Float.isFinite(r);
     return r;
   }
@@ -47,7 +51,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = PROVIDER.cosine(a, b);
+    float r = IMPL.cosine(a, b);
     assert Float.isFinite(r);
     return r;
   }
@@ -57,7 +61,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.cosine(a, b);
+    return IMPL.cosine(a, b);
   }
 
   /**
@@ -69,7 +73,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = PROVIDER.squareDistance(a, b);
+    float r = IMPL.squareDistance(a, b);
     assert Float.isFinite(r);
     return r;
   }
@@ -79,7 +83,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.squareDistance(a, b);
+    return IMPL.squareDistance(a, b);
   }
 
   /**
@@ -144,7 +148,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.dotProduct(a, b);
+    return IMPL.dotProduct(a, b);
   }
 
   /**
