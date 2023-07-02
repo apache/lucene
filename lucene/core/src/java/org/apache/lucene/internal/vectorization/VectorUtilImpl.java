@@ -17,7 +17,11 @@
 
 package org.apache.lucene.internal.vectorization;
 
-/** Interface for implementations of VectorUtil support. */
+/**
+ * Interface for implementations of VectorUtil support.
+ *
+ * @lucene.internal
+ */
 public interface VectorUtilImpl {
 
   /** Calculates the dot product of the given float arrays. */
