@@ -1,0 +1,54 @@
+{{short description|Malaysian cricketer}}
+{{Use dmy dates|date=March 2020}}
+{{Infobox cricketer
+|                name = Fikri Makram
+|               image = 
+|             country = Malaysia
+|       international = true
+|            fullname = 
+|          birth_date = {{birth date and age|1993|6|29|df=yes}}
+|         birth_place = 
+|          death_date = 
+|         death_place = 
+|             batting = 
+|             bowling = 
+|                role = 
+
+|               club1 = 
+|               year1 = 
+|         clubnumber1 = 
+|               club2 = 
+|               year2 = 
+|         clubnumber2 =
+
+|                date = 23 May 2017
+|              source = http://www.espncricinfo.com/ci/content/player/1037553.html Cricinfo
+}}
+'''Mohamad Fikri Makram Rosdi''' (born 29 June 1993), known as '''Fikri Makram''', is a Malaysian [[cricket]]er.<ref name="Bio">{{Cite web|url=http://www.espncricinfo.com/ci/content/player/1037553.html |title=Fikri Makram |accessdate=23 May 2017 |work=ESPN Cricinfo}}</ref> He played for [[Malaysia national cricket team|Malaysia]] in the [[2014 ICC World Cricket League Division Five]] tournament in March 2014,<ref name="DivFive">{{Cite web|url=http://www.espncricinfo.com/wcldiv5-2014/engine/match/722655.html |title=ICC World Cricket League Division Five, Malaysia v Tanzania at Kuala Lumpur, Mar 6, 2014 |accessdate=19 July 2015 |work=ESPN Cricinfo}}</ref> and in the [[2017 ICC World Cricket League Division Three]] tournament in May 2017.<ref name="Div3">{{Cite web|url=http://www.espncricinfo.com/ci/engine/match/1090938.html |title=ICC World Cricket League Division Three, Malaysia v Singapore at Kampala, May 23, 2017 |accessdate=23 May 2017 |work=ESPN Cricinfo}}</ref>
+
+{{MedalTableTop}}
+{{MedalCompetition|[[Southeast Asian Games]]}}
+{{MedalGold|[[Cricket at the 2017 Southeast Asian Games|2017]]|[[Cricket at the 2017 Southeast Asian Games – Men's 50 over tournament|Men's 50 over cricket]]}}
+{{MedalBottom}}
+
+He was a member of the [[Malaysia national cricket team|Malaysian cricket team]] which claimed gold medal in the [[Cricket at the 2017 Southeast Asian Games – Men's 50 over tournament|men's 50 overs tournament]] after defeating [[Singapore national cricket team|Singapore]] by 251 runs in the finals at the [[2017 Southeast Asian Games]].
+
+==References==
+{{reflist}}
+
+==External links==
+* {{cricinfo|id=1037553}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Makram, Fikri}}
+[[Category:1993 births]]
+[[Category:Living people]]
+[[Category:Malaysian cricketers]]
+[[Category:Place of birth missing (living people)]]
+[[Category:Southeast Asian Games gold medalists for Malaysia]]
+[[Category:Southeast Asian Games medalists in cricket]]
+[[Category:Competitors at the 2017 Southeast Asian Games]]
+
+
+{{Malaysia-cricket-bio-stub}}

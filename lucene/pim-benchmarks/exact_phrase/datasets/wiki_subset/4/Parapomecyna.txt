@@ -1,0 +1,28 @@
+{{short description|Genus of beetles}}
+{{Italic title}}
+{{Taxobox
+| regnum = [[Animal]]ia
+| phylum = [[Arthropod]]a
+| classis = [[Insect]]a
+| ordo = [[Beetle|Coleoptera]]
+| subordo = [[Polyphaga]]
+| familia = [[Cerambycidae]]
+| genus = '''''Parapomecyna'''''
+| species = '''''P. flavomaculata'''''
+| binomial = ''Parapomecyna flavomaculata''
+| binomial_authority = Breuning, 1968
+| synonyms = 
+}}
+
+'''''Parapomecyna flavomaculata''''' is a species of [[beetle]] in the family [[Cerambycidae]], and the only species in the genus '''''Parapomecyna'''''. It was described by [[Stephan von Breuning (entomologist)|Breuning]] in 1968.<ref>[https://www.biolib.cz/en/taxon/id215717/ Biolib.cz - tribus Apomecynini].  Retrieved on 8 September 2014.</ref>
+
+==References==
+{{Reflist}}
+
+{{Taxonbar|from=Q14848354}}
+
+[[Category:Apomecynini]]
+[[Category:Beetles described in 1968]]
+[[Category:Monotypic beetle genera]]
+
+{{Apomecynini-stub}}

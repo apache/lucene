@@ -1,0 +1,104 @@
+{{AFC submission|d|e|u=Nesherin|ns=118|decliner=DGG|declinets=20200328054146|reject=yes|ts=20191219232430}} <!-- Do not remove this line! -->
+{{AFC submission|d|v|u=Nesherin|ns=118|decliner=Missvain|declinets=20191204040913|small=yes|ts=20190902175003}} <!-- Do not remove this line! -->
+{{AFC submission|d|nn|u=Nesherin|ns=118|decliner=Theroadislong|declinets=20190830161632|small=yes|ts=20190627110825}} <!-- Do not remove this line! -->
+{{AFC submission|d|nn|u=Sylvia Nescher and Yair Nesher|ns=118|decliner=Theroadislong|declinets=20190618171221|small=yes|ts=20190618095003}} <!-- Do not remove this line! -->
+{{AFC submission|d|nn|u=Sylvia Nescher and Yair Nesher|ns=118|decliner=Theroadislong|declinets=20190618092839|small=yes|ts=20190508151320}} <!-- Do not remove this line! -->
+{{AFC submission|d|v|u=theatre duo consisting of Sylvia Nescher and Yair Nesher|ns=2|decliner=Whispering|declinets=20190406121846|small=yes|ts=20190406115600}} <!-- Do not remove this line! -->
+
+{{AFC comment|1=advertising '''[[User:DGG| DGG]]''' ([[User talk:DGG| talk ]]) 05:41, 28 March 2020 (UTC)}}
+
+{{AFC comment|1=hardly any improvement in sources since previous decline [[User:Theroadislong|Theroadislong]] ([[User talk:Theroadislong|talk]]) 16:16, 30 August 2019 (UTC)}}
+
+{{AFC comment|1=The vast majority of this draft is totally unsourced, we need reliable independent sources to back up all content. [[User:Theroadislong|Theroadislong]] ([[User talk:Theroadislong|talk]]) 17:12, 18 June 2019 (UTC)}}
+
+{{AFC comment|1=YouTube is not a reliable source [[User:Theroadislong|Theroadislong]] ([[User talk:Theroadislong|talk]]) 09:28, 18 June 2019 (UTC)}}
+
+----
+
+{{short description|American music duo}}
+{{Use mdy dates|date=October 2020}}
+{{Infobox musical artist     <!-- See Wikipedia:WikiProject Musicians -->
+| name             = Nesher & Nescher
+| background       = theatre group    <!-- mandatory format: please do not change or remove -->
+| image            = [[File:שבא 1.jpg|thumb|the Queen of Saba]]
+| landscape        = Yes
+| caption          = Sylvia Nescher (left) and Yair Nesher (right)<br>performing in [[Israel]], 1976
+| alias            = 
+| origin           = Kibbutz [[Nir David, Israel]]
+| genre            = [[puppet theatre]]
+| years_active     = 1966-2010
+| label            = 
+| associated_acts  = 
+| website          = 
+| past_members     = * [[Yair Nesher]]
+* [[Sylvia Nescher]]
+}}
+
+[[File:Logonescherandnesher.jpg|thumb|theatre company logo for Nesher & Nescher]]
+'''Nescher & Nesher''' is a puppet theatre duo consisting of Sylvia Nescher and Yair Nesher. 
+
+== History ==
+=== Early years, Israel (1969-1977) ===
+[[File:בת המלך.jpg|thumb|Puppet Theatre in Israel]]
+They created among others the production Aucassin and Nicolette which was very successful and toured around the whole country. They also collaborated in the Israeli children TV program Rich-Rach.
+
+Their theatre group was then called The Nesher Puppets.
+
+In 1972, they performed at the Puppet Theatre Festival.<ref>{{Cite web |title=World Puppetry Festival |url=http://www.festival-marionnette.com/en/world-puppetry-festival |url-status=live |archive-url=https://web.archive.org/web/20191219231234/http://www.festival-marionnette.com/en/world-puppetry-festival |archive-date=December 19, 2019 |access-date=December 19, 2019 |website=www.festival-marionnette.com}}</ref> of [[Charleville-Mézières|Charleville Mezieres]] in [[France]]. This marks the beginning of their professional career and their theatre touring which involves the creation of a workshop of [[Shadow play|shadow theatre]] in the theatrical section of the [[University of Jerusalem]] and also the cooperation of the Puppet Theatre section for Children in Israel.<ref>{{Cite web |date=April 28, 2016 |title=Israel |url=https://wepa.unima.org/en/israel/ |url-status=live |archive-url=https://web.archive.org/web/20190803224742/https://wepa.unima.org/en/israel/ |archive-date=August 3, 2019 |access-date=December 19, 2019}}</ref><ref>{{Cite web |date=October 5, 2015 |title=ריץ' רץ' - תאטרון בובות |url=https://www.youtube.com/watch?v=4AWBCxnMaKc |url-status=live |archive-url=https://web.archive.org/web/20201008214739/https://www.youtube.com/watch?v=4AWBCxnMaKc |archive-date=October 8, 2020 |access-date=October 8, 2020 |website=[[YouTube]]}}</ref>
+
+1976 is the year of their trip to [[Hong Kong]] where they studied [[Chinese opera|Chinese Opera]] and Chinese Puppet Theatre. A year later they set off on a tour to the United States and also join the festival of Puppeteers of America.<ref>{{Cite web |title=2019 National Puppetry Festival - Puppeteers of America |url=https://www.puppeteers.org/national-puppetry-festival-2019/ |url-status=dead |archive-url=https://web.archive.org/web/20200830183650/https://www.puppeteers.org/national-puppetry-festival-2019/ |archive-date=August 30, 2020 |access-date=October 8, 2020 |website=Puppeteers of America}}</ref>
+
+=== Austria (1979-1998) ===
+[[File:קרונופול.jpg|thumb|satyric shadow theatre performance]]
+They moved to Vienna, Austria and toured 4 continents, 14 countries, and participated in 20 international festivals such as: Charleville Mezieres, Hong Kong, Avignon  Festival of Light and many others. They also worked with TV stations such as: [[Channel 4]], [[ZDF]] and [[ORF (broadcaster)|ORF]]. From 1982 to 1985, they managed a private theatre called Domino in the heart of Vienna presenting puppet theatre and silhouettes performances. 
+
+[[File:מפצח.jpg|thumb|The magic flute, Theater and der Wien]]
+
+They collaborate as puppeteers for the Lyric Opera [[The Magic Flute|Die Zauberflöte]] at [[Theater an der Wien]] (1982, director [[Edwin Zbonek]]). In 1986, they collaborated in the dance production Mignon, inspired by [[Viaggio in Italia]] by [[Johann Wolfgang von Goethe|Goethe]] at the [[Teatro Filarmonico|Teatro Filarmonico di Verona]].
+
+1987 is the year of creation of the production [[Belle Époque]] with mixed media including music by Karl Heinz Schrödel and in 1988 stories of the [[The Decameron|Decameron]] in collaboration with [[Channel 4]], [[London]], a 5 short film production of each 15 minutes.
+
+[[File:Romeo vejulia.jpg|thumb|Romeo and Juliet, Shadow theatre production]]
+
+From 1988 to 1995 they produced puppets and mixed media for TV such as Televischn, political satire TV show for adults, the series of stories called [[The Life and Opinions of the Tomcat Murr|Kater Murr]], inspired by [[E. T. A. Hoffmann|E. T. A. Hoffman]] for [[ZDF] and also Die Bazillen.<ref>{{Cite web |title=Bazillen 13 Folgen Episodenguide |url=https://www.fernsehserien.de/bazillen/episodenguide/0/14032 |url-status=live |archive-url=https://web.archive.org/web/20201008214726/https://www.fernsehserien.de/bazillen/episodenguide/0/14032 |archive-date=October 8, 2020 |access-date=October 8, 2020 |website=KG imfernsehen GmbH & Co |language=de}}</ref>
+
+[[File:ש-1.jpg|thumb|Black theatre]]
+
+From 1991 to 1997 they established an experimental private theatre in [[Altaussee]] and organized a [[Shadow play|Shadow Theatre]] and [[Silhouette|Silhouettes]] festival. They also cooperate with the [https://www.theatermuseum.at Theater Museum in Vienna] and the Jewish Museum in Vienna and Hohenems.<ref>{{Cite web |title=Schattenspiel und Scherenschnitt - Jüdisches Museum Hohenems |url=https://www.jm-hohenems.at/ausstellungen/rueckblick/968-2 |url-status=live |archive-url=https://web.archive.org/web/20190505131822/https://www.jm-hohenems.at/ausstellungen/rueckblick/968-2 |archive-date=May 5, 2019 |access-date=May 5, 2019 |website=www.jm-hohenems.at}}</ref>
+
+=== Italy (1998-2004) ===
+In 1998 they left Austria to settle near Venice where they opened a gallery for silhouettes and paper cuts in the [[Jewish quarter (diaspora)|Jewish Ghetto]] (2000 to 2004).<ref>{{Cite web |title=Ippocrene - Arti e Lettere - Lo Speziale |url=http://www.ippocrene.com/2007_to_2010/index.php?option=com_content&task=view&id=889&Itemid=234 |url-status=live |archive-url=https://web.archive.org/web/20201008214727/http://www.ippocrene.com/2007_to_2010/index.php?option=com_content&task=view&id=889&Itemid=234 |archive-date=October 8, 2020 |access-date=May 5, 2019 |website=www.ippocrene.com}}</ref>. Furthermore they cooperated with the Union of Venice museums on various projects.
+
+=== Israel (2004-2010) ===
+They moved to Israel in 2004 where they produced events such as: Mozart in black from 2006-2007, a production on the anniversary of [[Wolfgang Amadeus Mozart|Mozart]] in Vienna, in cooperation with the Municipality of Vienna’s anniversary, coordination and programming in collaboration with the Municipality of Vienna.
+
+In 2009 they organised a "Vienna Week" in Tel Aviv. This was a gift from the city of Vienna to Tel Aviv to commemorate its' 100th anniversary.
+
+After Sylvia’s death in 2009 Yair decided to donate all materials, documents, and life-long creative work of the theatre to the Holon Puppet Theatre Foundation. There is a permanent exhibition in memory of Sylvia Nesher’s work and creations.<ref>{{Cite web|title=נשר את נשר|url=https://www.puppetcenter.co.il/%D7%94%D7%A6%D7%9C%D7%9C%D7%99%D7%95%D7%AA-%D7%A9%D7%9C-%D7%A1%D7%99%D7%9C%D7%91%D7%99%D7%94-%D7%95%D7%99%D7%90%D7%99%D7%A8-%D7%A0%D7%A9%D7%A8|url-status=live|archive-url=https://web.archive.org/web/20200615160744/https://www.puppetcenter.co.il/%D7%94%D7%A6%D7%9C%D7%9C%D7%99%D7%95%D7%AA-%D7%A9%D7%9C-%D7%A1%D7%99%D7%9C%D7%91%D7%99%D7%94-%D7%95%D7%99%D7%90%D7%99%D7%A8-%D7%A0%D7%A9%D7%A8|archive-date=June 15, 2020|access-date=October 8, 2020|website=www.puppetcenter.co.il}}</ref>
+
+== Sylvia Aradi and Yair Nesher ==
+'''Sylvia Aradi''' was born in 1942 in [[Marseille|Marseilles]] [[France]]. Her father, Alexander Alter–Aradi, was born in Hungary as an Orthodox Jew in 1898. He participated in the First World War as a soldier in the Austro-Hungarian army and returned as a communist. He joined the [[International Brigades|International Brigade]] in Spain. Her mother Lya Aradi was born in Poland in 1907. She wandered with her family through Europe and in 1937 she went from Belgium to Spain to join the [[International Brigades|International Brigade]] as a nurse near Barcelona.<ref>{{Cite web |title=las mamás belgas &#124; libro – documental – proyecto educativo |url=https://lasmamasbelgas.com/ |url-status=live |archive-url=https://web.archive.org/web/20200613002600/https://lasmamasbelgas.com/ |archive-date=June 13, 2020 |access-date=October 8, 2020 |website=lasmamasbelgas.com}}</ref> The parents met in a refugee camp at the end of the [[Spanish Civil War]].
+
+In the Second World War, Sylvia, together with her parents, was a refugee in Southern France. Her father collaborated with the [[French Resistance]]. In 1948, her father decided to go back to Hungary to join the Hungarian Communist party and  rebuild the country. He worked in the treasury department in Budapest. In 1956 the family moved to Vienna, fleeing the [[Hungarian Revolution of 1956|Hungarian Revolution]]. Ten years later Sylvia arrived in Israel and joined [[kibbutz]] [[Nir David]]. At the kibbutz she met Yair Nesher.
+
+In autumn 2009, Syliva passed away from cancer. 
+
+'''Yair Nesher''' was born in 1941 in Palestine. His father, Abraham Adlerstein (later translated in Israel into Nesher), was born in 1913 in Poland and his mother, Esther Potaschnik, was born in 1916 in Vienna. Abraham traveled to Vienna to study Electricity at the Technical School. They met in Vienna. Two weeks before the [[Anschluss]] Abraham left Vienna to Palestine. Esther managed to leave Austria in October 1938. Both were active in the [[Zionism|Zionist movement]] [[Hashomer Hatzair|Hashomer Hazair]]. They joined to build [[kibbutz]] [[Nir David]]. Their parents  were killed during [[World War II]].
+
+Sylvia and Yair married in the [[kibbutz]] in 1966 and started a [[Puppetry|puppet theatre]].
+
+At present, Yair lives in [[Kibbutz]] [[Geva]] in the Yizreel Valley. 
+
+== References ==
+<ref>{{Cite book |last=Kersten |first=Ralph |url=http://www.puppenundmasken.de |title=Schwarzes Theater |publisher=Puppen und Masken Verlag |year=1990 |location=Germany |access-date=October 8, 2020 |archive-url=https://web.archive.org/web/20200805162531/http://puppenundmasken.de/ |archive-date=August 5, 2020 |url-status=live}}</ref><ref>{{Cite journal |last=Nescher |first=Sylvia |date=March 1986 |title=Video e cinema. L'occhio della cinepresa su figure in movimento |journal=Burattini |volume=Nr. 7 |pages=49, 50, 51}}</ref><ref>{{Cite book |last=Compagnia Drammatico Vegetale |title=Shakespeare e il teatro di figura in Europa |publisher=Agenzia editoriale Essegi |year=1983 |location=Ravenna |pages=53, 54 |chapter=The Nesher Puppets Domino}}</ref><ref>{{Cite book |last=Behrent |first=Klaus |title=Puppentheater in Österreich |publisher=G. A. Lauber - Öst. Theatermuseum |year=1993 |location=Austria}}</ref><ref>{{Cite book |last=Podgorski |first=Thaddäus |title=Herein |publisher=A.Rudas - Peter Muller Verlag |year=1989}}</ref><ref>{{Cite book |last=Nold |first=Wulfried |title=Puppemnbühnen im Deutschsprachigen Raum |publisher=Puppen & Masken |year=1979}}</ref><ref>{{Cite book |last=Pasterk |first=Ursula |title=Heftiger Herbst, Theaterfestival der freien Gruppen |publisher=Kulturamt Wien |year=1987}}</ref><ref>{{Cite journal |last=Reuch |first=Rainer |date=1994 |title=Schattenspiel, Film oder Theater? |journal=Schattentheater, Zeitschrift des Internationalen Schattenspiel-Zentrums |issue=2}}</ref><ref>{{Cite book |last=Nescher |first=Sylvia |title=Venezianische Silhouetten |publisher=Sylvia Nescher |year=2003}}</ref>
+{{Reflist}}
+
+== External links ==
+* [http://www.festival-marionnette.com/fr/ Accueil Festival Marionnettes]
+* [https://www.holon.muni.il/English/CultureAndLeisure/MuseumGalleries/Pages/PuppetCenter.aspx Israel Puppet Center Holon]
+
+[[:Category:Theater]]
+[[:Category:Puppet theaters]]
+[[:Category:Puppet festivals]]
+[[:Category:Puppet museums]]
+[[:Category:Silhouettes]]

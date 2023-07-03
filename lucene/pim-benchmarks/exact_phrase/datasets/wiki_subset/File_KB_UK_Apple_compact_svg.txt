@@ -1,0 +1,11 @@
+{{Invalid SVG|224}}
+== Summary ==
+[[Apple Computer|Apple]] [[iBook]] compact [[keyboard layout]], [[United Kingdom|UK]].
+
+Created in [[Inkscape]] from scratch, using [[Bitstream Vera]] font.
+
+Incidentally contains the [[Apple Computer]] logo; I assume this is OK but it could be removed if felt necessary.
+== Licensing ==
+{{GFDL-self-with-disclaimers|migration=relicense}}
+
+{{Copy to Wikimedia Commons|bot=Fbot|priority=true}}

@@ -1,0 +1,176 @@
+<noinclude><!-- From archive header-->
+{{#ifeq:{{PAGENAME}}|Special:Undelete| |{{#if:|<div style="display:none;">}} {{#ifeq:{{NAMESPACE}}|Wikipedia|{{#switch:{{NAMESPACE}}|= |<div style="display:none;">}}|{{error:not substituted|Archive header}}<div style="display:none;">}}}} {{#if:|</div></div>}}{| width = "100%"
+|-
+! colspan="3" align="center" | [[Wikipedia:Reference desk/Computing|Computing desk]]
+|-
+! width="20%" align="left"  | &lt; [[Wikipedia:Reference desk/Archives/Computing/2011 March 7|March 7]]
+! width="25%" align="center"|&lt;&lt; [[Wikipedia:Reference desk/Archives/Computing/February 2011|Feb]] | [[Wikipedia:Reference desk/Archives/Computing/March 2011|March]] | [[Wikipedia:Reference desk/Archives/Computing/April 2011|Apr]] &gt;&gt;
+! width="20%" align="right" |{{#ifexist:Wikipedia:Reference desk/Archives/Computing/2011 March 9|[[Wikipedia:Reference desk/Archives/Computing/2011 March 9|March 9]]|[[Wikipedia:Reference desk/Computing|Current desk]]}} &gt;
+|}
+{| align=center width=95% style="background: #FFFFFF; border: 1px solid #003EBA;" cellpadding="8" cellspacing="0"
+|-
+! style="background: #5D7CBA; text-align: center;" align="center" | <font face="Arial" color="#FFFFFF">'''Welcome to the Wikipedia Computing Reference Desk Archives'''</font>
+|-
+| The page you are currently viewing is {{#ifexist:Wikipedia:Reference desk/Archives/Computing/2011 March 18|an archive page|a [[Wikipedia:Transclusion|transcluded]] archive page}}. While you can leave answers for any questions shown below, please ask new questions on one of the [[Wikipedia:Reference desk|current reference desk]] pages.
+|}
+
+
+__TOC__
+</noinclude>
+= March 8 =
+
+== Copypasting from Wikipedia into MS Word ==
+
+I'm doing a private project which involves copying large bodies of (mostly random) text from the internet and pasting into Word, where I then play around with it in various ways. I would like to use Wikipedia for this, but I don't want all the links in the text. Is there anything I can/should do when copying in Firefox and pasting into Word 2007? I seem to remember there being a 'deactivate links in text' option on Word, but I can't seem to find it. The method I use currently is to paste into Notepad first, then into Word, but I'd like to eliminate this middleman. --<span style="text-shadow:#BBBBBB 0.2em 0.2em 0.1em; class=texhtml"><font face="Freestyle Script" color="blue">[[User:KageTora|KägeTorä - (影虎)]] ([[User talk:KageTora|TALK]])</font></span> 11:17, 8 March 2011 (UTC)
+:Use ''Paste Special'' and choose a text option. If you cannot find Paste Special (e.g. in the edit menu in Word 2003) then use Alt-E,S. --[[User:Tagishsimon|Tagishsimon]] [[User_talk:Tagishsimon|(talk)]] 11:33, 8 March 2011 (UTC)
+::That works spiffingly, thanks! --<span style="text-shadow:#BBBBBB 0.2em 0.2em 0.1em; class=texhtml"><font face="Freestyle Script" color="blue">[[User:KageTora|KägeTorä - (影虎)]] ([[User talk:KageTora|TALK]])</font></span> 11:51, 8 March 2011 (UTC)
+::: (EDIT) For future reference, now I know what it's called, I have added a button for it in the Quick Access Toolbar, and I am told the keyboard shortcut for it is ctrl+alt+v (which is actually the shortcut for my screencapture software, so I'll have to change that). --<span style="text-shadow:#BBBBBB 0.2em 0.2em 0.1em; class=texhtml"><font face="Freestyle Script" color="blue">[[User:KageTora|KägeTorä - (影虎)]] ([[User talk:KageTora|TALK]])</font></span> 11:56, 8 March 2011 (UTC)
+
+== Perfect game in chess ==
+
+How far are we to discover a perfect game (or a series of perfect games) in chess? How difficult is it, comparable to the discovery of the perfect game in [[draughts]]? [[Special:Contributions/80.58.205.34|80.58.205.34]] ([[User talk:80.58.205.34|talk]]) 13:13, 8 March 2011 (UTC)
+
+:According to our article on [[game complexity]], the game-tree complexity of chess 10<sup>123</sup>, whereas for English draughts the game-tree complexity is only 10<sup>31</sup>. So, by this measure, chess is vastly more complex than draughts. [[User:Gandalf61|Gandalf61]] ([[User talk:Gandalf61|talk]]) 13:41, 8 March 2011 (UTC)
+
+:See [[solving chess]] for information specifically about chess. -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 13:42, 8 March 2011 (UTC)
+
+== Microsoft Advertising cookie ==
+
+According to this http://www.networkadvertising.org/managing/opt_out.asp I have a Microsoft advertising cookie. Clicking "opt out" in the link does not make it go away. How can I find it and delete it please? I use Firefox 3.6.15 with several anti-cookie add ons. I also have IE8 installed but rarely use it. 
+
+Another issue is that the webpages in the link above mostly just show nothing - the images that should be there are nearly all blank. How can I solve this? I've tried refreahing the page and I've tried reloading the image to no effect. 
+Thanks [[Special:Contributions/92.15.0.66|92.15.0.66]] ([[User talk:92.15.0.66|talk]]) 13:47, 8 March 2011 (UTC)
+
+: The latter problem often happens as a result of right-clicking on images and (intentionally or accidentally) selecting "Block images from...". Servers you have blocked in this way go on a list, from which you can remove them again: the list is under tools-&gt;options, on the content tab, and to see it you have to click the button labeled "exceptions" opposite "load images automatically". (If they appear as a blank ''box'', though, with some kind of placeholder icon, that's a different problem.) So far as cookies go, my approach is: uncheck the box labeled "Accept third-party cookies" (on the privacy tab), and choose the option "keep until I close Firefox" for cookies in general. Cookies which track you are third-party, and third-party cookies don't seem useful for anything else. There's also a "show cookies" button there, by means of which you can view your cookies and delete them individually. (If that doesn't make it go away, there's something funny going on.)
+* Many of the images on that site come from servers which are likely to host banner ads, e.g. "ad.trafficmp.com", so probably either you or your plug-ins have blocked all images from them. (I'm surprised ''I'' haven't got any of them blocked.) [[Special:Contributions/81.131.11.169|81.131.11.169]] ([[User talk:81.131.11.169|talk]]) 15:12, 8 March 2011 (UTC)
+
+== How to ensure a ksh script uses just one of two options? ==
+
+I am developing a script in [[Korn shell]].  It will take one of two options, both take an extra argument.  If both options are supplied or no options are supplied then that is an error situation.  At the moment, when I capture the argument value, I also set a flag.  I later check the flags and if both are set or both are unset, then an error message is produced.  Is there an easier, less clunky way of enforcing the one and only one option rule?  An example of the current code in question is:
+
+{{cot|ksh code example}}
+ #!/usr/bin/ksh
+ #
+ a_set=0
+ b_set=0
+ # parse options
+ while getopts a:b: c
+ do
+  case $c in
+    a) a_value=${OPTARG}
+       a_set=1
+       ;;
+    b) b_value=${OPTARG}
+       b_set=1
+       ;;
+    \?) echo "usage: script [-a value | -b value]"
+        exit 1
+        ;;
+  esac
+ done
+ #Check for only one option
+ if [ $a_set -eq 1 -a $b_set -eq 1 ]; then
+  echo "Cannot use both -a and -b options together"
+  echo "usage: script [-a value | -b value]"
+  exit 1;
+ elif [ $a_set -eq 0 -a $b_set -eq 0 ]; then
+  echo "Must use one of -a or -b options"
+  echo "usage: script [-a value | -b value]"
+  exit 1;
+ fi
+ # Rest of script follows...
+{{cob}}
+
+[[User:Astronaut|Astronaut]] ([[User talk:Astronaut|talk]]) 14:16, 8 March 2011 (UTC)
+
+: I don't think getopt has any concept of exclusion like this. You can slightly simplify your code by simply counting the number of args it processes, and complain if this isn't 1 at the end:
+{{cot|ksh code example'}}
+<source lang="bash">
+#!/usr/bin/ksh
+#
+usage() {
+  echo "usage: $0 [-a value | -b value]"
+  exit 1
+}
+
+setcount=0
+# parse options
+while getopts a:b: c
+do
+ case $c in
+   a) a_value=${OPTARG}
+      let setcount++
+      ;;
+   b) b_value=${OPTARG}
+      let setcount++
+      ;;
+   \?) usage
+       ;;
+ esac
+done
+#Check for only one option
+if [ $setcount -ne 1 ]; then
+ echo "Cannot use both -a and -b options together"
+ usage
+fi
+# Rest of script follows...
+</source>
+{{cob}}
+: That saves you a variable, and simplifes the error check, but it's only slightly less clunky. -- [[User:Finlay McWalter|Finlay McWalter]] ☻ [[User talk:Finlay McWalter|Talk]] 14:47, 8 March 2011 (UTC)
+
+:Because you have custom error messages, you do need to check both the case where both are set or neither are set. If you changed to a single if with a single generic "FAIL" error message, you could use [[exclusive or]] (the ^ operator in ksh if I remember correctly). 1^1 is false. 0^0 is false. 1^0 and 0^1 are true. So, if only one is set, you get a "true" and can continue. -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 14:53, 8 March 2011 (UTC)
+
+:If you are willing to change your script a little, you can check the argument count before you do anything. $# is the argument count in KSH (had to google to make sure I remembered correctly). So, <nowiki>if [[ $# -eq 1 ]];then</nowiki> will only continue when the argument count is 1. You can "else" a generic error message or, inside the else, give a custom error message for when $# is 0 or $# is 2. -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 15:00, 8 March 2011 (UTC)
+
+Umm.  So maybe forgetting getopts and using numbered arguments ($1 and $2) along with the count ($#) would be a better idea?  [[User:Astronaut|Astronaut]] ([[User talk:Astronaut|talk]]) 15:06, 8 March 2011 (UTC)
+
+: If all you have, and all you'll ever have, is exactly this argument scheme, then you might as well. But in my experience arguments ''breed''... -- [[User:Finlay McWalter|Finlay McWalter]] ☻ [[User talk:Finlay McWalter|Talk]] 15:11, 8 March 2011 (UTC)
+
+:The trick with using <tt>$#</tt> is that the standard interpretation of options allows things like <code>prog.ksh -aval</code> when the option <tt>-a</tt> requires an argument.  --[[User:Tardis|Tardis]] ([[User talk:Tardis|talk]]) 15:32, 8 March 2011 (UTC)
+
+== Any idea why [[Alorica]] shut down in [[Manhattan, KS]]? ==
+
+It was an IT/[[tech support]] call center, and had a location in Manhattan, KS. Now it's an empty shell. I couldn't find any press releases about why it shut down. Would you like to help me find them please? --[[Special:Contributions/129.130.32.54|129.130.32.54]] ([[User talk:129.130.32.54|talk]]) 16:25, 8 March 2011 (UTC)
+
+:Get better with Google and it is easy to find [http://www.nbcactionnews.com/dpp/news/region_kansas/alorica-closing-manhattan,-kan.,-call-center this] and [http://cjonline.com/news/state/2010-07-07/manhattan_alorica_to_close this] and [http://www.wibw.com/home/headlines/97905109.html this]... -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 16:34, 8 March 2011 (UTC)
+
+:I suspect that the real reason is that they intend to ship those jobs offshore, probably to India.  However, companies have a way of avoiding saying that.  First they say "We are closing down our US operation, due to decreased demand".  Then, when the economy improves, they say "We are starting up (or expanding) an operation in India, due to increased demand".  After a few business cycles like this, they can have all operations, except for perhaps a token US presence, moved overseas. [[User:StuRat|StuRat]] ([[User talk:StuRat|talk]]) 19:59, 8 March 2011 (UTC)
+
+==Server==
+{{resolved}}
+A few days ago I was experimenting with [[nginx]] on Windows 7, and because it has no gui or window I forgot about it and it has been running on my computer since then at http://82.43.92.41/ Out of curiosity I checked the access logs and there are dozens of connections from loads of different ips, including one from [[Googlebot]], and a number of other odd connections. I have not posted any link to the server until this thread, and as far as I know Wikipedia is the only site where my ip address displays publicly. So where are these connections coming from and how did they know I had a server running? Or are there just loads of bots continually cold calling every ip address in existence and I'm only noticing it now because they have been logged by nginx? Here's an extract of some of the more bizarre connections, are these normal for a server? [[Special:Contributions/82.43.92.41|82.43.92.41]] ([[User talk:82.43.92.41|talk]]) 19:00, 8 March 2011 (UTC)
+{{cot|Logs}}
+<pre>
+58.218.204.110 - - [06/Mar/2011:21:19:18 +0000] "GET http://www.mtajp.com/proxyheader.php HTTP/1.1" 404 571 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+217.24.24.126 - - [07/Mar/2011:12:37:47 +0000] "OPTIONS * HTTP/1.0" 400 173 "-" "-"
+58.218.204.110 - - [07/Mar/2011:13:56:04 +0000] "GET http://www.foodnese.com/indux.php HTTP/1.1" 404 571 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+211.154.153.5 - - [07/Mar/2011:19:34:47 +0000] "GET /user/soapCaller.bs HTTP/1.1" 404 169 "-" "Morfeus Fucking Scanner"
+66.249.72.214 - - [07/Mar/2011:21:26:55 +0000] "GET /robots.txt HTTP/1.1" 404 169 "-" "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+66.249.72.214 - - [07/Mar/2011:21:26:56 +0000] "GET / HTTP/1.1" 200 1217 "-" "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+86.89.252.156 - - [08/Mar/2011:03:33:09 +0000] "OPTIONS * HTTP/1.0" 400 173 "-" "-"
+58.218.204.110 - - [08/Mar/2011:10:41:35 +0000] "GET http://www.eduju.com/proxyheader.php HTTP/1.1" 404 571 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+</pre>
+{{cob}}
+:[[Port sniffing]] for servers is a well known phenomenon. Your router or firewall must reject plenty of requests every hour. If I understand the logs correctly, 58.218.204.110 (which is known for port sniffing, do a search) appears to be trying to use you as a proxy, hardly surprising, [[open proxies]] (and particularly [[open mail relays]] and proxies which can be used in that way) are a common target for those up to no good and one of the common reasons for sniffing. The other ones I'm not sure, bored [[script kiddies]] sometimes like to look for random servers to break using widely published exploits which have been fixed, it could be that. I wasn't aware Google looked for servers on IPs to index but I guess it's not surprising. I'm presuming you've never done anything else like e-mail the server address to someone either to a Google account or from a Google account. If you have it's even less surprising, I've never looked at the Google privacy policy but I doubt it forbids them from recording server URLs people send via e-mail for indexing attempts (without associating them with any person/account). As you can see, the first thing it does is try to get [[robots.txt]], which is what a well behaved bot should do. P.S. Forgot to mention but if you think Googlebot is visiting your site do remember to check the IP, I did earlier and it is Googlebot but other bots pretending to be Googlebot is common. [[User:Nil Einne|Nil Einne]] ([[User talk:Nil Einne|talk]]) 19:44, 8 March 2011 (UTC)
+::[http://ekle.us/index.php/2007/05/update_on_morfeus_fucking_scanner] and [http://www.rejetto.com/forum/index.php?topic=6360.0] confirms [[Morfeus Fucking Scanner]] is a [[vulnerability scanner]] i.e. there's a good chance it's just some script kiddie hoping to break your website. It could also be someone with more malicious aims (i.e. a [[botnet]] owner or similar) like 58.218.204.110 I mentioned, perhaps either breaking your server in the hope they can install something enabling it to act as an open proxy/mail relay or otherwise do something for them ([[clickfraud]], [[Denial-of-service attacks]]); or more likely rather then installing anything simply using you to host content for them (e.g. for [[fast flux]]). I don't follow the black hat world very well. Edit: [http://stateofsecurity.com/?p=467] suggests it may indeed be someone with more malicious aims. [[User:Nil Einne|Nil Einne]] ([[User talk:Nil Einne|talk]]) 19:44, 8 March 2011 (UTC)
+:::And just to complete the list, OPTIONS * is a [[WebDAV]] request. This is most likely a vulnerability scanner as well. -- [[User:BenRG|BenRG]] ([[User talk:BenRG|talk]]) 20:01, 8 March 2011 (UTC)
+
+Thanks! [[Special:Contributions/82.43.92.41|82.43.92.41]] ([[User talk:82.43.92.41|talk]]) 21:30, 8 March 2011 (UTC)
+
+== Pluging a 3.5mm headset with microphone for mobile phones into the earpone socket on a PC ==
+
+I have a headset which uses a 3.5mm jack and plugs into my mobile phone. I used to be able to use it to conduct calls via my mobile phone, however the microphone has stopped working, even though the headset is of fair quality (having cost £35 at ASDA supermarket) and is fairly new (about one month). Is it possible that plugging the headset into the headset port of a computer has damaged the microphone? The jack has four metal contacts along it's length - perhaps the computer applied current to the microphone and broke it? ----[[User:Seans Potato Business|Seans]] '''[[User talk:Seans Potato Business|Potato Business]]''' 19:56, 8 March 2011 (UTC)
+
+:I think the more likely explanations are mechanical ones:
+
+:1) The port on the phone may have come lose from the circuit board to which it is attached.  Is it loose ?
+
+:2) A wire in the headset may have broken.
+
+:The first diagnostic step is to get another headset (borrow one if you don't have another), and plug that in, to see if it's the phone or the headset.  Alternatively, plug your headset into another phone. 
+
+:One last comment, isn't £35 for a headset a bit high ?  I consider these to be disposable and buy cheap ones. [[User:StuRat|StuRat]] ([[User talk:StuRat|talk]]) 20:04, 8 March 2011 (UTC)
+
+:It ''shouldn't'' affect the microphone by plugging the 4-connector plug into a 3-connector stereo outlet. The tip should be the left channel. The ring closest to the tip should be the right channel. The next ring on the connector should be the microphone. The inside ring should be ground. By plugging the 4-connector plug into a 3-connector outlet, you apply ground to the microphone (if it is connected at all). Of course, this all assumes standard connection design. Cell phone makers are allowed to set up the connectors in all kinds of messed up ways. -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 20:22, 8 March 2011 (UTC)
+
+:You used to be able to buy a headset like that at [[Poundland]] for a £1. Don't know if they still stock them or not. [[Special:Contributions/92.15.20.212|92.15.20.212]] ([[User talk:92.15.20.212|talk]]) 21:05, 8 March 2011 (UTC)

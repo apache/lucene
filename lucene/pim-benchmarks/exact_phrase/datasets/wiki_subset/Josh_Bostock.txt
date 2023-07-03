@@ -1,0 +1,65 @@
+{{Infobox rugby league biography
+|name                = Josh Bostock
+|fullname            = Joshua Bostock
+|image               =
+|imagesize           =
+|caption             =
+|birth_date          = {{birth date and age|1974|01|24|df=y}}
+|birth_place         = Australia
+|death_date          =
+|height              =
+|weight              =
+|position            = {{rlp|WG|CE}}
+|club1               = [[Balmain Tigers]]
+|year1start          = 1997
+|year1end            =
+|appearances1        = 2
+|tries1              = 1
+|goals1              = 0
+|fieldgoals1         = 0
+|points1             = 4
+|club2               = [[Wakefield Trinity]]
+|year2start          = 1998
+|year2end            =
+|appearances2        = 15
+|tries2              = 16
+|goals2              = 0
+|fieldgoals2         = 0
+|points2             = 64
+|club3               = [[Oldham R.L.F.C.|Oldham]]
+|year3start          = 1999
+|year3end            =
+|appearances3        = 
+|tries3              = 
+|goals3              = 
+|fieldgoals3         = 
+|points3             = 
+|retired             = yes
+|source              = <ref name="Statistics at rugbyleagueproject.org">{{cite web|url=http://www.rugbyleagueproject.org/players/josh-bostock/summary.html|title=Statistics at rugbyleagueproject.org|publisher=rugbyleagueproject.org|date=31 December 2017|accessdate=1 January 2018}}</ref>
+}}
+
+'''Joshua "Josh" Bostock''' (born 24 January 1974) is an Australian former professional [[rugby league]] footballer who played in the 1990s. He played at club level for the [[Western Suburbs Red Devils]] ({{circa|1995}}), the [[Balmain Tigers]], the [[Adelong Batlow Bears]] (in [[Batlow, New South Wales]], 17-miles south of [[Adelong, New South Wales]], previously of [[Group 9 Rugby League]]), [[Wakefield Trinity]] ([[List of Wakefield Trinity players|Heritage № 1132]]), and [[Oldham R.L.F.C.|Oldham]], as a {{rlp|wg}}, or {{rlp|ce}}, i.e. number 2 or 5, or, 3 or 4.
+
+==Playing career==
+===First Division Grand Final appearances===
+Josh Bostock played {{rlp|lw}}, i.e. number 5, and scored two [[Try (rugby)|tries]] in [[Wakefield Trinity]]'s 24-22 victory over [[Featherstone Rovers]] in the 1998 [[Rugby Football League Championship Second Division|First Division]] Grand Final at [[Galpharm Stadium|McAlpine Stadium]], [[Huddersfield]] on 26 September 1998.<ref>Hoole, Les (2004). ''Wakefield Trinity RLFC - FIFTY GREAT GAMES''. Breedon Books. {{ISBN|1-85983-429-9}}</ref>
+
+===Club career===
+Josh Bostock made hist début for [[Wakefield Trinity]], played left-{{rlp|ce}}, i.e. number 4, and scored 3-[[Try (rugby)|tries]] (a [[hat-trick]]) in the 46-28 victory over [[Rochdale Hornets]] at [[Spotland Stadium]], [[Rochdale]] on Sunday 7 June 1998.
+
+==References==
+{{reflist}}
+
+==External links==
+*[https://www.independent.co.uk/sport/rugby-league-brown-double-decisive-1080322.html Rugby League: Brown Double Decisive]
+
+{{DEFAULTSORT:Bostock, Josh}}
+[[Category:1974 births]]
+[[Category:Balmain Tigers players]]
+[[Category:Living people]]
+[[Category:Oldham R.L.F.C. players]]
+[[Category:Place of birth missing (living people)]]
+[[Category:Rugby league centres]]
+[[Category:Rugby league wingers]]
+[[Category:Wakefield Trinity players]]
+[[Category:Australian rugby league players]]

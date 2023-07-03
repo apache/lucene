@@ -1,0 +1,34 @@
+{{Infobox person/Wikidata | fetchwikidata=ALL | onlysourced=yes|suppressfields=education|dateformat=mdy}}
+[[File:Adrian von Bubenberg.jpg|thumb|Adrian von Bubenberg on horseback ([[Diebold Schilling the Elder]])]]
+'''Adrian von Bubenberg''' (born c. 1434 in [[Bern]]; died August 1479 in Bern) was a Bernese [[knight]], military commander and [[mayor of Bern|mayor]] (''[[Schultheiss]]'') of Bern in 1468-1469, 1473-1474 and 1477-1479. In [[Switzerland]], he is remembered as the hero of the [[Battle of Murten]].
+
+==Life==
+Adrian von Bubenberg was born as the son of [[Heinrich IV. von Bubenberg]], Schultheiss of Bern and lord of [[Spiez]], whom he succeeded in 1465. During a [[Christian pilgrimage|pilgrimage]] to [[medieval Jerusalem|Jerusalem]] in 1466, he was dubbed a [[Knight of the Holy Sepulchre]].
+
+Numerous times before and after the [[Burgundy wars]], he led Bernese negotiations with other [[Cantons of Switzerland|cantons]] of the [[old Swiss Confederacy]] and foreign powers including [[Savoy]], [[Duchy of Burgundy|Burgundy]], [[kingdom of France|France]] and the [[Holy Roman Empire]]. 
+But his heroic stature in Swiss history is due to his tenacious defense during the siege of [[Murten]]. He had been appointed commander of the city garrison in April 1476. The city was besieged during twelve days in June by the troops of [[Charles, Duke of Burgundy]], and Bubenberg managed to hold until he was relieved by confederate forces on 22 June, leading to the decisive defeat of Charles.
+
+==Legacy==
+Von Bubenberg was buried in the choir of the [[Berner Münster]], the [[Cathedral]] of Bern. Ever having been short of funds in spite of being the head of Berne's preeminent noble house, von Bubenberg was posthumously [[ban (law)|banned]] for his debts in 1481, but the government resisted [[Pope Sixtus IV]]'s demand that he be [[Exhumation|exhumed]] and dishonourably buried because of this.
+
+[[File:SVB21wiki.jpg|thumb|The monument in its original setting (1915 photograph)]]
+Bubenberg's deeds figure already in the near-contemporary [[Swiss illustrated chronicles|illustrated chronicles]] by [[Diebold Schilling the Elder]]. Later, he became an icon in Romantic nationalism, portrayed in literature as the ideal of [[Knightly virtues|knightly virtue]] and of  [[patriotism]], notably in the novel  ''Ring i der Chetti'' by [[Rudolf von Tavel]] (1931).
+In 1897, Bern honoured Bubenberg with a bronze statue on Christoffelplatz, which was renamed to   [[Bubenbergplatz]] on the occasion.  The design for the statue triggered a dispute on whether it was proper to show Bubenberg on foot rather than as a knight in an equestrian statue. 
+The statue was moved to the nearby Hirschengraben in 1930 to make room for tramway infrastructure; plans to move the statue triggered controversial debate in Bernese newspapers in early 1930, but the plan found popular support in a vote of 6 April, the statue was removed on 24 April and erected at its current location on 19 May.<ref>Karl F. Wälchli, J. Harald Wäber, Peter Martig, Peter Hurni, ''Bernische Denkmäler. Ehrenmale in der Gemeinde Bern und ihre Geschichte'', Staatsarchiv des Kantons Bern {{year needed|date=September 2014}}</ref>
+
+==References==
+{{Reflist}}
+
+==External links==
+{{commons category|Adrian von Bubenberg}}
+*{{HDS|16654}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Bubenberg, Adrian Von}}
+[[Category:1434 births]]
+[[Category:1479 deaths]]
+[[Category:People from Bern]]
+[[Category:15th-century Swiss people]]
+[[Category:Medieval Knights of the Holy Sepulchre]]
+[[Category:Swiss Roman Catholics]]

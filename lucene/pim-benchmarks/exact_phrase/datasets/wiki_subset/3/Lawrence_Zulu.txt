@@ -1,0 +1,97 @@
+{{Use dmy dates|date=July 2020}}
+{{Use South African English|date=July 2012}}
+{{Infobox Christian leader
+| type        = Bishop
+| name        = Lawrence Zulu
+|honorific-prefix={{pre-nominal styles|RRevd}}
+| title       = former [[Diocese of Swaziland|Bishop of Swaziland]]
+| image       =
+| alt         =
+| caption     =
+| church      = [[Anglican Church of Southern Africa|Anglican]]
+| archdiocese =
+| diocese     =
+| see         =
+| term        = 1993&ndash;2000
+| predecessor = [[Bernard Mkhabela]]
+| successor   = [[Meshack Mabuza]]
+<!-- Orders -->
+| ordination     =
+| ordinated_by   =
+| consecration   =
+| consecrated_by =
+| rank           =
+<!-- Personal details -->
+| birth_date    =
+| birth_place   =
+| death_date    =
+| death_place   =
+| previous_post = [[Diocese of Zululand|Bishop of Zululand]]
+}}
+
+'''Lawrence Bekisisa Zulu''' was a South African [[Anglican]] bishop.
+
+== Personal life ==
+
+Zulu went to [[Cambridge University]] and graduated with a BA in 1965 and an MA in 1969.{{sfn|Cambrisge|1991|p=1527}}
+
+==Church life==
+Zulu was [[Diocese of Zululand|Bishop of Zululand]], from 1975 to 1993,{{sfn|SPCK|1992|p=223}}{{sfn|ENS|1976}} and [[Diocese of Swaziland|Bishop of Swaziland]], from 1993 to 2002.{{sfn|Mbaya|2012|=p=247-271}}
+
+He attended the Seventh General Assembly of the All Africa Conference of Churches.{{sfn|AACC|1997|p=262}}
+
+== Notes and references ==
+{{reflist|30em}}
+
+{{refbegin|30em}}
+*{{cite book|ref={{sfnref|Cambrisge|1991}}|author=Anon |title=The Cambridge University List of Members for the Year ...|url=https://books.google.com/books?id=05AcAQAAMAAJ|year=1991|publisher=Cambridge University Press}}
+*{{cite book|author=Anon|title=The Church of England Yearbook|url=https://books.google.com/books?id=-a0mAQAAIAAJ|year=1992|publisher=Church Information Office [and] Society for Promoting Christian Knowledge|ref={{sfnref|SPCK|1992|223}}
+}}
+*{{cite book|author=Anon|title=Seventh AACC Assembly report|url=https://books.google.com/books?id=Zw8QAQAAIAAJ|year=1997|publisher=All Africa Conference of Churches|isbn=978-9966-886-27-9|ref={{sfnref|AACC|1997|p=262}}}}
+*{{Citation
+| title = Apartheid: resistance and acquiescence. St Paul's Theological College, Grahamstown, 1973-1985
+| last= Mbaya
+|first= Henry
+| work =
+| date = August 2013
+| hdl= 10500/11854
+| language =
+| ref= {{sfnref|Mbaya|2013}}
+}}
+*{{cite journal | last=Mbaya|first=Henry| title=''Ungusobaba'' (you are our father): the life of an Anglican bishop, Lawrence Bekisisa Zulu (1937-2013+)| journal=Studia Historiae Ecclesiasticae| year=2012| volume=38| issue=2| pages=247–271|hdl=10500/8124|ref={{sfnref|Mbaya|2012|=p=247-271}} }}
+*{{cite book|ref={{sfnref|Denis|1995|p=}}|last=Denis|first=Philippe |title=The Making of an Indigenous Clergy in Southern Africa: Proceedings of the International Conference, Held at the University of Natal, Pietermaritzburg, 25-27 October 1994|url=https://books.google.com/books?id=HCIlAQAAIAAJ|year=1995|publisher=Cluster Publications|isbn=978-1-875053-06-3}}
+*{{citation
+| title = News Brief
+| type= Press release
+| date = 15 April 1976
+|issue=76137
+| accessdate = 2014-08-06
+| url = http://www.episcopalarchives.org/cgi-bin/ENS/ENSpress_release.pl?pr_number=76137
+| ref={{sfnref|ENS|1976}}
+}}
+
+{{refend}}
+
+{{s-start}}
+{{s-rel|sa}}
+{{succession box | title = [[Diocese of Swaziland|Bishop of Swaziland]] | years = 1993&ndash;2000
+ | before = [[Bernard Mkhabela]]
+ | after = [[Meshack Mabuza]]}}
+{{succession box|title=[[Diocese of Zululand|Bishop of Zululand]]|before=[[Alpheus Zulu]]|after=[[Peter Harker]]|years=1975&ndash;1993}}
+{{s-end}}
+
+{{Bishops of Zululand}}
+{{Bishops of Swaziland}}
+
+{{authority control}}
+
+{{DEFAULTSORT:Zulu, Lawrence Bekisisa}}
+[[Category:South African Anglican priests]]
+[[Category:Bishops of Zululand]]
+[[Category:Bishops of Swaziland]]
+[[Category:20th-century Anglican bishops]]
+[[Category:Date of birth missing]]
+[[Category:Date of death missing]]
+
+
+{{Anglican-bishop-stub}}

@@ -1,0 +1,11 @@
+{{Valid SVG}}
+== Summary ==
+{{Information
+| Description    = Austin College logo
+| Source         = https://www.austincollege.edu/about/office-of-public-affairs/mediakit/
+| Date           = 
+| Author         = Austin College
+}}
+== Licensing ==
+{{PD-textlogo}}
+{{SVG-logo}}

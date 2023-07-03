@@ -1,0 +1,24 @@
+{{Automatic taxobox
+| taxon = Chometokadmon
+| fossil_range = [[Early Cretaceous]] ([[Albian]])
+| image = Chometokadmon fitzingeri.JPG
+| image_caption = [[Holotype]] skeleton of ''Chometokadmon fitzingeri''
+| authority = Costa, [[1864 in paleontology|1864]]
+| type_species = {{extinct}}'''''Chometokadmon fitzingeri'''''
+| type_species_authority = Costa, 1864
+}}
+
+'''''Chometokadmon''''' is an extinct [[genus]] of [[anguimorph]] lizard from the [[Early Cretaceous]] of Italy. The [[type species|type]] and only species is '''''Chometokadmon fitzingeri''''', named by Italian zoologist [[Oronzio Gabriele Costa]] in 1864. It is known from only one specimen, a nearly complete skeleton from the comune of [[Pietraroja]] in the [[Apennine Mountains]] from the sediments of the [[Pietraroja Plattenkalk|Pietraroia Plattenkalk]]'''.''' Costa identified the specimen as a lizard, but in 1915 paleontologist [[Geremia d'Erasmo]] reclassified the skeleton as that of a [[rhynchocephalia]]n on the basis of another rhynchocephalian specimen Costa had described, which d'Erasmo thought belonged to the same species. Later studies of the anatomy of these two specimens revealed that they belonged to two different species; Costa's ''Chometokadmon'' was a lizard whereas the other specimen, renamed ''[[Derasmosaurus]]'' in honor of d'Erasmo, was a rhynchocephalian. The first detailed description of ''Chometokadmon'' came in 2006, allowing it to be incorporated into a [[phylogenetic analysis]] of lizards. The analysis placed ''Chometokadmon'' as a member of the [[clade]] (evolutionary grouping) Anguimorpha, which includes [[Anguidae]], [[Xenosauridae]], and [[Varanoidea]].<ref name=ERB06>{{cite journal|doi=10.1016/j.cretres.2006.03.004|title=The Lower Cretaceous lizard genus Chometokadmon from Italy|journal=Cretaceous Research|volume=27|issue=5|pages=673|year=2006|last1=Evans|first1=Susan E.|last2=Raia|first2=Pasquale|last3=Barbera|first3=Carmela}}</ref>
+
+== References ==
+{{Reflist}}
+
+{{Extinct squamates|A.}}
+{{Taxonbar|from=Q21285820}}
+
+[[Category:Cretaceous lizards]]
+[[Category:Early Cretaceous reptiles of Europe]]
+[[Category:Fossil taxa described in 1864]]
+[[Category:Taxa named by Oronzio Gabriele Costa]]
+
+{{paleo-lizard-stub}}

@@ -1,0 +1,37 @@
+{{Infobox venue
+| name         = XOYO
+| image        = [[File:XOYO exterior.jpg|250px]]
+| location     = [[Old Street]], London
+| coordinates  = {{Coord|51.525445|-0.085732|type:landmark_region:GB-ISL|display=inline,title}}
+| type         = [[Nightclub]]
+| opened = 2010
+| capacity = 800
+| owner        = The Columbo Group
+| website      = [http://www.xoyo.co.uk www.xoyo.co.uk]
+}}
+
+'''XOYO''' is a [[nightclub]] in [[London]]. It is located on Cowper Street near [[Old Street station]] in [[London Borough of Islington|Islington]].
+
+== History ==
+The two-room club opened in 2010,<ref>{{cite web|last=|first=|date=2 September 2010|title=Unique new London venue XOYO to open September 15, win tickets to launch!|url=http://www.thelineofbestfit.com/news/latest-news/unique-new-london-venue-xoyo-to-open-september-15-win-tickets-to-launch-35460|url-status=live|archive-url=|archive-date=|access-date=|work=[[The Line of Best Fit]]}}</ref> occupying a converted print works. It was bought and renovated by The Columbo Group.<ref>{{cite web|last=Hart|first=Tina|date=22 August 2012|title=Columbo Group acquires London's XOYO|url=http://www.musicweek.com/news/read/old-queen-s-head-acquires-xoyo-venue/051473|url-status=live|archive-url=|archive-date=|access-date=|work=[[Music Week]]}}</ref><ref>{{cite web|last=Keeling|first=Ryan|date=14 August 2012|title=XOYO returns with Optimo and The Revenge|url=http://www.residentadvisor.net/news.aspx?id=17361|url-status=live|archive-url=|archive-date=|access-date=|work=[[Resident Advisor]]}}</ref>
+
+[[Eats Everything]] became the club’s first resident in January 2015.<ref>{{cite web|last=Coultate|first=Aaron|date=26 November 2013|title=Eats Everything announced as XOYO resident|url=http://www.residentadvisor.net/news.aspx?id=21837|url-status=live|archive-url=|archive-date=|access-date=|work=[[Resident Advisor]]}}</ref>
+
+In November 2014, XOYO launched Gloria's, a mixed gay and straight night, alongside polysexual East London collective Sink the Pink.<ref>{{cite web|last=|first=|date=29 July 2014|title=Sink the Pink and XOYO Present Gloria's|url=http://www.timeout.com/london/clubs/sink-the-pink-and-xoyo-present-glorias|url-status=live|archive-url=|archive-date=|access-date=|work=[[Time Out (magazine)|Time Out]]}}</ref> 
+
+== Accolades ==
+XOYO was voted one of the world's top 100 clubs by ''[[DJ Mag]]'' in 2020.<ref>{{Cite web|last=|first=|date=11 March 2020|title=XOYO|url=https://djmag.com/top-100-clubs/poll-clubs-2020-xoyo|url-status=live|archive-url=|archive-date=|website=[[DJ Mag]]}}</ref>
+
+==References==
+{{reflist}}
+
+== External links ==
+* {{official website|url=http://www.xoyo.co.uk}}
+
+[[Category:Nightclubs in London]]
+[[Category:Music venues completed in 2010]]
+[[Category:Tourist attractions in the London Borough of Islington]]
+[[Category:Electronic dance music venues]]
+[[Category:2010 establishments in England]]
+
+{{London-stub}}

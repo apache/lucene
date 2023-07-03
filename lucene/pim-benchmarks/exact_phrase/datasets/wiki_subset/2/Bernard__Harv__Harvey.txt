@@ -1,0 +1,209 @@
+{{short description|American musician and record producer}}
+
+{{Infobox musical artist
+| name         = Bernard "Harv" Harvey
+| background   = non_vocal_instrumentalist
+| image        = HARV Music Producer.png
+| landscape    = 
+| caption      = 
+| birth_name   = Bernard Harvey
+| birth_date   = {{birth date and age|1985|08|17}}
+| birth_place  = [[Kansas City, Kansas]], United States
+| origin       = 
+| genre        = [[Contemporary R&B]], [[pop music|pop]], [[Hip Hop music|hip hop]], [[Gospel music|gospel]] [[electronic dance music]]
+| occupation   = [[Record producer|Music producer]], [[songwriter]], [[multi-instrumentalist]], [[composer]]
+| years_active = 2005–present
+| label        = [[Universal Music Publishing Group]]
+| website      = {{URL|harvmusic.com}}
+}}
+
+'''Bernard "Harv" Harvey''' (born August 17, 1985) is an American music producer, composer, songwriter, and multi-instrumentalist <ref>[http://albumcredits.com/Profile/2071039 "Bernard Harvey"]{{dead link|date=October 2016 |bot=InternetArchiveBot |fix-attempted=yes }} AlbumCredits.com profile. Retrieved 27 August 2012</ref> based in [[Atlanta, Georgia]] that has produced highly acclaimed work for major recording artists such as [[Justin Bieber]], [[Sevyn Streeter]], [[Cherish (group)|Cherish]], [[Summer Walker]], [[Omarion]], [[Kandi Burruss]], [[Gucci Mane]] and [[Eminem]].
+
+==Early years==
+'''Bernard "Harv" Harvey''' was born and raised in [[Kansas City, Kansas]]. Harv was introduced to the musical arts at the young age of nine, and began playing the bass by age twelve. Harv attended J.C. Harmon High School where his love for music elevated joining the marching band, jazz band and playing different types of music all around the city. Throughout his life he was taught to play the piano, guitar, drums, trombone, and even the tuba. Yet, Harv is best known for his mastery of the bass.
+
+In 2003, Harv's exceptional talent on the bass became recognized on a merit-based level and landed him a scholarship at [[Alabama State University]] where he obtained a degree in Music Technology. He began playing in church and local bands ultimately sharpening his musical ear, which led him to expanding his interest in production. With music flowing in his blood he was enticed with the aspects of production and decided to capitalize on his talents in Atlanta, Georgia working day in and day out on compositions.
+
+As Harv began making connections in Atlanta in 2007, he quickly established a friendship with Grammy-winning producer Shondrae Bangladesh Crawford. Harv played bass guitar on a few major placements produced by his friend "Bangladesh" such as "Lemonade" by Gucci and "A Kiss" by Eminem.
+
+In 2010, Harv hit the road playing the bass for [[Scooter Braun]]'s artist, Justin Bieber. After catching wind that Harv also produced music, Scooter expressed his interest in signing Harv as a producer to publishing company. Harv signed his first publishing deal with Sheba and [[Universal Music Publishing Group]] (UMPG) in 2011 and is continually building his catalog and growing his production company.<ref>{{cite web|last=Harvey|first=Bernard|title=Universal Music Publishing Group - Bio|url=http://umpg.com/#contentRequest=artistdetail&contentLocation=sub&contentOptions=%26artistid%3D6077|accessdate=21 September 2012}}</ref>
+
+In 2012, Harv became an artist under [[Scooter Braun]]'s management joining an array of other internationally known artists and producers.
+Harv produced 3 songs on Justin Bieber's February 2020 album ''[[Changes (Justin Bieber album)|Changes]]''; "Available", "At Least For Now" and "[[Forever (Justin Bieber song)|Forever]]", featuring [[Post Malone]] and Clever.
+
+==Album placements==
+{|class=wikitable
+|-
+! Artist
+! Album/Song
+! Credit
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2011'''
+|-
+| [[Justin Bieber]]
+| ''[[Under the Mistletoe]]''<ref>[http://albumcredits.com/Album/2504011#/Album/ProductionCredits/2504011 ''''Under the Mistletoe''"]{{dead link|date=October 2016 |bot=InternetArchiveBot |fix-attempted=yes }} AlbumCredits.com. Retrieved 25 August 2012</ref><ref>[http://albumcredits.com/Album/2307771#/Album/ProductionCredits/2307771 "''Under the Mistletoe'' (Deluxe Edition)"]{{dead link|date=October 2016 |bot=InternetArchiveBot |fix-attempted=yes }} AlbumCredits.com. Retrieved 26 August 2012</ref>
+| Composer, producer
+|-
+| [[Justin Bieber]] featuring [[Jaden Smith]]
+| ''Happy New Years''
+| Producer
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2012'''
+|-
+| [[Justin Bieber]]
+| ''[[Believe (Justin Bieber album)|Believe]]'': "Just Like Them'' (Deluxe), "Fairytale" (Spotify)
+| Composer, producer
+|-
+| [[Kandi Burruss]]
+| '"Be Alright" (used in ''Kandi Factory'' pilot)
+| Producer
+|-
+| [[Legaci (band)|Legaci]]
+| ''Driven'': "All Because of You"
+| Composer, producer
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2016'''
+|-
+| [[Sevyn Streeter]]
+| "[[Before I Do]]" (''[[Girl Disrupted]]'')
+| Composer, producer
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2017'''
+|-
+| [[Sevyn Streeter]]
+| "Peace Sign" (featuring Dave East) (''[[Girl Disrupted]]'')
+| Composer, producer
+|-
+| [[Brenda Mada]]
+| '"House Party" 
+| Producer
+|-
+| [[Juke Ross]]
+| "Colour Me"
+| Composer, producer
+|-
+| [[Omarion]]
+| "Open Up"
+| Composer, producer
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2019'''
+|-
+| [[Poo Bear]]
+| "Yes Please" 
+| Composer, producer
+|-
+| [[Summer Walker]]
+| "Anna Mae" (''Open Up'')
+| Composer, producer
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2020'''
+|-
+| [[Justin Bieber]]
+| "Available" (''[[Changes (Justin Bieber album)|Changes]]'')
+| Composer, producer
+|-
+| [[Justin Bieber]]
+| "Forever" (featuring Post Malone & Clever) (''[[Changes (Justin Bieber album)|Changes]]'')
+| Composer, producer
+|-
+| [[Justin Bieber]]
+| "At Least For Now" (''[[Changes (Justin Bieber album)|Changes]]'')
+| Composer, producer
+|-
+|}
+
+==Bass guitarist==
+{|class=wikitable
+|-
+! Artist
+! Song
+! Album
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2005'''
+|-
+| [[Lil' Kim]]
+| "Get Yours"
+| ''[[The Naked Truth (Lil' Kim album)|The Naked Truth]]''
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2009'''
+|-
+| [[Gucci Mane]]
+| "[[Lemonade (Gucci Mane song)|Lemonade]]"
+| ''[[The State vs. Radric Davis]]''<ref>[http://albumcredits.com/Album/1687497#/Album/ProductionCredits/1687497 "''Lemonade''"]{{dead link|date=October 2016 |bot=InternetArchiveBot |fix-attempted=yes }} AlbumCredits.com. Retrieved 26 August 2012</ref>
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2010'''
+|-
+| [[Eminem]]
+| "A Kiss"
+| ''[[Bad Meets Evil]]''
+|-
+| colspan="4"  style="text-align:center; background:#f2f3f4;"| '''2011'''
+|-
+| Justin Bieber
+| "Overboard" featuring [[Miley Cyrus]]
+| ''Justin Bieber: Never Say Never Soundtrack''
+|}
+
+==Concert tours==
+{|class=wikitable
+|-
+! Artist
+! Year
+! Role
+|-
+| [[Avant (singer)|Avant]]
+| 2009
+| Bass Guitar
+|-
+| [[Priscilla Renea]]
+| 2009
+| Bass Guitar
+|-
+| [[Heads of State (group)|Heads of State]]
+| 2011
+| Bass Guitar
+|-
+| [[Justin Bieber]]
+| 2010–2015
+| Bass Guitar
+|-
+| [[Justin Bieber]]
+| 2016–present
+| Music Director & Bass Guitar
+|}
+
+==Film and TV placements==
+===Movie features===
+*''[[Justin Bieber: Never Say Never]]'' (2011)
+
+===Television appearances===
+* ''[[The Tonight Show with Jay Leno]]'' (2011, 2012)
+* ''[[The Ellen DeGeneres Show]]'' (2011, 2012)
+* ''[[The Oprah Winfrey Show]]'' (2011)
+* ''[[The View (U.S. TV series)|The View]]'' (2011, 2012)
+* ''[[Today (U.S. TV program)|The Today Show]]'' (2011, 2012)
+* ''Justin Bieber: Never Say Never'' (2011)
+* ''All Around the World'' [[NBC]] special (2012)
+* ''[[Dick Clark's New Year's Rockin' Eve with Ryan Seacrest|Dick Clark's New Year's Eve]]'' show (2011)<ref>{{cite web|last=Harvey|first=Bernard|title=Spector Bass Artist Performs with Justin Bieber and Mary J. Blige on The View|url=http://www.spectorbass.com/artists/events_media_index.html|accessdate=21 September 2012}}</ref>
+* [[MTV Video Music Awards]] (2011)
+* [[Teen Choice Awards]] (2011)
+* [[Disney Parks Christmas Day Parade|Disney Christmas Parade]] (2011)
+* ''[[The David Letterman Show]]'' (2011, 2012)
+* ''[[Saturday Night Live]]'' (2020)
+
+==References==
+{{reflist}}
+
+{{authority control}}
+
+{{DEFAULTSORT:Harvey, Bernard}}
+[[Category:1985 births]]
+[[Category:Living people]]
+[[Category:American male composers]]
+[[Category:21st-century American composers]]
+[[Category:American male songwriters]]
+[[Category:American bass guitarists]]
+[[Category:American record producers]]
+[[Category:American male bass guitarists]]
+[[Category:21st-century American bass guitarists]]
+[[Category:21st-century American male musicians]]

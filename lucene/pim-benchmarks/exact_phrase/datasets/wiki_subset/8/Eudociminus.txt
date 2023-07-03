@@ -1,0 +1,72 @@
+{{short description|Genus of beetles}}
+{{Automatic taxobox
+| taxon = Eudociminus
+| authority = Leng, 1918
+}}
+
+'''''Eudociminus''''' is a genus of [[pine weevil]]s in the [[beetle]] family [[Curculionidae]]. There are at least two described species in ''Eudociminus''.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==Species==
+These two species belong to the genus ''Eudociminus'':
+* ''[[Eudociminus mannerheimi]]'' <small>Boheman, 1836</small>
+* ''[[Eudociminus mannerheimii]]'' <small>(Boheman, 1936)</small> (cypress weevil)
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Eudociminus'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=616860
+| website=Integrated Taxonomic Information System
+| access-date=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Eudociminus''
+| url=https://www.gbif.org/species/1194704
+| website=GBIF
+| access-date=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Eudociminus'' genus Information
+| url=https://bugguide.net/node/view/348563
+| website=BugGuide.net
+| access-date=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite journal
+| title = Annotated checklist of the weevils (Curculionidae sensu lato) of North America, Central America, and the West Indies (Coleoptera: Curculionoidea)
+| date = 1982
+| last1 = O'Brien | first1 = Charles W.
+| last2 = Wibmer | first2 = Guillermo J.
+| journal = Memoirs of the American Entomological Institute
+| url = http://academic.uprm.edu/~franz/WeevilCourseResources/OBrienWibmer1982-WeevilsNCAWI.pdf
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 7: Curculionoidea I
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-26093-1
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 8: Curculionoidea II
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-25916-4
+}}
+{{refend}}
+
+{{Taxonbar|from=Q55000151}}
+
+[[Category:Molytinae]]
+[[Category:Articles created by Qbugbot]]
+
+
+{{Molytinae-stub}}

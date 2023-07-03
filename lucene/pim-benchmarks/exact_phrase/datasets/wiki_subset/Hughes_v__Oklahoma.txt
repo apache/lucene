@@ -1,0 +1,60 @@
+{{no footnotes|date=July 2018}}
+{{Infobox SCOTUS case
+  | Litigants               = Hughes v. Oklahoma
+  | ArgueDate               = January 9
+  | ArgueYear               = 1979
+  | DecideDate              = April 24
+  | DecideYear              = 1979
+  | FullName                = William Hughes v. Oklahoma
+  | USVol                   = 441
+  | USPage                  = 322
+  | ParallelCitations       = 99 S. Ct. 1727; 60 [[L. Ed. 2d]] 250; 1979 [[U.S. LEXIS]] 35 
+  | Prior                   = Appeal from the Court of Criminal Appeals of Oklahoma
+  | Subsequent              = 
+  | Holding                 = The Congress may enact legislation governing wildlife on federal lands. When conflicting state law exists, the supremacy clause ensures that federal legislation will prevail.
+  | Majority                = Brennan
+  | JoinMajority            = Stewart, White, Marshall, Blackmun, Powell, Stevens
+  | Dissent                 = Rehnquist
+  | JoinDissent             = Burger
+  | LawsApplied             = 
+  |Overturned previous case= ''[[Geer v. Connecticut]]'' (1896)
+}}
+'''''Hughes v. Oklahoma''''', 441 U.S. 322 (1979), was a [[United States Supreme Court]] decision, which held that the [[United States Congress]] may enact legislation governing [[wildlife]] on [[federal lands]].
+
+==Background==
+Oklahoma enacted statutes that prevented any person from selling [[minnow]]s found within the natural waters of the state of Oklahoma outside of the state of Oklahoma. Oklahoma claimed that the purpose of the statute was for wildlife conservation. The underlying legal controversy arose when William Hughes was convicted of shipping minnows fished from Oklahoma waters out of the state.
+
+==Opinion of the Court==
+The Supreme Court held that the statute violated the [[Dormant Commerce Clause]] because it discriminated the flow of interstate commerce without being the least discriminatory alternative. The Court stated that when conflicting state law exists, the [[supremacy clause]] ensures that federal legislation will prevail. The Court thereby overruled ''[[Geer v. Connecticut]]'' (1896), rejecting the earlier case's "19th century [[legal fiction]] of state ownership" of wildlife. In the Court's view, this "fiction" had "been eroded to the point of virtual extinction in cases involving regulation of wild animals." With the fall of ''Geer'', the last precedential impediment to the federal government's [[wildlife management]] authority was removed.
+
+==See also==
+*[[List of United States Supreme Court cases, volume 441]]
+
+==Further reading==
+*{{ cite journal | last = Axline | first = M. D. | year = 1981 | title = The End of a Wildlife Era: ''Hughes v. Oklahoma'' | journal = Oregon Law Review | volume = 60 | issue = | pages = 413  | url =}}
+*{{ cite journal | last = Hellerstein | first = Walter | year = 1979 | title = ''Hughes v. Oklahoma'': The Court, the Commerce Clause, and State Control of Natural Resources | journal = The Supreme Court Review | volume = 1979 | issue = | pages = 51&ndash;93 | doi =  | jstor = 3109566}}
+*{{ cite journal | last = Matthews | first = Olen Paul | year = 1986 | title = Who Owns Wildlife? | journal = Wildlife Society Bulletin | volume = 14 | issue = 4 | pages = 459&ndash;465 | doi =  | jstor = 3782288}}
+
+==External links==
+*{{caselaw source
+ | case = ''Hughes v. Oklahoma'', {{ussc|441|322|1979|el=no}}
+ | courtlistener =https://www.courtlistener.com/opinion/110063/hughes-v-oklahoma/
+ | findlaw = https://caselaw.findlaw.com/us-supreme-court/441/322.html
+ | googlescholar = https://scholar.google.com/scholar_case?case=1462415598497051705
+ | justia =https://supreme.justia.com/cases/federal/us/441/322/
+ | loc =http://cdn.loc.gov/service/ll/usrep/usrep441/usrep441322/usrep441322.pdf
+ | oyez =https://www.oyez.org/cases/1978/77-1439
+ }}
+
+{{US Environmental law}}
+
+{{DEFAULTSORT:Hughes V. Oklahoma}}
+[[Category:United States Supreme Court cases]]
+[[Category:United States Supreme Court cases of the Burger Court]]
+[[Category:United States environmental case law]]
+[[Category:United States land use case law]]
+[[Category:1979 in the environment]]
+[[Category:1979 in United States case law]]
+
+
+{{SCOTUS-case-stub}}

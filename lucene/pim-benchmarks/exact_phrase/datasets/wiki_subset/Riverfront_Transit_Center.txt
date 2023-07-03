@@ -1,0 +1,45 @@
+{{distinguish|Cincinnati Subway}}
+{{Infobox station
+ | name=Riverfront Transit Center
+ | image=Riverfront-Transit-Center-Entrace.jpg
+ | image_caption=Street level entrance to the Transportation Center
+ | address=
+ | line=
+ | other=
+ | platform=Side platform
+ | parking= Yes ''(2011)''<ref name="bizjournals">{{cite web|url=http://dayton.bizjournals.com/dayton/stories/2010/05/17/daily29.html|title=Baker Concrete wins $22M contract for Banks garage - Dayton Business Journal|publisher=dayton.bizjournals.com|accessdate=2016-06-21}}</ref>
+ | bicycle=
+ | passengers=
+ | pass_year=
+ | pass_percent=
+ | opened= 2003
+ | rebuilt= 
+ | ADA=Yes
+ | code=
+ | owned=City of Cincinnati
+ | zone=
+ | coordinates={{coord|39|05|53|N|84|30|41|W|display=inline,title}}
+}}
+The '''Riverfront Transit Center''' is a [[Intermodal passenger transport|multi-modal transportation]] center currently used as a local [[bus]] and [[commuter bus]] hub for [[Transit Authority of Northern Kentucky|TANK]] and [[Southwest Ohio Regional Transit Authority|SORTA]],<ref name="pbworld">{{cite web|url=http://www.pbworld.com/news_events/publications/network/issue_59/59_11_craiga_sustainable_highway_practices.asp|title=News|publisher=pbworld.com|accessdate=2016-06-21}}</ref> in the city of [[Cincinnati, Ohio|Cincinnati]], [[Ohio]]<ref name="cincinnati-transit">{{cite web|url=http://www.cincinnati-transit.net/transitcenter.html|title=Download Mozilla Firefox Optimized for Yahoo|publisher=cincinnati-transit.net|accessdate=2016-06-21}}</ref> near [[Great American Ballpark]] and [[The Banks]] project.<ref name="cinplify">{{cite web|url=http://cinplify.com/site/story.php?title=Cincinnatis_Riverfront_Transit_Center_Historical_perspective|title=ツルすべ美肌になれる秘密とは？|publisher=cinplify.com|accessdate=2016-06-21}}{{dead link|date=April 2018 |bot=InternetArchiveBot |fix-attempted=yes }}</ref> It runs alongside the [[Fort Washington Way]] freeway trench. The center was completed in 2003<ref name="trb">{{cite web|url=http://pubsindex.trb.org/view.aspx?id=674315|title=CINCINNATI&#39;S NEW RIVERFRONT TRANSIT CENTER: UNIQUE APPROACH TO SERVING THE MIDWEST&#39;S LARGEST SPORTS AND ENTERTAINMENT VENUE - TRB Publications Index|publisher=pubsindex.trb.org|accessdate=2016-06-21}}</ref> and has the capacity to handle up to 500 buses and 20,000 people per hour during sporting or other special events.<ref>http://news.cincinnati.com/article/20090704/NEWS01/907050345/Transit-center-Bust-or-bargain</ref>
+
+==Bus services==
+The center serves as a hub for the [[Southwest Ohio Regional Transit Authority|SORTA]] during sporting events and other special events.<ref name="inist">{{cite web|url=http://cat.inist.fr/?aModele=afficheN&cpsidt=942286|title=Cincinnati's new Riverfront Transit Center: Unique approach to serving the Midwest's largest sports and entertainment venue|publisher=cat.inist.fr|accessdate=2016-06-21}}</ref>
+
+==Future rail connections==
+The center is also expected to serve as the central hub for the planned [[Eastern Corridor Commuter Rail]]<ref>http://www.dot.state.oh.us/districts/D08/Documents/Planning%20docs/oasis/RR%20Public%20Meeting%20-%20Station%203%20-%20Evaluation%20Summary.pdf</ref> connecting Cincinnati to [[Milford, Ohio|Milford]].<ref name="cincinnati-transit2">{{cite web|url=http://www.cincinnati-transit.net/commuterrail.html|title=Recent Cincinnati Commuter Rail and Light Rail Planning|publisher=cincinnati-transit.net|accessdate=2016-06-21}}</ref>
+
+==Criticism==
+The center has been criticised due to the fact that it is largely unused. Proponents point out delays in the streetcar lightrail and commuter rail plans as well as delays in construction of [[The Banks]] a multi-use commercial and residential project.<ref>http://news.cincinnati.com/article/20090704/NEWS01/907050345/Transit-center-Bust-or-bargain</ref>
+
+==See also==
+* [[Cincinnati Subway]], a set of incomplete, derelict tunnels and stations for a rapid transit system beneath the streets of Cincinnati, Ohio.
+
+==References==
+{{Reflist}}
+
+==External links==
+* [http://www.go-metro.com/ Go Metro], SORTA official website
+
+[[Category:Bus transportation in Cincinnati]]
+[[Category:Rail transportation in Cincinnati]]
+[[Category:Transportation buildings and structures in Cincinnati]]

@@ -1,0 +1,30 @@
+{{short description|Italian wrestler}}
+{{Use dmy dates|date=April 2019}}
+{{Infobox sportsperson
+| name           = Francesco Scuderi
+| full_name      = 
+| image          = 
+| caption        = 
+| nationality    = Italian
+| sport          = [[Wrestling]]
+| birth_date     = {{birth date and age|1949|2|10|df=yes}}
+| birth_place    = [[Catania]], Italy
+| death_date     = 
+| death_place    = 
+}}
+
+'''Francesco Scuderi''' (born 10 February 1949) is an Italian [[amateur wrestling|wrestler]]. He competed in the [[Wrestling at the 1972 Summer Olympics – Men's Greco-Roman 57 kg|men's Greco-Roman 57 kg]] at the [[1972 Summer Olympics]].<ref name="SportsRef">{{cite Sports-Reference |url=https://www.sports-reference.com/olympics/athletes/sc/francesco-scuderi-1.html |archive-url=https://web.archive.org/web/20200418014259/https://www.sports-reference.com/olympics/athletes/sc/francesco-scuderi-1.html |url-status=dead |archive-date=18 April 2020 |title=Francesco Scuderi Olympic Results |accessdate=6 April 2019}}</ref>
+
+==References==
+{{reflist}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Scuderi, Francesco}}
+[[Category:1949 births]]
+[[Category:Living people]]
+[[Category:Italian male sport wrestlers]]
+[[Category:Olympic wrestlers of Italy]]
+[[Category:Wrestlers at the 1972 Summer Olympics]]
+[[Category:Sportspeople from Catania]]
+{{Italy-wrestling-bio-stub}}

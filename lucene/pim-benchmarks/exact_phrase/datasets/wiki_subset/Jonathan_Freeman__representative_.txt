@@ -1,0 +1,67 @@
+{{Infobox Congressman
+| name           = Jonathan Freeman
+| image          = 
+| state1         = [[New Hampshire]]
+| district1      = [[New Hampshire's At-large congressional district|At-large]]
+| term_start1    = March 4, 1797
+| term_end1      = March 4, 1801
+| preceded1      = [[Nicholas Gilman]]
+| succeeded1     = [[Samuel Livermore]]
+| office2        = Member of the [[New Hampshire Senate]]
+| term2          = 1789-1791
+| office3        = Member of the [[New Hampshire House of Representatives]]
+| term3          = 1787-1789
+| birth_date     = {{Birth date|1745|03|21}}
+| birth_place    = {{nowrap|[[Mansfield, Connecticut|Mansfield]], [[Tolland County, Connecticut|Tolland County]]<br>[[Connecticut]], [[United States|USA]]}}
+| death_date     = {{Death date and age|1808|08|20|1745|03|21|mf=yes}}
+| death_place    = {{nowrap|[[Hanover, New Hampshire|Hanover]], [[Grafton County, New Hampshire|Grafton County]]<br>[[New Hampshire]], [[United States|USA]]}}
+| resting_place  = Hanover Center Cemetery<br>Hanover, Grafton County<br>New Hampshire
+| citizenship    = USA
+| spouse         = Sarah Huntington Freeman
+| children       = Peyton R. Freeman<br>Jonathan Freeman<br>Christopher Freeman<br>Edward Freeman<br>Sarah Freeman<br>Samuel Freeman(died as infant)<br>Son Freeman (died as infant)<br>Asa Freeman<br>Samuel Freeman (died as infant)<br>Samuel Freeman<br>Hanna Freeman
+| profession     = Farmer<br>Politician
+| party          = [[Federalist Party (United States)|Federalist Party]]
+| alma_mater     = 
+| religion       = 
+|}}
+'''Jonathan Freeman''' (March 21, 1745 – August 20, 1808) was an [[United States|American]] politician and a [[United States Representative]] from [[New Hampshire]].
+
+==Early life==
+Born in [[Mansfield, Connecticut]], Freeman attended the public schools and moved to New Hampshire in 1769, settling in [[Hanover, New Hampshire|Hanover]].
+
+==Career==
+Freeman engaged in agricultural pursuits and was town clerk from March 1778 to December 1787.<ref>{{cite book|title=The Records of the Town of Hanover, New Hampshire 1761-1818 : the Records of Town Meetings and of the Selectmen, Comprising All of the First Volume of Records and Being Volume 1 of the Printed Records of the Town, Volume 1|year=1905|publisher=The Town, 1905 - Hanover (N.H. : Town)|url=https://archive.org/details/recordstownhano00nhgoog |page=[https://archive.org/details/recordstownhano00nhgoog/page/n340 329]|accessdate=25 July 2014}}</ref> He was also [[justice of the peace]] and, from 1789 to 1797, [[Executive Council of New Hampshire|executive councilor]]. He was Treasurer of Dartmouth College from 1789 to 1808 as well as a Trustee of the College from 1793 to 1808.<ref>{{cite web|title=Jonathan Freeman|url=http://www.rootsweb.ancestry.com/~nyrensse/bio58.htm|publisher=Ancestry.com|accessdate=2 January 2014}}</ref>
+
+A member of the [[New Hampshire House of Representatives]] from 1787 to 1789, Freeman also served in the [[New Hampshire State Senate|State senate]] from 1789 to 1794. He was a delegate to the Constitutional convention of 1791, and a member of the State council.<ref>{{cite book|last1=Huntington Family Association, Huntington, Huntington|first1=Samuel, Richard Thomas|title=The Huntington Family in America: A Genealogical Memoir of the Known Descendants of Simon Huntington from 1633 to 1915, Including Those who Have Retained the Family Name, and Many Bearing Other Surnames|year=1915|publisher=Huntington family association, 1915|page=[https://archive.org/details/huntingtonfamily1915hunt/page/289 289]|url=https://archive.org/details/huntingtonfamily1915hunt|accessdate=25 July 2014}}</ref>
+
+Elected as a [[Federalist Party (United States)|Federalist]] to the [[5th United States Congress|Fifth]] and [[6th United States Congress|Sixth]] Congresses, Freeman served as [[United States House of Representatives|United States Representative]] for the state of New Hampshire from March 4, 1797 to March 3, 1801.<ref>{{cite book|last1=Capace|first1=Nancy|title=Encyclopedia of New Hampshire|publisher=North American Book Dist LLC, Jan 1, 2001 - New Hampshire|page=393|url=https://books.google.com/books?id=FyCVd_nCYl8C&pg=PA393&dq=Jonathan+Freeman+(representative)&hl=en&sa=X&ei=x1DSU9PFBIKYyASkqIHoAg&ved=0CCoQ6AEwAg#v=onepage&q=Jonathan%20Freeman%20(representative)&f=false|accessdate=25 July 2014}}</ref> After his service, he resumed agricultural pursuits.
+
+==Death==
+Freeman died in Hanover on August 20, 1808 (age 63 years, 152 days). He is [[burial|interred]] at Hanover Center Cemetery, Hanover, New Hampshire.
+
+==Family life==
+Son of Edmund and Martha Otis Freeman,<ref>{{cite web|title=Jonathan Freeman|url=http://wc.rootsweb.ancestry.com/cgi-bin/igm.cgi?op=GET&db=oldmankew&id=I5201|publisher=2012 Ancestry.com|accessdate=2 January 2014}}</ref> Freeman married Sarah Huntington on February 2, 177,<ref>{{cite web|title=Jonathan Freeman|url=http://freepages.genealogy.rootsweb.ancestry.com/~dav4is/ODTs/FREEMAN.shtml#FRMN133|publisher=Freeman Families|accessdate=2 January 2014}}</ref> and she bore eleven children of whom nine lived beyond infancy, Peyton R., Jonathan, Christopher, Edward, Sarah, Asa, Samuel, and Hanna.<ref>{{cite book|title=Freeman Genealogy|year=1875|publisher=Boston: Franklin Press: Rand, Avery, and Company 1875|page=[https://archive.org/details/freemangenealogy1875free/page/126 126]|url=https://archive.org/details/freemangenealogy1875free|accessdate=25 July 2014}}</ref> His nephew, [[Nathaniel Freeman, Jr.]], was also a U.S. Representative from Massachusetts.<ref>{{cite book|last1=Scales|first1=John|title=History of Strafford County, New Hampshire and Representative Citizens|year=1914|publisher=Richmond-Arnold, 1914 - Strafford County (N.H.)|page=[https://archive.org/details/historyofstraffo00scal_0/page/38 38]|url=https://archive.org/details/historyofstraffo00scal_0|accessdate=25 July 2014}}</ref>
+
+==References==
+{{reflist|2}}
+
+==External links==
+ 
+{{CongBio|F000364}}
+<br/><!--this break is to put visual space between the last information and the following template if needed-->
+
+{{S-start}}
+{{s-par|us-hs}}
+{{succession box |  before=[[Nicholas Gilman]] |  title=[[United States House of Representatives|U.S. Representative of New Hampshire]] |  years=1797—1801 |  after=[[Samuel Livermore]]}}
+{{S-end}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Freeman, Jonathan}}
+[[Category:1745 births]]
+[[Category:1808 deaths]]
+[[Category:Members of the New Hampshire House of Representatives]]
+[[Category:New Hampshire state senators]]
+[[Category:Members of the United States House of Representatives from New Hampshire]]
+[[Category:New Hampshire Federalists]]
+[[Category:Federalist Party members of the United States House of Representatives]]

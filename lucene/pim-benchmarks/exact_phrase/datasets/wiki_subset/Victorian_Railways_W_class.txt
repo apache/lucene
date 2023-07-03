@@ -1,0 +1,236 @@
+{{Use dmy dates|date=May 2020}}
+{{Use Australian English|date=July 2011}}
+
+{{Infobox locomotive
+|name            = Victorian Railways W class
+|image           = El-zorro-works-train.jpg
+|caption         = El Zorro locomotives W241 (blue) and W244 (orange) on works trains in Melbourne
+|powertype       = Diesel-hydraulic
+|builder         = [[Tulloch Limited]], [[Rhodes, New South Wales]]<ref>[http://www.victorianrailways.net/motive%20power/wdie.html W class diesel at victorianrailways.net]</ref>
+|gauge           = {{track gauge|1600mm}}
+|length          = {{convert|9.34|m|ftin|0|abbr=on}}
+|locoweight      = {{convert|49|t|abbr=on}}
+| primemover= [[Detroit Diesel]] 12V-149
+|enginetype      =
+|generator       =
+|tractionmotors  =
+|maxspeed        = {{convert|32|km/h|mph|0|abbr=on}}
+|poweroutput     = {{convert|360|kW|hp|-1|abbr=on}}
+|numinclass      = 27
+|fleetnumbers    =
+|firstrundate    = 1959
+}}
+
+The '''W class''' are a diesel-hydraulic shunting locomotive ordered and operated by the [[Victorian Railways]] of [[Australia]]. In 2006 locomotive W241 was used to haul the [[4D (train)|4D train]] to the scrapyard,<ref>{{cite web
+|url=http://wongm.railgeelong.com/4d-scrapping
+|title=Wongm's Rail Gallery - 4Ds last run
+|publisher=wongm.railgeelong.com
+|accessdate=4 April 2009
+}}</ref> with W241 and W244 also operated in revenue service by [[El Zorro (railway)|El Zorro]] on works trains.<ref name=vlpnsp>{{cite web
+ |url          = http://www.vline.com.au/rna/rna/information_pack.html
+ |title        = Addenda
+ |date         = 13 October 2008
+ |work         = V/Line ~ Network Access ~ Information Pack
+ |publisher    = vline.com.au
+ |access-date   = 20 October 2008
+ |archive-url  = https://web.archive.org/web/20080719141922/http://www.vline.com.au/rna/rna/information_pack.html
+ |archive-date = 19 July 2008
+ |url-status     = dead}}</ref>
+
+==History==
+In mid 1957 the Victorian Railways called for tenders for a fleet of 25 diesel-hydraulic locomotives rated at 500&nbsp;hp. [[Tulloch Limited|Tulloch Ltd.]], based in [[Rhodes, NSW]], won the contract with an offer for West German styled locomotives, using a Mercedes V12 diesel engine to develop 660&nbsp;hp which was then coupled to a Krupp 2W1D46 hydraulic transmission powering the centre axle, with the leading and trailing axles powered via connecting rods. The full 25 engines entered service in the year from December 1959.<ref>Jehan, D. 2015, A History of Tulloch Engineers and Manufacturers Pyrmont & Rhodes 1883-1974, Eveleigh Press, pp.174-177, {{ISBN|978 1 876568 83 2}}</ref>
+
+Tulloch expected a repeat order for a further 25 units from the Victorian Railways, and also built a standard gauge version numbered 7101 as a demonstrator unit for the New South Wales Railways. However, the latter system rejected the design as not suitable, and so that unit was sold to the Victorian Railways and used for construction trains on the Albury to Melbourne route. After that project was completed it became one of the standard gauge shunting units operating between South Dynon and Spencer Street Station. The final engine, W267, had been built in anticipation of the repeat order that never eventuated - while the contract was written, it was never signed.<ref>Jehan, D. 2015, A History of Tulloch Engineers and Manufacturers Pyrmont & Rhodes 1883-1974, Eveleigh Press, pp.174-177, {{ISBN|978 1 876568 83 2}}</ref> Instead, the final engine was converted to standard gauge and shared duties with W266.
+
+Engines were fitted with controls on both sides of the centre console, although these were removed not long after delivery.<ref>Jehan, D. 2015, A History of Tulloch Engineers and Manufacturers Pyrmont & Rhodes 1883-1974, Eveleigh Press, pp.174-177, {{ISBN|978 1 876568 83 2}}</ref><ref>http://victorianrailways.net/motive%20power/wdie/wdie.html</ref> The engines were initially rostered on local passenger services to Werribee and trialled on Bacchus Marsh runs, but with the low speed limit of 40&nbsp;mph and relatively little power they were unable to keep the latter timetables.
+
+The engines proved incredibly unpopular due to ride quality problems, engine reliability issues and a transmission change needed to achieve mainline running speeds. The high gear setting was removed early on and the class relegated to shunting duties in an attempt to better utilise the fleet. However, the cab profile made visibility a problem in yards, and engine crews had to lean out the side to observe shunting instructions. The cab design also provided no shelter from the weather in storms or on hot days. Common failures included seized transmissions, oil leaking onto the shunters steps presenting a slip hazard, and failed engine blocks.<ref>Motive Power, May/June 2018 (No.117), pp.36-38</ref>
+
+Between 1973 and 1977 at least ten engines, starting with W249,<ref>Motive Power, May/June 2018 (No.117), pp.36-38</ref> had these removed and replaced with General Motors diesel units. Engines after the first had different exhaust arrangements, but all those refitted could be identified externally by a second exhaust stack at the end of the long hood, with the original adjacent to the driving cabin plated over.<ref>http://victorianrailways.net/motive%20power/wdie/wdie.html</ref> The alterations raised the engine hood by 208mm but did not replace the original transmission or gearbox.<ref>Victorian Railways staff newsletter, May 1973</ref>
+
+The class was generally allocated to Ballarat, Geelong and Melbourne for short shunting trips, and one each at Ararat, Bendigo and Seymour explicitly for yard work only. However on the odd occasion W241 (Seymour Based) was use on the Shepperton Goods and also out to Rushworth & Colbinabbin. It also made it to Benalla a few times. <ref>Information from former Depot Foreman Seymour.</ref>
+
+==New South Wales 71 class locomotive==
+{{Infobox locomotive
+|name             = 
+|powertype        = Diesel-hydraulic
+|image            = Arhs 7101 clark.jpg
+|alt              = 250px
+|caption          = 7101 at [[Delec Locomotive Depot]] in 1961
+|builder          = [[Tulloch Limited]], [[Rhodes, New South Wales|Rhodes]]
+|ordernumber      = 
+|serialnumber     = 
+|buildmodel       = 
+|builddate        = 1960
+|totalproduction  = 1
+|rebuilder        = 
+|rebuilddate      = 
+|numberrebuilt    = 
+|aarwheels        = 
+|uicclass         = C
+|gauge            = {{Track gauge|impsg}}
+|trucks           = 
+|bogies           = 
+|wheeldiameter    = 
+|trailingdiameter = 
+|minimumcurve     = 
+|wheelbase        = 
+|length           = {{convert|9.34|m|ftin|0|abbr=on}}
+|width            = 
+|height           = 
+|axleload         = 
+|weightondrivers  = 
+|locoweight       = 
+|fueltype         = [[Diesel fuel|Diesel]]
+|fuelcap          = 
+|lubecap          = 
+|coolantcap       = 
+|watercap         = 
+|sandcap          =
+|powersupply      = 
+|consumption      = 
+|watercons        = 
+|primemover       = [[Mercedes-Benz]]<!-- See text below -->
+|rpmrange         = 
+|enginetype       = [[V12 engine|V12]]
+|aspiration       = 
+|displacement     = 
+|alternator       = 
+|generator        = 
+|tractionmotors   =
+|headendpower     =
+|cylindercount    = 12
+|cylindersize     = (?)
+|transmission     = [[Torque converter|Hydraulic]]
+|multipleworking  = 
+|maxspeed         = {{convert|32|km/h|mph|0|abbr=on}}
+|poweroutput      = {{convert|360|kW|hp|-1|abbr=on}}<!-- Does not agree with text -->
+|tractiveeffort   = 
+|factorofadhesion = 
+|trainheating     = 
+|locobrakes       = 
+|locobrakeforce   = 
+|trainbrakes      = 
+|safety           = 
+|operator         = [[New South Wales Government Railways]]
+|operatorclass    = 
+|powerclass       = 
+|numinclass       = 1
+|fleetnumbers     = 7101
+|officialname     = 
+|nicknames        = 
+|axleloadclass    = 
+|locale           = 
+|deliverydate     = 
+|firstrundate     = 11 November 1960
+|lastrundate      = 
+|retiredate       = 21 June 1961
+|withdrawndate    = 
+|preservedunits   = 
+|restoredate      = 
+|scrapdate        = 
+|currentowner     = 
+|disposition      = Converted to W266}}
+
+The '''71 class''' was a class of diesel locomotive operated by the [[New South Wales Government Railways]] in Australia.
+
+===Powertrain===
+The locomotive was of the 0-6-0 wheel arrangement, fitted with a 12-cylinder [[Mercedes-Benz]] engine, [[Krupp]] [[Torque converter|hydraulic transmission]] and axle-gear and [[Behr]] hydraulic cooling equipment.
+
+===History===
+Having just completed 25 {{RailGauge|1600mm|allk=on}} {{convert|650|hp|kW|abbr=on}}<!-- Does not agree with infobox --> [[diesel-hydraulic]] shunting [[Victorian Railways W class (diesel-hydraulic)|W class]] locomotives for the [[Victorian Railways]], [[Tulloch Limited]], with a view to receiving an order for similar units, offered the [[New South Wales Government Railways]] a similar {{RailGauge|1435mm|allk=on}} version in 1960 for a 12-month testing period. The offer was accepted and the unit was taken into service on 11 November 1960 numbered 7101. Although allocated to [[Delec Locomotive Depot]], all servicing was done at Tulloch Limited. No. 7101 was used on local transfer and shunting trips in the Sydney metropolitan area. It operated under conditions similar to the [[New South Wales 70 class locomotive|70-class]] then in operation.
+
+In mid-1961, Tulloch Limited was experiencing operating difficulties and was unable to fulfil their obligations in regard to the hiring. 7101 was returned on 21 June 1961 and sold to Victorian Railways, who used the locomotive from 4 July on the construction of the [[North East standard gauge line, Victoria|North East standard gauge line]] between [[Albury, New South Wales|Albury]] and [[Melbourne]].<ref>{{cite book|last=Turton|first=Keith W|title=Six and a Half Inches From Destiny|publisher = Australian Railway Historical Society (Victorian Division)|year=1973|isbn =0-858490-12-9|page=102}}</ref> It was repainted in the same colours as the 25 broad gauge units and renumbered W266.<ref>''The Railway News'' June 1968 page 11</ref>
+
+==Locomotives==
+Table details are drawn from Newsrail, December 1982 p.&nbsp;311.
+
+{| class="wikitable collapsible sortable"
+! Locomotive  !! Builders No. !! Named  !! Built !! In Service  !! Upgraded engine !! Current/Last Owner  !! 1982 status<ref>Newsrail, December 1982 p.311</ref> !! Current status !! Notes 
+|-
+| W241  || 006 || Peter Steward  || 1959 || 1959-12-21  || Y || [[Mornington Railway]] || At Seymour under repairs || Preserved - Operational  || Delivered 2015-09-20
+|-
+| W242  || 007 ||  || 1960-01 || 1960-01-30  || N || Victorian Railways  || At Ballarat || Scrapped  || 
+|-
+| W243  || 008 ||  || 1960-02 || 1960-02-26  || N || [[Australian Railway Historical Society|ARHS Victorian Division]]  || At Ballarat || Preserved - Static  || 
+|-
+| W244  || 009 ||  || 1960-03 || 1960-03-14  || Y || 707 Operations  || At Geelong || Stored  || 
+|-
+| W245  || 010 ||  || 1960-03 || 1960-04-01  || Y || Victorian Railways  ||  || Scrapped 1982-09-30 || 
+|-
+| W246  || 011 ||  || 1960-04 || 1960-25-04  || N || Victorian Railways  || At Ballarat Workshops under repairs || Scrapped  || 
+|-
+| W247  || 012 ||  || 1960-05 || 1960-05-09  || N || Victorian Railways  || At Ballarat as workshops pilot || Scrapped 1987-07-xx<ref>Medlin (2004) p.29</ref> || 
+|-
+| W248  || 013 ||  || 1960-05 || 1960-05-22  || N || Victorian Railways  || At Ballarat || Scrapped 1983-04-26<ref>Medlin (2004) p.29</ref> || 
+|-
+| W249  || 014 ||  || 1960-05 || 1960-05-30  || Y || Victorian Railways  || At Bendigo || Scrapped 1987-07-xx<ref>Medlin (2004) p.29</ref> || 
+|-
+| W250  || 015 ||  || 1960-06 || 1960-06-10  || Y || [[Yarra Valley Railway|Yarra Valley Tourist Railway]]  || At Ballarat under repairs || Preserved - Operational  || 
+|-
+| W251  || 016 ||  || 1960-06 || 1960-06-20  || || Victorian Railways  ||  || Scrapped 1982-09-30 || 
+|-
+| W252  || 017 ||  || 1960-06 || 1960-06-30  || Y || Victorian Railways  || At Ballarat under repairs || Scrapped  || 
+|-
+| W253  || 018 ||  || 1960-07 || 1960-07-13  || N || Victorian Railways  || At Ballarat Workshops under repairs || Scrapped  || 
+|-
+| W254  || 019 ||  || 1960-07 || 1960-07-23  || || Victorian Railways  ||  || Scrapped 1982-06-01. || 
+|-
+| W255  || 020 ||  || 1960-07 || 1960-08-02  || Y || ARHS Victorian Division  || At Newport as pilot || Preserved - Static  || 
+|-
+| W256  || 022 ||  || 1960-08 || 1960-08-13  || || Victorian Railways  ||  || Scrapped 1982-03-24<ref>Medlin (2004) p.30</ref> || 
+|-
+| W257  || 023 ||  || 1960-08 || 1960-08-26  || Y || Victorian Railways  || At Ballarat Workshops under repairs || Scrapped  || 
+|-
+| W258  || 024 ||  || 1960-08 || 1960-09-06  || N || Victorian Railways  || At Geelong || Scrapped  || 
+|-
+| W259  || 025 ||  || 1960-09 || 1960-09-28  || Y || Victorian Railways  || At Bendigo as workshops pilot || Scrapped 1987-07-xx<ref>Medlin (2004) p.30</ref> || 
+|-
+| W260  || 026 ||  || 1960-09 || 1960-10-04  || N || RLG  || At Ballarat as pilot || Scrapped 2010-xx-xx<ref>Motive Power, May/June 2018 (No.117), pp.36-38</ref>  || Scrapped at the [[Seymour Rail Heritage Centre]]. Was the last remaining unit (aside from W243) fitted with an original Mercedes engine.<ref>Motive Power, May/June 2018 (No.117), pp.36-38</ref> Was displayed at Tocumwal.<ref>Medlin (2004) p.30</ref>
+|-
+| W261  || 027 ||  || 1960-10 || 1960-10-21  || N || Victorian Railways  ||  || Scrapped 1982-06-01 || 
+|-
+| W262  || 029 ||  || 1960-11 || 1960-11-18  || Y || Victorian Railways  || At Geelong || Scrapped 1987-07-xx<ref>Medlin (2004) p.30</ref> || 
+|-
+| W263  || 030 ||  || 1960-11 || 1960-11-27  || N || Victorian Railways  || At Ararat || Scrapped 1987-07-xx<ref>Medlin (2004) p.31</ref> || 
+|-
+| W264  || 032 ||  || 1960-12 || 1960-12-10  || N || Victorian Railways  ||  || Scrapped 1982-09-30 || 
+|-
+| W265  || 031 ||  || 1960-12 || 1960-12-22  || N || Victorian Railways  ||  || Scrapped 1981-12-24 || 
+|-
+| W266  || 028 ||  || 1960-10 || 1961-07-06  || Y || Victorian Railways  ||  || Scrapped 1982-06-01 || Standard gauge pilot. Ex NSW 7101 
+|-
+| W267  || 036 ||  || 1961-11 || 1961-12-18  || N || Victorian Railways  ||  || Scrapped 1980-05-??.  || Was broad gauge until 1962-02-10.
+|}
+
+==Model railways==
+Brass models of the W Class have been produced in HO Scale by Trainbuilder, including five each of the original (241-243, 251 and 265) and modified (241, 245, 257, 262 and 266), plus W250 as preserved, 7101 in Indian Red and W244 in the faux-V/Line livery.<ref>http://trainbuilder.com/pdf/wclass.pdf</ref>
+
+As of mid-2019, IDR Models is producing ready-to-run HO Scale models of the class in both original and re-engined forms.<ref>https://www.facebook.com/idrmodels/photos/a.1460754644031534/2239546416152349/?type=3&theater</ref>
+
+==See also==
+
+{{Portal|Trains|Australia}}
+* [[WAGR T class (diesel)]]
+
+== References ==
+* [https://sites.google.com/site/vicrailways/home/w-class Vicrailways - W class]
+{{Reflist}}
+
+== External links ==
+* [http://www.victorianrailways.net/motive%20power/wdie/wdie.html victorianrailways.net - W class diesel hydraulic locomotives]
+
+{{VRLocos}}
+{{NSWLocos|state=collapsed}}
+
+{{DEFAULTSORT:Victorian Railways W Class (Diesel-Hydraulic)}}
+[[Category:Railway locomotives introduced in 1960]]
+[[Category:Standard gauge locomotives of Australia]]
+[[Category:Clyde Engineering locomotives]]
+[[Category:Victorian Railways diesel locomotives|W class]]
+[[Category:Victorian Railways locomotives|W class (diesel)]]
+[[Category:C locomotives]]
+[[Category:Railway locomotives introduced in 1959]]
+[[Category:Diesel-hydraulic locomotives of Australia| ]]
+[[Category:Tulloch Limited locomotives]]
+[[Category:Broad gauge locomotives in Australia]]

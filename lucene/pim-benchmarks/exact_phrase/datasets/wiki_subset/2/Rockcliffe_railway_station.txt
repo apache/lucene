@@ -1,0 +1,75 @@
+{{Use dmy dates|date=August 2017}}
+{{Use British English|date=August 2017}}
+{{Infobox station
+| name                = Rockcliffe
+| status              = Disused
+| image               = 
+| borough             = [[Rockcliffe, Cumbria|Rockcliffe]], [[City of Carlisle]]
+| country             = United Kingdom
+| coordinates         = {{coord|54.9410|-2.9846|type:railwaystation_region:GB|display=inline,title}}
+| grid_name           = [[Ordnance Survey National Grid|Grid reference]]
+| grid_position       = {{gbmapscaled|NY370611|25|NY370611}}
+| platforms           = 2
+| original            = [[Caledonian Railway]]
+| pregroup            = [[Caledonian Railway]]
+| postgroup           = [[London Midland and Scottish Railway]]
+| years               = 10 September 1847
+| events              = Station opened<ref name="Butt21">Butt (1995), page 198</ref>
+| years1              = 1 January 1917
+| events1             = Station closed<ref name="Butt21"/>
+| years2              = 2 December 1919
+| events2             = Station reopened<ref name="Butt21"/>
+| years3              = 17 July 1950
+| events3             = Passenger service withdrawn but workmen's trains continued.
+             Station renamed Rockcliffe Halt<ref name="Butt21"/>
+| years4              = 6 December 1965
+| events4             = Station closed<ref name="Butt21"/>
+}}
+
+'''Rockcliffe railway station''', later '''Rockcliffe Halt''' was a station which served the rural area around [[Rockcliffe, Cumbria|Rockcliffe]], Rockcliffe Parish, north of [[Carlisle, Cumbria|Carlisle]] in the [[English county]] of [[Cumbria]]. It was served by local trains on what is now known as the [[West Coast Main Line]]. The nearest station for Rockcliffe is now at [[Carlisle railway station|Carlisle]]. It lay some distance from the village.
+
+== History ==
+Opened by the [[Caledonian Railway]],<ref name="Butt21"/> it became part of the [[London Midland and Scottish Railway]] during the [[Railways Act 1921|Grouping]] of 1923 and BR in 1948. It closed briefly during WW1 and was renamed as Rockcliffe Halt in 1950 when regular passenger service ceased after which it was only used by railway workers at the nearby marshalling yards  until 1965.<ref>[http://www.cumbrianrailways.org.uk/Scottish.php Cumbrian Railways Association] Retrieved : 2012-11-09</ref>
+
+The station had a stationmaster's house, with combined ticket office and a waiting room. The line is still double track here. 
+{{Historical Rail Start}}
+{{Rail line
+|previous = {{stnlnk|Carlisle}}<br /><small>''Line and station open''</small>
+|next     = {{stnlnk|Floriston}}<br /><small>''Line open; Station closed''</small>
+|route    = [[Caledonian Railway]]<br /><small>[[Caledonian Railway Main Line#Carstairs to Carlisle|Main Line]]</small>
+|col      = {{Caledonian colour}} |lightcol={{Caledonian light}} }}
+{{end}}
+
+== The site today ==
+Trains pass at speed on the electrified [[West Coast Main Line]]. The station platforms have been demolished, the pedestrian overbridge has been removed, however the stationmaster's house remains as a private dwelling.
+
+{{Caledonian Railway (Carstairs to Carlisle)|collapse=yes}}
+
+== References ==
+
+=== Notes ===
+{{reflist}}
+
+=== Sources ===
+* {{Butt-Stations}}
+* {{Jowett-Atlas}}
+* {{Jowett-Nationalised}}
+* [http://www.railscot.co.uk/Caledonian_Railway/frame.htm RAILSCOT on Caledonian Railway]
+
+==External links==
+* [http://www.railbrit.co.uk/Caledonian_Railway/frame.htm Rail Brit]
+* [http://www.cumbrianrailways.org.uk/Scottish.php Cumbrian Railways Association]
+* [http://www.cumbria-railways.co.uk/cumbria_railway_photograph_collection.html Rockcliffe Station]
+* [http://www.geog.port.ac.uk/webmap/thelakes/html/lgaz/lk15622.htm Cumbria Gazetteer]
+
+[[Category:Railway stations in Great Britain opened in 1847]]
+[[Category:Railway stations in Great Britain closed in 1917]]
+[[Category:Railway stations in Great Britain opened in 1919]]
+[[Category:Railway stations in Great Britain closed in 1965]]
+[[Category:Disused railway stations in Cumbria]]
+[[Category:Former Caledonian Railway stations]]
+[[Category:1847 establishments in England]]
+[[Category:1965 disestablishments in England]]
+
+
+{{NorthWestEngland-railstation-stub}}

@@ -1,0 +1,40 @@
+{{notability|date=January 2017}}
+{{Chembox
+| ImageFile = Coprinol.png
+| ImageSize = 150px
+| ImageAlt = 
+| IUPACName = 
+| OtherNames = 
+|Section1={{Chembox Identifiers
+| CASNo = 
+| PubChem = 42608175
+| ChEMBL = 1075969
+| ChemSpiderID = 24680015
+| SMILES = CC1=C2CC(CC2=C(C(=C1CCO)C)O)(C)C
+| InChI = 1/C15H22O2/c1-9-11(5-6-16)10(2)14(17)13-8-15(3,4)7-12(9)13/h16-17H,5-8H2,1-4H3
+| InChIKey = GCMUHPCLXBXQDH-UHFFFAOYAD
+| StdInChI = 1S/C15H22O2/c1-9-11(5-6-16)10(2)14(17)13-8-15(3,4)7-12(9)13/h16-17H,5-8H2,1-4H3
+| StdInChIKey = GCMUHPCLXBXQDH-UHFFFAOYSA-N}}
+|Section2={{Chembox Properties
+| C=15|H=22|O=2
+| Appearance = 
+| Density = 
+| MeltingPt = 
+| BoilingPt = 
+| Solubility = }}
+|Section3={{Chembox Hazards
+| MainHazards = 
+| FlashPt = 
+| AutoignitionPt = }}
+}}
+
+'''Coprinol''' is an [[antibiotic]] isolated from ''[[Coprinus]]''.<ref>{{Cite journal | pmid=11302209 | year=2001 | last1=Johansson | first1=M | title=Coprinol, a new antibiotic cuparane from a Coprinus species | journal=Zeitschrift für Naturforschung C | volume=56 | issue=1–2 | pages=31–4 | last2=Sterner | first2=O | last3=Labischinski | first3=H | last4=Anke | first4=T | doi=10.1515/znc-2001-1-205 | s2cid=44554459 }}</ref>
+
+==References==
+{{reflist}}
+
+[[Category:Antibiotics]]
+[[Category:Phenols]]
+
+
+{{organic-chem-stub}}

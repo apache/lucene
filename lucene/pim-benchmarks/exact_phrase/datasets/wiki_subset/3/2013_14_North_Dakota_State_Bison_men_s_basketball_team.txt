@@ -1,0 +1,825 @@
+{{short description|American college basketball season}}
+{{Infobox NCAA team season
+  |mode=Basketball
+  |year=2013–14
+  |prev_year=2012–13
+  |next_year=2014–15
+  |team= North Dakota State Bison
+  |image= North Dakota State Bison wordmark.svg
+  |image_size=175
+  |conference=The Summit League
+  |division=
+  |short_conf=The Summit
+  |CoachRank=
+  |APRank=
+  |record=26–7
+  |conf_record=12–2
+  |head_coach=[[Saul Phillips (basketball)|Saul Phillips]]
+  |hc_year = 7th
+  |asst_coach1=[[David Richman]]
+  |asst_coach2=[[Will Ryan (basketball)|Will Ryan]]
+  |asst_coach3=Freddy Coleman
+  |asst_coach4=
+  |stadium=[[Bison Sports Arena]]
+  |champion=The Summit League Regular Season & Tournament Champions
+  |bowl= [[2014 NCAA Men's Division I Basketball Tournament|NCAA Tournament]] 
+  |bowl_result=Third Round
+}}
+{{2013–14 The Summit League men's basketball standings}}
+The '''2013–14 North Dakota State Bison men's basketball team''' represented [[North Dakota State University]] in the [[2013–14 NCAA Division I men's basketball season]]. The Bison, led by seventh year head coach [[Saul Phillips (basketball)|Saul Phillips]], played their home games at the [[Bison Sports Arena]] and were members of [[The Summit League]]. They finished the season 26–7, 12–2 in The Summit League play to finish win The Summit League regular season championship. They were also champions of [[2014 The Summit League Men's Basketball Tournament|The Summit League Tournament]] to earn an automatic bid to the [[2014 NCAA Men's Division I Basketball Tournament|NCAA Tournament]]. In the NCAA Tournament, they defeated Oklahoma in the second round before losing to San Diego State in the round of 32.
+
+At the end of the season, Saul Phillips resigned to take the head coaching job at [[Ohio Bobcats men's basketball|Ohio]]. He was 134–84 in seven seasons. He was replaced by associate head coach [[David Richman]].
+
+==Roster==
+{| class="wikitable sortable" style="font-size: 95%;"
+!Number
+!Name
+!Position
+!Height
+!Weight
+!Year
+!Hometown
+|-
+| 0
+| Fred Newell
+| Guard
+| 5–8
+| 160
+| Senior
+| [[Lakeville, Minnesota]]
+|-
+| 3
+| Mike Felt
+| Guard
+| 6–3
+| 190
+| Senior
+| [[Redwood Falls, Minnesota]]
+|-
+| 12
+| [[Lawrence Alexander (basketball)|Lawrence Alexander]]
+| Guard
+| 6–3
+| 180
+| Junior
+| [[Peoria, Illinois]]
+|-
+| 13
+| Carlin Dupree
+| Guard
+| 6–3
+| 180
+| Freshman
+| [[Milwaukee, Wisconsin]]
+|-
+| 21
+| A. J. Jacobson
+| Guard
+| 6–6
+| 205
+| Freshman
+| [[Fargo, North Dakota]]
+|-
+| 22
+| Kory Brown
+| Guard
+| 6–4
+| 200
+| Sophomore
+| [[Hoffman Estates, Illinois]]
+|-
+| 23
+| Brett VandenBergh
+| Forward
+| 6–5
+| 215
+| Sophomore
+| [[De Pere, Wisconsin]]
+|-
+| 24
+| [[Taylor Braun]]
+| Guard
+| 6–7
+| 210
+| Senior
+| [[Newberg, Oregon]]
+|-
+| 25
+| Joel Lindberg
+| Guard
+| 6–2
+| 190
+| Junior
+| [[Superior, Wisconsin]]
+|-
+| 32
+| [[TrayVonn Wright]]
+| Forward
+| 6–7
+| 185
+| Senior
+| [[Waterloo, Iowa]]
+|-
+| 34
+| Chris Kading
+| Forward
+| 6–8
+| 230
+| Sohpmore
+| [[De Pere, Wisconsin]]
+|-
+| 40
+| Dexter Werner
+| Forward
+| 6–6
+| 235
+| RS–Freshman
+| [[Bismarck, North Dakota]]
+|-
+| 42
+| Marshall Bjorklund
+| Forward
+| 6–8
+| 250
+| Senior
+| [[Arlington, Minnesota]]
+|-
+| 44
+| Jordan Aaberg
+| Forward
+| 6–9
+| 225
+| Senior
+| [[Rothsay, Minnesota]]
+|}
+
+==Schedule==
+<ref>{{Cite web|url=https://gobison.com/schedule.aspx?path=mbball|title=North Dakota State University Athletics - 2018-19 Men's Basketball Schedule|website=gobison.com|accessdate=Feb 24, 2019}}</ref>
+{{CBB schedule start|time=|rank=|ranklink=[[2013-14 NCAA Division I men's basketball rankings]]|rankyear=2013|tv=|record=yes|attend=yes}}
+|-
+!colspan=9 style="background:#008000; color:#FFFF00;"| Exhibition
+{{CBB schedule entry
+| date         = 10/30/2013
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Concordia College (Moorhead)|Concordia–Moorhead]]
+| opprank      = 
+| site_stadium = [[Bison Sports Arena]]
+| site_cityst  = [[Fargo, North Dakota|Fargo, ND]]
+| gamename     = 
+| attend       = 2,329
+| tv           = 
+| score        = 98–49
+| overtime     =
+| record       = 
+}}
+|-
+!colspan=9 style="background:#008000; color:#FFFF00;"| Regular season
+{{CBB schedule entry
+| date         = 11/08/2013
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Viterbo University|Viterbo]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 2,157
+| tv           = 
+| score        = 93–49
+| overtime     =
+| record       = 1–0
+}}
+{{CBB schedule entry
+| date         = 11/14/2013
+| time         = 10:30 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Saint Mary's Gaels men's basketball team|Saint Mary's]]
+| opprank      = 
+| site_stadium = [[McKeon Pavilion]]
+| site_cityst  = [[Moraga, California|Moraga, CA]]
+| gamename     = 
+| attend       = 2,178
+| tv           = 
+| score        = 65–78
+| overtime     =
+| record       = 1–1
+}}
+{{CBB schedule entry
+| date         = 11/18/2013
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Southern Miss Golden Eagles basketball team|Southern Mississippi]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 3,724
+| tv           = [[MeTV]]
+| score        = 69–70
+| overtime     =
+| record       = 1–2
+}}
+{{CBB schedule entry
+| date         = 11/20/2013
+| time         = 6:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Western Michigan Broncos men's basketball team|Western Michigan]]
+| opprank      = 
+| site_stadium = [[University Arena (Western Michigan University)|University Arena]]
+| site_cityst  = [[Kalamazoo, Michigan|Kalamazoo, MI]]
+| gamename     = 
+| attend       = 2,111
+| tv           = 
+| score        = 83–74
+| overtime     =
+| record       = 2–2
+}}
+{{CBB schedule entry
+| date         = 11/24/2013
+| time         = 5:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 University of North Dakota men's basketball team|North Dakota]]
+| opprank      = 
+| site_stadium = [[Betty Engelstad Sioux Center]]
+| site_cityst  = [[Grand Forks, North Dakota|Grand Forks, ND]]
+| gamename     = 
+| attend       = 3,142
+| tv           = [[Midco Sports Network|MidcoSN]]/[[Fox College Sports|FCS Pacific]]
+| score        = 77–95
+| overtime     =
+| record       = 2–3
+}}
+{{CBB schedule entry
+| date         = 11/29/2013
+| time         = 10:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Santa Clara Broncos men's basketball team|Santa Clara]]
+| opprank      = 
+| site_stadium = [[Leavey Center]]
+| site_cityst  = [[Santa Clara, California|Santa Clara, CA]]
+| gamename     = Cable Car Classic
+| attend       = 850
+| tv           = 
+| score        = 91–85
+| overtime     =
+| record       = 3–3
+}}
+{{CBB schedule entry
+| date         = 11/30/2013
+| time         = 10:45 pm
+| nonconf      = yes
+| homecoming   =
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = [[2013–14 Rider Broncs men's basketball team|Rider]]
+| opprank      = 
+| site_stadium = Leavey Center
+| site_cityst  = Santa Clara, CA
+| gamename     = Cable Car Classic
+| attend       = 1,024
+| tv           = 
+| score        = 87–70
+| overtime     =
+| record       = 4–3
+}}
+{{CBB schedule entry
+| date         = 12/02/2013
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Valley City State University|Valley City State]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 1,047
+| tv           = 
+| score        = 86–43
+| overtime     =
+| record       = 5–3
+}}
+{{CBB schedule entry
+| date         = 12/07/2013
+| time         = 12:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Bryant Bulldogs men's basketball team|Bryant]]
+| opprank      = 
+| site_stadium = [[Chace Athletic Center]]
+| site_cityst  = [[Smithfield, Rhode Island|Smithfield, RI]]
+| gamename     = BlackRock Gotham Classic
+| attend       = 2,200
+| tv           = 
+| score        = 66–62
+| overtime     =
+| record       = 6–3
+}}
+{{CBB schedule entry
+| date         = 12/11/2013
+| time         = 6:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Notre Dame Fighting Irish men's basketball team|Notre Dame]]
+| opprank      = 
+| site_stadium = [[Edmund P. Joyce Center|Purcell Pavilion]]
+| site_cityst  = [[Notre Dame, Indiana|Notre Dame, IN]]
+| gamename     = BlackRock Gotham Classic
+| attend       = 7,662
+| tv           = [[ESPNU]]
+| score        = 73–69
+| overtime     =
+| record       = 7–3
+}}
+{{CBB schedule entry
+| date         = 12/14/2013
+| time         = 7:15 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Ohio State Buckeyes men's basketball team|Ohio State]]
+| opprank      = 3
+| site_stadium = [[Value City Arena]]
+| site_cityst  = [[Columbus, Ohio|Columbus, OH]]
+| gamename     = BlackRock Gotham Classic
+| attend       = 15,272
+| tv           = [[Big Ten Network|BTN]]
+| score        = 62–79
+| overtime     =
+| record       = 7–4
+}}
+{{CBB schedule entry
+| date         = 12/16/2013
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Delaware Fightin' Blue Hens men's basketball team|Delaware]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = BlackRock Gotham Classic
+| attend       = 3,014
+| tv           = MeTV
+| score        = 85–66
+| overtime     =
+| record       = 8–4
+}}
+{{CBB schedule entry
+| date         = 12/21/2013
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Towson Tigers men's basketball team|Towson]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 2,905
+| tv           = [[NBC North Dakota]]/[[ESPN3]]
+| score        = 90–82
+| overtime     =
+| record       = 9–4
+}}
+{{CBB schedule entry
+| date         = 12/23/2013
+| time         = 8:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Utah Valley Wolverines men's basketball team|Utah Valley]]
+| opprank      = 
+| site_stadium = [[UCCU Center]]
+| site_cityst  = [[Orem, Utah|Orem, UT]]
+| gamename     = 
+| attend       = 1,092
+| tv           = 
+| score        = 74–70
+| overtime     =
+| record       = 10–4
+}}
+{{CBB schedule entry
+| date         = 01/04/2014
+| time         = 7:00 pm
+| nonconf      = yes
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Mayville State University|Mayville State]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 1,224
+| tv           = 
+| score        = 96–45
+| overtime     =
+| record       = 11–4
+}}
+{{CBB schedule entry
+| date         = 01/09/2014
+| time         = 6:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 IPFW Mastodons men's basketball team|IPFW]]
+| opprank      = 
+| site_stadium = [[Hilliard Gates Sports Center|Gates Sports Center]]
+| site_cityst  = [[Fort Wayne, Indiana|Fort Wayne, IN]]
+| gamename     = 
+| attend       = 608
+| tv           = 
+| score        = 71–82
+| overtime     =
+| record       = 11–5 (0–1)
+}}
+{{CBB schedule entry
+| date         = 01/11/2014
+| time         = 1:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 IUPUI Jaguars men's basketball team|IUPUI]]
+| opprank      = 
+| site_stadium = [[IUPUI Gymnasium|The Jungle]]
+| site_cityst  = [[Indianapolis|Indianapolis, IN]]
+| gamename     = 
+| attend       = 778
+| tv           = ESPN3
+| score        = 87–64
+| overtime     =
+| record       = 12–5 (1–1)
+}}
+{{CBB schedule entry
+| date         = 01/16/2014
+| time         = 7:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Nebraska–Omaha Mavericks men's basketball team|Nebraska–Omaha]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 3,274
+| tv           = MeTV
+| score        = 91–69
+| overtime     =
+| record       = 13–5 (2–1)
+}}
+{{CBB schedule entry
+| date         = 01/18/2014
+| time         = 2:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Western Illinois Leathernecks men's basketball team|Western Illinois]]
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 4,284
+| tv           = MeTV
+| score        = 65–52
+| overtime     =
+| record       = 14–5 (3–1) 
+}}
+{{CBB schedule entry
+| date         = 01/25/2014
+| time         = 4:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 South Dakota State Jackrabbits men's basketball team|South Dakota State]]
+| opprank      = 
+| site_stadium = [[Frost Arena]]
+| site_cityst  = [[Brookings, South Dakota|Brookings, SD]]
+| gamename     = 
+| attend       = 4,859
+| tv           = MidcoSN/FCS
+| score        = 85–77
+| overtime     =
+| record       = 15–5 (4–1) 
+}}
+{{CBB schedule entry
+| date         = 01/30/2014
+| time         = 7:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 South Dakota Coyotes men's basketball team|South Dakota]]
+| opprank      = 
+| site_stadium = [[DakotaDome]]
+| site_cityst  = [[Vermillion, South Dakota|Vermillion, SD]]
+| gamename     = 
+| tv           = MidcoSN
+| score        = 66–63
+| overtime     =
+| attend       = 1,756
+| record       = 16–5 (5–1)
+}}
+{{CBB schedule entry
+| date         = 02/01/2014
+| time         = 5:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[2013–14 Denver Pioneers men's basketball team|Denver]]
+| opprank      = 
+| site_stadium = [[Magness Arena]]
+| site_cityst  = [[Denver|Denver, CO]]
+| gamename     = 
+| tv           = 
+| score        = 63–67
+| overtime     =
+| attend       = 4,021
+| record       = 16–6 (5–2)
+}}
+{{CBB schedule entry
+| date         = 02/06/2014
+| time         = 7:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = IUPUI
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 2,877
+| tv           = MidcoSN/FCS
+| score        = 66–60
+| overtime     =
+| record       = 17–6 (6–2) 
+}}
+{{CBB schedule entry
+| date         = 02/08/2014
+| time         = 4:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = IPFW
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 4,557
+| tv           = MidcoSN/FCS
+| score        = 69–58
+| overtime     =
+| record       = 18–6 (7–2) 
+}}
+{{CBB schedule entry
+| date         = 02/13/2014
+| time         = 7:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = Western Illinois
+| opprank      = 
+| site_stadium = [[Western Hall]]
+| site_cityst  = [[Macomb, Illinois|Macomb, IL]]
+| gamename     = 
+| tv           = 
+| score        = 56–52
+| overtime     =
+| attend       = 1,962
+| record       = 19–6 (8–2)
+}}
+{{CBB schedule entry
+| date         = 02/15/2014
+| time         = 4:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = Nebraska–Omaha 
+| opprank      = 
+| site_stadium = [[Ralston Arena]]
+| site_cityst  = [[Ralston, Nebraska|Ralston, NE]]
+| gamename     = 
+| tv           = MidcoSN/FCS
+| score        = 75–59
+| overtime     =
+| attend       = 2,276
+| record       = 20–6 (9–2)
+}}
+{{CBB schedule entry
+| date         = 02/22/2014
+| time         = 4:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = South Dakota State
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 5,614
+| tv           = MeTV
+| score        = 74–59
+| overtime     =
+| record       = 21–6 (10–2) 
+}}
+{{CBB schedule entry
+| date         = 02/27/2014
+| time         = 7:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = South Dakota
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 3,804
+| tv           = MeTV
+| score        = 82–54
+| overtime     =
+| record       = 22–6 (11–2) 
+}}
+{{CBB schedule entry
+| date         = 03/01/2014
+| time         = 7:00 pm
+| nonconf      = 
+| homecoming   =
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Denver
+| opprank      = 
+| site_stadium = Bison Sports Arena
+| site_cityst  = Fargo, ND
+| gamename     = 
+| attend       = 4,527
+| tv           = NBC North Dakota/ESPN3
+| score        = 78–68
+| overtime     =
+| record       = 23–6 (12–2) 
+}}
+|-
+!colspan=9 style="background:#008000; color:#FFFF00;"| [[2014 The Summit League Men's Basketball Tournament|<span style="color:#FFFF00;">The Summit League Tournament</span>]]
+{{CBB schedule entry
+| date         = 03/10/2014
+| time         = 6:00 pm
+| nonconf      =
+| homecoming   =
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = Denver
+| opprank      = 
+| site_stadium = [[Sioux Falls Arena]]
+| site_cityst  = [[Sioux Falls, South Dakota|Sioux Falls, SD]]
+| gamename     = Semifinals
+| attend       = 6,769
+| tv           = FCS Atlantic
+| score        = 83–48
+| overtime     =
+| record       = 24–6
+}}
+{{CBB schedule entry
+| date         = 03/11/2014
+| time         = 8:00 pm
+| nonconf      =
+| homecoming   =
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = IPFW
+| opprank      = 
+| site_stadium = Sioux Falls Arena
+| site_cityst  = Sioux Falls, SD
+| gamename     = Championship
+| attend       = 4,263
+| tv           = [[ESPN2]]
+| score        = 60–57
+| overtime     =
+| record       = 25–6
+}}
+|-
+!colspan=9 style="background:#008000; color:#FFFF00;"| [[2014 NCAA Men's Division I Basketball Tournament|<span style="color:#FFFF00;">NCAA Tournament</span>]]
+{{CBB schedule entry
+| date         = 03/20/2014
+| time         = 6:27 pm
+| nonconf      = yes
+| homecoming   =
+| away         =
+| neutral      = yes
+| rank         = (12 W)
+| opponent     = [[2013–14 Oklahoma Sooners men's basketball team|Oklahoma]]
+| opprank      = 21 (5 W)
+| site_stadium = [[Spokane Arena]]
+| site_cityst  = [[Spokane, Washington|Spokane, WA]]
+| gamename     = Second round
+| tv           = [[truTV]]
+| attend       = 10,962
+| score        = 80–75
+| overtime     = OT
+| record       = 26–6
+}}
+{{CBB schedule entry
+| date         = 03/22/2014
+| time         = 5:10 pm
+| nonconf      = yes
+| homecoming   =
+| away         =
+| neutral      = yes
+| rank         = (12 W)
+| opponent     = [[2013–14 San Diego State Aztecs men's basketball team|San Diego State]]
+| opprank      = 13 (4 W)
+| site_stadium = Spokane Arena
+| site_cityst  = Spokane, WA
+| gamename     = Third round
+| tv           = [[TNT (U.S. TV network)|TNT]]
+| attend       = 11,623
+| score        = 44–63
+| overtime     =
+| record       = 26–7
+}}
+{{CBB schedule end|rank=| poll=[[AP Poll]], (#) during NCAA Tournament is seed within region W=West|timezone=[[Central Time Zone|Central Time]]}}
+
+==References==
+{{reflist}}
+
+{{North Dakota State Bison men's basketball navbox}}
+
+{{DEFAULTSORT:2013-14 North Dakota State Bison men's basketball team}}
+[[Category:North Dakota State Bison men's basketball seasons]]
+[[Category:2013–14 Summit League men's basketball season|North Dakota State]]
+[[Category:2014 NCAA Division I Men's Basketball Tournament participants|North Dakota State]]
+[[Category:2013 in sports in North Dakota|Bison]]
+[[Category:2014 in sports in North Dakota|Bison]]

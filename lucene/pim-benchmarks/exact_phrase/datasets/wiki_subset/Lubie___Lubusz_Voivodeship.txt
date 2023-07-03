@@ -1,0 +1,43 @@
+{{Other places|Lubień (disambiguation){{!}}Lubień}}
+{{Infobox settlement
+| name = Lubień
+| settlement_type = Village
+| total_type = &nbsp;
+| image_skyline =
+| image_caption =
+| image_flag =
+| image_shield =
+| image_map =
+| subdivision_type = [[Countries of the world|Country]]
+| subdivision_name = {{flag icon|Poland}} [[Poland]]
+| subdivision_type1 = [[Voivodeships of Poland|Voivodeship]]
+| subdivision_name1 = [[Lubusz Voivodeship|Lubusz]]
+| subdivision_type2 = [[Powiat|County]]
+| subdivision_name2 = [[Słubice County|Słubice]]
+| subdivision_type3 = [[Gmina]]
+| subdivision_name3 = [[Gmina Ośno Lubuskie|Ośno Lubuskie]]
+| coordinates = {{coord|52|24|58|N|14|59|24|E|region:PL|display=inline}}
+| pushpin_map = Poland
+| pushpin_label_position = right
+| elevation_m =
+| population_total = 260
+| website = }}
+'''Lubień''' ({{IPA-pl|ˈlubjɛj̃}}) is a [[village]] in the administrative district of [[Gmina Ośno Lubuskie]], within [[Słubice County]], [[Lubusz Voivodeship]], in western Poland.<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) - TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref> 
+
+It lies approximately {{convert|9|km|mi|0}} south-east of [[Ośno Lubuskie]], {{convert|30|km|mi|0|abbr=on}} east of [[Słubice]], {{convert|40|km|mi|0|abbr=on}} south-west of Gorzów Wielkopolski, and {{convert|64|km|mi|0|abbr=on}} north-west of Zielona Góra.
+
+The village has a population of 260.
+
+==References==
+{{reflist}}
+
+<br>
+{{Gmina Ośno Lubuskie}}
+
+{{coord|52|24|58|N|14|59|24|E|region:PL_type:city|display=title}}
+
+{{DEFAULTSORT:Lubien, Lubusz Voivodeship}}
+[[Category:Villages in Słubice County]]
+
+
+{{Słubice-geo-stub}}

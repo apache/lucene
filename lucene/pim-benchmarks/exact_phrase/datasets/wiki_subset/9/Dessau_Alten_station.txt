@@ -1,0 +1,54 @@
+{{Infobox station
+| name                = Dessau-Alten
+| native_name         = 
+| native_name_lang    = 
+| symbol_location     = de
+| symbol              = rail
+| type                = [[Railway station types in Germany|Bf]]
+| image               = Dessau-Alten Bahnhof.JPG
+| alt                 = 
+| caption             = 2012
+| address             = Hünefeldstraße 10<br>06844 [[Dessau]]
+| borough             = [[Saxony-Anhalt]]
+| country             = [[Germany]]
+| coordinates         = {{coord|51.8256|N|12.1934|E|display=inline,title}}
+| elevation           = <!-- {{convert|0|m|abbr=on}} -->
+| owned               = [[DB Netz]]
+| operator            = [[DB Station&Service]] 
+| line                = {{Plainlist|1=
+*[[Dessau–Köthen railway]] <small>({{Kursbuchlink|Region=300-399|Nummer=334}})</small>
+}}
+| distance            = 
+| platforms           = 1 [[side platform]]
+| tracks              = 1
+| train_operators     = [[Abellio Rail Mitteldeutschland]]
+| connections         = 
+| structure           = 
+| parking             = no
+| bicycle             = yes
+| disabled            = yes
+| code                = {{Deutsche Bahn station codes|code=1176|ds100=LDAL<ref name=Eisenbahnatlas>{{cite book|title=Eisenbahnatlas Deutschland (German railway atlas)|edition=2017|publisher=Schweers + Wall|year=2017|isbn=978-3-89494-146-8}}</ref>|ibnr=8011363|category=6<ref name=categories>{{DBCatsURL}}</ref>}}
+| zone                = 
+| website             = [https://www.bahnhof.de/bahnhof-de/bahnhof/Dessau-Alten-1037840 www.bahnhof.de] 
+| opened              = <!-- {{Start date and age|YYYY|MM|DD|df=y}} -->
+| closed              = <!-- {{End date|YYYY|MM|DD|df=y}} -->
+| passengers          = 
+| pass_year           = 
+| pass_rank           = 
+| map_type            = Saxony-Anhalt#Germany#Europe
+| map_caption         = Location within Saxony-Anhalt##Location within Germany##Location within Europe
+| services            = 
+{{s-rail|title=Abellio Rail Mitteldeutschland}}
+{{s-line|system=RB-SA|line=50|previous=Dessau-Mosigkau|next=Dessau}}
+| other_services      = 
+}}
+
+'''Dessau-Alten station''' is a [[railway station]] in the [[Dessau-Alten|Alten]] district of the [[Town#Germany|town]] of [[Dessau]], located in [[Saxony-Anhalt]], [[Germany]].
+
+==References==
+{{reflist|30em}}
+
+==External links==
+
+[[Category:Railway stations in Dessau|Alten]]
+[[Category:Buildings and structures in Dessau]]

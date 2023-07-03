@@ -1,0 +1,48 @@
+{{Infobox cemetery
+|name = Mount Moriah Cemetery
+|image = NJT x Hackensack R fr Bergen Bv Park Av Ridgefield jeh.jpg
+|imagesize = 
+|caption =
+|established = 1910
+|country = United States
+|location = 685 Farivew Avenue<br>[[Fairview, Bergen County, New Jersey]]
+|coordinates = 
+|type = [[Jewish cemetery|Jewish]]
+|owner = 
+|size = 
+|graves=  
+|website = [http://www.mountmoriahcemeteryofnewjersey.org Mount Moriah Cemetery]
+}}
+[[File:FairviewCemetery(MemorialParkMauseleum) 01.jpg|thumb|Entrance on Broad Avenue looking to the western slope of the Hudson Palisades]]
+'''Mount Moriah Cemetery''' is a burial ground in [[Fairview, Bergen County, New Jersey]] in the United States, located on the western slopes of the [[Hudson Palisades]], nearby the [[Fairview Cemetery (Fairview, New Jersey)|Fairview Cemetery]].<ref>{{cite web   | title = Mt. Moriah Jewish Cemetery   | work = Bergen County: Fairview   | publisher = Jewish Cemetery Project.   | date = 2009   | url = http://www.iajgsjewishcemeteryproject.org/new-jersey/fairview-bergen-county.html   | accessdate = 2013-10-02}}</ref>
+
+[[Moriah]] ({{Hebrew Name|hebrew={{Script/Hebrew|מוֹרִיָּה}} |stan=Moriyya |tiber=Môriyyā}}) ([[Arabic language|Arabic]]: مروة ''Marwah'') is the name given to a mountain by the [[Book of Genesis]], in which context it is the location of the [[Binding of Isaac|sacrifice of Isaac]].
+
+==Notable interments==
+*Pesach Ackerman (1928–2013), Rabbi of [[Meseritz Synagogue]]<ref>[http://thevillager.com/2013/06/20/rabbi-pesach-ackerman-of-anshe-meseritz-dies-at-84/ East Villager]</ref>
+*[[Camilla Frydan]] (1887–1949), Austrian-born pianist, singer, composer and song writer
+*Robert P. Grover (1916–1942), first Jewish serviceman from Jersey City to die in WWll<ref>[http://www.njcu.edu/programs/jchistory/Pages/G_Pages/Grover_Park.html NJCU:Robert P. Grover]</ref>
+*Russell Harding (d. 2008), New York City administrator<ref>[https://www.nytimes.com/2012/10/08/nyregion/russell-hardings-blog-chronicled-his-fall-from-grace-and-plans-for-suicide.html?_r=0 New York Times October 7, 2012]</ref>
+*[[Arthur George Klein]] (1904–1968), United States Representative (NY)<ref>[http://www.findagrave.com/cgi-bin/fg.cgi?page=cr&CRid=100116 Find a Grave]</ref>
+*[[Ira Rubin]] (1930–2013), American professional [[contract bridge]] player<ref name=NJ>{{cite web |title=Ira Rubin, world champion bridge player, dies at 82 |url=http://www.northjersey.com/obituaries/190152811_Ira_Rubin__world_champion_bridge_player__dies_at_82.html |publisher=([[Bergen Record]]) North Jersey.com |author=Levin, Jay |date=February 7, 2013 |accessdate=2013-02-09}}</ref>
+
+==See also==
+*[[List of New Jersey cemeteries]]
+*[[List of cemeteries in Hudson County, New Jersey]]
+
+== References ==
+{{Reflist}}
+
+{{coord|40.821054|-74.003061|display=title|type:landmark_region:US-NJ}}
+
+== External links ==
+*[http://www.findagrave.com/cgi-bin/fg.cgi?page=cr&CRid=100116 Mount Moriah Cemetery at Find a Grave]
+
+<!--- Categories --->
+[[Category:Cemeteries in Bergen County, New Jersey]]
+[[Category:Jewish cemeteries in New Jersey]]
+[[Category:Fairview, Bergen County, New Jersey]]
+
+
+{{US-cemetery-stub}}
+{{Jewish-cemetery-stub}}

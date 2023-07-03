@@ -1,0 +1,8 @@
+{{#switch:{{{1}}}
+ | name_format=font-size: 160%; padding:8px; background-color:black; color:white; font-family: Helvetica, Arial, sans-serif; font-weight: bolder;
+ | thbgcolor=666666
+ | thcolor=FFFFFF
+ | display_as=[[Los Angeles County Metropolitan Transportation Authority|Los Angeles County Metro]] station
+}}<noinclude>
+[[Category:Los Angeles Metro templates]]
+</noinclude>

@@ -1,0 +1,224 @@
+{{Use dmy dates|date=June 2016}}
+{{Use Australian English|date=June 2016}}
+{{infobox football tournament season
+| title           = [[NSL Cup]]
+| image           = 
+| imagesize       = 
+| caption         = 
+| year            = 1990–91
+| other_title     = 
+| country         = {{flag|Australia}} 
+| num_teams       = 14
+| champions       = 
+| runner-up       = 
+| matches         = 
+| goals           = 
+| top goal scorer = 
+| player          = 
+| prevseason      = [[1989–90 NSL Cup|1989–90]]
+| nextseason      = [[1991–92 NSL Cup|1991–92]]
+}}
+
+The '''1990–91 NSL Cup''' was the fifteenth season of the [[NSL Cup]], which was the main national [[association football]] [[single-elimination tournament|knockout]] cup competition in [[Australia]]. 14 teams from around Australia entered the competition.<ref>http://www.worldfootball.net/all_matches/aus-australia-cup-1990-1991</ref>
+
+==Round of 16==
+{{football box
+|date       = 
+|time       = 
+|team1      = [[South Melbourne FC|South Melbourne Hellas]]
+|score      = 2–0
+|report     = 
+|team2      = [[West Adelaide SC|West Adelaide Hellas]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Melbourne Knights FC|Melbourne Knights]]
+|score      = 0–1
+|report     = 
+|team2      = [[Sunshine George Cross FC|Sunshine George Cross]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Adelaide City FC|Adelaide City]]
+|score      = 2–0
+|report     = 
+|team2      = [[St George FC|St George SC]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Marconi Stallions FC|Marconi Stallions]]
+|score      = 1–0
+|report     = 
+|team2      = [[Sydney United FC|Sydney United 58]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    =
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Sydney Olympic FC|Sydney Olympic]]
+|score      = 1–2
+|report     = 
+|team2      = [[APIA Leichhardt Tigers FC|APIA Leichhardt]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    =
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Wollongong Wolves FC|Wollongong Wolves]]
+|score      = 1–0
+|report     = 
+|team2      = [[Wollongong United FC|Wollongong United]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    =
+}}
+
+==Quarter-finals==
+{{football box
+|date       = 
+|time       = 
+|team1      = [[South Melbourne FC|South Melbourne Hellas]]
+|score      = 2–0
+|report     = 
+|team2      = [[Sunshine George Cross FC|Sunshine George Cross]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Parramatta Melita Eagles FC]]
+|score      = 2–1
+|report     = 
+|team2      = [[Adelaide City FC|Adelaide City]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Marconi Stallions FC|Marconi Stallions]]
+|score      = 0–1
+|report     = 
+|team2      = [[Preston Lions FC|Preston Lions]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[APIA Leichhardt Tigers]]
+|score      = 2–1
+|report     = 
+|team2      = [[Wollongong Wolves FC|Wollongong Wolves]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+==Semi-finals==
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[South Melbourne FC|South Melbourne Hellas]]
+|score      = 1–3
+|report     = 
+|team2      = [[Parramatta Melita Eagles FC]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Preston Lions FC|Preston Lions]]
+|score      = 2–1
+|report     = 
+|team2      = [[APIA Leichhardt Tigers]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+==Final==
+
+{{football box
+|date       = 
+|time       = 
+|team1      = [[Parramatta Melita Eagles FC]]
+|score      = 1–0
+|report     = 
+|team2      = [[Preston Lions FC|Preston Lions]]
+|goals1     = 
+|goals2     = 
+|stadium    = 
+|attendance = 
+|referee    = 
+}}
+
+==References==
+{{reflist}}
+
+{{NSL Cup}}
+{{National soccer cup competitions in Australia}}
+{{National Soccer League}}
+
+{{DEFAULTSORT:1990-91 NSL Cup}}
+[[Category:1990 domestic association football cups|NSL Cup]]
+[[Category:1991 domestic association football cups|NSL Cup]]
+[[Category:1990 in Australian soccer]]
+[[Category:1991 in Australian soccer]]
+[[Category:NSL Cup seasons]]

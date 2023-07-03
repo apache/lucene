@@ -1,0 +1,50 @@
+The '''canton of Évian-les-Bains''' is an administrative division of the [[Haute-Savoie]] [[departments of France|department]], southeastern [[France]]. Its borders were modified at the French canton reorganisation which came into effect in March 2015. Its seat is in [[Évian-les-Bains]].<ref name=decret>{{cite web|url=http://www.legifrance.gouv.fr/affichTexte.do?cidTexte=JORFTEXT000028621987|title=Décret n° 2014-153 du 13 février 2014 portant délimitation des cantons dans le département de la Haute-Savoie &#124; Legifrance|accessdate=2017-05-23}}</ref>
+
+It consists of the following communes:<ref name=decret/>
+{{div col|colwidth=22em}}
+#[[Abondance, Haute-Savoie|Abondance]]
+#[[La Baume]]
+#[[Bernex, Haute-Savoie|Bernex]]
+#[[Le Biot]]
+#[[Bonnevaux, Haute-Savoie|Bonnevaux]]
+#[[Champanges]]
+#[[La Chapelle-d'Abondance]]
+#[[Châtel, Haute-Savoie|Châtel]]
+#[[Chevenoz]]
+#[[La Côte-d'Arbroz]]
+#[[Essert-Romand]]
+#[[Évian-les-Bains]]
+#[[Féternes]]
+#[[La Forclaz]]
+#[[Les Gets]]
+#[[Larringes]]
+#[[Lugrin]]
+#[[Marin, Haute-Savoie|Marin]]
+#[[Maxilly-sur-Léman]]
+#[[Meillerie]]
+#[[Montriond]]
+#[[Morzine]]
+#[[Neuvecelle]]
+#[[Novel, Haute-Savoie|Novel]]
+#[[Publier]]
+#[[Saint-Gingolph, Haute-Savoie|Saint-Gingolph]]
+#[[Saint-Jean-d'Aulps]]
+#[[Saint-Paul-en-Chablais]]
+#[[Seytroux]]
+#[[Thollon-les-Mémises]]
+#[[Vacheresse]]
+#[[La Vernaz]]
+#[[Vinzier]]
+{{div col end}}
+
+==References==
+{{Reflist}}
+
+{{Cantons of Haute-Savoie}}
+
+{{coord|46.40|6.59|display=title}}
+
+{{DEFAULTSORT:Evian-les-Bains}}
+[[Category:Cantons of Haute-Savoie]]
+
+{{HauteSavoie-geo-stub}}

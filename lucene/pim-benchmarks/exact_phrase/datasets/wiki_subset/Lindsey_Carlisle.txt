@@ -1,0 +1,67 @@
+{{short description|South African field hockey player}}
+{{Use dmy dates|date=March 2011}}
+{{BLP sources|date=August 2010}}
+{{Infobox sportsperson
+|birth_date=22 April 1969
+|birth_place=
+|medaltemplates={{MedalSport | Women's [[Field Hockey]]}}
+{{MedalCountry | {{RSA}} }}
+{{MedalCompetition|[[All-Africa Games]]}}
+{{MedalGold | [[2003 All-Africa Games|2003 Abuja]] | Team}}
+{{MedalCompetition|[[Afro-Asian Games]]}}
+{{MedalSilver | [[Afro-Asian Games|2003 Hyderabad]] | Team}}{{MedalCompetition|[[Champions Challenge (field hockey)|Champions Challenge]]}}
+{{MedalSilver| [[2005 Women's Champions Challenge (field hockey)|2005 Virginia Beach]] | Team}}
+}}
+
+'''Lindsey Gay Carlisle''' (born 22 April 1969 in [[Johannesburg]], [[Gauteng]]) is a [[field hockey]] player from [[South Africa]], who twice represented her native country at the [[Summer Olympics]]: 2000 and 2004. The defender comes from [[Johannesburg]], and is [[nickname]]d ''Linds''. She plays for a provincial team called Southern Gauteng.
+
+==International Senior Tournaments==
+* 1995 &ndash; [[1995 Women's Hockey Olympic Qualifier|Olympic Qualifier]], Cape Town
+* 1998 &ndash; [[1998 Women's Hockey World Cup|World Cup]], Utrecht
+* 1998 &ndash; [[Hockey at the 1998 Commonwealth Games – Women's tournament|Commonwealth Games]], Kuala Lumpur
+* 1999 &ndash; [[All Africa Games]], Johannesburg
+* 2000 &ndash; [[2000 Women's Champions Trophy (field hockey)|Champions Trophy]], Amstelveen
+* 2000 &ndash; [[Field hockey at the 2000 Summer Olympics|Olympic Games]], Sydney
+* 2002 &ndash; [[2002 Women's Champions Challenge (field hockey)|Champions Challenge]], Johannesburg
+* 2002 &ndash; [[2002 Commonwealth Games|Commonwealth Games]], Manchester
+* 2002 &ndash; [[2002 Women's Hockey World Cup|World Cup]], Perth
+* 2003 &ndash; [[All Africa Games]], Abuja
+* 2003 &ndash; [[Afro-Asian Games]], Hyderabad
+* 2004 &ndash; [[Field hockey at the 2004 Summer Olympics|Olympic Games]], Athens
+* 2005 &ndash; [[2005 Women's Champions Challenge (field hockey)|Champions Challenge]], Virginia Beach
+* 2006 &ndash; [[2006 Commonwealth Games|Commonwealth Games]], Melbourne
+
+==References==
+* {{cite Sports-Reference |url=https://www.sports-reference.com/olympics/athletes/ca/lindsey-carlisle-1.html |title=Lindsey Carlisle |accessdate=28 March 2018 |archiveurl=https://web.archive.org/web/20180520193708/https://www.sports-reference.com/olympics/athletes/ca/lindsey-carlisle-1.html |archivedate=20 May 2018 |url-status=dead }}
+
+{{Navboxes
+|title=Lindsey Carlisle &ndash; International tournaments
+|list1=
+{{South Africa FHW Squad 1998 World Cup}}
+{{South Africa FHW Squad 1998 Commonwealth Games}}
+{{South Africa FHW Squad 2000 Champions Trophy}}
+{{South Africa FHW Squad 2000 Summer Olympics}}
+{{South Africa FHW Squad 2002 Champions Challenge}}
+{{South Africa FHW Squad 2002 World Cup}}
+{{South Africa FHW Squad 2003 All-Africa Games}}
+{{South Africa FHW Squad 2004 Summer Olympics}}
+{{South Africa FHW Squad 2005 Champions Challenge}}
+{{South Africa FHW Squad 2006 Commonwealth Games}}
+}}
+
+{{DEFAULTSORT:Carlisle, Lindsay}}
+[[Category:1969 births]]
+[[Category:Living people]]
+[[Category:South African female field hockey players]]
+[[Category:Olympic field hockey players of South Africa]]
+[[Category:Field hockey players at the 1998 Commonwealth Games]]
+[[Category:Field hockey players at the 2000 Summer Olympics]]
+[[Category:Field hockey players at the 2002 Commonwealth Games]]
+[[Category:Field hockey players at the 2004 Summer Olympics]]
+[[Category:Field hockey players at the 2006 Commonwealth Games]]
+[[Category:Commonwealth Games competitors for South Africa]]
+[[Category:Field hockey players from Johannesburg]]
+[[Category:African Games gold medalists for South Africa]]
+
+
+{{SouthAfrica-fieldhockey-bio-stub}}

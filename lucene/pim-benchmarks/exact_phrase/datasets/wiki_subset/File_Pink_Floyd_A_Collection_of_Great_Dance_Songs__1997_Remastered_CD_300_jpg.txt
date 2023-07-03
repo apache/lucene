@@ -1,0 +1,28 @@
+== Summary ==
+{{Non-free use rationale album cover | Article = A Collection of Great Dance Songs
+<!-- ADDITIONAL INFORMATION -->
+| Name              = 
+| Artist            = Pink Floyd
+| Label             = EMI Records
+| Graphic Artist    = Storm Thorgerson
+| Item              = front cover
+| Type              = album
+| Website           = http://www.discogs.com/viewimages?release=380476
+| Owner             = Pink Floyd Music, Ltd
+| Commentary        = 
+| Use               = Infobox
+<!--Choose: Infobox / Header / Section / Artist / Discography * / Other --> 
+
+<!--OVERRIDE FIELDS -->
+| Description       = 
+| Source            = 
+| Portion           = 
+| Low_resolution    = 
+| Purpose           = 
+| Replaceability    = 
+| other_information = 
+}}
+== Licensing ==
+{{Non-free album cover|image has rationale=yes}}
+
+[[Category:Album covers by Hipgnosis]]

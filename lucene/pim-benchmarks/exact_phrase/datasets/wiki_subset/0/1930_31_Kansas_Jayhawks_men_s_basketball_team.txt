@@ -1,0 +1,558 @@
+{{more citations needed|date=April 2020}}
+
+{{short description|American college basketball season}}
+{{Infobox NCAA team season
+| sport = basketball
+| year = 1930-31
+| prev_year = 1929–30
+| next_year = 1931–32
+| team = Kansas Jayhawks
+| logo = 
+| logo_size = 
+| logo_alt = 
+| image = 
+| image_size = 
+| image_alt = 
+| conference = Big Six Conference
+| division = 
+| short_conf = Big 6
+| APRank = 
+| record = 15&ndash;3
+| conf_record = 7&ndash;3
+| wins_vacated = 
+| wins_forfeited = 
+| conf_wins_vacated = 
+| conf_wins_forfeited = 
+| head_coach = [[Phog Allen]]
+| hc_year = 14th
+| asst_coach1 = 
+| ac1_year = 
+| asst_coach2 = 
+| ac2_year = 
+| asst_coach3 = 
+| ac3_year = 
+| mvp = 
+| mvp_year = 
+| mvp2 = 
+| mvp2_year = 
+| captain = 
+| captain_year = 
+| captain2 = 
+| captain2_year = 
+| captain3 = 
+| captain3_year = 
+| captain4 = 
+| captain4_year = 
+| arena = [[Budig Hall|Hoch Auditorium]]
+| champion = [[Big Eight Conference|Big Six]] Champions
+| tourney = 
+| tourney_result = 
+}}
+{{1930–31 Big Six Conference men's basketball standings}}
+The '''1930–31 Kansas Jayhawks men's basketball team''' represented the [[University of Kansas]] during the 1930–31 college men's basketball season.
+
+==Roster==
+*Ralph Baker
+*Tom Bishop
+*[[Frosty Cox]]
+*William Johnson
+*Theodore O'Leary
+*Leland Page
+*Floyd Ramsey
+<ref name = "KU Media Guide">[http://sidearm.sites.s3.amazonaws.com/kuathletics.com/documents/2014/10/9/201415_KU_mbb_media_guide.pdf 2014-15 Kansas Jayhawks men's basketball media guide]. Retrieved 2015-May-22.</ref>
+
+==Schedule==
+
+{{CBB schedule start
+| time      = 
+| rank      = 
+| tv        = 
+| gamehighs =
+| attend    =
+}}
+{{CBB schedule entry
+| date         = December 16
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Washburn Ichabods men's basketball|Washburn]]
+| opprank      = 
+| site_stadium = 
+| site_cityst  = [[Topeka, Kansas|Topeka, KS]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 27&ndash;19
+| overtime     = 
+| attend       =
+| record       = 1-0
+| conference   =
+}}
+{{CBB schedule entry
+| date         = December 20
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = [[Missouri Tigers men's basketball|Missouri]]
+| opprank      = 
+| site_stadium = [[Convention Hall]]
+| site_cityst  = [[Kansas City, Missouri|Kansas City, MO]]
+| gamename     = [[Border War (Kansas-Missouri rivalry)|Border War]]
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 40&ndash;26
+| overtime     = 
+| attend       =
+| record       = 2-0
+| conference   = 
+}}
+{{CBB schedule entry
+| date         = December 30
+| time         = 
+| status          = w
+| nonconf      = yes
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[Kansas Wesleyan Coyotes|Kansas Wesleyan]]
+| opprank      = 
+| site_stadium = 
+| site_cityst  = [[Salina, Kansas|Salina, KS]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 47&ndash;15
+| overtime     = 
+| attend       =
+| record       = 3-0
+| conference   = 
+}}
+{{CBB schedule entry
+| date         = January 2
+| time         =
+| status          = w
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = [[Colorado Buffaloes men's basketball|Colorado]]
+| opprank      = 
+| site_stadium = [[Denver Auditorium Arena]]
+| site_cityst  = [[Denver, Colorado|Denver, CO]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 34&ndash;25
+| overtime     = 
+| attend       =
+| record       = 4-0
+| conference   = 
+}}
+{{CBB schedule entry
+| date         = December 3
+| time         = 
+| status          = w
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = Colorado
+| opprank      = 
+| site_stadium = Denver Auditorium Arena
+| site_cityst  = Denver, CO
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 36&ndash;28
+| overtime     = 
+| attend       =
+| record       = 5-0
+| conference   = 
+}}
+{{CBB schedule entry
+| date         = January 5
+| time         = 
+| status          = w
+| nonconf      = yes
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = Colorado
+| opprank      = 
+| site_stadium = Carlson Gymnasium
+| site_cityst  = [[Boulder, Colorado|Boulder, CO]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 25&ndash;19
+| overtime     = 
+| attend       =
+| record       = 6-0
+| conference   = 
+}}
+{{CBB schedule entry
+| date         = January 12
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Oklahoma Sooners men's basketball|Oklahoma]]
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 44&ndash;22
+| overtime     = 
+| attend       =
+| record       = 7-0
+| conference   = 1-0
+}}
+{{CBB schedule entry
+| date         = January 17
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[Kansas State Wildcats men's basketball|Kansas State]]
+| opprank      = 
+| site_stadium = [[Nichols Hall]]
+| site_cityst  = [[Lawrence, Kansas|Lawrence, KS]]
+| gamename     = [[Sunflower Showdown]]
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 37&ndash;29
+| overtime     = 
+| attend       =
+| record       = 8-0
+| conference   = 2-0
+}}
+{{CBB schedule entry
+| date         = January 10
+| time         = 
+| status          = l
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Nebraska Cornhuskers men's basketball|Nebraska]]
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 30&ndash;31
+| overtime     = 
+| attend       =
+| record       = 8-1
+| conference   = 2-1
+}}
+{{CBB schedule entry
+| date         = January 22
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[Iowa State Cyclones men's basketball|Iowa State]]
+| opprank      = 
+| site_stadium = [[State Gymnasium]]
+| site_cityst  = [[Ames, Iowa|Ames, IA]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 34&ndash;27
+| overtime     = 
+| attend       =
+| record       = 9-1
+| conference   = 3-1
+}}
+{{CBB schedule entry
+| date         = January 29
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Missouri
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = Border War
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 31&ndash;13
+| overtime     = 
+| attend       =
+| record       = 10-1
+| conference   = 4-1
+}}
+{{CBB schedule entry
+| date         = February 3
+| time         = 
+| status          = w
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Oklahoma State Cowboys basketball|Oklahoma A&M]]
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 31&ndash;29
+| overtime     = 
+| attend       =
+| record       = 11-1
+| conference   = 
+}}
+{{CBB schedule entry
+| date         = February 7
+| time         = 
+| status          = l
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[Oklahoma Sooners men's basketball|Oklahoma]]
+| opprank      = 
+| site_stadium = [[McCasland Field House|Field House]]
+| site_cityst  = [[Norman, Oklahoma|Norman, OK]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 30&ndash;33
+| overtime     = 
+| attend       =
+| record       = 11-2
+| conference   = 4-2
+}}
+{{CBB schedule entry
+| date         = February 14
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Nebraska
+| opprank      = 
+| site_stadium = [[Nebraska Coliseum]]
+| site_cityst  = [[Lincoln, Nebraska|Lincoln, NE]]
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 34&ndash;29
+| overtime     = 
+| attend       =
+| record       = 12-2
+| conference   = 5-2
+}}
+{{CBB schedule entry
+| date         = February 17
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Kansas State
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = Sunflower Showdown
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 40&ndash;26
+| overtime     = 
+| attend       =
+| record       = 13-2
+| conference   = 6-2
+}}
+{{CBB schedule entry
+| date         = February 23
+| time         = 
+| status          = w
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Iowa State
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 27&ndash;16
+| overtime     = 
+| attend       =
+| record       = 14-2
+| conference   = 7-2
+}}
+{{CBB schedule entry
+| date         = February 27
+| time         = 
+| status          = l
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = Missouri
+| opprank      = 
+| site_stadium = [[Brewer Fieldhouse]]
+| site_cityst  = [[Columbia, Missouri|Columbia, MO]]
+| gamename     = Border War
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 19&ndash;26
+| overtime     = 
+| attend       =
+| record       = 14-3
+| conference   = 7-3
+}}
+{{CBB schedule entry
+| date         = March 3
+| time         = 
+| status          = w
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[Creighton Bluejays men's basketball|Creighton]]
+| opprank      = 
+| site_stadium = Hoch Auditorium
+| site_cityst  = Lawrence, KS
+| gamename     = 
+| tv           = 
+| highscorer   =
+| points       =
+| highrebounder=
+| rebounds     =
+| highassister =
+| assists      =
+| score        = 38&ndash;32
+| overtime     = 
+| attend       =
+| record       = 15-3
+| conference   = 
+}}
+{{CBB schedule end
+| rank     = 
+| poll     = 
+| timezone = 
+}}
+
+<ref>2012-13 Kansas Jayhawks men's basketball media guide. Accessed 2013-Aug-11.</ref>
+
+==References==
+{{reflist}}
+
+{{Kansas Jayhawks men's basketball navbox}}
+
+{{DEFAULTSORT:1930-31 Kansas Jayhawks men's basketball team}}
+[[Category:Kansas Jayhawks men's basketball seasons]]
+[[Category:1930–31 Big Six Conference men's basketball season|Kansas]]
+[[Category:1930 in sports in Kansas|Kansas]]
+[[Category:1931 in sports in Kansas|Kansas]]

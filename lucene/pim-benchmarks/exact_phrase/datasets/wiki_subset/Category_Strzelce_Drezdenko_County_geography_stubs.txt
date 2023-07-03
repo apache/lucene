@@ -1,0 +1,8 @@
+{{WPSS-cat}}
+
+{{Stub Category
+|article=the geography of [[Strzelce-Drezdenko County]], [[Lubusz Voivodeship]], [[Poland]]
+|newstub=StrzelceDrezdenko-geo-stub
+|category=Strzelce-Drezdenko County}}
+
+[[Category:Lubusz geography stubs|*StrzelceDrezdenko County]]

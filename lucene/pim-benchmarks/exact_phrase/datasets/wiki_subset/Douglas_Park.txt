@@ -1,0 +1,65 @@
+{{About|the former stadium in Hamilton, Scotland}}
+{{one source|date=January 2019}}
+{{use dmy dates|date=March 2012}}
+<!-- Coordinates of centre of pitch -->
+{{Coord|55|46|49.72|N|4|03|17.75|W|type:landmark|display=title}}
+{{Infobox stadium
+| name                = Douglas Park
+| nickname            = 
+| image               = 
+| fullname            = 
+| location            = [[Hamilton, South Lanarkshire|Hamilton]], [[Scotland]]
+| coordinates         = 
+| broke_ground        = 
+| built               = 
+| opened              = 1888
+| renovated           = 
+| expanded            = 
+| closed              = 1994
+| demolished          = 
+| owner               = 
+| operator            = 
+| surface             = [[Lawn|Grass]]
+| construction_cost   = 
+| architect           = [[Archibald Leitch]] (Main Stand)<ref name = "Inglis446"/>
+| structural engineer = 
+| services engineer   = 
+| general_contractor  = 
+| project_manager     = 
+| main_contractors    = 
+| former_names        = 
+| tenants             = [[Hamilton Academical F.C.|Hamilton Academical]] (1888–1994)<br />[[Clyde F.C.|Clyde]] (1991–1994)
+| capacity            = 
+| record_attendance   =
+| dimensions          = 
+| scoreboard          = 
+}}
+'''Douglas Park''' was a [[association football|football]] stadium in [[Hamilton, South Lanarkshire]], the home ground of [[Hamilton Academical F.C.|Hamilton Academical]] from 1888 to 1994.<ref name = "Inglis446">{{harvnb|Inglis|1996|p=446}}</ref>
+
+The stadium holds the record for Hamilton Academical's largest ever attendance, 28,690 people against [[Heart of Midlothian F.C.|Hearts]] in 1937.<ref name = "Inglis446"/> Douglas Park also played host to [[Clyde F.C.|Clyde]] between 1991 and 1994, as that club awaited the building of their new ground in [[Cumbernauld]], [[Broadwood Stadium]].<ref>{{harvnb|Inglis|1996|p=436}}</ref>
+
+[[File:Hamilton Retail Park - geograph.org.uk - 1617999.jpg|thumb|left|The location of the stadium is now a supermarket car park; the floodlights of its replacement can be seen over the roof]]
+Hamilton ceased playing first team matches at Douglas Park at the end of the [[1993–94 in Scottish football|1993–94]] season.<ref name = "Inglis446"/> The club continued to use the stadium for [[reserve team]] matches until January 1995, as the sale of the ground was not completed until December 1994.<ref name = "Inglis446"/> Douglas Park was then redeveloped as a [[Sainsbury's]] supermarket.<ref name = "Inglis446"/> Turnstiles were sold to [[Falkirk F.C.|Falkirk]] and part of the main stand was sold to [[Auchinleck Talbot F.C.|Auchinleck Talbot]] for £30,000.<ref name = "Inglis446"/> The only part of the old ground that Hamilton Academical retained was the floodlights.<ref name = "Inglis446"/> A new stadium, called [[New Douglas Park]], was built immediately next to the old site.
+
+==See also==
+* [[History of Scottish football#Stadium moves and refurbishments|Scottish stadium moves]]
+
+== References ==
+{{reflist}}
+; Sources
+*{{cite book| ref = harv  | first = Simon  | last = Inglis  | title = Football Grounds of Britain  | year = 1996  | publisher = Collins Willow  | isbn = 0-00-218426-5  }}
+
+{{Hamilton Academical F.C.}}
+{{Clyde F.C.}}
+{{Football venues in Scotland}}
+
+[[Category:Clyde F.C.]]
+[[Category:Defunct football venues in Scotland]]
+[[Category:Hamilton Academical F.C.]]
+[[Category:Scottish Football League venues]]
+[[Category:Sports venues in South Lanarkshire]]
+[[Category:Hamilton, South Lanarkshire]]
+[[Category:Sports venues completed in 1888]]
+[[Category:1888 establishments in Scotland]]
+[[Category:1995 disestablishments in Scotland]]
+[[Category:Sports venues demolished in 1995]]

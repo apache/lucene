@@ -1,0 +1,61 @@
+{{Speciesbox
+| image = Isotoma viridis (40539414741).jpg
+| genus = Isotoma (springtail)
+| species = viridis
+| authority = Bourlet, 1839
+| synonyms = {{Species list
+|  Isotoma arctica | Schott, 1893
+|  Isotoma belfragei | Packard, 1873
+|  Isotoma capitola | Macgillivray. 1896
+|  Isotoma cincta | Tullberg, 1876
+|  Isotoma montana | Macgillivray, 1896
+|  Isotoma plumbea | Packard, 1873
+|  Isotoma pomona | Folsom, 1937
+|  Isotoma purpurascens | Packard, 1873
+}}
+| synonyms_ref = <ref name=itis/>
+}}
+'''''Isotoma viridis''''' is a species of elongate-bodied springtails in the family [[Isotomidae]].<ref name=itis/><ref name=catlife/><ref name=gbif/><ref name=bugref/>
+[[File:Isotoma viridis juvenile (8169944723).jpg| thumb]]
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Isotoma viridis'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=99316
+| website=Integrated Taxonomic Information System
+| accessdate=2018-04-25
+}}</ref>
+<ref name=catlife>
+{{Cite web| title=''Isotoma viridis'' species details
+| url=http://www.catalogueoflife.org/col/details/species/id/b8137b5e5d97114a5a4b331b9142f963
+| website=Catalogue of Life
+| accessdate=2018-04-25
+}}</ref>
+<ref name=gbif>
+{{Cite web| title=''Isotoma viridis''
+| url=https://www.gbif.org/species/5166886
+| website=GBIF
+| accessdate=2018-04-25
+}}</ref>
+<ref name=bugref>
+{{Cite web| title=''Isotoma viridis'' Species Information
+| url=https://bugguide.net/node/view/93783
+| website=BugGuide.net
+| accessdate=2018-04-25
+}}</ref>
+}}
+
+==External links==
+{{refbegin}}
+* {{Commons category-inline|Isotoma viridis}}
+{{refend}}
+
+{{Taxonbar|from=Q10537907}}
+
+[[Category:Collembola]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Animals described in 1839]]
+
+
+{{Springtail-stub}}

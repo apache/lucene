@@ -1,0 +1,14 @@
+==Summary==
+{{Non-free use rationale album cover
+| Article = Beekeeper's Daughter
+| Use     = Infobox
+| Name    = [[Beekeeper's Daughter]]
+| Artist  = [[The All-American Rejects]]
+| Owner   = [[Interscope Records]]
+| Item    = front cover
+| Type    = single
+| Source  = http://tengossip.com/2012/01/12/the-all-american-rejects-release-track-listing-new-single-available-on-january-31/
+}}
+
+==Licensing==
+{{non-free album cover|image has rationale=yes}}

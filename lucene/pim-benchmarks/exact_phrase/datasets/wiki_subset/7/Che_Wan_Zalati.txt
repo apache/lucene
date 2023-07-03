@@ -1,0 +1,42 @@
+{{short description|Malaysian cricketer}}
+{{Use dmy dates|date=February 2020}}
+{{Infobox cricketer
+|                name = Che Wan Zalati
+|               image = 
+|             country = 
+|            fullname = 
+|          birth_date = {{birth date and age|1995|6|19|df=yes}}
+|         birth_place = 
+|          death_date = 
+|         death_place = 
+|            nickname = 
+|             batting = 
+|             bowling = 
+|                role = 
+
+|               club1 = 
+|               year1 = 
+|         clubnumber1 = 
+|               club2 = 
+|               year2 = 
+|         clubnumber2 =
+
+|                date = 23 May 2017
+|              source = http://www.espncricinfo.com/ci/content/player/453253.html Cricinfo
+}}
+'''Che Wan Zalati''' (born 19 June 1995) is a Malaysian [[cricket]]er.<ref name="Bio">{{Cite web|url=http://www.espncricinfo.com/ci/content/player/453253.html |title=Che Wan Zalati |accessdate=23 May 2017 |work=ESPN Cricinfo}}</ref> He played for [[Malaysia national cricket team|Malaysia]] in the [[2017 ICC World Cricket League Division Three]] tournament in May 2017.<ref name="Div3">{{Cite web|url=http://www.espncricinfo.com/ci/engine/match/1090938.html |title=ICC World Cricket League Division Three, Malaysia v Singapore at Kampala, May 23, 2017 |accessdate=23 May 2017 |work=ESPN Cricinfo}}</ref> In April 2018, he was named in Malaysia's squad for the [[2018 ICC World Cricket League Division Four]] tournament, also in Malaysia.<ref name="MasSquad">{{cite web|url=https://www.icc-cricket.com/media-releases/673100 |title=Six teams travel to Malaysia on road to ICC Cricket World Cup 2023 |date=28 April 2018 |accessdate=28 April 2018 |work=International Cricket Council}}</ref>
+
+==References==
+{{reflist}}
+
+==External links==
+* {{cricinfo|id=453253}}
+
+{{authority control}}
+
+{{DEFAULTSORT:Zalati, Che Wan}}
+[[Category:1995 births]]
+[[Category:Living people]]
+[[Category:Malaysian cricketers]]
+[[Category:Place of birth missing (living people)]]
+{{Malaysia-cricket-bio-stub}}

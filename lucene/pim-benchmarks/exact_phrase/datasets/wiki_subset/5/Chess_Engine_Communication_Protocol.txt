@@ -1,0 +1,1 @@
+#REDIRECT [[Chess_engine#Interface protocol]] {{R from related topic}}

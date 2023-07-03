@@ -1,0 +1,14 @@
+{{userbox
+| border-c = #C0C090
+| id       = [[Image:Coat of arms of Malta.svg|35px]]
+| id-c     = #F8EABA
+| info     = This user is a member of '''[[Wikipedia:WikiProject Malta|WikiProject Malta]]'''.
+| info-c   = beige
+| info-op = text-align:center;
+| usercategory  = WikiProject Malta participants
+| nocat = {{{nocat|}}}
+}}<noinclude>
+[[Category:WikiProject Malta]]
+[[Category:WikiProject user templates|Malta]]
+[[Category:Malta user templates]]
+</noinclude>

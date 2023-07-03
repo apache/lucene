@@ -1,0 +1,22 @@
+<div class="boilerplate afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's [[Help:Using talk pages|talk page]] or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was '''delete'''--[[User:Ymblanter|Ymblanter]] ([[User talk:Ymblanter|talk]]) 09:28, 3 July 2016 (UTC)
+===[[Ryan McGinnis (ice hockey)]]===
+
+:{{la|Ryan McGinnis (ice hockey)}} – (<includeonly>[[Wikipedia:Articles for deletion/Ryan McGinnis (ice hockey)|View AfD]]</includeonly><noinclude>[[Wikipedia:Articles for deletion/Log/2016 June 26#{{anchorencode:Ryan McGinnis (ice hockey)}}|View log]]</noinclude>{{int:dot-separator}} <span class="plainlinks">[https://tools.wmflabs.org/jackbot/snottywong/cgi-bin/votecounter.cgi?page=Wikipedia:Articles_for_deletion/Ryan_McGinnis_(ice_hockey) Stats]</span>)
+:({{Find sources AFD|Ryan McGinnis (ice hockey)}})
+fails NHOCKEY and GNG [[User:Joeykai|Joeykai]] ([[User talk:Joeykai|talk]]) 04:31, 19 June 2016 (UTC)
+:<small class="delsort-notice">Note:  This debate has been included in the [[Wikipedia:WikiProject Deletion sorting/Ice hockey|list of Ice hockey-related deletion discussions]]. <span class="smallcaps" style="font-variant:small-caps;">[[User:Northamerica1000|North America]]<sup>[[User talk:Northamerica1000|<font size="-2">1000</font>]]</sup></span> 04:49, 19 June 2016 (UTC)</small>
+:<small class="delsort-notice">Note:  This debate has been included in the [[Wikipedia:WikiProject Deletion sorting/Sportspeople|list of Sportspeople-related deletion discussions]]. <span class="smallcaps" style="font-variant:small-caps;">[[User:Northamerica1000|North America]]<sup>[[User talk:Northamerica1000|<font size="-2">1000</font>]]</sup></span> 04:49, 19 June 2016 (UTC)</small>
+:<small class="delsort-notice">Note:  This debate has been included in the [[Wikipedia:WikiProject Deletion sorting/United States of America|list of United States of America-related deletion discussions]]. <span class="smallcaps" style="font-variant:small-caps;">[[User:Northamerica1000|North America]]<sup>[[User talk:Northamerica1000|<font size="-2">1000</font>]]</sup></span> 04:50, 19 June 2016 (UTC)</small>
+*'''Delete''' non-notable hockey player.[[User:Johnpacklambert|John Pack Lambert]] ([[User talk:Johnpacklambert|talk]]) 04:20, 20 June 2016 (UTC)
+<div class="xfd_relist" style="border-top: 1px solid #AAA; border-bottom: 1px solid #AAA; padding: 0px 25px;"><span style="color: #FF6600;">'''{{resize|91%|[[Wikipedia:Deletion process#Relisting discussions|Relisted]] to generate a more thorough discussion and clearer consensus.}}'''</span><br />
+<small>Please add new comments below this notice. Thanks, <span class="smallcaps" style="font-variant:small-caps;">[[User:Northamerica1000|North America]]<sup>[[User talk:Northamerica1000|<font size="-2">1000</font>]]</sup></span> 09:41, 26 June 2016 (UTC)</small><!-- from Template:Relist --></div><!-- Please add new comments below this line -->
+*'''Delete''' - Doesn't pass NHOCKEY and I have not found any non-trivial coverage to meet GNG. [[User:Rlendog|Rlendog]] ([[User talk:Rlendog|talk]]) 13:56, 27 June 2016 (UTC)
+*'''Delete''' No significant independent coverage to meet the GNG and doesn't meet the hockey notability criteria.[[User:Mdtemp|Mdtemp]] ([[User talk:Mdtemp|talk]]) 14:19, 28 June 2016 (UTC)
+{{clear}}
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's [[Help:Using talk pages|talk page]] or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

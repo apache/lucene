@@ -1,0 +1,43 @@
+{{short description|Japanese baseball player}}
+{{Orphan|date=January 2020}}
+
+{{Infobox NPB player
+|name=Masato Furuno
+|image=20130429 Masato Huruno, pitcher of the Tokyo Yakult Swallows, at Yokohama Stadium.JPG
+|image_size=250
+|caption=Furuno with the Tokyo Yakult Swallows
+|position=[[Pitcher]]
+|team=
+|number=
+|bats=Right
+|throws=Right
+|birth_date={{Birth date and age|1986|9|27}}
+|birth_place=Takarazuka, Hyōgo, Japan
+|debutdate=April 19
+|debutyear=2013
+|debutteam=[[Tokyo Yakult Swallows]]
+|statyear=
+|stat1label=
+|stat1value=
+|stat2label=
+|stat2value=
+|teams=
+* [[Tokyo Yakult Swallows]] ({{npby|2012}}–{{npby|2018}})
+}}
+
+{{nihongo|'''Masato Furuno'''|古野 正人|Furuno Masato|extra=born September 27, 1986 in [[Takarazuka, Hyōgo|Takarazuka]], [[Hyōgo|Hyōgo Prefecture]], [[Japan]]}} is a professional [[Japanese people|Japanese]] [[baseball]] player. He plays [[pitcher]] for the [[Tokyo Yakult Swallows]].
+
+==External links==
+{{Baseballstats|brm=furuno000mas}}
+* [http://bis.npb.or.jp/eng/players/51655135.html NPB.com]
+
+{{DEFAULTSORT:Furuno, Masato}}
+[[Category:1986 births]]
+[[Category:Living people]]
+[[Category:Baseball people from Hyōgo Prefecture]]
+[[Category:Japanese baseball players]]
+[[Category:Nippon Professional Baseball pitchers]]
+[[Category:Tokyo Yakult Swallows players]]
+
+
+{{Japan-baseball-pitcher-stub}}

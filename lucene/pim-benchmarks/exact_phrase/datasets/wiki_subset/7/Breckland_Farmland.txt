@@ -1,0 +1,30 @@
+{{Use dmy dates|date=March 2020}}
+{{Infobox SSSI
+|image=  Field of onions, near Tuddenham - geograph.org.uk - 207875.jpg
+|image_caption =  Field of onions near [[Tuddenham]]
+|name=  Breckland Farmland
+|aos=  Norfolk<br>Suffolk
+|interest=Biological
+|gridref={{gbmappingsmall|TL 796 852   }}<ref name=dsv/>
+|area=          13,392.4 hectares<ref name=dsv/>
+|notifydate=       2000<ref name=dsv/>
+|map=[http://magic.defra.gov.uk/MagicMap.aspx?startTopic=Designations&activelayer=sssiIndex&query=HYPERLINK%3D%272000442%27  ''Magic Map''] 
+}}
+'''Breckland Farmland''' is a 13,392.4 hectare biological [[Site of Special Scientific Interest]] (SSSI) in many separate areas between [[Swaffham]] in [[Norfolk]] and [[Bury St Edmunds]] in [[Suffolk]].<ref name=dsv>{{cite web|url=  https://designatedsites.naturalengland.org.uk/SiteDetail.aspx?SiteCode=S2000442&SiteName=breckland&countyCode=&responsiblePerson=&SeaArea=&IFCAArea= |title=Designated Sites View: Breckland Farmland  | series= Sites of Special Scientific Interest|publisher=Natural England|accessdate =  23 May 2017}}</ref><ref name=map>{{cite web|url=http://magic.defra.gov.uk/MagicMap.aspx?startTopic=Designations&activelayer=sssiIndex&query=HYPERLINK%3D%272000442%27 |title=Map of Breckland Farmland|series= Sites of Special Scientific Interest|publisher=Natural England|accessdate=   23 May 2017}}</ref> It is part of the Breckland [[Special Protection Area]] under the [[European Union]] [[Birds Directive|Directive on the Conservation of Wild Birds]].<ref>{{cite web|url=  https://designatedsites.naturalengland.org.uk/SiteGeneralDetail.aspx?SiteCode=UK9009201&SiteName=breckland&countyCode=&responsiblePerson=&SeaArea=&IFCAArea= |title=Designated Sites View: Breckland  | series= Special Protection Area|publisher=Natural England|accessdate =  10 May 2017}}</ref><ref>{{cite web|url= http://jncc.defra.gov.uk/pdf/SPA/UK9009201.pdf   |title=Special Protection Areas under the EC Birds Directive. Breckland.    |publisher=Joint Nature Conservation Committee|accessdate=  4 May 2017}}</ref>
+
+The site is designated an SSSI for its internationally important population of [[Eurasian stone-curlew|stone curlews]]. These birds nest in March on bare ground in cultivated land with very short vegetation. Fields with sugar beet and vegetables and no recreational disturbance are preferred.<ref>{{cite web|url=http://www.sssi.naturalengland.org.uk/citation/citation_photo/2000442.pdf|title=Breckland Farmland citation|series=Sites of Special Scientific Interest|publisher=Natural England|accessdate=23 May 2017|url-status=dead|archiveurl=https://web.archive.org/web/20160304064545/http://www.sssi.naturalengland.org.uk/citation/citation_photo/2000442.pdf|archivedate=4 March 2016}}</ref>
+
+The site is almost all farmland with no public access.
+
+==References==
+{{reflist}}
+{{commons category|Breckland Farmland}}
+
+{{coord|  52.4| 0.6  |type:landmark_region:GB-BNE|display=title}}
+{{SSSIs Norfolk}}
+{{SSSIs Suffolk }}
+
+{{Authority control}}
+
+[[Category:Sites of Special Scientific Interest in Suffolk]]
+[[Category:Sites of Special Scientific Interest in Norfolk]]

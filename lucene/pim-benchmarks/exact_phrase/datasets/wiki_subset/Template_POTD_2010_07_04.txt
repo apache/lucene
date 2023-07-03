@@ -1,0 +1,10 @@
+{{POTD {{{1|{{{style|default}}}}}}
+|image=GardenStreetBridgeSchuylkillRiverSkylinePhiladelphiaPennsylvania.jpg
+|size=550
+|colsize=400
+|title=[[Philadelphia]]
+|texttitle=Philadelphia, Pennsylvania
+|caption=The skyline of [[Pennsylvania]]'s largest city, '''[[Philadelphia]]'''. Visible are [[Center City, Philadelphia|Center City]] with the [[Comcast Center (office building)|Comcast Center]] on the left bank of the [[Schuylkill River]] and the [[30th Street Station]] with the [[Cira Centre]] on the right. Philadelphia was once the largest city in the [[13 Colonies|original 13 American colonies]], the location of the signing of the [[United States Declaration of Independence|Declaration of Independence]], and served as one of the nation's [[List of capitals in the United States|many capitals]] during the [[American Revolutionary War|Revolutionary War]] and after.
+|credit=Photo: [[User:Massimo Catarinella|Massimo Catarinella]]
+}}<noinclude>[[Category:Wikipedia Picture of the day July 2010]]
+</noinclude>

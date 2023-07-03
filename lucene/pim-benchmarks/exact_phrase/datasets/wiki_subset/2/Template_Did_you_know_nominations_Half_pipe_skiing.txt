@@ -1,0 +1,18 @@
+{{#if:yes|<noinclude>[[Category:Passed DYK nominations&nbsp;from November 2012]]<div style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived discussion of the DYK nomination of the article below. <span style="color:red">'''Please do not modify this page.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as [[{{TALKPAGENAME}}|this nomination's talk page]], [[Talk:{{SUBPAGENAME}}|the article's talk page]] or [[Wikipedia talk:Did you know]]), unless there is consensus to re-open the discussion at this page.  '''No further edits should be made to this page'''.''
+
+The result was: '''promoted''' by [[User:Zozo2kx|Yazan]] ([[User talk:Zozo2kx|talk]]) 13:27, 22 November 2012 (UTC)<br />}}
+====Half-pipe skiing====
+{{DYK nompage links|nompage=Half-pipe skiing|Half-pipe skiing}}
+<div style="float:right;margin-left:0.5em;">
+[[File:Spinning in Superpipe Skiing at WSI.jpg|100x100px|Half-pipe skiing at the World Skiing Invitational]]
+</div>
+*... that '''[[half-pipe skiing]]''' ''(pictured)'' was added as a new event for the [[2014 Winter Olympics]] in [[Sochi|Sochi, Russia]]?
+:*''Comment'': Created <5 days ago
+<small>Created/expanded  by [[User:Legoktm|Legoktm]] ([[User talk:Legoktm|talk]]), [[User:Thine Antique Pen|Thine Antique Pen]] ([[User talk:Thine Antique Pen|talk]]), [[User:XK8ER|XK8ER]] ([[User talk:XK8ER|talk]]).  Nominated by [[User:Legoktm|Legoktm]] ([[User talk:Legoktm|talk]]) at 21:06, 9 November 2012 (UTC)</small>
+
+:*[[File:Symbol possible vote.svg|16px]] New enough, long enough (only just), suitably referenced, no copyright violations detected looking at a sample of the references. Hook is referenced. QPQ is missing, though, based on the assumption that you have at least five previous DYKs. If that is not the case, please advise. '''[[User:Schwede66|<span style="color:#000000;">Schwede</span>]][[User talk:Schwede66|<span style="color:#FF4500;">66</span>]]''' 17:26, 20 November 2012 (UTC)
+::*QPQ not needed as Legoktm has 3 DYKs. [[User:Thine Antique Pen|Thine Antique Pen]] ([[User talk:Thine Antique Pen|talk]]) 17:27, 20 November 2012 (UTC)
+:::*[[File:Symbol confirmed.svg|16px]] Good to go in that case. '''[[User:Schwede66|<span style="color:#000000;">Schwede</span>]][[User talk:Schwede66|<span style="color:#FF4500;">66</span>]]''' 17:32, 20 November 2012 (UTC)
+
+{{-}}{{#if:yes|</div></noinclude>|{{#ifeq:{{FULLPAGENAME}}|Template talk:Did you know/{{SUBPAGENAME}}|[[Category:Pending DYK nominations]]|{{#ifeq:{{FULLPAGENAME}}|Template:Did you know nominations/{{SUBPAGENAME}}|[[Category:Pending DYK nominations]]}}}}}}<!--Please do not write below this line or remove this line. Place comments above this line.-->

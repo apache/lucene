@@ -1,0 +1,34 @@
+{{Infobox NRHP
+  | name = Samuel and Emma A. Ranshaw House
+  | nrhp_type = 
+  | image = Image Ranshaw House.jpeg
+  | caption = 
+  | location = 515 W. Penn St.<br>[[North Liberty, Iowa]]
+  | coordinates = {{coord|41|45|05|N|91|36|21.7|W|display=inline,title}}
+  | locmapin = Iowa#USA
+  | area = {{convert|2|acres}}
+  | built = 1908
+  | builder = 
+  | architect = Bernard Alfred Wickham
+  | architecture = [[Queen Anne architecture in the United States|Queen Anne]]
+  | added = September 26, 2012
+  | refnum = 12000814<ref name="nris">{{NRISref|version=2010a}}</ref>
+}}
+The '''Samuel and Emma A. Ranshaw House''' is a historic building in [[North Liberty, Iowa]], United States.  At the time this house was built in 1908, North Liberty was a small and prosperous farming community.<ref name=Rogers>{{cite web|url={{NRHP url|id=12000814}}|title=Samuel and Emma A. Ranshaw House|publisher=[[National Park Service]]|accessdate=2017-05-23|author1=Leah D. Rogers|author2=Melissa A. Alien}} with {{NRHP url|id=12000814|photos=y|title=photo(s)}}</ref>  The Ranshaws engaged [[Iowa City, Iowa|Iowa City]] architect-builder Bernard Wickham to design and construct this transitional Free Classic subtype of the [[Queen Anne architecture in the United States|Queen Anne]] style.  It is characterized by simple classical decorative details that were becoming popular in the early 20th-century, as opposed to the more elaborate elements of the [[Victorian architecture|Late Victorian]] style. It was a typical house that Wickham was building in this area.<ref name=Rogers/>  The {{convert|10|acres|adj=on}} farmstead on which it was built was surrounded by farm fields just to the west of the town.  Suburban development now surrounds the house on its {{convert|2|acres|adj=on}} lot.  In addition to the house, a concrete sidewalk and [[cistern]] cap with inlaid glass marbles that are set in geometric and floral patterns is included in the nomination.  They were listed on the [[National Register of Historic Places]] in 2012.<ref name="nris"/>
+
+==References==
+{{reflist}}
+
+{{National Register of Historic Places}}
+{{NRHP in Johnson County, Iowa}}
+
+{{DEFAULTSORT:Ranshaw, Samuel and Emma A., House}}
+[[Category:Houses completed in 1908]]
+[[Category:Queen Anne architecture in Iowa]]
+[[Category:Houses in Johnson County, Iowa]]
+[[Category:National Register of Historic Places in Johnson County, Iowa]]
+[[Category:Houses on the National Register of Historic Places in Iowa]]
+
+
+{{JohnsonCountyIA-NRHP-stub}}
+{{Iowa-struct-stub}}

@@ -1,0 +1,75 @@
+{{Expand German|Arnold von Unkel|date=January 2019}}
+{{Infobox Christian leader
+| type        = Bishop
+| honorific-prefix = Most Reverend
+| name        = Heinrich Unkel 
+| title       = Auxiliary Bishop of Cologne<br> Titular Bishop of Cyrene
+| image       = 
+| alt         = 
+| caption     = 
+| church      = [[Catholic Church]]
+| archdiocese = [[Roman Catholic Archdiocese of Cologne|Archdiocese of Cologne]]
+| diocese     = 
+| see         = 
+| term        = 1481–1482
+| predecessor = 
+| successor   = 
+<!--   Orders   -->
+| ordination     = 
+| ordained_by    = 
+| consecration   = 
+| consecrated_by = 
+| cardinal       =
+| rank           = 
+<!--   Personal details   -->
+| birth_date    = 
+| birth_place   = 
+| death_date    = 6 Jul 1556
+| death_place   = [[Cologne]], [[Germany]] 
+| previous_post = 
+| nationality   = 
+}}
+
+'''Heinrich Unkel, [[Order of Friars Minor|O.F.M.]]''' or '''Arnold von Unkel''' (died 22 Jan 1482) was a Roman Catholic prelate who served as [[Bishop of Cologne|Auxiliary Bishop of Cologne]] (1481–1482).<ref name=HierarchiaII-Cyrene />
+
+==Biography==
+Heinrich Unkel was appointed a priest in the [[Order of Friars Minor]].<ref name=CathHierHeinUnkel /> In 1481, he was appointed during the papacy of [[Pope Sixtus IV]] as [[Bishop of Cologne|Auxiliary Bishop of Cologne]] and [[Titular Bishop]] of ''Cyrene''.<ref name=HierarchiaII-Cyrene /><ref name=CathHierHeinUnkel /> He died on 22 Jan 1482 before he was installed.<ref name=CathHierHeinUnkel />
+
+== References ==
+{{reflist|colwidth=|refs=
+
+<ref name=HierarchiaII-Cyrene>{{cite book|url=https://archive.org/stream/hierarchiacathol02eubeuoft#page/142/2up|first=Konrad|last=Eubel|authorlink=Konrad Eubel|title=Hierarchia catholica medii et recentioris aevi |volume=Vol. II|pages=142|date=1914|publisher=Libreria Regensbergiana|location=Münster|edition=second|ISBN=}} ''(in Latin)''</ref>
+
+<ref name=CathHierHeinUnkel>[http://www.catholic-hierarchy.org/bishop/bunkel.html "Father Heinrich Unkel, O.F.M."] ''[[Catholic-Hierarchy.org]]''. David M. Cheney. Retrieved March 21, 2016</ref>
+}}
+
+==External links and additional sources==
+*{{cite web|last=Cheney |first=David M.|title=Cyrene (Titular See) |website=[[Catholic-Hierarchy.org]]|url=http://www.catholic-hierarchy.org/diocese/d3c56.html|accessdate=January 4, 2019}} (for Chronology of Bishops) [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+*{{Cite web|last=Chow |first=Gabriel|authorlink=|title=Titular Episcopal See of Cyrene (Libya)|website=[[GCatholic.org]]|date=|url=http://www.gcatholic.org/dioceses/former/t0515.htm|accessdate=January 4, 2019}} (for Chronology of Bishops)  [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+*{{Cite web|last=Cheney |first=David M.|authorlink=|title=Archdiocese of Köln {Cologne} |website=[[Catholic-Hierarchy.org]]|date=|url=http://www.catholic-hierarchy.org/diocese/dkoln.html |accessdate=January 4, 2019}} (for Chronology of Bishops) [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+*{{Cite web|last=Chow |first=Gabriel|authorlink=|title=Metropolitan Archdiocese of Köln (Germany) |website=[[GCatholic.org]]|date=|url=http://www.gcatholic.org/dioceses/diocese/koln0.htm |accessdate=January 4, 2019}} (for Chronology of Bishops)  [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+
+{{s-start}}
+{{s-rel|ca}}
+{{succession box
+| title  = [[Titular Bishop]] of ''Cyrene''
+| years  = 1481–1482
+| before = [[Matthias Emich]]
+| after  = [[Johann Spenner]]}}
+{{succession box
+| title  = [[Bishop of Cologne#Auxiliary bishops|Auxiliary Bishop of Cologne]]
+| years  = 1481–1482
+| before = 
+| after  = }}
+{{s-end}}
+
+{{Subject bar |portal1= Biography |portal2= Catholicism |portal3=Germany}}
+{{authority control}}
+
+{{DEFAULTSORT:Unkel, Heinrich}}
+[[Category:15th-century Roman Catholic bishops]]
+[[Category:Bishops appointed by Pope Sixtus IV]]
+[[Category:Year of birth unknown]]
+[[Category:1482 deaths]]
+
+{{Germany-RC-bishop-stub}}

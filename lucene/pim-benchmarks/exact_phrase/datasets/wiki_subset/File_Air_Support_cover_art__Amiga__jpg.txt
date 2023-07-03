@@ -1,0 +1,11 @@
+{{Non-free use rationale video game cover
+| Article           = Air Support
+| Use               = Infobox<!-- Choose: Infobox / Header / Section / Artist / other (specify Purpose) --> 
+<!-- ADDITIONAL INFORMATION -->
+| Name              = [[Air Support]]
+| Owner             = [[Psygnosis]]
+| Source            = http://www.psygnosis.org/games/airsupport/covers/cover.gif
+}}
+
+== Licensing: ==
+{{Non-free video game cover|Amiga|image has rationale=yes}}

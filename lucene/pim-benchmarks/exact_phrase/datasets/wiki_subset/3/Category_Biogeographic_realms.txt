@@ -1,0 +1,11 @@
+'''Ecozone''' is a [[ecological land classification|classification]] system of the world first proposed by [[Miklos Udvardy]] under the name ''biogeographical realms'' for [[Conservation ecology|conservation]] purposes.
+
+{{Cat main|biogeographic realm}}
+{{Commons cat|Biogeographic realms}}
+{{Biomes}}
+
+[[Category:Biogeography]]
+[[Category:Geographic classifications]]
+[[Category:Environments]]
+[[Category:Habitat]]
+[[Category:Regions]]

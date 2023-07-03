@@ -1,0 +1,72 @@
+{{Infobox automobile
+| image = MHV Adler Standard 6S 1928 01.jpg
+| caption = Adler Standard 6S 1928
+|name = Adler Standard 6
+|aka = Adler Standard 6    10/45<br> Adler Standard 6    12/50<br> Adler Standard 6  (3U)
+|manufacturer = [[Adler (automobile)|Adlerwerke]]
+|production = 1927 – March 1934 <br>21,249 units
+ |assembly = [[Frankfurt am Main]]
+|successor =Adler Diplomat    12/60
+ |body_style = “Pullman Limousine” (“six-light 4  door [[Sedan (automobile)|saloon]])<br>Various coach built bodies supplied in relatively small numbers by a number of coach builders.
+|engine = 1927 - 1926<br>2,540&nbsp;cc  6 cylinder in-line<br><br>1928 - 1934<br>2,916&nbsp;cc  6 cylinder in-line
+|layout=[[FR layout]]
+|transmission = 1927 – 1934<br>3-speed manual <br><br>1933 - 1934<br>4-speed manual with lockable freewheel<br>(new bodied “3U” model only)
+|length = 1927 - 1933<br>{{convert|4270|mm|in|abbr=on}}  <br>(standard bodied cars)<br><br>1933 - 1934<br>{{convert|4750|mm|in|abbr=on}}  <br>(new bodied “3U” model)
+|width = 1927 - 1933 <br>{{convert|1650|mm|in|abbr=on}}<br><br>1933 - 1934<br>{{convert|1740|mm|in|abbr=on}}  <br>(new bodied “3U” model)
+|height = 1927 - 1933<br>{{convert|1825|mm|in|abbr=on}}<br><br>1933 - 1934<br>{{convert|1650|mm|in|abbr=on}}  <br>(new bodied “3U” model)
+|weight = 
+|wheelbase = 1927 - 1933 {{convert|2840|mm|in|abbr=on}} or {{convert|3140|mm|in|abbr=on}} <br><br>1933 - 1934<br>{{convert|3200|mm|in|abbr=on}}  <br>(new bodied “3U” model)
+|track = 
+|related = 
+|designer = Prof. Dr. Ing. Gabriel Becker
+}}
+
+The '''Adler Standard 6''' was the most important newcomer at the [[Berlin Motor Show]] in October 1926.<ref name="#Oswald|Oswald, p 14">[[#Oswald|Oswald]], p 14</ref>   It was a substantial six cylinder “limousine” (saloon) built by the [[Frankfurt am Main|Frankfurt]] auto-maker, [[Adler (automobile)|Adler]]. Other body styles were available from coach builders. The model continued to be produced until 1934.
+
+The Standard 6 shared its wheel base with the less expensive four cylinder [[Adler Favorit]] which appeared early in 1929. The Standard 6 was also in most respects the blueprint for the longer more powerful eight cylinder engined Adler Standard 8 which arrived in 1928.<ref name="Oswald, p 15">[[#Oswald|Oswald]], p 15</ref>
+
+==Inspired by Chrysler==
+The basic architecture of the car with its rigid axles, high body and "overslung" <ref>An overslung chassis sits directly above the car's axles below the chassis frame.  An underslung chassis hangs directly below the axles, resulting in a lowered centre of gravity and a lower look for the car</ref> chassis was in essence copied from [[Chrysler]] [[:de:Chrysler 60|models of the time]].  One result of this was that the Adler Standard 6 was the first volume-produced German car able to compete effectively with the Chryslers which in the 1920s competed powerfully with Germany’s domestic auto-makers in this class. Brakes operated on all four wheels and were hydraulically controlled, which again, was seen as reflecting US influence on Gabriel Becker, the car’s Berlin-based designer.<ref>[[#Oswald|Oswald]], pp 14 & 16</ref>   
+
+According to Oswald<ref name="#Oswald|Oswald, p 14"/> Becker also imported some of the North American auto industry’s less commendable{{Says who|date=May 2013}} aspects, including a very imprecise steering mechanism and, in the early models, engines that lasted only for about 17,000&nbsp;km (11,500 miles). However, the Adler technicians worked on what turned out to be teething troubles, and soon the Adler Standard 6 became a favourite with the German upper middle class and with taxi operators.<ref name="#Oswald|Oswald, p 14"/>
+
+==Evolution==
+
+===Adler Standard 6N    10/45 (1927 – 1930)===
+Following its motor show launch in October 1926, volume production of the Adler Standard 6 got under way during the early part of 1927.
+
+The six cylinder side-valve 2,540 cc engine <ref>Between 1928 and 1933 car tax in Germany was levied not according to “[[Tax horsepower]]” but according to “Tax cubic capacity”. Because of roundings included in the official formula, “Tax cubic capacity” different slightly from actual cubic capacity. The “Tax cubic capacity” of the original Adler Standard 6 was 2,522 cc as opposed to the true value of 2,540 cc. Both figures may be quoted by sources as though they are the actual cubic capacity.</ref> drove the rear wheels through a three speed gear box and provided a claimed maximum output of {{convert|45|PS|kW hp|0|abbr=on}} at 3,000 rpm. The figures 10/45 in the car’s name referred respectively to the [[Tax horsepower]] (on which car tax was based till 1928) and actual horsepower in PS (i.e. applying the German standard formula).
+
+The car was offered with a standard wheelbase of {{convert|2840|mm|in|abbr=on}} or a longer wheelbase of {{convert|3140|mm|in|abbr=on}}. The Shorter wheelbase Standard 6N continued as the entry level model until 1930, but the longer wheel base ceased to be available with the 6N’s engine before the end of 1928.<ref>[[#Oswald|Oswald]], p 16</ref> The standard body was made from steel which at this time was a common feature on North American cars but still unusual in Europe.
+
+By 1930 Adler had produced 6,533 of their Standard 6Ns.
+
+===Adler Standard 6A  12/50 (1928 – 1933) & Adler Standard 6S  12/50  (1928 – 1934)===
+The Standard 6A and 6S had been added to the range by the end of 1928. They still featured straight six engines, but the bore was increased and the total engine size was 2,916 cc.<ref>The roundings in the formula applied by the government Finance Office gave rise to a “tax engine size” (“steuer cm³”) of 2,895 cc. This value is sometimes erroneously quoted as though it were the actual engine size.</ref> Claimed maximum power from the 2,916 cc engine was {{convert|60|PS|kW hp|0|abbr=on}}. Apart from the cylinder bore, the engine was little changed from the 2,540 cc unit of the Standard 6N, but the compression ratio was slightly raised, and during the production run a Stromberg U1 carbureter replaced the Pallas SAD 3 carburettor which initially was carried over from the 6N.<ref>[[#Oswald|Oswald]], p 17</ref>
+
+===Adler Standard 6 (3U)  (1933 – 1934)===
+The rebodied Standard 6 (3U) appeared at the [[Berlin Motor Show]] in February 1933. The 2,916cc {{convert|60|PS|kW hp|0|abbr=on}} side-valve six cylinder engine was carried forward from the existing Standard 6. The new car had a lower body frame and independent suspension at the front like the smaller engined Adler Favorit which appeared in the same year. Attention also focused on the new ZF four speed transmission and the standard all-steel body which, as before, came from [[Ambi-Budd]] in the [[Spandau]] district of [[Berlin]].<ref>[[#Oswald|Oswald]], pp 24 & 25</ref>   
+
+400 of these cars were built before the model was replaced by the Adler Diplomat which came with a new engine, a new name and a year later, from 1935, a new body. The change of name had become necessary following a rash of new model launches across the German auto-industry in the early 1930s causing the name “Standard” – which has a meaning in German not dissimilar to its meaning in English - to become unappealing in a decade of growth and an increasingly competitive market for new cars.<ref>[[#Oswald|Oswald]], p 33</ref>
+
+==Celebrity architects==
+The Kleyer brothers, sons of the Adler founder Heinrich Kleyer, were friends of the architect [[Walter Gropius]] whose [[Bauhaus]] movement was continuing to attract much interest among the chattering classes. Gropius developed a completely new body for the Adler Standard which was exhibited at the [[Paris Motor Show]] in October 1930 and a few months later at the Berlin show.   The cars attracted much attention and comment, but very few serious customers. As far as is known 3 of the Gropius designed Adler Standard saloons were built by coachbuilders Neuss and a further 3 cabriolets were built by coachbuilders Karmann.<ref name="Oswald, p 15"/> The Gropius venture into car design is accordingly historically interesting but not commercially significant.
+
+The exercise had its parallel in France where at about the same time  [[Le Corbusier]] undertook a similar exercise for the auto-maker [[Avions Voisin|Voisin]], apparently encountering similarly lacklustre customer demand in return for his effort.<ref name="Oswald, p 15"/>
+
+==Celebrity global circumnavigation ==
+Between 1927 and 1929 the [[Mülheim]] born racing driver [[Clärenore Stinnes]], driving an Adler Standard 6, undertook the first recorded successful round-the-world drive.
+
+==References==
+This entry incorporates  information from the German Wikipedia [[:de: Adler Standard 6|equivalent article]].
+
+* {{cite book | ref = Oswald | last = Oswald | first = Werner | title = Deutsche Autos 1920-1945, Band (vol) 2 | publisher = Motorbuch Verlag | language = German | year = 2001 | isbn = 3-613-02170-6 }}
+
+{{reflist}}
+
+{{DEFAULTSORT:Adler Standard 6}}
+[[Category:Adler vehicles|Standard 6]]
+[[Category:Executive cars]]
+[[Category:Rear-wheel-drive vehicles]]
+[[Category:1930s cars]]
+[[Category:Cars introduced in 1927]]

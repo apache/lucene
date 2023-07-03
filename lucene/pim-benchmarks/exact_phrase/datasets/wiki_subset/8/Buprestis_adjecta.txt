@@ -1,0 +1,81 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| image = Metallic Wood-boring Beetle - Buprestis adjecta, Packer Lake, California.jpg
+| genus = Buprestis
+| species = adjecta
+| authority = (LeConte, 1854)
+| synonyms = {{Species list
+|  Buprestis brevis | Casey, 1909
+}}
+| synonyms_ref = <ref name=itis/>
+}}
+
+'''''Buprestis adjecta''''' is a species of [[metallic wood-boring beetle]] in the family [[Buprestidae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Buprestis adjecta'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=809121
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Buprestis adjecta''
+| url=https://www.gbif.org/species/6003744
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Buprestis adjecta'' species Information
+| url=https://bugguide.net/node/view/74007
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite web
+| accessdate = 2019-07-02
+| title = The world of jewel beetles
+| date = 2013
+| last1 = Bellamy | first1 = C.L.
+| url = http://cerambycids.com/buprestidae/
+}}
+* {{Cite book
+| title = A Catalog and Bibliography of the Buprestoidea of America North of Mexico
+| date = 2008
+| last1 = Nelson | first1 = Gayle H.
+| last2 = Walters Jr. | first2 = George C. Jr.
+| last3 = Haines | first3 = R. Dennis
+| last4 = Bellamy | first4 = Charles L.
+| publisher = The Coleopterists' Society
+| series = Special Publication No. 4
+| isbn = 978-0972608787
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 3: Scarabaeoidea - Scirtoidea - Dascilloidea - Buprestoidea - Byrrhoidea
+| date = 2006
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-30914-2
+}}
+{{refend}}
+
+==External links==
+{{refbegin}}
+* {{Commons category-inline|Buprestis adjecta}}
+{{refend}}
+
+{{Taxonbar|from=Q14922735}}
+
+[[Category:Buprestidae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1854]]
+
+
+{{buprestidae-stub}}

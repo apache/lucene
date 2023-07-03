@@ -1,0 +1,6 @@
+{{Don't edit this line {{{machine code|}}}
+|rank=familia
+|link=Phlaeothripidae
+|parent=Tubulifera
+|refs=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=103357
+}}

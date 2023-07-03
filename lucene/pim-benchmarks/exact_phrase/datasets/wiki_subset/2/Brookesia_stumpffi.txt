@@ -1,0 +1,50 @@
+{{speciesbox
+|image = Plated leaf chameleon (Brookesia stumpffi) Lokobe.jpg
+|image_caption = in [[Lokobe Strict Reserve]], [[Nosy Be]]
+|status  = LC
+|status_system = IUCN3.1
+|status_ref = <ref name=iucn>[[Richard K. B. Jenkins|Jenkins RKB]] et al. (15 authors) (2011). "''Brookesia stumpffi'' ". The [[IUCN]] Red List of Threatened Species 2011: e.T176297A7212306. https://dx.doi.org/10.2305/IUCN.UK.2011-2.RLTS.T176297A7212306.en. Downloaded on 22 July 2020.</ref>
+|genus = Brookesia
+|species = stumpffi
+|authority = [[Oskar Boettger|Boettger]], 1894
+}}
+
+'''''Brookesia stumpffi''''', also known as the '''plated leaf chameleon''', is a species of [[chameleon]] found in some parts of Madagascar. It can be found in [[Nosy Bé]], north-west Madagascar, [[Nosy Komba]], and [[Nosy Sakatia]].
+
+==Taxonomy==
+''Brookesia stumpffi'' was originally described by [[Oskar Boettger]], a German [[zoology|zoologist]], in 1894. <!-- The species has been described as ''Brookesia stumpffi'' six times, initially by Boettger in 1894. It was later described by Glaw and Vences in 1994: 236, Klaver and Böhme in 1997, Necas in 1999: 268, Pianka and Vit in 2003: 11, and most recently by Townsend ''et al.'' in 2009. --><ref name="reptarium1">{{cite web|url=http://reptile-database.reptarium.cz/species?genus=Brookesia&species=stumpffi |title=''Brookesia stumpffi'' &#124; The Reptile Database |publisher=Reptile-database.reptarium.cz |date= |accessdate=2012-11-09}}</ref>
+
+==Etymology==
+The [[Specific name (zoology)|specific name]], ''stumpffi'', is in honor of Anton Stumpff, who collected the [[holotype]].<ref>Beolens, Bo; Watkins, Michael; Grayson, Michael (2011). ''The Eponym Dictionary of Reptiles''. Baltimore: Johns Hopkins University Press. xiii + 296 pp. {{ISBN|978-1-4214-0135-5}}. (''Brookesia stumpffi'', p. 257).</ref>
+
+==Geographic range and habitat==
+[[Frank Glaw|Glaw]] and [[Miguel Vences|Vences]] found ''B. stumpffi'' on small islands of Madagascar away from the main land mass of the country in 2007.<ref name=iucn/> The species can only be found in certain parts of Madagascar; it can be found in [[Nosy Be]] (sometimes known as Nosy Bé), north-western Madagascar, [[Nosy Komba]], and [[Nosy Sakatia]],<ref name="reptarium1"/> and is common in the rainforest. ''Brookesia stumpffi'' can be found up to a height of {{convert|150|m|ft|abbr=off}} above sea level, and can be found over an area of {{convert|61884|km|mi|abbr=off}}.<ref name=iucn/><ref>{{cite web|url=http://eol.org/pages/1057220/details |title=Facts about Plated Leaf Chameleon (''Brookesia stumpffi'' ) - Encyclopedia of Life |publisher=Eol.org |date=2012-10-23 |accessdate=2012-11-09}}</ref>
+
+==Conservation status==
+There are no known major threats to the ''Brookesia stumpffi'', and the species seems to be adaptable to "disturbed habitats".<ref name=iucn/> The species is sometimes kept as a pet and domesticated.<ref name=iucn/> The species is marked as [[Least Concern]] by the [[International Union for Conservation of Nature]].<ref name=iucn/>
+
+==Description==
+''Brookesia stumpffi'' can grow to a total length (including tail) of up to {{convert|9|cm|in|abbr=on}}, and has a life expectancy of at least three years.<ref name="luckyreptile1"/>
+
+==Reproduction==
+During reproduction, the female ''B. stumpffi'' lays between three and five eggs, which hatch between 60 and 70 days later, provided they are at a temperature of {{convert|23|C|F}}.<ref name="luckyreptile1">{{cite web |url=http://www.luckyreptile.com/tiere/150/en/pid1,467$pid2,47$pid3,376/animals.html |title=Animals |publisher=Lucky Reptile |date= |accessdate=2012-11-09 |archive-url=https://web.archive.org/web/20120519113950/http://www.luckyreptile.com/tiere/150/en/pid1,467$pid2,47$pid3,376/animals.html |archive-date=2012-05-19 |url-status=dead }}</ref>
+
+==Diet==
+''B. stumpffi'' feeds on insects such as crickets, fruit flies, cockroaches, [[waxworm|wax moth]]s (waxworms), and grasshoppers.<ref name="luckyreptile1"/>
+
+==Biology==
+During the day, the body temperature of ''B. stumpffi'' is between {{convert|22|and|25|C|F|abbr=on}}, and is {{convert|20|C|F|abbr=on}} during the night.<ref name="luckyreptile1"/> <!-- The species is a type of [[lectotype]].<ref name="reptarium1"/>  -->
+
+==References==
+{{Reflist}}
+
+==Further reading==
+*[[Oskar Boettger|Boettger O]] (1894). "''Eine neue ''Brookesia'' (Chamaeleontidae) aus Nossibé'' ". ''Zoologischer Anzeiger'' '''17''': 182-185. (''Brookesia stumpffi'', new species). (in German).
+
+
+{{Taxonbar|from=Q1954364}}
+
+[[Category:Brookesia|stumpffi]]
+[[Category:Endemic fauna of Madagascar]]
+[[Category:Reptiles of Madagascar]]
+[[Category:Reptiles described in 1894]]

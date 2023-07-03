@@ -1,0 +1,52 @@
+{{Speciesbox
+| genus = Peritrechus
+| species = fraternus
+| authority = Uhler, 1871
+| display_parents = 2
+}}
+
+'''''Peritrechus fraternus''''' is a species of dirt-colored seed bug in the family [[Rhyparochromidae]]. It is found in Central America and North America.<ref name=itis/><ref name=gbif/><ref name=buglink/><ref name=Dellapé2019/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Peritrechus fraternus'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=108179
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Peritrechus fraternus''
+| url=https://www.gbif.org/species/2007974
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Peritrechus fraternus'' species Information
+| url=https://bugguide.net/node/view/259639
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=Dellapé2019>
+{{Cite web
+| accessdate = 2019-07-02
+| title = species Peritrechus fraternus Uhler, 1871
+| date = 2019
+| last1 = Dellapé | first1 = Pablo M.
+| last2 = Henry | first2 = Thomas J.
+| url = http://Lygaeoidea.speciesfile.org/Common/basic/Taxa.aspx?TaxonNameID=1214181
+| website = Lygaeoidea Species File
+}}</ref>
+}}
+
+{{Taxonbar|from=Q10624138}}
+
+[[Category:Rhyparochromidae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Insects described in 1871]]
+
+
+{{pentatomomorpha-stub}}

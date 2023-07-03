@@ -1,0 +1,36 @@
+{{Infobox settlement
+| name = Ogardy
+| settlement_type = Village
+| total_type = &nbsp;
+| image_skyline =
+| image_caption =
+| image_flag =
+| image_shield =
+| image_map =
+| subdivision_type = [[Countries of the world|Country]]
+| subdivision_name = {{flag icon|Poland}} [[Poland]]
+| subdivision_type1 = [[Voivodeships of Poland|Voivodeship]]
+| subdivision_name1 = [[Lubusz Voivodeship|Lubusz]]
+| subdivision_type2 = [[Powiat|County]]
+| subdivision_name2 = [[Strzelce-Drezdenko County|Strzelce-Drezdenko]]
+| subdivision_type3 = [[Gmina]]
+| subdivision_name3 = [[Gmina Strzelce Krajeńskie|Strzelce Krajeńskie]]
+| coordinates = {{coord|52|58|N|15|35|E|region:PL|display=inline}}
+| pushpin_map = Poland
+| pushpin_label_position = right
+| elevation_m =
+| population_total =
+| website = }}
+'''Ogardy''' {{IPAc-pl|o|'|g|a|r|d|y}} is a [[village]] in the administrative district of [[Gmina Strzelce Krajeńskie]], within [[Strzelce-Drezdenko County]], [[Lubusz Voivodeship]], in western Poland.<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) - TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref> It lies approximately {{convert|11|km|mi|0}} north of [[Strzelce Krajeńskie]] and {{convert|35|km|mi|0|abbr=on}} north-east of [[Gorzów Wielkopolski]].
+
+Before 1945 the area was part of Germany and was called Wugarten (see ''[[Territorial changes of Poland after World War II]]'').
+
+==References==
+{{reflist}}
+
+<br>
+{{Gmina Strzelce Krajeńskie}}
+{{Strzelce-Drezdenko-geo-stub}}
+{{coord|52|58|N|15|35|E|region:PL_type:city|display=title}}
+
+[[Category:Villages in Strzelce-Drezdenko County|Ogardy]]

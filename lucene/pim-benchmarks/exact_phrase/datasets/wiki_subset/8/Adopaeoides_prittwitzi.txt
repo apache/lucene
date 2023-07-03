@@ -1,0 +1,61 @@
+{{Speciesbox
+| genus = Adopaeoides
+| species = prittwitzi
+| authority = ([[Carl Plötz|Plötz]], 1884)
+}}
+
+'''''Adopaeoides prittwitzi''''', the '''sunrise skipper''', is a species of [[grass skipper]] in the [[butterfly]] family [[Hesperiidae]]. It is found in Central America and North America.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+The MONA or Hodges number for ''Adopaeoides prittwitzi'' is 4011.<ref name=mpg/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Adopaeoides prittwitzi'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=706666
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=mpg>
+{{Cite web| title=North American Moth Photographers Group, ''Adopaeoides prittwitzi''
+| url=http://mothphotographersgroup.msstate.edu/species.php?hodges=4011
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Adopaeoides prittwitzi''
+| url=https://www.gbif.org/species/1947087
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Adopaeoides prittwitzi'' species Information
+| url=https://bugguide.net/node/view/1437648
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite report
+| title = Annotated taxonomic checklist of the Lepidoptera of North America, North of Mexico
+| date = 2016
+| last1 = Pohl | first1 = Greg
+| last2 = Patterson | first2 = Bob
+| last3 = Pelham | first3 = Jonathan
+| url = https://www.researchgate.net/publication/302570819
+| doi = 10.13140/RG.2.1.2186.3287| doi-access = free
+}}
+{{refend}}
+
+{{Taxonbar|from=Q13229989}}
+
+[[Category:Hesperiinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Butterflies described in 1884]]
+
+
+{{hesperiinae-stub}}

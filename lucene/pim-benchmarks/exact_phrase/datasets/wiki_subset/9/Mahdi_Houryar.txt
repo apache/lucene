@@ -1,0 +1,30 @@
+{{short description|Iranian wrestler}}
+{{Use dmy dates|date=April 2019}}
+{{Infobox sportsperson
+| name           = Mahdi Houryar
+| full_name      = 
+| image          = 
+| caption        = 
+| nationality    = Iranian
+| sport          = [[Wrestling]]
+| birth_date     = {{birth date and age|1945|1|9|df=yes}}
+| birth_place    = 
+| death_date     = 
+| death_place    = 
+}}
+
+'''Mahdi Houryar''' (born 9 January 1945) is an Iranian [[amateur wrestling|wrestler]]. He competed in the [[Wrestling at the 1972 Summer Olympics – Men's Greco-Roman 52 kg|men's Greco-Roman 52 kg]] at the [[1972 Summer Olympics]].<ref name="SportsRef">{{cite Sports-Reference |url=https://www.sports-reference.com/olympics/athletes/ho/mahdi-houryar-1.html |title=Mahdi Houryar Olympic Results |accessdate=6 April 2019 |archiveurl=https://web.archive.org/web/20110915165352/http://www.sports-reference.com/olympics/athletes/ho/mahdi-houryar-1.html |archivedate=15 September 2011 |url-status=dead }}</ref>
+
+==References==
+{{reflist}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Houryar, Mahdi}}
+[[Category:1945 births]]
+[[Category:Living people]]
+[[Category:Iranian male sport wrestlers]]
+[[Category:Olympic wrestlers of Iran]]
+[[Category:Wrestlers at the 1972 Summer Olympics]]
+[[Category:Place of birth missing (living people)]]
+{{Iran-wrestling-bio-stub}}

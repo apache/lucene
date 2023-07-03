@@ -1,0 +1,11 @@
+{{cat main}}
+{{CatRel|Prime Ministers of the United Kingdom}}
+{{Cat pair|Margaret Thatcher|Tony Blair}}
+
+{{Commons category|John Major}}
+
+{{DEFAULTSORT:Major, John}}
+[[Category:Wikipedia categories named after Prime Ministers of the United Kingdom]]
+[[Category:Leaders of the Conservative Party (UK)]]
+[[Category:Wikipedia categories named after English people]]
+[[Category:20th-century Prime Ministers of the United Kingdom]]

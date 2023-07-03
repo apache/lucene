@@ -1,0 +1,98 @@
+{{short description|Human disease}}
+{{Infobox medical condition (new)
+| name            = Cystic hygroma
+| synonyms        = Lymphangioma<ref>{{cite web |title=Cystic hygroma: MedlinePlus Medical Encyclopedia |url=https://medlineplus.gov/ency/article/000148.htm |website=medlineplus.gov |accessdate=27 April 2019 |language=en}}</ref>
+| image           = Cystic_Hygroma_(cropped).jpg
+| caption         = 
+| pronounce       = 
+| field           = 
+| symptoms        = 
+| complications   = 
+| onset           = 
+| duration        = 
+| types           = 
+| causes          = 
+| risks           = 
+| diagnosis       = 
+| differential    = 
+| prevention      = 
+| treatment       = 
+| medication      = 
+| prognosis       = 
+| frequency       = 
+| deaths          = 
+|alt=}}
+
+A '''cystic hygroma''' is an abnormal growth that usually appears on a baby's neck or head. It consists of one or more [[cyst]]s and tends to grow larger over time. The disorder usually develops while the fetus is still in the uterus but can also appear after birth.<ref>
+[https://www.healthline.com/health/cystic-hygroma "What are cystic hygromas?"] ''Healthline''. Retrieved April 27, 2018 </ref>
+
+Also known as '''cystic lymphangioma''' and '''macrocystic lymphatic malformation''', the growth is often a [[congenital]] [[lymphatic]] [[lesion]] of many small cavities (multiloculated) that can arise anywhere, but is classically found in the left [[posterior triangle]] of the [[neck]] and armpits. The malformation contains large [[cyst]]-like cavities containing [[lymph]], a watery fluid that circulates throughout the [[lymphatic system]]. Microscopically, cystic hygroma consists of multiple [[locule]]s filled with lymph. Deep locules are quite big, but they decrease in size towards the surface.
+
+Cystic hygromas are [[benign]], but can be [[disfigurement|disfiguring]]. It is a condition which usually affects children; very rarely it can be present in adulthood.<ref>{{cite journal |vauthors = Gow L, Gulati R, Khan A, Mihaimeed F |title  =Adult-onset cystic hygroma: a case report and review of management |journal = Grand Rounds |volume=11 |pages=5–11 |year= 2011 |doi = 10.1102/1470-5206.2011.0002 }}</ref>
+
+Currently, the medical field prefers to use the term [[Vascular malformation#Lymphatic malformation|lymphatic malformation]], because the term cystic hygroma means water tumor.<ref>{{cite web |url=https://www.researchgate.net/project/Lymphangioma |title=Lymphangioma |vauthors = Ramakrishnan, KS  |website=ResearchGate }}</ref> Lymphatic malformation is more commonly used now because it is a [[sponge (material)|sponge]]-like collection of abnormal growth that contains clear lymphatic fluid. The fluid collects within the cysts or channels, usually in the soft tissue. Cystic hygromas occur when the [[lymphatic vessel]]s that make up the lymphatic system are not formed properly. The two types of lymphatic malformations are macrocystic  (large cysts) and microcystic (small cysts) lymphatic malformations. A person may have only one kind of the malformation or can have a mixture of both macro- and microcysts.
+
+Cystic hygroma can be associated with a [[nuchal]] [[lymphangioma]] or a [[fetal hydrops]].<ref>Schwartz's principles of surgery: self assessment and board review, 8th edition, chapter 38, page 257; textbook p.1476</ref> Additionally, it can be associated with [[Down syndrome]], [[Turner syndrome]],<ref name="pmid19202339">{{cite journal  |vauthors=Alpman A, Cogulu O, Akgul M, etal |s2cid=35383863 |title=Prenatally Diagnosed Turner Syndrome and Cystic Hygroma: Incidence and Reasons for Referrals |journal=Fetal Diagn. Ther. |volume=25 |issue=1 |pages=58–61 |date=March 2008 |pmid=19202339 |doi=10.1159/000199869 |url=https://www.karger.com/Article/PDF/000199869}}</ref> or [[Noonan syndrome]]. If it is diagnosed in the third trimester, then chances of association with Down syndrome are increased, but if diagnosed in the second trimester, then it is associated with Turner syndrome.  
+
+A lethal version<ref>{{Cite web |url=http://www.orpha.net/consor/www/cgi-bin/OC_Exp.php?lng=EN&Expert=2193 |title=Archived copy |access-date=2009-06-13 |archive-url=https://web.archive.org/web/20180131023907/http://www.orpha.net/consor/www/cgi-bin/OC_Exp.php?lng=EN&Expert=2193 |archive-date=2018-01-31 |url-status=dead }}</ref> of this condition exists, known as '''Cowchock–Wapner–Kurtz syndrome''', that, in addition to cystic hygroma, includes [[cleft palate]] and [[lymphedema]], a condition of localized [[edema]] and tissue swelling caused by a compromised lymphatic system.<ref>{{cite book|author=Bruno Bissonnette|title=Syndromes: Rapid Recognition and Perioperative Implications|url=https://books.google.com/books?id=uRR1MYa-w5wC|date=2006-08-10|publisher=McGraw Hill Professional|isbn=978-0-07-135455-4}}</ref>
+
+== Signs and symptoms ==
+[[File:Copy of Musculi coli base, my edits for tringles, labeled triangles,posterior.svg|thumb|Cystic hygromas are classically found in the [[posterior triangle]] of the neck.]]
+
+Cystic hygromas are increasingly diagnosed by [[prenatal]] [[ultrasonography]]. A common sign is a neck growth. It may be found at birth, or discovered later in an infant after an [[upper respiratory tract infection]].<ref>{{cite journal |author=Vorvick, Linda F|title=Cystic Hygroma |journal=MEDEX Northwest Division of Physician Assistant Studies, University of Washington, School of Medicine |url=https://www.nlm.nih.gov/medlineplus/ency/article/000148.htm}}</ref> Cystic hygromas can grow very large and may affect breathing and swallowing. Some symptoms may include a mass or lump in the [[human mouth|mouth]], [[neck]], [[cheek]], or [[tongue]]. It feels like a large, fluid-filled sac. In addition, cystic hygromas can be found in other body parts, such as the arms, chest, legs, groin, and buttocks. Cystic hygromas are also often seen in Turner's syndrome, although a patient who does not have the syndrome can present with this condition.
+
+==Diagnosis==
+
+Lymphatic malformations may be detected in the human fetus by ultrasound if they are of sufficient size. Detection of a cystic malformation may prompt further investigation, such as [[amniocentesis]],  to evaluate for genetic abnormalities in the fetus. Lymphatic malformations may be discovered postnatally or in older children/adults, and most commonly present as a mass or as an [[Incidental findings|incidental finding]] during [[medical imaging]].
+
+Verification of the diagnosis may require more testing, as  multiple cystic masses can arise in children.<ref>{{Cite journal|last1=Brown|first1=Ruth Elizabeth|last2=Harave|first2=Srikrishna|year=2016|title=Diagnostic imaging of benign and malignant neck masses in children—a pictorial review|journal=Quantitative Imaging in Medicine and Surgery|volume=6|issue=5|pages=591–604|doi=10.21037/qims.2016.10.10|issn=2223-4292|pmc=5130564|pmid=27942480}}</ref> Imaging, such as ultrasound or MRI, may provide more information as to the size and extent of the lesion.
+
+== Treatment ==
+[[File:Newborn infant with a cystic hygroma (cropped).jpg|thumb|Newborn infant with a cystic hygroma visible on right side of the neck]]
+A baby with a prenatally [[diagnosed]] cystic hygroma should be delivered in a major medical center equipped to deal with neonatal complications, such as a [[neonatal intensive care unit]]. An [[obstetrician]] usually decides the method of delivery. If the cystic hygroma is large, a [[cesarean section]] may be performed. After [[childbirth|birth]], infants with a persistent cystic hygroma must be monitored for airway obstruction. A thin needle may be used to reduce the volume of the cystic hygroma to prevent facial deformities and airway obstruction. Close observation of the baby by a [[neonatologist]] after birth is recommended. If resolution of the cystic hygroma does not occur before birth, a [[pediatric surgeon]] should be consulted.<ref name="genetics.emory.edu">{{ cite journal |author=Epstein, Michael |author2=Sherman, Stephanie |author3=Warren, Stephen F |title=Cystic Hygroma |journal=Emory University School of Medicine, Department of Human Genetics |url=http://genetics.emory.edu/pdf/Emory_Human_Genetics_Cystic_Hygroma.PDF |url-status=dead |archiveurl=https://web.archive.org/web/20120324081910/http://genetics.emory.edu/pdf/Emory_Human_Genetics_Cystic_Hygroma.PDF |archivedate=2012-03-24 }}</ref>
+
+Cystic hygromas that develop in the third trimester, after 30 weeks' gestation, or in the [[postnatal period]] are usually not associated with [[chromosome abnormalities]]. A chance exists of recurrence after [[surgery|surgical]] removal of the cystic hygroma. The chance depends on the extent of the cystic hygroma and whether its wall was completely removed.<ref name="genetics.emory.edu"/>
+
+Treatments for removal of cystic hygroma are surgery or [[sclerosing agents]], which include:
+* [[Bleomycin]]
+* [[Doxycycline]]
+* [[Ethanol]] (pure)
+* [[Picibanil]] (OK-432)
+* [[Sodium tetradecyl sulfate]]
+
+==Progression with surgeries==
+<gallery>
+Cystic Hygroma (cropped).jpg|Patient with cystic hygroma
+Lymphangioma.jpg|Same patient after first surgery
+Lymphangioma - After 4 surgeries (cropped).jpg|Same patient after four surgeries
+</gallery>
+
+==See also==
+*[[Branchial cleft cyst]]
+*[[Ranula]]
+*[[Thyroglossal duct cyst]]
+*[[Lymphangioma]]
+
+==References==
+{{Reflist}}
+
+== External links ==
+{{Medical resources
+| ICD10           = D18.1, Q87.8 ([[ILDS]] D18.140
+| ICD9            = {{ICD9|228.1}}
+| ICDO            = M9173/0
+| OMIM            = 257350
+| MedlinePlus     = 000148
+| DiseasesDB      = 3374
+| eMedicineSubj   = ped
+| eMedicineTopic  = 536
+| MeshID          = D018191
+| SNOMED CT       = 399882002
+| Orphanet        = 79486
+}}
+
+{{Medicine|state=collapsed}}
+
+{{DEFAULTSORT:Cystic hygroma}}
+[[Category:Congenital disorders]]
+[[Category:Otorhinolaryngology]]

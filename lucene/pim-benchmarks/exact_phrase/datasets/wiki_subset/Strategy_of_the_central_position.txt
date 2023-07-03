@@ -1,0 +1,19 @@
+The '''strategy of the central position''' was a key [[military tactics|tactical doctrine]] followed by [[Napoleon Buonaparte|Napoleon]] in the [[Napoleonic Wars]].<ref>{{cite book |title=Elements of Military Art and Science |first=Henry Wager |last=Halleck |publisher=BiblioBazaar |year=2008 |origyear=1862 |page=51}}</ref> It involved attacking two cooperating [[army|armies]] at their hinge, swinging around to fight one until it fled, then turning to face the other. The strategy allowed the use of a smaller force to defeat a larger one. However, these tactics, while successful at the battles of [[Battle of Ligny|Ligny]] and [[Battle of Quatre Bras|Quatre Bras]], failed at the [[Battle of Waterloo]], and Napoleon was defeated because he was not able to prevent the joining of the British and Dutch forces by the Prussian forces.<ref>{{cite book |title=The Napoleonic Revolution |url=https://archive.org/details/napoleonicrevolu00holt |url-access=registration |first=Robert B. |last=Holtman |year=1967 |publisher=J.B. Lippincott Company}}</ref>
+
+At the [[battle of Blenheim]] (1704), the [[Duke of Marlborough]] and his ally [[Prince Eugene of Savoy]] realising the French were weak in the centre initially concentrated their attacks on the wings. When [[Marshal Tallard]], the French Commander, further weakened his central position to reinforce the fortified villages on the wings of his position, Marlborough launched a battle winning attack through the centre.<ref>{{cite web | author=Staff | title=The Duke of Marlborough: Masterstroke at Blenheim | date=26 January 2016 |work=Warfare History Network |publisher=Sovereign Media |url=http://warfarehistorynetwork.com/daily/military-history/the-duke-of-marlborough-masterstroke-at-blenheim/ | accessdate=2 October 2016}}</ref>
+
+Central position also describes the overall strategic situation of [[Frederick the Great]]<ref>"...but he occupied a central position from which ... take his assailants in detail ..."({{cite book |title=Frederick the Great and the Seven Years' War |first=Frederick William |last=Longman |publisher=Longmans Green & Co. |year=1898  |pages=106–107}}).</ref> during the [[War of the Austrian Succession]] and the [[Seven Years' War]] in the Eighteenth Century where, although Prussia was surrounded by enemies, Frederick was able to use his central position to maneuver and attack each enemy separately despite being vastly outnumbered overall.
+
+In [[World War II]], [[Erwin Rommel|Rommel]] maintained a central position on the Mareth Line between allied forces in Tunisia and Libya.<ref>"Rommel could execute a classic example of the central position. From the Mareth Line, Rommel could strike first at the Americans and British in Tunisia, then turn back on Montgomery coming up from Libya".({{cite book |title=How Wars Are Won: The 13 Rules of War—From Ancient Greece to the War on Terror |last=Bevin |first=Alexander |year=2002 |location=New York |isbn=1-4000-4948-2 |pages=144–43}} )</ref>
+
+The tactic loses at least some of its advantage when employed against successive wings or flanks of a single force with a unified command structure, as a single defending force's better communication and coordination enable it to better execute a [[pincer movement]] against the attacker.
+
+==See also==
+*[[Defeat in detail]]
+*[[Interior lines]]
+
+==References==
+<references />
+
+[[Category:Military strategy]]
+[[Category:Napoleonic Wars]]

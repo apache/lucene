@@ -1,0 +1,55 @@
+{{for|the defunct federal electoral district|Timmins (electoral district)}}
+{{Infobox Canada electoral district
+| name                = Timmins
+| province            = Ontario
+| image               = Northern Ontario ridings 2018 - Timmins.png
+| caption             = Timmins in relation to other electoral districts in Northern Ontario
+| coordinates         = {{coord|48.58|N|81.17|W|display=inline,title}}
+| prov-status         = active
+| prov-created        = 2017
+| prov-abolished      = 
+| prov-election-first = 2018
+| prov-election-last  = 
+| prov-rep            = Gilles Bisson
+| prov-rep-link       = 
+| prov-rep-party      = NDP
+| prov-rep-party-link = 
+| demo-census-date    = 2016
+| demo-pop            = 41,788 
+| demo-electors       = 
+| demo-electors-date  = 
+| demo-area           = 
+| demo-cd             = [[Cochrane District, Ontario|Cochrane]]
+| demo-csd            = [[Timmins]]
+}}
+
+'''Timmins''' is a provincial [[Electoral district (Canada)|electoral district]] in [[Ontario]], Canada. It elects one member to the [[Legislative Assembly of Ontario]]. This riding was established from the urban portion of the former riding of [[Timmins—James Bay (provincial electoral district)|Timmins—James Bay]] on the recommendation of the Far North Electoral Boundaries Commission in 2017. The remainder of Timmins—James Bay became the [[Mushkegowuk—James Bay]] riding. The riding mirrors the boundaries of the city of [[Timmins]].
+
+==Members of Provincial Parliament==
+
+{{OntMPP}}
+{{OntMPP NoData|''Riding created from'' [[Timmins—James Bay (provincial electoral district)|Timmins—James Bay]]}}
+{{OntMPP Row
+| FromYr = 2018
+| ToYr =
+| Assembly# = 42
+| OntParty =NDP 
+| RepName = Gilles Bisson
+| PartyTerms# = 1
+| RepTerms# = 1
+}}
+{{OntMPP End}}
+
+==Election results==
+{{Ontario provincial election, 2018/Timmins}}
+
+==References==
+<references />
+
+==External links==
+*[https://www.elections.on.ca/content/dam/NGW/sitecontent/2017/preo/2017atlasmaps/108TimminsAtlasMap.pdf Map of riding for 2018 election]
+
+{{ON-ED}}
+
+[[Category:Ontario provincial electoral districts]]
+[[Category:Politics of Timmins]]

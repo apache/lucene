@@ -1,0 +1,40 @@
+{{for|the village and shrine in central Poland|Licheń Stary}}
+{{Infobox settlement
+| name = Licheń
+| settlement_type = Village
+| total_type = &nbsp;
+| image_skyline =
+| image_caption =
+| image_flag =
+| image_shield =
+| image_map =
+| subdivision_type = [[Countries of the world|Country]]
+| subdivision_name = {{flag icon|Poland}} [[Poland]]
+| subdivision_type1 = [[Voivodeships of Poland|Voivodeship]]
+| subdivision_name1 = [[Lubusz Voivodeship|Lubusz]]
+| subdivision_type2 = [[Powiat|County]]
+| subdivision_name2 = [[Strzelce-Drezdenko County|Strzelce-Drezdenko]]
+| subdivision_type3 = [[Gmina]]
+| subdivision_name3 = [[Gmina Strzelce Krajeńskie|Strzelce Krajeńskie]]
+| pushpin_map = Poland
+| coordinates = {{coord|52|54|N|15|34|E|region:PL|display=inline}}
+| elevation_m =
+| population_total =
+| website = }}
+'''Licheń''' {{IPAc-pl|'|l|i|h|e|ń}} is a [[village]] in the administrative district of [[Gmina Strzelce Krajeńskie]], within [[Strzelce-Drezdenko County]], [[Lubusz Voivodeship]], in western Poland.<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) - TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref> It lies approximately {{convert|4|km|mi|0}} north-east of [[Strzelce Krajeńskie]] and {{convert|29|km|mi|0|abbr=on}} north-east of [[Gorzów Wielkopolski]].
+
+Before 1945 the area was part of Germany (see ''[[Territorial changes of Poland after World War II]]'').
+
+==References==
+{{reflist}}
+
+<br>
+{{Gmina Strzelce Krajeńskie}}
+
+{{coord|52.9000|N|15.5667|E|type:city_region:PL_source:GNS-enwiki|display=title}}
+
+{{DEFAULTSORT:Lichen, Lubusz Voivodeship}}
+[[Category:Villages in Strzelce-Drezdenko County]]
+
+
+{{Strzelce-Drezdenko-geo-stub}}

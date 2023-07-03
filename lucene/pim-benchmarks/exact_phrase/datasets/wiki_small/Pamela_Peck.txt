@@ -1,0 +1,88 @@
+{{EngvarB|date=July 2015}}
+{{BLP sources|date=September 2019}}
+{{Infobox person
+|name=Pamela Peck<br/>白韻琹
+|image=Pamela Peck 2012 LegCo Promotion.jpg
+|caption= Pamela Peck running 2012 Legco election
+|birth_date={{Birth date and age|df=yes|1944|9|1}}
+|birth_place=[[Japanese occupation of Hong Kong|Japanese Occupied Territory of Hong Kong]] 
+|birth_name=Peck Wan-kam
+|relations=[[Bai Chongxi]] (uncle)<br />[[Pai Hsien-yung]] (cousin)
+|alma_mater=[[St. Paul's Secondary School]]<br />[[San Francisco State University]]
+|module={{Infobox criminal|child=yes
+|criminal_charge=[[Tax fraud]]
+|criminal_penalty=3 months in prison
+|criminal_status=released}}
+|known_for=Candidate in [[2010 Hong Kong by-election]] (Kowloon West)
+|spouse={{marriage|[[Paul Tse]]|1997}}
+|module2=
+{{Infobox Chinese|child=yes
+|order=
+|showflag=
+|t=白韻琹
+|s=白韵琴
+|j=Baak<sup>6</sup> Wan<sup>6</sup>kam<sup>4</sup>
+|y=
+|p=Bái Yùnqín
+}} }}
+'''Pamela Peck Wan-kam''' ({{zh|t=白韻琴}}, born on September 1, 1944) was a Hong Kong radio [[agony aunt]] and celebrity and is a former member of [[Wan Chai District Council]]. Since 1989 she has been the partner of 'celebrity' lawyer and legislator [[Paul Tse]].
+
+==Early life==
+Peck came to Hong Kong from China when she was three months old. Her dad died and her mother could not support her, so she went to live with her mother's sister, accompanied by her wet nurse.<ref>[http://hk-magazine.com/feature/pamela-pak-wan-kam pamela pak wan kam]. ''HK Magazine''</ref>
+
+She says that her uncle was 'dissolute' and would often bring girlfriends home. But her aunt befriended them so that they left.
+
+Peck was seen by [[social welfare]] officers.  At around age 15, she ran away with a boyfriend, missing her [[HKCEE]] exams.
+
+==Career==
+She became a flight attendant and hosted radio programmes when not flying. She went back to school, and later studied TV broadcasting at the graduate school of [[San Francisco State University]].
+
+The public named her as 白小姐 or 白姐姐 during the launch of her phone-in radio talk show ''Heart To Heart'' (盡訴心中情) in 1986.  <!-- Was it a talk show (ie. set-piece interviews, or a phone-in show? -->
+
+Later, on her radio show ''Talk of the Town'' people discussed their love lives on air, on which she gave typically pithy but practical advice.
+
+Apart from her talk show, Peck is an author; she writes columns periodically in various Hong Kong magazines and newspapers. The articles were later collected into books.
+
+==Conviction and imprisonment for tax evasion==
+On 19 April 2001, Peck was convicted of tax fraud and sentenced to three months in prison.  She had forged meal receipts and employee salary records to evade $210,000 in taxes.
+
+She pled guilty to four counts of assisting Platinum Promotion Ltd with intent to evade tax between 1994 and 1998 – effectively four taxation years – by signing fraudulent returns. She held 99.9 per cent of the shares in the company.
+
+Peck served her sentence at [[Tai Lam Centre for Women]]. While serving her sentence, she was not allowed to contribute to any of the publications for which she wrote columns.<ref>[https://web.archive.org/web/20110522131232/http://www.thestandard.com.hk/news_print.asp?art_id=75819&sid= Agony is, losing out on property market] ([https://www.webcitation.org/6eFUKv6SJ Archive]). ''The Standard'' 16 Dec 2008</ref><ref>[http://www.fortunecity.com/rainbow/bugs/199/eng/145%20Pak%20starts%20prison.htm Pamela Pak starts prison term]. ''Fortune City,'' August 2001</ref>
+
+Since the mid-1990s she has been the partner of prominent lawyer and legislator Paul Tse.  Tse is also her legal representative.
+
+==Filmography==
+
+{| class="wikitable sortable"
+|-
+! Year !! Title !! Role
+|-
+| 1981 || ''[[Princess Cheung Ping]]''<br />武俠帝女花 || [[Empress Dowager Xiaozhuang|Empress Dowager Hau-chong]]
+|-
+| 1981 || ''[[Angel in Crisis]]''<br />天使危機 || Hui Wai-fun
+|-
+| 1984 || ''[[Empress Wu (TV series)|Empress Wu]]''<br />武則天 || [[Empress Zhangsun|Empress Cheung-suen]]
+|-
+| 1991 || ''[[Days of Glory (1991 film)|Days of Glory]]''<br />豪門 || Chan Yut-ha
+|-
+| 2010 || ''[[Perfect Wedding]]''<br />抱抱俏佳人 || TV host
+|}
+
+==References==
+{{Reflist}}
+
+{{Use dmy dates|date=July 2015}}
+{{s-start}}
+{{s-off|hk}}
+{{S-bef|before=[[Michael Mak]]}}
+{{s-ttl|title=Member of [[Wan Chai District Council]]|district=[[Broadwood (constituency)|Broadwood]]|years=2012–2015}}
+{{s-aft|after=[[Paul Tse]]}}
+{{s-end}}
+{{Authority control}}
+
+{{DEFAULTSORT:Peck, Pamela}}
+[[Category:Living people]]
+[[Category:1944 births]]
+[[Category:Hong Kong radio personalities]]
+[[Category:District councillors of Wan Chai District]]

@@ -1,0 +1,81 @@
+{{short description|CTN TV station in Colorado Springs, Colorado}}
+{{Infobox television station
+| callsign               = KWHS-LD
+| logo                   = KQCKCTN33.png
+| logo_size              = 200px
+| image                  = KWHS TV in Chapel Hills Mall.jpg
+| image_size             = 250px
+| caption                = Station's studio/office within [[Chapel Hills Mall]]
+| location               = [[Colorado Springs, Colorado]]
+| country                = United States
+| city                   =
+| branding               = Rocky Mountain CTN
+| slogan                 =
+| digital                = 10 ([[very high frequency|VHF]])
+| virtual                = 51 ([[Program and System Information Protocol|PSIP]])
+| affiliations           = '''51.1:''' [[Christian Television Network|CTN]]<br>'''51.2:''' CTN Lifestyle
+| translators            =
+| owner                  = [[Christian Television Network]]<ref name="kwhstoctn">{{cite web|url=http://www.tvnewscheck.com/article/110953/lesea-sells-nola-indie-2-lptvs-for-57m|title=LeSea Sells NOLA Indie, 2 LPTVs for $5.7M|work=TVNewsCheck|date=February 5, 2018|accessdate=February 5, 2018}}</ref><ref name="kwhssalecloses">{{cite web|url=https://licensing.fcc.gov/cgi-bin/ws.exe/prod/cdbs/forms/prod/cdbsmenu.hts?context=25&appn=101783726&formid=905&fac_num=74501|title=Consummation Notice|work=CDBS Public Access|publisher=[[Federal Communications Commission]]|date=April 23, 2018|accessdate=May 25, 2018}}</ref>
+| licensee               = Christian Television Corporation, Inc.
+| founded                =
+| airdate                = {{start date and age|1992|p=y}}
+| callsign_meaning       = '''W'''orld<br>'''H'''arvest<br>'''S'''outhern Colorado
+| former_callsigns       = K51CE (1991–1996)<br>KWHS-LP (1996–2011)
+| former_channel_numbers = '''Analog:'''<br>51 (UHF, 1995–2011)<br>'''Digital:'''<br>51 (UHF, 2011–2019)
+| sister_stations        = [[KQDK-CD]], [[KQCK]]
+| former_affiliations    = [[Family Broadcasting Corporation|LeSEA]] (1992–2018)
+| erp                    = 3 [[kilowatt|kW]]
+| haat                   = {{convert|654.4|m|ft|0|abbr=on}}
+| class                  =
+| facility_id            = [http://www.fcc.gov/fcc-bin/tvq?list=0&facid=74501 74501]
+| coordinates            = {{nowrap|{{coord|38|44|41.9|N|104|51|39.4|W|region:US_type:landmark}}}}
+| licensing_authority    = [[Federal Communications Commission|FCC]]
+| website                = {{URL|http://kwhstv51.com/}}
+}}
+
+'''KWHS-LD''', [[virtual channel]] 51 ([[Very high frequency|VHF]] [[digital terrestrial television|digital]] channel 10), is a [[low-power broadcasting#Television|low-powered]] [[Christian Television Network|CTN]] [[owned-and-operated station|owned-and-operated]] [[television station]] [[city of license|licensed]] to [[Colorado Springs, Colorado|Colorado Springs]], [[Colorado]], United States. The station is owned by the Christian Television Network. KWHS-LD's transmitter is located atop [[Cheyenne Mountain]].
+
+==History==
+The station, which signed on the air in 1992 and maintains a studio in Colorado Springs, was previously a [[broadcast relay station#Semi-satellites|semi-satellite]] of KWHD in [[Denver]], owned by LeSEA Broadcasting (now [[Family Broadcasting Corporation]]). Both outlets shared the same programming with some exceptions. (KWHD is now [[KETD]], carrying [[Estrella TV]]; the station does still operate a subchannel carrying a schedule of religious programming that remained identical to that of KWHS until 2018.)
+
+In June 2014, it was announced LeSEA had inked an affiliation deal with [[Cozi TV]], KWHS-LD was one of the stations that began carrying the channel.<ref>{{cite news|last1=Malone|first1=Michael|title=LeSea, OTA Broadcasting On Board For Cozi TV|url=http://www.broadcastingcable.com/news/local-tv/lesea-ota-broadcasting-board-cozi-tv/131823|accessdate=5 October 2014|work=BroadcastingCable.com|date=17 June 2014}}</ref> On July 1, 2017, [[Light TV]] replaced Cozi TV on KWHS-LD's subchannel.<ref>[[Light TV#Colorado|Wikipedia list of Light TV affiliates]]</ref>{{Circular reference|date=November 2017}}
+
+On February 5, 2018, it was announced that LeSEA would sell KWHS-LD, along with [[Class A television service|Class A]] station [[KEEN-CD]] in [[Las Vegas]] and full-power station [[WHNO]] in [[New Orleans]], to [[Clearwater, Florida]]-based [[Christian Television Network]] for $5.7 million.<ref name="kwhstoctn" /> The sale was completed on April 23, 2018.<ref name="kwhssalecloses"/>
+
+==Digital television==
+===Digital channels===
+The station's digital signal is [[Multiplex (TV)|multiplexed]]:
+{| class="wikitable"
+|-
+! [[Digital subchannel#United States|Channel]]
+! [[Display resolution|Video]]
+! [[Aspect ratio (image)|Aspect]]
+! [[Program and System Information Protocol#What PSIP does|PSIP Short Name]]
+! Programming<ref>[http://www.rabbitears.info/market.php?request=station_search&callsign=KWHS#station RabbitEars TV Query for KWHS]</ref>
+|-
+| 51.1 || [[1080i]] || rowspan=2| [[16:9]] || KWHS || Main KWHS-LD programming / [[Christian Television Network|CTN]]
+|-
+| 51.2 || [[480i]] || LIFE || CTN Lifestyle
+|-
+|}
+
+==References==
+{{Reflist}}
+
+==External links==
+*[http://kwhstv51.com/ Official website]
+*{{TVQ|KWHS}}
+*{{BIA|KWHS|TV|TV}}
+
+{{Colorado Springs/Pueblo TV}}
+{{Other Colorado Stations}}
+
+[[Category:Family Broadcasting Corporation]]
+[[Category:Television channels and stations established in 1992]]
+[[Category:1992 establishments in Colorado]]
+[[Category:Christian Television Network affiliates]]
+[[Category:Television stations in Colorado Springs, Colorado|WHS-LD]]
+[[Category:Digital low-power television stations]]
+
+
+{{Colorado-tv-station-stub}}

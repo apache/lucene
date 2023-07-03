@@ -1,0 +1,161 @@
+{{Multiple issues|
+{{Primary sources|date=June 2007}}
+{{notability|music|date=December 2017}}
+{{more citations needed|date=December 2017}}
+}}
+{{Infobox musical artist
+| name            = Across Five Aprils
+| image             =
+| caption        = 
+| image_size        = 
+| background      = group_or_band
+| origin          = [[Chattanooga, Tennessee]], U.S.
+| genre           = [[Metalcore]], [[post-hardcore]]
+| years_active    = 2001&ndash;2008, 2012
+| Associated_acts = [[A Tragedy in Progress (band)|A Tragedy in Progress]]
+| label           = [[Victory Records|Victory]], [[Indianola Records|Indianola]]
+| current_members = Brandon Mullins<br/>Steve Wooteon<br/>Josh Dycus<br/>Zak Towe<br/>Adam Nordmeyer
+| past_members    = Drew Miller<br/>Jarrod Smith<br/>Jason Barry<br/>Steve Taylor<br/>Jason Fields
+}}
+
+'''Across Five Aprils''' (often shortened to '''A5A''') was a [[post-hardcore]] band from [[Chattanooga, Tennessee]]. The band started in September 2001 and were signed to [[Victory Records]]. Their name was borrowed from the late [[Irene Hunt]] Novel about the [[American Civil War]]. The band broke up in late 2008.
+
+==History==
+
+===Formation, ''A Tragedy in Progress'' and ''Collapse'' (2001&ndash;2007)===
+The band released its first album, ''A Tragedy in Progress'', in May 2003 on Indianola Records. Following the success of this release, they played shows with bands such as [[Underoath]], [[My Chemical Romance]], [[Norma Jean (band)|Norma Jean]], [[Haste the Day]], [[Atreyu (band)|Atreyu]] and [[It Dies Today]]. Not long after the release, original guitarist Jason Fields departed the band.
+
+After some member changes, the band wrote and recorded their second release on Indianola, an EP entitled ''[[Living in the Moment (Across Five Aprils EP)|Living in the Moment]]''. Shortly after the release of the [[Extended play|EP]], [[frontman]] Steve Taylor left the band and they picked up new frontman Brandon Mullins. Following Taylor's departure, bassist Jason Barry departed also. They toured the United States several times with bands such as [[The Banner (band)|The Banner]], and then proceeded to write their second full-length release, ''[[Collapse (Across Five Aprils album)|Collapse]]''. Following the release of this album, the band went back on the road full-time and in July 2007, the band was picked up by [[Victory Records]]. At this point, Drew Miller has also departed the band, leaving Zak Towe the only original founding member in the band. Before entering the studio to record their third album, guitarist Jarrod Smith has also left the band, and was replaced by Adam Nordmeyer.
+
+===''Life Underwater'' and frequent line-up changes (2007&ndash;2008)===
+
+Across Five Aprils released their [[Victory Records]] debut album, ''Life Underwater'', on February 19, 2008.  The album was recorded by producer Matt Goldman from Glow in the Dark Studios in Atlanta, Georgia.<ref>{{cite web|url=http://www.victoryrecords.com/news|title=Victory Records News|accessdate=2007-10-22|publisher=victory records|year=2007| archiveurl= https://web.archive.org/web/20071019055629/http://www.victoryrecords.com/news| archivedate= 19 October 2007 | url-status= live}}</ref>{{failed verification|date=December 2017}}
+
+===Break up (2008)===
+On September 22, 2008, Across Five Aprils announced that they would be breaking up. They had a very short farewell tour in October and had their final farewell show in Chattanooga, TN on November 1, 2008.
+
+===Reunion and A Tragedy in Progress (2010)===
+On October 14, 2010, the original line-up of Across Five Aprils announced two reunion shows in [[Chattanooga, Tennessee]] and [[Marietta, Georgia]]. The band used the moniker [[A Tragedy in Progress (band)|A Tragedy in Progress]] as an homage from the debut album out of respect to the members that came after them, and decided not to use the original band name. They released a four song EP titled ''[[Going Down with the Ship]]'' on [[Indianola Records]] on January 25, 2011, on their original label [[Indianola Records]]. The EP included a re-recording of the song "Around the World in a Radio Flyer" (titled only "Radio Flyer") from their classic debut album.
+
+===2012 Reunion (2012)===
+On March 31, 2012, the band played a one-off reunion show in [[Pensacola, Florida]]. The first reunion show of the band under that name, as the 2010 shows were performed by the band under A Tragedy in Progress, which became a new band. The band members performing were not the original line-up but instead the line-up of the band's second album ''[[Collapse (Across Five Aprils album)|Collapse]]'', unlike the 2010 reunion which focused on the ''[[A Tragedy in Progress (album)|Tragedy in Progress]]'' line-up. The line-up included Drew Miller and Zak Towe (from A Tragedy in Progress), Brandon Mullins, Jarrod Smith and Josh Dycus.<ref>{{cite web|url=https://www.facebook.com/atragedyinprogress/posts/352989514737301|title=A Tragedy In Progress|website=Facebook.com|accessdate=7 December 2018}}</ref>{{unreliable source?|date=December 2017}}
+
+==Band members==
+{{col-begin}}
+{{col-3}}
+'''Final line-up'''
+* Brandon Mullins - lead vocals <small>(2004&ndash;2008)</small>
+* Steve Wooteon - drums, percussion <small>(2007&ndash;2008)</small>
+* Josh Dycus - bass <small>(2004&ndash;2008)</small>
+* Zak Towe - guitar <small>(2001&ndash;2008)</small>
+* Adam Nordmeyer - guitar <small>(2007&ndash;2008)</small>
+{{col-3}}
+'''Former members'''
+* Drew Miller - drums, percussion <small>(2001&ndash;2007)</small>
+* Jarrod Smith - guitar <small>(2003&ndash;2007)</small>
+* Steve Taylor - lead vocals <small>(2002&ndash;2004)</small>
+* Jason Barry - bass <small>(2001&ndash;2004)</small>
+* Jason Fields - guitar, vocals <small>(2001&ndash;2003)</small>
+{{col-3}}
+'''2012 reunion line-up'''
+* Brandon Mullins - lead vocals
+* Zak Towe - guitar
+* Jarrod Smith - guitar
+* Josh Dycus - bass
+* Drew Miller - drums, percussion
+{{col-end}}
+'''Timeline'''
+{{#tag:timeline|
+ImageSize = width:800 height:auto barincrement:20
+PlotArea = left:100 bottom:80 top:0 right:30
+Alignbars = justify
+DateFormat  = mm/dd/yyyy
+Period = from:09/01/2001 till:03/31/2012
+TimeAxis = orientation:horizontal format:yyyy
+Legend = orientation:vertical position:bottom columns:4
+ScaleMajor = increment:2 start:2002
+ScaleMinor = increment:1 start:2002
+
+Colors =
+  id:v    value:red             legend:Lead_vocals
+  id:bv   value:pink            legend:Backing_vocals
+  id:g    value:green           legend:Guitar
+  id:b    value:blue            legend:Bass
+  id:d    value:orange          legend:Drums,_percussion
+  id:alb  value:black           legend:Studio_album
+  id:ep   value:gray(0.5)       legend:Extended_play
+  id:bar  value:gray(0.95)
+
+LineData =
+ layer:back
+  at:03/01/2002 color:ep  # Twenty-Three Minutes and Thirty-Four Seconds of Scenic City Rock N' Roll
+  at:10/01/2002 color:ep  # Self-titled EP
+  at:05/20/2003 color:alb # A Tragedy in Progress (album)
+  at:09/14/2004 color:ep  # Living in the Moment
+  at:07/11/2006 color:alb # Collapse
+  at:02/19/2008 color:alb # Life Underwater
+
+BackgroundColors = bars:bar
+
+BarData =
+  bar:SteveT   text:Steve Taylor
+  bar:Brandon  text:Brandon Mullins
+  bar:Zak      text:Zak Towe
+  bar:JasonF   text:Jason Fields
+  bar:Jarrod   text:Jarrod Smith
+  bar:Adam     text:Adam Nordmayer
+  bar:JasonB   text:Jason Barry
+  bar:Josh     text:Josh Dycus
+  bar:Drew     text:Drew Miller
+  bar:SteveW   text:Steve Wooteon
+
+PlotData =
+  width:11
+  bar:SteveT   from:01/01/2002  till:09/30/2004   color:v
+  bar:Brandon  from:10/01/2004  till:11/01/2008   color:v
+  bar:Zak      from:start       till:11/01/2008   color:g
+  bar:JasonF   from:start       till:06/30/2003   color:g
+  bar:JasonF   from:09/01/2001  till:01/01/2002   color:v width:3
+  bar:JasonF   from:01/01/2002  till:06/30/2003   color:bv width:3
+  bar:Jarrod   from:07/01/2003  till:09/01/2007   color:g
+  bar:Adam     from:09/01/2007  till:11/01/2008   color:g
+  bar:JasonB   from:start       till:11/01/2004   color:b
+  bar:Josh     from:11/01/2004  till:11/01/2008   color:b
+  bar:Drew     from:start       till:07/01/2007   color:d
+  bar:SteveW   from:07/01/2007  till:11/01/2008   color:d
+  bar:Brandon  from:03/30/2012  till:03/31/2012   color:v
+  bar:Zak      from:03/30/2012  till:03/31/2012   color:g
+  bar:Jarrod   from:03/30/2012  till:03/31/2012   color:g
+  bar:Josh     from:03/30/2012  till:03/31/2012   color:b
+  bar:Drew     from:03/30/2012  till:03/31/2012   color:d
+}}
+
+==Discography==
+
+===Full Length===
+* ''[[A Tragedy in Progress (album)|A Tragedy in Progress]]'', May 20, 2003 - [[Indianola Records|Indianola]]
+* ''[[Collapse (Across Five Aprils album)|Collapse]]'', July 11, 2006 - Indianola
+* ''Life Underwater'', February 19, 2008 - [[Victory Records|Victory]]
+
+===EPs===
+* ''Twenty-Three Minutes and Thirty-Four Seconds of Scenic City Rock N' Roll'', March 2002
+* ''Self-Titled EP'', October 2002
+* ''[[Living in the Moment (Across Five Aprils EP)|Living in the Moment]]'', September 14, 2004 - Indianola Records
+
+==References==
+{{Reflist}}
+
+==External links==
+*[http://www.myspace.com/acrossfiveaprils Across Five Aprils] at [[MySpace]]
+
+{{Authority control}}
+
+{{DEFAULTSORT:Across Five Aprils}}
+[[Category:American metalcore musical groups]]
+[[Category:American post-hardcore musical groups]]
+[[Category:Musical groups established in 2001]]
+[[Category:Musical groups disestablished in 2008]]
+[[Category:Heavy metal musical groups from Tennessee]]
+[[Category:Victory Records artists]]
+[[Category:2001 establishments in Tennessee]]
+[[Category:Indianola Records artists]]

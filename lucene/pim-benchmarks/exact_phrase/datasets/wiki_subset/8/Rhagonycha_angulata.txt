@@ -1,0 +1,53 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Rhagonycha
+| species = angulata
+| authority = ([[Thomas Say|Say]], 1823)
+}}
+
+'''''Rhagonycha angulata''''' is a species of [[soldier beetle]] in the family [[Cantharidae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Rhagonycha angulata'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=834474
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Rhagonycha angulata''
+| url=https://www.gbif.org/species/6066961
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Rhagonycha angulata'' species Information
+| url=https://bugguide.net/node/view/277401
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 4: Elateroidea - Derodontoidea - Bostrichoidea - Lymexyloidea - Cleroidea - Cucujoidea
+| date = 2007
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-8788757675
+}}
+{{refend}}
+
+{{Taxonbar|from=Q54985470}}
+
+[[Category:Cantharidae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1823]]
+
+
+{{cantharidae-stub}}

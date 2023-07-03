@@ -1,0 +1,82 @@
+{{Indian Premier League results summary|mode = {{{mode|summary}}}
+<!-- home | away  | result | margin | DL -->
+| CSK     | MI    | A      | 8W     | N
+| KKR     | DD    | A      | 8W     | N
+| MI      | PWI   | A      | 28R    | N
+| RR      | KXIP  | H      | 31R    | N
+| RCB     | DD    | H      | 20R    | N
+| DC      | CSK   | A      | 74R    | N
+| RR      | KKR   | H      | 22R    | N
+| PWI     | KXIP  | H      | 22R    | N
+| DC      | MI    | A      | 5W     | N
+| RCB     | KKR   | A      | 42R    | N
+| DD      | CSK   | H      | 8W     | N
+| MI      | RR    | H      | 27R    | N
+| CSK     | RCB   | H      | 5W     | N
+| KXIP    | PWI   | H      | 7W     | N
+| KKR     | RR    | H      | 5W     | N
+| PWI     | CSK   | H      | 7W     | N
+| KKR     | KXIP  | A      | 2R     | N
+| RCB     | RR    | A      | 59R    | N
+| MI      | DD    | A      | 7W     | N
+| RR      | DC    | H      | 5W     | N
+| RCB     | PWI   | H      | 6W     | N
+| KXIP    | KKR   | A      | 8W     | N
+| DD      | DC    | H      | 5W     | N
+| CSK     | PWI   | H      | 13R    | N
+| KXIP    | RCB   | A      | 5W     | N
+| CSK     | RR    | H      | 7W     | N
+| DD      | PWI   | A      | 20R    | N
+| MI      | KXIP  | A      | 6W     | N
+| DC      | KKR   | A      | 5W     | N
+| RR      | RCB   | A      | 46R    | N
+| PWI     | DD    | A      | 8W     | N
+| KKR     | DC    | N      |        | N
+| KXIP    | MI    | A      | 4W     | N
+| RCB     | CSK   | N      |        | N
+| PWI     | DC    | A      | 18R    | N
+| DD      | MI    | H      | 37R    | N
+| CSK     | KXIP  | A      | 7R     | N
+| KKR     | RCB   | H      | 47R    | N
+| DD      | RR    | H      | 1R     | N
+| MI      | DC    | H      | 5W     | N
+| CSK     | KKR   | A      | 5W     | N
+| DC      | PWI   | H      | 13R    | N
+| RR      | DD    | A      | 6W     | N
+| RCB     | KXIP  | A      | 4W     | N
+| PWI     | MI    | A      | 1R     | N
+| CSK     | DC    | H      | 10R    | N
+| KKR     | PWI   | H      | 7R     | N
+| KXIP    | RR    | A      | 43R    | N
+| MI      | CSK   | H      | 2W     | N
+| RCB     | DC    | H      | 5W     | N
+| DD      | KKR   | A      | 6W     | N
+| PWI     | RR    | A      | 7W     | N
+| DC      | KXIP  | A      | 25R    | N
+| MI      | RCB   | A      | 9W     | N
+| DC      | DD    | A      | 9W     | N
+| RR      | CSK   | A      | 4W     | N
+| PWI     | RCB   | A      | 35R    | N
+| KKR     | MI    | A      | 27R    | N
+| CSK     | DD    | H      | 9W     | N
+| RR      | PWI   | H      | 45R    | N
+| KXIP    | DC    | H      | 4W     | N
+| RCB     | MI    | A      | 5W     | N
+| KKR     | CSK   | A      | 5W     | N
+| DD      | KXIP  | H      | 5W     | N
+| MI      | KKR   | A      | 32R    | N
+| KXIP    | CSK   | H      | 6W     | N
+| DD      | RCB   | A      | 21R    | N
+| DC      | RR    | H      | 5W     | N
+| KXIP    | DD    | A      | 6W     | N
+| PWI     | KKR   | A      | 34R    | N
+| DC      | RCB   | H      | 9R     | N
+| RR      | MI    | A      | 10W    | N
+
+| P1W     = KKR   | P1L = DD
+| P2W     = CSK   | P2L = MI
+| P3W     = CSK   | P3L = DD
+| P4W     = KKR   | P4L = CSK
+}}<noinclude>
+[[Category:India cricket templates]]
+</noinclude>

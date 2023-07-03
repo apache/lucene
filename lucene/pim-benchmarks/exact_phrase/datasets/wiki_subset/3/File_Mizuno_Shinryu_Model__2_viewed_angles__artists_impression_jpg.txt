@@ -1,0 +1,17 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = This image provides the following 4 views of the rocket plane: top, bottom, left side, and rear.
+|Source = '''Original publication''': http://www.airwar.ru/enc/glider/shinryu.html<br/>
+'''Immediate source:''' http://www.rcgroups.com/forums/attachment.php?attachmentid=2722830
+|Date = Aug 29, 2009 08:34 AM
+|Author = dekan
+|Article = Mizuno Shinryu
+|Purpose = It will serve as an impression of what the plane in the article looks like. There is no formal image that has been uploaded onto the article so I hope it makes the article more interesting to know what the plane would have looked like.
+|Replaceability = there is no alternative to this unless it was box art. Which are copyrighted by owners. This is the only original diagram copy that is provided for all users to use as they please.
+|Minimality = It will be only used to display and diagram of what the plane would have looked like (structurally) in the article.
+|Commercial = There is no logo or copyright ensign on the image, it had also been published on various other pages with no problem.
+|Other information = The file is used on other websites so the source in above is from where i had seen the image.
+}}
+
+==Licensing==
+{{Non-free fair use in|image has rationale=yes}}

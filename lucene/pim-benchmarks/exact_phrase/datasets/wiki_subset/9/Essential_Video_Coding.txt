@@ -1,0 +1,71 @@
+{{short description|Video compression standard}}
+
+{{Infobox file format
+| name      = Essential Video Coding
+| genre     = [[Video coding format]]
+| standard = [https://www.iso.org/standard/57797.html ISO 23094-1] (feature freeze (''FDIS'' status) as of August 2020)
+| contained by = {{plainlist|
+    * [[Real-time Transport Protocol|RTP]] (draft specification as of August 2020)<ref name="rtp"/>
+    }}
+}}
+
+MPEG-5 '''Essential Video Coding (EVC)''' is a future [[video compression standard]] that is expected to be completed in 2020.<ref name="ibc" /><ref name="meeting125" /><ref name="intro" />
+The standard is to consist of a royalty-free subset and individually switchable enhancements.<ref name="meeting125" /><ref name="intro" /><ref name="req" />
+
+== Concept ==
+The publicly available requirement document<ref name="req"/>
+outlines a development process that is defensive against patent threats:
+Two sets of coding tools, ''base'' and ''enhanced'', are defined:
+* The base consist of ''tools that were made public more than 20 years ago or for which a Type 1 declaration is received''. Type 1, or option 1, is ISO speak for royalty-free.<ref name="iso-speak"/>
+* Tools in the enhanced set must pass an extra compression efficiency justification and be possible to disable individually.
+
+Bitstream-switchable coding tools are also known from Divideon's XVC.<ref name="3codecs"/>
+
+== Contributors ==
+
+A proposal by [[Samsung]], [[Huawei]] and [[Qualcomm]] was selected as the basis for EVC.<ref name="3codecs"/> Divideon is among the editors of the standard.<ref name="smpte2019"/>
+
+== Implementations ==
+
+* REVC – a [[Rust (programming language)|Rust]]-based EVC baseline encoder and decoder<ref name="revc"/>
+
+== See also ==
+* [[LCEVC|MPEG-5 Part 2 / Low Complexity Enhancement Video Coding / LC EVC]]
+* [[Versatile Video Coding|H.266 / MPEG-I Part 3 / Versatile Video Coding / VVC]]
+* [[AV1]]
+
+== References ==
+{{Reflist|30em|refs=
+
+<ref name="req">{{cite web |title=Requirements for a New Video Coding Standard |url=https://mpeg.chiariglione.org/sites/default/files/files/standards/parts/docs/w17928.zip |accessdate=6 April 2019 | date=12 October 2018}}</ref>
+
+<ref name="ibc">{{cite news |last1=Pennington |first1=Adrian |title=NAB 2019: Five trends to watch |url=https://www.ibc.org/content-management/nab-2019-five-trends-to-watch/3708.article |accessdate=6 April 2019 |publisher=[[IBC365|IBC]] |date=6 April 2019}}</ref>
+
+<ref name="meeting125">{{cite web |last1=Timmerer |first1=Christian |title=MPEG 125 Meeting Report |url=https://bitmovin.com/mpeg-125-meeting-report/ |publisher=[[Bitmovin]] |accessdate=6 April 2019 |date=14 February 2019}}</ref>
+
+<ref name="intro">{{cite web |last1=Gibellino |first1=Diego |title=Introducing MPEG-5 |url=https://blog.usejournal.com/introducing-mpeg-5-5ed1de2be71b |accessdate=6 April 2019 |date=4 March 2019}}</ref>
+
+<ref name="iso-speak">{{cite web |last1=Chiariglione |first1=Leonardo |title=A crisis, the causes and a solution |url=http://blog.chiariglione.org/a-crisis-the-causes-and-a-solution/ |accessdate=6 April 2019 |date=28 January 2018 |quote=I saw the danger coming and designed a strategy for it. This would create two tracks in MPEG: one track producing royalty free standards (Option 1, in ISO language) and the other the traditional Fair Reasonable and Non Discriminatory (FRAND) standards (Option 2, in ISO language).}}</ref>
+
+<ref name="3codecs">{{cite web |last1=Ozer |first1=Jan |title=Inside MPEG's Ambitious Plan to Launch 3 Video Codecs in 2020 |url=https://www.streamingmedia.com/Articles/ReadArticle.aspx?ArticleID=134694 |quote=Though the EVC Main profile uses royalty-bearing “tools,” these can be switched on and off with “limited loss of performance.” This was the model deployed by Divideon and their xvc codec, and, in theory, it allows those deploying the technology to pick and choose both the performance and the associated royalty cost. (…) Two proposals were submitted in response to MPEG’s call for proposals for MPEG-5 Part 1, and MPEG selected the proposal from Samsung, Huawei, and Qualcomm |date=October 15, 2019 |accessdate=June 12, 2020}}</ref>
+
+<ref name="smpte2019">{{cite web |url=https://www.youtube.com/watch?v=0Itt0cOvgXU |title=SMPTE 2019: MPEG-5 EVC |date=October 21, 2019 |accessdate=June 12, 2020}}</ref>
+
+<ref name="revc">{{cite web |title=The fastest and safest EVC encoder and decoder |url=https://github.com/revcx/revc |accessdate=26 August 2020}}</ref>
+
+<ref name="rtp">{{cite web |title=RTP Payload Format for Essential Video Coding (EVC) |url=https://datatracker.ietf.org/doc/draft-zhao-avtcore-rtp-evc/ |accessdate=2020-09-01}}</ref>
+
+}}
+
+== External links ==
+
+* [https://mpeg.chiariglione.org/standards/mpeg-5/essential-video-coding MPEG publications on EVC]
+* [https://www.divideon.com/mpeg-5-evc/ Divideon's resource page]
+* [https://www.youtube.com/watch?v=0Itt0cOvgXU Video presentation by Jonatan Samuelsson (SMPTE 2019)]
+
+{{Compression formats}}
+[[Category:MPEG]]
+[[Category:Video compression]]
+
+{{film-tech-stub}}
+{{measurement-stub}}

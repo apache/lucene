@@ -1,0 +1,27 @@
+{{Non-free use rationale album cover
+<!-- REQUIRED -->
+| Article           = Feel It Still
+| Use               = Infobox
+<!-- HIGHLY RECOMMENDED -->
+| Source            =
+<!-- ADDITIONAL INFORMATION -->
+| Name              = ''Feel It Still''
+| Artist            = [[Portugal. The Man]]
+| Label             = Atlantic Records
+| Graphic Artist    = 
+| Item              = 
+| Type              = single
+| Website           = 
+| Owner             = 
+| Commentary        = 
+<!-- OVERRIDE FIELDS -->
+| Description       = 
+| Portion           = 
+| Low_resolution    = 
+| Purpose           =
+| Replaceability    = 
+| Other_information = 
+}}
+
+== Licensing ==
+{{Non-free album cover|image has rationale=yes}}

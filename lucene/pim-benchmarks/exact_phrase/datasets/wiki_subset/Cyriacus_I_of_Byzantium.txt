@@ -1,0 +1,62 @@
+{{More citations needed|date=October 2019}}
+{{Infobox patriarch
+| honorific-prefix =
+| name = Cyriacus I of Byzantium
+| honorific-suffix =
+| patriarch_of = Bishop of Byzantium
+| image =
+| caption = 
+| ordination =
+| consecration =
+| enthroned = 217
+| ended = 230
+| province =
+| diocese =
+| see =
+| church =
+| predecessor = 
+| successor = 
+| other_post =
+| birth_name = 
+| birth_date = 
+| birth_place = 
+| death_date = 
+| death_place = 
+| buried =
+| nationality =
+| religion =  Early Christianity
+| residence =
+| parents =
+| spouse =
+| children =
+| occupation =
+| profession =
+| alma_mater =
+| signature =
+}}
+
+'''Cyriacus I''' (? – 230) succeeded [[Philadelphus of Byzantium|Philadelphus]] as [[Bishop]] of [[Byzantium]] and governed the local [[local church|church]] for 16 years. In some catalogues appears under the name '''Cyrillianus'''.
+
+==Sources==
+*[http://www.ec-patr.org/list/index.php?lang=gr&id=19 Οικουμενικό Πατριαρχείο]
+
+{{s-start}}
+{{s-rel|grt}}
+{{succession box |
+  before=[[Philadelphus of Byzantium|Philadelphus]]|
+  title=[[List of Ecumenical Patriarchs of Constantinople|Bishop of Byzantium]]|
+  years=217&ndash;230|
+  after=[[Castinus of Byzantium|Castinus]]}}
+{{s-end}}
+{{Patriarchs of Constantinople}}
+
+
+{{authority control}}
+
+{{DEFAULTSORT:Cyriacus 01 Of Byzantium}}
+[[Category:Bishops of Byzantium]]
+[[Category:3rd-century Greek people]]
+[[Category:3rd-century Romans]]
+
+
+{{EarlyChurch-bishop-stub}}

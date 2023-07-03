@@ -1,0 +1,31 @@
+{{Navbox
+|name=Gmina Rzepin
+|state = {{{state|uncollapsed}}}
+|title=[[Gmina Rzepin]]
+|listclass = hlist
+|image=[[Image:POL Rzepin COA.svg|50px]]
+|group1=Town and seat
+|list1=
+* [[Rzepin]]
+|group2=Villages
+|list2=
+* [[Drzeńsko, Lubusz Voivodeship|Drzeńsko]]
+* [[Gajec, Poland|Gajec]]
+* [[Jerzmanice]]
+* [[Kowalów, Lubusz Voivodeship|Kowalów]]
+* [[Lubiechnia Mała]]
+* [[Lubiechnia Wielka]]
+* [[Maniszewo]]
+* [[Nowy Młyn, Lubusz Voivodeship|Nowy Młyn]]
+* [[Radów]]
+* [[Rzepinek, Lubusz Voivodeship|Rzepinek]]
+* [[Serbów]]
+* [[Starków, Lubusz Voivodeship|Starków]]
+* [[Starościn, Lubusz Voivodeship|Starościn]]
+* [[Sułów, Lubusz Voivodeship|Sułów]]
+* [[Zielony Bór]]
+}}<noinclude>
+{{collapsible option}}
+
+[[Category:Lubusz Voivodeship gmina templates|Rzepin]]
+</noinclude>

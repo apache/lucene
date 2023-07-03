@@ -1,0 +1,15 @@
+{{#ifeq:{{FULLPAGENAME}}|Wikipedia:Miscellany for deletion|{{mfd top collapse|1='''[[Wikipedia:Miscellany for deletion/User:Sutton Porter/Sutton Porter]]'''}}|}}<div class="boilerplate mfd" style="background-color: #E3D2FB; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+__NOINDEX__
+:''The following discussion is an archived debate of the proposed deletion of the miscellaneous page below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the page's [[Help:Using talk pages|talk page]] or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--
+Note:  If you are seeing this page as a result of an attempt to nominate a miscellany page for deletion, you must manually edit the MfD nomination links to create a new discussion page using the name format of [[Wikipedia:Miscellany for deletion/NAMESPACE:PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result of the discussion was   '''Delete''' - unanimous. [[User:WilyD|Wily]]<font color="FF8800">[[User talk:WilyD|D]]</font> 19:33, 18 November 2012 (UTC)
+====[[User:Sutton Porter/Sutton Porter]]====
+:{{pagelinks|User:Sutton Porter/Sutton Porter}}
+Attempted autobiography by an obscure stand-up comic and former ''Gong Show'' contestant. [[User:Orangemike|<font color="darkorange">Orange Mike</font>]] &#x007C; [[User talk:Orangemike|<font color="orange">Talk</font>]] 21:19, 9 November 2012 (UTC)
+*'''Delete''' Self-promotion. [[User:CarnivorousGnomeCatuse|CarniCat]] ([[User talk:CarnivorousGnomeCatuse|meow]]) 05:21, 10 November 2012 (UTC)
+*'''Delete''' as promotion by a WP:SPA.  --[[User:SmokeyJoe|SmokeyJoe]] ([[User talk:SmokeyJoe|talk]]) 07:32, 16 November 2012 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the page's [[Help:Using talk pages|talk page]] or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page.</div>
+
+{{#ifeq:{{FULLPAGENAME}}|Wikipedia:Miscellany for deletion|{{collapse bottom}}|}}

@@ -1,0 +1,40 @@
+{{Medcombox/top|article=Kfar Etzion massacre}}
+
+=== Kfar Etzion massacre ===
+{{RFMpointer|''The filing party (the editor who opened this request) will add the basic details for this dispute below.''}}
+
+; Editors involved in this dispute
+#{{user|Ykantor}} – ''filing party''
+#{{user|Nishidani}}
+
+; Articles affected by this dispute
+#{{pagelinks|Kfar Etzion massacre}}
+
+; Other attempts at [[Wikipedia:Resolving disputes|resolving this dispute]] that you have attempted
+* [[Talk:Kfar Etzion massacre#the massacre of Kfar Etzion after their surrender]]
+* [[Wikipedia:Dispute resolution noticeboard/Archive 77#Kfar Etzion massacre]]
+
+==== Issues to be mediated ====
+{{RFMpointer|''What is this dispute about? What sections, sentences, or issues in the article(s) can you not agree on? If you are the editor who opened this request, list these issues to be mediated under "Primary issues". If you did not open this request, you can add additional issues to be mediated under "Additional issues". The issues to be mediated would be properly agreed upon later, if this request for mediation is accepted.''}}
+
+; Primary issues (added by the filing party)
+#Is the term "After their surrender" correct? (i.e. murdered after their surrender)
+#The first sentence should include important facts ( who attacked, where was it) and possibly exclude less important information (the date relatively to the independence declaration).
+# note that it is not a forum shopping. The [[wp:drn]] volunteer appeared once only. The DRN has not advanced and was was archived.
+
+; Additional issues (added by other parties)
+*Additional issue 1
+*Additional issue 2
+
+==== Parties' agreement to mediation ====
+{{RFMpointer|''If you are a named party, please sign below and indicate whether you agree or refuse to participate in mediation. Remember that all editors are obliged to resolve disputes about content through discussion, mediation, or other similar means. If you do not wish to participate in mediation, you must arrange another form of dispute resolution. Comments and questions should be made underneath the numbered list below, to avoid confusion.''}}
+
+#Agree. [[User:Ykantor|Ykantor]] ([[User talk:Ykantor|talk]]) 15:09, 2 October 2013 (UTC)
+#Decline. There are several editors who have discussed the points Ykantor raises, on the relevant talk page. He has a bad habit of forum shopping and, on each occasion, singling out a single editor, so his disagreement with a single editor can be mediated, in order to get some compromise or solution to be imposed on the page, without other editors who work it intervening. I have exhausted my patience with this waste of time. [[User:Nishidani|Nishidani]] ([[User talk:Nishidani|talk]]) 15:47, 2 October 2013 (UTC)
+
+====Decision of the Mediation Committee====
+{{RFMpointer|''This section should only be edited by a mediator. The Mediation Committee's representative will indicate in due course whether the request is [[Wikipedia:Requests for mediation/Guide#Accepted requests|accepted]] (meaning a mediator will be assigned) or [[Wikipedia:Requests for mediation/Guide#Rejected requests|rejected]] (meaning you will have to try a different type of dispute resolution). If the mediator asks you a question in this section, you may edit here.''}}
+* In light of one (of only two) involved party's decision not to participate in mediation, I recommend to the chair that this request be denied. — [[User:TransporterMan|<span style="font-family:Trebuchet MS; color:blue; font-variant:small-caps;">'''TransporterMan'''</span>]] ([[User talk:TransporterMan|<font face="Trebuchet MS" size="1">TALK</font>]]) 18:04, 10 October 2013 (UTC) <small>(Committee member)</small>
+* '''Reject.''' Parties do not agree to mediation. For the Mediation Committee, [[User:Sunray|Sunray]] ([[User talk:Sunray|talk]]) 16:13, 12 October 2013 (UTC)
+
+{{Medcombox/bottom}}<noinclude>[[Category:Requests for mediation rejected requests|Sample]]</noinclude>

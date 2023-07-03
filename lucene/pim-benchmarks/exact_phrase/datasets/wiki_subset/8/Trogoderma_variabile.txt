@@ -1,0 +1,69 @@
+{{Speciesbox
+| genus = Trogoderma
+| image = Trogoderma variabile.jpg
+| species = variabile
+| authority = [[Ernst von Ballion|Ballion]], 1878
+| synonyms = ''Trogoderma parabile'' <small>Beal, 1954</small>
+| display_parents = 2
+}}
+
+'''''Trogoderma variabile''''', the '''warehouse beetle''',<ref name=urban/> is a species of carpet beetle in the family [[Dermestidae]]. It is found in Europe, Asia, Central America, North America and Oceania.
+
+==Description==
+Adult warehouse beetles average about {{convert|3.2|mm|in|2|abbr=on}} in length and are some shade of reddish-brown, dark brown or blackish-brown. The [[larva]]e are cream coloured or some darker shade of brown, and average {{convert|6|mm|in|2|abbr=on}} in length when fully grown; they have long bristles at the tip of the abdomen.<ref name=urban>{{cite book |title=Handbook of urban insects and arachnids: A handbook of urban entomology |last=Robinson |first=William H. |year=2005 |publisher=Cambridge University Press |isbn=9780521812535 |pages=104–105 |url=http://www.bio-nica.info/biblioteca/Robinson2005UrbanInsects.pdf }}</ref>
+
+==Distribution and habitat==
+This beetle may have originated in Central Asia, but is now widely distributed, being found in Russia, China, parts of the Middle East, Europe, Central America, North America and Oceania.<ref name=urban/><ref name=itis/><ref name=gbif/> It is an [[Economic entomology|economic pest]] in a range of dry goods including animal foods, wheat and barley kernels, wholemeal flour, corn meal, oat meal, noodles and other cereal-based foodstuffs. It also infests animal detritus, fish meal, spices, nuts, cocoa and sugar products.<ref name=urban/> In the indoor environment it occurs in warehouses, granaries, food stores and dwellings, and outdoors in Russia, it has been found in bee nests.<ref name=buglink/>
+
+==Life cycle==
+Eggs are laid in suitable dry materials, and if kept in the temperature range {{convert|20|to|38|°C|°F|0|abbr=on}}, hatch in about a week. There are normally six [[instar]]s, and some mature larvae enter an active [[diapause]], especially in cooler habitats, and may remain in the larval state for two years.<ref name=urban/> Non-diapausing larvae [[pupa]]te near the surface of the foodstuff about seven weeks after the eggs were laid; the pupation period lasts about four days, and the new adults rest for two to seven days before emerging from the last larval skin.<ref name=urban/> Longevity for males is nine days at {{convert|40|°C|°F|0|abbr=on}} and several weeks under cooler conditions. Females also live longer at lower temperatures.<ref name=urban/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Trogoderma variabile'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=188486
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Trogoderma variabile''
+| url=https://www.gbif.org/species/1095971
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Trogoderma variabile'' species Information
+| url=https://bugguide.net/node/view/748936
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite journal
+| title = World catalogue of the Dermestidae
+| date = 2003
+| last1 = Háva | first1 = Jirí
+| journal = Studies and Reports of District Museum Prague-East Supplement
+| volume = 1| pages = 1–196
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 4: Elateroidea - Derodontoidea - Bostrichoidea - Lymexyloidea - Cleroidea - Cucujoidea
+| date = 2007
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-8788757675
+}}
+{{refend}}
+
+{{Taxonbar|from=Q3031711}}
+
+[[Category:Dermestidae]]
+[[Category:Pest insects]]
+[[Category:Beetles described in 1878]]
+[[Category:Articles created by Qbugbot]]

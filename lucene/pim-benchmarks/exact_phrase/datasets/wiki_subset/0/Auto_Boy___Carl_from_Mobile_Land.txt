@@ -1,0 +1,449 @@
+{{short description|2020 anime television series}}
+{{Infobox animanga/Header
+| name            = Auto Boy - Carl from Mobile Land
+| image           = Norimonoman kv.jpg
+| caption         = Anime key visual
+| ja_kanji        = のりものまん モービルランドのカークン
+| ja_romaji       = Norimonoman Mobiru rando no Ka-kun
+| genre           = 
+}}
+{{Infobox animanga/Print
+| type            = manga
+| title           = 
+| author          = 
+| illustrator     = 
+| publisher       = [[Shogakukan]]
+| publisher_en    = 
+| demographic     = 
+| imprint         = 
+| magazine        = Mebae
+| magazine_en     = 
+| first           = April 1, 2020
+| last            = 
+| volumes         = 
+| volume_list     = 
+}}
+{{Infobox animanga/Video
+| type            = TV series
+| director        = Shinobu Sasaki
+| producer        = Taito Itō
+| writer          = Yoshimi Narita
+| music           = Cher Watanabe
+| studio          = [[CloverWorks]]
+| network         = [[NHK Educational TV|NHK-E]]
+| licensee        = {{English anime licensee
+|NA=[[Aniplex of America]]
+}}
+| first           = April 2, 2020
+| last            = 
+| episodes        = 32<!-- This parameter should only be incremented when new episodes air or when a [[Wikipedia:Identifying reliable sources|reliable source]] can confirm a specific number of episodes. -->
+| episode_list    = #Anime
+}}
+{{Infobox animanga/Footer}}
+
+{{Nihongo|'''''Auto Boy - Carl from Mobile Land'''''|のりものまん モービルランドのカークン|Norimonoman Mobiru rando no Ka-kun|{{lit}} Norimono Man Mobile Land no Car-kun|lead=yes}} is a multimedia kids project by [[Aniplex]] and [[Sony Music Entertainment Japan]]. A manga adaptation began serialization on [[Shogakukan]]'s ''Mebae'' magazine on April 1, 2020. An original [[anime]] television series produced by [[CloverWorks]] began airing on April 2, 2020.
+
+==Plot==
+Carl is a red [[sports car]] working as a delivery worker in the Mobile Land island. During his deliveries, he obeys traffic rules and meets all kinds of friends.
+
+==Characters==
+;{{nihongo|Carl|カークン|Car-kun}}
+:{{voiced by|[[Ayahi Takagaki]]}}<ref name="cast">{{cite web|url=https://norimonoman.com/character/|title=Character|website=norimonoman.com|language=Japanese|accessdate=April 3, 2020}}</ref>
+;{{nihongo|Amy|キューちゃん|Kyū-chan}}
+:{{voiced by|Yuka Maruyama}}<ref name="cast"/>
+;{{nihongo|Polly|パッポン|Pappon}}
+:{{voiced by|[[Junji Majima]]}}<ref name="cast"/>
+;{{nihongo|Pudding|プリンちゃん|Purin-chan}}
+:{{voiced by|[[Sakura Tange]]}}<ref name="cast"/>
+;{{nihongo|Felix|ポンプ|Pump}}
+:{{voiced by|[[Nobuyuki Hiyama]]}}<ref name="cast"/>
+;{{nihongo|Dustin|ダストン|Daston}}
+:{{voiced by|[[Wasabi Mizuta]]}}<ref name="cast"/>
+;{{nihongo|Pops|おやっさん|Oyassan}}
+:{{voiced by|[[Tesshō Genda]]}}<ref name="cast"/>
+;{{nihongo|Ruster|サビビー|Sabibi}}
+:{{voiced by|[[Show Hayami]]}}<ref name="cast"/>
+;{{nihongo|DJ Nav|DJナビ|DJ Navi}}
+:{{voiced by|[[Setsuji Satō]]}}<ref name="cast"/>
+
+==Media==
+===Manga===
+A manga adaptation began on [[Shogakukan]]'s ''Mebae'' magazine from April 1, 2020.<ref name="info">{{cite web|first=Rafael Antonio|last=Pineda|url=https://www.animenewsnetwork.com/news/2020-03-03/sony-music-aniplex-produce-norimono-man-mobile-land-no-car-kun-kids-tv-anime/.157085|title=Sony Music, Aniplex Produce Norimono Man Mobile Land no Car-kun Kids' TV|date=March 3, 2020|work=[[Anime News Network]]|accessdate=April 3, 2020}}</ref>
+
+===Anime===
+[[Aniplex]] and [[Sony Music Entertainment Japan]] announced the TV series on March 3, 2020. It is directed by Shinobu Sasaki and produced by Taito Itō, with Toshiya Ono writing the scripts. Himu Ashitazu drafts the original character designs, with Hiromi Ogata adapting those character designs for animation. Cher Watanabe is composing the series' music, while Kisuke Koizumi is the sound director. The series is animated by [[CloverWorks]] and premiered on the [[NHK]]'s [[NHK Educational TV|education channel]] from April 2, 2020.<ref name="info"/>
+
+{|class="plainrowheaders wikitable" style="width:98%; margin:auto; background:#FFF;"
+|- style="border-bottom: 3px solid #CCF;"
+! style="width:3em;"  | No.
+! Title<ref>{{cite web|url=https://norimonoman.com/story/|title=Story|website=norimonoman.com|language=Japanese|accessdate=July 17, 2020}}</ref>
+! style="width:10em;" | Original air date
+|-
+{{Episode list
+| EpisodeNumber       = 1
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = おとどけやカークン
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|4|2}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 2
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = サビサビのあいつ
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|4|9}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 3
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = クールな救急車
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|4|16}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 4
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = どろぼうをつかまえろ！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|4|23}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 5
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = ぷりぷりプリンちゃん
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|4|30}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 6
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 消防車ポンプ、出動！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|5|7}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 7
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = ガス欠でぷっすん！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|5|14}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 8
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = さすらいのバイク
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|5|21}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 9
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 工事するのりもの
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|5|28}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 10
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = ゴミをあつめて
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|6|4}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 11
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = カークンのライバル！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|6|11}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 12
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 大きくなったら何になる？
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|6|18}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 13
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = おやっさんはすごい！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|6|25}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 14
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = おはようカークン
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|7|2}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 15
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = ねつにごちゅうい
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|7|9}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 16
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = ブーブーウォッシュ！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|7|16}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 17
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 消防車、だいしゅうごう！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|7|23}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 18
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = おおきなおとどけや
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|7|30}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 19
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 新幹線が来た！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|8|6}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 20
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 白バイはすばやい！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|8|13}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 21
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 消防士になりたい
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|8|20}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 22
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 新メニュー大作戦
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|8|27}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 23
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = サビビーにともだち！？
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|9|3}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 24
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 渡る前に、右、左、右
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|9|10}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 25
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = じっちゃんがやってきた！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|9|17}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 26
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = のりもの大運動会
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|9|24}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 27
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 楽しいサービスエリア
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|10|1}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 28
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 宝探しだブオンブオン！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|10|8}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 29
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 港ののりもの
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|10|15}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 30
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = おしゃれしてみよう！
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|10|22}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 31
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 初めての雪
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|10|29}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 32
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = のりものの休日
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|11|5}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 33
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = モリモリエナジー大ピンチ
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|11|12}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 34
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = カーフェリーで海の旅
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|11|19}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 35
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 泥んこカークン
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|11|26}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 36
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = 空飛ぶのりもの
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|12|3}}
+| ShortSummary        = 
+}}
+{{Episode list
+| EpisodeNumber       = 37
+| Title               =
+| TranslitTitle       =
+| NativeTitle         = キューちゃん、何か変？
+| NativeTitleLangCode = ja 
+| OriginalAirDate     = {{Start date|2020|12|10}}
+| ShortSummary        = 
+}}
+|}
+
+===Home media===
+A DVD entitled ''Car-kun no Nakama-tachi'' (カークンのなかまたち, lit. ''Car-kun's Group of Friends''), containing 10 select episodes, will be released by Aniplex in Japan on November 25, 2020.<ref>{{cite web |title=DVD「のりものまん モービルランドのカークン　カークンのなかまたち」発売決定！ |language=Japanese |url=https://prtimes.jp/main/html/rd/p/000002508.000016356.html |publisher=PR Times |accessdate=October 22, 2020 |date=September 17, 2020}}</ref>
+
+{| class="wikitable" style="width: 100%; margin: auto; text-align: center"
+|+ DVD releases
+|-
+! Region
+! Title
+! Episode count
+! Release date
+|-
+| [[DVD region code|2]]
+|''Car-kun no Nakama-tachi'' (カークンのなかまたち)
+| "style="text-align:center;" rowspan="1"|10
+|November 25, 2020
+|}
+
+==References==
+{{reflist}}
+
+==External links==
+*{{Official website|https://autoboy-anime.com/}} {{in lang|en}}
+*{{Official website|https://www.norimonoman.com/}} {{in lang|ja}}
+*{{ann|anime|23161}}
+
+{{CloverWorks}}
+
+[[Category:Anime with original screenplays]]
+[[Category:Aniplex franchises]]
+[[Category:CloverWorks]]
+[[Category:Japanese children's animated comedy television series]]
+[[Category:NHK original programming]]
+[[Category:Shogakukan manga]]

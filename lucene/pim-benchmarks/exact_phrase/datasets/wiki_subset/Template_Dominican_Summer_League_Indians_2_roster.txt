@@ -1,0 +1,50 @@
+{{MiLB roster
+| TeamName=Dominican Summer League Indians 2
+| TemplateName=Dominican Summer League Indians 2 roster
+| Pitchers=
+{{MLBplayer|--|Reny Artiles}}
+{{MLBplayer|--|Dahan Batista}}
+{{MLBplayer|--|David Flores}}
+{{MLBplayer|--|Frederic Garcia}}
+{{MLBplayer|--|Yeury Gervacio}}
+{{MLBplayer|--|Erick Heredia}}
+{{MLBplayer|--|Adrian Rodriguez}}
+{{MLBplayer|--|Andy Rubio}}
+{{MLBplayer|--|José Ruviera}}
+{{MLBplayer|--|Felipito Santos}}
+
+| Catchers=
+{{MLBplayer|--|Lahiorne Diaz}}
+
+| Infielders=
+{{MLBplayer|--|José Baez}}
+{{MLBplayer|--|Henyer Gomez}}
+{{MLBplayer|--|Alan Meza}}
+
+| Outfielders=
+
+| DH=
+
+| Manager=
+{{MLBplayer|--|[[Jesús Tavárez]]}}
+
+| Coaches=
+{{MLBplayer|--|Carlos Fermin}} {{small|(bench)}}
+{{MLBplayer|--|Anderson Polanco}} {{small|(pitching)}}
+{{MLBplayer|--|Ordomar Valdéz}} {{small|(hitting)}}
+
+| BC1               = #E21D38
+| FC1               = white
+| BC2               = #1A2E5A
+| FC2               = white
+| Date              = January 24, 2020
+| MLBAffiliation    = Cleveland Indians
+| MiLBcomNumber     = 616
+| MiLBcomLeagueName = 130
+| TransactionLink   = 
+| RotationLink      = 
+| League            = Dominican Summer League
+}}<noinclude>
+[[Category:Current Cleveland Indians organization team rosters templates]]
+[[Category:Current Dominican Summer League team rosters templates]]
+</noinclude>

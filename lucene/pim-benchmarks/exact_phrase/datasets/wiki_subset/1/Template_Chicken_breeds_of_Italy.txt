@@ -1,0 +1,35 @@
+{{Navbox
+|name       = Chicken breeds of Italy
+|title      = [[List of Italian chicken breeds|Chicken breeds of Italy]]
+|listclass = hlist
+|state      = {{{state<includeonly>|autocollapse</includeonly>}}}
+
+| list2 =
+* [[Ancona chicken|Ancona]]
+* [[Bianca di Saluzzo]]
+* [[Bionda Piemontese]]
+* [[Ciuffine Ghigi]]
+* [[Collo Nudo Italiano]]
+* [[Ermellinata di Rovigo]]
+* [[Italiener|Italiana]]
+* [[Leghorn chicken|Livorno]]
+* [[Mericanel della Brianza]]
+* [[Millefiori di Lonigo]]
+* [[Millefiori Piemontese]]
+* [[Modenese chicken|Modenese]]
+* [[Mugellese]]
+* [[Padovana chicken|Padovana]]
+* [[Padovana Riccia]]
+* [[Pépoi]]
+* [[Polverara chicken|Polverara]]
+* [[Robusta Lionata]]
+* [[Robusta Maculata]]
+* [[Romagnola chicken|Romagnola]]
+* [[Siciliana chicken|Siciliana]]
+* [[Valdarno chicken|Valdarno]]
+* [[Valdarnese]] 
+}}<noinclude>
+{{collapsible option}}
+[[Category:Italian domestic animal breed templates]]
+[[Category:Domestic animal breed navigational boxes]]
+</noinclude>

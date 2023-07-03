@@ -1,0 +1,12 @@
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was    '''speedy deletion''' (G11). -- [[User:Edgar181|Ed]] ([[User talk:Edgar181|Edgar181]]) 20:50, 30 September 2009 (UTC) 
+===[[Cambridge Garment Industries]]===
+:{{la|Cambridge Garment Industries}} – <includeonly>([[Wikipedia:Articles for deletion/Cambridge Garment Industries|View AfD]])</includeonly><noinclude>([[Wikipedia:Articles for deletion/Log/2009 September 30#{{anchorencode:Cambridge Garment Industries}}|View log]])</noinclude>
+:({{findsources|Cambridge Garment Industries}})
+Article is about a company that has no real notability and fails [[WP:ORG]]. The page is written like the statement from the company. ("Our ideology", "we concentrate") [[User:LAAFan|<font color="red" face="Times New Roman">LAA</font>]][[User talk:LAAFan|<font color="black" face="Times New Roman">Fan</font>]]''<sup>[[User:LAAFan/Guestbook|sign]]</sup> <sub>[[User:LAAFan/Editor review (LAAFan) |review]]''</sub> 20:46, 30 September 2009 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

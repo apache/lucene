@@ -1,0 +1,76 @@
+{{Other places|Kowalów (disambiguation){{!}}Kowalów}}
+{{Infobox settlement
+| name = Kowalów
+| settlement_type = Village
+| total_type = &nbsp;
+| image_skyline = Kościół w Kowalowie.jpg
+| image_caption = Church
+| image_flag =
+| image_shield =
+| subdivision_type = [[Countries of the world|Country]]
+| subdivision_name = {{flag icon|Poland}} [[Poland]]
+| subdivision_type1 = [[Voivodeships of Poland|Voivodeship]]
+| subdivision_name1 = [[Lubusz Voivodeship|Lubusz]]
+| subdivision_type2 = [[Powiat|County]]
+| subdivision_name2 = [[Słubice County|Słubice]]
+| subdivision_type3 = [[Gmina]]
+| subdivision_name3 = [[Gmina Rzepin|Rzepin]]
+| coordinates = {{coord|52|24|2|N|14|45|35|E|region:PL|display=inline}}
+| pushpin_map = Poland
+| pushpin_label_position = right
+| elevation_m =
+| population_total = 1000
+| website = }}
+
+'''Kowalów''' {{IPAc-pl|k|o|'|w|a|l|u|f}} is a [[village]] in the administrative district of [[Gmina Rzepin]], within [[Słubice County]], [[Lubusz Voivodeship]], in western Poland.<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) - TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref> It lies approximately {{convert|8|km|mi|0}} north-west of [[Rzepin]], {{convert|15|km|mi|0|abbr=on}} north-east of [[Słubice]], {{convert|50|km|mi|0|abbr=on}} south-west of Gorzów Wielkopolski, and {{convert|73|km|mi|0|abbr=on}} north-west of Zielona Góra.
+
+Before 1945 the area was part of Germany (see ''[[Territorial changes of Poland after World War II]]'').
+
+The village has a population of 1,000.
+
+==History==
+The oldest surviving document from the village Kowalów 1405, but the village had already been founded in the thirteenth century, as evidenced by the historic church from the late Roman period 1250-1270. The village was the center of an estate owned until 1945 was the family of von Kaphengst-Kohlow.
+
+February 2, 1945 the village was occupied by Soviet troops, which in April submitted her Polish administration. Existing inhabitants were dispossessed and deported to Germany.
+
+After the introduction of the Poles held here municipality aggregate, while the current evangelical church devoted to the Roman Catholic Church 29 June 1945 year. August 12, 1945  opened a primary school, giving it the name of the German anti-Fascist Fighters  and in 2009 it became the new patron of Janusz Korczak. In 1946 he founded the first Kowalowie County Municipal Cooperative "Peasant Self-Help."
+
+In the years 1945-1954 and 1973-1976 the area was the seat of the municipality Kowalów. In the years 1954-1972 the village was the seat of the National Council district. In the years 1975-1998 the area administratively belonged to the population of Gorzow.
+
+==Transport==
+Road transport
+
+Kowalów is located on two provincial roads: 137 Slubice-Kowalów-Miedzyrzecz-Trzciel and 139 Górzyca-Kowalów-Rzepin-Debrznica.
+
+Rail transport
+
+In Kowalowie is Kowalów station, which is located on the railway line No 273 Nadodrzance connecting Wroclaw Central from the [[Szczecin]] Square.
+
+Direct rail connections make it possible to reach all points on the line. Only stop passenger trains REGIO.
+
+==Photos==
+
+<gallery>
+File:Hala sportowa w kowalowie.jpg|Athletic Hall of Kowalów
+File:Stacja PKP (wejście).jpg|Railway station [[Polish State Railways|PKP]]
+File:Stacja PKP (peron) w Kowalowie.jpg|Railway station [[Polish State Railways|PKP]]
+File:Wjazd do Kowalowa od strony Radowa.jpg|Entrance to Kowalów
+File:Stacja plaiw w Kowalowie.jpg|The gas station and supermarket Chata Polska
+File:Jeden z domów.jpg|One of the oldest buildings in Kowalów
+File:Boisko .jpg|Sports complex at the School Complex in Kowalów
+File:Kompleks.jpg|Sports complex at the School Complex in Kowalów
+File:Boisko do koszykówki.jpg|Basketball court at the Complex of Schools in Kowalów
+File:Hala sportowa w Kowalowie.jpg|Athletic Hall of Kowalów
+File:ZS Kowalów.jpg|Access to Secondary School in Kowalów
+</gallery>
+
+==References==
+{{reflist}}
+
+<br>
+{{Gmina Rzepin}}
+
+{{coord|52|24|2|N|14|45|35|E|region:PL_type:city|display=title}}
+
+{{DEFAULTSORT:Kowalow, Lubusz Voivodeship}}
+[[Category:Villages in Słubice County]]

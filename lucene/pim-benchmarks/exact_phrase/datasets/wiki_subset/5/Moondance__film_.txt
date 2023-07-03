@@ -1,0 +1,76 @@
+{{EngvarB|date=September 2017}}
+{{Use dmy dates|date=September 2017}}
+{{unreferenced|date=September 2015}}
+
+{{Infobox film
+| name           = Moondance
+| image          = [[File:Moondance_1995_poster.jpg|250px]]
+| caption        = 
+| director       = Dagmar Hirtz
+| producer       = [[Jonathan Cavendish]]
+| screenplay     = Burt Weinshanker <br /> Mark Watters
+| based_on       = {{Based on|''The White Hare''<br />1936 novel|Francis Stuart}}
+| starring       = [[Rúaidhrí Conroy]] <br /> [[Ian Shaw (actor)|Ian Shaw]] <br /> Julia Brendler <br /> [[Marianne Faithfull]]
+| music          = [[Fiachra Trench]]
+| cinematography = [[Steven Bernstein (Director/Cinematographer)|Steven Bernstein]]
+| editing        = Dagmar Hirtz
+| studio         = Little Bird Productions <br /> Majestic Films
+| distributor    = 
+| released       = 1995 <br /> {{Film date|df=yes|1995|9|7}} <small>(Germany)</small>
+| runtime        = 88 minutes
+| country        = Ireland <br /> Germany
+| language       = English
+| budget         = 
+| gross          = 
+}}
+'''''Moondance''''' is a 1995 Irish drama film based on the 1936 novel ''The White Hare'' by [[Francis Stuart]]. It was directed by Dagmar Hirtz and stars [[Rúaidhrí Conroy]], in his second feature film following ''[[Into the West (film)|Into the West]]''. It also features [[Ian Shaw (actor)|Ian Shaw]], Julia Brendler and [[Marianne Faithfull]], who also provided the vocals for the song "Madam George" written by [[Van Morrison]], who wrote the lyrics for the songs included in the soundtrack.
+
+==Plot==
+''Moondance'' is the coming-of-age tale of two brothers, Patrick and Dominic who have a close relationship and live a care-free life in the countryside of Western Ireland. While their mother (Marianne Faithfull) is often away, travelling around the world, the brothers receive frequent visits from their interfering aunt, Dorothy who believes that Dominic should be receiving an education and that he should be sent to boarding school, for which Patrick doesn't agree. On one of Dorothy's visits, she brings along a young German woman named Anya, who volunteers to help Dominic with his education at home, and that it would also help her practice her English. As Anya continues to spend time with the brothers, Mother later returns home and announces that she is back to stay. She accepts Anya into her home.
+
+Patrick is disappointed that it will soon be time for Anya to leave as she about to begin university. Desperate for her to stay, he asks her to marry him, for which she agrees. As a wedding present to Anya, Dominic surprises her and leads her to a shack in the woods which he has decorated the inside for her. There it becomes evident that Dominic has a crush on Anya and he tells her that she will be his bride too. On the morning of the wedding, Anya becomes anxious and feels that she and Patrick are rushing into things too fast and tells him she needs more time to think things over. Patrick blames his mother for Anya's change of heart. Patrick and Anya then go to the shack where they make love. As Partick and Anya decide to leave for Dublin, Dominic decides to go with them as he cannot be without his brother.
+
+On arriving in Dublin, Anya meets with a friend, Rose whose boyfriend, Murphy agrees to let them live in a flat rent-free above his bar. Dominic then decides to have his greyhound, Ishka trained as a racing dog. The brothers' relationship soon comes under threat when Dominic becomes increasingly jealous over Patrick and Anya's relationship. Not only does he want Anya all for himself, he doesn't want to lose his brother. Anya begins to show her affection for Dominic and an almost intimate encounter is interrupted by Patrick which causes friction between Anya and Patrick. While Patrick is later out drinking, Anya tries to make love to Dominic, for which he becomes uncomfortable. As the tension continues between the brothers, Dominic decides to take a job on a boat. Before leaving, he returns home to the country where he sets fire to the shack. As he watches it burn, his mother finds him and comforts him. Meanwhile, Anya announces to Patrick that she will be going back to Germany after revealing that she and Dominic love each other. On returning to Dublin, Dominic and Patrick decide to put their differences behind them and make peace and Dominic says goodbye to Patrick and leaves.
+
+==Cast==
+* [[Rúaidhrí Conroy]] ... Dominic
+* [[Ian Shaw (actor)|Ian Shaw]] ... Patrick
+* Julia Brendler ... Anya
+* [[Marianne Faithfull]] ... Mother
+* [[Brendan Grace]] ... Murphy
+* Jasmine Russell ... Rose
+* Darren Monks ... Chalky
+* [[David Kelly (actor)|David Kelly]] ... Mr. Dunwoody
+* [[Tom Hickey (actor)|Tom Hickey]] ... Mr. Dunbar
+* Kate Flynn ... Aunt Dorothy 
+* [[Alan Devlin (actor)|Alan Devlin]] ... John Joe
+* [[Gerard McSorley]] ... Fr. McGrath
+* P.J Brady ... Murty
+* [[Joan O'Hara]] ... Nun
+
+==Soundtrack==
+The score for the film was provided entirely by [[Fiachra Trench]], which he composed, orchestrated and conducted. Trench additionally produced the score opposite Maggie Rodford. The music was recorded at Windmill Lane Studios in Dublin. The songs in the film were written by [[Van Morrison]].
+
+* "Moondance" -Traditional version performed by Artie McGlyn and [[Nollaig Casey]]
+* "Moondance" – Vocal version performed by [[Brian Kennedy (singer)|Brian Kennedy]], written by Van Morrison (from Warner Chappell Music LTD.)
+* "Have I Told You Lately" – Performed by Brian Kennedy and Shanna Morrison, written by Van Morrison, produced by Van Morrison and [[Phil Coulter]] (from Exile/[[Polygram Music]] LTD.)
+* "Queen of the Slipstream" -Performed by Brian Kennedy, written by Van Morrison, produced by James McMillan (from Essential/Polygram Music LTD.) 
+* "Madam George" – Performed by Marianne Faithfull, written by Van Morrison (from Web IV/Polygram Music)
+
+==References==
+{{reflist}}
+
+==External links==
+* {{IMDb title|0113850|Moondance}}
+* [http://www.allmovie.com/movie/moondance-v152154 ''Moondance''] at [[AllMovie]]
+
+{{Authority control}}
+
+{{DEFAULTSORT:Moondance (film))}}
+[[Category:1995 films]]
+[[Category:1995 drama films]]
+[[Category:Irish films]]
+[[Category:English-language films]]
+[[Category:Films shot in Ireland]]
+[[Category:Films set in Dublin (city)]]
+[[Category:Irish drama films]]

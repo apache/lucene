@@ -1,0 +1,17 @@
+{{User:COIBot/Summary/LinkReports}}
+Reporting statistics of link ggrinc.com; 0 records.
+* {{LinkSummary|ggrinc.com}}.
+* ggrinc.com resolves to [http://74.213.17.122 74.213.17.122] - {{LinkSummary|74.213.17.122}}.
+* Link is not on the [[en:User:COIBot#Blacklist|blacklist]].
+
+Reports
+COIBot reported 0 links.
+----
+Below a full report on all use of the link ggrinc.com.
+
+This list is intended to see how the [[:en:WP:EL|external link]] gets used, it does '''not''' imply that involved accounts are having a [[:en:WP:COI|conflict of interest]] in adding the link, or that the involved accounts are [[:en:WP:SPAM|spamming]] the link.
+
+LinkWatcher records:
+
+# 2009-09-30 19:45:36 (UTC): User [[User:Alexjones142|Alexjones142]] ([[User talk:Alexjones142|talk]] - [[Special:Contributions/Alexjones142|contribs]]; 6) to [[Alexjones142]] ([http://en.wikipedia.org/w/index.php?oldid=317145990&rcid=326244160 diff] - [http://en.wikipedia.org/w/index.php?oldid=317145990&action=edit&undoafter=317145990&undo= undo]) - Link: www.ggrinc.com/home.htm.<!--ID 15034148--><br/>* Links added in this diff: www.ggrinc.com/home.htm (6, 6, 6, 1) www.ggrinc.com/about.htm (6, 6, 6, 1) www.ggrinc.com/home.htm (6, 6, 6, 1) www.ggrinc.com/home.htm (6, 6, 6, 1) www.ggrinc.com/home.htm (6, 6, 6, 1) www.ggrinc.com/home.htm (6, 6, 6, 1) 
+<!-- tags: -->{{NOINDEX}}

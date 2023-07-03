@@ -1,0 +1,33 @@
+{{Infobox Israel village
+| name = Yad Rambam
+| hebname = {{Hebrew|יַד רַמְבַּ"ם}}
+| founded = 6 November 1955
+| founded_by = [[Moroccan Jews|Moroccan]] immigrants
+| district = center
+| council = [[Gezer Regional Council|Gezer]]
+| affiliation = [[Hapoel HaMizrachi]]
+| popyear = {{Israel populations|Year}}
+| population = {{Israel populations|Yad Rambam}}
+| population_footnotes={{Israel populations|reference}}
+| pushpin_map=Israel center ta |pushpin_mapsize=250 |pushpin_label_position = top
+|coordinates = {{coord|31|53|59.27|N|34|53|58.92|E|display=inline,title}}
+| website =
+}}
+'''Yad Rambam''' ({{lang-he-n|יַד רַמְבַּ"ם}}, ''lit.'' Rambam Memorial) is a [[moshav]] in central [[Israel]]. Located in the [[Shephelah]] near [[Ramle]], it falls under the jurisdiction of [[Gezer Regional Council]]. In {{Israel populations|Year}} it had a population of {{Israel populations|Yad Rambam}}.{{Israel populations|reference}}
+
+==History==
+The moshav was founded on 6 November 1955 and was named after [[Maimonides]] (known in Hebrew as Rambam). Most of the founders were [[Jewish exodus from Arab lands|immigrants]] from [[Fes, Morocco|Fes]] in [[Morocco]].
+
+==Notable residents==
+*[[Jo Amar]]
+
+==References==
+{{reflist}}
+
+{{Gezer Regional Council}}
+
+[[Category:Moshavim]]
+[[Category:Populated places established in 1955]]
+[[Category:Populated places in Central District (Israel)]]
+[[Category:1955 establishments in Israel]]
+[[Category:Moroccan-Jewish culture in Israel]]

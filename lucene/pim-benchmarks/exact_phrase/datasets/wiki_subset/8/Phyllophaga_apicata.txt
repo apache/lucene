@@ -1,0 +1,53 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Phyllophaga
+| species = apicata
+| authority = Reinhard, 1939
+}}
+
+'''''Phyllophaga apicata''''' is a species of scarab beetle in the family [[Scarabaeidae]].<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Phyllophaga apicata'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=927860
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Phyllophaga apicata''
+| url=https://www.gbif.org/species/9558032
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Phyllophaga apicata'' species Information
+| url=https://bugguide.net/node/view/725649
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 3: Scarabaeoidea - Scirtoidea - Dascilloidea - Buprestoidea - Byrrhoidea
+| date = 2006
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-30914-2
+}}
+{{refend}}
+
+{{Taxonbar|from=Q54984909}}
+
+[[Category:Melolonthinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1939]]
+
+
+{{Melolonthinae-stub}}

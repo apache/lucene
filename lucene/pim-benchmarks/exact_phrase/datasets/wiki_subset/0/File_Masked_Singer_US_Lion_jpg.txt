@@ -1,0 +1,16 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = The original sketch of the Lion costume from the first season of ''The Masked Singer''.
+|Source = https://www.etonline.com/the-masked-singer-designer-marina-toybina-shares-costume-secrets-and-original-sketches-exclusive
+|Author = Marina Toybina
+|Article = The Masked Singer (American season 1)
+|Purpose = To support encyclopedic discussion of this work in this article. The illustration is specifically needed to support the following point(s): <br/>
+It visually explains a major step in the process of creating a costumes for use on The Masked Singer.
+|Replaceability = n.a.
+|Minimality = Used in article once.
+|Commercial = n.a.
+}}
+
+==Licensing==
+{{Non-free 2D art}}
+{{Category ordered by date|Non-free files uploaded as object of commentary|2020|04|03}}

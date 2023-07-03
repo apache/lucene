@@ -1,0 +1,9 @@
+== Licensing: ==
+{{GFDL|migration=relicense}}
+
+Image self-created by [[User:Groubani]], changed by [[User:Passportguy]]
+
+[[Category:Visa requirements by nationality]]
+
+{{Copy to Wikimedia Commons|bot=Svenbot|priority=true}}
+{{Orphan image}}

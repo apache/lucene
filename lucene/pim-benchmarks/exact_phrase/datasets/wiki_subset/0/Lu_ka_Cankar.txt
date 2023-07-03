@@ -1,0 +1,41 @@
+{{short description|Slovenian canoeist}}
+{{Infobox sportsperson
+| headercolor    = plum
+| name           = 
+| image          = 
+| image_size     = 
+| caption        = 
+| nationality    = Slovenian
+| sport          = [[Canoeing]]
+| event          = [[Wildwater canoeing]]
+| retired        = 
+| club           = 
+| coach          = 
+| birth_date     = {{birth date and age|1972|10|26|df=y}}
+| birth_place    = [[Celje]], [[Slovenia]]
+| height         = 
+| weight         = 
+| show-medals    = yes
+| medaltemplates = 
+{{MedalCount|total=yes
+| [[Wildwater Canoeing World Championships|World Championships]] | 0 | 1 | 0
+| [[European Wildwater Championships|European Championships]]    | 0 | 0 | 2 
+}}
+}}
+'''Lučka Coat''' (born 26 October 1972) is a Slovenian female [[Canoeing|canoeist]] who won three medals at individual senior level at the [[Wildwater Canoeing World Championships]] and [[European Wildwater Championships]].<ref>{{cite web|url=http://www.canoeresults.eu/view-results/wildwater?eventid[]=108#event|title=World and European Championships Results from 1959 to 2019|publisher=canoeresults.eu|accessdate=3 April 2020}}</ref><ref>{{cite web|url=https://www.canoeicf.com/sites/default/files/results_history_-_complete_medal_winners_icf_updated_2007.pdf|title=INTERNATIONAL CANOE FEDERATION MEDAL WINNERS - Olympic Games and World Championships (1959-2008)|publisher=canoeicf.com|accessdate=3 April 2020}}</ref>
+
+==References==
+{{reflist}}
+
+==External links==
+* [http://klemenjakse.com/reference/lucka-cankar/ Lučka Cankar] at Klemen Jakse
+
+{{Authority control}}
+
+{{DEFAULTSORT:Coat, Lučka}}
+[[Category:1972 births]]
+[[Category:Living people]]
+[[Category:Slovenian female canoeists]]
+
+
+{{Slovenia-canoe-bio-stub}}

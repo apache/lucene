@@ -1,0 +1,16 @@
+== Sunmary ==
+{{Non-free use rationale
+| Description       = Screenshot of ''The Amazing Race 1'' title screen
+| Source            = Captured from video
+| Article           = {{ #if:  | {{{2}}} | The Amazing Race 1}}
+| Portion           = Single screenshot (less than 0.01% of whole work)
+| Low_resolution    = Yes
+| Purpose           = Improvement of article by providing visual identification of show in article infobox
+| Replaceability    = No free equivalent is available or could be created, as ''The Amazing Race 1'' is a copyrighted program.
+| other_information = 
+}}
+
+== Licensing ==
+{{non-free television screenshot|image has rationale=yes}}
+
+[[Category:The Amazing Race logos]]

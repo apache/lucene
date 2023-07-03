@@ -1,0 +1,59 @@
+{{short description|South African field hockey player}}
+{{Use dmy dates|date=August 2012}}
+{{Use South African English|date=August 2012}}
+{{BLP sources|date=September 2010}}
+{{Infobox sportsperson
+|birth_date={{birth date and age|1978|7|29|df=y}}
+|birth_place=
+|medaltemplates={{MedalSport | Women's [[Field Hockey]]}}
+{{MedalCountry | {{RSA}} }}
+{{MedalCompetition|[[All-Africa Games]]}}
+{{MedalGold | [[2003 All-Africa Games|2003 Abuja]] | Team}}
+{{MedalCompetition|[[Afro-Asian Games]]}}
+{{MedalSilver | [[Afro-Asian Games|2003 Hyderabad]] | Team}}{{MedalCompetition|[[Champions Challenge (field hockey)|Champions Challenge]]}}
+{{MedalSilver| [[2005 Women's Champions Challenge (field hockey)|2005 Virginia Beach]] | Team}}
+}}
+'''Caroline Jack''' (born 29 July 1978 in [[Port Elizabeth]]) is a [[field hockey]] goalkeeper from [[South Africa]], who represented her native country at the [[2004 Summer Olympics]] in [[Athens]]. There the women's national team finished in ninth position.<ref>[https://web.archive.org/web/20200418073450/https://www.sports-reference.com/olympics/athletes/bi/caroline-birt-1.html Olympic results]</ref>
+
+Jack's hometown is [[Grahamstown]]. Her maiden name is '''Birt''' and therefore she is [[nickname]]d ''Birty''. She plays for a provincial team called Southern Gauteng. Her international debut for South Africa was in 1998, during the Africa Cup in [[Harare]].
+
+==International Senior Tournaments==
+* 2002 &ndash; [[2002 Women's Champions Challenge (field hockey)|Champions Challenge]], Johannesburg
+* 2002 &ndash; [[2002 Commonwealth Games|Commonwealth Games]], Manchester
+* 2002 &ndash; [[2002 Women's Hockey World Cup|World Cup]], Perth
+* 2003 &ndash; [[All Africa Games]], Abuja
+* 2003 &ndash; [[Afro-Asian Games]], India
+* 2004 &ndash; [[Field hockey at the 2004 Summer Olympics|Olympic Games]], Athens
+* 2005 &ndash; [[2005 Women's Champions Challenge (field hockey)|Champions Challenge]], Virginia Beach
+* 2006 &ndash; [[2006 Commonwealth Games|Commonwealth Games]], Melbourne
+* 2006 &ndash; [[2006 Women's Hockey World Cup|World Cup]], Madrid, Spain
+
+==References==
+{{Reflist}}
+
+{{Navboxes
+|title=Caroline Jack &ndash; International Tournaments
+|list1=
+{{South Africa FHW Squad 2002 Champions Challenge}}
+{{South Africa FHW Squad 2002 World Cup}}
+{{South Africa FHW Squad 2003 All-Africa Games}}
+{{South Africa FHW Squad 2004 Summer Olympics}}
+{{South Africa FHW Squad 2005 Champions Challenge}}
+{{South Africa FHW Squad 2006 Commonwealth Games}}
+{{South Africa FHW Squad 2006 World Cup}}
+}}
+
+{{DEFAULTSORT:Jack, Caroline}}
+[[Category:1978 births]]
+[[Category:Living people]]
+[[Category:South African female field hockey players]]
+[[Category:Female field hockey goalkeepers]]
+[[Category:Olympic field hockey players of South Africa]]
+[[Category:Field hockey players at the 2004 Summer Olympics]]
+[[Category:Sportspeople from Port Elizabeth]]
+[[Category:Field hockey players at the 2002 Commonwealth Games]]
+[[Category:Field hockey players at the 2006 Commonwealth Games]]
+[[Category:Commonwealth Games competitors for South Africa]]
+[[Category:People from Makhanda, Eastern Cape]]
+[[Category:African Games gold medalists for South Africa]]
+{{SouthAfrica-fieldhockey-bio-stub}}

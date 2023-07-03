@@ -1,0 +1,39 @@
+{{Infobox NRHP
+  | name = Gov. Samuel J. Tilden Monument
+  | nrhp_type = 
+  | image = Samuel J. Tilden memorial.jpg
+  | caption = Governor Samuel J. Tilden Memorial, New Lebanon, New York.
+  | nearest_city= [[New Lebanon, New York]]
+  | coordinates = {{coord|42|28|30|N|73|23|9|W|display=inline,title}}
+| locmapin = New York#USA
+  | built = 1895-1896
+  | architect = [[Ernest Flagg]]<br>[[Carl Conrads]], sculptor
+  | architecture = Classical Revival
+  | added = July 14, 2006
+  | area = less than one acre
+  | governing_body = Private
+  | refnum = 06000573<ref name="nris">{{NRISref|2009a}}</ref>
+}}
+'''Gov. Samuel J. Tilden Monument''' is a historic funeral [[monument]] located in Cemetery of the Evergreens at [[New Lebanon, New York|New Lebanon]] in [[Columbia County, New York]].  It was designed by architect [[Ernest Flagg]] (1856-1947) and built in 1895–1896.  It contains the remains of [[List of Governors of New York|New York State Governor]] [[Samuel J. Tilden]] (1814-1886).  It consists of a nine and one half ton cut granite [[sarcophagus]] on a raised platform of four cut granite steps. The crypt entrance is marked by a cast-[[bronze]] gate that provides access to three brick arched crypts.<ref name="nrhpinv_ny">{{cite web|url=http://www.oprhp.state.ny.us/hpimaging/hp_view.asp?GroupView=101677|title=National Register of Historic Places Registration: Gov. Samuel J. Tilden Monument|date=December 2005|accessdate=2010-07-03 |author=Kristin Gibbon and William E. Krattinger|publisher=[[New York State Office of Parks, Recreation and Historic Preservation]]}} ''See also:'' {{cite web|url=http://www.oprhp.state.ny.us/hpimaging/hp_view.asp?GroupView=101678|title=Accompanying five photos}}</ref>
+
+It was added to the [[National Register of Historic Places]] in 2006.<ref name="nris"/>
+
+==References==
+{{reflist}}
+
+{{National Register of Historic Places in New York}}
+
+{{DEFAULTSORT:Tilden, Gov. Samuel J., Monument}}
+[[Category:Monuments and memorials on the National Register of Historic Places in New York (state)]]
+[[Category:Neoclassical architecture in New York (state)]]
+[[Category:Buildings and structures completed in 1896]]
+[[Category:Buildings and structures in Columbia County, New York]]
+[[Category:Monuments and memorials in New York (state)]]
+[[Category:Sculptures by Carl Conrads]]
+[[Category:1896 sculptures]]
+[[Category:Granite sculptures in New York (state)]]
+[[Category:1896 establishments in New York (state)]]
+[[Category:National Register of Historic Places in Columbia County, New York]]
+
+
+{{ColumbiaCountyNY-NRHP-stub}}

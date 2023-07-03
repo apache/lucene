@@ -1,0 +1,50 @@
+{{short description|Jamaican boxer}}
+{{Use Jamaican English|date=December 2013}}
+{{Use dmy dates|date=December 2013}}
+{{Infobox boxer
+| name           = Bunny Grant
+| image          = 
+| realname       = George Leslie Grant
+| nickname       = Bunny
+| weight         = [[featherweight]]<br />[[super featherweight]]<br />[[lightweight]]<br />[[light welterweight]]<br />[[welterweight]]<br />[[light middleweight]]
+| height         = {{height|ft=5|in=7}}
+| reach          = {{convert|69|in|cm|0|abbr=on}}
+| nationality    = [[Jamaican people|Jamaican]]
+| birth_date     = {{birth date|1940|09|29|df=y}}
+| death_date     = {{death date and age|2018|11|1|1940|09|29|df=y}}
+| birth_place    = Jamaica
+| death_place    = 
+| style          = <!--[[Orthodox stance|Orthodox]][[Southpaw stance|Southpaw]]-->
+| total          = 73
+| wins           = 53 ([[Knockout|KO]] 14)
+| losses         = 15 (KO 2)
+| draws          = 5
+| no contests    = 
+| medaltemplates = 
+}}
+
+'''George Leslie "Bunny" Grant''' (29 September 1940 – 1 November 2018) was a [[Jamaican people|Jamaican]] [[professional]] [[featherweight|feather]]/[[super featherweight|super feather]]/[[lightweight|light]]/[[light welterweight|light welter]]/[[welterweight]]/[[light middleweight]] [[Boxing|boxer]] of the 1950s, '60s and '70s who won the Jamaican lightweight title, Jamaican welterweight title, Central American light welterweight Title, Latin American junior welterweight title, and [[List of Commonwealth Boxing Council Champions#Lightweight|British Commonwealth lightweight title]], and was a challenger for the [[World Boxing Council]] (WBC) light welterweight title and [[World Boxing Association]] (WBA) World light welterweight title against [[Eddie Perkins]], Commonwealth welterweight title against [[Clyde Gray]], his professional fighting weight varied from {{convert|125+1/2|lb|kg}}, i.e. [[featherweight]] to {{convert|152+1/2|lb|kg}}, i.e. [[light middleweight]].<ref name="Statistics at boxrec.com">{{cite web |url=http://boxrec.com/list_bouts.php?human_id=15935&cat=boxer |title=Bunny Grant statistics at boxrec.com |publisher=boxrec.com |date=31 December 2012 |accessdate=1 January 2013}}</ref> Bunny Grant was managed by Jacques Deschamps, and Pancho Rankine (circa 1962), and trained by Harry Wiley<ref>{{cite web|url=http://boxrec.com/media/index.php/Harry_Wiley|title=Harry Wiley - BoxRec|website=boxrec.com}}</ref> (circa 1962).<ref name="Biography at boxrec.com">{{cite web |url=http://boxrec.com/media/index.php?title=Human:15935 |title=Bunny Grant biography at boxrec.com |publisher=boxrec.com |date=31 December 2012 |accessdate=1 January 2013}}</ref> He died on 1 November 2018.
+
+==References==
+{{reflist}}
+
+==External links==
+* {{Boxrec|id=15935}}
+* [http://static.boxrec.com/e/eb/Bunny_grant.JPG Image – Bunny Grant]
+
+{{Jamaican Sportsman of the Year}}
+
+{{DEFAULTSORT:Grant, Bunny}}
+[[Category:1940 births]]
+[[Category:2018 deaths]]
+[[Category:Featherweight boxers]]
+[[Category:Light-middleweight boxers]]
+[[Category:Lightweight boxers]]
+[[Category:Light-welterweight boxers]]
+[[Category:Super-featherweight boxers]]
+[[Category:Welterweight boxers]]
+[[Category:Jamaican male boxers]]
+[[Category:Sportspeople from Kingston, Jamaica]]
+[[Category:Deaths from cerebrovascular disease]]
+
+{{Jamaica-boxing-bio-stub}}

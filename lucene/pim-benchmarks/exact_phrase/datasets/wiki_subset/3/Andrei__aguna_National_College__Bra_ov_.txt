@@ -1,0 +1,43 @@
+{{Infobox school
+| name=Andrei Șaguna National College
+| native_name=
+| image=RO_BV_Brașov_Colegiul_Național_„Andrei_Șaguna”_4.JPG
+| image_size =
+| streetaddress = 
+| city=Brașov
+| country=Romania
+| coordinates = 
+| fundingtype = [[Public school (government funded)|Public]]
+| established= {{start date and age|1850}}
+| status = Open
+| category = Middle School and High School
+| grades = [[Fifth grade|5]] to [[Twelfth grade|12]]
+| gender = [[Mixed-sex education|coeducation ]]
+| age_range = 11-19
+| enrolment = 
+| average_class_size = 28
+| medium_of_language = Romanian
+| hours_in_day = 5-7
+| campus_type = [[Urban area|Urban]]
+| nickname=
+| founder = Andrei Șaguna 
+| website       = {{url|saguna.ro}}
+}}
+[[File:Saguna.png|thumb|200px|[[Andrei Șaguna]], school founder]]
+'''Andrei Șaguna National College''' ({{lang-ro|Colegiul Național "Andrei Șaguna"}}) is a [[Romania]]n state school located in [[Șcheii Brașovului]], the historically Romanian neighbourhood of [[Brașov]]. The school educates children aged between 11 (5th grade – gymnasium) and 19 years old (12th grade – high school). It is considered to be the 5th best school in the country (2014, 2015).<ref>{{cite web|url=http://www.admitereliceu.ro/top-licee|title=Top licee 2018 - Bucuresti, Constanta, Iasi, Cluj|website=www.admitereliceu.ro}}</ref><ref>{{cite web|url=http://jurnalul.ro/stiri/observator/evaluare-nationala-2015-harta-celor-mai-bune-100-licee-din-tara-690777.html|title=EVALUARE NAȚIONALĂ 2015. Harta celor mai bune 100 licee din ţară|publisher=|access-date=2016-04-28|archive-url=https://web.archive.org/web/20160513184640/http://jurnalul.ro/stiri/observator/evaluare-nationala-2015-harta-celor-mai-bune-100-licee-din-tara-690777.html|archive-date=2016-05-13|url-status=dead}}</ref>
+
+Since its founding in 1850,<ref>{{Cite web |url=http://www.saguna.ro/web7/istoric.html |title=Archived copy |access-date=2013-10-02 |archive-url=https://web.archive.org/web/20130721044824/http://www.saguna.ro/web7/istoric.html |archive-date=2013-07-21 |url-status=dead }}</ref> the school has had a number important Romanian personalities as either alumni or former teachers, including [[Lucian Blaga]], [[Augustin Bunea]], [[Gheorghe Bogdan-Duică]], [[Emil Cioran]], Gheorghe Dima, [[Octavian Goga]], [[Vasile Goldiş]], [[Titu Maiorescu]], [[Ciprian Porumbescu]], and [[Dumitru Stăniloae]].<ref>{{Cite web |url=http://www.saguna.ro/web7/personalitati.html |title=Archived copy |access-date=2013-10-02 |archive-url=https://web.archive.org/web/20130721044840/http://www.saguna.ro/web7/personalitati.html |archive-date=2013-07-21 |url-status=dead }}</ref>
+
+==References==
+{{reflist}}
+
+{{coord|45.6381|N|25.5836|E|source:wikidata|display=title}}
+
+{{DEFAULTSORT:Andrei Saguna National College}}
+[[Category:Schools in Brașov|Saguna]]
+[[Category:Educational institutions established in 1850]]
+[[Category:National Colleges in Romania]]
+[[Category:Historic monuments in Brașov County]]
+[[Category:1850 establishments in Europe]]
+
+{{Romania-school-stub}}

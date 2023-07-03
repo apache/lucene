@@ -1,0 +1,13 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = Cybera logo
+|Source = https://canadianigf.ca/
+|Article = Cybera
+|Purpose = to serve as the primary means of visual identification at the top of the article dedicated to the entity in question.
+|Replaceability = n.a.
+|Minimality = full logo, shown as the primary means of visual identification in the article's infobox.
+|Commercial = n.a.
+}}
+
+==Licensing==
+{{Non-free logo}}

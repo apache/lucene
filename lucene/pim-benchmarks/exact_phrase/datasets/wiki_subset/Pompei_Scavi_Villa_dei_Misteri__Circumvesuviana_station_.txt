@@ -1,0 +1,66 @@
+{{Infobox station 
+| name          = Pompei Scavi-Villa dei Misteri
+| type          = [[Circumvesuviana|Circumvesuviana commuter rail station]]
+| image         = Pompeii circum.jpg
+| image_size    = 
+| image_caption = Pompei Scavi station building
+| address       = 1 Via Villa dei Misteri<br>Pompei, NA 80045
+| coordinates   = 
+| line          = 
+{{rail color box|system=Circumvesuviana|line=Sorrento}}
+| other         = 
+| structure     = 
+| platform      = 2 side platforms
+| depth         = 
+| levels        = 
+| tracks        = 2
+| parking       = 
+| bicycle       = 
+| baggage_check = 
+| opened        = 1932
+| closed        =
+| rebuilt       = 
+| electrified   = 
+| ADA           = yes
+| code          = 
+| owned         = 
+| zone          = 
+| former        = 
+| passengers    = 
+| pass_year     = 
+| pass_percent  = 
+| pass_system   = 
+| mpassengers   = 
+| services      = 
+{{s-rail|title=Circumvesuviana}}
+{{s-line|system=Circumvesuviana|line=Sorrento|previous=Torre Annunziata Oplonti|next=Moregine}}
+| map_locator   = 
+}}
+'''Pompei Scavi-Villa dei Misteri''' is a railway station in [[Pompei]], Italy, on the Naples-Sorrento line of the [[Circumvesuviana]] commuter rail system.
+
+==Location==
+Pompei Scavi is the closest station to the famous ruins of the Ancient Roman city of [[Pompeii]], with the ruins across the street from the main station building.
+
+==Station layout==
+Pompei Scavi station consists of two tracks with two side platforms; platform 1 serves trains to Sorrento while platform 2 serves trains to Naples.<ref name="mondo">[http://www.stazionidelmondo.it/pompeiscavivilladeimisteri.htm Pompei Scavi-Villa dei Misteri] {{Webarchive|url=https://web.archive.org/web/20110722055431/http://www.stazionidelmondo.it/pompeiscavivilladeimisteri.htm |date=2011-07-22 }} ''Stazioni del Mondo'' Retrieved 2009-09-30</ref>
+
+==See also==
+*[[Circumvesuviana]]
+*[[Pompeii]]
+*[[Villa of the Mysteries]]
+
+==References==
+{{reflist}}
+
+==External links==
+*{{in lang|en}} [https://web.archive.org/web/20091011112109/http://www.vesuviana.it/web/en/infostazione Official station page]
+*{{in lang|it}} [https://web.archive.org/web/20110722055431/http://www.stazionidelmondo.it/pompeiscavivilladeimisteri.htm Stazioni del Mondo: Pompei Scavi-Villa dei Misteri]
+
+{{coord|40|44|55|N|14|28|52|E|region:IT_type:railwaystation_source:kolossus-itwiki|display=title}}
+
+[[Category:Railway stations in Campania]]
+[[Category:Pompei]]
+[[Category:Buildings and structures in the Metropolitan City of Naples]]
+
+
+{{Italy-railstation-stub}}

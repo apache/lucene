@@ -1,0 +1,48 @@
+{{short description|Vietnamese footballer}}
+
+{{BLP sources|date=April 2018}}
+{{Infobox football biography
+| name                = Lê Văn Xuân
+| image               =
+| caption             =
+| fullname            = Lê Văn Xuân
+| birth_date          = {{birth date and age|1999|02|27|df=y}}
+| birth_place         = [[Hậu Lộc District|Hậu Lộc]], [[Thanh Hóa Province|Thanh Hóa]], [[Vietnam]]
+| height              = 1.70 m
+| position            = [[Defender (association football)#Full-back|Full-back]] <br> [[Midfielder (association football)#Wide midfielder|Wide midfielder]]
+| currentclub         = [[Hanoi F.C.|Hà Nội]]
+| clubnumber          = 45
+| youthyears1         = 2010–2017
+| youthclubs1         = [[Promotion Fund of Vietnamese Football Talents F.C.|PVF]]
+| years1              = 2018
+| clubs1              = [[Hà Nội B F.C.|Hà Nội B]]
+| caps1               = 2
+| goals1              = 0
+| years2 = 2019
+| clubs2 = [[CLB Hồng Lĩnh Hà Tĩnh |Hồng Lĩnh Hà Tĩnh]]
+| caps2 = 14
+| goals2 = 1
+| years3 = 2020–
+| clubs3 = [[Hanoi F.C.|Hà Nội]]
+| caps3 = 10
+| goals3 = 0
+
+| nationalteam-update = 25 April 2018
+| club-update         =  
+}}
+
+'''Lê Văn Xuân''' is [[Vietnam]]ese footballer who plays for [[Hà Nội F.C.|Hà Nội]] as a [[Defender (association football)#Full-back|Full-back]] and [[Midfielder (association football)#Wide midfielder|Wide midfielder]].<ref>{{cite web|url=http://www.pvf.com.vn/component/content/article/109-quy-pvf/cau-thu-tieu-bieu/lop-2000/259-l%C3%AA-v%C4%83n-xu%C3%A2n?Itemid=0|title=Trung tâm Đào tạo bóng đá trẻ Việt Nam PVF|first=|last=PVF|website=www.pvf.com.vn}}</ref>
+
+==References==
+{{reflist}}
+
+{{DEFAULTSORT:Xuân, Lê Văn}}
+[[Category:Living people]]
+[[Category:Vietnamese footballers]]
+[[Category:Association football midfielders]]
+[[Category:V.League 1 players]]
+[[Category:Hà Nội F.C. players]]
+[[Category:1999 births]]
+
+
+{{Vietnam-footy-bio-stub}}

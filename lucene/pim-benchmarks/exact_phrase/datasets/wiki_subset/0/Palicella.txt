@@ -1,0 +1,36 @@
+{{Automatic taxobox
+| image = 
+| image_caption = 
+| taxon = Palicella
+| authority = Rodr.Flakus & Printzen (2014)
+| type_species = ''[[Palicella glaucopa]]''
+| type_species_authority =  (Hook. f. & Taylor) Rodr.Flakus & Printzen (2014)
+}}
+
+'''''Palicella''''' is a [[genus]] of [[lichen]] in the family [[Lecanoraceae]]. It was [[circumscription (taxonomy)|circumscribed]] in 2014 to accommodate the [[type species]], ''Palicella glaucopa'' (formerly placed in the genus ''[[Lecidea]]''), and two closely related species, ''P.&nbsp;filamentosa'' and ''P.&nbsp;schizochromatica''. [[molecular phylogenetics|Molecular]] analyses of these lichens revealed a [[monophyletic]] [[clade]] that is [[sister clade|sister]] to representatives from two Lecanoraceae genera, ''[[Lecanora symmicta]]'' and ''[[Pyrrhospora quernea]]''.<ref name="Rodriguez Flakus & Printzen 2014"/> Two additional species were transferred to ''Palicella'' from ''[[Lecanora]]'' in 2019.</small><ref name="Kondratyuk et al. 2019"/><ref name="Friday et al. 2019"/>
+
+==Description==
+''Palicella'' species have biatorine [[apothecia]], which are often darkened (by the [[biological pigment|pigment]] cinereorufa-green), an exciple (a saucer-shaped rim around the [[hymenium]]) consisting of radiating, narrow [[hypha]]e with elongated [[lumen (anatomy)|lumina]], and a hymenium with branched and sparsely anastomosed [[paraphyses]]. Other microscopic characteristics include an [[ascus]] with a broad axial body surrounded by a distinct darker staining layer, and [[ascospore]]s with a narrow [[ellipsoid]] shape.<ref name="Rodriguez Flakus & Printzen 2014"/>
+
+==Species==
+*''[[Palicella anakeestiicola]]'' <small>(Lendemer & E.Tripp) S.Y.Kondr., L.Lőkös & Farkas 2019</small><ref name="Kondratyuk et al. 2019"/>
+*''[[Palicella filamentosa]]'' <small>(Stirt.) Rodr.Flakus & Printzen 2014</small>
+*''[[Palicella glaucopa]]'' <small>(Hook. f. & Taylor) Rodr.Flakus & Printzen 2014</small>
+*''[[Palicella schizochromatica]]'' <small>(Pérez-Ort., T.Sprib. & Printzen) Rodr.Flakus & Printzen 2014</small>
+*''[[Palicella xantholeuca]]'' <small>(Müll.Arg.) Fryday & Orange 2019</small><ref name="Friday et al. 2019"/>
+
+==References==
+{{Reflist|refs=
+
+<ref name="Kondratyuk et al. 2019">{{cite journal |last1=Kondratyuk |first1=SY |last2=Lőkös |first2=L |last3=Jang |first3=S-H |last4=Hur |first4=J-S |last5=Farkas |first5=E |year=2019 |title=Phylogeny and taxonomy of ''Polyozosia'', Sedelnikovaea and Verseghya of the Lecanoraceae (Lecanorales, lichen-forming Ascomycota) |journal=Acta Botanica Hungarica |volume=61 |issue=1–2 |pages=137–184 |doi=10.1556/034.61.2019.1-2.9|url=http://real.mtak.hu/93957/1/034.61.2019.1-2.9.pdf }}</ref>
+
+<ref name="Rodriguez Flakus & Printzen 2014">{{cite journal |first1=Pamela |last1=Rodriguez Flakus |first2=Christian |last2=Printzen |title=''Palicella'', a new genus of lichenized fungi and its phylogenetic position within Lecanoraceae |journal=The Lichenologist |volume=46 |issue=4 |year=2014 |pages=535–552 |doi=10.1017/S0024282914000127}}</ref>
+
+<ref name="Friday et al. 2019">{{cite journal |last1=Fryday |first1=AM |last2=Orange |first2=A |last3=Ahti |first3=T |last4=Øvstedal |first4=DO |last5=Crabtree |first5=DE |year=2019 |title=An annotated checklist of lichen-forming and lichenicolous fungi reported from the Falkland Islands (Islas Malvinas) |journal=Glalia |volume=8 |issue=1 |page=15 |url=https://www.researchgate.net/publication/337818950}}</ref>
+
+}}
+
+{{Taxonbar|from=Q23073036}}
+
+[[Category:Lecanoraceae]]
+[[Category:Lecanorales genera]]

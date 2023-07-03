@@ -1,0 +1,93 @@
+{{Infobox settlement
+| name                    = Lazurne
+| native_name             = Лазу́рне
+| native_name_lang        = uk
+| settlement_type         = 
+| image_skyline           = 
+| image_alt               = 
+| image_caption           = 
+| image_flag              = Lazurne smt prapor.png
+| flag_alt                = 
+| image_seal              = 
+| seal_alt                = 
+| image_shield            = Lazurne smt gerb.png
+| shield_alt              = 
+| etymology               = 
+| nickname                = 
+| motto                   = 
+| image_map               = 
+| map_alt                 = 
+| map_caption             = 
+| pushpin_map             = Ukraine Kherson Oblast
+| pushpin_label_position  = 
+| pushpin_map_alt         = 
+| pushpin_map_caption     = 
+| coordinates             = {{coord|46|4|51|N|32|31|12|E|region:UA|display=inline,title}}
+| coor_pinpoint           = 
+| coordinates_footnotes   = 
+| subdivision_type        = Country
+| subdivision_name        = [[Ukraine]]
+| subdivision_type1       = [[Raions of Ukraine]]
+| subdivision_name1       = [[Skadovsk Raion]]
+| subdivision_type2       = [[Oblasts of Ukraine|Province]]
+| subdivision_name2       = [[Kherson Oblast]]
+| subdivision_type3       = 
+| subdivision_name3       = 
+| established_title       = Founded
+| established_date        = 1803
+| established_title2      = Urban-type settlement status since
+| established_date2       = 1975<ref name="lazurnoe">{{cite web|url=http://lazurnoe.com/index.php?d=doc&id=1 |script-title=uk:Отдых на Черном море 2015 - Лазурное, Украина |website=lazurnoe.com |language=uk |accessdate=18 August 2015}}</ref>
+| founder                 = 
+| seat_type               = 
+| seat                    = 
+| government_footnotes    = 
+| leader_party            = 
+| leader_title            = 
+| leader_name             = 
+| unit_pref               = Metric
+<!-- ALL fields with measurements have automatic unit conversion -->
+<!-- square kilometers -->
+| area_total_km2          = 71,53
+| length_km               = 
+| width_km                = 
+| dimensions_footnotes    = 
+| elevation_footnotes     = 
+| elevation_m             = 
+| population_as_of        = 2020 est.
+| population_footnotes    = 
+| population_total        = 3107
+| population_density_km2  = auto
+| population_note         = 
+| population_demonym      = 
+| timezone1               = 
+| utc_offset1             = 
+| timezone1_DST           = 
+| utc_offset1_DST         = 
+| postal_code_type        = [[Postal code]]
+| postal_code             = 75723
+| area_code_type          = 
+| area_code               = +380 5537
+| iso_code                = 
+| website                 = <!-- {{URL|example.com}} -->
+| footnotes               = 
+}}
+'''Lazurne''' ({{lang-uk|Лазу́рне}}; until 1975: Novooleksiyivka) is an [[urban-type settlement]] in [[Skadovsk Raion]] ([[Raion|district]]) of [[Kherson Oblast]] ([[Oblast|province]]), situated on the coast of the [[Black Sea]]. It is 28 kilometres west of [[Skadovsk]] and 100 km from [[Kherson]]. The closest railway station, Brylivka, is located in 80 km. Population: {{Ua-pop-est2020|3,107}}
+
+The settlement is a large climatic seaside recreation center of Kherson region.<ref name="lazurnoe"/> There are about 30 lodges and [[summer camp]]s in Lazurne.<ref>{{cite web|url=http://lazurnoe.com/index.php?d=pansionat&action=pansionat_list |script-title=uk:Лазурное - базы отдыха, пансионаты, частный сектор |website=lazurnoe.com |accessdate=18 August 2015 |language=uk}}</ref>
+
+==See also==
+* [[Dzharylhach]]
+
+== References ==
+{{reflist}}
+
+== External links ==
+* [http://rada.info/rada/04526457/ Settlement council of Lazurne] {{in lang|uk}}
+* [http://w1.c1.rada.gov.ua/pls/z7502/A005?rdat1=10.02.2010&rf7571=35114 Lazurne]{{dead link|date=December 2017 |bot=InternetArchiveBot |fix-attempted=yes }} on the website of [[Verkhovna Rada]] {{in lang|uk}}
+
+[[Category:1800s establishments in Ukraine]]
+[[Category:Populated places established in 1803]]
+[[Category:Urban-type settlements in Kherson Oblast]]
+
+
+{{Kherson-geo-stub}}

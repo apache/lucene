@@ -1,0 +1,30 @@
+{{Location map|Canada Alberta|lat= 56.263951|long=-111.104813|width=200|caption=Location of Gregoire Lake Estates [[Alberta]]|label=Gregoire Lake Estates}} 
+'''Gregoire Lake Estates''' is a [[hamlet (place)|hamlet]] in [[northern Alberta]], [[Canada]] within the [[Regional Municipality of Wood Buffalo|Regional Municipality (R.M.) of Wood Buffalo]].<ref>{{Cite web|url=http://municipalaffairs.gov.ab.ca/documents/msb/2010-ruralmun.pdf |title=Specialized and Rural Municipalities and Their Communities |author=Alberta Municipal Affairs |authorlink=Alberta Municipal Affairs |date=2010-04-01 |accessdate=2010-07-10 |url-status=dead |archiveurl=https://web.archive.org/web/20120229060335/http://municipalaffairs.gov.ab.ca/documents/msb/2010-ruralmun.pdf |archivedate=2012-02-29 }}</ref> It is located on [[Alberta Highway 881|Highway 881]], approximately {{convert|30|km}} southeast of [[Fort McMurray]].
+
+==Wildfire==
+{{Main|2016 Fort McMurray wildfire}}
+On May 4, 2016 The hamlet was ordered to be evacuated due to the rapid spread of the wildfire.<ref>{{cite web | url=http://www.rmwb.ca/News-Room/Media-Releases/Municipality-Announces-Mandatory-Evacuations-for-Anzac--Gregoire-Lake-Estates-and-Fort-McMurray-First-Nation_s2_p5451.htm | title=Municipality Announces Mandatory Evacuations for Anzac, Gregoire Lake Estates and Fort McMurray First Nation | publisher=Regional Municipality of Wood Buffalo |date=May 4, 2016| accessdate=May 8, 2016}}</ref>
+ 
+== Demographics ==
+As a designated place in the [[Canada 2016 Census|2016 Census of Population]] conducted by [[Statistics Canada]], Gregoire Lake Estates recorded a population of 165 living in 62 of its 81 total private dwellings, a change of {{percentage|{{#expr:165-188}}|188|1}} from its 2011 population of 188. With a land area of {{convert|0.48|km2|sqmi|abbr=on}}, it had a population density of {{Pop density|165|0.48|km2|sqmi|prec=1}} in 2016.<ref name=2016censusABdpls>{{cite web | url=http://www12.statcan.gc.ca/census-recensement/2016/dp-pd/hlt-fst/pd-pl/Table.cfm?Lang=Eng&T=1301&SR=1&S=45&O=A&RPP=9999&PR=48&CMA=0#tPopDwell | title=Population and dwelling counts, for Canada, provinces and territories, and designated places, 2016 and 2011 censuses – 100% data (Alberta) | publisher=[[Statistics Canada]] | date=February 8, 2017 | accessdate=February 13, 2017}}</ref>
+
+The population of Gregoire Lake Estates in 2012 was 275 according to a municipal census conducted by the R.M of Wood Buffalo.<ref name=2012popRMWB>{{cite web|url=http://www.woodbuffalo.ab.ca/Assets/Corporate/Census+Reports/Census+reports+Part+1.pdf |title=Municipal Census 2012: Count Yourself In! |publisher=Regional Municipality of Wood Buffalo |page=24 |accessdate=January 26, 2013 |url-status=dead |archiveurl=https://web.archive.org/web/20130326055550/http://www.woodbuffalo.ab.ca/Assets/Corporate/Census%2BReports/Census%2Breports%2BPart%2B1.pdf |archivedate=March 26, 2013 }}</ref>
+
+As a designated place in the [[Canada 2011 Census|2011 Census]], Gregoire Lake Estates had a population of 188 living in 70 of its 79 total dwellings, a -2.1% change from its 2006 population of 192. With a land area of {{convert|0.22|km2|sqmi|abbr=on}}, it had a population density of {{Pop density|188|0.22|km2|sqmi}} in 2011.<ref name=statcan2011dpl>{{cite web | url=http://www12.statcan.gc.ca/census-recensement/2011/dp-pd/hlt-fst/pd-pl/Table-Tableau.cfm?LANG=Eng&T=1302&PR=48&S=51&O=A&RPP=25 | title=Population and dwelling counts, for Canada, provinces and territories, and designated places, 2011 and 2006 censuses (Alberta) | publisher=Statistics Canada | date=2012-02-08 | accessdate=2012-04-07}}</ref>
+
+== See also ==
+*[[List of communities in Alberta]]
+*[[List of designated places in Alberta]]
+*[[List of hamlets in Alberta]]
+
+== References ==
+{{Reflist}}
+
+{{Alberta|hamlets=yes}}
+{{coord|56|26|39.51|N|111|10|48.13|W|scale:60000_region:CA|display=title|name=Gregoire Lake Estates}}
+
+[[Category:Hamlets in Alberta]]
+[[Category:Designated places in Alberta]]
+[[Category:Regional Municipality of Wood Buffalo]]
+
+{{NorthernAlberta-geo-stub}}

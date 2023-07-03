@@ -1,0 +1,25 @@
+The '''Employee Rights Act''' (S.1774), or '''ERA''', is a bill re-introduced to the [[115th United States Congress|115th Congress]] in the [[United States Senate]] on September 7, 2017 by [[Orrin Hatch|Sen. Orrin G. Hatch]] [R-UT] and 14 co-sponsors.<ref>{{Cite web|url=https://www.congress.gov/bill/115th-congress/senate-bill/1774|title=S.1774 - Employee Rights Act|website=Congress.gov}}</ref> The bill was referred to the [[United States Senate Committee on Health, Education, Labor and Pensions]].<ref>{{Cite web|title = Committees - S.1874 - 114th Congress (2015-2016): Employee Rights Act|url = https://www.congress.gov/bill/114th-congress/senate-bill/1874/committees|website = www.congress.gov|date = 2015-07-28|accessdate = 2016-01-08|first = Hatch|last = Orrin}}</ref> It is the successor to bills first introduced in the [[112th Congress]] of the same name, also sponsored by Sen. Hatch and then-Rep. (now Senator) [[Tim Scott (politician)|Tim Scott]] of [[South Carolina]].<ref>{{Cite web|title = Sen. Orrin Hatch and Rep. Tim Scott Introduce Legislation to Protect Workers' Rights - Press Releases - United States Senator Orrin Hatch|url = http://www.hatch.senate.gov/public/index.cfm/2011/8/sen-orrin-hatch-and-rep-tim-scott-introduce-legislation-to-protect-workers-rights|website = www.hatch.senate.gov|accessdate = 2016-01-08}}</ref>
+
+An identical Employee Rights Act bill (H.R. 2723) was re-introduced to the [[United States House of Representatives|U.S. House of Representatives]] on May 25, 2017 by Rep. [[Phil Roe (politician)|Phil Roe]] [R-TN] and six co-sponsors.<ref>{{Cite web|url=https://roe.house.gov/news/documentsingle.aspx?DocumentID=398171|title=Roe Statement on Introduction of the Employee Rights Act|date=2017-05-25|website=Congressman Phil Roe Tennessees 1st District - About the District|access-date=2017-08-08}}</ref> It received a hearing in the [[United States House Committee on Education and the Workforce]] on June 14, 2017.<ref>{{Cite web|url=https://edworkforce.house.gov/calendar/eventsingle.aspx?EventID=401729|title="Legislative Reforms to the National Labor Relations Act: H.R. 2776, Workforce Democracy and Fairness Act; H.R. 2775, Employee Privacy Protection Act; and, H.R. 2723, Employee Rights Act." {{!}} Education & the Workforce Committee|website=edworkforce.house.gov|access-date=2017-08-08}}</ref>
+
+In the 114th Congress, the ERA was co-sponsored by 170 members of Congress, including 33 U.S. senators.{{cn|date=October 2019}} In July 2017, ''[[The Wall Street Journal]]'' editorialized in favor of the ERA, saying "the bill would protect workers and employers from union intimidation."<ref>{{Cite web|url=https://www.wsj.com/articles/the-gops-labor-project-1500678214|title=The GOP's Labor Project|last=Board|first=The Editorial|website=WSJ|access-date=2017-08-08}}</ref>
+
+==Legislation==
+The bill includes eight core provisions.<ref>{{cite web|last=Stverak |first=Jason |url=http://thehill.com/opinion/op-ed/198644-labor-board-stacks-the-deck-for-unions |title=Labor board stacks the deck for unions |publisher=The Hill |date=2014-02-18 |accessdate=2014-03-04}}</ref><ref>{{cite web | last1=Sherk |first1=James | last2=Jolevski | first2=Filip | url= http://blog.heritage.org/2013/11/14/employee-rights-act-protecting-workers-from-union-overreach/ |title=Employee Rights Act: Protecting Workers from Union Overreach |publisher=Heritage.org |date=2013-11-13 |accessdate=2014-03-04}}</ref><ref>{{cite web | last=Hoist |first=Christine |url=http://www.lexology.com/library/detail.aspx?g=a486a9be-b96e-42e1-a37c-69d72d9ac82a  |title=Republicans introduce "Employee Rights Act" targeting NLRA |publisher=Lexology |date=2013-11-27 |accessdate=2014-03-04}}</ref> It would: 
+
+*require secret ballot elections to determine union representation; 
+*create union re-certification elections when half of the originally unionized employees have turned over; 
+*mandate opt-in rather than opt-out systems for voluntary contributions to union political operations, or "paycheck protection"; 
+*change the "win" bar for a union certification election to include the majority of all affected employees, not just those who voted; 
+*permit employees not to provide personal information to union organizers; 
+*provide protections from union coercion (including fines) blocking de-certification of an existing union; 
+*require secret ballot strike votes, eliminating the option to vote at union meetings following discussion; 
+*criminalize union threats and violence.
+
+==References==
+{{Reflist}}
+
+== External links ==
+* [http://employeerightsact.com/ EmployeeRightsAct.com] - An anonymous advocacy page
+
+[[Category:United States proposed federal labor legislation]]

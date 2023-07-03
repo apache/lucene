@@ -1,0 +1,40 @@
+{{Infobox government agency
+|agency_name   = Arkansas Health Connector
+|logo          =
+|formed        =
+|jurisdiction  = [[Health insurance marketplace]] for U.S. state of [[Arkansas]]
+|chief1_name     =
+|chief1_position =
+|website         = [http://www.arhealthconnector.org arhealthconnector.org]
+}}
+
+'''Arkansas Health Connector/Arkansas Private option''' is the [[health insurance marketplace]], previously known as health insurance exchange, in the U.S. state of [[Arkansas]], created in accordance with the [[Patient Protection and Affordable Care Act]]. The marketplace operates a web site and a toll-free resource center.
+
+The marketplace is offered to individuals and families who are not covered by their employer. It allows enrollees  to compare health insurance plans and provides those who qualify  with access to tax credits. Enrollment started on October 1, 2013.<ref>{{cite web|url=http://www.thetown-crier.com/blogs/1789/entry/55183/ |title=Arkansas's health insurance marketplace |last=Beebe |first=Mike |date=October 1, 2013 |authorlink=Mike Beebe |work=Northeast Arkansas Town Crier |accessdate=25 December 2013 |url-status=dead |archiveurl=https://web.archive.org/web/20131226222141/http://www.thetown-crier.com/blogs/1789/entry/55183/ |archivedate=26 December 2013 }}</ref>
+
+The Arkansas Exchange will be run as a State-Federal partnership where the state will be responsible for the disseminating information regarding the marketplace. Actual enrollment of consumers in Arkansas will be handled by the [[Federally Facilitated Marketplace]] at [[HealthCare.gov]].
+
+As of December 2013, the state of Arkansas has received over 53 million dollars for operation of the site.<ref name="DeMillo">{{cite web|url=http://www.arkansasbusiness.com/article/96277/arkansas-lawmakers-approve-insurance-exchange-funds|title=Arkansas Lawmakers Approve Insurance Exchange Funds|last=DeMillo|first=Andrew|date=December 20, 2013|work=Arkansas Business News|accessdate=25 December 2013}}</ref>
+
+==Participating Insurance Providers==
+In 2014, 3 insurance providers will be participating in the state of Arkansas
+* [[Ambetter]] of Arkansas
+* Arkansas [[Blue Cross Blue Shield]]
+* [[QualChoice]] Health Insurance
+
+==References==
+{{reflist}}
+
+==External links==
+{{Portal bar|United States}}
+* [https://archive.is/20131006111931/http://www.arhealthconnector.org/ arhealthconnector.org] Arkansas Health Connector
+
+{{PPACA |state=expanded}}
+
+[[Category:Health insurance marketplaces|Arkansas]]
+[[Category:Healthcare in Arkansas]]
+[[Category:Healthcare reform in the United States by state|Arkansas]]
+
+
+{{insurance-stub}}
+{{arkansas-stub}}

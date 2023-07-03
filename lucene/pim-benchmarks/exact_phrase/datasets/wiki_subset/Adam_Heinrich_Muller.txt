@@ -1,0 +1,1 @@
+#redirect [[Adam Müller]] {{R from title without diacritics}}

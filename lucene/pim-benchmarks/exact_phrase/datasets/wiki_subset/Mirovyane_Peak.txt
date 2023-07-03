@@ -1,0 +1,35 @@
+[[File:Sentinel-Range-location-map.png|thumb|Location of Sentinel Range in Western Antarctica.]]
+[[File:Vinson-Map.jpg|thumb|Sentinel Range map.]]
+'''Mirovyane Peak''' ({{lang-bg|връх Мировяне|vrah Mirovyane}}, {{IPA-bg|ˈvrɤx miˈrɔvʲɐnɛ|IPA}}) is the peak rising to 1500 m in [[Maglenik Heights]], north-central [[Sentinel Range]] in [[Ellsworth Mountains]], [[Antarctica]].  It is surmounting [[Kopsis Glacier]] to the west, lower [[Embree Glacier]] to the north, and [[Young Glacier]] to the south.
+
+The peak is named after the settlement of Mirovyane in Western Bulgaria.
+
+==Location==
+Mirovyane Peak is located at {{coord|78|04|30|S|85|04|54|W|display=inline,title}}, which is 3.46&nbsp;km northeast of [[Zimornitsa Peak]], 13.68&nbsp;km southeast of [[Mount Schmid]] and 17.94&nbsp;km north-northwest of [[Mount Besch]].  US mapping in 1961, updated in 1988.
+
+==See also==
+* [[Mountains in Antarctica]]
+
+==Maps==
+* [https://commons.wikimedia.org/wiki/File:Vinson-Map.jpg Vinson Massif.]  Scale 1:250 000 topographic map.  Reston, Virginia: US Geological Survey, 1988.
+* [http://www.add.scar.org Antarctic Digital Database (ADD).] Scale 1:250000 topographic map of Antarctica. Scientific Committee on Antarctic Research (SCAR). Since 1993, regularly updated.
+
+==External links==
+* [http://data.aad.gov.au/aadc/gaz/scar/display_name.cfm?gaz_id=137269 Mirovyane Peak] SCAR Composite Antarctic Gazetteer
+* [http://apcbg.org/gazet-bg.pdf Bulgarian Antarctic Gazetteer] [[Antarctic Place-names Commission]] (in Bulgarian)
+* [http://apcbg.org/gazet.pdf Basic data] (in English)
+
+==External links==
+* [https://copernix.io/#?where=-85.08851199740599,-78.07507094095747,15&?query=&?map_type=hybrid Mirovyane Peak.] Copernix satellite image
+
+{{Bulgarian-named Antarctic place}}
+
+{{Portal bar|Geography}}
+{{Antarctica}}
+
+[[Category:Ellsworth Mountains]]
+[[Category:Mountains of Ellsworth Land]]
+[[Category:Bulgaria and the Antarctic]]
+
+
+{{EllsworthLand-geo-stub}}

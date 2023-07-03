@@ -1,0 +1,81 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| image = Calathus (Neocalathus) opaculus (39447196644).jpg
+| genus = Calathus
+| species = opaculus
+| authority = [[John Lawrence LeConte|Leconte]], 1854
+}}
+
+'''''Calathus opaculus''''' is a species of [[ground beetle]] in the family [[Carabidae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/><ref name=Bousquet2012/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Calathus opaculus'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=110836
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Calathus opaculus''
+| url=https://www.gbif.org/species/4988369
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Calathus opaculus'' species Information
+| url=https://bugguide.net/node/view/160247
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=Bousquet2012>
+{{Cite journal
+| title = Catalogue of Geadephaga (Coleoptera, Adephaga) of America, north of Mexico
+| date = 2012
+| last1 = Bousquet | first1 = Yves
+| journal = ZooKeys
+| issue = 245| pages = 1–1722
+| url = https://zookeys.pensoft.net/articles.php?id=4003
+| doi = 10.3897/zookeys.245.3416
+| pmc=3577090
+| pmid=23431087
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite journal
+| title = The Taxonomy of the Nearctic Species of the Genus Calathus Bonelli (Coleoptera: Carabidae: Agonini)
+| date = 1972
+| last1 = Ball | first1 = George E.
+| last2 = Nègre | first2 = Jacques
+| journal = Transactions of the American Entomological Society
+| volume = 98| issue = 4| pages = 413–533
+| jstor=25078119
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 1: Archostemata - Myxophaga - Adephaga
+| date = 2017
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-33029-0
+}}
+{{refend}}
+
+==External links==
+{{refbegin}}
+* {{Commons category-inline|Calathus opaculus}}
+{{refend}}
+
+{{Taxonbar|from=Q13448354}}
+
+[[Category:Calathus (beetle)|opaculus]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1854]]
+
+
+{{harpalinae-stub}}

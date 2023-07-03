@@ -1,0 +1,34 @@
+{{Multiple issues|
+{{more citations needed|date=November 2015}}
+{{One source|date=March 2020}}
+}}
+{{Infobox newspaper
+| caption = {{#invoke:Wikidata|getValue|P1476|FETCH_WIKIDATA}}
+| image = {{#invoke:Wikidata|getValue|P18|FETCH_WIKIDATA}}
+| type = {{#invoke:Wikidata|getValue|P31|FETCH_WIKIDATA}}
+| founder = {{#invoke:WikidataIB|getValue|P112|fetchwikidata=ALL}}
+| editor = {{#invoke:Wikidata|getValue|P98|FETCH_WIKIDATA}}
+| owners = {{wikidata|properties|qualifier|qualifier|P127|P580|P582}}
+| publishing_country = {{#invoke:Wikidata|getValue|P495|FETCH_WIKIDATA}}
+| launched = {{#invoke:WikidataIB|getValue|P577|fetchwikidata=ALL|df=dmy}}
+| foundation = {{#invoke:WikidataIB|getValue|P577|fetchwikidata=ALL|df=y }}
+| ceased publication = {{#invoke:WikidataIB|getValue|P2669|fetchwikidata=ALL|df=dmy }}
+| relaunched = {{#invoke:WikidataIB|getValue|P156|fetchwikidata=ALL}}
+| publishing_city = {{#invoke:WikidataIB|getValue|P291|fetchwikidata=ALL}}
+| publisher =  {{#invoke:WikidataIB|getValue|P123|fetchwikidata=ALL}}
+| circulation = {{#invoke:WikidataIB|getValue|P276|fetchwikidata=ALL}}
+| oclc = {{#invoke:wd|property|P243}}
+}}
+'''''The Aberystwyth Observer''''' (established in 1858) was a weekly conservative English language newspaper in [[Wales]].  
+
+The paper was distributed in [[Ceredigion]], West [[Montgomeryshire]], and South [[Merionethshire]]. It contained general and local news and information, and a list of visitors. It was published by David Jenkins.<ref>[http://newspapers.library.wales/browse/3036868 The Aberystwyth Observer] at Welsh Newspapers Online, [[National Library of Wales]]</ref>
+
+==References==
+{{Reflist}}
+
+{{DEFAULTSORT:Aberystwyth Observer}}
+[[Category:Newspapers published in Wales]]
+
+
+{{UK-newspaper-stub}}
+{{wales-stub}}

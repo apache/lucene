@@ -1,0 +1,39 @@
+{{Infobox NRHP
+  | name = Cadmus N. Bray House
+  | nrhp_type = 
+  | image = 
+  | caption = 
+  | location= 229 W. Second Street,<br>[[Siler City, North Carolina]]
+  | coordinates = {{coord|35|43|25|N|79|27|42|W|display=inline,title}}
+| locmapin = North Carolina#USA
+  | area = {{convert|1.27|acre}}
+  | built = {{Start date|1906}}
+  | architecture = Queen Anne, Colonial Revival
+  | added = December 30, 1999
+  | refnum = 99001620<ref name="nris">{{NRISref|version=2010a}}</ref>
+| builder = Turner, James W.
+  | governing_body = Private 
+  }}
+'''Cadmus N. Bray House''' is a historic house located at 229 West Second Street in [[Siler City, North Carolina|Siler City]], [[Chatham County, North Carolina]]. James W. Turner, a local builder, constructed the house, and it remains a nearly unaltered representative of early 20th century architectural preferences in a small North Carolina rail town.
+
+== Description and history ==
+The 2-1/2 story, [[Queen Anne style architecture|Queen Anne]]/[[Colonial Revival architecture|Colonial Revival]] style timber-framed residence was built in 1906 for Siler City businessman and town mayor, Cadmus Bray. It features multiple bay projections covered by a steeply pitched and cross-gabled hipped roof surmounted by a square frame [[baluster|balustrade]] and a wraparound porch.<ref name="nrhpinv">{{Cite web | author =Beth Keane and Kaye Graybeal| title =Cadmus N. Bray House| work = National Register of Historic Places - Nomination and Inventory | date =July 1999 | url = https://files.nc.gov/ncdcr/nr/CH0480.pdf | format = pdf | publisher = North Carolina State Historic Preservation Office | accessdate = 2014-08-01}}</ref>
+
+It was listed on the [[National Register of Historic Places]] on December 30, 1999.<ref name="nris" />
+
+==References==
+{{reflist}}
+
+{{National Register of Historic Places in North Carolina}}
+
+{{DEFAULTSORT:Bray, Cadmus N., House}}
+[[Category:Houses on the National Register of Historic Places in North Carolina]]
+[[Category:Queen Anne architecture in North Carolina]]
+[[Category:Colonial Revival architecture in North Carolina]]
+[[Category:Houses completed in 1906]]
+[[Category:Houses in Chatham County, North Carolina]]
+[[Category:National Register of Historic Places in Chatham County, North Carolina]]
+[[Category:1906 establishments in North Carolina]]
+
+
+{{ChathamCountyNC-NRHP-stub}}

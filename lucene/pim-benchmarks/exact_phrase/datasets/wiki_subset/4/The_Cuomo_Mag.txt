@@ -1,0 +1,29 @@
+'''The Cuomo Mag''' is a 3D printed  [[AR-15]] semi automatic rifle [[magazine (firearms)|magazine]] named after the Governor of New York, [[Andrew Cuomo]], who signed the [[NY SAFE Act]] into law banning magazines capable of holding more than 10 rounds of ammunition.<ref name=FAB1>{{cite web|last=Branson|first=Michael|title=Defense Distributed Releases Printable AK Magazine|url=http://www.thefirearmblog.com/blog/2013/04/08/defense-distributed-releases-printable-ak-magazine/|accessdate=April 12, 2013|journal=The Firearm Blog|date=April 8, 2013}}. ([https://www.webcitation.org/6SiJDDXnV?url=http://www.thefirearmblog.com/blog/2013/04/08/defense-distributed-releases-printable-ak-magazine/ archive])</ref><ref name=Wired5>{{cite news |last=Beckhusen|first=Robert |title=New 3-D Printed Rifle Magazine Lets You Fire Hundreds of Rounds |url= https://www.wired.com/dangerroom/2013/02/printed-magazine/ |accessdate=April 12, 2013 |journal=[[Wired (magazine)|Wired Danger Room]]|date=February 8, 2013}}</ref>  It was created by [[Defense Distributed]] and made public around January 2013 <ref name=Forbesmag>{{cite news |last=Greenberg|first=Andy |title=Gunsmiths 3D-Print High Capacity Ammo Clips To Thwart Proposed Gun Laws |url= https://www.forbes.com/sites/andygreenberg/2013/01/14/gunsmiths-3d-print-high-capacity-ammo-clips-to-thwart-proposed-gun-laws/ |accessdate=April 12, 2013 |journal=[[Forbes|Forbes Online]] |date=January 14, 2013}} ([https://www.webcitation.org/6SQYe3oOu?url=http://www.forbes.com/sites/andygreenberg/2013/01/14/gunsmiths-3d-print-high-capacity-ammo-clips-to-thwart-proposed-gun-laws/ archive])</ref>
+
+The initial prototype was created using the [[Objet Geometries|Objet]] Connex26 using VeroClear printing material (a transparent material) in order to show the magazine’s round count and feeding action<ref name="excuomo"/><ref name="archive">[https://www.forbes.com/sites/andygreenberg/2013/05/08/3d-printed-guns-blueprints-downloaded-100000-times-in-two-days-with-some-help-from-kim-dotcom/ 3D-Printed Gun's Blueprints Downloaded 100,000 Times In Two Days (With Some Help From Kim Dotcom)], forbes.com, August 5, 2013. ([https://www.webcitation.org/6SQZHYIw5?url=http://www.forbes.com/sites/andygreenberg/2013/05/08/3d-printed-guns-blueprints-downloaded-100000-times-in-two-days-with-some-help-from-kim-dotcom/ archive])</ref> via the [[Fused deposition modeling|Fused deposition modeling (FDM)]] method.<ref>[http://www.ammoland.com/2013/03/3d-printed-ar15-magazine/#axzz3ChRscSHd A Printed AR-15 Magazine], Ammoland.com, March 05 2013. ([https://www.webcitation.org/6SQZ6Vk5X?url=http://www.ammoland.com/2013/03/3d-printed-ar15-magazine/ archive])</ref>
+
+The magazine holds 30 rounds<ref name="Forbesmag"/><ref name=TPM1>{{cite news |last=Franzen|first=Carl |title=Defense Distributed Unveils New 3D Printed Gun Magazine ‘Cuomo’ (VIDEO) |url=http://idealab.talkingpointsmemo.com/2013/02/defense-distributed-unveils-new-3d-printed-gun-magazine-cuomo-video.php |accessdate=April 12, 2013 |journal=[[Talking Points Memo]] |date=February 7, 2013}}</ref><ref name=Wired5/> and was able to handle enough stress to fire 227+ bullets while swapping out the barrels on the rifle to keep them cool.<ref name=Wired5/> In a test at a gun range near Austin, Texas, Defense Distributed fired a total of 342 rounds using the magazine with no issues.<ref name=Wired5/>
+
+==Initial prototype and final product==
+The magazine was created with the [[Objet Geometries|Objet]] Connex26 with VeroClear (a transparent material) so the rounds and feeding action could be observed.<ref name=excuomo>[http://www.extremetech.com/extreme/145664-3d-printed-30-round-ar-magazine-brings-us-ever-closer-to-a-fully-3d-printed-gun 3D-printed 30-round AR magazine brings us ever closer to a fully 3D-printed gun], Extreme Tech, January 14, 2014. ([https://www.webcitation.org/6SiMRYK29?url=http://www.extremetech.com/extreme/145664-3d-printed-30-round-ar-magazine-brings-us-ever-closer-to-a-fully-3d-printed-gun archive])</ref> It was not a success, in trials they managed to fire five rounds before the magazine failed.<ref name=excuomo/>
+
+The main problem was feeding the gun, to solve the issue, the team added graphite to the inside of the magazine’s body, modified the catch slot, and sanded the magazine once again. The final prototype was able to handle the train to fire  50 rounds, and remained intact.<ref name=excuomo/> but Defense Distributed said that though the magazine was beginning to distort from the heat, it could last beyond 100 rounds.<ref name=excuomo/>
+
+At the time (January 2012) prices for traditional magazines were up five times from their standard price, and it was noted that disposable 3D-printed alternatives could provide a cheaper solution for gun owners.<ref name=excuomo/>
+
+According to Forbes and the Wired magazine the AR-15 Cuomo magazine created by Defense Distributed which fired 227+ bullets was created using a [[Stratasys]] Dimension SST 3-D printer.<ref name="archive"/><ref name=Wired5/>
+
+==See also==
+*[[List of notable 3D printed weapons and parts]]
+
+==References==
+{{Reflist}}
+
+
+
+[[Category:Magazines (firearms)]]
+[[Category:3D printed firearms]]
+[[Category:Fused filament fabrication]]
+
+==External links==
+*[https://github.com/maduce/fosscad-repo/tree/master/Rifles/AR-15_DefDist_Cuomo_30_round_magazine_v4.5 AR-15_DefDist_Cuomo_30_round_magazine_v4.5]

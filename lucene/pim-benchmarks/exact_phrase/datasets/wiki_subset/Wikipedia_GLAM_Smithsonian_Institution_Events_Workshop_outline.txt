@@ -1,0 +1,126 @@
+<big>'''Introduction to Wikipedia for the Smithsonian''' </big>
+''Modified from the original "Introduction to Wikipedia" by [[User:DGG]], July 7, 2009 version, at http://en.wikipedia.org/w/index.php?title=User:DGG/NYPL   as well as http://en.wikipedia.org/wiki/User:DG/PTS
+
+For a guide to Wikipedia, check out [[Help:Wikipedia: The Missing Manual]]
+
+
+__FORCETOC__
+==Reading and using Wikipedia==
+Presentation slide show under development at https://docs.google.com/present/edit?id=0ASIGxxsHQLhwZGdjcWgzYjlfMjlmMjV2Y3JmZw&hl=en#
+===Wikipedia, what is it?===
+''This will be a discussion with some basic answers and statistics (15-20 minutes)'''
+#When you hear Wikipedia what do you think?
+##What is it: 
+###A Free and Open encyclopedia 
+####What do we mean by free?
+###Not censored
+### of contributers?
+### of articles?
+#Who edits Wikipedia? What do they do?
+##Everyday people, mostly college educated, many with graduate degrees. Mostly with highly focused approaches to certain topic areas. 
+##They collaborate and Be Bold, everything is made using these two simple principles. All content is made when someone decides it ought to be made or when someone convinces others it ought to be made.
+###Remember that being bold means there's very little you can do to mess something up permanently. Feel free to take risks.
+#What controls quality on Wikipedia?
+##There are a series of consensus built policies on Wikipedia including
+###WikiProjects
+###Article Reviews
+###1.0 Assessment
+###Policies which determine inclusion of material, including [[WP:Notability]], [[WP:Verifiability]] and [[WP:RS]]
+##Content quality control comes from having lots of other editors to look at and improve your content.
+##Also there are practices used to prevent the addition of vandalism and arbitrary additions
+###[[Special:RecentChanges|Recent changes]]
+###Watchlists
+###[[Special:NewPages|New Page feed]]
+###Login to start pages
+###Edit filters
+###Patrolled pages  for [[WP:BLP|Biography of Living people]] (forthcoming)
+###[[WP:Deletion policy| Deletion]]
+#What problems does Wikipedia have? 
+:*What are the problems?:
+::*Accuracy; updating; stability; edit wars/[[WP:OWN]]ership
+::*Fairness; [[WP:COI]]
+::*Poorly covered areas : History, Traditional Humanities fields
+::*Uneven depth in even fairly well covered areas
+::*Spam
+
+===Navigating Wikipedia ([[Wikipedia:Researching with Wikipedia]])===
+''10-15 minutes, mostly driven by presenter''
+:*Searching 
+::*Wikipedia Search box and other search engines (Wikipedia is almost always at the top of searches)
+:*Browsing [[Portal:Contents]]
+::*Wikipedia Portals of broad subjects [[Portal:Contents/Portals]]
+::*Wikipedia [[Portal:Contents/Categorical index|Categories]] & [[Categories|Complete A-Z list of categories]]
+::*Links in articles
+
+*Evaluating articles
+:*Compare [[John Bull (locomotive)]] and [[Smithsonian Police]]
+::*Sourcing ([[Wikipedia:Verifiability]]; [[WP:RS]]); External links ([[WP:EL]])
+::*Article history (active histories tend to be controversial or in the news, whereas stable articles will have more consistent supervision)
+::*Talk page - Wikiprojects rate their own articles; discussion of article improvement
+:::*Quality and priority designations ([[Wikipedia:Version 1.0 Editorial Team/Assessment]])
+:::*Problem designations: Cleanup, PovCheck, Unreferenced, Tone, Advert, Disputed, Update
+
+*[[Wikipedia:GLAM/Smithsonian Institution]]
+:*Explain the discussion page
+:*Explain the other tabs and what is on each tab.
+
+===What is Conflict of Interest?===
+5-10 minutes
+#You are an employee of the Smithsonian, therefore you have a conflict of interest
+#Declaration of conflict of interest,  examples include:
+===Getting started===
+30 minutes with some click through and with users doing hands-on edits. This section should be demonstrated by the presenter while workshop participants walk through the edits. Wikipedians not presenting should help the workshop participants if they fall behind or have problems making edits.
+
+;Log in to your User Account
+:Go to your User page
+:Add some personal information (see [[WP:COI]]) (From [[Wikipedia:GLAM/Smithsonian Institution/Copy]])
+:: Note the standard five steps: open a page (or section) for editing, make editing changes, add an edit summary, preview [and repeat second and fourth steps if needed], and save.
+
+Add user preferences by going to [[Special:Preferences]] and going to the gadgets bar, there add the following:
+:;Under "Editing gadgets"
+#:HotCat
+#:[RefTools
+:;Under "User interface gadgets"
+# " Display an assessment of an article's quality as part of the page header for each article"
+;Create a user "sandbox" - set up [[User:WhateverName/Sandbox]] or [[User:WhateverName/Name of Article]]
+*Create a sample article about the [[Smithsonian Chamber Music Society]] in their sandbox using links http://americanhistory.si.edu/events/programdetail.cfm?newskey=49 and http://americanhistory.si.edu/events/event.cfm?archive=true&key=26&eventkey=1522&date=2008-10-18
+*Include the following activities during editing, making sure to leave an edit summary for each edit:
+**Bold the article title 
+**Use <nowiki>== Text here== </nowiki> to create a section header
+**Add a citation/reference using refTools
+**add <nowiki>{{reflist}}</nowiki>
+**Add an image [[:File:Axelrod Quartet 4.jpg]]
+**Add an external link 
+**Use HotCat to add category [[:Category:Smithsonian test articles]] at the bottom of the page
+**Do a preview before saving each edit
+* Edit a section, rather than an entire article, once there are sections in the article.
+
+:::''Note: it's better to do a bunch of small edits than to do one huge edit, even though that takes longer.''
+
+;Go to one of the following Smithsonian-related stubs and make a change, in groups of two to three SI participants, with a Wikipedian watching to answer questions.
+::Smithsonian users should also look at 
+:* [[Leland Ossian Howard]]
+:* [[Franklin Richard Bruns Jr.]]
+:* [[Leonard Carmichael]]
+:* [[Western Heritage Center]]
+:* [[Lockheed Model 8 Sirius]]
+:* [[Brian Harold Mason]]
+
+==Places to go to find Smithsonian related work==
+*[[:Category:Stub-Class Smithsonian Institution-related articles]]
+*[[WP:GLAM/Smithsonian Institution/Articles for creation]]
+
+==Getting Help==
+*[http://howwikipediaworks.com/ the free online version] of ''How Wikipedia Works'' by Phoebe Ayers, Charles Matthews, and Ben Yates (also available in [http://nostarch.com/howwikiworks.htm print]) 
+*[[Help:Wikipedia: The Missing Manual|the free online version]] of ''Wikipedia: The Missing Manual'' by John Broughton (also available in [http://oreilly.com/catalog/9780596515164/ print]) 
+*[http://www.amazon.com/gp/search?index=blended&keywords=Wikipedia&_encoding=UTF8 books about Wikipedia]
+Other internal sources
+:*[[Wikipedia:Glossary]] -- our own jargon; [[Wikipedia:Cheatsheet]]
+*[[WP:Wikipedia Signpost]], [http://en.wikipedia.org/wiki/Wikipedia:Wikipedia_Signpost/2008-01-14/Tutorial Tutorial series]
+*[[User:The Transhumanist/Virtual classroom|Virtual Classroom]]
+
+==Follow-up==
+:*If you need help, contact the Smithsonian Institution project at [[Wikipedia:GLAM/Smithsonian Institution]]
+:*The teachers of the class can be contacted at [[User talk:Sadads]] ...... (Add more)
+
+[[Category:Wikipedia-Smithsonian Institution collaboration|Workshop outline]]

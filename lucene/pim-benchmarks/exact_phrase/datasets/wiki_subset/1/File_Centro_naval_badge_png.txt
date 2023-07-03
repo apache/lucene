@@ -1,0 +1,24 @@
+== Summary ==
+{{logo fur
+<!-- REQUIRED -->
+ |Article           = Centro Naval 
+ |Use               = Org
+<!-- HIGHLY RECOMMENDED -->
+ |Source            = www.centronaval.org.ar/sedes/rugby.html
+<!-- ADDITIONAL INFORMATION -->
+ |Used for          = Infobox
+ |Owner             = Centro Naval de la República Argentina
+ |Website           = 
+ |History           = 
+ |Commentary        = 
+<!-- OVERRIDE FIELDS -->
+ |Description       = Centro Naval badge
+ |Portion           = Entire crest
+ |Low_resolution    = Yes
+ |Purpose           = [[Centro Naval]]: For identification purposes only.
+ |Replaceability    = No free image available.
+ |other_information = 
+}}
+
+== Licensing ==
+{{Non-free logo|image has rationale=yes|auto=yes}}

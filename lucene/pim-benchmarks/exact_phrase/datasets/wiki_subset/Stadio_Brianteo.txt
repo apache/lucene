@@ -1,0 +1,74 @@
+{{short description|Stadium in Monza, Italy}}
+{{Infobox venue
+| name                = Stadio Brianteo
+| nickname            = U-Power Stadium
+| fullname            =
+| logo_image          =
+| logo_caption        = 
+| image               = Stadio Brianteo 2014.jpg
+| image_size          = 270
+| caption             = 
+| location            = [[Monza]], Italy
+| coordinates         = {{coord|45|34|58|N|9|18|29|E|type:landmark|display=inline,title}}
+| broke_ground        = 1982
+| built               =
+| opened              = 1988
+| renovated           =
+| expanded            =
+| closed              =
+| demolished          =
+| owner               = Municipality of [[Monza]]
+| operator            = [[A.C. Monza]]
+| surface             = Grass
+| scoreboard          = 
+| architect           =
+| project_manager     = Giorgio Battistoni
+| structural engineer = 
+| services engineer   =
+| general_contractor  =
+| main_contractors    =
+| capacity            = 18,568 (10,000 operational)
+| suites              = 
+| record_attendance   = 14,142 vs [[Genoa]] <small>(2 April 1989, Serie B)</small>
+| dimensions          = {{convert|105|x|68|m|abbr=on}}
+| acreage             =
+| tenants             = [[A.C. Monza]] (1988–present)<br/>[[A.C. Renate]] (2010–2011)<br/>[[Tritium Calcio 1908]] (2011–2013)<br/>[[A.S. Giana Erminio]] (2014–2015)<br/>[[A.C. Milan Women]] (2019–2020)
+| former_names        = Stadio Brianteo
+| address             = Via Franco Tognini 4, 20900
+| construction_cost   = 
+| executive_suites    =
+}}
+'''Stadio Brianteo''', known for sponsorship reasons as the '''U-Power Stadium''' since September 2020, is a [[multi-purpose stadium]] in [[Monza]], Italy, and the home of [[A.C. Monza]]. Mostly used for football matches, the stadium was built in 1988 and has a capacity of 18,568, though only 10,000 are fully operational. The stadium is also used for rugby matches, concerts and other events.
+
+== History ==
+Stadio Brianteo, located on the north-eastern outskirts of Monza, was built as a replacement for the Gino Alfonso Sada stadium, located in the center near the station. The construction works started after a long debate and lasted a long time due to the technical difficulties in the construction of the structure that supports the coverage of the grandstand and the changes to the project in progress. Initially an athletics track was planned, but it was eliminated during the works. The stadium was inaugurated on 28 August 1988 during the [[Coppa Italia]] match against [[A.S. Roma|Roma]], which ended with a score of 2–1 for Monza, with goals by [[Pierluigi Casiraghi|Casiraghi]], [[Giuseppe Giannini|Giannini]], and [[Carmelo Mancuso|Mancuso]].
+
+Since 4 September 2020, the stadium is known commercially as the U-Power Stadium for the [[2020–21 Serie B]] season.<ref>{{Cite web|title=U-Power nuovo Naming Sponsor dell’AC Monza, ecco lo U-Power Stadium! - Associazione Calcio Monza S.p.A.|url=https://www.monzacalcio.com/it/news/1950/|access-date=2020-09-04|website=www.monzacalcio.com|language=it}}</ref>
+
+== Events ==
+
+=== Rugby ===
+In 2016, the stadium held the [[2017 Rugby League World Cup qualification – Europe#Game 5|2017 Rugby League World Cup Qualifier]] between [[Italy national rugby league team|Italy]] and [[Wales national rugby league team|Wales]].<ref>{{cite web|url=http://www.rugbyleagueplanet.com/2017-rugby-league-world-cup/2637-rugby-league-world-cup-european-qualifier-to-be-staged-in-monza|title=Rugby League World Cup European Qualifier to be staged in Monza|publisher=Rugby League Planet|accessdate=25 March 2016}}</ref>
+
+===Concerts===
+[[Michael Jackson]] performed, on two consecutive nights, at the stadium during his [[Dangerous World Tour]] on July 6–7, 1992 in front of 93,000 people.
+
+[[Elton John]] performed at Brianteo during his [[The One Tour]], on July 10, 1992.
+
+==References==
+{{Commons category}}
+{{Reflist}}
+
+{{Serie B stadiums}}
+{{Football in Italy}}
+
+[[Category:Football venues in Italy|Brianteo]]
+[[Category:Buildings and structures in Monza]]
+[[Category:Multi-purpose stadiums in Italy]]
+[[Category:Sports venues in Lombardy]]
+[[Category:A.C. Monza]]
+[[Category:Sports venues completed in 1986]]
+[[Category:Rugby league stadiums in Italy]]
+[[Category:Sport in Monza]]
+
+{{Italy-sports-venue-stub}}

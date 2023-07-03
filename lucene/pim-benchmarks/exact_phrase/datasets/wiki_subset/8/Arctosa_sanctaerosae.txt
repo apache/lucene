@@ -1,0 +1,45 @@
+{{Speciesbox
+| genus = Arctosa
+| species = sanctaerosae
+| authority = Gertsch & Wallace, 1935
+}}
+
+'''''Arctosa sanctaerosae''''', the '''Santa Rosa wolf spider''', is a species of [[wolf spider]] in the family [[Lycosidae]]. It is found in the United States.<ref name=itis/><ref name=gbif/><ref name=spidercat/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Arctosa sanctaerosae'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=852009
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Arctosa sanctaerosae''
+| url=https://www.gbif.org/species/2147216
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=spidercat>
+{{Cite web| title=''Arctosa sanctaerosae''
+| url=https://wsc.nmbe.ch/species/19301
+| website=NMBE World Spider Catalog
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Arctosa sanctaerosae'' species Information
+| url=https://bugguide.net/node/view/177876
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+{{Taxonbar|from=Q2611103}}
+
+[[Category:Arctosa]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Spiders described in 1935]]
+{{lycosidae-stub}}

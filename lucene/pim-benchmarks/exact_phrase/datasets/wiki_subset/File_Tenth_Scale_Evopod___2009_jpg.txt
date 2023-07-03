@@ -1,0 +1,15 @@
+== Summary ==
+{{Information
+ |Description    = Tenth Scale Evopod - 2009
+ |Source         = I ([[User:Mindlessworker|Mindlessworker]] ([[User talk:Mindlessworker|talk]])) created this work entirely by myself.
+ |Date           = 21:20, 30 September 2009 (UTC)
+ |Author         = [[User:Mindlessworker|Mindlessworker]] ([[User talk:Mindlessworker|talk]])
+ |other_versions = 
+}}
+
+== Licensing ==
+{{self|cc-by-sa-3.0|GFDL|migration=redundant}}
+
+{{Orphan image}}
+
+{{Copy to Wikimedia Commons|bot=Fbot}}

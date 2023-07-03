@@ -1,0 +1,14 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = Screenshot of gameplay from ''Clone Hero''.
+|Source = https://www.eurogamer.net/articles/2018-05-01-meet-the-community-reviving-classic-guitar-hero-gameplay-in-their-own-clone
+|Author = Game by Ryan Foster, assets by Neversoft/Activision
+|Article = Clone Hero
+|Purpose = Clone Hero gameplay.
+|Replaceability = n.a.
+|Minimality = JPG, low res.
+|Commercial = n.a.
+}}
+
+==Licensing==
+{{Non-free game screenshot}}

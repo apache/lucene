@@ -1,0 +1,79 @@
+{{Use dmy dates|date=November 2019}}
+{{Infobox church
+| name                   = St John's Church
+| fullname               = St John's Anglican Church
+| other name             = 
+| image                  = St John's Anglican Church, Launceston, August 2015.jpg
+| imagesize              = 280
+| imagealt               = 
+| caption                = St John's Church showing original front portion and later extensions
+
+| pushpin map            = Australia Tasmania
+| pushpin label position = top
+| pushpin map alt        = Map showing St John's Church in Tasmania, Australia
+| pushpin mapsize        = 
+| relief                 = 
+| map caption            = 
+| coordinates            = {{coord|41.439781|S|147.141367|E|region:AU|display=inline,title}}
+| location               = Launceston, Tasmania
+| country                = Australia
+| founded date           = {{start date|1825|||df=y}}
+| website                = {{url|http://www.stjohnsac.net.au/}}
+| denomination           = [[Anglicanism|Anglican]]
+| province               =
+| diocese                = [[Diocese of Tasmania]]
+| parish                 = 
+| status                 = [[Parish church]]
+| dedication             = [[St John the Evangelist]]
+| division               =
+| subdivision            =
+| founder                = Lieutenant-Governor [[George Arthur]]
+| groundbreaking         = {{start date|1824}}
+| consecrated date       = 1825<ref name=abc/>
+| style                  = [[Gothic Revival Architecture|Colonial Gothic]]
+| heritage designation   = 
+| designated date        = 
+| rector                 = Ross Nicolson
+| assistant              = 
+| director               = 
+| organist               = 
+| architect              = David Lambe (original church nave)<br />[[John Lee Archer]] (clock tower)<br />Alexander North (main church body)<ref name=abc/>
+| architectural type     = Church
+| years built            = 1825 (original church completed)<ref name=abc/><br />1830 (clock tower added)<br />1911 (transept and altar completed)<br />1938 (new nave completed)
+| capacity               = 
+| length                 = 
+| width                  =
+| width nave             = 
+| height nave            = 
+| height max             = 
+| spire quantity         = 1
+| spire height           = 
+| materials              = [[Sandstone]], brick, stucco, [[Dolerite|bluestone]]
+| bells                  = 
+| bells hung             = 
+| bell weight            = 
+}}
+
+'''St Johns Church''', is an [[Anglicanism|Anglican]] church in [[Launceston, Tasmania|Launceston]], [[Tasmania]] and the oldest church in the city having started construction in 1824.<ref name=abc>{{cite news |last1=Waldhuter |first1=Lauren |title=Secrets of 190-year-old Launceston church; snapshot of city's early life |url=https://www.abc.net.au/news/2015-10-25/secrets-of-190-year-old-launceston-church-revealed/6883324 |accessdate=16 January 2019 |work=ABC News |date=25 October 2015 |language=en-AU}}</ref> Though the church is one of the oldest surviving churches in Australia, it has received numerous extensions and modifications with only the tower and first window pair of the nave being original. St John's Church is located on the corner of [[St John Street, Launceston|St John Street]] and Elizabeth Street and is one of five churches facing onto [[Prince's Square]].
+
+The church's bell was cast by [[Whitechapel Bell Foundry]] in [[London]].<ref name=abc/>
+
+==See also==
+* [[Anglican Church of Australia]]
+
+==References==
+{{reflist}}
+
+==External links==
+{{commons category|St John's Anglican church, Launceston}}
+* [http://www.stjohnsac.net.au/ St John's Anglican Church website]
+
+{{Launceston landmarks}}
+
+{{DEFAULTSORT:Saint Johns Church Launceston}}
+[[Category:1824 establishments in Australia]]
+[[Category:Churches in Launceston, Tasmania]]
+[[Category:Anglican churches in Tasmania]]
+[[Category:Churches completed in 1825]]
+[[Category:Gothic Revival church buildings in Australia]]
+[[Category:Tasmanian Heritage Register]]

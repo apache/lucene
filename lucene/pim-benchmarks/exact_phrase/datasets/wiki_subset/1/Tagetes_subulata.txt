@@ -1,0 +1,23 @@
+{{Speciesbox
+|image = TagetesLucida244.JPG
+|genus = Tagetes
+|species = subulata
+|authority = [[Cerv.]]
+|synonyms_ref = <ref>[http://www.theplantlist.org/tpl1.1/record/gcc-121736 The Plant List, ''Tagetes subulata'' Cerv. ]</ref>
+|synonyms =
+*''Tagetes multiseta'' <small>DC.</small>
+*''Tagetes wislizeni'' <small>A.Gray</small>
+}}
+
+'''''Tagetes subulata''''' is an herbaceous plant of the sunflower family. It is widespread across most of [[Mexico]], and found also in [[Central America]], [[Colombia]], and [[Venezuela]].<ref>[http://www.globalspecies.org/ntaxa/2272918 Global Species - Tagetes subulata]</ref> It has highly divided bright green leaves and yellow flowers contained in an elongated calyx.<ref>[http://www.madrean.org/maba/symbflora/taxa/index.php?taxon=28469 Madrean Archipelago Biodiversity Assessment Flora - Tagetes subulata]</ref><ref>Turner, B. L. 1996. The Comps of Mexico: A systematic account of the family Asteraceae, vol. 6. Tageteae and Athemideae. Phytologia Memoirs. 10: i–ii, 1–22, 43–93</ref><ref>Williams, L. O. 1976. Tribe VI, Helenieae. En: D. L. Nash & L. O. Williams (Eds), Flora of Guatemala - Part XII. Fieldiana, Botany 24(12): 361–386, 571–580</ref><ref>Hokche, O., P. E. Berry & O. Huber. (eds.) 2008. Nuevo Catálogo de la Flora Vascular de Venezuela 1–859. Fundación Instituto Botánico de Venezuela, Caracas</ref><ref>Strother, J. L. 1999. Compositae–Heliantheae s. l. 5: 1–232. In D.E. Breedlove (ed.) Flora of Chiapas. California Academy of Sciences, San Francisco</ref>
+
+==References==
+{{reflist}}
+
+{{Taxonbar|from=Q7675205}}
+
+[[Category:Tagetes|subulata]]
+[[Category:Flora of Mexico]]
+[[Category:Flora of Central America]]
+[[Category:Flora of South America]]
+[[Category:Plants described in 1824]]

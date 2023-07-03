@@ -1,0 +1,1 @@
+#redirect [[Action démocratique du Québec]] {{R from title without diacritics}}

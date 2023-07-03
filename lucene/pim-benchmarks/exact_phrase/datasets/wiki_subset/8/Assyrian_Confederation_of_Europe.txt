@@ -1,0 +1,126 @@
+{{Infobox organization
+| name                = Assyrian Confederation of Europe
+| pronounce           = 
+| native_name         = 
+| native_name_lang    = 
+| named_after         = 
+| image               = Logo Assyrian Confederation of Europe.png
+| image_size          = 
+| alt                 = 
+| caption             = 
+| logo                = 
+| logo_size           = 
+| logo_alt            = 
+| logo_caption        = 
+| map                 = 
+| map_size            = 
+| map_alt             = 
+| map_caption         = 
+| map2                = 
+| map2_size           = 
+| map2_alt            = 
+| map2_caption        = 
+| abbreviation        = 
+| motto               = 
+| predecessor         = 
+| merged              = 
+| successor           = 
+| established         = 22 April 2016, in Brussels, Belgium
+| founder             = 
+| founding_location   = 
+| extinction          = <!-- use {{end date and age|YYYY|MM|DD}} -->
+| merger              = 
+| type                = 
+| tax_id              = <!-- or | vat_id = (for European organizations) -->
+| registration_id     = <!-- for non-profit org -->
+| status              = 
+| purpose             = 
+| headquarters        = Brussels, Belgium
+| location            = 
+| coords              = <!-- {{coord|LAT|LON|display=inline, title}} -->
+| region              = 
+| services            = 
+| products            = 
+| methods             = 
+| fields              = 
+| membership          = 4 groups (Assyrian national federations)
+| membership_year     = 
+| language            = 
+| owner               = <!-- or | owners = -->
+| sec_gen             = 
+| leader_title        = 
+| leader_name         = 
+| leader_title2       = 
+| leader_name2        = 
+| leader_title3       = 
+| leader_name3        = 
+| leader_title4       = 
+| leader_name4        = 
+| board_of_directors  = 
+| key_people          = 
+| main_organ          = 
+| parent_organization = 
+| subsidiaries        = 
+| secessions          = 
+| affiliations        = 
+| budget              = 
+| budget_year         = 
+| revenue             = 
+| revenue_year        = 
+| disbursements       = 
+| expenses            = 
+| expenses_year       = 
+| endowment           = 
+| endowment_year      = 
+| staff               = 
+| staff_year          = 
+| volunteers          = 
+| volunteers_year     = 
+| website             = http://www.assyrianconfederation.eu
+| remarks             = 
+| formerly            = 
+| footnotes           = 
+}}
+
+The '''Assyrian Confederation of Europe (ACE)''' is a European umbrella organisation for Assyrian national federations and organisations in Europe.  It was formed on 22 April 2016 in Brussels, Belgium.<ref>http://aina.org/news/20160425173437.htm AINA News, ''Assyrian Confederation of Europe established in Brussels'', 25 April 2016</ref> The Brussels office was opened in April 2018.<ref>http://www.assyriatv.org/2018/04/opening-ceremony-assyrian-confederation-europe-office-brussels/ Assyria TV, ''Opening ceremony of ACE office in Brussels'', 15 April 2018</ref>  ACE works to connect and represent half a million Europeans of [[Assyrian people|Assyrian]] descent.
+
+==History==
+
+Assyrian communities have been present in Europe since the 1920s. After the [[Assyrian genocide|genocide]] of 1915 in then [[Ottoman Turkey]] and in search for safer place to live, some Assyrians fled to Europe, in southern France ([[Marseille]] and [[Toulouse]]).<ref>ABOONA Hirmiz, ''Assyrians, Kurds and Ottomans. Intercommunal Relations on the periphery of the Ottoman Empire'', Cambria Press, 2008.</ref>  <br> 
+The exodus from their land of origin, known historically as [[Assyria]], has not stopped since then. It has even accelerated in recent years due to the general turmoil in the [[Middle East]] with all the risks it implies (kidnappings, ethnic cleansing and targeted killings).<ref>APRIM Frederick A., ''Assyrians: The Continuous Saga'', Xlibris, 2005.</ref>
+
+The longstanding idea of setting up a pan-European umbrella for Assyrian organisations was materialised in 2016. The establishment of ACE was formally announced in the [[European Parliament|European parliament]] in [[Brussels]] on 22 April.
+
+The organization is the European counterpart of the [[United States]]-based [[Assyrian Policy Institute]], with whom the ACE regularly cooperates.<ref>{{Cite web|title=Start för Assyrian Policy Institute i Washington|url=https://hujada.nu/start-for-assyrian-policy-institute-i-washington/|date=2018-05-28|website=Hujådå|language=sv-SE|access-date=September 12, 2020}}</ref>
+
+==Aims==
+
+ACE is mainly dedicated to three aims:
+* Promotion of Assyrian identity and [[Assyrian culture|culture]] in Europe
+* Representation of Assyrians of Europe in politics and media
+* Support for efforts in [[Assyrian homeland|Assyria]] for democracy and equal rights
+
+==Members==
+
+* Fédération des Assyriens de Belgique (Original Member)
+* Zentralverband der Assyrischen Vereinigungen in Deutschland und Europäischen Sektionen e.V. (Original Member)
+* Assyriska Riksförbundet Sverige (Original Member)
+* Assyrische Federatie Nederland (Joined in October 2016)
+
+==See also==
+*[[Assyrian Policy Institute]]
+*[[History of the Assyrian people]]
+*[[Assyrian people]]
+*[[Assyrians in Belgium]]
+
+==References==
+{{reflist}}
+
+==External links==
+*[http://www.assyrianconfederation.eu Official Website]
+
+[[Category:Organisations based in Brussels]]
+[[Category:International nongovernmental organizations]]
+[[Category:Human rights organisations based in Belgium]]
+[[Category:Assyrian diaspora in Europe]]
+[[Category:Organizations established in 2016]]

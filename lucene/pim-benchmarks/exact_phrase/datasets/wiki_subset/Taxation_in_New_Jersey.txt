@@ -1,0 +1,46 @@
+The [[U.S. state]] of [[New Jersey]] levies a [[State income tax|state personal income tax and state corporate income tax]] and a [[Sales taxes in the United States|state sales tax]]. [[Property tax in the United States|Property taxes]] are also levied by [[List of municipalities in New Jersey|municipalities]], [[List of counties in New Jersey|counties]], and [[List of school districts in New Jersey|school districts]].
+
+==Income tax==
+{{outdated section|date=May 2019}}
+The tax table below will show in detail the New Jersey state income tax rates by income tax bracket(s). There are 6 income tax brackets for New Jersey.
+
+Tax brackets for individuals are provided below:
+* For earnings between $1 and $20,000, the tax rate on every dollar of income earned is 1.4%.
+* For earnings between $20,001 and $35,000, the tax rate on every dollar of income earned is 1.75%.
+* For earnings between $35,001 and $40,000, the tax rate on every dollar of income earned is 3.5%.
+* For earnings between $40,001 and $75,000, the tax rate on every dollar of income earned is 5.525%.
+* For earnings between $75,001 and $500,000, the tax rate on every dollar of income earned is 6.37%.
+* For earnings of $500,001 and over, the tax rate on every dollar of income earned is 8.97%.
+
+To give an example, if you filed individually and your earned income was $50,000 your tax would be calculated the following way:
+($20,000 (first bracket) x 1.4%) + ($15,000 (second bracket) x 1.75%) + ($5,000 (third bracket) x 3.5%) + ($10,000 (fourth bracket) x 5.525%) = $280 + $262.50 + $175 + $552.50 = $1,270, for an overall rate of 2.54%.
+
+Beginning in 2019, the top marginal rate will be raised to 10.75% for incomes over $5 million, making it the second highest top marginal tax rate in the nation (after California's top rate of 13.3%).<ref name="tf">{{cite web |last1=Scarboro |first1=Morgan |title=State Individual Income Tax Rates and Brackets for 2018 |url=https://taxfoundation.org/state-individual-income-tax-rates-brackets-2018/ |website=Tax Foundation |accessdate=1 July 2018}}</ref><ref name="times">{{cite news |last1=Corasaniti |first1=Nick |title=Last-Minute Budget Deal Averts Shutdown in New Jersey |url=https://www.nytimes.com/2018/06/30/nyregion/new-jersey-shutdown.html |accessdate=1 July 2018 |work=New York Times |date=June 30, 2018}}</ref>
+
+==Sales tax==
+New Jersey has a 6.625% state sales tax, which was cut in steps from the previous rate of 7%.<ref>[http://www.state.nj.us/treasury/taxation/su-change.shtml NOTICE SALES AND USE TAX RATE CHANGE 6.875% SALES AND USE TAX RATE (P.L. 2016, c. 57) AMENDMENTS TO THE SALES AND USE TAX ACT, EFFECTIVE JANUARY 1, 2017], [[New Jersey Department of the Treasury]] Division of Taxation, updated December 19, 2016. Accessed January 4, 2017. "The New Jersey Sales and Use Tax will be reduced in two phases between 2017 and 2018. P.L. 2016, c. 57 decreases the Sales and Use Tax rate from 7% to 6.875% on and after January 1, 2017. The tax rate will decrease to 6.625% on and after January 1, 2018."</ref> All revenues are deposited in the State Treasury for general state use; nothing goes to municipalities.
+
+In [[urban enterprise zone]]s, the state sales tax is cut in half to encourage economic development, resulting in an effective tax rate of 3.3125%. A full list of urban enterprise zones is available on the State of New Jersey website.<ref>[http://www.state.nj.us/dca/affiliates/uez/coordinators/Local_Zone_Support.pdf]</ref>{{Failed verification|date=May 2019}}
+
+New Jersey does not charge sales tax on most unprepared foods, household paper products, medicine, and clothing. However, medical cannabis and fur clothing are subject to sales tax. New Jersey does not charge sales tax on gasoline, but gasoline is subject to a $0.418/gallon [[excise tax in the United States|excise tax]].{{Citation needed|date=May 2019}}
+
+Cigarettes are subject to a $2.70/per pack excise tax in addition to sales tax.{{Citation needed|date=May 2019}}
+
+==Property tax==
+Former governor [[Jon Corzine]] and [[Bergen County]] executive [[Dennis McNerney]] have suggested that smaller municipalities merge into larger municipalities to share services and reduce overhead.<ref>[http://www.northjersey.com/35_Bergen_towns_targeted_for_mergers.html County exec urges mergers of towns], Retrieved November 7, 2013</ref><ref>[https://www.washingtonpost.com/wp-dyn/content/story/2008/03/22/ST2008032202192.html Tiny Towns in N.J. May Have to Merge], Washington Post, Retrieved November 7, 2013</ref>
+
+==Corporate income tax==
+New Jersey's current{{when|date=May 2019}} corporate income is 9% for corporation with income greater than $100,000. Companies with income up to $100,000, but greater than $50,000 pay a rate of 7.5% and companies with incomes of $50,000 or less pay a rate of 6.5%.<ref name="tf" /> Under a budget deal reached on June 30, 2018, New Jersey's the rate will rise to 11.5% for companies with income over $1 million for the next two years. In the third year it would be decreased to 10.5% before being returned to 9% in the fifth year.<ref>{{cite news |last1=King |first1=Kate |title=New Jersey Governor, Lawmakers Reach Budget Deal, Avoid Shutdown |url=https://www.wsj.com/articles/new-jersey-governor-lawmakers-reach-budget-deal-avoid-shutdown-1530409878 |accessdate=1 July 2018 |date=June 30, 2018}}</ref> New Jersey's top rate of 11.5% will be{{when|date=May 2019}} the second highest in the nation (after Iowa's top rate of 12%).<ref name="tf" />
+
+==See also==
+* [[Law of New Jersey]]
+
+==References==
+* http://www.state.nj.us/treasury/taxation/su_over.shtml
+{{reflist}}
+
+==External links==
+* [http://www.state.nj.us/treasury/taxation/ State of New Jersey Division of Taxation]
+* [http://www.taxfoundation.org/research/topic/44.html The Tax Foundation research on New Jersey]
+
+[[Category:Taxation in New Jersey| ]]

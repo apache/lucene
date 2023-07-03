@@ -1,0 +1,33 @@
+{{Infobox prepared food
+| name             = Masa podrida
+| image            =File:Masa podrida cookies (Pampanga).jpg
+| caption          = ''Masa podrida'' cookies from [[Pampanga]]
+| alternate_name   = 
+| country          = [[Philippines]]
+| region           = 
+| creator          = 
+| course           = 
+| type             = [[Cookie]]
+| served           = 
+| main_ingredient  = 
+| variations       = 
+| calories         = 
+| other            = 
+}}
+
+'''''Masa podrida''''' are traditional [[Filipino cuisine|Filipino]] [[shortbread cookie]]s made from flour, salt, baking powder, brown sugar, shortening, and eggs. It has a dry crumbly texture similar to [[Half-moon cookie (Filipino)|half-moon cookie]]s. The name comes from [[Spanish language|Spanish]] for "rotten flour". ''Masa podrida'' are typically eaten with coffee and other hot drinks.<ref>{{cite web |title=Old-Time Confections, Baked Goodies & Other Kapampangan Treats |url=http://kaplistorian.blogspot.com/2017/07/54-15-old-time-confections-baked.html |website=The Kapampangan Listorian |accessdate=6 April 2019|date=2017-07-15 }}</ref><ref>{{cite web |title=Masa Podrida cookie from Molo County bakesop |url=https://flavoursofiloilo.blogspot.com/2009/10/masa-podrida-cookie-from-molo-county.html |website=Flavours of Iloilo |accessdate=6 April 2019}}</ref><ref>{{cite web |title=Masa Podrida |url=https://pagkaraansamgalabi.wordpress.com/2018/02/24/masa-podrida/ |website=Tinkerbeaaa |accessdate=6 April 2019|date=2018-02-24 }}</ref><ref>{{cite web |title=A sweet life |url=https://www.philstar.com/other-sections/starweek-magazine/2006/07/16/347722/sweet-life |website=PhilStar Global |accessdate=6 April 2019}}</ref>
+
+==See also==
+*[[Puto seco]]
+*[[Uraro]]
+*[[Half-moon cookie (Filipino)|Half-moon cookie]]
+*[[List of cookies]]
+
+== References ==
+{{Reflist|30em}}
+
+{{Filipino food}}
+
+[[Category:Cookies]]
+[[Category:Philippine cuisine]]
+{{food-stub}}

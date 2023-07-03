@@ -1,0 +1,52 @@
+{{Navbox
+|name=Gmina Strzelce Krajeńskie
+|state = {{{state|uncollapsed}}}
+|title=[[Gmina Strzelce Krajeńskie]]
+|listclass = hlist
+|image=[[Image:POL Strzelce Krajeńskie COA.svg|50px]]
+|group1=Town and seat
+|list1=
+* [[Strzelce Krajeńskie]]
+|group2=Villages
+|list2=
+* [[Bobrówko, Strzelce-Drezdenko County|Bobrówko]]
+* [[Bronowice, Strzelce-Drezdenko County|Bronowice]]
+* [[Brzoza, Lubusz Voivodeship|Brzoza]]
+* [[Buszewko, Lubusz Voivodeship|Buszewko]]
+* [[Buszów, Strzelce-Drezdenko County|Buszów]]
+* [[Chwytowo]]
+* [[Ciecierzyn, Lubusz Voivodeship|Ciecierzyn]]
+* [[Czyżewo, Lubusz Voivodeship|Czyżewo]]
+* [[Danków, Lubusz Voivodeship|Danków]]
+* [[Długie, Strzelce-Drezdenko County|Długie]]
+* [[Gardzko]]
+* [[Gilów, Lubusz Voivodeship|Gilów]]
+* [[Golczewice]]
+* [[Licheń, Lubusz Voivodeship|Licheń]]
+* [[Lipie Góry, Lubusz Voivodeship|Lipie Góry]]
+* [[Lubicz, Lubusz Voivodeship|Lubicz]]
+* [[Machary, Lubusz Voivodeship|Machary]]
+* [[Małe Osiedle]]
+* [[Ogardy]]
+* [[Ogardzki Młyn]]
+* [[Piastowo, Lubusz Voivodeship|Piastowo]]
+* [[Pielice, Strzelce-Drezdenko County|Pielice]]
+* [[Pieńkowice]]
+* [[Przyłęg, Lubusz Voivodeship|Przyłęg]]
+* [[Puszczykowo, Lubusz Voivodeship|Puszczykowo]]
+* [[Sidłów]]
+* [[Sławno, Lubusz Voivodeship|Sławno]]
+* [[Sokólsko]]
+* [[Śródlesie, Lubusz Voivodeship|Śródlesie]]
+* [[Strzelce Klasztorne]]
+* [[Tuczenko]]
+* [[Tuczno, Lubusz Voivodeship|Tuczno]]
+* [[Wełmin]]
+* [[Wielisławice, Lubusz Voivodeship|Wielisławice]]
+* [[Wilanów, Lubusz Voivodeship|Wilanów]]
+* [[Żabicko]]
+}}<noinclude>
+{{collapsible option}}
+
+[[Category:Lubusz Voivodeship gmina templates|Strzelce Krajenskie]]
+</noinclude>

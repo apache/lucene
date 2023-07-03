@@ -1,0 +1,17 @@
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's [[Help:Using talk pages|talk page]] or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was    '''delete'''. [[User:Stifle|Stifle]] ([[User talk:Stifle|talk]]) 11:36, 21 January 2012 (UTC)
+===[[Hafsa Nur]]===
+
+:{{la|Hafsa Nur}} – (<includeonly>[[Wikipedia:Articles for deletion/Hafsa Nur|View AfD]]</includeonly><noinclude>[[Wikipedia:Articles for deletion/Log/2012 January 13#{{anchorencode:Hafsa Nur}}|View log]]</noinclude>)
+:({{Find sources|Hafsa Nur}})
+Contested PROD. [[WP:BLP1E]] and unsourced. [[User:Cloudz679|Cloudz]][[:User talk:Cloudz679|<span style="color:red">679</span>]] 23:30, 13 January 2012 (UTC)
+:<small class="delsort-notice">Note:  This debate has been included in the [[Wikipedia:WikiProject Deletion sorting/Bands and musicians|list of Bands and musicians-related deletion discussions]]. <!--Template:Deletion sorting--></small> <small>[[User:Gene93k|• Gene93k]] ([[User talk:Gene93k|talk]]) 02:30, 14 January 2012 (UTC)</small>
+
+*'''Delete''' - No coverage in reliable sources -- [[User:Whpq|Whpq]] ([[User talk:Whpq|talk]]) 21:07, 19 January 2012 (UTC)
+*'''Delete''' Does not meet notability guidelines. Google News archive finds nothing under "Hafsa Nur" or "Hafsa Marie Nur"; Google finds only social media and similar sites. Article provides no references. --[[User:MelanieN|MelanieN]] ([[User talk:MelanieN|talk]]) 18:54, 20 January 2012 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's [[Help:Using talk pages|talk page]] or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

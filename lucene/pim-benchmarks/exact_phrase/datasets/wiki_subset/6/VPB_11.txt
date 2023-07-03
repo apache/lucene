@@ -1,0 +1,127 @@
+{{Infobox military unit
+|unit_name=Patrol Bombing Squadron 11
+|image=File:Consolidated PBY-1 Catalina of VP-11 in flight c1938.jpg
+|caption=VP-11 [[Consolidated PBY Catalina|PBY-1]] c.1938
+|dates=7 February 1924 - 20 June 1945
+|country= United States of America
+|allegiance=
+|branch= {{nowrap|[[Image:United States Department of the Navy Seal.svg|30px|United States Navy Seal]] [[United States Navy]]}}
+|type= [[Squadron (aviation)|squadron]]
+|role= [[Maritime patrol]]
+|size= 
+|command_structure= 
+|garrison=
+|garrison_label=
+|nickname= 
+|patron=
+|colors=
+|colors_label=
+|march=
+|mascot=
+|equipment=
+|equipment_label=
+|battles=[[World War II]]
+|anniversaries=
+|decorations=
+|battle_honors=
+<!-- Aircraft -->
+|aircraft_attack=
+|aircraft_bomber=
+|aircraft_electronic=
+|aircraft_fighter=
+|aircraft_interceptor=
+|aircraft_patrol=[[Douglas DT|DT-2]]<br>[[Curtiss CS|SC-1/2]]<br>[[Martin T3M|T3M-2]]<br>[[Martin T4M|T4M-1]]<br>[[Douglas T2D|T2D-1]]<br>[[Naval Aircraft Factory PN|PM-1/PD-1]]<br>[[Consolidated PBY Catalina|PBY-1/5]] 
+|aircraft_recon=
+|aircraft_trainer=
+|aircraft_transport=
+}}
+
+'''VPB-11''' was a '''Patrol Bombing Squadron''' of the [[U.S. Navy]]. The squadron was established as '''Torpedo & Bombing Squadron 19-D14 (VT-19D14)''' on 7 February 1924, redesignated '''Torpedo & Bombing Squadron 6D14 (VT-6D14)''' on 1 July 1927, redesignated '''Patrol Squadron 6-B (VP-6B)''' on 1 April 1931, redesignated '''Patrol Squadron 6-F (VP-6F)''' on 17 July 1933, redesignated '''Patrol Squadron 6 (VP-6)''' on 1 October 1937, redesignated '''Patrol Squadron 23 (VP-23)''' on 1 July 1939, redesignated '''Patrol Squadron 11 (VP-11)''' on 1 August 1941, redesignated '''Patrol Bombing Squadron 11 (VPB-11)''' on 1 October 1944 and disestablished on 20 June 1945.<ref name=DANAS2-4>{{cite book|last=Roberts|first=Michael D.|title=Dictionary of American Naval Aviation Squadrons, Volume 2, Chapter 4 Patrol Bombing Squadron (VPB) Histories (VPB-1 to VPB-16) |publisher=Naval Historical Center, Department of the Navy|year=2000|location=Washington, D.C.|url=http://www.history.navy.mil/research/histories/naval-aviation-history/dictionary-of-american-naval-aviation-squadrons-volume-2/chapter-4-patrol-bombing-squadron-vpb-histories-vpb-1-to-vpb-16.html|pages=400–7|accessdate=19 June 2016}}</ref>
+
+==Operational history==
+[[File:Douglas PD-1s VP-6 Pearl Harbor 1934.jpg|thumb|right|250px|VP-6F [[Naval Aircraft Factory PN|PD-1s]] at [[Ford Island]] in 1934]]
+[[File:Consolidated PBY-1 0120 VP-11F 11-P-8 San Diego mfr (16348195132).jpg|thumb|right|250px|VP-11 PBY-1 at San Diego]]
+*7 February 1924: VT-19 was established as a torpedo squadron based at [[Ford Island|NAS Ford Island]], Pearl Harbor, Hawaii, flying 13 [[Douglas DT|DT-2]] aircraft.
+*25 April 1925: Several of the squadron’s pilots made the first successful night landings on an aircraft carrier under way. The landings, made under varying lighting and weather conditions, were part of a program to determine the feasibility of night landings on an aircraft carrier as a military operation.
+*9 April 1927: VT-19 was redesignated VT-6D14 during the reorganization of squadrons by [[Bureau of Aeronautics|BuAer]] in 1927. The D14 represented the 14th Naval District, Pearl Harbor.
+*1 July 1927: The squadron’s DT-2 type aircraft were declared obsolete and were replaced by [[Curtiss CS|SC-2]] aircraft.
+*21 January 1931: VT-6D14 was redesignated VP-6B, converting from torpedo bomber squadron to patrol squadron under Fleet Aviation, Base Force, Commander Minecraft, Battle Force. Although officially a patrol squadron, the 12 aircraft assigned were [[Martin T3M|T3M-2]] torpedo bombers. {{USS|Pelican|AVP-6|6}} and {{USS|Avocet|AVP-4|6}} were assigned to provide tender support.
+*17 July 1933: VP-6B was redesignated VP-6F, reflecting the change in organization at Pearl Harbor to Commander Aircraft, Base Force, Fleet Air Base. The squadron had transitioned to the [[Martin T4M|T4M-1]] and the [[Douglas T2D|T2D-1]], both with twin floats.
+*1933: VP-6F transitioned from floatplanes to seaplanes, operating from FAB Pearl Harbor with six [[Naval Aircraft Factory PN|PM-1]] and six PD-1 seaplanes.
+*22 April 1935: VP-6F, along with VPs [[VPB-29|1F]], [[VP-22|4F]], [[VP-21|7F]], [[VP-20|8F]], [[VPB-24|9F]] and [[VPB-23|10F]], participated in [[Fleet problem#Fleet Problem XVI|Fleet Problem XVI]] off [[Midway Island]]. The intent of the exercise was to give elements of the fleet an opportunity to become familiar with Midway and adjacent waters while practicing landing operations. Both the Army and Coast Guard took part in the problem. The exercises were marred by a series of crashes, two from VP-6F resulting in 12 deaths, and numerous instances of aircraft being forced down by mechanical difficulties and sinking (no casualties). The tenders supporting the fleet were found to be so slow that they had to be sent ahead of the main body so as not to delay the exercises.
+*1937: VP-6F transitioned to the [[Consolidated PBY Catalina|PBY-1 Catalina]] seaplane, giving the squadron for the first time an aircraft that was both reliable and with long enough range to adequately support the fleet from either tenders or advanced bases. The Catalina was already obsolete by the start of WWII, but was used by the navies of several nations throughout the war in large numbers in a wide variety of roles ranging from [[Anti-submarine warfare]] (ASW) to air and sea rescue work.
+*1 October 1937: VP-6F was reorganized under Commander, Patrol Wing TWO, Pearl Harbor, Hawaii.
+*1 July 1939: VP-6F was redesignated VP-23, under Patrol Wing TWO, Pearl Harbor, Hawaii. The squadron continued to fly the older PBY-1 seaplanes, and had been assigned to {{USS|Childs|AVP-15|6}} for tender support.
+*9 April 1940: PatWing TWO aircraft of VPs [[VPB-29|21]], [[VP-22|22]], 23, [[VP-20|24]], [[VPB-23|25]] and [[VP-102|26]] participated in [[Fleet problem#Fleet Problem XIX|Fleet Problem XXI]] with the Army [[72d Test and Evaluation Squadron|72nd Bombardment Squadron]] and the [[394th Combat Training Squadron|4th Reconnaissance Squadron]]. The combined squadrons defended the Hawaiian Islands against a carrier attack. The exercise revealed glaring deficiencies in the coordination between the air arms in defense of the islands.
+*1 July 1941: VP-23 was redesignated VP-11, still flying the PBY-1 and at that time operating from [[NAS Kaneohe Bay]], Hawaii. During this period the squadron began search and reconnaissance in the central Pacific from NAS Kaneohe Bay and tender-supported locations near [[Johnston Atoll]].
+*3 October 1941: Aircrews of VP-11 undertook a ferry flight from NAS Kaneohe Bay to [[NAS San Diego]], California, [[NAS Jacksonville]], Florida and [[NAS Corpus Christi]], Texas, returning on 22 October 1941 with new PBY-5 aircraft.
+*7 December 1941: During the [[Attack on Pearl Harbor]] the majority of the squadron’s aircraft at NAS Kaneohe Bay were destroyed or damaged beyond repair.
+*1 April 1942: Losses were replaced in April with new PBY-5 seaplanes from the U.S., equipped with ASE radar for spotting ships on the ocean surface. Sector searches around Oahu were begun as soon as crews could be checked out on the new equipment.
+*30 April 1942: A two-aircraft detachment was sent to Johnston Atoll for sector searches. Two new crews relieved the detachment each week. On 29 May the detachment size was increased to six aircraft.
+*20 May 1942: A three-plane detachment was sent to [[Pacific Missile Range Facility|Barking Sands]], Kauai. On 22 May the detachment was increased by three aircraft.
+*1 July 1942: VP-11 deployed to [[Suva]], Fiji Islands. Over the next several months the squadron would be moved from Suva to [[Nouméa]], New Caledonia, [[Tongatapu]] and [[Espiritu Santo]] to conduct search and reconnaissance missions in connection with the [[Guadalcanal Campaign|landings at Guadalcanal]] and other fleet operations in the South Pacific.
+*13 July 1942: A three-plane detachment was sent to Nouméa.
+*17 July 1942: One aircraft was dispatched to [[Auckland]], returning on 19 July.
+*26 July 1942: A three-plane detachment was sent to Tongatapu, with two aircraft returning to Suva on 28 July.
+*1 August 1942: The Nouméa detachment was increased by three aircraft. Tender support was provided by {{USS|Curtiss|AV-4|6}}. The next day the detachment was further supplemented by two aircraft from [[VPB-197|VP-14]].
+*4 August 1942: VP-11 headquarters was shifted from Suva to Saweni Beach with six aircraft, the remainder still based at Nouméa. The headquarters group was provided tender support by {{USS|McFarland|AVD-14|6}}.
+*11 Aug 1942: The Nouméa detachment was redeployed with USS ''Curtiss'' to Espiritu Santo, New Hebrides.
+*7 September 1942: VP-11 claimed one submarine kill, but a postwar review of Japanese records indicates no loss of a Japanese submarine on that date and location.
+*29 October 1942: Lieutenant F. Joe Hill and his crew spotted a surfaced submarine about three miles off his starboard beam. The submarine crash-dived and was below the surface when Hill dropped his two 650-pound [[Depth charge]]s. A large quantity of oil appeared and remained on the surface the following day. Postwar records indicate the submarine sunk by Lieutenant Hill was [[Kaidai-type submarine|''I-172'']], which was lost with all 91 hands aboard, including Rear Admiral Yoshisuke Okamoto, Commander of the 12th Squadron of the Kure Submarine Flotilla.
+*5 November 1942: VP-11 claimed a third submarine sunk, but a postwar review of Japanese records indicates no loss of a Japanese submarine on that date and location.
+*1 February 1943: VP-11 was withdrawn from combat and returned to NAS San Diego for refit and home leave.
+*20 April 1943: The reforming of the squadron was completed on this date. Aircrews flew the trans-Pacific to NAS Kaneohe Bay on 21 April, while the remainder of ground personnel and assets departed on transports. Upon arrival all hands undertook intensive combat preparation while simultaneously conducting patrols over the ocean in the Hawaiian area.
+*22 May 1943: Combat training was completed at NAS Kaneohe Bay. VP-11 aircrews departed for [[Perth]], Australia, followed later by ground crew and squadron assets in transports. Upon arrival in Perth on 8 June aircrews commenced combat search and reconnaissance patrols in the southwest Pacific under the operational control of FAW-10.
+*9 September 1943: VP-11 departed for [[Brisbane]], and then to New Guinea and [[Palm Island, Queensland|Palm Island]]. The squadron came under the operational control of FAW-17 and relieved [[VPB-29|VP-101]]. ''Black Cat'' (PBY’s painted black) nighttime operations commenced in the areas around New Guinea, [[New Ireland (island)|New Ireland]], and the [[Bismarck Sea]].
+*1 October – 19 November 1943: VP-11 was based aboard {{USS|San Pablo|AVP-30|6}} in Jenkins Bay. Night searches for surface ships were conducted, and bombing attacks on Japanese installations on [[Vitu Islands|Garove Island]] were conducted over several nights. On 9 October, {{USS|Half Moon|AVP-26|6}} relieved USS ''San Pablo''.
+*16 November 1943: Lieutenant Jack D. Cruze and his crew located a Japanese task force. Despite the heavy concentration of fire from the escorts, Cruze made a low-level bombing attack that destroyed a large transport in the task force. For his courage under fire and aggressive pursuit of the enemy during this period, Lieutenant Cruze was awarded the [[Navy Cross]].
+*19 November 1943: VP-11, relieved at Jenkins Bay by [[VPB-52|VP-52]], reported to [[Port Moresby]] to relieve VP-101. On 23 November ''Black Cat'' operations were commenced in conjunction with daytime attacks by the USAAF [[5th Operations Group|5th Bombardment Group]].
+*30 December 1943: VP-11 transferred to Palm Island, Australia, and was taken off combat operations. Routine administrative and passenger flights were conducted daily to Port Moresby, Samari and Brisbane.
+*10 February 1944: The squadron returned to Perth to conduct convoy patrols in Australian waters under the operational control of FAW-10.
+*19 July 1944: VP-11 returned to New Guinea and Schouten Islands for ''Black Cat'' night combat operations under the operational control of FAW-17. A three-aircraft detachment was sent to [[Mios Woendi|Woendi Lagoon]], Biak.
+*23 August 1944: VP-11 continued to conduct ''Black Cat'' operations after its transfer to [[Middleburg Airfield|Middleburg Island]].
+*18 September 1944: The squadron continued ''Black Cat'' operations while based on [[Schouten Island]] and [[Morotai]] until 21 September when daytime operations were then started. Daytime operations consisted of ASW patrols and air-sea rescue missions in the South Pacific.
+*1 October 1944: VP-11 was redesignated VPB-11. On 6 October the squadron was stationed at Morotai with tender support provided by USS ''San Pablo''. Air-sea rescue and routine ASW patrols were conducted daily. On 12 October half of the squadron was quartered aboard {{USS|Orca|AVP-49|6}} to provide more room for the crews.
+*14 November 1944: The squadron was relocated to Woendi with 15 aircraft. On 5 December VPB-11 was moved to Morotai, then back to Woendi on the 11th for boarding on {{USS|Pocomoke|AV-9|6}} and transportation back to the U.S.
+*19 December 1944: VPB-11 was officially withdrawn from combat and 15 aircraft and crews departed Woendi for return to NAS San Diego.
+*20 June 1945: VPB-11 was disestablished at NAS San Diego.<ref name=DANAS2-4/>
+
+==Aircraft assignments==
+The squadron was assigned the following aircraft, effective on the dates shown:<ref name=DANAS2-4/>
+* [[Douglas DT|DT-2]] - February 1924
+* [[Curtiss CS|SC-1/2]] - July 1927
+* [[Martin T3M|T3M-2]] - June 1929
+* [[Martin T4M|T4M-1]] - September 1931
+* [[Douglas T2D|T2D-1]] - January 1932
+* [[Naval Aircraft Factory PN|PM-1]] - 1933
+* PD-1 - 1933
+* [[Consolidated PBY Catalina|PBY-1]] - 1937
+* PBY-5 - November 1941
+
+==Home port assignments==
+The squadron was assigned to these home ports, effective on the dates shown:<ref name=DANAS2-4/>
+* [[Ford Island|Pearl Harbor]], Hawaii - 7 February 1924
+* [[NAS Kaneohe Bay]], Hawaii - 1940
+* [[NAS San Diego]], California - February 1943
+* NAS Kaneohe Bay - April 1943
+* NAS San Diego - December 1944
+
+==See also==
+{{Wikipedia books|United States Navy Aircraft Squadrons}}
+
+* [[Maritime patrol aircraft]]
+* [[List of inactive United States Navy aircraft squadrons]]
+* [[List of United States Navy aircraft squadrons]]
+* [[List of squadrons in the Dictionary of American Naval Aviation Squadrons]]
+* [[History of the United States Navy]]
+
+==References==
+{{DANAS}}
+{{reflist}}
+
+{{US Navy navbox}}
+{{United States Navy Aircraft Squadrons}}
+
+{{DEFAULTSORT:Vpb-11}}
+[[Category:Patrol squadrons of the United States Navy]]
+[[Category:Wikipedia articles incorporating text from the Dictionary of American Naval Aviation Squadrons]]

@@ -1,0 +1,10 @@
+{{Information
+| description = Rudolph Berthold
+| source = '''Original publication''': Published as a postcard in Europe.<br/>
+'''Immediate source''': Private Collection – Wartenberg Trust
+| date = 1918. The Wartenburg Trust asserts that all the images in their collection were published in Europe as postcards or prints prior to 1921.
+| author = Sanke, Berlin
+}}
+
+== Licensing ==
+{{PD-US-1923-abroad}}

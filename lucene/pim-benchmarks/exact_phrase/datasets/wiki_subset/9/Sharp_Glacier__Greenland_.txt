@@ -1,0 +1,48 @@
+{{about|the glacier in NW Greenland|the glacier in Antarctica|Sharp Glacier}}
+{{Infobox glacier 
+| name = Sharp Glacier
+| other_name =''Sharp Gletscher''
+| photo = 
+| photo_caption = 
+| type = [[Tidal outlet glacier]]
+| location =  [[Greenland]]
+| map = Greenland
+| map_caption = Location within Greenland
+| coordinates = {{coord|77|42|N|66|58|W|region:GL_dim:30000|format=dms|display=inline,title}} 
+| mark = Blue_pog.svg
+| area =  
+| length = 
+| width = {{convert|2|km|abbr=on}}
+| thickness = 
+| terminus = [[Inglefield Fjord]]<br>[[Baffin Bay]]
+| status = Retreating<ref name="hy"/>
+}}
+'''Sharp Glacier''' ({{lang-da|Sharp Gletscher}}), is a [[glacier]] in northwestern [[Greenland]].<ref name="mapc">{{cite web|url=https://mapcarta.com/20007942|title=Sharp Gletscher|work=Mapcarta|accessdate=3 April 2019}}</ref> Administratively it belongs to the [[Avannaata]] municipality.
+
+This glacier was named by [[Robert Peary]] after [[Benjamin Sharp]] (1858 – 1915), zoologist of the  [[Philadelphia Academy of Natural Sciences]] who took part in the [[Peary expedition to Greenland of 1891-1892]].<ref>Robert Neff Keely, Gwilym George Davis, ''In Arctic Seas: the Voyage of the Kite with the Peary Expedition,'' 2011 p. 373</ref>
+
+==Geography== 
+The Sharp Glacier discharges from the [[Greenland Ice Sheet]] and has its [[Glacier terminus|terminus]] in the northern side of the head of the [[Inglefield Fjord]], NNW of [[Josephine Peary Island]]. Its last stretch lies between two [[nunatak]]s: [[Mount Endicott]] in the western side, separating it from the [[Hart Glacier (Greenland)|Hart Glacier]] to the west. and [[Mount Asserson]] in the eastern side, separating it from the [[Melville Glacier (Greenland)|Melville Glacier]] to the east.<ref name="mapc"/> 
+
+The Sharp Glacier flows roughly from north to south. In the same manner as its neighboring glaciers, it has retreated by approximately {{convert|1|km|abbr=on}} in the period between the 1980s and 2014.<ref name="hy">[http://hydrologie.org/redbooks/a058/05813.pdf The recent regimen of the ice cap margin in North Greenland]</ref>
+{|
+|- valign="top"
+|[[File:Operational Navigation Chart B-8, 3rd edition.jpg|thumb|300px|none|Map of Northwestern Greenland]]
+|[[File:Northward over the great ice - a narrative of life and work along the shores and upon the interior ice-cap of northern Greenland in the years 1886 and 1891-1897, with a description of the little tribe (14779963574).jpg|thumb|350px|19th century map of the Inglefield Gulf.]]
+|}
+
+==See also==
+*[[List of glaciers in Greenland]]
+*[[Inglefield Fjord]]
+
+==References==
+{{reflist}}
+==External links==
+*[https://www.frontiersin.org/articles/10.3389/feart.2018.00090/full Identifying Spatial Variability in Greenland's Outlet Glacier Response to Ocean Heat]
+*[https://www.researchgate.net/figure/a-Cumulative-frontal-displacement-red-and-annual-ice-speed-of-Heilprin-b-Tracy_fig6_323818961 Ice front and flow speed variations of marine-terminating outlet glaciers along the coast of Prudhoe Land, northwestern Greenland]
+
+
+[[Category:Glaciers of Greenland]]
+
+
+{{Greenland-glacier-stub}}

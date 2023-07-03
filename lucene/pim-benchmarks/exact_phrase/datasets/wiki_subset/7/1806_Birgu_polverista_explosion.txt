@@ -1,0 +1,60 @@
+{{Infobox event
+| title                    = Birgu polverista explosion
+| image                    = 1806 Birgu polverista explosion 02.jpg
+| image_upright            = 1.35
+| caption                  = The site of the magazine
+| time                     = 06:15
+| date                     = {{start date and age|1806|07|18|df=yes}}
+| location                 = [[Birgu]], [[Malta Protectorate]]
+| coordinates              = {{coord|35|53|09|N|14|31|19|E|region:MT_type:event|display=inline,title}}
+| type                     = [[Gunpowder magazine]] explosion
+| cause                    = Negligence
+| reported deaths          = {{circa}} 150–240
+| reported injuries        = {{circa}} 100
+| reported property damage = £35,000
+}}
+
+The '''Birgu polverista explosion''' was the accidental detonation of ammunition in the gunpowder magazine (polverista) of [[Birgu]] in the British [[Malta Protectorate]] on 18 July 1806. The explosion occurred due to negligence while transferring shells from the magazine, and it resulted in the detonation of {{convert|40000|lbs|abbr=on}} of gunpowder. It killed approximately 200 people, including British and Maltese military personnel and Maltese civilians from Birgu. Parts of the [[fortifications of Birgu|city's fortifications]], some naval stores, and many houses were destroyed, and the affected area became known as ''l-Imġarraf'' (Maltese for "the destroyed").
+
+==Background==
+In the 18th and early 19th centuries, the main gunpowder store in Birgu was located in a [[casemate]] within the city walls, close to the ''Porta Marina''. This was an improvised measure; the casemate was not intended to be used as a gunpowder magazine, but such practice was common at the time. Gunpowder was also stored in casemates at other locations, such as [[Fort St. Angelo]], [[Fort Ricasoli]], and [[fortifications of Mdina|Mdina]].<ref>{{harvnb|Spiteri|2012|pp=18–19}}</ref><ref>{{harvnb|Spiteri|2012|p=39}}</ref> The Birgu magazine was located close to civilian housing, and the residents had complained about the dangers before the explosion. Preparations had been made to find alternative sites but nothing had been done; the storerooms that were meant to store gunpowder were being used as barracks or military hospitals.<ref name="maltaramc"/>
+
+The 1806 explosion was not the first time that a gunpowder disaster occurred in Malta. On 12 September 1634, a gunpowder factory in Valletta [[1634 Valletta explosion|blew up]], killing 22 people and causing severe damage to the [[Church of the Jesuits, Valletta|Church of the Jesuits]] and [[Old University Building, Valletta|the nearby college]].<ref>{{harvnb|Spiteri|2012|p=6}}</ref> In 1662, gunpowder that was stored in an [[bartizan|echaugette]] on one of Valletta's [[counterguard]]s exploded after being hit by lightning, but there were no casualties.<ref>{{harvnb|Spiteri|2012|p=38}}</ref>
+
+==Explosion==
+In July 1806, British forces in Malta were preparing artillery shells for shipment to Sicily, as ammunition stocks there were depleted due to the [[Siege of Gaeta (1806)|siege of Gaeta]] by the French. On 18 July, a working party of 13 men commanded by garrison gunner [[Bombardier (rank)|Bombardier]] Anderson were preparing a consignment of shells from the Birgu magazine,<ref name="maltaramc">{{cite web|title=Explosion Polverista Vittoriosa |url=https://www.maltaramc.com/regsurg/rs1800_1809/rmo1806.html |website=Medical Officers of the Malta Garrison |archiveurl=https://web.archive.org/web/20170222050937/http://maltaramc.com/regsurg/rs1800_1809/rmo1806.html |archivedate=22 February 2017 |url-status=dead }}</ref> which was filled at full capacity with 370 barrels containing {{convert|40000|lbs|abbr=on}} of gunpowder, as well as 1,600 shells and grenades.<ref name="spiteri-42">{{harvnb|Spiteri|2012|p=42}}</ref> Anderson was using a metal chisel to remove the fuses from live shells, which was contrary to instructions, and this resulted in sparks which caused a massive explosion at 06:15. 
+
+Anderson and the working party were killed instantly, as were three British soldiers of the [[39th (Dorsetshire) Regiment of Foot]] and 23 Maltese soldiers of the [[Maltese Provincial Battalions|2nd Provincial Battalion]].<ref>{{cite web|title=The Maltese Provincial Battalions|url=http://maltaramc.com/regmltgar/1stprov.html|publisher=maltaramc.com|archiveurl=https://web.archive.org/web/20171203152832/http://maltaramc.com/regmltgar/1stprov.html|archivedate=3 December 2017}}</ref> Between 150<ref name="vittoriosahistorica"/> and 200 civilians from Birgu were also killed, and approximately 100 others were injured by falling debris.<ref name="maltaramc"/> The explosion frightened the inhabitants of Birgu, and it was also heard in the nearby cities of [[Senglea]] and [[Cospicua]], as well as in the surrounding villages.<ref>{{cite book|title=The Bulletin, Volume 57, Issue 225 – Volume 58, Issue 232|date=2006|publisher=Military Historical Society (Great Britain)|url=https://books.google.com/?id=dDNVAAAAYAAJ|page=147|ref=hv}}</ref>
+
+The magazine was located within the city's fortifications, and a section of the walls "went up in the air" and left a large breach.<ref name="bugeja-buhagiar-fiorini-1993">{{cite book|editor1-last=Bugeja|editor1-first=Lino|editor2-last=Buhagiar|editor2-first=Mario|editor3-last=Fiorini|editor3-first=Stanley|title=Birgu: A Maltese Maritime City|volume= 1|date=1993|publisher=Malta University Services|isbn=9789990944006|pages=159–160|url=https://books.google.com/?id=YI7iAAAAMAAJ}}</ref> The city gate at the Porta Marina, a small bastion, and part of a curtain wall were all destroyed and were never rebuilt.<ref>{{cite web|title=Birgu |url=http://www.culturalheritage.gov.mt/filebank/inventory/Knights%20Fortifications/1507.pdf |website=National Inventory of the Cultural Property of the Maltese Islands |archiveurl=https://web.archive.org/web/20160820074930/http://www.culturalheritage.gov.mt/filebank/inventory/Knights%20Fortifications/1507.pdf |archivedate=20 August 2016 |date=28 June 2013 |url-status=dead }}</ref><ref>{{cite web|title=Short stretch of stepped curtain wall leading down to Birgu Creek – Birgu |url=http://www.culturalheritage.gov.mt/filebank/inventory/Knights%20Fortifications/1517.pdf |website=National Inventory of the Cultural Property of the Maltese Islands |archiveurl=https://web.archive.org/web/20160819160212/http://www.culturalheritage.gov.mt/filebank/inventory/Knights%20Fortifications/1517.pdf |archivedate=19 August 2016 |date=28 June 2013 |url-status=dead }}</ref> Parts of the Navy Store Houses were also damaged or destroyed during the explosion.<ref name="maltaramc"/> Birgu's cityscape was also altered by the explosion, since a large number of houses were destroyed or damaged by the explosion itself and by the rocks which fell from the bastions.<ref name="bugeja-buhagiar-fiorini-1993"/> Four hundred ninety-three people reported property losses due to the explosion.<ref name="spiteri-42"/>
+
+==Aftermath==
+Many Maltese people were angered at the loss of lives caused by negligence on behalf of the military. Civil Commissioner [[Alexander Ball]] reported that:<ref name="maltaramc"/>
+{{cquote|those Maltese who had already become disaffected with the Government, fanned the embers and fermented great agitation by magnifying the casualties and working upon the weakness and credibility of the lower ranks.|20px}}
+
+[[File:1806 Birgu polverista explosion 05.jpg|thumb|300px|Triq il-Vittmi tal-Porvlista, with similar magazines built in the same period still intact or partially intact]]
+Victims and their families were paid partial compensation, and Ball set up a committee overseeing aid distribution. He also urged the government to pay full compensation. This was initially denied, but eventually the poorer classes received a compensation equivalent to two thirds of their property which had been destroyed, while those of the upper classes received half of the value of their property. In 1811, £18,066.5s.10d{{efn|Comparing 19th-century costs and prices with those of the modern period is challenging. £18,066.5s.10d in 1811 could be equivalent to between £1.2 million and £78.4 million in 2016, depending on the price comparison used.<ref>{{cite web|last1=Officer|first1=Lawrence H.|last2=Williamson|first2=Samuel H.|title=Five Ways to Compute the Relative Value of a UK Pound Amount, 1270 to Present|url=https://www.measuringworth.com/ukcompare/|website=MeasuringWorth.com|accessdate=23 May 2017|date=2014}}</ref>}} was evenly distributed among those who had claimed damages.<ref name="maltaramc"/> A wine merchant named Woodhouse lost a large amount of wine and the government provided him with extensive storehouses at the former [[Slaves' Prison]] in Valletta as a compensation.<ref name="maltaramc"/> The initial total estimated damage for rebuilding was estimated at £35,000.<ref>{{Cite journal|title=Notes|first1=JOHN|last1=WOOD|first2=RUI|last2=ARAJO|first3=PAUL|last3=QUINN|date=January 1, 2008|journal=The Mariner's Mirror|volume=94|issue=2|pages=209–222|doi=10.1080/00253359.2008.10657056}}</ref> 
+
+A street close to where the explosion occurred is now known as ''Triq il-Vittmi tal-Porvlista'' (Maltese for "Polverista Victims Street"). The Vittoriosa Historical and Cultural Society installed a plaque at the St. Lawrence Cemetery on the 200th anniversary of the disaster in 2006, where most of the victims were buried.<ref name="vittoriosahistorica">{{cite news|title=200th anniversary of the explosion at l-Imgarraf |url=http://www.vittoriosahistorica.org/news-2006-08.html#link_1 |work=Vittoriosa Historical & Cultural Society |date=August 2006 |archiveurl=https://web.archive.org/web/20160619083317/http://www.vittoriosahistorica.org/news-2006-08.html |archivedate=19 June 2016 |url-status=dead }}</ref>
+
+==Notes==
+{{notelist}}
+
+==References==
+{{reflist}}
+
+===Bibliography===
+{{Refbegin}}
+*{{cite journal|last1=Spiteri|first1=Stephen C.|authorlink1=Stephen C. Spiteri|title=Hospitaller Gunpowder Magazines|journal=Arx – International Journal of Military Architecture and Fortification|date=2012|volume=Occasional Papers|issue=2|url=http://www.militaryarchitecture.com/index.php/Journals/arx-occasional-papers-hospitaller-gunpowder-magazines.html|ref=harv}}
+{{Refend}}
+
+==Further reading==
+*[https://books.google.com.mt/books?id=HbCzLhVYkBsC&printsec=frontcover&source=gbs_ge_summary_r&cad=0#v=onepage&q=1806&f=false Page 86]
+*[https://wirtizzejtunartikli.files.wordpress.com/2012/06/tragedja-fil-birgu_2000.pdf Tragedja Kbira fil-Birgu (1806)]
+[[Category:Birgu]]
+[[Category:Explosions in Malta]]
+[[Category:Non-combat military accidents]]
+[[Category:19th-century explosions]]
+[[Category:1806 disasters]]
+[[Category:1806 in Malta]]
+[[Category:July 1806 events]]

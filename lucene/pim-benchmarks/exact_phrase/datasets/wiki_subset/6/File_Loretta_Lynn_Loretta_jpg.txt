@@ -1,0 +1,27 @@
+== Summary ==
+{{album cover fur
+<!-- REQUIRED -->
+|Article= Loretta (album)
+|Use=Infobox
+<!-- HIGHLY RECOMMENDED -->
+|Source=
+<!-- ADDITIONAL INFORMATION -->
+|Name= Loretta 
+|Artist= Loretta Lynn
+|Label= MCA Records
+|Graphic Artist= 
+|Item= 
+|Type= 
+|Website= 
+|Owner= 
+|Commentary= 
+<!-- OVERRIDE FIELDS -->
+|Description= 
+|Portion= 
+|Low_resolution= 
+|Purpose=
+|Replaceability= 
+|other_information= 
+}}
+== Licensing ==
+{{Non-free album cover|image has rationale=yes|auto=yes}}

@@ -1,0 +1,12 @@
+==Summary==
+{{Non-free use rationale video game cover
+| Article           = Alcatraz (video game)
+| Use               = Infobox<!-- Choose: Infobox / Header / Section / Artist / other (specify Purpose) --> 
+<!-- ADDITIONAL INFORMATION -->
+| Name              = [[Alcatraz (video game)|Alcatraz]]
+| Owner             = 221B Software Productions or [[Infogrames]]
+| Source            = http://media.giantbomb.com/uploads/0/1987/666175-alcatrazf_large.jpg
+}}
+
+== Licensing: ==
+{{Non-free video game cover|Amiga|Atari ST|DOS|image has rationale=yes}}

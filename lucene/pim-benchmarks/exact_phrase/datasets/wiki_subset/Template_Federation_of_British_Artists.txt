@@ -1,0 +1,19 @@
+{{Navbox
+|name = Federation of British Artists
+|title = [[Federation of British Artists|Federation of British Artists (FBA)]]
+|state = {{{state|autocollapse}}}
+|listclass = hlist
+|list1 = 
+* [[Hesketh Hubbard Art Society]]
+* [[New English Art Club]]
+* [[The Pastel Society]]
+* [[Royal Institute of Oil Painters]]
+* [[Royal Institute of Painters in Water Colours]]
+* [[Royal Society of British Artists]]
+* [[Royal Society of Marine Artists]]
+* [[Royal Society of Portrait Painters]]
+* [[Society of Wildlife Artists]]
+}}<noinclude>
+{{collapsible option}}
+[[Category:Arts and cultural organization templates]]
+</noinclude>

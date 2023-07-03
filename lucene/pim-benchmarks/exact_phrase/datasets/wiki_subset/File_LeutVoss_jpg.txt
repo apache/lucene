@@ -1,0 +1,11 @@
+{{Information
+| description = Leutnant Voss
+| source      = a card from private collection by Sanke, Berlin 1917
+| date        = c. 1917
+| author      = 
+| permission  = 
+| other_versions = 
+| additional_information = 
+}}
+== Licensing ==
+{{PD-US-1923-abroad}}

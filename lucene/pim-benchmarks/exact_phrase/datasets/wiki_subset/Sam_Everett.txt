@@ -1,0 +1,81 @@
+{{EngvarB|date=August 2014}}
+{{Use dmy dates|date=August 2014}}
+{{Infobox cricketer
+|                name = Sam Everett
+|              female = 
+|               image = 
+|             caption = 
+|             country = Australia
+|            country2 =
+|            country3 =
+|            fullname = Charles Samuel Everett
+|          birth_date = {{Birth date|df=yes|1901|6|17}}
+|        birth_place = [[Marrickville]], Sydney, Australia
+|          death_date = {{Death date and age|df=yes|1970|10|10|1901|6|17}}
+|        death_place = [[Concord, New South Wales|Concord]], Sydney, Australia
+|            nickname = 
+|            heightft = 
+|          heightinch = 
+|             heightm = 
+|             batting = Left-handed
+|             bowling = Right-arm [[fast bowling|fast]]
+|                role = bowler
+|              family = 
+|               club1 = [[New South Wales cricket team|New South Wales]]
+|               year1 = 1921–1930
+|         clubnumber1 = 
+|               club2 = [[Australian cricket team|Australian XI]]
+|               year2 = 1924–1927
+|         clubnumber2 = 
+|               club3 = [[Australian cricket team|Australians]]
+|               year3 = 1926
+|         clubnumber3 = 
+|               type1 = [[First-class cricket|FC]]
+|            onetype1 = 
+|          debutdate1 = 3 December
+|          debutyear1 = 1921
+|           debutfor1 = [[New South Wales cricket team|New South Wales]]
+|       debutagainst1 = [[Queensland cricket team|Queensland]]
+|           lastdate1 = 9 January 
+|           lastyear1 = 1930
+|            lastfor1 = [[New South Wales cricket team|New South Wales]]
+|        lastagainst1 = [[South Australia cricket team|South Australia]]
+|             columns = 1
+|             column1 = [[First-class cricket|FC]]
+|            matches1 = 45
+|               runs1 = 617
+|            bat avg1 = 14.69
+|           100s/50s1 = 0/3
+|          top score1 = 77
+|         deliveries1 = 7336
+|            wickets1 = 134
+|           bowl avg1 = 27.11
+|            fivefor1 = 8
+|             tenfor1 = 0
+|       best bowling1 = 6/23
+|  catches/stumpings1 = 26/0
+|                date = 26 August 
+|                year = 2009
+|              source = http://www.cricketarchive.co.uk/Archive/Players/5/5843/5843.html CricketArchive
+}}
+
+'''Charles Samuel Everett''' (17 June 1901 – 10 October 1970)<ref name="CAprofile">{{cite web|url=http://www.cricketarchive.co.uk/Archive/Players/5/5843/5843.html|title=Sam Everett|publisher=CricketArchive|accessdate=5 February 2009}}</ref> was an Australian [[cricket]]er who played [[first-class cricket]] for [[New South Wales cricket team|New South Wales]] from 1921 to 1930.<ref name="CAprofile" />
+
+Everett was born in Sydney and educated at [[Newington College]] (1917–1918).<ref>Newington College Register of Past Students 1863–1998 (Syd, 1999) pp 61</ref> A right-arm [[fast bowling|fast medium bowler]] and left-handed batsman for [[Petersham, New South Wales|Petersham]] Cricket Club,<ref name="Pollard">Pollard (1988), p.434.</ref> Everett took 134 wickets at first-class level at an [[Bowling average|average]] of 27.11 runs per wicket.<ref name="CAprofile" /> He was chosen as part of the Australian squad to [[Australian cricket team in England in 1926|tour in England in 1926]] but illness and poor form meant he missed selection for the [[Test cricket|Test matches]].<ref name="Pollard"/>
+
+His best [[bowling analysis|bowling figures]], 6/23, were taken against [[Queensland Bulls|Queensland]] in January 1930; in the same match [[Donald Bradman]] scored his then-record 452.<ref>{{cite web|url=http://www.cricketarchive.co.uk/Archive/Scorecards/13/13341.html|title=New South Wales v Queensland : Sheffield Shield 1929/30|publisher=CricketArchive|accessdate=5 February 2009}}</ref>
+
+==See also==
+* [[List of New South Wales representative cricketers]]
+
+==Notes==
+{{reflist}}
+
+==References==
+*{{cite book |last=Pollard |first=Jack |authorlink=Jack Pollard |title=Australian Cricket: The Game and the Players |year=1988 |publisher=Angus & Robertson |location=Sydney |isbn=0-207-15269-1}}
+{{DEFAULTSORT:Everett, Sam}}
+[[Category:1901 births]]
+[[Category:1970 deaths]]
+[[Category:People educated at Newington College]]
+[[Category:New South Wales cricketers]]
+[[Category:Australian cricketers]]

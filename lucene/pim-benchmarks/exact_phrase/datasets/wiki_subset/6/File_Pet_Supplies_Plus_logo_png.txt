@@ -1,0 +1,13 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = This is the logo for the company, Pet Supplies Plus.
+|Source = http://petsuppliesplus.com
+|Article = Pet Supplies Plus
+|Purpose = to serve as the primary means of visual identification at the top of the article dedicated to the entity in question.
+|Replaceability = n.a.
+|Minimality = This image will only be used on the Pet Supplies Plus Wikipedia page.
+|Commercial = n.a.
+}}
+
+==Licensing==
+{{Non-free logo|image has rationale=yes|auto=yes}}

@@ -1,0 +1,17 @@
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was    '''Nomination withdrawn'''. Non-admin closure. [[User:Pastor Theo|Pastor Theo]] ([[User talk:Pastor Theo|talk]]) 23:32, 5 February 2009 (UTC)
+===[[Aluisio da Silva Meres Junior]]===
+ 
+:{{la|Aluisio da Silva Meres Junior}} (<span class="plainlinks">[{{fullurl:Aluisio da Silva Meres Junior|wpReason={{urlencode: [[Wikipedia:Articles for deletion/Aluisio da Silva Meres Junior]]}}&action=delete}} delete]</span>) – <includeonly>([[Wikipedia:Articles for deletion/Aluisio da Silva Meres Junior|View AfD]])</includeonly><noinclude>([[Wikipedia:Articles for deletion/Log/2009 February 5#{{anchorencode:Aluisio da Silva Meres Junior}}|View log]])</noinclude>
+<s>The player is poorly sourced.  From CBF (Brazilian FA) source, he only able to play in Serie C and Brazilian state league. So he is no-notable player unless have a source state that he playerd in Brazilian Serie B or above. [[User:Matthew_hk|<span style="color:yellow; background-color:black;">Matthew_hk</span>]] [[User talk:Matthew_hk|''<font color="Blue">t</font>'']][[Special:Contributions/Matthew_hk|''<font color="red">c</font>'']] 11:30, 5 February 2009 (UTC)</s>
+
+*'''Strong keep''' - The article is in a terrible state, but it's clear that he's played in the Brasileiro Serie A and the Turkish Super Lig (both fully-pro leagues). I've added some references and tried to clean the article a bit, but it needs plenty of care. [[User:Jogurney|Jogurney]] ([[User talk:Jogurney|talk]]) 14:29, 5 February 2009 (UTC)
+
+*'''Withdraw''' The creator create a terrible stub. I forget check his career in Turkey is my fault. [[User:Matthew_hk|<span style="color:yellow; background-color:black;">Matthew_hk</span>]] [[User talk:Matthew_hk|''<font color="Blue">t</font>'']][[Special:Contributions/Matthew_hk|''<font color="red">c</font>'']] 14:34, 5 February 2009 (UTC)
+
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

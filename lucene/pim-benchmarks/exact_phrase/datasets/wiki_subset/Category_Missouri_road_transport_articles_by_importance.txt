@@ -1,0 +1,8 @@
+{{Cat more|Wikipedia:WikiProject Missouri State Highways}}
+:''See also: {{c|Missouri road transport articles by quality}}.''
+{{Articles by Importance|topic=Missouri road transport}}
+{{CatAutoTOC}}
+
+[[Category:U.S. state road transport articles by importance]]
+[[Category:Wikipedia 1.0 assessments]]
+[[Category:Missouri road transport articles| ]]

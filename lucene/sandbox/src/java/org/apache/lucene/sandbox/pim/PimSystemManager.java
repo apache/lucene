@@ -47,6 +47,12 @@ public interface PimSystemManager {
      */
     boolean unloadPimIndex();
 
+    /**
+     * @return number of dpus used by the index if an index is currently loaded
+     * in the PIM system and zero otherwise
+     */
+    public int getNbDpus();
+
     void shutDown();
 
     <QueryType extends Query & PimQuery> List<PimMatch> search(LeafReaderContext context,

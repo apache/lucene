@@ -158,10 +158,6 @@ public final class PimSystemManager1 implements PimSystemManager {
         }
     }
 
-    /**
-     * @return number of dpus used by the index if an index is currently loaded
-     * in the PIM system and zero otherwise
-     */
     public int getNbDpus() {
         synchronized (PimSystemManager1.class) {
             if(isIndexLoaded) {

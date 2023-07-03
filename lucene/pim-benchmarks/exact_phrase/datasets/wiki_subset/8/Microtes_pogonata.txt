@@ -1,0 +1,55 @@
+{{short description|Species of grasshopper}}
+{{Speciesbox
+| genus = Microtes
+| species = pogonata
+| authority = (Strohecker, 1963)
+| display_parents = 2
+}}
+
+'''''Microtes pogonata''''' is a species of [[band-winged grasshopper]] in the family [[Acrididae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/><ref name=Otte2019/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Microtes pogonata'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=658560
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Microtes pogonata''
+| url=https://www.gbif.org/species/5099264
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Microtes pogonata'' species Information
+| url=https://bugguide.net/node/view/401676
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=Otte2019>
+{{Cite web
+| accessdate = 2019-07-02
+| title = species Microtes pogonata (Strohecker, 1963)
+| date = 2019
+| last1 = Otte | first1 = Daniel
+| last2 = Cigliano | first2 = Maria Marta
+| last3 = Braun | first3 = Holger
+| last4 = Eades | first4 = David C.
+| url = http://orthoptera.speciesfile.org/Common/basic/Taxa.aspx?TaxonNameID=1103620
+| website = Orthoptera species file online, Version 5.0
+}}</ref>
+}}
+
+{{Taxonbar|from=Q10584849}}
+
+[[Category:Oedipodinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Insects described in 1963]]
+
+
+{{oedipodinae-stub}}

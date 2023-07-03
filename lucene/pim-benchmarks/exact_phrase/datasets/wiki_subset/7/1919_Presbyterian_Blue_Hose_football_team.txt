@@ -1,0 +1,111 @@
+{{short description|American college football season}}
+{{Infobox college sports team season
+| sport = football
+| year = 1919
+| team = Presbyterian Blue Hose
+| image = 
+| image_size = 
+| conference = Independent
+| record = 4–3–2
+| head_coach = [[Walter A. Johnson]]
+| hc_year  = 4th
+| captain = J. Y. Richardson
+| stadium = 
+}}
+{{1919 Southern college football independents records}}
+The '''1919 Presbyterian Blue Hose football team''' represented [[Presbyterian College]] during the [[1919 college football season]]. The Blue Hose's team captain was J. Y. Richardson.<ref>{{cite web|title=1919 Presbyterian Blue Hose Schedule and Results - College Football at Sports-Reference.com|url=https://www.sports-reference.com/cfb/schools/presbyterian/1919-schedule.html|website=College Football at Sports-Reference|accessdate=May 23, 2017}}</ref>
+
+==Schedule==
+{{CFB schedule
+
+|{{CFB schedule entry
+| date = September 27
+| w/l = w
+| away = y
+| opponent =  [[1919 South Carolina Gamecocks football team|South Carolina]]
+| site_stadium = 
+| site_cityst = [[Columbia, South Carolina|Columbia, SC]]
+| score = 6–0
+}}
+|{{CFB schedule entry
+| date = October 10
+| w/l = w
+| opponent = Bailey Military
+| site_stadium = 
+| site_cityst = [[Clinton, South Carolina|Clinton, SC]]
+| score = 40–0
+}}
+|{{CFB schedule entry
+| date = October 18
+| w/l = l
+| away = y
+| opponent = [[1919 Furman Purple Hurricane football team|Furman]]
+| site_stadium = 
+| site_cityst = [[Greenville, South Carolina|Greenville, SC]]
+| score = 0–6
+}}
+|{{CFB schedule entry
+| date = October 25
+| w/l = l
+| away = y
+| opponent = [[1919 The Citadel Bulldogs football team|The Citadel]]
+| site_stadium = College Park Stadium
+| site_cityst = [[Charleston, South Carolina|Charleston, SC]]
+| score = 7–12
+}}
+|{{CFB schedule entry
+| date = October 31
+| w/l = w
+| opponent = {{cfb link|year=1919|team=Erskine Seceders|title=Erskine}}
+| site_stadium = 
+| site_cityst = Clinton, SC
+| score = 33–7
+}}
+|{{CFB schedule entry
+| date = November 7
+| w/l = l
+| away = y
+| opponent = [[1919 Clemson Tigers football team|Clemson]]
+| site_stadium = [[Riggs Field]]
+| site_cityst = [[Clemson, South Carolina|Calhoun, SC]]
+| score = 7–19
+}}
+|{{CFB schedule entry
+| date = November 14
+| w/l = w
+| opponent = {{cfb link|year=1919|team=Wofford Terriers|title=Wofford}}
+| site_stadium = 
+| site_cityst = Clinton, SC
+| score = 14–6
+}}
+|{{CFB schedule entry
+| date = November 21
+| w/l = t
+| away = y
+| opponent = {{cfb link|year=1919|team=Davidson Wildcats|title=Davidson}}
+| site_stadium = 
+| site_cityst = [[Davidson, North Carolina|Davidson, NC]]
+| score = 0–0
+}}
+|{{CFB schedule entry
+| date = November 27
+| w/l = t
+| away = y
+| opponent = {{cfb link|year=1919|team=Newberry Indians|title=Newberry}}
+| site_stadium = 
+| site_cityst = [[Newberry, South Carolina|Newberry, SC]]
+| score = 0–0
+}}
+}}
+<ref>{{cite web|title=2009 Football Media Guide - Presbyterian College Blue Hose|url=https://www.nmnathletics.com//pdf5/636838.pdf|website=gobluehose|publisher=gobluehose.com|accessdate=May 23, 2017}}</ref>
+
+==References==
+{{Reflist}}
+
+{{Presbyterian Blue Hose football navbox}}
+
+[[Category:1919 college football season|Presbyterian]]
+[[Category:Presbyterian Blue Hose football seasons]]
+[[Category:1919 in sports in South Carolina|Presbyterian Blue Hose football]]
+
+{{collegefootball-1910s-season-stub}}

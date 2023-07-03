@@ -1,0 +1,835 @@
+{{Main|1924 United States presidential election}}
+{{Infobox Election
+| election_name = 1924 [[United States presidential election]] in Rhode Island
+| country = Rhode Island
+| type = presidential 
+| ongoing = no
+| previous_election = 1920 United States presidential election in Rhode Island
+| previous_year = 1920
+| next_election = 1928 United States presidential election in Rhode Island
+| next_year = 1928
+| election_date = November 4, 1924
+| image_size = 135px
+| image1 = John Calvin Coolidge, Bain bw photo portrait.jpg
+| nominee1 = '''[[Calvin Coolidge]]'''
+| party1 = Republican Party (United States)
+| home_state1 = [[Massachusetts]]
+| running_mate1 = '''[[Charles G. Dawes]]'''
+| electoral_vote1 = '''5'''
+| popular_vote1 = '''125,286'''
+| percentage1 = '''59.63%'''
+| image2 = John William Davis.jpg
+| nominee2 = [[John W. Davis]]
+| party2 = Democratic Party (United States)
+| home_state2 = [[West Virginia]]
+| running_mate2 = [[Charles W. Bryan]]
+| electoral_vote2 = 0
+| popular_vote2 = 76,606
+| percentage2 = 36.46%
+| map_image = Rhode Island Presidential Election Results 1924.svg
+| map_size = 180px
+| map_caption = County Results
+{{col-start}}
+'''Coolidge'''
+{{legend|#e27f90|50-60%}}
+{{legend|#cc2f4a|60-70%}}
+{{legend|#d40000|70-80%}}
+{{col-end}}
+| title = President 
+| before_election = [[Calvin Coolidge]]
+| before_party = Republican Party (United States)
+| after_election = [[Calvin Coolidge]]
+| after_party = Republican Party (United States)
+}}
+{{ElectionsRI}}
+
+The '''1924 United States presidential election in Rhode Island''' took place on November 4, 1924, as part of the [[1924 United States presidential election]] which was held throughout all contemporary 48 states. Voters chose five representatives, or electors to the [[United States Electoral College|Electoral College]], who voted for [[President of the United States|president]] and [[Vice President of the United States|vice president]]. 
+
+[[Rhode Island]] voted for the [[Republican Party (United States)|Republican]] nominee, incumbent President [[Calvin Coolidge]] of [[Massachusetts]], over the [[Democratic Party (United States)|Democratic]] nominee, Ambassador [[John W. Davis]] of [[West Virginia]]. Coolidge ran with former [[Office of Management and Budget|Budget Director]] [[Charles G. Dawes]] of [[Illinois]], while Davis ran with [[List of governors of Nebraska|Governor]] [[Charles W. Bryan]] of [[Nebraska]]. Also in the running that year was the [[Progressive Party (United States, 1924–34)|Progressive Party]] nominee, [[United States Senate|Senator]] [[Robert M. La Follette]] of [[Wisconsin]] and his running mate Senator [[Burton K. Wheeler]] of [[Montana]]. La Follette’s support base was primarily among rural [[German Americans|German]] and [[Scandinavian Americans]],<ref>[[Rodney Stark|Stark, Rodney]] and Christiano, Kevin J.; ‘Support for the American Left, 1920-1924: The Opiate Thesis Reconsidered’; ''Journal for the Scientific Study of Religion'', Vol. 31, No. 1 (March, 1992), pp. 62-75</ref> and he possessed little appeal in the Northeast outside a few New York and Boston [[Prohibition in the United States|anti-Prohibition]] precincts. This was especially true in Rhode Island where La Follette’s opposition to the [[League of Nations]] was severely unpopular,<ref name=Geography55>Menendez, Albert J.; ''The Geography of Presidential Elections in the United States, 1868-2004'', p. 55 {{ISBN|0786422173}}</ref> and consequently Rhode Island was La Follette’s sixth-weakest state and weakest outside the former [[Confederate States of America|Confederacy]] where the lower classes were almost entirely disfranchised.
+
+Coolidge won Rhode Island by a margin of 23.17%. His victory was also enjoyed a unique personal popularity which helped him in the state and the rest of [[New England]]. He was the epitome of a traditional New England [[Yankee]], having been born in the small-town of [[Plymouth Notch, Vermont]], and establishing his political career nearby as [[Governor of Massachusetts]]. Thus Coolidge remained especially popular with voters across the New England region.
+
+The 1920s were a fiercely Republican decade in American politics, and Rhode Island in that era was a fiercely Republican state in presidential elections. The economic boom and social good feelings of the [[Roaring Twenties]] under popular Republican leadership virtually guaranteed Calvin Coolidge an easy win in the state against the conservative Southern Democrat Davis. Although Davis’ reticence on the [[Ku Klux Klan]] was opposed by large Catholic populations in Rhode Island, his status as the solitary pro-League of Nations candidate helped him in the Ocean State with its large immigrant population. Consequently Davis gained almost 4% on Cox’s 1920 vote and in fact Rhode Island was his third strongest state in the North and West (behind New Mexico and Indiana), giving Davis a vote percentage 7.64% above his national figure.
+
+In effect, Davis’ gain would begin Rhode Island's transition from a strongly Yankee Republican state into a Democratic-leaning state, made definitive via Catholic [[Al Smith]]’s win 4 years later. Rhode Island would not vote for another Republican presidential candidate until [[Dwight D. Eisenhower]] in [[1952 United States presidential election in Rhode Island|1952]], and since 1924, Republicans have only carried the state four times. 
+
+==Results==
+{{Election box runningmate begin | title=1924 United States presidential election in Rhode Island<ref name=results>{{cite web|title=1924 Presidential General Election Results – Rhode Island|url=http://uselectionatlas.org/RESULTS/state.php?year=1924&fips=44&f=0&off=0&elect=0&minper=0|publisher=Dave Leip’s U.S. Election Atlas|accessdate=23 December 2013}}</ref>}}
+{{Election box US candidate with party link|
+   |party      = Republican Party (United States)
+   |candidate  = '''[[Calvin Coolidge]]'''
+   |homestate  = [[Massachusetts]]
+   |vp_name    = '''[[Charles Gates Dawes]]'''
+   |vp_state   = [[Illinois]]
+   |votes      = '''125,286'''
+   |percentage = '''59.63%'''
+   |ev         = '''5'''
+   |evprct     = '''100.00%'''
+}}
+{{Election box US candidate with party link|
+   |party      = Democratic Party (United States)
+   |candidate  = [[John William Davis]]
+   |homestate  = [[West Virginia]]
+   |vp_name    = [[Charles Wayland Bryan]]
+   |vp_state   = [[Nebraska]]
+   |votes      = 76,606
+   |percentage = 36.46%
+   |ev         = 0
+   |evprct     = 0.00%
+}}
+{{Election box US candidate with party link|
+   |party      = Progressive Party (United States, 1924)
+   |candidate  = [[Robert M. La Follette, Sr.|Robert Marion La Follette]]
+   |homestate  = [[Wisconsin]]
+   |vp_name    = [[Burton Kendall Wheeler]]
+   |vp_state   = [[Montana]]
+   |votes      = 7,628
+   |percentage = 3.63%
+   |ev         = 0
+   |evprct     = 0.00%
+}}
+{{Election box US candidate with party link|
+   |party      = Communist Party USA
+   |candidate  = [[William Z. Foster]]
+   |homestate  = [[Massachusetts]]
+   |vp_name    = [[Benjamin Gitlow]]
+   |vp_state   = [[New York (state)|New York]]
+   |votes      = 289
+   |percentage = 0.14%
+   |ev         = 0
+   |evprct     = 0.00%
+}}  
+{{Election box US candidate with party link|
+   |party      = Socialist Labor Party of America
+   |candidate  = [[Frank T. Johns|Frank Tetes Johns]]
+   |homestate  = [[Oregon]]
+   |vp_name    = [[Verne L. Reynolds]]
+   |vp_state   = [[New York (state)|New York]]
+   |votes      = 268
+   |percentage = 0.13%
+   |ev         = 0
+   |evprct     = 0.00%
+}}
+{{Election box US candidate
+   |party      = N/A
+   |candidate  = ''Others''
+   |vp_name    = ''Others''
+   |votes      = 38
+   |percentage = 0.02%
+   |ev         = 0
+   |evprct     = 0.00%
+}}
+{{Election runningmate box total|
+  |votes      = '''210,115'''
+  |percentage = '''100.00%'''
+  |ev         =  '''5'''
+  |evprct     = '''100.00%'''
+}}
+{{Election box end}}
+
+===Results by town===
+{| class="wikitable sortable" style="text-align:center"
+|-
+! colspan="1" rowspan="2" |Town
+! style="text-align:center;" colspan="2"| John Calvin Coolidge<br />Republican
+! style="text-align:center;" colspan="2"| John William Davis<br /> Democratic
+! style="text-align:center;" colspan="2"| Robert M. La Follette, Sr.<br />Progressive
+! style="text-align:center;" colspan="2"| William Z. Foster<br />Workers
+! style="text-align:center;" colspan="2"| Frank Tetes Johns<br />Socialist Labor
+! style="text-align:center;" colspan="2"| William Wallace<br />Commonwealth Land
+! style="text-align:center;" colspan="2"| Margin
+! colspan="1" rowspan="2" style="text-align:center;" | Total votes cast<ref>Rhode Island Secretary of State; ‘Presidential Election, November 4, 1924 Vote of Rhode Island by Cities and Towns’; ''Rhode Island Manual'', 1925-1926</ref>
+|-
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+! style="text-align:center;" data-sort-type="number"| #
+! style="text-align:center;" data-sort-type="number"| %
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Barrington, Rhode Island|Barrington]]
+| {{party shading/Republican}}| 1,239
+| {{party shading/Republican}}| 82.71%
+| {{party shading/Democratic}}| 239
+| {{party shading/Democratic}}| 15.95%
+| {{party shading/Progressive}}| 20
+| {{party shading/Progressive}}| 1.34%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,000
+| {{party shading/Republican}}| 66.76%
+| {{party shading/Republican}}| 1,498
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Bristol, Rhode Island|Bristol]]
+| {{party shading/Republican}}| 1,602
+| {{party shading/Republican}}| 53.52%
+| {{party shading/Democratic}}| 1,313
+| {{party shading/Democratic}}| 43.87%
+| {{party shading/Progressive}}| 74
+| {{party shading/Progressive}}| 2.47%
+| {{party shading/Communist}}| 2
+| {{party shading/Communist}}| 0.07%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.03%
+| {{party shading/Single Tax}}| 1
+| {{party shading/Single Tax}}| 0.03%
+| {{party shading/Republican}}| 289
+| {{party shading/Republican}}| 9.66%
+| {{party shading/Republican}}| 2,993
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Burrillville, Rhode Island|Burrillville]]
+| {{party shading/Republican}}| 1,590
+| {{party shading/Republican}}| 51.47%
+| {{party shading/Democratic}}| 1,363
+| {{party shading/Democratic}}| 44.12%
+| {{party shading/Progressive}}| 131
+| {{party shading/Progressive}}| 4.24%
+| {{party shading/Communist}}| 3
+| {{party shading/Communist}}| 0.10%
+| {{party shading/Socialist Labor}}| 2
+| {{party shading/Socialist Labor}}| 0.06%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 227
+| {{party shading/Republican}}| 7.35%
+| {{party shading/Republican}}| 3,089
+|- style="text-align:center;"
+| {{party shading/Democratic}}| [[Central Falls, Rhode Island|Central Falls]]
+| {{party shading/Republican}}| 2,906
+| {{party shading/Republican}}| 42.88%
+| {{party shading/Democratic}}| 3,683
+| {{party shading/Democratic}}| 54.35%
+| {{party shading/Progressive}}| 173
+| {{party shading/Progressive}}| 2.55%
+| {{party shading/Communist}}| 10
+| {{party shading/Communist}}| 0.15%
+| {{party shading/Socialist Labor}}| 5
+| {{party shading/Socialist Labor}}| 0.07%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Democratic}}| -777
+| {{party shading/Democratic}}| -11.47%
+| {{party shading/Democratic}}| 6,777
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Charlestown, Rhode Island|Charlestown]]
+| {{party shading/Republican}}| 367
+| {{party shading/Republican}}| 83.79%
+| {{party shading/Democratic}}| 59
+| {{party shading/Democratic}}| 13.47%
+| {{party shading/Progressive}}| 12
+| {{party shading/Progressive}}| 2.74%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 308
+| {{party shading/Republican}}| 70.32%
+| {{party shading/Republican}}| 438
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Coventry, Rhode Island|Coventry]]
+| {{party shading/Republican}}| 1,735
+| {{party shading/Republican}}| 70.16%
+| {{party shading/Democratic}}| 692
+| {{party shading/Democratic}}| 27.98%
+| {{party shading/Progressive}}| 42
+| {{party shading/Progressive}}| 1.70%
+| {{party shading/Communist}}| 2
+| {{party shading/Communist}}| 0.08%
+| {{party shading/Socialist Labor}}| 2
+| {{party shading/Socialist Labor}}| 0.08%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,043
+| {{party shading/Republican}}| 42.18%
+| {{party shading/Republican}}| 2,473
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Cranston, Rhode Island|Cranston]]
+| {{party shading/Republican}}| 8,832
+| {{party shading/Republican}}| 76.52%
+| {{party shading/Democratic}}| 2,344
+| {{party shading/Democratic}}| 20.31%
+| {{party shading/Progressive}}| 331
+| {{party shading/Progressive}}| 2.87%
+| {{party shading/Communist}}| 11
+| {{party shading/Communist}}| 0.10%
+| {{party shading/Socialist Labor}}| 22
+| {{party shading/Socialist Labor}}| 0.19%
+| {{party shading/Single Tax}}| 2
+| {{party shading/Single Tax}}| 0.02%
+| {{party shading/Republican}}| 6,488
+| {{party shading/Republican}}| 56.21%
+| {{party shading/Republican}}| 11,542
+|- style="text-align:center;"
+| {{party shading/Democratic}}| [[Cumberland, Rhode Island|Cumberland]]
+| {{party shading/Republican}}| 1,766
+| {{party shading/Republican}}| 46.11%
+| {{party shading/Democratic}}| 1,902
+| {{party shading/Democratic}}| 49.66%
+| {{party shading/Progressive}}| 148
+| {{party shading/Progressive}}| 3.86%
+| {{party shading/Communist}}| 10
+| {{party shading/Communist}}| 0.26%
+| {{party shading/Socialist Labor}}| 4
+| {{party shading/Socialist Labor}}| 0.10%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Democratic}}| -136
+| {{party shading/Democratic}}| -3.55%
+| {{party shading/Democratic}}| 3,830
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[East Greenwich, Rhode Island|East Greenwich]]
+| {{party shading/Republican}}| 1,344
+| {{party shading/Republican}}| 78.50%
+| {{party shading/Democratic}}| 339
+| {{party shading/Democratic}}| 19.80%
+| {{party shading/Progressive}}| 28
+| {{party shading/Progressive}}| 1.64%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.06%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,005
+| {{party shading/Republican}}| 58.70%
+| {{party shading/Republican}}| 1,712
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[East Providence, Rhode Island|East Providence]]
+| {{party shading/Republican}}| 5,962
+| {{party shading/Republican}}| 70.12%
+| {{party shading/Democratic}}| 2,249
+| {{party shading/Democratic}}| 26.45%
+| {{party shading/Progressive}}| 277
+| {{party shading/Progressive}}| 3.26%
+| {{party shading/Communist}}| 6
+| {{party shading/Communist}}| 0.07%
+| {{party shading/Socialist Labor}}| 5
+| {{party shading/Socialist Labor}}| 0.06%
+| {{party shading/Single Tax}}| 4
+| {{party shading/Single Tax}}| 0.05%
+| {{party shading/Republican}}| 3,713
+| {{party shading/Republican}}| 43.67%
+| {{party shading/Republican}}| 8,503
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Exeter, Rhode Island|Exeter]]
+| {{party shading/Republican}}| 317
+| {{party shading/Republican}}| 87.09%
+| {{party shading/Democratic}}| 41
+| {{party shading/Democratic}}| 11.26%
+| {{party shading/Progressive}}| 6
+| {{party shading/Progressive}}| 1.65%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 276
+| {{party shading/Republican}}| 75.82%
+| {{party shading/Republican}}| 364
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Foster, Rhode Island|Foster]]
+| {{party shading/Republican}}| 415
+| {{party shading/Republican}}| 83.50%
+| {{party shading/Democratic}}| 77
+| {{party shading/Democratic}}| 15.49%
+| {{party shading/Progressive}}| 3
+| {{party shading/Progressive}}| 0.60%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.20%
+| {{party shading/Single Tax}}| 1
+| {{party shading/Single Tax}}| 0.20%
+| {{party shading/Republican}}| 338
+| {{party shading/Republican}}| 68.01%
+| {{party shading/Republican}}| 497
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Glocester, Rhode Island|Glocester]]
+| {{party shading/Republican}}| 517
+| {{party shading/Republican}}| 69.21%
+| {{party shading/Democratic}}| 219
+| {{party shading/Democratic}}| 29.32%
+| {{party shading/Progressive}}| 10
+| {{party shading/Progressive}}| 1.34%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.13%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 298
+| {{party shading/Republican}}| 39.89%
+| {{party shading/Republican}}| 747
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Hopkinton, Rhode Island|Hopkinton]]
+| {{party shading/Republican}}| 959
+| {{party shading/Republican}}| 87.98%
+| {{party shading/Democratic}}| 106
+| {{party shading/Democratic}}| 9.72%
+| {{party shading/Progressive}}| 24
+| {{party shading/Progressive}}| 2.20%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.09%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 853
+| {{party shading/Republican}}| 78.26%
+| {{party shading/Republican}}| 1,090
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Jamestown, Rhode Island|Jamestown]]
+| {{party shading/Republican}}| 465
+| {{party shading/Republican}}| 77.50%
+| {{party shading/Democratic}}| 109
+| {{party shading/Democratic}}| 18.17%
+| {{party shading/Progressive}}| 25
+| {{party shading/Progressive}}| 4.17%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.17%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 356
+| {{party shading/Republican}}| 59.33%
+| {{party shading/Republican}}| 600
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Johnston, Rhode Island|Johnston]]
+| {{party shading/Republican}}| 1,595
+| {{party shading/Republican}}| 65.10%
+| {{party shading/Democratic}}| 780
+| {{party shading/Democratic}}| 31.84%
+| {{party shading/Progressive}}| 68
+| {{party shading/Progressive}}| 2.78%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.04%
+| {{party shading/Socialist Labor}}| 6
+| {{party shading/Socialist Labor}}| 0.24%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 815
+| {{party shading/Republican}}| 33.27%
+| {{party shading/Republican}}| 2,450
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Lincoln, Rhode Island|Lincoln]]
+| {{party shading/Republican}}| 2,203
+| {{party shading/Republican}}| 57.47%
+| {{party shading/Democratic}}| 1,567
+| {{party shading/Democratic}}| 40.88%
+| {{party shading/Progressive}}| 50
+| {{party shading/Progressive}}| 1.30%
+| {{party shading/Communist}}| 3
+| {{party shading/Communist}}| 0.08%
+| {{party shading/Socialist Labor}}| 10
+| {{party shading/Socialist Labor}}| 0.26%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 636
+| {{party shading/Republican}}| 16.59%
+| {{party shading/Republican}}| 3,833
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Little Compton, Rhode Island|Little Compton]]
+| {{party shading/Republican}}| 415
+| {{party shading/Republican}}| 94.97%
+| {{party shading/Democratic}}| 20
+| {{party shading/Democratic}}| 4.58%
+| {{party shading/Progressive}}| 1
+| {{party shading/Progressive}}| 0.23%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.23%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 395
+| {{party shading/Republican}}| 90.39%
+| {{party shading/Republican}}| 437
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Middletown, Rhode Island|Middletown]]
+| {{party shading/Republican}}| 495
+| {{party shading/Republican}}| 87.30%
+| {{party shading/Democratic}}| 63
+| {{party shading/Democratic}}| 11.11%
+| {{party shading/Progressive}}| 9
+| {{party shading/Progressive}}| 1.59%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 432
+| {{party shading/Republican}}| 76.19%
+| {{party shading/Republican}}| 567
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Narragansett, Rhode Island|Narragansett]]
+| {{party shading/Republican}}| 495
+| {{party shading/Republican}}| 75.57%
+| {{party shading/Democratic}}| 154
+| {{party shading/Democratic}}| 23.51%
+| {{party shading/Progressive}}| 5
+| {{party shading/Progressive}}| 0.76%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.15%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 341
+| {{party shading/Republican}}| 52.06%
+| {{party shading/Republican}}| 655
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[New Shoreham, Rhode Island|New Shoreham]]
+| {{party shading/Republican}}| 430
+| {{party shading/Republican}}| 92.87%
+| {{party shading/Democratic}}| 32
+| {{party shading/Democratic}}| 6.91%
+| {{party shading/Progressive}}| 1
+| {{party shading/Progressive}}| 0.22%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 398
+| {{party shading/Republican}}| 85.96%
+| {{party shading/Republican}}| 463
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Newport, Rhode Island|Newport]]
+| {{party shading/Republican}}| 6,115
+| {{party shading/Republican}}| 59.43%
+| {{party shading/Democratic}}| 3,545
+| {{party shading/Democratic}}| 34.45%
+| {{party shading/Progressive}}| 607
+| {{party shading/Progressive}}| 5.90%
+| {{party shading/Communist}}| 10
+| {{party shading/Communist}}| 0.10%
+| {{party shading/Socialist Labor}}| 13
+| {{party shading/Socialist Labor}}| 0.13%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 2,570
+| {{party shading/Republican}}| 24.98%
+| {{party shading/Republican}}| 10,290
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[North Kingstown, Rhode Island|North Kingstown]]
+| {{party shading/Republican}}| 1,463
+| {{party shading/Republican}}| 77.82%
+| {{party shading/Democratic}}| 373
+| {{party shading/Democratic}}| 19.84%
+| {{party shading/Progressive}}| 41
+| {{party shading/Progressive}}| 2.18%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.05%
+| {{party shading/Socialist Labor}}| 2
+| {{party shading/Socialist Labor}}| 0.11%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,090
+| {{party shading/Republican}}| 57.98%
+| {{party shading/Republican}}| 1,880
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[North Providence, Rhode Island|North Providence]]
+| {{party shading/Republican}}| 1,861
+| {{party shading/Republican}}| 60.05%
+| {{party shading/Democratic}}| 1,138
+| {{party shading/Democratic}}| 36.72%
+| {{party shading/Progressive}}| 86
+| {{party shading/Progressive}}| 2.78%
+| {{party shading/Communist}}| 6
+| {{party shading/Communist}}| 0.19%
+| {{party shading/Socialist Labor}}| 5
+| {{party shading/Socialist Labor}}| 0.16%
+| {{party shading/Single Tax}}| 3
+| {{party shading/Single Tax}}| 0.10%
+| {{party shading/Republican}}| 723
+| {{party shading/Republican}}| 23.33%
+| {{party shading/Republican}}| 3,099
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[North Smithfield, Rhode Island|North Smithfield]]
+| {{party shading/Republican}}| 680
+| {{party shading/Republican}}| 60.88%
+| {{party shading/Democratic}}| 391
+| {{party shading/Democratic}}| 35.00%
+| {{party shading/Progressive}}| 44
+| {{party shading/Progressive}}| 3.94%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.09%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.09%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 289
+| {{party shading/Republican}}| 25.87%
+| {{party shading/Republican}}| 1,117
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Pawtucket, Rhode Island|Pawtucket]]
+| {{party shading/Republican}}| 13,807
+| {{party shading/Republican}}| 56.76%
+| {{party shading/Democratic}}| 9,622
+| {{party shading/Democratic}}| 39.56%
+| {{party shading/Progressive}}| 814
+| {{party shading/Progressive}}| 3.35%
+| {{party shading/Communist}}| 36
+| {{party shading/Communist}}| 0.15%
+| {{party shading/Socialist Labor}}| 43
+| {{party shading/Socialist Labor}}| 0.18%
+| {{party shading/Single Tax}}| 3
+| {{party shading/Single Tax}}| 0.01%
+| {{party shading/Republican}}| 4,185
+| {{party shading/Republican}}| 17.20%
+| {{party shading/Republican}}| 24,325
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Portsmouth, Rhode Island|Portsmouth]]
+| {{party shading/Republican}}| 558
+| {{party shading/Republican}}| 88.85%
+| {{party shading/Democratic}}| 60
+| {{party shading/Democratic}}| 9.55%
+| {{party shading/Progressive}}| 9
+| {{party shading/Progressive}}| 1.43%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.16%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 498
+| {{party shading/Republican}}| 79.30%
+| {{party shading/Republican}}| 628
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Providence, Rhode Island|Providence]]
+| {{party shading/Republican}}| 42,063
+| {{party shading/Republican}}| 54.33%
+| {{party shading/Democratic}}| 31,667
+| {{party shading/Democratic}}| 40.90%
+| {{party shading/Progressive}}| 3,431
+| {{party shading/Progressive}}| 4.43%
+| {{party shading/Communist}}| 123
+| {{party shading/Communist}}| 0.16%
+| {{party shading/Socialist Labor}}| 119
+| {{party shading/Socialist Labor}}| 0.15%
+| {{party shading/Single Tax}}| 23
+| {{party shading/Single Tax}}| 0.03%
+| {{party shading/Republican}}| 10,396
+| {{party shading/Republican}}| 13.43%
+| {{party shading/Republican}}| 77,426
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Richmond, Rhode Island|Richmond]]
+| {{party shading/Republican}}| 437
+| {{party shading/Republican}}| 76.53%
+| {{party shading/Democratic}}| 109
+| {{party shading/Democratic}}| 19.09%
+| {{party shading/Progressive}}| 24
+| {{party shading/Progressive}}| 4.20%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.18%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 328
+| {{party shading/Republican}}| 57.44%
+| {{party shading/Republican}}| 571
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Scituate, Rhode Island|Scituate]]
+| {{party shading/Republican}}| 1,043
+| {{party shading/Republican}}| 82.13%
+| {{party shading/Democratic}}| 205
+| {{party shading/Democratic}}| 16.14%
+| {{party shading/Progressive}}| 18
+| {{party shading/Progressive}}| 1.42%
+| {{party shading/Communist}}| 4
+| {{party shading/Communist}}| 0.31%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 838
+| {{party shading/Republican}}| 65.98%
+| {{party shading/Republican}}| 1,270
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Smithfield, Rhode Island|Smithfield]]
+| {{party shading/Republican}}| 881
+| {{party shading/Republican}}| 64.26%
+| {{party shading/Democratic}}| 473
+| {{party shading/Democratic}}| 34.50%
+| {{party shading/Progressive}}| 16
+| {{party shading/Progressive}}| 1.17%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.07%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 408
+| {{party shading/Republican}}| 29.76%
+| {{party shading/Republican}}| 1,371
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[South Kingstown, Rhode Island|South Kingstown]]
+| {{party shading/Republican}}| 1,712
+| {{party shading/Republican}}| 71.81%
+| {{party shading/Democratic}}| 631
+| {{party shading/Democratic}}| 26.47%
+| {{party shading/Progressive}}| 36
+| {{party shading/Progressive}}| 1.51%
+| {{party shading/Communist}}| 4
+| {{party shading/Communist}}| 0.17%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.04%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,081
+| {{party shading/Republican}}| 45.34%
+| {{party shading/Republican}}| 2,384
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Tiverton, Rhode Island|Tiverton]]
+| {{party shading/Republican}}| 1,130
+| {{party shading/Republican}}| 86.66%
+| {{party shading/Democratic}}| 146
+| {{party shading/Democratic}}| 11.20%
+| {{party shading/Progressive}}| 23
+| {{party shading/Progressive}}| 1.76%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.08%
+| {{party shading/Socialist Labor}}| 4
+| {{party shading/Socialist Labor}}| 0.31%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 984
+| {{party shading/Republican}}| 75.46%
+| {{party shading/Republican}}| 1,304
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Warren, Rhode Island|Warren]]
+| {{party shading/Republican}}| 1,235
+| {{party shading/Republican}}| 55.18%
+| {{party shading/Democratic}}| 948
+| {{party shading/Democratic}}| 42.36%
+| {{party shading/Progressive}}| 52
+| {{party shading/Progressive}}| 2.32%
+| {{party shading/Communist}}| 1
+| {{party shading/Communist}}| 0.04%
+| {{party shading/Socialist Labor}}| 1
+| {{party shading/Socialist Labor}}| 0.04%
+| {{party shading/Single Tax}}| 1
+| {{party shading/Single Tax}}| 0.04%
+| {{party shading/Republican}}| 287
+| {{party shading/Republican}}| 12.82%
+| {{party shading/Republican}}| 2,238
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Warwick, Rhode Island|Warwick]]
+| {{party shading/Republican}}| 5,494
+| {{party shading/Republican}}| 78.17%
+| {{party shading/Democratic}}| 1,355
+| {{party shading/Democratic}}| 19.28%
+| {{party shading/Progressive}}| 163
+| {{party shading/Progressive}}| 2.32%
+| {{party shading/Communist}}| 9
+| {{party shading/Communist}}| 0.13%
+| {{party shading/Socialist Labor}}| 7
+| {{party shading/Socialist Labor}}| 0.10%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 4,139
+| {{party shading/Republican}}| 58.89%
+| {{party shading/Republican}}| 7,028
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[West Greenwich, Rhode Island|West Greenwich]]
+| {{party shading/Republican}}| 146
+| {{party shading/Republican}}| 83.43%
+| {{party shading/Democratic}}| 29
+| {{party shading/Democratic}}| 16.57%
+| {{party shading/Progressive}}| 0
+| {{party shading/Progressive}}| 0.00%
+| {{party shading/Communist}}| 0
+| {{party shading/Communist}}| 0.00%
+| {{party shading/Socialist Labor}}| 0
+| {{party shading/Socialist Labor}}| 0.00%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 117
+| {{party shading/Republican}}| 66.86%
+| {{party shading/Republican}}| 175
+|- style="text-align:center;"
+| {{party shading/Democratic}}| [[West Warwick, Rhode Island|West Warwick]]
+| {{party shading/Republican}}| 2,381
+| {{party shading/Republican}}| 43.51%
+| {{party shading/Democratic}}| 3,014
+| {{party shading/Democratic}}| 55.08%
+| {{party shading/Progressive}}| 73
+| {{party shading/Progressive}}| 1.33%
+| {{party shading/Communist}}| 2
+| {{party shading/Communist}}| 0.04%
+| {{party shading/Socialist Labor}}| 2
+| {{party shading/Socialist Labor}}| 0.04%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Democratic}}| -633
+| {{party shading/Democratic}}| -11.57%
+| {{party shading/Democratic}}| 5,472
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Westerly, Rhode Island|Westerly]]
+| {{party shading/Republican}}| 2,288
+| {{party shading/Republican}}| 69.23%
+| {{party shading/Democratic}}| 893
+| {{party shading/Democratic}}| 27.02%
+| {{party shading/Progressive}}| 110
+| {{party shading/Progressive}}| 3.33%
+| {{party shading/Communist}}| 5
+| {{party shading/Communist}}| 0.15%
+| {{party shading/Socialist Labor}}| 9
+| {{party shading/Socialist Labor}}| 0.27%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,395
+| {{party shading/Republican}}| 42.21%
+| {{party shading/Republican}}| 3,305
+|- style="text-align:center;"
+| {{party shading/Republican}}| [[Woonsocket, Rhode Island|Woonsocket]]
+| {{party shading/Republican}}| 6,343
+| {{party shading/Republican}}| 54.33%
+| {{party shading/Democratic}}| 4,656
+| {{party shading/Democratic}}| 39.88%
+| {{party shading/Progressive}}| 643
+| {{party shading/Progressive}}| 5.51%
+| {{party shading/Communist}}| 12
+| {{party shading/Communist}}| 0.10%
+| {{party shading/Socialist Labor}}| 20
+| {{party shading/Socialist Labor}}| 0.17%
+| {{party shading/Single Tax}}| 0
+| {{party shading/Single Tax}}| 0.00%
+| {{party shading/Republican}}| 1,687
+| {{party shading/Republican}}| 14.45%
+| {{party shading/Republican}}| 11,674
+|- style="text-align:center;"
+!Totals!!125,286!!59.63%!!76,606!!36.46%!!7,628!!3.63%!!268!!0.13%!!289!!0.14%!!38!!0.02%!!48,680!!23.17%!!210,115
+|}
+
+==See also==
+* [[United States presidential elections in Rhode Island]]
+
+==References==
+{{Reflist}}
+
+{{United States elections}}
+{{State Results of the 1924 U.S. presidential election| state=expanded}}
+
+[[Category:1924 United States presidential election by state|Rhode Island]]
+[[Category:United States presidential elections in Rhode Island|1924]]
+[[Category:1924 Rhode Island elections]]

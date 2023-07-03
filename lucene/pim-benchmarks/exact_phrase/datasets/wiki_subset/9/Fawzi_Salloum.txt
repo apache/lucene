@@ -1,0 +1,30 @@
+{{short description|Syrian wrestler}}
+{{Use dmy dates|date=April 2020}}
+{{Infobox sportsperson
+| name           = Fawzi Salloum
+| full_name      = 
+| image          = 
+| caption        = 
+| nationality    = Syrian
+| sport          = [[Wrestling]]
+| birth_date     = {{birth date and age|1943|7|15|df=yes}}
+| birth_place    = 
+| death_date     = 
+| death_place    = 
+}}
+
+'''Fawzi Salloum''' (born 15 July 1943) is a Syrian [[amateur wrestling|wrestler]]. He competed in the [[Wrestling at the 1972 Summer Olympics – Men's Greco-Roman 57 kg|men's Greco-Roman 57 kg]] at the [[1972 Summer Olympics]].<ref name="SportsRef">{{cite Sports-Reference |url=https://www.sports-reference.com/olympics/athletes/sa/fawzi-salloum-1.html |archive-url=https://web.archive.org/web/20200418085552/https://www.sports-reference.com/olympics/athletes/sa/fawzi-salloum-1.html |url-status=dead |archive-date=18 April 2020 |title=Fawzi Salloum Olympic Results |accessdate=6 April 2019}}</ref>
+
+==References==
+{{reflist}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Salloum, Fawzi}}
+[[Category:1943 births]]
+[[Category:Living people]]
+[[Category:Syrian male sport wrestlers]]
+[[Category:Olympic wrestlers of Syria]]
+[[Category:Wrestlers at the 1972 Summer Olympics]]
+[[Category:Place of birth missing (living people)]]
+{{Syria-wrestling-bio-stub}}

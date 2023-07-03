@@ -1,0 +1,53 @@
+{{short description|Irish sportsperson|bot=PearBOT 5}}
+{{BLP sources|date=January 2011}}
+{{Infobox GAA player
+| code= Hurling
+| sport = Hurling
+| image =
+| name = Brian Corry
+| irish = Briain Ó Corra
+| fullname = Brian Corry
+| height =
+| nickname =
+| county = Cork
+| province = Munster
+| club = [[Ballymartle GAA|Ballymartle]]
+| clposition = Forward
+| clubs =
+| clyears =
+| clapps(points) =
+| clcounty =
+| clprovince=
+| clallireland =
+| counties = Cork
+| icposition = Forward
+| icyears = 2008-
+| icapps(points) = 1 (0-1)
+| icprovince = 0
+| icallireland = 0
+| clupdate =
+| icupdate =
+| birth_place=[[Riverstick]], [[County Cork]]
+}}
+'''Brian Corry''' (born 1988 in [[Riverstick]], [[County Cork]]) is an [[Republic of Ireland|Irish]] sportsperson.  He plays [[hurling]] with his local club [[Ballymartle GAA|Ballymartle]] and with the [[Cork GAA|Cork]] senior inter-county team.<ref>{{cite news|title=Tipp put an end to 86-year hoodoo|url=http://www.independent.ie/sport/hurling/tipp-put-end-to-86year-hoodoo-1402391.html|accessdate=3 January 2011|newspaper=[[Irish Independent]]|date=9 June 2008}}</ref>
+
+==Playing career==
+===Club===
+
+Corry plays [[hurling]] with his local club in [[Ballymartle GAA|Ballymartle]]. He has enjoyed some success with his club winning the [[Cork Intermediate Hurling Championship]] in 2006.
+
+===Inter-county===
+
+Corry first came to prominence on the inter-county scene as a member of the [[Cork GAA|Cork]] minor hurling team in 2006.  That year All-Ireland final.  In 2008 Corry was included as a member of the Cork senior hurling panel.  He made his debut as a substitute in the Munster semi-final against [[Tipperary GAA|Tipperary]], however,
+
+==References==
+{{Reflist}}
+
+{{DEFAULTSORT:Corry, Brian}}
+[[Category:1988 births]]
+[[Category:Living people]]
+[[Category:Ballymartle hurlers]]
+[[Category:Cork inter-county hurlers]]
+
+
+{{Cork-hurling-bio-stub}}

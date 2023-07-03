@@ -1,0 +1,47 @@
+{{Infobox person
+| name               = Ester Partegàs
+| birth_date         = 1972
+| birth_place        = [[La Garriga]], [[Catalonia]], [[Spain]]
+| nationality        = [[Spain|Spanish]]
+| education          = [[Master of Fine Arts|MFA]]
+| occupation         = Artist
+}}
+
+'''Ester Partegàs''' (born 1972 in [[La Garriga]], [[Province of Barcelona|Barcelona]], Spain)<ref name="Boucher">{{cite journal |last1=Boucher |first1=Brian |title=Review: Ester Partegas  New York at Foxy Production |journal=Art in America |date=28 January 2011 |url=https://www.artinamericamagazine.com/reviews/ester-partegas/ |accessdate=17 April 2019}}</ref> is a Spanish contemporary artist who lives and works in [[Brooklyn]], [[New York (state)|New York]]. She has an M.F.A. (sculpture) from the [[Universitat de Barcelona]] and has completed postgraduate studies at [[Hochschule der Künste]] in Berlin. She participated in the International Studio and Curatorial Program, New York, in 1999.
+
+Her work has been exhibited internationally, including the [[Aldrich Contemporary Art Museum]] (Connecticut), [[Museo Nacional Centro de Arte Reina Sofía]] (Madrid), 2nd Moscow Bienniale, [[Weatherspoon Art Museum]] (Greensboro, North Carolina), Walker's Point Center for the Arts (Milwaukee, Wisconsin), [[Virginia Commonwealth University]] (Richmond, Virginia), Cercle Cultural Caja Madrid (Barcelona), [[SculptureCenter]] (New York), [[Rice University]] Art Gallery (Houston, Texas), [[Queens Museum of Art]] (New York) and [[Whitney Museum of American Art]] (Altria, New York). Her work is also in numerous private collections in the US and Europe.
+
+== Collections ==
+* [[MOMA]] (New York)<ref name="MoMA">{{cite web |title=Art and Artists: Ester Partegàs |url=https://www.moma.org/artists/28750 |website=MoMA |accessdate=17 April 2019}}</ref>
+* The [[Dikeou Collection]], (Denver)<ref name="Dikeou">{{cite web |title=Artists: ester partegàs |url=http://dikeoucollection.org/artist/ester-partegas/ |website=Dikeou Collection |accessdate=17 April 2019}}</ref>
+* Coca-Cola Espana Foundation (Madrid)<ref>{{cite web |title=COLECCIÓN DE ARTE CONTEMPORÁNEO COCA-COLA |url=https://www.fundacioncocacola.com/pdf/listado_obras.pdf |website=Fundación Coca-Cola |accessdate=17 April 2019}}</ref>
+*[[Instituto de la Juventud]] (Madrid) and
+* CajaMadrid (Madrid)
+
+== References ==
+{{reflist}}
+
+== Further reading ==
+Alvarez-Reyes, José Antonio. "Ester Partegàs", ''Flash Art International'', January–February 2004: 105.<br />
+Ammarati, Domenick. "Make It Now", ''Artforum International'', October 2005: 278.<br />
+Baird, Daniel. "Make It Now", ''Brooklyn Rail'', July/August 2005: 12. <br />
+Momin, Shamim M. "Moving About Matters", ''Calories, Slave Magazine'', 2006. <br />
+Navarro, Mariano. "Ester Partegas, a través de la grieta", ''El Mundo'', January 2008. <br />
+Peran, Marti and Ester Partegàs. "Sky-Lines", ''Calories, Slave Magazine'', October/November 2005. <br />
+Rodriguez, Marta. "Cart(ajena)", ''ArtNexus'', No. 65, Vol. 6: 155-158. <br />
+Smith, Roberta. "The Many Shades of Now, Explored in 3 Dimensions", ''The New York Times'', 27 May 2005: E37.[https://www.nytimes.com/2005/05/27/arts/design/27scul.html?_r=1&scp=1&sq=The%20Many%20Shades%20of%20Now,%20Explored%20in%203%20Dimensions&st=cse] <br />
+Stolz, George. "Ester Partegas", ''ARTnews'', June 2007: 148. <br />
+Volk, Gregory. "Fixed and Hazardous Objects", Virginia Commonwealth University, 2006.
+
+==External links==
+*[http://www.esterpartegas.com/ Homepage]
+
+{{Authority control}}
+
+{{DEFAULTSORT:Partegas, Ester}}
+[[Category:1972 births]]
+[[Category:Living people]]
+[[Category:20th-century Spanish women artists]]
+[[Category:21st-century women artists]]
+[[Category:Catalan women artists]]
+[[Category:Spanish contemporary artists]]

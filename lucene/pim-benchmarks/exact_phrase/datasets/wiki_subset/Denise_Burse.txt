@@ -1,0 +1,125 @@
+{{Infobox person
+|image = <!-- only free-content images are allowed for depicting living people. Non-free and "fair use" images, e.g. promo photos, CD/DVD covers, posters, screen captures, etc., will be deleted - see [[WP:NONFREE]] --> |
+ |
+| birth_date    = {{birth date and age|mf=yes|1952|1|13}}
+| birth_place   = [[Atlanta, Georgia|Atlanta]], [[Georgia (U.S. state)|Georgia]], [[United States|U.S.]]
+| death_date    = 
+| death_place   = 
+| occupation = Actress
+| height        = 
+| othername     = 
+| yearsactive   = 
+| spouse        = 
+| homepage      = 
+| notable role  =
+| emmyawards    = 
+| tonyawards    = 
+}}
+'''Denise Burse-Mickelbury''' (born January 13, 1952) is an American actress, best known for her role as Claretha Jenkins in the television series ''[[Tyler Perry's House of Payne]]''.
+
+==Acting career==
+An African-American native of [[Atlanta, Georgia|Atlanta]], Burse received professional training at the Just Us Theatre, The Alliance Theatre and The Atlanta Children's Theater.<ref name=tbs /> She has numerous television credits such as [[Law & Order: Special Victims Unit]] and [[Law & Order: Criminal Intent]].<ref name=tbs>{{cite web |url=http://www.tbs.com/stories/story/0,,76348,00.html |title=Denise Burse: TBS Biography |accessdate=2007-12-17 |archive-url=https://web.archive.org/web/20131026180512/http://www.tbs.com/stories/story/0,,76348,00.html |archive-date=2013-10-26 |url-status=dead }}</ref><ref name=asianconnections /> Burse has also appeared in various stage productions such as ''An American Daughter'', ''Harriet’s Return'', ''Ground People'', ''[[Pearl Cleage]]'s Flyin' West'', and ''[[Radio Golf]]''.<ref name=asianconnections>{{cite web|url=http://www.asianconnections.com/index.php?option=com_zoo&task=item&item_id=511&category_id=6&Itemid=2|title=Denise Burse in August Wilson's Radio Golf at the Mark Taper Forum|accessdate=2007-12-17|last=Chang|first=Lia|date=August 11, 2007|archive-url=https://web.archive.org/web/20110926222933/http://www.asianconnections.com/index.php?option=com_zoo&task=item&item_id=511&category_id=6&Itemid=2|archive-date=September 26, 2011|url-status=dead}}</ref><ref>{{cite web |url=http://www.centerstage.org/page.php?pageID=271 |title=The Cast of August Wilson's Radio Golf: Denise Burse |accessdate=2007-12-17 |archive-url=https://web.archive.org/web/20080107085546/http://www.centerstage.org/page.php?pageID=271 |archive-date=2008-01-07 |url-status=dead }}</ref> In 2016, she appeared in "[[San Junipero]]", an episode of the [[anthology]] series ''[[Black Mirror]]''.
+
+===Filmography===
+{| class="wikitable"
+!align="center"|Years
+!align="center"|Films
+!align="center"|Roles
+!align "center|Notes
+|-
+| align="center" rowspan="1"|1995
+| ''[[New York Undercover]]'' 
+| Mrs. Reyes
+|
+|-
+| align="center" rowspan="2"|1996
+| ''[[The Juror]]''<ref name=asianconnections />
+| Secretary
+|
+|-
+| ''[[Basquiat (film)|Basquiat]]'' <ref name=asianconnections />
+| Mary on TV
+|
+|-
+| align="center" rowspan="2"|1999
+| ''[[Law & Order]]'' <ref name=asianconnections />
+| Sarah Chase
+|
+|-
+| ''Funny Valentines''<ref name=asianconnections />
+| Brenda
+|
+|-
+| align="center" rowspan="3"|2000
+| ''[[The Sopranos]]''<ref name=asianconnections />
+| Nurse #2
+|
+|-
+| ''[[Cosby (TV series)|Cosby]]''
+| Mrs. Henderson
+|
+|-
+| rowspan="2"|''[[Law & Order: Special Victims Unit]]''<ref name=asianconnections />
+| Counselor Scheider
+|
+|-
+| align="center" rowspan="3"|2001
+| Pamela Tatum
+|
+|-
+| ''[[Third Watch]]''<ref name=asianconnections />
+| Brigette
+|
+|-
+| ''[[100 Centre Street]]''<ref name=asianconnections />
+| Joy Glass
+|
+|-
+| align="center" rowspan="2"|2005
+| ''[[Law & Order: Criminal Intent]]''<ref name=asianconnections />
+| Sarah Edgars
+|
+|-
+| ''On the One (Preaching to the Choir)''<ref name=asianconnections />
+| Sister Marcie
+|
+|-
+| align="center"|2006–2011
+| ''[[Tyler Perry's House of Payne]]''
+| Claretha Jenkins
+| Main role (Seasons 1-6) ; Recurring role (Season 7-8); 47 episodes
+|-
+| align="center"|2016
+| ''[[Black Mirror]]''
+| Elder Kelly
+| Episode: "[[San Junipero]]"
+|-
+| align="center"|2017
+| ''[[Greenleaf (TV series)|Greenleaf]]''
+| Ethlin Satterlee
+| Episode: "A Mother's Love"
+|-
+| align="center"|2018
+| ''[[One Dollar (TV series)|One Dollar]]''
+|
+| Episode: "Wilson Furlbee"
+|}
+
+==See also==
+{{portal|Biography|Georgia (U.S. state)}}
+
+==References==
+{{reflist}}
+
+==External links==
+* {{imdb name|0123334|Denise Burse}}
+* {{IBDB name}}
+
+{{authority control}}
+
+{{DEFAULTSORT:Burse, Denise}}
+[[Category:1952 births]]
+[[Category:Living people]]
+[[Category:Actresses from Georgia (U.S. state)]]
+[[Category:African-American actresses]]
+[[Category:American television actresses]]

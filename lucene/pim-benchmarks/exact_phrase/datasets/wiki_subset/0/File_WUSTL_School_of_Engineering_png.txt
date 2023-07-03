@@ -1,0 +1,13 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = Logo for the Washington University in St. Louis James McKelvey School of Engineering.
+|Source = https://publicaffairs.wustl.edu/assets/logos-symbols-and-marks/school-logos/
+|Article = McKelvey School of Engineering
+|Purpose = to serve as the primary means of visual identification at the top of the article dedicated to the entity in question.
+|Replaceability = n.a.
+|Minimality = Will only be used for the corresponding page on Wikipedia, and has been reduced to be 100px in height.
+|Commercial = n.a.
+}}
+
+==Licensing==
+{{Non-free logo}}

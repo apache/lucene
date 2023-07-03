@@ -1,0 +1,60 @@
+{{Drugbox
+| IUPAC_name = (±)-2-[4-(Diphenylmethyl)piperazin-1-yl]ethyl methyl 2,6-dimethyl-4-(3-nitrophenyl)-1,4-dihydropyridine-3,5-dicarboxylate
+| image = Manidipine.svg
+| width = 250px
+
+<!--Clinical data-->
+| tradename = Manyper, etc.
+| Drugs.com = {{drugs.com|international|manidipine}}
+| pregnancy_category =  
+| legal_status = Rx-only
+| routes_of_administration = Oral
+
+<!--Pharmacokinetic data-->
+| bioavailability =  
+| metabolism =  
+| elimination_half-life =  
+| excretion =
+
+<!--Identifiers-->
+| CAS_number = 89226-50-6
+| CAS_supplemental = {{CAS|120092-68-4}}
+| ATC_prefix = C08
+| ATC_suffix = CA11
+| PubChem = 4008
+| DrugBank =  
+| ChemSpiderID = 3868
+| UNII_Ref = {{fdacite|correct|FDA}}
+| UNII = 6O4754US88
+
+<!--Chemical data-->
+| C=35 | H=38 | N=4 | O=6 
+| smiles = [O-][N+](=O)c1cccc(c1)C5C(/C(=O)OC)=C(\N\C(=C5\C(=O)OCCN4CCN(C(c2ccccc2)c3ccccc3)CC4)C)C
+| StdInChI = 1S/C35H38N4O6/c1-24-30(34(40)44-3)32(28-15-10-16-29(23-28)39(42)43)31(25(2)36-24)35(41)45-22-21-37-17-19-38(20-18-37)33(26-11-6-4-7-12-26)27-13-8-5-9-14-27/h4-16,23,32-33,36H,17-22H2,1-3H3
+}}
+
+'''Manidipine''' is a [[calcium channel blocker]] (dihydropyridine type) that is used clinically as an [[antihypertensive]].<ref>
+{{cite journal | vauthors = Cheer SM, McClellan K | title = Manidipine: a review of its use in hypertension | journal = Drugs | volume = 61 | issue = 12 | pages = 1777–99 | year = 2001 | pmid = 11693466 | doi = 10.2165/00003495-200161120-00010 | url = http://drugs.adisonline.com/pt/re/drugs/abstract.00003495-200161120-00010.htm | url-status = dead | access-date = 2009-06-20 | archive-url = https://archive.today/20130117062428/http://drugs.adisonline.com/pt/re/drugs/abstract.00003495-200161120-00010.htm | archive-date = 2013-01-17 }}
+</ref><ref>
+{{cite journal | vauthors = McKeage K, Scott LJ | title = Manidipine: a review of its use in the management of hypertension | journal = Drugs | volume = 64 | issue = 17 | pages = 1923–40 | year = 2004 | pmid = 15329044 | doi = 10.2165/00003495-200464170-00011 | url = http://drugs.adisonline.com/pt/re/drugs/abstract.00003495-200464170-00011.htm | url-status = dead | access-date = 2009-06-20 | archive-url = https://archive.today/20130116081831/http://drugs.adisonline.com/pt/re/drugs/abstract.00003495-200464170-00011.htm | archive-date = 2013-01-16 }}
+</ref><ref>
+{{cite journal | vauthors = Roca-Cusachs A, Triposkiadis F | title = Antihypertensive effect of manidipine | journal = Drugs | volume = 65 Suppl 2 | pages = 11–9 | year = 2005 | pmid = 16398058 | doi = 10.2165/00003495-200565002-00003 | s2cid = 25854593 | url = http://drugs.adisonline.com/pt/re/drugs/abstract.00003495-200565002-00003.htm | url-status = dead | access-date = 2009-06-20 | archive-url = https://archive.today/20130116050439/http://drugs.adisonline.com/pt/re/drugs/abstract.00003495-200565002-00003.htm | archive-date = 2013-01-16 }}
+</ref><ref name=Otero2007>{{cite journal | vauthors = Otero ML | title = Manidipine-delapril combination in the management of hypertension | journal = Vascular Health and Risk Management | volume = 3 | issue = 3 | pages = 255–63 | year = 2007 | pmid = 17703633 | pmc = 2293964 }}</ref><ref>{{cite journal 
+| vauthors = Mizuno K, Haga H, Takahashi M, Fukuchi S | doi = 10.1016/S0011-393X(05)80475-8 | volume = 52 | issue = 2 | pages = 248–253 | title = Evaluation of manidipine hydrochloride, a new calcium antagonist, in the treatment of hypertensive patients with renal disorders | journal = Current Therapeutic Research | date = August 1992 }}</ref>
+
+<!-- Society and culture -->
+It was patented in 1982 and approved for medical use in 1990.<ref>{{cite book |last1=Fischer |first1=Jnos |last2=Ganellin |first2=C. Robin | name-list-style = vanc |title=Analogue-based Drug Discovery |date=2006 |publisher=John Wiley & Sons |isbn=9783527607495 |page=465 |url=https://books.google.com/books?id=FjKfqkaKkAAC&pg=PA465 |language=en}}</ref>
+
+== References ==
+{{Reflist}}
+
+{{Calcium channel blockers}}
+{{Piperazines}}
+
+[[Category:Calcium channel blockers]]
+[[Category:Cyclizines]]
+[[Category:Dihydropyridines]]
+[[Category:Nitrobenzenes]]
+[[Category:Carboxylate esters]]
+
+{{Cardiovascular-drug-stub}}

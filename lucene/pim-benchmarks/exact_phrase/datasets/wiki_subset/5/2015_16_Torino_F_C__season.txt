@@ -1,0 +1,1260 @@
+{{Infobox football club season
+| club               = [[Torino F.C.|Torino]]
+| season             = [[2015–16 in Italian football|2015–16]]
+| manager            = [[Giampiero Ventura]]
+| chairman           = [[Urbano Cairo]]
+| chrtitle           = President
+| stadium            = [[Stadio Olimpico Grande Torino]]
+| league             = [[Serie A]]
+| league result      = [[2015–16 Serie A|12th]]
+| cup1               = [[Coppa Italia]]
+| cup1 result        = [[2015–16 Coppa Italia|Round of 16]]
+| league topscorer   = <br>[[Fabio Quagliarella]] (13)
+| season topscorer   = <br>[[Fabio Quagliarella]] (17)
+| highest attendance = 25,868 vs [[Inter Milan|Internazionale]]<br><small>(8 November 2015, Serie A)</small>
+| lowest attendance  = 4,962 vs [[A.C. Cesena|Cesena]]<br><small>(1 December 2016, Coppa Italia)</small>
+| average attendance = 19,392<ref>http://www.stadiapostcards.com/a15-16.htm</ref>
+| pattern_b1         = _torino1516h
+| body1              = 800000
+| pattern_la1        = _torino1516h
+| leftarm1           = 800000
+| pattern_ra1        = _torino1516h
+| rightarm1          = 800000
+| pattern_sh1        = 
+| shorts1            = FFFFFF
+| pattern_so1        =  
+| socks1             = 6A1A20
+| pattern_b2         = _torino1516a
+| body2              = FFFFFF
+| pattern_la2        = _torino1516a
+| leftarm2           = FFFFFF
+| pattern_ra2        = _torino1516a
+| rightarm2          = FFFFFF
+| shorts2            = 6A1A20
+| pattern_sh2        = 
+| socks2             = FFFFFF
+| pattern_so2        = _torino1516a
+| pattern_b3         = _torino1516t
+| body3              = 71B8FF
+| pattern_la3        = _torino1516t 
+| leftarm3           = 0080FF
+| pattern_ra3        = _torino1516t
+| rightarm3          = 0080FF
+| pattern_sh3        = 
+| shorts3            = 323955
+| pattern_so3        = _torino1516t
+| socks3             = 323955
+| prevseason         = [[2014–15 Torino F.C. season|2014–15]]
+| nextseason         = [[2016–17 Torino F.C. season|2016–17]]
+}}
+
+The '''2015–16 season''' was '''[[Torino F.C.|Torino Football Club]]''''s 105th season of competitive [[Association football|football]], 88th season in the top division of Italian football and 71st season in [[Serie A]]. The club finished in 12th place in [[2015–16 Serie A|Serie A]], and were eliminated in the round of 16 in the [[2015–16 Coppa Italia|Coppa Italia]].
+
+==Players==
+
+===Squad information===
+{{updated|12 February 2016}}<ref>{{cite web |title=Squad season 2015/2016 |url=http://torinofc.it/prima-squadra/2015-2016/all |work=torinofc.it |publisher=Torino Football Club |accessdate=8 July 2015}}</ref>
+{{Fs start}}
+{{Fs player |no=1 |nat=ITA |pos=GK |name=[[Daniele Padelli]]}}
+{{Fs player |no=3 |nat=ITA |pos=DF |name=[[Cristian Molinaro]]}}
+{{Fs player |no=4 |nat=NGR |pos=MF |name=[[Joel Obi]]}}
+{{Fs player |no=5 |nat=ITA |pos=DF |name=[[Cesare Bovo]]}}
+{{Fs player |no=6 |nat=GHA |pos=MF |name=[[Afriyie Acquah]]}}
+{{Fs player |no=7 |nat=ITA |pos=DF |name=[[Davide Zappacosta]]}}
+{{Fs player |no=8 |nat=SWE |pos=MF |name=[[Alexander Farnerud]]}}
+{{Fs player |no=9 |nat=ITA |pos=FW |name=[[Andrea Belotti]]}}
+{{Fs player |no=10 |nat=ITA |pos=FW |name=[[Ciro Immobile]]|other=on loan from [[Sevilla FC|Sevilla]]}}
+{{Fs player |no=11 |nat=ARG |pos=FW |name=[[Maxi López]]}}
+{{Fs player |no=13 |nat=ITA |pos=GK |name=[[Luca Castellazzi]]}}
+{{Fs player |no=14 |nat=ITA |pos=MF |name=[[Alessandro Gazzi]]}}
+{{Fs player |no=15 |nat=ITA |pos=MF |name=[[Marco Benassi]]}}
+{{Fs mid}}
+{{Fs player |no=16 |nat=ITA |pos=MF |name=[[Daniele Baselli]]}}
+{{Fs player |no=17 |nat=VEN |pos=FW |name=[[Josef Martínez]]}}
+{{Fs player |no=18 |nat=SWE |pos=DF |name=[[Pontus Jansson]]}}
+{{Fs player |no=19 |nat=SER |pos=DF |name=[[Nikola Maksimović]]}}
+{{Fs player |no=20 |nat=ITA |pos=MF |name=[[Giuseppe Vives]]|other=[[Captain (association football)|vice-captain]]}}
+{{Fs player |no=21 |nat=URU |pos=DF |name=[[Gastón Silva]]}}
+{{Fs player |no=24 |nat=ITA |pos=DF |name=[[Emiliano Moretti]]}}
+{{Fs player |no=25 |nat=POL |pos=DF |name=[[Kamil Glik]]|other=[[Captain (association football)|captain]]}}
+{{Fs player |no=26 |nat=BRA |pos=DF |name=[[Danilo Fernando Avelar|Danilo Avelar]]}}
+{{Fs player |no=28 |nat=URU |pos=GK |name=[[Salvador Ichazo]]}}
+{{Fs player |no=33 |nat=BRA |pos=DF |name=[[Bruno Peres]]}}
+{{Fs player |no=96 |nat=ITA |pos=DF |name=[[Valerio Mantovani]]}}
+{{Fs end}}
+
+==Transfers==
+
+===Summer 2015===
+
+====In====
+{{col-start}}
+{{col-2}}
+{| class="wikitable sortable" style="width:97%; text-align:center; font-size:85%; text-align:centre;"
+|-
+|+First Team
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| GK || [[Vlada Avramov]] || [[Atalanta B.C.|Atalanta]] || ''end of loan''
+|-
+| GK || [[Alfred Gomis]] || [[F.C. Crotone|Crotone]] || ''end of loan''
+|-
+| GK || [[Lys Gomis]] || [[Trapani Calcio|Trapani]] || ''end of loan''
+|-
+| GK || [[Salvador Ichazo]] || [[Danubio F.C.|Danubio]] || ''outright'' 
+''€1,200,000''
+|-
+| DF || [[Danilo Fernando Avelar|Danilo Avelar]] || [[Cagliari Calcio|Cagliari]] || ''outright''
+''€2,500,000''
+|-
+| DF || [[Marko Vešović]] || [[HNK Rijeka|Rijeka]] || ''end of loan''
+|-
+| DF || [[Davide Zappacosta]] || [[Atalanta B.C.|Atalanta]] || ''outright''
+''€5,500,000''
+|-
+| MF || [[Afriyie Acquah]] || [[TSG 1899 Hoffenheim|1899 Hoffenheim]] || ''outright''
+''€2,800,000''
+|-
+| MF || [[Daniele Baselli]] || [[Atalanta B.C.|Atalanta]] || ''outright''
+''€4,500,000''
+|-
+| MF || [[Marco Benassi]] || [[Inter Milan|Internazionale]] || ''co-ownership resolved''
+''€3,500,000''
+|-
+| MF || [[Joel Obi]] || [[Inter Milan|Internazionale]] || ''outright''
+''€2,300,000''
+|-
+| MF || [[Alen Stevanović]] || [[Spezia Calcio|Spezia]] || ''end of loan''
+|-
+| MF || [[Sergiu Suciu]] || [[F.C. Crotone|Crotone]] || ''end of loan''
+|-
+| FW || [[Andrea Belotti]] || [[U.S. Città di Palermo|Palermo]] || ''outright''
+''€7,500,000''
+|-
+| FW || [[Marcelo Larrondo]] || [[Club Atlético Tigre|Tigre]] || ''end of loan''
+|-
+|}
+{{col-2}}
+{| class="wikitable sortable" style="width:90%; text-align:center;  font-size:85%; text-align:centre;"
+|-
+|+Reserves and youth
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| DF || [[Marco Chiosa]] || [[F.C. Bari 1908|Bari]] || ''end of loan''
+|-
+| FW || [[Vittorio Parigini]] || [[S.S. Juve Stabia|Juve Stabia]] || ''end of loan''
+|-
+|}
+{{col-end}}
+
+====Out====
+{{col-start}}
+{{col-2}}
+{| class="wikitable sortable" style="width:97%; text-align:center; font-size:85%; text-align:centre;"
+|-
+|+First Team
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| GK || [[Vlada Avramov]] || || ''end of contract''
+|-
+| GK || [[Alfred Gomis]] || [[A.C. Cesena|Cesena]] || ''loan''
+|-
+| GK || [[Lys Gomis]] || [[Frosinone Calcio|Frosinone]] || ''loan''
+|-
+| DF || [[Matteo Darmian]] || [[Manchester United]] || ''outright''
+''€18,000,000''
+|-
+| DF || [[Salvatore Masiello]] || || ''end of contract''
+|-
+| DF || [[Marko Vešović]] || [[Spezia Calcio|Spezia]] || ''outright''
+''€300,000''
+|-
+| MF || [[Migjen Basha]] || || ''end of contract'' 
+|-
+| MF || [[Álvaro Rafael González|Álvaro González]] || [[S.S. Lazio|Lazio]] || ''end of loan''
+|-
+| MF || [[Omar El Kaddouri]] || [[Spezia Calcio|Spezia]] || ''end of loan''
+|-
+| MF || [[Alen Stevanović]] || || ''end of contract''
+|-
+| MF || [[Sergiu Suciu]] || [[F.C. Crotone|Crotone]] || ''end of loan''
+|-
+| FW || [[Paulo Vitor Barreto]] || || ''end of contract''
+|-
+| FW || [[Marcelo Larrondo]] || [[Rosario Central]] || ''outright''
+''€500,000''
+|-
+|}
+{{col-2}}
+{| class="wikitable sortable" style="width:90%; text-align:center;  font-size:85%; text-align:centre;"
+|-
+|+Reserves and youth
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| DF || [[Antonio Barreca]] || [[Cagliari Calcio|Cagliari]] || ''loan''
+|-
+| DF || [[Kevin Bonifazi]] || Benevento || ''loan''
+|-
+| DF || [[Marco Chiosa]] || Avellino || ''loan''
+|-
+| DF || Matteo Fissore || [[Fidelis Andria]] || ''loan''
+|-
+| DF || [[Filippo Scaglia]] || [[Cittadella]] || ''loan''
+|-
+| MF || [[Mattia Aramu]] || [[Livorno Calcio|Livorno]] || ''loan''
+|-
+| MF || [[Giovanni Graziano]] || Renate || ''loan''
+|-
+| FW || [[Facundo Lescano]] || Melfi || ''loan''
+|-
+| FW || [[Claudio Morra]] || [[Fidelis Andria]] || ''loan''
+|}
+{{col-end}}
+
+====Out====
+
+===Winter 2015–16===
+
+====In====
+{{col-start}}
+{{col-2}}
+{| class="wikitable sortable" style="width:97%; text-align:center; font-size:85%; text-align:centre;"
+|-
+|+First Team
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| MF || [[Juan Sánchez Miño]] || [[Club Estudiantes de La Plata|Estudiantes]] || ''end of loan''
+|-
+| MF || [[Sergiu Suciu]] || [[U.S. Lecce|Lecce]] || ''end of loan''
+|-
+| FW || [[Ciro Immobile]] || [[Borussia Dortmund]] || ''on loan / buying option''
+|-
+|}
+{{col-2}}
+{| class="wikitable sortable" style="width:90%; text-align:center;  font-size:85%; text-align:centre;"
+|-
+|+Reserves and youth
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| DF || [[Kevin Bonifazi]] || [[Benevento]] || ''end of loan''
+|-
+| FW || [[Facundo Lescano]] || [[A.S. Melfi|Melfi]] || ''end of loan''
+|-
+| FW || Boubacar Traorè || [[A.C. Tuttocuoio 1957 San Miniato|Tuttocuoio]] || ''on loan / buying option''
+|-
+|}
+{{col-end}}
+
+====Out====
+{{col-start}}
+{{col-2}}
+{| class="wikitable sortable" style="width:97%; text-align:center; font-size:85%; text-align:centre;"
+|-
+|+First Team
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| DF || [[Vasyl Pryima]] || [[Frosinone Calcio|Frosinone]] || ''loan''
+|-
+| MF || [[Juan Sánchez Miño]] || [[Cruzeiro Esporte Clube|Cruzerio]] || ''loan''
+|-
+| MF || [[Sanjin Prcić]] || [[A.C. Perugia Calcio|Perugia]] || ''loan''
+|-
+| MF || [[Sergiu Suciu]] || [[U.S. Cremonese|Cremonese]] || ''loan''
+|-
+| FW || [[Fabio Quagliarella]] || [[U.C. Sampdoria|Sampdoria]] || ''outright'' 
+''€3,000,000''
+|}
+{{col-2}}
+{| class="wikitable sortable" style="width:90%; text-align:center;  font-size:85%; text-align:centre;"
+|-
+|+Reserves and youth
+!Position
+!Player
+!From club
+!Transfer fee
+|-
+| DF || [[Kevin Bonifazi]] || [[Casertana F.C.|Casertana]] || ''loan''
+|-
+| FW || Elia Bortoluz || [[Vicenza Calcio|Vicenza]] || ''loan''
+|-
+| FW || [[Facundo Lescano]] || [[S.S. Monopoli 1966|Monopoli]] || ''loan''
+|-
+| FW || [[Claudio Morra]] || [[Savona F.B.C.|Savona]] || ''loan''
+|}
+{{col-end}}
+
+==Competitions==
+
+===Serie A===
+{{main|2015–16 Serie A}}
+
+====League table====
+{{:2015–16 Serie A|showteam=TOR}}
+
+====Results summary====
+{{Fb_rs |hw=6 |hd=6 |hl=7 |hgf=25 |hga=25 |aw=6 |ad=3 |al=10|agf=27 |aga=29}}
+{{Fb_rs_footer |u=15 May 2016 |s=[[#Matches|Competitive matches]]|date=June 2015}}
+
+====Results by round====
+{{#invoke:sports rbr table|table|legendpos=b|header=Round
+
+|label1= Ground
+| res1=A/H/A/H/A/H/A/H/A/H/A/H/A/H/H/A/H/A/H/H/A/H/A/H/A/H/A/H/A/H/A/H/A/A/H/A/H/A
+|label2= Result
+| res2=W/W/D/W/L/W/L/D/L/D/L/L/W/W/D/D/L/L/L/W/L/D/D/L/W/D/L/D/L/L/W/W/W/L/L/W/L/L
+|label3= Position
+| res3=6/2/4/2/6/3/5/7/8/10/11/9/9/8/9/11/12/14/14/11/11/11/11/12/11/11/12/12/13/13/11/11/11/11/12/10/11/12
+<!-- -->
+|text_H=Home|text_A=Away
+|color_W=green2|text_W=Win
+|color_D=yellow2|text_D=Draw
+|color_L=red2|text_L=Loss
+|color_1=1st|color_2=2nd|color_3=3rd|color_18-=red1
+
+|updated=15 May 2016 
+|source=[[#Matches|Competitive matches]]
+|date=June 2015
+}}
+
+====Matches====
+{{football box collapsible
+|round      = 1
+|date       = 23 August 2015
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Frosinone Calcio|Frosinone]]
+|score      = 1–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/1/FROTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Danilo Soddimo|Soddimo]] {{goal|7}}<br>[[Federico Dionisi|Dionisi]] {{yel|89}}<br>[[Matteo Ciofani|Ciofani]] {{yel|90+5}}
+|goals2     = [[Bruno Peres|Peres]] {{yel|45+1}}<br>[[Fabio Quagliarella|Quagliarella]] {{goal|59}}<br>[[Daniele Baselli|Baselli]] {{goal|64}}<br>[[Nikola Maksimović|Maksimović]] {{yel|74}}
+|stadium    = [[Stadio Matusa]]
+|location   = [[Frosinone]]
+|attendance = 8,300
+|referee    = [[Luca Banti]]
+|result     = W
+}}
+{{football box collapsible
+|round      = 2
+|date       = 30 August 2015
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 3–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/2/TORFIO Report]
+|team2      = [[ACF Fiorentina|Fiorentina]]
+|goals1     = [[Giuseppe Vives|Vives]] {{yel|44}}<br>[[Maxi López]] {{yel|64}}<br>[[Emiliano Moretti|Moretti]] {{goal|68}}<br>[[Fabio Quagliarella|Quagliarella]] {{goal|69}}<br>[[Daniele Baselli|Baselli]] {{goal|77}}
+|goals2     = [[Marcos Alonso Mendoza|Alonso]] {{goal|10}}, {{yel|10}}<br>[[Gonzalo Javier Rodríguez|Gonzalo]] {{yel|30}}<br>[[Matías Fernández|Fernández]] {{yel|34}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 20,482
+|referee    = [[Paolo Tagliavento]]
+|result     = W
+}}
+{{football box collapsible
+|round      = 3
+|date       = 13 September 2015
+|time       = 12:30 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Hellas Verona F.C.|Hellas Verona]]
+|score      = 2–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/3/VERTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Luca Toni|Toni]] {{goal|49|pen.}}, {{yel|90+2}}<br>[[Eros Pisano|Pisano]] {{yel|62}}<br>[[Boško Janković|Janković]] {{yel|65}}<br>[[Juanito (footballer, born 1985)|Juanito]] {{goal|72}}<br>[[Rafael Márquez|Márquez]] {{yel|81}}<br>[[Leandro Greco|Greco]] {{yel|90+3}}
+|goals2     = [[Danilo Fernando Avelar|Avelar]] {{yel|11}}<br>[[Daniele Baselli|Baselli]] {{goal|66}}, {{yel|90+2}}<br>[[Afriyie Acquah|Acquah]] {{goal|73}}
+|stadium    = [[Stadio Marc'Antonio Bentegodi]]
+|location   = [[Verona]]
+|attendance = 17,868
+|referee    = [[Massimiliano Irrati]]
+|result     = D
+}}
+{{football box collapsible
+|round      = 4
+|date       = 20 September 2015
+|time       = 15:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 2–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/4/TORSAM Report]
+|team2      = [[U.C. Sampdoria|Sampdoria]]
+|goals1     = [[Fabio Quagliarella|Quagliarella]] {{goal|18||24}}<br>[[Afriyie Acquah|Acquah]] {{yel|45+1}}<br>[[Giuseppe Vives|Vives]] {{yel|63}}
+|goals2     = [[Vasco Regini|Regini]] {{yel|39}}<br>[[Fernando Lucas Martins|Fernando]] {{yel|79}}<br>[[Lazaros Christodoulopoulos|Christodoulopoulos]] {{yel|84}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 18,686
+|referee    = Piero Giacomelli
+|result     = W
+}}
+{{football box collapsible
+|round      = 5
+|date       = 23 September 2015
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[A.C. ChievoVerona|Chievo]]
+|score      = 1–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/5/CHITOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Giampiero Pinzi|Pinzi]] {{yel|16}}<br>[[Lucas Castro|Castro]] {{goal|75}}, {{yel|82}}<br>[[Massimo Gobbi|Gobbi]] {{yel|85}}
+|goals2     = [[Bruno Peres|Peres]] {{yel|15}}<br>[[Afriyie Acquah|Acquah]] {{yel|72}}<br>[[Cesare Bovo|Bovo]] {{yel|88}}
+|stadium    = [[Stadio Marc'Antonio Bentegodi]]
+|location   = [[Verona]]
+|attendance = 9,000
+|referee    = Domenico Celi
+|result     = L
+}}
+{{football box collapsible
+|round      = 6
+|date       = 27 September 2015
+|time       = 15:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 2–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/6/TORPAL Report]
+|team2      = [[U.S. Città di Palermo|Palermo]]
+|goals1     = [[Cesare Bovo|Bovo]] {{yel|34}}<br>[[Cristian Molinaro|Molinaro]] {{sent off|2|37|61}}<br>[[Giancarlo González|González]] {{goal|44|o.g.}}<br>[[Marco Benassi|Benassi]] {{goal|48}}<br>[[Daniele Padelli|Padelli]] {{yel|77}}<br>[[Joel Obi|Obi]] {{sent off|0|90}}
+|goals2     = [[Andrea Rispoli|Rispoli]] {{yel|31}}<br>[[Franco Vázquez|Vázquez]] {{yel|42}}<br>[[Aljaž Struna|Struna]] {{yel|66}}<br>[[Giancarlo González|González]] {{goal|71}}<br>[[Robin Quaison|Quaison]] {{yel|88}}<br>[[Abdelhamid El Kaoutari|El Kaoutari]] {{yel|90}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 17,640
+|referee    = Maurizio Mariani
+|result     = W
+}}
+{{football box collapsible
+|round      = 7
+|date       = 3 October 2015
+|time       = 18:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Carpi F.C. 1909|Carpi]]
+|score      = 2–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/7/CARTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Daniele Padelli|Padelli]] {{goal|55|o.g.}}<br>[[Raphael Martinho|Martinho]] {{yel|64}}<br>[[Ryder Matos|Matos]] {{goal|72}}<br>[[Andrea Lazzari|Lazzari]] {{yel|89}}
+|goals2     = [[Maxi López]] {{goal|75|pen.}}<br>[[Gastón Silva|Silva]] {{yel|76}}
+|stadium    = [[Stadio Alberto Braglia]]
+|location   = [[Modena]]
+|attendance = 8,011
+|referee    = Carmine Russo
+|result     = L
+}}
+{{football box collapsible
+|round      = 8
+|date       = 17 October 2015
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/8/TORMIL Report]
+|team2      = [[A.C. Milan|Milan]]
+|goals1     = [[Daniele Baselli|Baselli]] {{yel|20}}, {{goal|73}}<br>[[Alessandro Gazzi|Gazzi]] {{yel|41}}<br>[[Cesare Bovo|Bovo]] {{yel|75}}
+|goals2     = [[Juraj Kucka|Kucka]] {{yel|13}}<br>[[Giacomo Bonaventura|Bonaventura]] {{yel|52}}<br>[[Carlos Bacca|Bacca]] {{goal|63}}<br>[[Alessio Romagnoli|Romagnoli]] {{yel|79}}<br>[[Diego López Rodríguez|López]] {{yel|88}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 25,477
+|referee    = [[Andrea Gervasoni]]
+|result     = D
+}}
+{{football box collapsible
+|round      = 9
+|date       = 25 October 2015
+|time       = 18:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[S.S. Lazio|Lazio]]
+|score      = 3–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/9/LAZTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Maurício (footballer)|Maurício]] {{yel|30}}<br>[[Senad Lulić|Lulić]] {{goal|40}}<br>[[Miroslav Klose|Klose]] {{yel|60}}<br>[[Felipe Anderson|Anderson]] {{goal|70||90+4}}
+|goals2     = [[Emiliano Moretti|Moretti]] {{yel|33}}<br>[[Giuseppe Vives|Vives]] {{yel|39}}<br>[[Marco Benassi|Benassi]] {{yel|78}}
+|stadium    = [[Stadio Olimpico]]
+|location   = [[Rome]]
+|attendance = 22,131
+|referee    = [[Paolo Mazzoleni]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 10
+|date       = 28 October 2015
+|time       = 20:45 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 3–3
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/10/TORGEN Report]
+|team2      = [[Genoa C.F.C.|Genoa]]
+|goals1     = [[Maxi López]] {{goal|28}}<br>[[Davide Zappacosta|Zappacosta]] {{goal|35}}<br>[[Marco Benassi|Benassi]] {{yel|54}}<br>[[Cesare Bovo|Bovo]] {{yel|69}}<br>[[Panagiotis Tachtsidis|Tachtsidis]] {{goal|89|o.g.}}
+|goals2     = [[Diego Laxalt|Laxalt]] {{goal|26||90+4}}<br>[[Leonardo Pavoletti|Pavoletti]] {{goal|67}}<br>[[Ezequiel Muñoz|Muñoz]] {{yel|82}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 16,226
+|referee    = Daniele Chiffi
+|result     = D
+}}
+{{football box collapsible
+|round      = [[Derby della Mole|11]]
+|date       = 31 October 2015
+|time       = 18:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Juventus F.C.|Juventus]]
+|score      = 2–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/11/JUVTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Paul Pogba|Pogba]] {{goal|19}}, {{yel|81}}<br>[[Álvaro Morata|Morata]] {{yel|27}}<br>[[Juan Cuadrado|Cuadrado]] {{goal|90+3}}
+|goals2     = [[Afriyie Acquah|Acquah]] {{yel|21}}<br>[[Cesare Bovo|Bovo]] {{yel|21}}, {{goal|51}}<br>[[Davide Zappacosta|Zappacosta]] {{yel|76}}<br>[[Bruno Peres|Peres]] {{yel|90}}
+|stadium    = [[Juventus Stadium]]
+|location   = [[Turin]]
+|attendance = 39,828
+|referee    = [[Gianluca Rocchi]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 12
+|date       = 8 November 2015
+|time       = 12:30 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 0–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/12/TORINT Report]
+|team2      = [[Inter Milan|Internazionale]]
+|goals1     = [[Kamil Glik|Glik]] {{yel|31}}<br>[[Bruno Peres|Peres]] {{yel|74}}
+|goals2     = [[Geoffrey Kondogbia|Kondogbia]] {{goal|31}}<br>[[Gary Medel|Medel]] {{yel|63}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 25,868
+|referee    = [[Massimiliano Irrati]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 13
+|date       = 22 November 2015
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Atalanta B.C.|Atalanta]]
+|score      = 0–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/13/ATATOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Marten de Roon|De Roon]] {{yel|36}}<br>[[Guglielmo Stendardo|Stendardo]] {{yel|64}}
+|goals2     = [[Giuseppe Vives|Vives]] {{yel|16}}<br>[[Cesare Bovo|Bovo]] {{goal|52}}
+|stadium    = [[Stadio Atleti Azzurri d'Italia]]
+|location   = [[Bergamo]]
+|attendance = 15,776
+|referee    = Angelo Cervellera
+|result     = W
+}}
+{{football box collapsible
+|round      = 14
+|date       = 28 November 2015
+|time       = 18:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 2–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/14/TORBOL Report]
+|team2      = [[Bologna F.C. 1909|Bologna]]
+|goals1     = [[Andrea Belotti|Belotti]] {{goal|75}}<br>[[Giuseppe Vives|Vives]] {{goal|90+2}}
+|goals2     = [[Domenico Maietta|Maietta]] {{yel|64}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 17,508
+|referee    = Davide Ghersini
+|result     = W
+}}
+{{football box collapsible
+|round      = 15
+|date       = 5 December 2015
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/15/TORROM Report]
+|team2      = [[A.S. Roma|Roma]]
+|goals1     = [[Bruno Peres|Peres]] {{yel|28}}<br>[[Afriyie Acquah|Acquah]] {{yel|36}}<br>[[Kamil Glik|Glik]] {{yel|74}}<br>[[Maxi López]] {{goal|90+4|pen.}}
+|goals2     = [[Miralem Pjanić|Pjanić]] {{yel|16}}, {{goal|83}}<br>[[Alessandro Florenzi|Florenzi]] {{yel|36}}<br>[[Radja Nainggolan|Nainggolan]] {{yel|56}}<br>[[Kostas Manolas|Manolas]] {{yel|90+4}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 19,781
+|referee    = [[Antonio Damato]]
+|result     = D
+}}
+{{football box collapsible
+|round      = 17
+|date       = 20 December 2015
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 0–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/17/TORUDI Report]
+|team2      = [[Udinese Calcio|Udinese]]
+|goals1     = [[Cesare Bovo|Bovo]] {{yel|63}}<br>[[Maxi López]] {{yel|73}}
+|goals2     = [[Danilo Larangeira|Danilo]] {{yel|12}}<br>[[Stipe Perica|Perica]] {{goal|41}}<br>[[Molla Wagué|Wagué]] {{sent off|2|53|64}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 15,624
+|referee    = Claudio Gavillucci
+|result     = L
+}}
+{{football box collapsible
+|round      = 18
+|date       = 6 January 2016
+|time       = 20:45 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[S.S.C. Napoli|Napoli]]
+|score      = 2–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/18/NAPTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Gonzalo Higuaín|Higuaín]] {{yel|6}}<br>[[Lorenzo Insigne|Insigne]] {{goal|16}}<br>[[Marek Hamšík|Hamšík]] {{goal|41}}<br>[[Raúl Albiol|Albiol]] {{yel|86}}
+|goals2     = [[Afriyie Acquah|Acquah]] {{yel|2}}<br>[[Fabio Quagliarella|Quagliarella]] {{goal|33|pen.}}<br>[[Daniele Baselli|Baselli]] {{yel|47}}<br>[[Kamil Glik|Glik]] {{yel|59}}<br>[[Cesare Bovo|Bovo]] {{yel|72}}
+|stadium    = [[Stadio San Paolo]]
+|location   = [[Naples]]
+|attendance = 33,326
+|referee    = Marco Di Bello
+|result     = L
+}}
+{{football box collapsible
+|round      = 19
+|date       = 10 January 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 0–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/19/TOREMP Report]
+|team2      = [[Empoli F.C.|Empoli]]
+|goals1     = [[Cristian Molinaro|Molinaro]] {{yel|20}}<br>[[Andrea Belotti|Belotti]] {{yel|35}}<br>[[Davide Zappacosta|Zappacosta]] {{yel|90}}
+|goals2     = [[Marcel Büchel|Büchel]] {{yel|26}}<br>[[Marko Livaja|Livaja]] {{yel|32}}<br>[[Massimo Maccarone|Maccarone]] {{yel|45+2}}, {{goal|56}}<br>[[Federico Barba|Barba]] {{yel|62}}<br>[[Leandro Paredes|Paredes]] {{yel|66}}<br>[[Vincent Laurini|Laurini]] {{yel|90+3}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 14,730
+|referee    = [[Andrea Gervasoni]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 20
+|date       = 16 January 2016
+|time       = 18:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 4–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/20/TORFRO Report]
+|team2      = [[Frosinone Calcio|Frosinone]]
+|goals1     = [[Ciro Immobile|Immobile]] {{goal|9|pen.}}<br>[[Andrea Belotti|Belotti]] {{goal|37||41}}<br>[[Cristian Molinaro|Molinaro]] {{yel|60}}<br>[[Marco Benassi|Benassi]] {{goal|82}}
+|goals2     = [[Davide Bertoncini|Bertoncini]] {{yel|7}}<br>[[Paolo Sammarco|Sammarco]] {{goal|33}}<br>[[Danilo Fernando Avelar|Avelar]] {{goal|73|o.g.}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 17,865
+|referee    = [[Massimiliano Irrati]]
+|result     = W
+}}
+{{football box collapsible
+|round      = 16
+|date       = 20 January 2016
+|time       = 20:45 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[U.S. Sassuolo Calcio|Sassuolo]]
+|score      = 1–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/16/SASTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Francesco Acerbi|Acerbi]] {{goal|40}}<br>[[Šime Vrsaljko|Vrsaljko]] {{yel|83}}<br>[[Francesco Magnanelli|Magnanelli]] {{yel|86}}
+|goals2     = [[Andrea Belotti|Belotti]] {{goal|22}}<br>[[Marco Benassi|Benassi]] {{yel|58}}<br>[[Kamil Glik|Glik]] {{yel|70}}<br>[[Nikola Maksimović|Maksimović]] {{yel|78}}<br>[[Afriyie Acquah|Acquah]] {{yel|90+2}}
+|stadium    = [[Mapei Stadium – Città del Tricolore]]
+|location   = [[Reggio Emilia]]
+|attendance = 7,000
+|referee    = Domenico Celi
+|result     = D
+|note       = Postponed to 20 January 2016 due to heavy fog.
+}}
+{{football box collapsible
+|round      = 21
+|date       = 24 January 2016
+|time       = 12:30 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[ACF Fiorentina|Fiorentina]]
+|score      = 2–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/21/FIOTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Josip Iličić|Iličić]] {{goal|24}}<br>[[Facundo Roncaglia|Roncaglia]] {{yel|75}}<br>[[Gonzalo Javier Rodríguez|Gonzalo]] {{goal|83}}
+|goals2     = [[Davide Zappacosta|Zappacosta]] {{yel|56}}<br>[[Kamil Glik|Glik]] {{yel|60}}<br>[[Giuseppe Vives|Vives]] {{yel|61}}<br>[[Nikola Maksimović|Maksimović]] {{yel|79}}
+|stadium    = [[Stadio Artemio Franchi]]
+|location   = [[Florence]]
+|attendance = 26,392
+|referee    = [[Paolo Mazzoleni]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 22
+|date       = 31 January 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 0–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/22/TORVER Report]
+|team2      = [[Hellas Verona F.C.|Hellas Verona]]
+|goals1     = 
+|goals2     = [[Boško Janković|Janković]] {{yel|44}}<br>[[Leandro Greco|Greco]] {{yel|58}}<br>[[Filip Helander|Helander]] {{yel|62}}<br>[[Giampaolo Pazzini|Pazzini]] {{yel|90+3}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 15,838
+|referee    = Maurizio Mariani
+|result     = D
+}}
+{{football box collapsible
+|round      = 23
+|date       = 3 February 2016
+|time       = 20:45 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[U.C. Sampdoria|Sampdoria]]
+|score      = 2–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/23/SAMTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Joaquín Correa|Correa]] {{yel|45+1}}<br>[[Modibo Diakité|Diakité]] {{yel|45+2}}<br>[[Luis Muriel|Muriel]] {{goal|66}}<br>[[Andrea Ranocchia|Ranocchia]] {{yel|77}}<br>[[Roberto Soriano|Soriano]] {{goal|84}}
+|goals2     = [[Alessandro Gazzi|Gazzi]] {{yel|31}}<br>[[Kamil Glik|Glik]] {{yel|48}}<br>[[Andrea Belotti|Belotti]] {{goal|71||90+4}}<br>[[Daniele Baselli|Baselli]] {{yel|90+1}}
+|stadium    = [[Stadio Luigi Ferraris]]
+|location   = [[Genoa]]
+|attendance = 20,223
+|referee    = [[Marco Guida]]
+|result     = D
+}}
+{{football box collapsible
+|round      = 24
+|date       = 7 February 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/24/TORCHI Report]
+|team2      = [[A.C. ChievoVerona|Chievo]]
+|goals1     = [[Marco Benassi|Benassi]] {{goal|19}}, {{yel|45}}<br>[[Ciro Immobile|Immobile]] {{yel|25}}<br>[[Alessandro Gazzi|Gazzi]] {{yel|87}}
+|goals2     = [[Massimo Gobbi|Gobbi]] {{yel|11}}<br>[[Dario Dainelli|Dainelli]] {{yel|27}}<br>[[Bruno Peres|Peres]] {{goal|34|o.g.}}<br>[[Valter Birsa|Birsa]] {{goal|72|pen.}}<br>[[Antonio Floro Flores|Floro Flores]] {{yel|90+2}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 14,327
+|referee    = [[Gianluca Rocchi]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 25
+|date       = 14 February 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[U.S. Città di Palermo|Palermo]]
+|score      = 1–3
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/25/PALTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Alberto Gilardino|Gilardino]] {{goal|2}}
+|goals2     = [[Ciro Immobile|Immobile]] {{goal|19|pen.|69}}<br>[[Giancarlo González|González]] {{goal|31|o.g.}}<br>[[Giuseppe Vives|Vives]] {{yel|40}}<br>[[Kamil Glik|Glik]] {{yel|43}}
+|stadium    = [[Stadio Renzo Barbera]]
+|location   = [[Palermo]]
+|attendance = 13,820
+|referee    = Angelo Cervellera
+|result     = W
+}}
+{{football box collapsible
+|round      = 26
+|date       = 21 February 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 0–0 
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/26/TORCAR Report]
+|team2      = [[Carpi F.C. 1909|Carpi]]
+|goals1     = [[Kamil Glik|Glik]] {{yel|25}}<br>[[Marco Benassi|Benassi]] {{yel|26}}<br>[[Bruno Peres|Peres]] {{yel|30}}<br>[[Ciro Immobile|Immobile]] {{yel|82}}
+|goals2     = [[Marco Crimi|Crimi]] {{yel|21}}<br>[[Lorenzo Lollo|Lollo]] {{yel|38}}<br>[[Cristian Zaccardo|Zaccardo]] {{yel|55}}<br>[[Stefano Sabelli|Sabelli]] {{yel|74}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 22,891
+|referee    = Claudio Gavillucci 
+|result     = D 
+}}
+{{football box collapsible
+|round      = 27
+|date       = 27 February 2016
+|time       = 20:45 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[A.C. Milan|Milan]]
+|score      = 1–0
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/27/MILTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Luca Antonelli|Antonelli]] {{goal|45}}<br>[[Ignazio Abate|Abate]] {{yel|69}}<br>[[Kevin-Prince Boateng|Boateng]] {{yel|80}}
+|goals2     = [[Kamil Glik|Glik]] {{yel|43}}
+|stadium    = [[San Siro]]
+|location   = [[Milan]]
+|attendance = 33,748
+|referee    = Domenico Celi
+|result     = L
+}}
+{{football box collapsible
+|round      = 28
+|date       = 6 March 2016
+|time       = 12:30 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/28/TORLAZ Report]
+|team2      = [[S.S. Lazio|Lazio]]
+|goals1     = [[Andrea Belotti|Belotti]] {{goal|12}}<br>[[Giuseppe Vives|Vives]] {{yel|23}}<br>[[Bruno Peres|Peres]] {{yel|49}}<br>[[Afriyie Acquah|Acquah]] {{yel|57}}
+|goals2     = [[Abdoulay Konko|Konko]] {{yel|51}}<br>[[Marco Parolo|Parolo]] {{yel|70}}<br>[[Lucas Biglia|Biglia]] {{goal|78|pen.}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 18,863
+|referee    = [[Davide Massa]]
+|result     = D
+}}
+{{football box collapsible
+|round      = 29
+|date       = 13 March 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Genoa C.F.C.|Genoa]]
+|score      = 3–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/29/GENTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Alessio Cerci|Cerci]] {{goal|20|pen.|45+2|pen.}}<br>[[Luca Rigoni|Rigoni]] {{goal|66}}<br>[[Panagiotis Tachtsidis|Tachtsidis]] {{yel|90}}
+|goals2     = [[Ciro Immobile|Immobile]] {{goal|4||15}}<br>[[Daniele Padelli|Padelli]] {{yel|45+2}}<br>[[Marco Benassi|Benassi]] {{yel|49}}<br>[[Emiliano Moretti|Moretti]] {{yel|67}}<br>[[Giuseppe Vives|Vives]] {{yel|73}}<br>[[Afriyie Acquah|Acquah]] {{yel|85}}
+|stadium    = [[Stadio Luigi Ferraris]]
+|location   = [[Genoa]]
+|attendance = 20,225
+|referee    = Daniele Doveri
+|result     = L
+}}
+{{football box collapsible
+|round      = [[Derby della Mole|30]]
+|date       = 20 March 2016
+|time       = 15:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–4
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/30/TORJUV Report]
+|team2      = [[Juventus F.C.|Juventus]]
+|goals1     = [[Afriyie Acquah|Acquah]] {{yel|19}}<br>[[Kamil Glik|Glik]] {{yel|31}}<br>[[Gastón Silva|Silva]] {{yel|36}}<br>[[Andrea Belotti|Belotti]] {{goal|48|pen.}}, {{yel|68}} 
+|goals2     = [[Alex Sandro]] {{yel|17}}<br>[[Paul Pogba|Pogba]] {{goal|33}}<br>[[Sami Khedira|Khedira]] {{goal|42}}, {{sent off|0|87}}<br>[[Stephan Lichtsteiner|Lichtsteiner]] {{yel|44}}<br>[[Leonardo Bonucci|Bonucci]] {{yel|47}}<br>[[Álvaro Morata|Morata]] {{goal|63||76}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 24,428
+|referee    = [[Nicola Rizzoli]]
+|result     = L
+}}
+{{football box collapsible
+|round      = 31
+|date       = 3 April 2016
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Inter Milan|Internazionale]]
+|score      = 1–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/31/INTTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Mauro Icardi|Icardi]] {{goal|17|pen.}}<br>[[Miranda (footballer)|Miranda]] {{sent off|2|19|57}}<br>[[Gary Medel|Medel]] {{yel|42}}<br>[[Yuto Nagatomo|Nagatomo]] {{sent off|0|72}}
+|goals2     = [[Emiliano Moretti|Moretti]] {{yel|17}}<br>[[Giuseppe Vives|Vives]] {{yel|29}}<br>[[Cristian Molinaro|Molinaro]] {{goal|55}}, {{yel|88}}<br>[[Andrea Belotti|Belotti]] {{goal|73|pen.}}, {{yel|90}}<br>[[Bruno Peres|Peres]] {{yel|82}}
+|stadium    = [[San Siro]]
+|location   = [[Milan]]
+|attendance = 39,125
+|referee    = [[Marco Guida]]
+|result     = W
+}}
+{{football box collapsible
+|round      = 32
+|date       = 10 April 2016
+|time       = 15:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 2–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/32/TORATA Report]
+|team2      = [[Atalanta B.C.|Atalanta]]
+|goals1     = [[Bruno Peres|Peres]] {{goal|35}}, {{yel|82}}<br>[[Maxi López]] {{goal|46}}<br>[[Daniele Baselli|Baselli]] {{yel|77}}
+|goals2     = [[Guglielmo Stendardo|Stendardo]] {{yel|24}}<br>[[Marten de Roon|De Roon]] {{sent off|2|42|90+1}}<br>[[Luca Cigarini|Cigarini]] {{yel|74}}, {{goal|82}}<br>[[Andrea Masiello|Masiello]] {{yel|75}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 19,369
+|referee    = Marco Di Bello
+|result     = W
+}}
+{{football box collapsible
+|round      = 33
+|date       = 16 April 2016
+|time       = 15:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Bologna F.C. 1909|Bologna]]
+|score      = 0–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/33/BOLTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Luca Rossettini|Rossettini]] {{yel|13}}<br>[[Franco Brienza|Brienza]] {{yel|28}}<br>[[Adam Masina|Masina]] {{yel|82}}<br>[[Antonio Mirante|Mirante]] {{yel|90+4}}
+|goals2     = [[Cesare Bovo|Bovo]] {{yel|41}}<br>[[Andrea Belotti|Belotti]] {{goal|90+3|pen.}}
+|stadium    = [[Stadio Renato Dall'Ara]]
+|location   = [[Bologna]]
+|attendance = 20,655
+|referee    = Rosario Abisso
+|result     = W
+}}
+{{football box collapsible
+|round      = 34
+|date       = 20 April 2016
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[A.S. Roma|Roma]]
+|score      = 3–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/34/ROMTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Alessandro Florenzi|Florenzi]] {{yel|39}}<br>[[Kostas Manolas|Manolas]] {{goal|65}}<br>[[Francesco Totti|Totti]] {{goal|86||89|pen.}}
+|goals2     = [[Andrea Belotti|Belotti]] {{goal|35|pen.}}, {{yel|42}}<br>[[Josef Martínez|Martínez]] {{goal|80}}<br>[[Daniele Padelli|Padelli]] {{yel|84}}<br>[[Kamil Glik|Glik]] {{yel|89}}
+|stadium    = [[Stadio Olimpico]]
+|location   = [[Rome]]
+|attendance = 30,407
+|referee    = Gianpaolo Calvarese
+|result     = L
+}}
+{{football box collapsible
+|round      = 35
+|date       = 24 April 2016
+|time       = 15:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–3
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/35/TORSAS Report]
+|team2      = [[U.S. Sassuolo Calcio|Sassuolo]]
+|goals1     = [[Bruno Peres|Peres]] {{goal|7}}<br>[[Alessandro Gazzi|Gazzi]] {{yel|87}}<br>[[Emiliano Moretti|Moretti]] {{yel|88}}
+|goals2     = [[Nicola Sansone|Sansone]] {{goal|2}}<br>[[Federico Peluso|Peluso]] {{yel|21}}, {{goal|75}}<br>[[Marcello Trotta|Trotta]] {{goal|90+4}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 19,751
+|referee    = Michael Fabbri
+|result     = L
+}}
+{{football box collapsible
+|round      = 36
+|date       = 30 April 2016
+|time       = 18:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Udinese Calcio|Udinese]]
+|score      = 1–5
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/36/UDITOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Thomas Heurtaux|Heurtaux]] {{yel|43}}<br>[[Felipe dal Belo|Felipe]] {{goal|47}}, {{yel|88}}
+|goals2     = [[Pontus Jansson|Jansson]] {{goal|12}}<br>[[Cesare Bovo|Bovo]] {{yel|37}}<br>[[Afriyie Acquah|Acquah]] {{goal|45}}<br>[[Josef Martínez|Martínez]] {{goal|50||83}}<br>[[Andrea Belotti|Belotti]] {{goal|56}}<br>[[Gastón Silva|Silva]] {{yel|61}}
+|stadium    = [[Stadio Friuli]]
+|location   = [[Udine]]
+|attendance = 16,699
+|referee    = Maurizio Mariani
+|result     = W
+}}
+{{football box collapsible
+|round      = 37
+|date       = 8 May 2016
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 1–2
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/37/TORNAP Report]
+|team2      = [[S.S.C. Napoli|Napoli]]
+|goals1     = [[Giuseppe Vives|Vives]] {{sent off|2|39|90+2}}<br>[[Cesare Bovo|Bovo]] {{yel|60}}<br>[[Pontus Jansson|Jansson]] {{yel|63}}<br>[[Bruno Peres|Peres]] {{goal|66}}<br>[[Marco Benassi|Benassi]] {{yel|82}}
+|goals2     = [[Raúl Albiol|Albiol]] {{yel|3}}<br>[[Gonzalo Higuaín|Higuaín]] {{goal|12}}<br>[[José Callejón|Callejón]] {{goal|20}} 
+|stadium    = [[Stadio Olimpico Grande Torino]]
+|location   = [[Turin]]
+|attendance = 23,095
+|referee    = [[Antonio Damato]]
+|result     = L
+|note       = On 24 April Torino announced that the Stadio Olimpico di Torino would be renamed the [[Stadio Olimpico Grande Torino]], in honour of the [[Grande Torino]] team of the 1940s.<ref>{{cite web|url=http://www.football-italia.net/83293/torino-stadium-renamed|title=Torino stadium renamed|publisher=Football Italia|date=24 April 2016|accessdate=27 June 2016}}</ref>
+}}
+{{football box collapsible
+|round      = 38
+|date       = 15 May 2016
+|time       = 15:00 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Empoli F.C.|Empoli]]
+|score      = 2–1
+|report     = [http://www.legaseriea.it/it/serie-a-tim/match-report/2015-16/UNICO/UNI/38/EMPTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Massimo Maccarone|Maccarone]] {{goal|12}}<br>[[Marco Zambelli|Zambelli]] {{yel|31}}<br>[[Leandro Paredes|Paredes]] {{yel|36}}<br>[[Piotr Zieliński|Zieliński]] {{goal|54}}
+|goals2     = [[Joel Obi|Obi]] {{yel|26}}, {{goal|56}}
+|stadium    = [[Stadio Carlo Castellani]]
+|location   = [[Empoli]]
+|attendance = 8,791
+|referee    = Francesco Saia
+|result     = L
+}}
+
+===Coppa Italia===
+{{main|2015–16 Coppa Italia}}
+{{football box collapsible
+|round      = [[2015–16 Coppa Italia#Third round|Third round]]
+|date       = 17 August 2015
+|time       = 21:15 [[Central European Summer Time|CEST]] ([[UTC+02:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 4–1
+|report     = [http://www.legaseriea.it/it/tim-cup/match-report/2015-16/3TURN/UNI/1/TORPES Report]
+|team2      = [[Delfino Pescara 1936|Pescara]]
+|goals1     = [[Daniele Baselli|Baselli]] {{goal|27}}<br>[[Afriyie Acquah|Acquah]] {{goal|33}}<br>[[Maxi López]] {{goal|67}}<br>[[Josef Martínez|Martínez]] {{goal|73}}
+|goals2     = [[Salvador Ichazo|Ichazo]] {{goal|17|o.g.}}<br>[[Gianluca Caprari|Caprari]] {{yel|43}}<br>[[Andrea Rossi (footballer)|Rossi]] {{yel|65}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 13,586
+|referee    = [[Davide Massa]]
+|result     = W
+}}
+{{football box collapsible
+|round      = [[2015–16 Coppa Italia#Fourth round|Fourth round]]
+|date       = 1 December 2015
+|time       = 18:00 [[Central European Time|CET]] ([[UTC+01:00]])
+|team1      = [[Torino F.C.|Torino]]
+|score      = 4–1
+|report     = [http://www.legaseriea.it/it/tim-cup/match-report/2015-16/4TURN/UNI/1/TORCES Report]
+|team2      = [[A.C. Cesena|Cesena]]
+|goals1     = [[Alessandro Gazzi|Gazzi]] {{goal|3}}<br>[[Emiliano Moretti|Moretti]] {{goal|13}}<br>[[Maxi López]] {{goal|51}}<br>[[Marco Benassi|Benassi]] {{goal|84}}
+|goals2     = [[Hordur Magnusson|Magnusson]] {{yel|12}}<br>[[Francesco Renzetti|Renzetti]] {{yel|42}}<br>[[Emmanuel Cascione|Cascione]] {{goal|68}}, {{yel|75}}<br>[[Stefano Lucchini|Lucchini]] {{yel|79}}<br>[[Luca Valzania|Valzania]] {{yel|81}}
+|stadium    = [[Stadio Olimpico Grande Torino|Stadio Olimpico di Torino]]
+|location   = [[Turin]]
+|attendance = 4,962
+|referee    = Maurizio Mariani
+|result     = W
+}}
+{{football box collapsible
+|round      = [[2015–16 Coppa Italia#Round of 16|Round of 16]]
+|date       = 16 December 2015
+|time       = 20:45 [[Central European Summer Time|CEST]] ([[UTC+01:00]])
+|team1      = [[Juventus F.C.|Juventus]]
+|score      = 4–0
+|report     = [http://www.legaseriea.it/en/tim-cup/match-report/2015-16/OTTAV/UNI/1/JUVTOR Report]
+|team2      = [[Torino F.C.|Torino]]
+|goals1     = [[Simone Zaza|Zaza]] {{yel|23}}, {{goal|28, 51}}<br>[[Claudio Marchisio|Marchisio]] {{yel|39}}<br>[[Paulo Dybala|Dybala]] {{goal|73}}<br>[[Paul Pogba|Pogba]] {{goal|82}}
+|goals2     = [[Cristian Molinaro|Molinaro]] {{sent off|1|35|49}}<br>[[Afriyie Acquah|Acquah]] {{yel|42}}
+|stadium    = [[Juventus Stadium]]
+|location   = [[Turin]]
+|attendance = 27,898
+|referee    = Daniele Doveri
+|result     = L
+}}
+
+==Statistics==
+
+===Appearances and goals===
+{{Efs start|Serie A|Coppa Italia}}
+|-
+! colspan="14" style="background:#dcdcdc; text-align:center"| Goalkeepers
+{{Efs player|no=1 |name=[[Daniele Padelli]]|pos=GK|nat=ITA                          |35|0|0|0}}
+{{Efs player|no=13 |name=[[Luca Castellazzi]]|pos=GK|nat=ITA                        |0|0|0|0}}
+{{Efs player|no=28 |name=[[Salvador Ichazo]]|pos=GK|nat=URU                         |3|0|3|0}}
+|-
+! colspan="14" style="background:#dcdcdc; text-align:center"| Defenders
+{{Efs player|no=3 |name=[[Cristian Molinaro]]|pos=DF|nat=ITA                        |22+4|1|2|0}}
+{{Efs player|no=5 |name=[[Cesare Bovo]]|pos=DF|nat=ITA                              |20+1|1|3|0}}
+{{Efs player|no=7 |name=[[Davide Zappacosta]]|pos=DF|nat=ITA                        |13+12|1|1|0}}
+{{Efs player|no=18 |name=[[Pontus Jansson]]|pos=DF|nat=SWE                          |6+1|1|1+1|0}}
+{{Efs player|no=19 |name=[[Nikola Maksimović]]|pos=DF|nat=SRB                       |16|0|0|0}}
+{{Efs player|no=21 |name=[[Gastón Silva]]|pos=DF|nat=URU                            |10+2|0|0|0}}
+{{Efs player|no=24 |name=[[Emiliano Moretti]]|pos=DF|nat=ITA                        |35|1|3|1}}
+{{Efs player|no=25 |name=[[Kamil Glik]]|pos=DF|nat=POL                              |33|0|2|0}}
+{{Efs player|no=26 |name=[[Danilo Fernando Avelar|Danilo Avelar]]|pos=DF|nat=BRA    |4+2|0|1|0}}
+{{Efs player|no=33 |name=[[Bruno Peres]]|pos=DF|nat=BRA                             |30+1|3|2|0}}
+|-
+! colspan="14" style="background:#dcdcdc; text-align:center"| Midfielders
+{{Efs player|no=4 |name=[[Joel Obi]]|pos=MF|nat=NGA                                 |7+3|1|0+1|0}}
+{{Efs player|no=6 |name=[[Afriyie Acquah]]|pos=MF|nat=GHA                           |22+7|2|2|1}}
+{{Efs player|no=8 |name=[[Alexander Farnerud]]|pos=MF|nat=SWE                       |0+5|0|0|0}}
+{{Efs player|no=14 |name=[[Alessandro Gazzi]]|pos=MF|nat=ITA                        |11+4|0|2|1}}
+{{Efs player|no=15 |name=[[Marco Benassi]]|pos=MF|nat=ITA                           |21+11|3|1|1}}
+{{Efs player|no=16 |name=[[Daniele Baselli]]|pos=MF|nat=ITA                         |25+10|4|3|1}}
+{{Efs player|no=20 |name=[[Giuseppe Vives]]|pos=MF|nat=ITA                          |28+5|1|1|0}}
+{{Efs player|no=90 |name=[[Simone Edera]]|pos=MF|nat=ITA                            |0+2|0|0|0}}
+|-
+! colspan="14" style="background:#dcdcdc; text-align:center"| Forwards
+{{Efs player|no=9 |name=[[Andrea Belotti]]|pos=FW|nat=ITA                           |31+4|12|1|0}}
+{{Efs player|no=10 |name=[[Ciro Immobile]]|pos=FW|nat=ITA                           |11+3|5|0|0}}
+{{Efs player|no=11 |name=[[Maxi López]]|pos=FW|nat=ARG                              |8+18|4|3|2}}
+{{Efs player|no=17 |name=[[Josef Martínez]]|pos=FW|nat=VEN                          |10+11|3|1+1|1}}
+|-
+! colspan="14" style="background:#dcdcdc; text-align:center"| Players transferred out during the season
+{{Efs player|no=22 |name=[[Amauri]]|pos=FW|nat=ITA                                  |0+1|0|0+1|0}}
+{{Efs player|no=23 |name=[[Sanjin Prcić]]|pos=MF|nat=BIH                            |0+2|0|0+1|0}}
+{{Efs player|no=27 |name=[[Fabio Quagliarella]]|pos=FW|nat=ITA                      |16|5|1|0}}
+{{Efs player|no=44 |name=[[Vasyl Pryima]]|pos=DF|nat=UKR                            |0|0|0+1|0}}
+{{Fb cs footer|u=15 May 2016 |s=[[#Competitions|Competitions]]|date=July 2014}}
+
+===Goalscorers===
+{| class="wikitable" style="text-align:center"
+|-
+!width=15|{{Tooltip|Rank|Rank}}
+!width=15|{{Tooltip|No.|Squad Number}}
+!width=15|{{Tooltip|Pos|Position}}
+!width=15|{{Tooltip|Nat|Nationality}}
+!width=145|Name
+!width=80|[[2015–16 Serie A|Serie A]]
+!width=80|[[2015–16 Coppa Italia|Coppa Italia]]
+!width=80|Total
+|-
+|'''1'''
+|9
+|[[Forward (association football)|FW]]
+|{{flagicon|ITA}}
+|align=left|[[Andrea Belotti]]
+|12
+|0
+|'''12'''
+|-
+|'''2'''
+|11
+|[[Forward (association football)|FW]]
+|{{flagicon|ARG}}
+|align=left|[[Maxi López]]
+|4
+|2
+|'''6'''
+|-
+|rowspan=3|'''3'''
+|10
+|[[Forward (association football)|FW]]
+|{{flagicon|ITA}}
+|align=left|[[Ciro Immobile]]
+|5
+|0
+|'''5'''
+|-
+|16
+|[[Midfielder|MF]]
+|{{flagicon|ITA}}
+|align=left|[[Daniele Baselli]]
+|4
+|1
+|'''5'''
+|-
+|27
+|[[Forward (association football)|FW]]
+|{{flagicon|ITA}}
+|align=left|[[Fabio Quagliarella]]
+|5
+|0
+|'''5'''
+|-
+|rowspan=2|'''6'''
+|15
+|[[Midfielder|MF]]
+|{{flagicon|ITA}}
+|align=left|[[Marco Benassi]]
+|3
+|1
+|'''4'''
+|-
+|17
+|[[Forward (association football)|FW]]
+|{{flagicon|VEN}}
+|align=left|[[Josef Martínez]]
+|3
+|1
+|'''4'''
+|-
+|rowspan=2|'''8'''
+|6
+|[[Midfielder|MF]]
+|{{flagicon|GHA}}
+|align=left|[[Afriyie Acquah]]
+|2
+|1
+|'''3'''
+|-
+|33
+|[[Defender (association football)|DF]]
+|{{flagicon|BRA}}
+|align=left|[[Bruno Peres]]
+|3
+|0
+|'''3'''
+|-
+|rowspan=2|'''10'''
+|5
+|[[Defender (association football)|DF]]
+|{{flagicon|ITA}}
+|align=left|[[Cesare Bovo]]
+|2
+|0
+|'''2'''
+|-
+|24
+|[[Defender (association football)|DF]]
+|{{flagicon|ITA}}
+|align=left|[[Emiliano Moretti]]
+|1
+|1
+|'''2'''
+|-
+|rowspan=6|'''12'''
+|3
+|[[Defender (association football)|DF]]
+|{{flagicon|ITA}}
+|align=left|[[Cristian Molinaro]]
+|1
+|0
+|'''1'''
+|-
+|4
+|[[Midfielder|MF]]
+|{{flagicon|NGA}}
+|align=left|[[Joel Obi]]
+|1
+|0
+|'''1'''
+|-
+|7
+|[[Defender (association football)|DF]]
+|{{flagicon|ITA}}
+|align=left|[[Davide Zappacosta]]
+|1
+|0
+|'''1'''
+|-
+|14
+|[[Midfielder|MF]]
+|{{flagicon|ITA}}
+|align=left|[[Alessandro Gazzi]]
+|0
+|1
+|'''1'''
+|-
+|18
+|[[Defender (association football)|DF]]
+|{{flagicon|SWE}}
+|align=left|[[Pontus Jansson]]
+|1
+|0
+|'''1'''
+|-
+|20
+|[[Midfielder|MF]]
+|{{flagicon|ITA}}
+|align=left|[[Giuseppe Vives]]
+|1
+|0
+|'''1'''
+|-
+|colspan=5|'''Own goal'''
+|3
+|0
+|'''3'''
+|-
+|colspan=5|'''Totals'''
+|'''52'''
+|'''8'''
+|'''60'''
+|}
+
+<small>
+Last updated: 15 May 2016
+</small>
+
+===Clean sheets===
+{| class="wikitable" style="text-align:center"
+|-
+!width=15|{{Tooltip|Rank|Rank}}
+!width=15|{{Tooltip|No.|Squad Number}}
+!width=15|{{Tooltip|Pos|Position}}
+!width=15|{{Tooltip|Nat|Nationality}}
+!width=145|Name
+!width=80|[[2015–16 Serie A|Serie A]]
+!width=80|[[2015–16 Coppa Italia|Coppa Italia]]
+!width=80|Total
+|-
+|'''1'''
+|1
+|[[Goalkeeper (association football)|GK]]
+|{{flagicon|ITA}}
+|align=left|[[Daniele Padelli]]
+|6
+|0
+|'''6'''
+|-
+|colspan=5|'''Totals'''
+|'''6'''
+|'''0'''
+|'''6'''
+|}<small>
+Last updated: 15 May 2016
+</small>
+
+==Bibliography==
+{{refbegin}}
+*{{cite book |last1=D'Angelo |first1=Maurizio |title=1894-2016/Almanacco Toro|publisher=Lulu |year=2016 |isbn=978-1-326-66553-1}}
+{{refend}}
+
+==References==
+{{reflist}}
+
+{{Torino F.C. seasons}}
+{{2015–16 in Italian football}}
+
+{{DEFAULTSORT:2015-16 Torino F.C. season}}
+[[Category:Torino F.C. seasons]]
+[[Category:Italian football clubs 2015–16 season|Torino]]

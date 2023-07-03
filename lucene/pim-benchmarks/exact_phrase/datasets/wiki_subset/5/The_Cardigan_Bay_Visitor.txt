@@ -1,0 +1,26 @@
+{{Infobox newspaper
+| image = {{#invoke:Wikidata|getValue|P18|FETCH_WIKIDATA}}
+| type = {{#invoke:Wikidata|getValue|P31|FETCH_WIKIDATA}}
+| editor = {{#invoke:Wikidata|getValue|P98|FETCH_WIKIDATA}}
+| owners = {{wikidata|properties|qualifier|qualifier|P127|P580|P582}}
+| publishing_country = {{#invoke:Wikidata|getValue|P495|FETCH_WIKIDATA}}
+| foundation = {{#invoke:WikidataIB|getValue|P577|fetchwikidata=ALL|df=y }}
+| ceased publication = {{#invoke:WikidataIB|getValue|P2669|fetchwikidata=ALL|df=dmy }}
+| publishing_city = {{#invoke:WikidataIB|getValue|P291|fetchwikidata=ALL}}
+| publisher =  {{#invoke:WikidataIB|getValue|P123|fetchwikidata=ALL}}
+| circulation = {{#invoke:WikidataIB|getValue|P276|fetchwikidata=ALL}}
+| oclc = {{#invoke:wd|property|P243}}
+}}
+{{italic title}}
+'''''The Cardigan Bay Visitor''''' was a weekly English language newspaper distributed around Cardigan Bay, Towyn, Barmouth, and Dolgellau. It contained local news and information and a list of visitors. It was published by J. Gibson.<ref name=":0">[http://newspapers.library.wales/browse/3822159 The Cardigan Bay Visitor] at Welsh Newspapers Online, National Library of Wales</ref>
+
+[[Welsh Newspapers Online]] has digitised 558 issues of the Cardigan Bay Visitor (1887-1905) from the newspaper holdings of the [[National Library of Wales]].<ref name=":0" />
+
+==References==
+{{Reflist}}
+
+{{DEFAULTSORT:Cardigan Bay Visitor}}
+[[Category:Newspapers published in Wales]]
+
+
+{{UK-newspaper-stub}}

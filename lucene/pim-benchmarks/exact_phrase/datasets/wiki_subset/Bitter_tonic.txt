@@ -1,0 +1,1 @@
+#redirect [[bitters]] {{R from alternative name}}

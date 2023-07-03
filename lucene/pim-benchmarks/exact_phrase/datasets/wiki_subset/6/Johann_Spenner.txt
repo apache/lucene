@@ -1,0 +1,60 @@
+{{Expand German|Johann Spender|date=January 2019}}
+{{Infobox Christian leader
+| type        = Bishop
+| honorific-prefix = Most Reverend
+| name        = Johann Spenner 
+| title       = Auxiliary Bishop of Cologne<br> Titular Bishop of Cyrene
+| image       = 
+| alt         = 
+| caption     = 
+| church      = [[Catholic Church]]
+| archdiocese = [[Roman Catholic Archdiocese of Cologne|Archdiocese of Cologne]]
+| diocese     = 
+| see         = 
+| term        = 1482–1503
+| predecessor = 
+| successor   = 
+<!--   Orders   -->
+| ordination     = 
+| ordained_by    = 
+| consecration   = 18 November 1482
+| consecrated_by = [[Stephen Teglatius|Stefan Teglatije]]
+| cardinal       =
+| rank           = 
+<!--   Personal details   -->
+| birth_date    = 
+| birth_place   = 
+| death_date    = 5 December 1503
+| death_place   = [[Cologne]], [[Germany]] 
+| previous_post = 
+| nationality   = 
+}}
+
+'''Johann Spenner''' also '''Johann Spender''' (died 5 December 1503) was a Roman Catholic prelate who served as [[Bishop of Cologne|Auxiliary Bishop of Cologne]] (1482–1503).<ref name=HierarchiaII-Cyrene />
+
+==Biography==
+Johann Spenner was appointed a priest in the [[Order of Friars Minor]].<ref name=CathHierJohSpenn /> On 4 November 1482, he was appointed during the papacy of [[Pope Sixtus IV]] as [[Bishop of Cologne|Auxiliary Bishop of Cologne]] and [[Titular Bishop]] of ''Cyrene''.<ref name=HierarchiaII-Cyrene /><ref name=CathHierJohSpenn /> On 18 November 1482, he was consecrated bishop by [[Stephen Teglatius|Stefan Teglatije]], [[Archbishop of Bar]], with [[Giuliano Maffei]], [[Bishop of Bertinoro]], serving as co-consecrator.<ref name=CathHierJohSpenn /> He served as Auxiliary Bishop of Cologne until his death on 5 December 1503.<ref name=HierarchiaII-Cyrene /><ref name=CathHierJohSpenn />
+
+== References ==
+{{reflist|colwidth=|refs=
+<ref name=HierarchiaII-Cyrene>{{cite book|url=https://archive.org/stream/hierarchiacathol02eubeuoft#page/142/2up|first=Konrad|last=Eubel|authorlink=Konrad Eubel|title=Hierarchia catholica medii et recentioris aevi |volume=Vol. II|pages=142|date=1914|publisher=Libreria Regensbergiana|location=Münster|edition=second|ISBN=}} ''(in Latin)''</ref>
+<ref name=CathHierJohSpenn>[http://www.catholic-hierarchy.org/bishop/bspend.html "Bishop Johann Spenner (Spender), O.F.M."] ''[[Catholic-Hierarchy.org]]''. David M. Cheney. Retrieved March 21, 2016</ref>
+}}
+
+==External links and additional sources==
+*{{Cite web|last=Cheney |first=David M.|authorlink=|title=Cyrene (Titular See) |website=[[Catholic-Hierarchy.org]]|date=|url=http://www.catholic-hierarchy.org/diocese/d3c56.html|accessdate=January 4, 2019}} (for Chronology of Bishops) [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+*{{Cite web|last=Chow |first=Gabriel|authorlink=|title=Titular Episcopal See of Cyrene (Libya)|website=[[GCatholic.org]]|date=|url=http://www.gcatholic.org/dioceses/former/t0515.htm|accessdate=January 4, 2019}} (for Chronology of Bishops)  [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+*{{Cite web|last=Cheney |first=David M.|authorlink=|title=Archdiocese of Köln {Cologne} |website=[[Catholic-Hierarchy.org]]|date=|url=http://www.catholic-hierarchy.org/diocese/dkoln.html |accessdate=January 4, 2019}} (for Chronology of Bishops) [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+*{{Cite web|last=Chow |first=Gabriel|authorlink=|title=Metropolitan Archdiocese of Köln (Germany) |website=[[GCatholic.org]]|date=|url=http://www.gcatholic.org/dioceses/diocese/koln0.htm |accessdate=January 4, 2019}} (for Chronology of Bishops)  [[Wikipedia:SPS|{{sup|[''self-published'']}}]]
+
+{{Subject bar |portal1= Biography |portal2= Catholicism |portal3=Germany}}
+{{authority control}}
+
+{{DEFAULTSORT:Spenner, Johann}}
+[[Category:15th-century Roman Catholic bishops]]
+[[Category:16th-century Roman Catholic bishops]]
+[[Category:Bishops appointed by Pope Sixtus IV]]
+[[Category:1503 deaths]]
+[[Category:Franciscan bishops]]
+
+{{Germany-RC-bishop-stub}}

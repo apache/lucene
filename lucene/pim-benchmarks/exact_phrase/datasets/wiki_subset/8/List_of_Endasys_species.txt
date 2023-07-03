@@ -1,0 +1,165 @@
+{{short description|Wikipedia list article}}
+{{DISPLAYTITLE:List of ''Endasys'' species}}
+This is a list of 124 species in ''[[Endasys]]'', a genus of ichneumon wasps in the family [[Ichneumonidae]].<ref name=itis/><ref name=catlife/><ref name=gbif/><ref name=bugref/>
+
+==''Endasys'' species==
+{{col div|colwidth=29em}}
+* ''[[Endasys albior]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys albitexanus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys alutaceus]]'' <small>(Habermehl, 1912)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys amoenus]]'' <small>(Habermehl, 1912)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys analis]]'' <small>(Thomson, 1883)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys anglianus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys angularis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys annulatus]]'' <small>(Habermehl, 1912)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys areolellae]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys arizonae]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys arkansensis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys aurantifex]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys aurarius]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys aureolus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys auriculiferus]]'' <small>(Viereck, 1917)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys aurigena]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys auriger]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys bicolor]]'' <small>(Lundbeck, 1897)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys bicolorescens]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys brachyceratus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys brevicornis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys brevis]]'' <small>(Gravenhorst, 1829)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys brunnulus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys callidius]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys callistus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys chiricahuanus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys chrysoleptus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys cnemargus]]'' <small>(Gravenhorst, 1829)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys concavus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys coriaceus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys daschi]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys declivis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys durangensis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys elegantulus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys erythrogaster]]'' <small>(Gravenhorst, 1829)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys eurycerus]]'' <small>(Thomson, 1896)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys euryops]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys euxestus]]'' <small>(Speiser, 1908)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys femoralis]]'' <small>(Habermehl, 1912)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys flavissimus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys flavivittatus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys gibbosus]]'' <small>Gonzalez-Moreno & Bordera</small><span style="color:gray"><sup> g</sup></span>
+* ''[[Endasys gracilis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys granulifacies]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys hesperus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys hexamerus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys hungarianus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys inflatus]]'' <small>(Provancher, 1875)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys julianus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys kinoshitai]]'' <small>Uchida, 1955</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys latissimus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys leioleptus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys leopardus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys leptotexanus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys leucocnemis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys liaoningensis]]'' <small>Wang, Sun, Ma & Sheng, 1996</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys lissorulus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys lygaeonematus]]'' <small>(Uchida, 1931)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys maculatus]]'' <small>(Provancher, 1875)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys magnocellus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys megamelanus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys melanistus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys melanogaster]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys melanopodis]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys melanurus]]'' <small>(Roman, 1909)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys michiganensis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys microcellus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys minutulus]]'' <small>(Thomson, 1883)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys monticola]]'' <small>(Dalla Torre, 1902)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys morulus]]'' <small>(Kokujev, 1909)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys mucronatus]]'' <small>(Provancher, 1879)</small><span style="color:gray"><sup> i c</sup></span>
+* ''[[Endasys nemati]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys nigrans]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys nitidus]]'' <small>(Habermehl, 1912)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys obscurus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys occipitis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys oregonianus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys paludicola]]'' <small>(Brues, 1908)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys parviventris]]'' <small>(Gravenhorst, 1829)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys patulus]]'' <small>(Viereck, 1911)</small><span style="color:gray"><sup> i c</sup></span>
+* ''[[Endasys pentacrocus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys petiolus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys pieninus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys pinidiprionis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys plagiator]]'' <small>(Gravenhorst, 1829)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys praegracilis]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys praerotundiceps]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys proteuryopsis]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys pseudocallistus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys pubescens]]'' <small>(Provancher, 1974)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys punctatior]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rhyssotexanus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rotundiceps]]'' <small>(Provancher, 1877)</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rubescens]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rugiceps]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rugifacies]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys rugitexanus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rugosus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys rusticus]]'' <small>(Habermehl, 1912)</small><span style="color:gray"><sup> c</sup></span>
+* ''[[Endasys santacruzensis]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys senilis]]'' <small>(Gmelin, 1790)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys serratus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys sheni]]'' <small>Sheng, 2000</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys spicus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys spinissimus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys stictogastris]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys striatus]]'' <small>(Kiss, 1924)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys subclavatus]]'' <small>(Say, 1836)</small><span style="color:gray"><sup> i c g b</sup></span>
+* ''[[Endasys sugiharai]]'' <small>(Uchida, 1936)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys taiganus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys talitzkii]]'' <small>(Telenga, 1961)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys testaceipes]]'' <small>(Brischke, 1891)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys testaceus]]'' <small>(Taschenberg, 1865)</small><span style="color:gray"><sup> c</sup></span>
+* ''[[Endasys tetralylus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i g</sup></span>
+* ''[[Endasys tetratylus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys texanus]]'' <small>(Cresson)</small><span style="color:gray"><sup> i c</sup></span>
+* ''[[Endasys thunbergi]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys transverseareolatus]]'' <small>(Strobl, 1901)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys triannulatus]]'' <small>Sawoniewicz & Luhman, 1992</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys tricoloratus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys tyloidiphorus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys varipes]]'' <small>(Gravenhorst, 1829)</small><span style="color:gray"><sup> c g</sup></span>
+* ''[[Endasys xanthopyrrhus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+* ''[[Endasys xanthostomus]]'' <small>Luhman, 1990</small><span style="color:gray"><sup> i c g</sup></span>
+{{Col div end}}
+
+<small>Data sources: i = ITIS<ref name=itis/>, c = Catalogue of Life<ref name=catlife/>, g = GBIF<ref name=gbif/>, b = Bugguide.net<ref name=bugref/></small>
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Endasys'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=153569
+| website=Integrated Taxonomic Information System
+| accessdate=2018-04-25
+}}</ref>
+<ref name=catlife>
+{{Cite web| title=Browse ''Endasys''
+| url=http://www.catalogueoflife.org/col/browse/tree/id/1e0aed6c945cc3548e918bc63ca3c9ec
+| website=Catalogue of Life
+| accessdate=2018-04-25
+}}</ref>
+<ref name=gbif>
+{{Cite web| title=''Endasys''
+| url=https://www.gbif.org/species/1291166
+| website=GBIF
+| accessdate=2018-04-25
+}}</ref>
+<ref name=bugref>
+{{Cite web| title=''Endasys'' Genus Information
+| url=https://bugguide.net/node/view/349602
+| website=BugGuide.net
+| accessdate=2018-04-25
+}}</ref>
+}}
+
+
+[[Category:Parasitic wasps|*]]
+[[Category:Lists of insect species|Endasys]]
+[[Category:Articles created by Qbugbot]]

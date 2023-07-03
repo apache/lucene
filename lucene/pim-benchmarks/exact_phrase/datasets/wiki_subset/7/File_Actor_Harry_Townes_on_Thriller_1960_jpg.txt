@@ -1,0 +1,17 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = Image of actor Harry Townes performing on the [[NBC]] television series ''Thriller'' in the 1960 episode "The Cheaters".
+|Source = Screenshot from full television film freely available for viewing by the general public on [[YouTube]].
+|Date = 1960.  Noted episode originally broadcast December 27, 1960.
+|Author = [[NBCUniversal Television Distribution]] (current)
+|Article = Harry Townes
+|Purpose = Educational use to illustrate and visually identify the actor Harry Townes..
+|Replaceability = This is the only currently known still image of this actor performing on the noted television series in the given timeframe.
+|Replaceability_text = This image depicts Harry Townes performing on the television series ''Thriller''; and in lieu of an image, no descriptive text—irrespective of how thorough—could positively identify for readers the subject in question.
+|Minimality = This image is for educational use only.
+|Commercial = The actor relevant to this page is deceased, and his image would not be recognized or identified today by the vast majority of the general public.  This screenshot's esoteric content and the image's sizing would offer no credible commercial opportunities in its hypothetical application in advertising, literary publications, promotional merchandising, or in any other related hard-copy or electronic applications.
+|Other information = This screenshot was personally photographed by Wikipedia contributor Strudjum on May 22, 2017.
+}}
+
+==Licensing==
+{{Non-free television screenshot|image has rationale=yes}}

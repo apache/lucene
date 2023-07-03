@@ -1,0 +1,37 @@
+{{italic title}}
+{{Taxobox
+| name = 
+| image = 
+| image_caption = 
+| image2 = 
+| image2_caption = 
+| regnum = [[Animal]]ia
+| phylum = [[Arthropod]]a
+| classis = [[Insect]]a
+| ordo = [[Lepidoptera]]
+| familia = [[Gelechiidae]]
+| genus = ''[[Filatima]]''
+| species = '''''F. sperryi'''''
+| binomial = ''Filatima sperryi''
+| binomial_authority = Clarke, 1947
+| synonyms =
+}}
+'''''Filatima sperryi''''' is a [[moth]] of the family [[Gelechiidae]]. It is found in [[North America]], where it has been recorded from [[California]],<ref>[http://ftp.funet.fi/pub/sci/bio/life/insecta/lepidoptera/ditrysia/gelechioidea/gelechiidae/gelechiinae/filatima/ Filatima at funet]</ref><ref>[http://mothphotographersgroup.msstate.edu/species.php?hodges=2174 mothphotographersgroup]</ref> [[Nevada]] and [[Utah]].
+
+The [[wingspan]] is 18–21&nbsp;mm. The extreme costal edge, a narrow line around apex and termen and a broad, elongate area from the base of the wing to the tornus, are blackish fuscous, while the remainder of the wing is buckthorn brown. There is a small whitish spot on the costa and tornus. The hindwings are pale fuscous basally shading to fuscous apically.
+
+==Etymology==
+The species is named for John L. Sperry, who provided the type specimen and the Nevada specimen.<ref>[https://archive.org/stream/journalofwashi3637194wash#page/270/mode/1up J. Wash. Acad. Sci. 37 : 270]</ref>
+
+==References==
+{{Reflist}}
+{{Wikispecies}}
+{{Commons}}
+
+{{Taxonbar|from=Q13635978}}
+
+[[Category:Moths described in 1947]]
+[[Category:Filatima]]
+
+
+{{Filatima-stub}}

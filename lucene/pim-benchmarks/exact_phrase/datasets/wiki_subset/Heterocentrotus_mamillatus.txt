@@ -1,0 +1,77 @@
+{{short description|Species of echinoderm}}
+{{About||other species with the same common name|Slate pencil urchin (disambiguation){{!}}Slate pencil urchin}}
+{{Italic title}}
+{{Taxobox
+| name= Red slate pencil urchin
+| image = Heterocentrotus mammillatus in situ from Hawaii.JPG
+| regnum = [[Animal]]ia
+| phylum = [[Echinoderm]]ata
+| classis = [[Echinoidea]]
+| ordo = [[Camarodonta]]
+| familia = [[Echinometridae]]
+| genus = ''[[Heterocentrotus]]''
+| species = '''''H. mamillatus'''''
+| binomial = ''Heterocentrotus mamillatus''
+| binomial_authority = ([[Carl Linnaeus|Linnaeus]], [[10th edition of Systema Naturae|1758]])<ref>{{cite WoRMS|author=Kroh, A.|year=2010|title=''Heterocentrotus mamillatus'' (Linnaeus, 1758)|db=echinoidea|id=568045}}</ref>
+}}
+
+'''''Heterocentrotus mamillatus''''', commonly known as the '''slate pencil urchin''', '''red slate pencil urchin''', or '''red pencil urchin''', is a species of tropical sea urchin from the [[Indo-Pacific]] region.<ref name=":0">{{Cite book|title=Monograph of shallow-water Indo-West Pacific echinoderms|last=Clark, Ailsa M.|date=1971|publisher=Trustees of the British Museum (Natural History)|oclc=717759019}}</ref>
+
+== Description ==
+[[Image:Radioles d'Heterocentrotus mamillatus.JPG|thumb|Radiols (spikes) of a "slate pencil sea urchin". They are a classical souvenir.]]
+This species is a large sea urchin, with some specimens reaching over 8&nbsp;cm in diameter, with spikes up to 10&nbsp;cm. Most specimens are bright red, but brown and purple colorations are also seen.<ref name=":1">{{Cite journal|last=Ogden N. C., Ogden J. C., & Abbott, I. A.|date=|title=Distribution, abundance and food of sea urchins on a leeward Hawaiian reef|url=|journal=Bulletin of Marine Science|volume=45|issue=2|pages=539–549|via=}}</ref> The spines may have a different color from the body. Spines have a white ring at their stem and have alternating light and dark rings. The spines are rounded to triangular in cross-section and taper towards the tip. Surprisingly during the night the red spines turn into a chalky pink.<ref name=":1" />
+Specimens from Hawai‘i tend to have bright red spines, while specimens from other parts of the Pacific may have yellowish or brown spines.
+
+Other variations of ''H. mammillatus'', such as those living on the [[Bonin Islands|Ogasawara Islands]], have slimmer spines instead of the species' characteristic thick, broad spines.<ref name=":5">{{Cite journal|last=Fujino, T., & Takeda, M.|date=1977|title=Levicaris mammillata (Edmondson), a Gnathophyllid shrimp associated with slate-pencil sea urchin, Heterocentrotus mammillatus (Linnaeus), from the Ogasawara and Ryukyu Islands|url=|journal=Bulletin of the National Science Museum. Series A, Zoology|volume=3|issue=3|pages=131–140|via=}}</ref> It has been debated whether this specific variant truly belongs within the classification of ''H. mammillatus'' and not ''[[Heterocentrotus trigonarius]],'' another type of pencil urchin. However, it has been concluded that the Ogasawara type is indeed a form of ''H. mammillatus''.<ref name=":5" />
+
+''[[Heterocentrotus trigonarius]]'' is a similar species that has longer and darker spines, more angular, and is always monochromic.
+
+<gallery mode="packed">
+Red pencil urchin - Papahānaumokuākea.jpg|Red pencil urchin at [[French Frigate Shoals]].
+Slate pencil urchin at Abu Basala.JPG|Brown ''H. mamillatus'' at the [[Red Sea]]
+Heterocentrotus mamillatus MHNT.jpg|Brown dried specimen [[MHNT]]
+Heterocentrotus mammillatus MHNT bouche.jpg|Brown dried specimen [[MHNT]]
+</gallery>
+
+== Range and habitat ==
+This species can be found throughout the tropical waters of the Indo-Pacific region (from the east coast of Africa to the Pacific archipelagos), but is especially abundant in [[Hawai‘i]].<ref name=":0" /><ref name=":2">{{Cite journal|last=Grabowsky|first=Gail L.|date=August 1994|title=Symmetry, Locomotion, and the Evolution of an Anterior End: A Lesson From Sea Urchins|journal=Evolution|volume=48|issue=4|pages=1130–1146|doi=10.2307/2410373|pmid=28564445|issn=0014-3820|jstor=2410373}}</ref> It can also be found on the shores of the [[Sinai Peninsula]].<ref>{{Cite journal|last=Dotan|first=A.|date=1986|title=Aspects of the biology and ecology of the sea urchins at the Northern Red Sea|url=|journal=|volume=Unpublished Ph. D. thesis, Tel. Aviv University, Tel Aviv, Israel.|pages=|via=}}</ref> ''H. mammillatus'' is found in reefs in depths from eight to 25 meters. It roams the subtidal zones of these areas and appears to prefer burrowing into hard sediments like limestone, coral, and basalt.<ref name=":2" /> The juveniles of this species of urchin can be found hiding under rocks.<ref name=":1" />
+
+== Diet and behavior ==
+''H. mammillatus'' predominantly feeds on encrusting coralline algae, but has been noted to consume small amounts of other algae like ''Pterocladia'' and ''Ulva''. Sea urchins are primarily marine grazers and tend to eat the algae in closest proximity to them. Thus, several species live a rather sedentary lifestyle.<ref name=":1" /> However, ''Heterocentrotus mammillatus'' appears to be somewhat active in comparison to other urchins like ''Echinothrix calamaris, Echinometra mathaei'', and ''Echinometra oblonga''. ''H. mammillatus'' was observed to travel up to 600&nbsp;cm away from its starting site and moved an average of 96&nbsp;cm per day (Ogden et al., 1989).<ref name=":1" />
+
+== Predators ==
+''Heterocentrotus mammillatus'' shares many of the same predators as the other tropical sea urchins living in its habitat. For example, fish, such as those belonging to the families [[Triggerfish|Balistidae]], [[Wrasse|Labridae]], and [[Lethrinidae]], are known to prey on sea urchins.<ref>{{Cite journal|last=Young|first=M. A. L.|last2=Bellwood|first2=D. R.|date=2011-04-13|title=Diel patterns in sea urchin activity and predation on sea urchins on the Great Barrier Reef|journal=Coral Reefs|volume=30|issue=3|pages=729|doi=10.1007/s00338-011-0754-2|issn=0722-4028|bibcode=2011CorRe..30..729Y}}</ref> ''H. mammillatus'' is also collected and eaten by humans, though not as often as ''Tripneustes gratilla'' is.<ref name=":1" />
+
+== Spines ==
+''Heterocentrotus mammillatus'' has thick, rounded spines that allow it to bore into hard substrates and defend itself against predators, wave drag, and pressure. Similar to other sea urchins, its spines are made of magnesium calcite arranged into a porous network, allowing for the passage of fluids and organic matter within the spines. The spines have a dense base and become more porous up towards the tip.<ref name=":3">{{Cite journal|last=Presser|first=V.|last2=Schultheiß|first2=S.|last3=Berthold|first3=C.|last4=Nickel|first4=K. G.|date=September 2009|title=Sea urchin spines as a model-system for permeable, light-weight ceramics with graceful failure behavior. Part I. Mechanical behavior of sea urchin spines under compression|journal=Journal of Bionic Engineering|volume=6|issue=3|pages=203–213|doi=10.1016/s1672-6529(08)60125-0|issn=1672-6529}}</ref> However, ''H. mammillatus'' is unique in how its spines contain other layers of dense material organized throughout, sandwiching the more delicate porous layers. The layered structure allows for graceful failure, preserving the bottom layers of the spine which are farthest from the point of pressure.<ref name=":3" /> This graceful degradation occurs because energy is forced to travel through several layers and dissipates. The layered constitution of ''H. mammillatus''’ spines also allows for crack deflection.<ref name=":3" />
+
+== Locomotion ==
+Bilateral symmetry creates an anterior “front” end and posterior “back” end in living organisms. The anterior end of bilateral organisms often undergoes cephalization and becomes a “head”, hosting a cluster of sensory organs, the mouth, or both. This head often becomes a locomotor anterior in which the organism orients itself, moving forward so that the head of the body is first to approach the upcoming environment.<ref name=":2" />
+
+However, despite being bilaterally symmetrical, ''Heterocentrotus mammillatus'' does not possess a fixed locomotor anterior like many other bilaterally symmetrical organisms do, which allows it to proceed with equal ease in whatever direction it chooses. Instead, ''H. mammillatus'' seems to display ''temporary'' locomotor anteriors when moving, orienting itself in the direction that it first moves. Therefore, ''H. mammillatus'' often insists on continuing in its initial direction of movement, even if it is interrupted by being picked up or placed down in a different orientation.<ref name=":2" />
+
+== Reproduction ==
+Like other sea urchins, ''Heterocentrotus mammillatus'' periodically develops gametes to be released into the water for fertilization and undergoes a rest period in order to resume the cycle again. However, the timing and duration of these cycles varies from urchin to urchin. ''H. mammillatus'' from a reef near where the Gulf of Aqaba meets the Red Sea displayed an annual reproductive cycle. Its resting period is from October to January, accumulating nutrients in its gonads in preparation for gametogenesis.<ref name=":4">{{Cite journal|last=Dotan|first=A|date=1990|title=Reproduction of the Slate Pencil Sea Urchin, Heterocentrotus mammillatus (L), in the Northern Red Sea|journal=Marine and Freshwater Research|volume=41|issue=4|pages=457|doi=10.1071/mf9900457|issn=1323-1650}}</ref> It begins gametogenesis in January and finishes in May, during which its gonads are nearly completely filled with gametes. Spawning usually occurs between May and June, but sometimes can take until October for all the urchins to finish releasing their eggs and sperm. The start and end times of these periods are not always rigid and can vary by a couple months.<ref name=":4" />
+
+This data on ''H. mammillatus''’ reproduction indicates a possible lunar or semilunar cycle in spawning and gametogenesis, meaning that ''H. mammillatus'' may take temporal cues from the moon.<ref name=":4" /> Given that spawning did not always happen during the same phase of moon, other factors may contribute to the timing of ''H. mammillatus''’ reproductive stages (such as the tidal cycle, for example).<ref>{{Cite journal|last=Pearse|first=J. S.|date=1970|title=Reproductive periodicities of Indo-Pacific invertebrates in the Gulf of Suez. III. The echinoid Diadema setosum (Leske)|url=|journal=Bulletin of Marine Science|volume=20|issue=3|pages=697–720|via=}}</ref><ref>{{Cite journal|last=Pearse|first=J.S.|date=January 1972|title=A monthly reproductive rhythm in the diadematid sea urchin Centrostephanus coronatus Verill|journal=Journal of Experimental Marine Biology and Ecology|volume=8|issue=2|pages=167–186|doi=10.1016/0022-0981(72)90018-4|issn=0022-0981}}</ref>
+
+== Organisms associated with ''H. mammillatus'' ==
+The small shrimp, ''Levicaris mammillata'', has been found clinging to the spines of ''Heterocentrotus mammillatus'' in Hawaii, the Ogasawara Islands, and the [[Ryukyu Islands|Ryuku Islands]]. The relationship between this shrimp and ''H. mammillatus'' has not been fully characterized yet, but it is theorized that the shrimp functions as a cleaner to ''H. mammillatus'' rather than a malignant parasite.<ref name=":5" />
+
+==References==
+{{Commons category|Heterocentrotus mamillatus}}
+{{Reflist}}
+* Hoover, John P. (1998). ''Hawaiʻi's Sea Creatures: A Guide to Hawaiʻi's Marine Invertebrates''.  Mutual Publishing.  {{ISBN|1-56647-220-2}}.
+* [http://biocode.berkeley.edu/cgi/biocode_species_query?genus=Heterocentrotus&species=mammillatus&subspecies=&step=detail UC Berkeley Moorea Biocode species listing]
+* {{ITIS|id=656058|taxon=''Heterocentrotus mamillatus''}}
+
+{{-}}
+
+==External links==
+* {{sealifephotos|568045}}
+
+{{Taxonbar|from=Q277658}}
+
+[[Category:Heterocentrotus]]
+[[Category:Animals described in 1758]]
+[[Category:Taxa named by Carl Linnaeus]]

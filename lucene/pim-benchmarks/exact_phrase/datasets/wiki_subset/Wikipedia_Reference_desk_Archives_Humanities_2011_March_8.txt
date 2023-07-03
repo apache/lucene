@@ -1,0 +1,69 @@
+<noinclude><!-- From archive header-->
+{{#ifeq:{{PAGENAME}}|Special:Undelete| |{{#if:|<div style="display:none;">}} {{#ifeq:{{NAMESPACE}}|Wikipedia|{{#switch:{{NAMESPACE}}|= |<div style="display:none;">}}|{{error:not substituted|Archive header}}<div style="display:none;">}}}} {{#if:|</div></div>}}{| width = "100%"
+|-
+! colspan="3" align="center" | [[Wikipedia:Reference desk/Humanities|Humanities desk]]
+|-
+! width="20%" align="left"  | &lt; [[Wikipedia:Reference desk/Archives/Humanities/2011 March 7|March 7]]
+! width="25%" align="center"|&lt;&lt; [[Wikipedia:Reference desk/Archives/Humanities/February 2011|Feb]] | [[Wikipedia:Reference desk/Archives/Humanities/March 2011|March]] | [[Wikipedia:Reference desk/Archives/Humanities/April 2011|Apr]] &gt;&gt;
+! width="20%" align="right" |{{#ifexist:Wikipedia:Reference desk/Archives/Humanities/2011 March 9|[[Wikipedia:Reference desk/Archives/Humanities/2011 March 9|March 9]]|[[Wikipedia:Reference desk/Humanities|Current desk]]}} &gt;
+|}
+{| align=center width=95% style="background: #FFFFFF; border: 1px solid #003EBA;" cellpadding="8" cellspacing="0"
+|-
+! style="background: #5D7CBA; text-align: center;" align="center" | <font face="Arial" color="#FFFFFF">'''Welcome to the Wikipedia Humanities Reference Desk Archives'''</font>
+|-
+| The page you are currently viewing is {{#ifexist:Wikipedia:Reference desk/Archives/Humanities/2011 March 18|an archive page|a [[Wikipedia:Transclusion|transcluded]] archive page}}. While you can leave answers for any questions shown below, please ask new questions on one of the [[Wikipedia:Reference desk|current reference desk]] pages.
+|}
+
+
+__TOC__
+</noinclude>
+= March 8 =
+
+== hue and cry ==
+
+Hello I am trying to find the original text of the 1285 law introducing the principle of [[hue and cry]] and the principle that any village not cooperating would be considered liable. Can anyone help me? [[Special:Contributions/117.241.122.64|117.241.122.64]] ([[User talk:117.241.122.64|talk]]) 04:34, 8 March 2011 (UTC)
+ 
+:I found a transcription of the Old French text, and a translation into English, in "Select charters and other illustrations of English history" by [[William Stubbs]], [http://books.google.ca/books?id=qA4zAAAAMAAJ&pg=PA459&dq=%22statute+of+winchester%22&hl=en&ei=S911TfmdI8v0sgaRk9zxBA&sa=X&oi=book_result&ct=result&resnum=5&ved=0CD8Q6AEwBA#v=onepage&q=%22statute%20of%20winchester%22&f=false on Google Books]. It's from the Statute of Winchester in 1285, which is no longer in force, so it's not on the UK's [http://www.legislation.gov.uk legislation website], which is otherwise quite useful (the Statute of Westminster, also from 1285, is there, for example). [[User:Adam Bishop|Adam Bishop]] ([[User talk:Adam Bishop|talk]]) 07:46, 8 March 2011 (UTC)
+
+:A minor point, but I'm fairly sure [[Hue and cry]] was well established in England long before 1285: Edward's statute then may have been merely codifying, amending or confirming it. For example, It features prominently in the well-researched [[Crowner John Mysteries]] set almost a century earlier, written by ex-barrister and forensic pathologist [[Bernard Knight]] who is usually careful about the accuracy of such background details. Methinks the article needs research and expansion. [[Special:Contributions/87.81.230.195|87.81.230.195]] ([[User talk:87.81.230.195|talk]]) 17:22, 8 March 2011 (UTC)
+
+::Yeah, it's a much older concept than that. I guess it just wasn't called "hue and cry" in legislation before 1285. Also, yeah that article is kind of sucky...among its faults are the apparently randomly-placed etymologies. [[User:Adam Bishop|Adam Bishop]] ([[User talk:Adam Bishop|talk]]) 18:34, 8 March 2011 (UTC)
+
+:Interesting concepts in the original 13th century law are collective punishment (if a robber is not turned over to the sheriff, hes neighbors are fined), and the rule that every man has to be armed to catch robbers, with the cost of arms required depending on his wealth. [[User:Edison|Edison]] ([[User talk:Edison|talk]]) 22:54, 8 March 2011 (UTC)
+
+:Here's what my OED has to say on the term's legal definition.  Note that the cites start in 1292, not 1285.
+
+<blockquote>1.1 Law. Outcry calling for the pursuit of a felon, raised by the party aggrieved, by a constable, etc.
+
+* 1292 Year-bk. 20–21 Edw. I (Rolls) 339 Les presentors de la vyle de Hulle aveyt concele Hu e cry e sanck espandu.    
+* 1292 Britton i. vi. §4 Ou homme serra trové occys‥ne heu ne cri ne avera levé.    
+* 1502 Arnolde Chron. (1811) 90 Ony persone‥that wyll not helpe constable, sergeauntis and other officers‥when hue and crye is made.    
+* 1555 in Strype Eccl. Mem. (1721) III. xxvii. 213 For keeping the statutes of hue and cry.    
+* c 1575 Balfour's Practicks (1754) 512 The finder sall raise the hoy and cry.    
+* 1589 Pappe w. Hatchet (1844) 29 Martin, wee are now following after thee with hue and crie, and are hard at thy heeles.    
+* 1598 Sylvester Du Bartas ii. i. ii. Imposture 345 He flies, And still looks back for fear of Hu-on-cries.    
+* 1609 Skene tr. Sc. Acts Malc. II, c. 15 §1 [To be] followed, with huy and cry.    
+* 1668 Lond. Gaz. No. 324/3 That Huy and Cry be immediately raised and pursued with diligence.    
+* a 1680 Butler Rem. (1759) II. 454 He‥flies beyond Persuit of Huon-cries.    
+1782 Cowper Gilpin 236 Six gentlemen upon the road‥They raised the hue and cry:—‘Stop thief! stop thief!—a highwayman!’    
+* 1838 Dickens O. Twist x, But the old gentleman was not the only person who raised the hue-and-cry.</blockquote>
+:--[[User:TotoBaggins|Sean]] 14:18, 10 March 2011 (UTC)
+
+==Gazprom stocks on the rise, why?==
+Dear Wikipedians,
+The [http://www.londonstockexchange.com/exchange/prices-and-markets/stocks/summary/company-summary-chart.html?fourWayKey=US36829G1076USUSDIOBE| London Stock Exchange] hint that Gazprom is on the way up following a long lull. However, I have seen little in the news that augments my understanding of why this is happening. Can anyone shed some light? Is it the natural rebound after the 2008 collapse, with speculators picking up stocks in anticipation of Shtokman and other projects, or are there indications that the company is doing better? Apart from recent positive EU-Russia talks, I can not find news to support any rise for Gazprom. If anyone could lend me assistance, I would be extremely glad.
+
+Thank you in advance! [[Special:Contributions/129.241.72.39|129.241.72.39]] ([[User talk:129.241.72.39|talk]]) 10:18, 8 March 2011 (UTC)
+:&lt;wild speculation&gt; [[Gazprom]] is Russia's monopoly gas exporter. Europe imports a large portion of its natural gas from Gazprom. If the [[2010–2011 Middle East and North Africa protests|Middle-East unrest]] affects the Middle-East's ability to export oil and gas (Libya's gas fields are in its Eastern provinces those provinces are under the rebels control), then Europe will have to import more gas from Russia. This will increase the profits and [[dividends]] of Gazprom. The share price is rising on anticipation of the increased dividend.  &lt;/wild speculation&gt; [[User:Csmiller|CS Miller]] ([[User talk:Csmiller|talk]]) 11:04, 8 March 2011 (UTC)
+
+== regarding joining bjp and be a part of it. ==
+
+there is nothing wrong in joining and giving my advice to bjp, but i have one condition that i will work on my own openion and whatever i will do will be in the favour of the party.I am not asking any money , whatever little money i get will be sufficient for my family.   thanks, waiting for reply. - Dr sawan kumar gupta.  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/59.98.193.178|59.98.193.178]] ([[User talk:59.98.193.178|talk]]) 13:51, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:I'm sorry; what specifically is your question? [[User:Pais|Pais]] ([[User talk:Pais|talk]]) 14:07, 8 March 2011 (UTC)
+
+:Presumably about [[Bharatiya Janata Party]]... [[User:AnonMoos|AnonMoos]] ([[User talk:AnonMoos|talk]]) 14:39, 8 March 2011 (UTC)
+::Yeah, that much I grasped, but I still don't know what his question is. [[User:Pais|Pais]] ([[User talk:Pais|talk]]) 14:43, 8 March 2011 (UTC)
+
+:If you want to ask whether you'll be welcome to join the BJP under the conditions you set up, I doubt there's a representative here (and in any case this isn't the place for them to answer) so try contacting them via e-mail, phone or some other method. In particular, if you've already been asked to joing the BJP, it's quite doubtful the person who asked you will see your message here. I'm not sure I understand the money bit, AFAIK people aren't normally given money for joining a political party. I don't think even positions like party presidents are paid. MPs and their assistants would normally be paid, but not by or directly because of being part of a party. If you've been asked to provide professional advice you may be paid, but this would normally be for specific cases I think. There are some paid positions with specific responsibilities particularly during election campaigns but you'd want to check you've been offered one of these. [[User:Nil Einne|Nil Einne]] ([[User talk:Nil Einne|talk]]) 15:02, 8 March 2011 (UTC)
+::I suspect, based on your question, that you found one of our over 6 million articles and thought we were affiliated in some way with that subject. Please note that you are at [[Wikipedia:About|Wikipedia]], the free online encyclopedia that [[Wikipedia:Introduction|anyone can edit]], and this page is for asking questions related to using or contributing to Wikipedia itself. Thus, we have no special knowledge about the subject of your question. You can, however, search our vast catalogue of articles by typing a subject into the search field on the upper right side of your screen. If you cannot find what you are looking for, we have a [[Wikipedia:Reference desk|reference desk]], divided into various subject areas, where asking knowledge questions is welcome. Best of luck.{{z25}}<!-- Template:Astray --> --[[User:ColinFine|ColinFine]] ([[User talk:ColinFine|talk]]) 00:38, 9 March 2011 (UTC)
+:::Colin, this ''is'' the Reference Desk - this page is ''not'' "for asking questions related to using or contributing to Wikipedia itself". Over-hasty use of template. <small>Although actually I quite often forget which board I'm on too...</small> --[[User:Demiurge1000|Demiurge1000]] ([[User talk:Demiurge1000|talk]]) 04:58, 10 March 2011 (UTC)

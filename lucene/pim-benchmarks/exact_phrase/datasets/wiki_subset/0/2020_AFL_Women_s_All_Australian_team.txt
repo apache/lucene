@@ -1,0 +1,99 @@
+{{Use Australian English|date=April 2020}}
+{{Use dmy dates|date=April 2020}}
+{{Infobox award
+| name     = {{nowrap|&nbsp;&nbsp;&nbsp;2020 AFL Women's All-Australian team&nbsp;&nbsp;&nbsp;}}
+| sponsor  = [[Toyota Australia|Toyota]]
+| date     = 27 April 2020
+| country  = [[Australia]]
+| previous = [[2019 AFL Women's All-Australian team|2019]]
+| main     = [[AFL Women's All-Australian team]]
+| next     = [[2021 AFL Women's All-Australian team|2021]]
+}}
+
+The '''2020 [[AFL Women's All-Australian team]]''' represents the best-performed players of the [[2020 AFL Women's season]]. It was announced on 27 April 2020 as a complete [[women's Australian rules football]] team of 21 players. The team is honorary and does not play any games.
+
+==Selection panel==
+The selection panel for the 2020 AFL Women's All-Australian team consisted of chairwoman [[Nicole Livingstone]], [[Steve Hocking]], Josh Vanderloo, [[Kelli Underwood]], Sarah Black, [[Tim Harrington]], Shelley Ware and [[Sharelle McMahon]].<ref name="Squad">{{cite news|last=Black|first=Sarah|title=REVEALED: Magpies lead the way in All-Australian squad|url=https://womens.afl/news/50080/revealed-magpies-lead-the-way-in-all-australian-squad|work=womens.afl|date=3 April 2020|accessdate=3 April 2020}}</ref><ref name="Statement">{{cite news|title=AFLW statement: 2020 AFLW All-Australian Squad|url=https://womens.afl/news/50079/aflw-statement-2020-aflw-all-australian-squad|work=womens.afl|date=3 April 2020|accessdate=3 April 2020}}</ref>
+
+==Initial squad==
+The initial 40-woman All-Australian squad was announced on 3 April. {{AFLW Col}} had the most players selected in the initial squad with five, and every team had at least one representative. Eleven players from the [[2019 AFL Women's All-Australian team|2019 team]] were among those selected.<ref name="Squad"/><ref name="Statement"/><ref>{{cite news|last=Negrepontis|first=Nic|title=Official 2020 AFLW All-Australian squad revealed|url=https://www.sen.com.au/news/2020/04/03/official-2020-aflw-all-australian-squad-revealed/|work=[[1116 SEN|SEN]]|date=3 April 2020|accessdate=3 April 2020}}</ref>
+
+{| class="wikitable sortable"
+! Club
+! Total
+! class=unsortable | Player(s)
+|-
+| {{AFLW Ade}} || align=center | 3 || [[Sarah Allan (footballer)|Sarah Allan]], [[Anne Hatchard]], [[Ebony Marinoff]]
+|-
+| {{AFLW BL}} || align=center | 4 || [[Emily Bates]], [[Sophie Conway]], [[Kate Lutkins]], [[Jesse Wardlaw]]
+|-
+| {{AFLW Car}} || align=center | 4 || [[Georgia Gee]], [[Kerryn Harrington]], [[Tayla Harris]], [[Madison Prespakis]]
+|-
+| {{AFLW Col}} || align=center | 5 || [[Brittany Bonnici]], [[Brianna Davey]], [[Jaimee Lambert]], [[Sharni Layton]], [[Stacey Livingstone]]
+|-
+| {{AFLW Fre}} || align=center | 4 || [[Ebony Antonio]], [[Kiara Bowers]], [[Sabreena Duffy]], [[Gemma Houghton]]
+|-
+| {{AFLW Gee}} || align=center | 1 || [[Olivia Purcell]]
+|-
+| {{AFLW GC}} || align=center | 3 || [[Kalinda Howarth]], [[Jade Pregelj]], [[Jamie Stanton]]
+|-
+| {{AFLW GWS}} || align=center | 2 || [[Elle Bennetts]], [[Alyce Parker]]
+|-
+| {{AFLW Mel}} || align=center | 4 || [[Libby Birch]], [[Kate Hore]], [[Karen Paxman]], [[Daisy Pearce]]
+|-
+| {{AFLW NM}} || align=center | 4 || [[Jenna Bruton]], [[Jasmine Garner]], [[Emma Kearney (sportswoman)|Emma Kearney]], [[Ashleigh Riddell]]
+|-
+| {{AFLW Ric}} || align=center | 1 || [[Monique Conti]]
+|-
+| {{AFLW StK}} || align=center | 2 || [[Caitlin Greiser]], [[Georgia Patrikios]]
+|-
+| {{AFLW WC}} || align=center | 1 || [[Dana Hooker]]
+|-
+| {{AFLW WB}} || align=center | 2 || [[Ellie Blackburn]], [[Isabel Huntington]]
+|}
+
+==Final team==
+The final team was announced on 27 April. Finalists {{AFLW Car}}, {{AFL Mel}} and {{AFLW NM}} had the most selections with three, and every team except {{AFLW Ric}} and {{AFLW WC}} had at least one representative. Eleven players achieved selection for the first time, while eight players from the 2019 team were selected, two of whom – Melbourne vice-captain [[Karen Paxman]] and North Melbourne captain [[Emma Kearney (sportswoman)|Emma Kearney]] – achieved selection for the fourth consecutive year. Paxman was announced as the All-Australian captain and Kearney was announced as the vice-captain.<ref>{{cite news|last=McGowan|first=Marc|title=AFLW All-Australian team revealed, new wave dominates|url=https://womens.afl/news/50129/aflw-all-australian-team-revealed-new-wave-dominates|work=womens.afl|date=27 April 2020|accessdate=27 April 2020}}</ref><ref>{{cite news|title=Statement: 2020 Toyota AFL Women’s All-Australian Team announced|url=https://womens.afl/news/50134/statement-2020-toyota-afl-women-s-all-australian-team-announced|work=womens.afl|date=27 April 2020|accessdate=28 April 2020}}</ref><ref>{{cite news|last=Laughton|first=Max|title=AFLW All-Australian team for 2020 revealed: 12 clubs represented as two stars make history|url=https://www.foxsports.com.au/afl/womens-afl/aflw-allaustralian-team-for-2020-revealed-12-clubs-represented-as-two-stars-make-history/news-story/7548ceec1657bdbe8cb71abca5c58252|work=[[Fox Sports News (Australia)]]|date=27 April 2020|accessdate=28 April 2020}}</ref>
+
+{{Aussie rules team
+| title             = 2020 AFL Women's All-Australian team
+| backpocket1       = [[Sarah Allan (footballer)|Sarah Allan]] ({{AFLW Ade}})
+| fullback          = [[Kate Lutkins]] ({{AFLW BL}})
+| backpocket2       = &nbsp;
+| halfbackflank1    = [[Kerryn Harrington]] ({{AFLW Car}})
+| centrehalfback    = [[Libby Birch]] ({{AFLW Mel}})
+| halfbackflank2    = [[Isabel Huntington]] ({{AFLW WB}})
+| wing1             = [[Emma Kearney (sportswoman)|Emma Kearney]] ({{AFLW NM}}) (vice-captain)
+| centre            = [[Kiara Bowers]] ({{AFLW Fre}})
+| wing2             = [[Jaimee Lambert]] ({{AFLW Col}})
+| halfforwardflank1 = [[Olivia Purcell]] ({{AFLW Gee}})
+| centrehalfforward = [[Gemma Houghton]] ({{AFLW Fre}})
+| halfforwardflank2 = [[Jasmine Garner]] ({{AFLW NM}})
+| forwardpocket1    = [[Caitlin Greiser]] ({{AFLW StK}})
+| fullforward       = [[Kate Hore]] ({{AFLW Mel}})
+| forwardpocket2    = &nbsp;
+| ruck              = [[Sharni Layton]] ({{AFLW Col}})
+| ruckrover         = [[Karen Paxman]] ({{AFLW Mel}}) (captain)
+| rover             = [[Madison Prespakis]] ({{AFLW Car}})
+| interchange1      = [[Kalinda Howarth]] ({{AFLW GC}})
+| interchange2      = [[Alyce Parker]] ({{AFLW GWS}})
+| interchange3      = [[Tayla Harris]] ({{AFLW Car}})
+| interchange4      = [[Ashleigh Riddell]] ({{AFLW NM}})
+| interchange5      = [[Anne Hatchard]] ({{AFLW Ade}})
+| interchange6      = &nbsp;
+| coach             = &nbsp;
+}}
+
+Note: the position of coach in the AFL Women's All-Australian team is traditionally awarded to the coach of the premiership-winning team; as no premiership was awarded in 2020, the coach position was not awarded.
+
+==References==
+{{Reflist}}
+
+==External links==
+* [https://womens.afl/features/aflw-awards AFLW Awards]
+
+{{2020 AFL Women's All-Australian team}}
+{{AFL Women's All-Australian team}}
+{{2020 AFL Women's season}}
+
+[[Category:2020 AFL Women's season]]

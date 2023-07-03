@@ -1,0 +1,75 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Chrysomela
+| species = falsa
+| authority = Brown, 1956
+}}
+
+'''''Chrysomela falsa''''' is a species of [[leaf beetle]] in the family [[Chrysomelidae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Chrysomela falsa'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=720146
+| website=Integrated Taxonomic Information System
+| access-date=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Chrysomela falsa''
+| url=https://www.gbif.org/species/1048776
+| website=GBIF
+| access-date=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Chrysomela falsa'' species Information
+| url=https://bugguide.net/node/view/436298
+| website=BugGuide.net
+| access-date=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite journal
+| title = A Review of the North American Chrysomeline Leaf Beetles (Coleoptera: Chrysomelidae)
+| date = 1972
+| last1 = Wilcox | first1 = John A.
+| journal = New York Museum and Science Service Bulletin
+| url = http://www.nysm.nysed.gov/staff-publications/review-north-american-chrysomeline-leaf-beetles-coleopter
+}}
+* {{Cite journal
+| title = Chrysomelinae species (Coleoptera, Chrysomelidae) and new biological data from Rio de Janeiro, Brazil. In: Chaboo CS, Schmitt M (Eds) Research on Chrysomelidae 7
+| date = 2017
+| last1 = Flinte | first1 = V.
+| last2 = Abejanella | first2 = A.
+| last3 = Daccordi | first3 = M.
+| last4 = Monteiro | first4 = R. F.
+| last5 = Macedo | first5 = M. V.
+| display-authors = 4
+| journal = ZooKeys
+| issue = 720| pages = 5–22
+| doi = 10.3897/zookeys.720.13963
+| pmc=5784215
+| pmid=29391849
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 6: Chrysomeloidea
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-26091-7
+}}
+{{refend}}
+
+{{Taxonbar|from=Q14934514}}
+
+[[Category:Chrysomelinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1956]]
+
+
+{{Chrysomelinae-stub}}

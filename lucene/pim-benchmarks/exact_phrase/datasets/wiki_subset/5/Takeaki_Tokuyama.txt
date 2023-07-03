@@ -1,0 +1,43 @@
+{{short description|Japanese baseball player}}
+{{Orphan|date=July 2018}}
+
+{{Infobox NPB player
+|name=Takeaki Tokuyama
+|image=Tokuyama takeaki.jpg
+|image_size=250
+|caption=Tokuyama with the Tokyo Yakult Swallows
+|position=[[Pitcher]]
+|team=
+|number=
+|bats=Both
+|throws=Right
+|birth_date={{Birth date and age|1989|7|21}}
+|birth_place=Kobe, Hyōgo, Japan
+|debutdate=May 15
+|debutyear=2013
+|debutteam=[[Tokyo Yakult Swallows]]
+|statyear=
+|stat1label=
+|stat1value=
+|stat2label=
+|stat2value=
+|teams=
+* [[Tokyo Yakult Swallows]] ({{npby|2012}}–{{npby|2017}})
+}}
+
+{{nihongo|'''Takeaki Tokuyama'''|徳山 武陽|Tokuyama Takeaki|extra=born July 21, 1989 in [[Kobe]], [[Hyōgo Prefecture|Hyōgo]], [[Japan]]}} is a professional [[Japanese people|Japanese]] [[baseball]] player. He plays [[pitcher]] for the [[Tokyo Yakult Swallows]].
+
+==External links==
+{{Baseballstats|brm=tokuya000tak}}
+* [http://bis.npb.or.jp/eng/players/01205135.html NPB.com]
+
+{{DEFAULTSORT:Tokuyama, Takeaki}}
+[[Category:1989 births]]
+[[Category:Living people]]
+[[Category:Baseball people from Hyōgo Prefecture]]
+[[Category:Japanese baseball players]]
+[[Category:Nippon Professional Baseball pitchers]]
+[[Category:Tokyo Yakult Swallows players]]
+
+
+{{Japan-baseball-pitcher-stub}}

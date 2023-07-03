@@ -1,0 +1,140 @@
+{{Automatic taxobox
+| taxon = Elaphrothrips
+| authority = Buffa, 1909
+}}
+
+'''''Elaphrothrips''''' is a genus of tube-tailed thrips in the family [[Phlaeothripidae]]. There are at least 40 described species in ''Elaphrothrips''.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==Species==
+These 40 species belong to the genus ''Elaphrothrips'':
+{{Div col|colwidth=29em}}
+* ''[[Elaphrothrips acanthomerus]]'' <small>[[Joseph Douglas Hood|Hood]]</small>
+* ''[[Elaphrothrips achaetus]]'' <small>Bagnall</small>
+* ''[[Elaphrothrips armatus]]'' <small>(Hood, 1908)</small>
+* ''[[Elaphrothrips athletes]]'' <small>(Karny, 1923)</small>
+* ''[[Elaphrothrips aztecus]]'' <small>Hood</small>
+* ''[[Elaphrothrips bilineatus]]'' <small>Priesner, 1933</small>
+* ''[[Elaphrothrips blatchleyi]]'' <small>Hood, 1938</small>
+* ''[[Elaphrothrips borgmeieri]]'' <small>Hood</small>
+* ''[[Elaphrothrips capensis]]'' <small>Faure</small>
+* ''[[Elaphrothrips coniferarum]]'' <small>(Pergande, 1896)</small>
+* ''[[Elaphrothrips costalimai]]'' <small>Hood</small>
+* ''[[Elaphrothrips dampfi]]'' <small>Hood</small>
+* ''[[Elaphrothrips defectus]]'' <small>Hood</small>
+* ''[[Elaphrothrips edouardi]]'' <small>Jacot-Guillarmod</small>
+* ''[[Elaphrothrips falcatus]]'' <small>Karny, 1912</small>
+* ''[[Elaphrothrips faurei]]'' <small>Jacot-Guillarmod</small>
+* ''[[Elaphrothrips flavipes]]'' <small>(Hood, 1908)</small>
+* ''[[Elaphrothrips imitator]]'' <small>Priesner, 1935</small>
+* ''[[Elaphrothrips indagator]]'' <small>Hood</small>
+* ''[[Elaphrothrips jacotguillarmodi]]'' <small>Johansen, 1979</small>
+* ''[[Elaphrothrips macateei]]'' <small>Hood</small>
+* ''[[Elaphrothrips medius]]'' <small>Hartwig</small>
+* ''[[Elaphrothrips mucronatus]]'' <small>Priesner</small>
+* ''[[Elaphrothrips niger]]'' <small>Jacot-Guillarmod</small>
+* ''[[Elaphrothrips nigripes]]'' <small>Jacot-Guillarmod</small>
+* ''[[Elaphrothrips orangiae]]'' <small>Jacot-Guillarmod</small>
+* ''[[Elaphrothrips parallelus]]'' <small>Hood, 1924</small>
+* ''[[Elaphrothrips peruviensis]]'' <small>Hood</small>
+* ''[[Elaphrothrips powelli]]'' <small>Jacot-Guillarmod</small>
+* ''[[Elaphrothrips prospector]]'' <small>Hood</small>
+* ''[[Elaphrothrips schoutedeni]]'' <small>Priesner</small>
+* ''[[Elaphrothrips sensitivus]]''
+* ''[[Elaphrothrips snodgrassi]]'' <small>Hood</small>
+* ''[[Elaphrothrips spiniceps]]'' <small>Bagnall, 1932</small>
+* ''[[Elaphrothrips sumbanus]]'' <small>Priesner</small>
+* ''[[Elaphrothrips tener]]'' <small>Priesner, 1925</small>
+* ''[[Elaphrothrips tuberculatus]]'' <small>(Hood, 1908)</small>
+* ''[[Elaphrothrips valerioi]]'' <small>Retana & Soto, 2002</small>
+* ''[[Elaphrothrips vittipennis]]'' <small>Hood, 1940</small>
+* ''[[Elaphrothrips zetetis]]'' <small>Hood</small>
+{{Div col end}}
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Elaphrothrips'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=695064
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Elaphrothrips''
+| url=https://www.gbif.org/species/1420386
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Elaphrothrips'' genus Information
+| url=https://bugguide.net/node/view/1414068
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite web
+| accessdate = 2019-07-02
+| title = Thrips of California
+| date = 2012
+| last1 = Hoddle | first1 = M.S.
+| last2 = Mound | first2 = L.A.
+| last3 = Paris | first3 = D.L.
+| url = https://keys.lucidcentral.org/keys/v3/thrips_of_california/Thrips_of_California.html
+}}
+* {{Cite book
+| title = The Thrips of Central and South America: An Introduction
+| date = 1996
+| last1 = Mound | first1 = Laurence A.
+| last2 = Marullo | first2 = Rita
+| publisher = International Associated Publishers.
+| series = Memoirs on Entomology, International| volume = 6| pages = 1–487
+| isbn = 978-1-56665-061-8
+| issn = 1083-6284
+}}
+* {{Cite journal
+| title = Catalogue of the Thysanoptera of the world (Pt. 5)
+| date = 1978
+| last1 = Jacot-Guillarmod | first1 = C. F.
+| journal = Annals of the Cape Provincial Museums (Natural History)
+| volume = 7| pages = 1257–1556
+}}
+* {{Cite journal
+| title = Catalogue of the Thysanoptera of the world (Pt. 1)
+| date = 1970
+| last1 = Jacot-Guillarmod | first1 = C. F.
+| journal = Annals of the Cape Provincial Museums (Natural History)
+| volume = 7| pages = 1–8
+}}
+* {{Cite book
+| title = Thysanoptera: An Identification Guide
+| date = 1998
+| last1 = Mound | first1 = L. A.
+| last2 = Kibby | first2 = G.
+| publisher = CABI
+| isbn = 978-0851992112
+}}
+* {{Cite web
+| accessdate = 2019-07-02
+| title = ThripsWiki - providing information on the World's thrips
+| date = 2018
+| last1 = Cavalleri | first1 = Adriano
+| last2 = Masumoto | first2 = Masami
+| last3 = Minaei | first3 = Kambiz
+| last4 = Mound | first4 = Laurence
+| last5 = Ouvrard | first5 = David
+| display-authors = 4
+| url = https://thrips.info/wiki/
+}}
+{{refend}}
+
+{{Taxonbar|from=Q10480929}}
+
+[[Category:Phlaeothripidae]]
+[[Category:Articles created by Qbugbot]]
+
+
+{{thrips-stub}}

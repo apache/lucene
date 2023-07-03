@@ -1,0 +1,43 @@
+{{Other places3|Pamięcin (disambiguation){{!}}Pamięcin}}
+{{Infobox settlement
+| name = Pamięcin
+| settlement_type = Village
+| total_type = &nbsp;
+| image_skyline =
+| image_caption =
+| image_flag =
+| image_shield =
+| image_map =
+| subdivision_type = [[Countries of the world|Country]]
+| subdivision_name = {{flag icon|Poland}} [[Poland]]
+| subdivision_type1 = [[Voivodeships of Poland|Voivodeship]]
+| subdivision_name1 = [[Lubusz Voivodeship|Lubusz]]
+| subdivision_type2 = [[Powiat|County]]
+| subdivision_name2 = [[Słubice County|Słubice]]
+| subdivision_type3 = [[Gmina]]
+| subdivision_name3 = [[Gmina Górzyca|Górzyca]]
+| coordinates = {{coord|52|27|N|14|39|E|region:PL|display=inline}}
+| pushpin_map = Poland
+| pushpin_label_position = right
+| elevation_m =
+| population_total = 410
+| website = }}
+'''Pamięcin''' {{IPAc-pl|p|a|'|m|j|e|n|ć|i|n}} ({{lang-de|Frauendorf}}) is a [[village]] in the administrative district of [[Gmina Górzyca]], within [[Słubice County]], [[Lubusz Voivodeship]], in western Poland, close to the [[Germany|German]] border.<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) - TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref> 
+
+It lies approximately {{convert|5|km|mi|0}} south of [[Górzyca, Lubusz Voivodeship|Górzyca]], {{convert|13|km|mi|0|abbr=on}} north-east of [[Słubice]], {{convert|52|km|mi|0|abbr=on}} south-west of Gorzów Wielkopolski, and {{convert|82|km|mi|0|abbr=on}} north-west of Zielona Góra.
+
+The village has a population of 410.
+
+==References==
+{{reflist}}
+
+<br>
+{{Gmina Górzyca}}
+
+{{coord|52|27|N|14|39|E|region:PL_type:city|display=title}}
+
+{{DEFAULTSORT:Pamiecin, Lubusz Voivodeship}}
+[[Category:Villages in Słubice County]]
+
+
+{{Słubice-geo-stub}}

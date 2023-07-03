@@ -1,0 +1,11 @@
+==Summary==
+{{Information
+|Description = photo: Brian Whar
+|Source = {{own}}
+|Date = 2012-10-20
+|Author = [[User:Granadaland|Granadaland]]
+}}
+
+==Licensing==
+{{self|GFDL|cc-by-sa-3.0|migration=redundant}}
+{{Copy to Wikimedia Commons|bot=ContinuityBot}}

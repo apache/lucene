@@ -43,6 +43,7 @@ public class PimSystemManager2 implements PimSystemManager {
     private final BlockingQueue<QueryBuffer> queryQueue;
     private final QueryRunner queryRunner;
     private volatile boolean indexLoaded;
+    private PimIndexInfo pimIndexInfo;
 
     private PimSystemManager2() {
         if (USE_SOFTWARE_MODEL) {
@@ -56,6 +57,7 @@ public class PimSystemManager2 implements PimSystemManager {
         }
         queryQueue = new ArrayBlockingQueue<>(MAX_NUM_QUERIES);
         queryRunner = new QueryRunner();
+        pimIndexInfo = null;
         Thread t = new Thread(queryRunner, getClass().getSimpleName() + "-" + queryRunner.getClass().getSimpleName());
         t.setDaemon(true);
         t.start();
@@ -83,13 +85,23 @@ public class PimSystemManager2 implements PimSystemManager {
         if (!indexLoaded) {
             synchronized (this) {
                 if (!indexLoaded) {
-                    queriesExecutor.setPimIndex(readPimIndexInfo(pimDirectory));
+                    pimIndexInfo = readPimIndexInfo(pimDirectory);
+                    queriesExecutor.setPimIndex(pimIndexInfo);
                     indexLoaded = true;
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    public int getNbDpus() {
+        synchronized (PimSystemManager1.class) {
+            if(indexLoaded) {
+                return pimIndexInfo.getNumDpus();
+            }
+        }
+        return 0;
     }
 
     private static PimIndexInfo readPimIndexInfo(Directory pimDirectory) throws IOException {

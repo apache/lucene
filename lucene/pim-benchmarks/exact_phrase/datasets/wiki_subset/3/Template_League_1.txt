@@ -1,0 +1,86 @@
+{{Navbox
+|name = League 1
+|title = [[RFL League 1|{{color|white|League 1}}]]
+|listclass = hlist
+|basestyle = background:darkred; color:white;
+|state= {{{state|autocollapse}}}
+
+|group1=[[RFL League 1#Teams|{{color|white|Current teams}}]]
+|list1 =
+* {{leagueicon|Barrow|12}}&nbsp;[[Barrow Raiders]]
+* {{leagueicon|Coventry|12}}&nbsp;[[Coventry Bears]]
+* {{leagueicon|Doncaster|12}}&nbsp;[[Doncaster R.L.F.C.]]
+* {{leagueicon|hunslet|12}}&nbsp;[[Hunslet R.L.F.C.]]
+* {{leagueicon|Keighley|12}}&nbsp;[[Keighley Cougars]]
+* {{leagueicon|London Skolars|12}}&nbsp;[[London Skolars]]
+* {{leagueicon|Gateshead|12}}&nbsp;[[Newcastle Thunder]]
+* {{leagueicon|north wales crusaders|12}}&nbsp;[[North Wales Crusaders]]
+* {{leagueicon|Rochdale|12}}&nbsp;[[Rochdale Hornets]]
+* {{leagueicon|canberra|12}}&nbsp;[[West Wales Raiders]]
+* {{leagueicon|workington|12}}&nbsp;[[Workington Town]]
+
+|group2=Seasons
+|list2style = text-align:left;
+|list2=
+* [[2003 Rugby League National Leagues|2003]]
+* [[2004 Rugby League National Leagues|2004]]
+* [[2005 Rugby League National Leagues|2005]]
+* [[2006 Rugby League National Leagues |2006]]
+* [[2007 National League Two|2007]]
+* [[2008 National League Two|2008]]
+* [[2009 Championship 1|2009]] 
+* [[2010 Championship 1|2010]] 
+* [[2011 Championship 1|2011]] 
+* [[2012 Championship 1|2012]]
+* [[2013 Championship 1|2013]]
+* [[2014 Championship 1|2014]]
+* [[2015 Championship 1|2015]]
+* [[2016 League 1|2016]]
+* [[2017 League 1|2017]]
+* [[2018 RFL League 1|2018]]
+* [[2019 RFL League 1|2019]]
+* [[2020 RFL League 1|2020]]
+
+|group3=Results
+|list3style = text-align:left;
+|list3=
+* [[2003 Rugby League National Leagues|2003]]
+* [[2004 Rugby League National Leagues|2004]]
+* [[2005 Rugby League National Leagues|2005]]
+* [[2006 Rugby League National Leagues |2006]]
+* [[2007 National League Two|2007]]
+* [[2008 National League Two|2008]]
+* [[2009 Championship 1|2009]] 
+* [[2010 Championship 1|2010]] 
+* [[2011 Championship 1|2011]] 
+* [[2012 Championship 1 season results|2012]]
+* [[2013 Championship 1 season results|2013]]
+* [[2014 Championship 1 season results|2014]]
+* [[2015 Championship 1 season results|2015]]
+* [[2016 League 1 results|2016]]
+* [[2017 League 1 results|2017]]
+* [[2018 RFL League 1 results|2018]]
+* [[2019 RFL League 1 results|2019]]
+* [[2020 RFL League 1 results|2020]]
+
+|group4=Major events
+|list4=
+* [[Championship Cup]]
+* [[League 1 Cup]]
+* [[League 1 Promotion Final]]
+
+|group5=Awards
+|list5=
+* [[Fairplay Index]]
+
+|group6=Related
+|list6=
+* [[Rugby Football League Championship Third Division]]
+* [[RFL Championship|Championship]]
+}}<noinclude>
+{{collapsible option}}
+[[Category:British rugby league navigational boxes]]
+[[Category:Rugby league competition navigational boxes]]
+[[Category:Rugby league in England]]
+[[Category:RFL League 1]]
+</noinclude>

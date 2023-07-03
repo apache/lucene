@@ -1,0 +1,52 @@
+__NOTOC__
+{{For|Dean Martin's 1964 album featuring this song|The Door Is Still Open to My Heart (album)}}
+{{Infobox song
+| name       = The Door Is Still Open to My Heart
+| cover      =
+| alt        =
+| type       = single
+| artist     = [[Dean Martin]]
+| album      = [[The Door Is Still Open to My Heart (album)|The Door Is Still Open to My Heart]]
+| B-side     = Every Minute Every Hour
+| released   = {{Start date|1964}}
+| format     = Vinyl, 7", 45 RPM
+| recorded   =
+| studio     =
+| venue      =
+| genre      = [[Traditional pop music|Traditional pop]]
+| length     = {{Duration|m=2|s=40}}
+| label      = [[Reprise Records|Reprise]]
+| writer     = [[Chuck Willis]]
+| producer   = [[Jimmy Bowen]]
+| prev_title =
+| prev_year  =
+| next_title =
+| next_year  =
+}}
+
+"'''The Door Is Still Open to My Heart'''" is a 1955 song written by [[Chuck Willis]] and originally performed by the Baltimore-based R&B vocal group, [[The Cardinals]]. In the US, the original version peaked at number four on the R&B playlist and number ten in R&B sales charts.<ref>{{cite book |title= Top R&B/Hip-Hop Singles: 1942-2004|last=Whitburn |first=Joel |authorlink=Joel Whitburn |year=2004 |publisher=Record Research |page=102}}</ref> Later in 1955, [[Don Cornell]] recorded the song and released it as the B-side to his hit, "Most of All". [[The Hilltoppers (band)|The Hilltoppers]] had a moderate hit with this song the same year.
+
+==Dean Martin version==
+In 1964, [[Dean Martin]] recorded the most successful version of the song. Martin's version spent 11 weeks on the [[Billboard Hot 100|''Billboard'' Hot 100]] chart, peaking at No. 6,<ref>[http://www.billboard.com/artist/300598/dean-martin/chart?f=379 Dean Martin - Chart History - The Hot 100], ''Billboard.com''. Accessed September 18, 2016.</ref> while spending one week at No. 1 on ''[[Billboard (magazine)|Billboard]]''{{'}}s "[[Adult Contemporary (chart)|Middle-Road Singles]]" chart that November.<ref>[http://www.billboard.com/artist/300598/dean-martin/chart?f=341 Dean Martin - Chart History - Adult Contemporary], ''Billboard.com''. Accessed September 18, 2016.</ref><ref>"[http://www.americanradiohistory.com/Archive-Billboard/60s/1964/Billboard%201964-11-14.pdf Middle-Road Singles]", ''[[Billboard (magazine)|Billboard]]'', November 14, 1964. p. 18. Accessed September 18, 2016.</ref><ref>{{cite book |title= Top Adult Contemporary: 1961-2001|last=Whitburn |first=Joel |authorlink=Joel Whitburn |year=2002 |publisher=Record Research |page=158}}</ref> In Canada, the song reached No. 22 on ''[[RPM (magazine)|RPM]]''{{'}}s "Top 40 & 5" chart,<ref>"[http://www.bac-lac.gc.ca/eng/discover/films-videos-sound-recordings/rpm/Pages/item.aspx?IdNumber=7950& Top 40 & 5]", ''[[RPM (magazine)|RPM Weekly]]'', Volume 2, No. 12, November 16, 1964. Accessed September 18, 2016.</ref> and No. 15 on the [[CHUM Chart|CHUM Hit Parade]].<ref>{{cite web |url=http://www.1050chum.com/index_chumcharts.aspx?chart=399 |title=CHUM Charts – Chart No. 399, Monday, November 02, 1964|accessdate=2016-09-19 |url-status=bot: unknown |archiveurl=https://web.archive.org/web/20060718052230/http://www.1050chum.com:80/index_chumcharts.aspx?chart=399 |archivedate=July 18, 2006 |publisher=[[CHUM (AM)|CHUM]] }}</ref> In New Zealand, the song reached No. 6 on the "Lever Hit Parade".<ref>[http://www.flavourofnz.co.nz/index.php?qpageID=Lever%20hit%20parades&qyear=1965&qmonth=Jan&qweek=07-Jan-1965#n_view_location "Lever Hit Parade" 07-Jan-1965], Flavour of New Zealand. Accessed September 20, 2016.</ref>
+
+==See also==
+*[[List of number-one adult contemporary singles of 1964 (U.S.)]]
+
+==References==
+{{Reflist}}
+
+==External links==
+* {{MetroLyrics song|dean-martin|the-door-is-still-open-to-my-heart}}<!-- Licensed lyrics provider -->
+
+{{Dean Martin}}
+{{DEFAULTSORT:Door Is Still Open To My Heart}}
+[[Category:1955 songs]]
+[[Category:1964 singles]]
+[[Category:Dean Martin songs]]
+[[Category:Billboard Adult Contemporary number-one singles]]
+[[Category:Songs written by Chuck Willis]]
+[[Category:Song recordings produced by Jimmy Bowen]]
+[[Category:Reprise Records singles]]
+
+
+{{1950s-R&B-song-stub}}

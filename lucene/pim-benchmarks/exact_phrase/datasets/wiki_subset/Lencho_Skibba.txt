@@ -1,0 +1,55 @@
+{{short description|Ethiopian footballer}}
+{{BLP sources|date=December 2008}}
+{{Infobox football biography
+| name = Lencho Skibba
+| fullname =
+| image =
+| birth_date  = {{birth date and age|df=yes|1988|02|18}}
+| birth_place = [[Dire Dawa]], [[Ethiopia]]
+| height = {{height|m=1.69|precision=0}}
+| currentclub  = [[Minnesota Thunder]]
+| clubnumber = 19
+| position = [[Midfielder]]
+| youthyears1 = 2003–2007
+| youthclubs1 = [[Alemannia Aachen]]
+| years1 = 2007
+| years2 = 2007–2008
+| clubs1 = [[Minnesota Thunder]]
+| clubs2 = [[Kastoria F.C.]]
+| caps1 = 5
+| caps2 = 6
+| goals1 = 0
+| goals2 = 0
+| nationalyears1 = 2007
+| nationalteam1 = [[Ethiopia national football team|Ethiopia]]
+| nationalcaps1 =
+| nationalgoals1 =
+| pcupdate = {{date|2009-10-12}}
+| ntupdate =
+}}
+
+'''Lencho Skibba''' ({{lang-am|ለንችሆ ጽኪብባ}}, born 18 February 1988 in [[Dire Dawa]]) is an [[Ethiopia]]n [[association football|football]] midfielder.
+
+Skibba began his career with [[USL First Division]] side [[Minnesota Thunder]], and joined [[Kastoria F.C.]] in the Greek [[Beta Ethniki]] for the 2007–08 season.<ref>{{cite web|publisher=EPAE|script-title=el:ΠΑΝΣΕΡΡΑΙΚΟΣ ΜΓΣ ΠΑΕ - ΚΑΣΤΟΡΙΑ ΠΑΕ|url=http://www.epae.org/match.fds?categ=2&dior_code=94&cal_day=5&game=6&group=0&type=1&pagecode=01.02&langid=1|language=Greek|accessdate=2009-10-12}}</ref>
+
+Skibba played youth football in Ethiopia until he was adopted by [[Germany|Germa]]n parents in 2003. He played in the youth system for [[Alemannia Aachen]] until 2007, when he moved to the United States and joined the Minnesota Thunder.
+
+==References==
+{{Reflist}}
+
+{{Use dmy dates|date=June 2011}}
+
+{{DEFAULTSORT:Skibba, Lencho}}
+[[Category:1988 births]]
+[[Category:Living people]]
+[[Category:Ethiopian footballers]]
+[[Category:Ethiopia international footballers]]
+[[Category:Minnesota Thunder players]]
+[[Category:German people of Ethiopian descent]]
+[[Category:Expatriate soccer players in the United States]]
+[[Category:Kastoria F.C. players]]
+[[Category:Association football midfielders]]
+[[Category:Sportspeople from Dire Dawa]]
+
+
+{{Ethiopia-footy-bio-stub}}

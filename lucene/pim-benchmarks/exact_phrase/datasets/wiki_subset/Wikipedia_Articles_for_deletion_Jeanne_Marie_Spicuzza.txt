@@ -1,0 +1,4 @@
+{{noindex|visible=yes}}
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+===[[Jeanne Marie Spicuzza]]===
+''The result was '''delete'''. The actual discussion has been [[Wikipedia:Deletion policy#Courtesy blanking|hidden from view]] but can still be accessed by following the "history" link at the top of the page. Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  <span style="color:red">'''No further edits should be made to this page.'''</span>'' __NOINDEX__<!-- inserted using Template:afd-privacy --></div>

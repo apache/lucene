@@ -1,0 +1,43 @@
+{{about|the provincial electoral district|the federal electoral district|Dorchester (electoral district)|the pre-Confederation electoral district|Dorchester (Province of Canada electoral district)|other uses|Champlain (disambiguation){{!}}Champlain}}
+{{Infobox Canada electoral district
+| name                = Dorchester
+| province            = Quebec
+| image               = 
+| caption             = 
+| prov-status         = defunct
+| prov-created        = 1867
+| prov-abolished      = 1972
+| prov-election-first = 1867
+| prov-election-last  = 1970
+}}
+
+'''Dorchester''' was a provincial electoral district in the [[Chaudière-Appalaches]] region of the province of [[Quebec]], [[Canada]].
+
+It was created for the [[1867 Quebec general election|1867 election]] (and an electoral district of that name existed earlier in the [[Legislative Assembly of the Province of Canada]] and the [[Legislative Assembly of Lower Canada]]).  Its final election was in [[1970 Quebec general election|1970]].  It disappeared in the [[1973 Quebec general election|1973 election]] and its successor electoral districts were [[Bellechasse (provincial electoral district)|Bellechasse]], [[Beauce-Nord (provincial electoral district)|Beauce-Nord]], and [[Beauce-Sud]].
+
+==Members of the Legislative Assembly / National Assembly==
+
+* [[Hector-Louis Langevin]], [[Conservative Party of Quebec (historical)|Conservative Party]] (1867–1871)
+* [[Louis-Napoléon Larochelle]], Conservative Party (1871–1878)
+* [[Nicodème Audet]], Conservative Party (1878–1886)
+* Louis-Napoléon Larochelle, Conservative Party – Nationalist (1886–1888)
+* [[Louis-Philippe Pelletier]], Nationalist Conservative – Conservative Party (1888–1904)
+* [[Alfred Morisset]], [[Quebec Liberal Party|Liberal]] (1904–1913)
+* [[Lucien Cannon]], Liberal (1913–1917)
+* [[Joseph-Charles-Ernest Ouellet]], Liberal (1917–1935)
+* [[Joseph-Damase Bégin]], [[Action liberale nationale]] – [[Union Nationale (Quebec)|Union Nationale]] (1935–1962)
+* [[Joseph-Armand Nadeau]], Union Nationale (1962–1963)
+* [[Francis O'Farrell]], Liberal (1964–1966)
+* [[Paul-Henri Picard]], Union Nationale (1966–1970)
+* [[Florian Guay]], [[Ralliement créditiste du Québec]] (1970–1973)
+
+==References==
+* [http://www.assnat.qc.ca/fr/patrimoine/resultatselec/d.html#dorc Election results] (National Assembly)
+* [http://www.quebecpolitique.com/elections-et-referendums/circonscriptions/elections-dans-beauce-nord/ Election results] (QuebecPolitique.com)
+
+{{coord |46.75|N|70.66|W|display=title}}
+
+[[Category:Former Quebec provincial electoral districts|Dorchester]]
+
+
+{{Quebec-stub}}

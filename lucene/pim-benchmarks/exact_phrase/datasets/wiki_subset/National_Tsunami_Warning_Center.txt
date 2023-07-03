@@ -1,0 +1,83 @@
+{{short description|Detects and analyzes earthquakes worldwide, issuing warnings to local officials}}
+[[File:DART II System Diagram.jpg|thumb|A diagram of the DART II system]]
+The '''National Tsunami Warning Center''' ('''NTWC''') forms part of an international [[tsunami]] warning system (TWS). It serves as the operations center for all coastal regions of Canada and the United States, except Hawaii, the Caribbean, and the Gulf of Mexico. Headquartered in [[Palmer, Alaska]], it is operated by the [[National Oceanic and Atmospheric Administration|National Oceanic and Atmospheric Administration (NOAA)]].
+ 
+The NTWC detects and analyzes earthquakes worldwide, issuing warnings to local officials in the hazard zones about the advisability of evacuating low-lying coastal areas and moving ships to deep water.
+
+==History==
+Following the March 27, [[1964 Alaska earthquake]] and tsunami, the NTWC (formerly known as The Palmer Observatory) was established in 1967 in Palmer, Alaska, under the auspices of the [[U.S. National Geodetic Survey|Coast and Geodetic Survey]]. This earthquake alerted State and Federal officials that a facility was necessary to provide timely and effective tsunami warnings and [[earthquake]] information to the coastal areas of [[Alaska]]. Congress provided funds in 1965 to construct two new observatories and establish a tsunami warning system in Alaska. The first observatory constructed was at the U.S. Naval Station on [[Adak Island]] in the [[Andreanof Islands]] in the Central [[Aleutian Islands|Aleutians]]. The City of Palmer, in the [[Matanuska-Susitna Valley|Matanuska Valley]] 42 miles northeast of [[Anchorage, Alaska|Anchorage]], was selected as the site for the primary observatory due to its proximity to [[bedrock]] for instrumentation and to communications facilities. Construction of the observatory installations, the task of engineering and assembling the data systems, and the hookup of the extensive telecommunications and data telemetry network was completed in the summer of 1967. With the dedication of the Palmer Observatory on September 2, 1967, the Alaska Regional Tsunami Warning System (ARTWS) became operational.
+
+Originally, the tsunami warning responsibility for Alaska was shared by the three observatories located at Palmer, Adak and [[Sitka, Alaska|Sitka]]. Sitka, a seismological observatory since 1904, and [[Fairbanks, Alaska|Fairbanks]] were the only two [[Seismometer|seismic stations]] operating in Alaska in 1964. The responsibilities of Adak and Sitka were limited to issuing a tsunami warning for events occurring within 300 miles of their location. In later years, the responsibility to provide tsunami warning services for Alaska was transferred from the Adak and Sitka observatories to the Palmer Observatory. Sitka and Adak Observatories were eventually closed in the early 1990s, although the seismic instrumentation is still maintained.
+
+In 1973, the Palmer Observatory was transferred to the [[National Weather Service]]'s Alaska Region and changed its name to Alaska Tsunami Warning Center (ATWC). In 1982, its area of responsibility (AOR) was enlarged to include the issuing of tsunami warnings to [[California]], [[Oregon]], [[Washington (state)|Washington]], and [[British Columbia]] for potential tsunamigenic earthquakes occurring in their coastal areas. In 1996, the responsibility was again expanded to include all Pacific-wide tsunamigenic sources that could affect the California, Oregon, Washington, British Columbia and Alaska coasts, and the name was changed to the West Coast/Alaska Tsunami Warning Center (WC/ATWC) to reflect those new responsibilities.  
+
+In 2003, a new Tsunami Warning Center building was constructed in the yard of the original building.  This new facility was the first LEED certified building in the state of Alaska, and within the [[United States Department of Commerce|U.S. Department of Commerce]].  LEED ([[Leadership in Energy and Environmental Design]]) certification is granted by the [[U.S. Green Building Council]], and awards environmentally sensitive construction practices.  This new facility provides upgraded power and communications capability, as well as office space for the expanded staff, assuring that the center will continue to provide quality products to the public well into the future.
+
+Following the devastating [[2004 Indian Ocean earthquake and tsunami|Indian Ocean tsunami in late 2004]], the WC/ATWC expanded its scope to the [[East Coast of the United States|U.S. Atlantic coast]], and the [[Atlantic Canada|Atlantic coast of Canada]]. On 1 October 2013, the name was changed to the National Tsunami Warning Center (NTWC) to reflect this expanded geographical zone of responsibility.
+
+==Overview of operations==
+To accomplish its mission of providing accurate and timely tsunami bulletins to its area-of-responsibility (AOR) – which includes Canadian coastal regions, [[Puerto Rico]] and the [[Virgin Islands]], and the ocean coasts of all U.S. States except Hawaii – the NTWC detects, locates, sizes, and analyzes earthquakes worldwide.  Earthquakes that activate the Center's alarm system initiate an earthquake and tsunami investigation which includes the following four basic steps: automatic locating and sizing the earthquake; earthquake analysis and review; sea level data analysis to verify the existence of a tsunami and to calibrate models; and disseminating information to the appropriate [[emergency management]] officials.
+
+Tsunami bulletins are issued to state/province departments of emergency services; federal disaster preparedness agencies; National Weather Service offices; Canada's Atlantic Storm Prediction Center; [[Federal Aviation Administration]] offices; the [[United States Coast Guard|U.S. Coast Guard]]; military bases; local emergency managers; [[United States Geological Survey]] offices; and many other recipients located in the U.S. and Canada. Earthquakes large enough to be felt near the coast, but below the tsunami warning/watch/advisory threshold size, prompt informational statements to the same recipients as warnings to help prevent needless [[Emergency evacuation|evacuations]].
+
+In addition to its basic functions, the Center conducts a community preparedness program intended to increase public awareness of the tsunami hazard and improve tsunami planning at the community level.  The Center also actively pursues developmental projects which enhance tsunami warning operations.
+
+The Center operates 24 hours every day with two [[Watchstanding|watchstanders]] on duty.  Center personnel are notified of activity by an [[Alarm device|alarm system]] which is activated by several methods:
+ 
+* Sustained, strong [[Oscillation|oscillatory motion]] at individual seismometers.  
+* Activation by multiple earthquake arrivals observed in sectors of the globe within a specified time interval. 
+* Activation by a real-time seismic processing system when an earthquake exceeds a predetermined magnitude threshold for various regions throughout the world. 
+* [[Deep sea|Deep ocean]] tsunami sensor detection of an event.
+
+==Bulletins==
+Depending on the seismic data [http://wcatwc.arh.noaa.gov/?page=message_definitions (Message Definitions)], NTWC will issue the following types of bulletins:
+
+===Warning===
+A tsunami warning is issued when a tsunami with the potential to generate widespread inundation is imminent, expected, or occurring. Warnings alert the public that dangerous [[coastal flooding]] accompanied by powerful [[Ocean current|currents]] is possible and may continue for several hours after initial arrival.  Warnings alert emergency management officials to take action for the entire tsunami hazard zone.  Appropriate actions to be taken by local officials may include evacuating low-lying coastal areas, and moving ships to deep water when there is time to safely do so.  Warnings may be updated, adjusted geographically, downgraded, or canceled. To provide the earliest possible alert, initial warnings are normally based only on seismic information.
+
+===Advisory===
+A tsunami advisory is issued when a tsunami with the potential to generate strong currents or [[Wind wave|waves]] dangerous to those in or very near the water is imminent, expected, or occurring.  The threat may continue for several hours after initial arrival, but significant inundation is not expected for areas under an advisory.  Appropriate actions to be taken by local officials may include closing [[Beach|beaches]], evacuating [[Harbor|harbors]] and [[Marina|marinas]], and moving ships to deep water when there is time to safely do so. Advisories are normally updated to continue the advisory, expand/contract affected areas, upgrade to a warning, or cancel the advisory.
+
+===Watch===
+A tsunami watch is issued to alert emergency management officials and the public of an event which may later impact the watch area.  The watch may be upgraded to a warning or advisory – or canceled – based on updated information and analysis. Therefore, emergency management officials and the public should prepare to take action.  Watches are normally issued based on seismic information without confirmation that a destructive tsunami is underway.
+
+===Information statement===
+A tsunami information statement is issued to inform emergency management officials and the public that an earthquake has occurred, or that a tsunami warning, watch or advisory has been issued for another section of the ocean.  In most cases, information statements are issued to indicate there is no threat of a destructive tsunami and to prevent unnecessary evacuations as the earthquake may have been felt in coastal areas. An information statement may, in appropriate situations, caution about the possibility of destructive local tsunamis.  Information statements may be re-issued with additional information, though normally these messages are not updated.  However, a watch, advisory or warning may be issued for the area, if necessary, after analysis and/or updated information becomes available.
+
+This definition applies to Mass News Dissemination Product Types, Tsunami Information Statements, and Tsunami Seismic Information Statements.
+
+===Cancellation===
+A final product indicating the end of the damaging tsunami threat.  A cancellation is usually issued after an evaluation of [[sea level]] data confirms that a destructive tsunami will not impact the warning, advisory, or watch area.
+
+==Deep-ocean tsunami detection==
+{{further|Deep-ocean Assessment and Reporting of Tsunamis}}
+
+In 1995, [[NOAA]] began developing the [[Deep-ocean Assessment and Reporting of Tsunamis]] (DART) system. By 2001, an array of six stations had been deployed in the [[Pacific Ocean]].<ref>[http://www.pmel.noaa.gov/tsunami/Dart/dart_pb1.html Historical DART Background Information]</ref>
+
+Beginning in 2005, as a result of the tsunami caused by the [[2004 Indian Ocean earthquake and tsunami|2004 Indian Ocean earthquake]], plans were announced to add 32 more DART buoys to be operational by mid-2007.<ref>[http://www.noaanews.noaa.gov/stories2005/s2369.htm U.S. ANNOUNCES PLAN FOR AN IMPROVED TSUNAMI DETECTION AND WARNING SYSTEM]</ref>
+
+These stations give detailed information about tsunamis while they are still far off shore. Each station consists of a [[Seabed|sea-bed]] bottom pressure recorder (at a depth of 1000–6000 m) which detects the passage of a tsunami and transmits the data to a surface [[buoy]] via acoustic modem. The surface buoy then radios the information to the NTWC via the [[GOES]] [[satellite]] system. The bottom pressure recorder lasts for two years while the surface buoy is replaced every year. The system has considerably improved the forecasting and warning of tsunamis in the Pacific Ocean.
+
+==References==
+{{Reflist}}
+
+==External links==
+* {{Official website|http://ntwc.arh.noaa.gov}}
+** [http://ntwc.arh.noaa.gov/ops/opsmanual.pdf Operation manual]
+* [http://www.prh.noaa.gov/pr/ptwc/ Pacific Tsunami Warning Center]
+** [https://web.archive.org/web/20120319001959/http://www.tsunami.noaa.gov/warning_system_works.html Pacific Tsunami Warning System webpage]
+* [https://web.archive.org/web/20100306010241/http://www.ndbc.noaa.gov/dart/dart.shtml DART system homepage]
+
+[[Category:1967 establishments in Alaska]]
+[[Category:Buildings and structures completed in 1967]]
+[[Category:Buildings and structures completed in 2003]]
+[[Category:Buildings and structures in Matanuska-Susitna Borough, Alaska]]
+[[Category:Disaster preparedness in the United States]]
+[[Category:Earthquakes in Alaska|*]]
+[[Category:Government agencies established in 1967]]
+[[Category:Science and technology in Alaska]]
+[[Category:Scientific organizations established in 1967]]
+[[Category:Seismological observatories, organisations and projects]]
+[[Category:Tsunami]]
+[[Category:Warning systems]]
+[[Category:Water in Alaska]]

@@ -1,0 +1,52 @@
+{{Speciesbox
+| genus = Halictus
+| species = parallelus
+| authority = [[Thomas Say|Say]], 1837
+}}
+
+'''''Halictus parallelus''''' is a species of sweat bee in the family [[Halictidae]].<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Halictus parallelus'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=757805
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Halictus parallelus''
+| url=https://www.gbif.org/species/1353240
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Halictus parallelus'' species Information
+| url=https://bugguide.net/node/view/79834
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite web
+| accessdate = 2019-07-02
+| title = Discover Life bee species guide and world checklist (Hymenoptera: Apoidea: Anthophila)
+| date = 2019
+| last1 = Ascher | first1 = J.S.
+| last2 = Pickering | first2 = J.
+| url = https://www.discoverlife.org/mp/20q?search=Halictidae
+}}
+{{refend}}
+
+{{Taxonbar|from=Q2547370}}
+
+[[Category:Halictus|parallelus]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Insects described in 1837]]
+
+
+{{sweat-bee-stub}}

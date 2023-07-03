@@ -1,0 +1,6 @@
+{{template category|type=navbox}}
+
+[[Category:United Kingdom football templates| ]]
+[[Category:Association football navigational boxes by country]]
+[[Category:United Kingdom sports navigational boxes|Football]]
+{{CatAutoTOC}}

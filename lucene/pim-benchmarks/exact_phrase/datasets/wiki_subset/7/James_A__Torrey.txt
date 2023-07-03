@@ -1,0 +1,55 @@
+{{Infobox Politician (general)
+|image = 
+|imagesize = 
+| name = James A. Torrey
+| birth_date = {{birth date|1868|09|27}}
+| birth_place = [[Nova Scotia]]
+| death_date = {{death date and age|1954|08|14|1868|09|27}}
+| death_place = Beverly, Massachusetts
+|restingplace = 
+| nationality         = 
+| website = 
+| occupation =
+| residence = 
+| party               = [[Republican Party (United States)|Republican]]
+| spouse              = 
+| alma_mater =
+| title = [[List of Mayors of Beverly, Massachusetts|Mayor of]] [[Beverly, Massachusetts]] 
+| term_start = 1935
+| term_end = 1936
+| predecessor = [[Paul S. Eaton]]
+| successor =  [[Daniel E. McLean]]
+| term_start2 = 1931
+| term_end2 = 1932
+| predecessor2 = [[Roy Patch]]
+| successor2 =  [[Paul S. Eaton]]
+| title3 = Member of the [[Massachusetts Senate]] from the 2nd Essex district
+| term_start3 = 1929
+| term_end3 = 1930
+| predecessor3 = [[George B. Farrington]]
+| successor3 =  [[Malcolm L. Bell]]
+}}
+
+'''James A. Torrey''' (September 27, 1868–August 14, 1954) was a Canadian-born American politician who served as [[List of mayors of Beverly, Massachusetts|Mayor of]] [[Beverly, Massachusetts]] and as a member of the [[Massachusetts General Court]].
+
+==Early life==
+Torrey was born on September 27, 1868 in [[Nova Scotia]].<ref name="Public Officials">{{cite book|title=Public Officials of Massachusetts 1929-30}}</ref> He moved to the United States as a young man and settled in [[Beverly, Massachusetts]] around 1891.<ref name="Obituary">{{cite news|title=James A. Torrey Twice Beverly Mayor, Legislator; Dies at 85|work=The Boston Daily Globe|date=August 15, 1954}}</ref>
+
+==Political career==
+Torrey was a member of the Beverly City Council for seven years and the Board of Alderman for three. From 1919 to 1928 he was a member of the [[Massachusetts House of Representatives]]. From 1929 to 1930 he represented the 2nd Essex District in the [[Massachusetts Senate]].<ref name="Public Officials" />
+
+In 1930, Torrey was elected Mayor of Beverly. He defeated Matthew S. Heaphy with a plurality of 261 votes in one of the closest elections in the city's history.<ref>{{cite news|title=Torrey Elected Mayor of Beverly Over Heaphy|work=The Boston Daily Globe|date=December 10, 1930}}</ref> In 1932, Torrey was defeated in his reelection bid by former Alderman Paul S. Eaton by 649 votes.<ref>{{cite news|title=Paul F. Eaton (sic) Elected Mayor of Beverly|work=The Boston Daily Globe|date=December 14, 1932}}</ref> Two years later, Torrey won a three-way race for mayor, defeating Eaton and [[Daniel E. McLean]] with 4185 votes to McLane's 2863 and Eaton's 2419.<ref>{{cite news|title=Torrey, Elected Mayor, Wins Easily in Beverly|work=The Boston Daily Globe|date=December 12, 1934}}</ref> McLane defeated Torrey in the next election 5493 votes to 4493.<ref>{{cite news|title=McLean Beats Mayor Torrey|work=The Boston Daily Globe|date=December 16, 1936}}</ref>
+
+==Later life and death==
+A blacksmith by trade, Torrey also worked in auto repair, was treasurer of Cabot Welding Co. and the Lite-Rite Manufacturing Co., and a vice president and trustee of the Beverly Savings Bank.<ref name="Public Officials" /><ref name="Obituary" /><ref>{{cite book|title=Public Officials of Massachusetts 1927-28}}</ref> After leaving politics, Torrey continued to operate blacksmith a shop until his death on August 14, 1954 at the age of 85.<ref name="Obituary" />
+
+==References==
+{{reflist}}
+
+{{DEFAULTSORT:Torrey, James A}}
+[[Category:1868 births]]
+[[Category:1954 deaths]]
+[[Category:Canadian emigrants to the United States]]
+[[Category:Massachusetts Republicans]]
+[[Category:Mayors of Beverly, Massachusetts]]
+[[Category:Members of the Massachusetts House of Representatives]]

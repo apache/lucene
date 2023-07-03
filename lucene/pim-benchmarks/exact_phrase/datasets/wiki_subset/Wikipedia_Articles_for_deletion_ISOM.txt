@@ -1,0 +1,19 @@
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was    '''delete'''. -- '''[[User:Cirt|Cirt]]''' ([[User talk:Cirt|talk]]) 11:35, 12 July 2010 (UTC)
+===[[ISOM]]===
+
+:{{la|ISOM}} – (<includeonly>[[Wikipedia:Articles for deletion/ISOM|View AfD]]</includeonly><noinclude>[[Wikipedia:Articles for deletion/Log/2010 July 10#{{anchorencode:ISOM}}|View log]]</noinclude>{{•}} {{plainlink|1=http://toolserver.org/~betacommand/cgi-bin/afdparser?afd={{urlencode:Wikipedia:Articles for deletion/ISOM}}|2=AfD statistics}})
+:({{Find sources|ISOM}})
+Absolutely non-notable, thus unable to be referenced. '''[[User:Propeng|<span style="color: white; background: #55CC44;">&nbsp;Propeng&nbsp;</span>]] [[User talk:Propeng|<span style="color: white; background: #CC7766;">&nbsp;Talk&nbsp;</span>]]''' 20:26, 3 July 2010 (UTC)
+*<small class="delsort-notice">'''Note''':  This debate has been included in the [[Wikipedia:WikiProject Deletion sorting/Software|list of Software-related deletion discussions]]. <!--Template:Deletion sorting--></small> <small>-- [[User:Gene93k|• Gene93k]] ([[User talk:Gene93k|talk]]) 19:36, 4 July 2010 (UTC)</small>
+
+*'''Delete'''. Nothing available. [[User:Christopher Connor|Christopher Connor]] ([[User talk:Christopher Connor|talk]]) 19:40, 9 July 2010 (UTC)
+<hr style="width:50%;" />
+:<span style="color:#FF4F00;">'''[[WP:RELIST|Relisted]] to generate a more thorough discussion so consensus may be reached.'''</span><br /><small>Please add new comments below this notice. Thanks, [[User:JForget|<font color = "orange">'''JForget''' </font>]] 01:09, 10 July 2010 (UTC)</small><!-- from Template:Relist -->
+*'''Delete''' - I can not find any sources other than Wikipedia articles and mirrors.  There is nothing to establish notability.  Also not a deletion arguement but the original author appears to be the main developer, same name.  '''[[User:GB fan|<span style='color: #ffac2c;background-color: #00422f;'>~~&nbsp;GB&nbsp;fan&nbsp;~~</span>]]''' <sup>[[User talk:GB fan|<span style='color: #FFA500;'>talk</span>]]</sup> 06:07, 10 July 2010 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

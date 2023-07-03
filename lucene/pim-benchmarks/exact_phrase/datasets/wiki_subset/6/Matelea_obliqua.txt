@@ -1,0 +1,21 @@
+{{Use dmy dates|date=June 2016}}
+{{Speciesbox
+| image = Matelea obliqua.jpg
+| genus = Matelea
+| species = obliqua
+| authority = ([[Jacq.]]) [[Robert Everard Woodson|Woodson]]
+}}
+
+'''''Matelea obliqua''''', commonly known as '''climbing milkvine''',<ref>{{PLANTS|id=MAOB2|taxon=Matelea obliqua|accessdate=19 June 2016}}</ref> '''limerock milkvine''' or '''northern spinypod''', is a species of flowering plant in the [[Apocynaceae|dogbane family]]. It a twining herbaceous vine that produces maroon flowers in summer.
+
+It is native to the eastern United States,<ref>{{BONAP|ref|genus=Matelea|species=obliqua|accessdate=19 June 2016}}</ref> where it is found in areas of [[calcareous]] rocky woodland.<ref>{{cite web |url=http://www.herbarium.unc.edu/flora.htm |title= Flora of the Southern and Mid-Atlantic States}}</ref> It is generally uncommon throughout its range, and is found in low densities.
+
+==References==
+{{Reflist}}
+
+{{Taxonbar|from=Q15365526}}
+
+[[Category:Matelea|obliqua]]
+[[Category:Flora of the North-Central United States]]
+[[Category:Flora of the Northeastern United States]]
+[[Category:Flora of the Southeastern United States]]

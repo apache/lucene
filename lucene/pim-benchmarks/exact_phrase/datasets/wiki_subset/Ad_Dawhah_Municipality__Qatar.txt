@@ -1,0 +1,1 @@
+#redirect [[Doha]] {{R from title without diacritics}}

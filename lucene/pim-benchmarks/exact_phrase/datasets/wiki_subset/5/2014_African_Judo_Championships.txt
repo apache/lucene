@@ -1,0 +1,126 @@
+{{short description|Judo competition}}
+The '''2014 [[African Judo Championships]]''' were the 35th edition of the [[African Judo Championships]], and were held in [[Port-Louis]], [[Mauritius]] from 26 to 29 June 2014.
+
+==Medal overview==
+
+===Men===
+{| {{MedalistTable|type=Event}}
+|-
+|60&nbsp;kg
+|{{flagicon|TUN}} [[Fraj Dhouibi]]
+|{{flagicon|MAR}} [[Ayoub Idrissi]]
+|{{flagicon|MAR}} [[Yassine Moudatir]] <br> {{flagicon|ALG}} [[Mohamed Rebahi]]
+|-
+|66&nbsp;kg
+|{{flagicon|EGY}} [[Mohamed Abdelmawgoud]]
+|{{flagicon|TUN}} [[Houcem Khalfaoui]]
+|{{flagicon|ALG}} [[Fethi Nourine]] <br> {{flagicon|ALG}} [[Houd Zourdani]]
+|-
+|73&nbsp;kg
+|{{flagicon|RSA}} [[Gideon van Zyl]]
+|{{flagicon|ALG}} [[Oussama Djeddi]]
+|{{flagicon|EGY}} [[Mohamed Monhyeldin]] <br> {{flagicon|MAR}} [[Hatim Tagrourti]]
+|-
+|81&nbsp;kg
+|{{flagicon|MAR}} [[Safouane Attaf]]
+|{{flagicon|EGY}} [[Ali Hazem]]
+|{{flagicon|TUN}} [[Abdelaziz Ben Ammar]] <br> {{flagicon|ALG}} [[Yacine Ladour]]
+|-
+|90&nbsp;kg
+|{{flagicon|EGY}} [[Hatem Abd el Akher]]
+|{{flagicon|ALG}} [[Abderrahmane Benamadi]]
+|{{flagicon|TUN}} [[Ahmed Lahmadi]] <br> {{flagicon|MAR}} [[Imad Abdellaoui]]
+|-
+|100&nbsp;kg
+|{{flagicon|ALG}} [[Lyes Bouyacoub]]
+|{{flagicon|EGY}} [[Ramadan Darwish]]
+|{{flagicon|CMR}} [[Stéphane Ombiongno]] <br> {{flagicon|SEN}} [[Mbagnick Ndiaye]]
+|-
+| +100&nbsp;kg
+|{{flagicon|TUN}} [[Faicel Jaballah]]
+|{{flagicon|EGY}} [[Islam El Shehaby]]
+|{{flagicon|ALG}} [[Bilal Zouani]] <br> {{flagicon|MAR}} [[Mehdi El Malki]]
+|-
+|Open class
+|{{flagicon|TUN}} [[Faicel Jaballah]]
+|{{flagicon|ALG}} [[Mohammed Tayeb]]
+|{{flagicon|CMR}} [[Dieudonné Dolassem]] <br> {{flagicon|MAR}} [[Mehdi El Malki]]
+|}
+
+===Women===
+{| {{MedalistTable|type=Event}}
+|-
+|48&nbsp;kg
+|{{flagicon|GBS}} [[Taciana Lima]]
+|{{flagicon|ALG}} [[Sabrina Saidi]]
+|{{flagicon|MRI}} [[Priscilla Morand]] <br> {{flagicon|MAD}} [[Asaramanitra Ratiarison]]
+|-
+|52&nbsp;kg
+|{{flagicon|TUN}} [[Hela Ayari]]
+|{{flagicon|MRI}} [[Christianne Legentil]]
+|{{flagicon|EGY}} [[Aya Khaled]] <br> {{flagicon|ALG}} [[Meriem Moussa]]
+|-
+|57&nbsp;kg
+|{{flagicon|ALG}} [[Ratiba Tariket]]
+|{{flagicon|TUN}} [[Nesria Jlassi]]
+|{{flagicon|CMR}} [[Paule Sitcheping]] <br> {{flagicon|MAR}} [[Fatima Chakir]]
+|-
+|63&nbsp;kg
+|{{flagicon|ALG}} [[Imene Agouar]]
+|{{flagicon|ALG}} [[Souad Belakhal]]
+|{{flagicon|MAR}} [[Rizlen Zouak]] <br> {{flagicon|GHA}} [[Szandra Szogedi]]
+|-
+|70&nbsp;kg
+|{{flagicon|ANG}} [[Antónia Moreira]]
+|{{flagicon|CMR}} [[Fabiola Ndanga Nana]]
+|{{flagicon|MAR}} [[Assmaa Niang]] <br> {{flagicon|EGY}} [[Nada Ibrahim]]
+|-
+|78&nbsp;kg
+|{{flagicon|ALG}} [[Kaouther Ouallal]]
+|{{flagicon|GAB}} [[Sarah Mazouz]]
+|{{flagicon|CMR}} [[Vanessa Mballa Atangana]] <br> {{flagicon|TUN}} [[Sarra Mzougui]]
+|-
+| +78&nbsp;kg
+|{{flagicon|TUN}} [[Nihel Cheikh Rouhou]]
+|{{flagicon|ALG}} [[Sonia Asselah]]
+|{{flagicon|TUN}} [[Sahar Trabelsi]] <br> {{flagicon|CMR}} [[Christelle Okodombe]]
+|-
+|Open class
+|{{flagicon|ALG}} [[Sonia Asselah]]
+|{{flagicon|TUN}} [[Nihel Cheikh Rouhou]]
+|{{flagicon|SEN}} [[Monica Sagna]] <br> {{flagicon|CMR}} [[Nadine Wetie Diodjo]]
+|}
+
+=== Medals table ===
+{{Medals table
+ | caption        = 
+ | host           = 
+ | flag_template  = flagcountry
+ | event          = 
+ | team           = 
+ | gold_ALG = 5 | silver_ALG = 6 | bronze_ALG = 6
+ | gold_TUN = 5 | silver_TUN = 3 | bronze_TUN = 4
+ | gold_EGY = 2 | silver_EGY = 3 | bronze_EGY = 3
+ | gold_MAR = 1 | silver_MAR = 1 | bronze_MAR = 8
+ | gold_RSA = 1 | silver_RSA = 0 | bronze_RSA = 0
+ | gold_ANG = 1 | silver_ANG = 0 | bronze_ANG = 0
+ | gold_GBS = 1 | silver_GBS = 0 | bronze_GBS = 0
+ | gold_CMR = 0 | silver_CMR = 1 | bronze_CMR = 6
+ | gold_MRI = 0 | silver_MRI = 1 | bronze_MRI = 1
+ | gold_GAB = 0 | silver_GAB = 1 | bronze_GAB = 0
+ | gold_SEN = 0 | silver_SEN = 0 | bronze_SEN = 2
+ | gold_MAD = 0 | silver_MAD = 0 | bronze_MAD = 1
+ | gold_GHA = 0 | silver_GHA = 0 | bronze_GHA = 1
+}}
+
+==References==
+*[http://www.ippon.org/aju_sen2014.php Results]
+*[http://www.judoinside.com/event/9349 JudoInside.com]
+<br>
+{{AfC Judo}}
+
+[[Category:2014 in judo|A]]
+[[Category:African Judo Championships]]
+[[Category:International sports competitions hosted by Mauritius]]
+[[Category:2014 in African sport|African Judo Championships, 2014]]
+[[Category:June 2014 sports events in Africa|African Judo Championships]]

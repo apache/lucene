@@ -1,0 +1,21 @@
+The '''fuel factor''', f<sub>o</sub>, is the ratio of created CO<sub>2</sub> to depleted oxygen in a [[combustion|combustion reaction]], used to check the accuracy of an [[emission measurement system]].<ref>http://www.deq.state.or.us/aq/forms/sourcetest/appendix_a1.pdf</ref>  It can be calculated using the equation 
+
+::f<sub>o</sub> = (20.9 - %O<sub>2</sub>)/%CO<sub>2</sub>,
+
+Where %O<sub>2</sub> is the percent O<sub>2</sub> by volume, [[dry basis]], %CO<sub>2</sub> is the percent CO<sub>2</sub> by volume, dry basis, and 20.9 is the percent O<sub>2</sub> by volume in ambient air.  The Fuel factor can be corrected for the amount of CO, by adding the percent CO on a dry basis to the CO<sub>2</sub>, and subtracting half of the percent CO from the O<sub>2</sub>.  <ref>http://www.epa.gov/ttnemc01/promgate/m-03b.pdf</ref>
+
+== References ==
+{{reflist}}
+
+==See also==
+* [[Portable emissions measurement system]]
+* [[Air–fuel ratio]]
+
+
+[[Category:Fuels]]
+
+
+
+
+{{Chem-stub}}
+{{environment-stub}}

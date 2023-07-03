@@ -1,0 +1,16 @@
+==Summary==
+{{Non-free use rationale 2
+|Description =Concept Art  for '''[[Phoenix MLS stadium]]'''.
+|Source = '''Immediate source:''' http://www.phxrisingfc.com/news_article/show/788390?referrer_id=2744045
+|Author = [[HOK]]
+|Article = Phoenix MLS stadium
+|Purpose = Infobox
+|Replaceability = Does not exist
+|Minimality = Infobox
+|Commercial = Promotes, not harms
+}}
+
+==Licensing==
+{{Non-free proposed architecture|image has rationale=yes}}
+[[Category:Proposed stadiums in the United States]]
+[[Category:Major League Soccer stadiums]]

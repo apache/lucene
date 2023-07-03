@@ -1,0 +1,77 @@
+{{Use mdy dates|date=October 2020}}
+{{short description|1929 film}}
+{{Infobox film
+| name           =Painted Faces 
+| image          =File:Painted Faces (1929 film).jpg
+| image_size     = 
+| caption        = 
+| director       = [[Albert S. Rogell]] 
+| producer       = [[John M. Stahl]]
+| writer         = [[Fanny Hatton]] <br> [[Frederic Hatton]] <br> [[Frances Hyland (screenwriter)|Frances Hyland]]
+| narrator       = 
+| starring       = [[Joe E. Brown]] <br> [[Helen Foster (actress)|Helen Foster]] <br> [[Barton Hepburn]]
+| music          = [[Abe Meyer ]]
+| cinematography =[[Jackson Rose]] <br> [[Benjamin H. Kline ]]
+| editing        = [[Richard Cahoon ]]
+| studio         = Tiffany-Stahl Productions 
+| distributor    =[[Tiffany Pictures]]
+| released       = November 20, 1929
+| runtime        = 74 minutes
+| country        = United States
+| language       =[[English-language|English]] 
+| budget         =  
+| gross          =
+| preceded_by    = 
+| followed_by    = 
+}}
+'''''Painted Faces''''' is a 1929 American [[mystery film]] directed by [[ Albert S. Rogell]] and starring [[Joe E. Brown]], [[Helen Foster (actress)|Helen Foster]] and [[Barton Hepburn]].<ref>Babington & Charles Barr p.53</ref> The film's sets were designed by the [[art director]] [[Hervey Libbert]].
+
+==Synopsis==
+After a [[vaudeville]] performer is murdered, another member of the troupe is arrested. During his trial only one juror, himself a entertainer, holds that he has been framed and seeks out the real culprit.
+
+==Cast==
+* [[Joe E. Brown]] as Hermann / Beppo
+* [[Helen Foster (actress)|Helen Foster]] as Nancy 
+* [[Barton Hepburn]] as Buddy Barton 
+* [[Dorothy Gulliver ]] as Babe Barnes 
+* [[Lester Cole]] as Roderick 
+* [[Richard Tucker (actor)|Richard Tucker]] as District Attorney 
+* [[Purnell Pratt ]] as Foreman of Jury 
+* [[Mabel Julienne Scott]] as Mrs. Warren - Nervous Woman Jury Member 
+* [[Clem Beauchamp ]] as Jury Member 
+* [[Joseph Belmont (actor)|Joseph Belmont]] as Jury Member 
+* [[Alma Bennett]] as Jury Member 
+* [[Allan Cavan ]] as Defense Attorney 
+* [[William B. Davidson ]] as Ringmaster 
+* [[Russ Dudley ]] as Jury Member 
+* [[Dannie Mac Grant ]] as Circus Spectator 
+* [[Walter Jerry]] as Jury Member 
+* [[Sôjin Kamiyama]] as Cafe Owner 
+* [[Gertrude Kerkis ]] as Little Girl
+* [[Clinton Lyle ]] as Jury Member 
+* [[Florence Midgley]] as Jury Member 
+* [[Jack Richardson (actor)|Jack Richardson]] as Stage Manager 
+* [[Howard Truesdale ]] as Jury Member 
+* [[May Wallace]] as Jury Member
+
+==References==
+{{Reflist}}
+
+==Bibliography==
+* Bruce Babington & Charles Barr. ''The Call of the Heart: John M. Stahl and Hollywood Melodrama''. Indiana University Press, 2018.
+
+==External links==
+*{{IMDb title|0020255}}
+
+{{Albert S. Rogell}}
+
+[[Category:1929 films]]
+[[Category:1929 mystery films]]
+[[Category:American films]]
+[[Category:American mystery films]]
+[[Category:Films directed by Albert S. Rogell]]
+[[Category:English-language films]]
+[[Category:Tiffany Pictures films]]
+[[Category:American black-and-white films]]
+
+{{mystery-film-stub}}

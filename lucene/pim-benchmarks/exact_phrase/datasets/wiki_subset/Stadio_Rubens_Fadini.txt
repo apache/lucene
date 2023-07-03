@@ -1,0 +1,32 @@
+{{short description|Multi-use stadium}}
+{{unsourced|date=November 2015}}
+{{Infobox_Stadium |
+  stadium_name      = Stadio Rubens Fadini|
+  nickname          = |
+  image             = [[Image:Rubens Fadini di Giulianova.jpg|300px]]|
+  location          = Via Migliori 13<br>64021 [[Giulianova]] |
+  broke_ground      = 1923 |
+  opened            = 1924 |
+  renovated         = 2005 |
+  closed            = |
+  demolished        = |
+  owner             = [[Giulianova|Comune of Giulianova]]|
+  operator          = |
+  surface           = [[Grass]]|
+  construction_cost = |
+  architect         = |
+  former_names      = Stadio Comunale (until 1949)|
+  tenants           = [[Giulianova Calcio]] (until 2012)<br/>[[A.S.D. Città di Giulianova 1924]] (2012–2016)<br/>[[Real Giulianova]] (2016–) |
+  seating_capacity  = 4,347|
+}}
+
+'''Stadio Rubens Fadini''' is a multi-use [[stadium]] in [[Giulianova]], [[Abruzzo]], [[Italy]].  It is currently used mostly for [[football (soccer)|football]] matches and is the home ground of [[Real Giulianova]].  The stadium holds 4,347 spectators.
+
+{{Football in Italy}}
+
+{{Italy-sports-venue-stub}}
+
+{{coord|42|44|57|N|13|57|17|E|type:landmark_region:IT|display=title}}
+
+[[Category:Football venues in Italy]]
+[[Category:Giulianova]]

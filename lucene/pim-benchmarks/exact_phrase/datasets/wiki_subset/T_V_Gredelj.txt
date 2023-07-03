@@ -1,0 +1,78 @@
+{{Infobox company
+| name = TŽV Gredelj d.o.o.
+| logo = GredeljLogo.jpg
+| logo_size = 250px
+| type = d.o.o. (društvo s ograničenom odgovornošću), state-owned
+| genre = 
+| foundation = 1894
+| founder = 
+| location_city = [[Zagreb]]
+| location_country = [[Croatia]]
+| origins = 
+| key_people = 
+| area_served = 
+| industry = Rail transport
+| products = Rail vehicles
+| services =
+| revenue = 
+| operating_income = 
+| net_income =
+| num_employees = 1467 (2011)<ref name="n1">{{citation| url  =http://limun.hr/main.aspx?id=762036&Page=5| title = HŽ se želi riješiti Gredelja| author = Branka Suvajac| date = 18 November 2011| work = limun.hr| language = hr}}</ref>
+| parent = HŽ Holding d.o.o (via HŽ PUTNIČKI PRIJEVOZ d.o.o) (100%)<ref>{{citation| url = http://www.hznet.hr/PassengerTransport|title = HŽ PUTNIČKI PRIJEVOZ d.o.o. za prijevoz putnika (HŽ Passenger Transport Limited Liability Company) :BASIC INFORMATION|work = www.hznet.hr|access-date = 12 May 2012}}</ref>
+| divisions =
+| subsid = 
+| owner = 
+| slogan = 
+| homepage = [http://tzv-gredelj.hr/ tzv-gredelj.hr]
+| dissolved = 
+| footnotes = 
+}}
+'''TŽV Gredelj''' (''Tvornica željezničkih vozila Gredelj d.o.o.'') is a state-owned [[Croatia]]n [[rolling stock]] company founded in 1894 as the railway workshops of the [[Hungarian State Railways]].
+
+==History==
+
+The company's history dates to 1894 and the establishment of a railway workshop for heavy repair of steam locomotives.<ref name="h1">(Official website), tvornica željezničkih vozila "Gredelj" d.o.o., Tradicija i iskustvo, October 2007</ref> The original factory was constructed in 16 months on the edge of the city of Zagreb (now within the centre of the expanded city), south of the 1890 [[Zagreb Glavni railway station]], for the ''Kraljevskih južnih željeznica'' (Royal Southern Railway) between [[Budapest]] and the [[Adriatic]].<ref name="h2">Sources:
+*{{citation|url = http://protorpedo-rijeka.hr/eng/index.php/homept/konferencije/iii-konferencija/popis-clanaka/32-konferencije/3-konferencija/sazeci2007/325|title = Valorizacija i mogućnosti urbane transformacije povijesnog industrijskog krajolika željeznice u Zagrebu (Urban Redevelopment of the Railway’s Industrial Landscape in Zagreb)|language = hr, en|author = Biserka Dumbović Bilušić|publisher = PRO TORPEDO Association for Protection and Promotion of Rijeka's Industrial Heritage|work = 3rd international conference on Industrial Heritage in Rijeka|url-status=dead|archive-url = https://archive.is/20130218024416/http://protorpedo-rijeka.hr/eng/index.php/homept/konferencije/iii-konferencija/popis-clanaka/32-konferencije/3-konferencija/sazeci2007/325|archive-date = 2013-02-18}}
+*{{citation| url = http://www.poslovni.hr/vijesti/industrijske-ljepotice-cekaju-novo-ruho--9410.aspx| title = Industrijske ljepotice čekaju novo ruho| date = 31 March 2006| language = hr| work = www.poslovni.hr}}</ref>
+
+Housing for plant workers coming from Hungary and Germany was constructed nearby. The factory was expanded and rebuilt in 1911.<ref name="h2"/>
+
+Manufacture of railway vehicles began in 1954, with the production of postal wagons. The company later manufactured electric locomotives, wagons, and passenger vehicles.<ref name="h1"/>
+
+A new plant was established in Vukomerec, Zagreb in 1968 for locomotive production.<ref name="h68"/>
+
+A preservation order for part of the original factory was issued in 2006.<ref name="h2"/> Construction of new facilities, and modernisation of existing works in Vukomercu began in 2008.<ref name="h68">{{citation| url = http://www.index.hr/vijesti/clanak/gredelj-zapocinje-gradnju-novih-pogona-u-vukomercu/372563.aspx| title= Gredelj započinje gradnju novih pogona u Vukomercu| date = 29 January 2008| work = www.index.hr| language = hr}}</ref> In 2010 the company moved all its production to a new {{convert|40000|m2|abbr=on}} factory in the Vukomerec industrial area of Zagreb, constructed and equipped at a cost of 650 million [[Croatian kuna|kuna]].<ref name="ne1">{{citation| url = http://www.tportal.hr/biznis/gospodarstvo/75078/Novi-pogoni-Gredelja.html| title = U Vukomercu novi pogoni Gredelja|date = 30 June 2010| work = www.tportal.hr| language = hr}}</ref> The city of Zagreb acquired the land of the former factory for €88.2 million.<ref>Sources:
+*{{citation| url = http://www.business.hr/vijesti/nekretnine-gredelja-vrijedne-88-milijuna-eura-gradu-zagrebu-kupuje-zagrebacki-holding| title = Nekretnine Gredelja vrijedne 88 milijuna eura Gradu Zagrebu kupuje Zagrebački holding| date = 27 October 2007| work = www.business.hr| language = hr| url-status=dead| archive-url = https://archive.is/20130217234226/http://www.business.hr/vijesti/nekretnine-gredelja-vrijedne-88-milijuna-eura-gradu-zagrebu-kupuje-zagrebacki-holding| archive-date = 17 February 2013}}
+*{{citation| url = http://www.business.hr/vijesti/covic-o-ulaganju-od-88-mil-gredelj-izgleda-kao-da-je-bombardiran| title = Čović o ulaganju od 88 mil. €: Gredelj izgleda kao da je bombardiran| author = Nevenka Cuglin| date = 20 April 2011| work = www.business.hr| language = hr| url-status=dead| archive-url = https://archive.is/20130217235052/http://www.business.hr/vijesti/covic-o-ulaganju-od-88-mil-gredelj-izgleda-kao-da-je-bombardiran| archive-date = 17 February 2013}}</ref>
+
+In late 2012 the company declared bankruptcy,<ref>{{citation| url= http://www.vecernji.hr/kompanije-i-trzista/gredelj-ide-u-stecaj-upitan-opstanak-1450-radnih-mjesta-454580|language = hr| title = Gredelj ide u stečaj – upitan opstanak 1450 radnih mjesta| date = 18 Sep 2012| work = www.vecernji.hr}}</ref> due to reduced overseas order due to the [[late-2000s global recession]], and due to a large reduction in orders from [[Croatian Railways]] (HZ).<ref>{{citation| url =http://www.vecernji.hr/kompanije-i-trzista/u-gredelju-uskoro-nece-imati-ni-za-place-1450-radnika-337628| language = hr| title = U Gredelju uskoro neće imati ni za plaće 1450 radnika| date = 19 Oct 2011 | work = www.vecernji.hr}}</ref> At banckrupcy proceedings in Dec 2012, five enterprises were reported as being interested in the plant: [[Electro Motive Diesel]], and [[National Railway Equipment Company]] were reported to be interested in parts of the plant relating to locomotive manufacture; investment company ''Qatari Blooming Heights LLC'' was reported to be examining the plant for potential middle-eastern investors; the [[China National Corporation For Overseas Economic Cooperation]] was also said to be interested in acquiring the plant; [[HŽ Putnički Prijevoz|HŽ Putnički prijevoz]] (HŽ Passenger Transport) was reported to be interested in renting part of the plant or equipment fto maintain its rolling stock.<ref>{{citation| url = http://www.poslovni.hr/hrvatska/stecajni-upravitelj-gredelja-osporio-113-mil-kuna-iskrsnulo-200-milijuna-novih-224413| title =Za Gredelj zainteresirano pet kompanija | language = hr| work = www.poslovni.hr| date = 13 Dec 2012}}</ref>
+
+From 2012 the company continued to manufacture rail vehicles, honouring existing agreements whilst under bankruptcy conditions.<ref>{{citation| url =http://www.poslovni.hr/domace-kompanije/apsurd-gredelj-u-stecaju-a-proizvodi-se-novi-vlak-218036 | title =Apsurd: Gredelj u stečaju, a proizvodi se novi vlak| language = hr| work = www.poslovni.hr| date =10 Sep 2012 }}</ref><ref>{{citation| url =http://www.poslovni.hr/hrvatska/nastavak-rada-u-gredelju-218596 | title =Nastavak love u Gredelju | language = hr| work = www.poslovni.hr| date = 15 Oct 2012 }}</ref><ref>{{citation| url = http://www.poslovni.hr/domace-kompanije/gredelj-i-nrec-zapoceli-isporuku-lokomotiva-za-maroko-229531| title =Gredelj i NREC započeli isporuku lokomotiva za Maroko | language = hr| work = www.poslovni.hr| date =5 Feb 2013 }}</ref> In the year following banckrupcy the company achieved a profit of 9.8 million (Kuna) on 300 million revenue whilst having debt claims of over 700 million.<ref>{{citation| url = http://www.poslovni.hr/domace-kompanije/gredelj-zapoceo-izradu-okvirnog-stecajnog-plana-261539| title =Gredelj započeo izradu okvirnog stečajnog plana
+ | language = hr| work = www.poslovni.hr| date = 19 Jan 2014}}</ref>
+
+==Products==
+As of 2012 the company produces railway vehicles including coaches, wagons, diesel and electric locomotives, trams, and tram-rail grinding vehicles, as well as components including bogies and lifting equipment. The plant also performs rail equipment maintenance.<ref>{{citation| url = http://tzv-gredelj.biz.hr/eng/production-program.html| archive-url = https://web.archive.org/web/20120227090154/http://tzv-gredelj.biz.hr/eng/production-program.html| url-status=dead| archive-date = 2012-02-27| title = PRODUCTION PROGRAM| work = tzv-gredelj.biz.hr}}</ref>
+
+==Locations==
+*{{coord|45.80549|16.05435|display=inline|type:landmark_region:HR}}, Vukomerec, Zagreb plant
+*{{coord|45.80232|15.98583|display=inline|type:landmark_region:HR}}, former central Zagreb plant
+
+==See also==
+*[[Đuro Đaković (company)]], Croatian engineering company, diesel locomotive manufacturer
+* [[Crotram]], tram manufacturing joint venture with Končar Elektroindustrija d.d.
+
+==References==
+{{reflist}}
+
+==External links==
+*{{citation| url=http://www.tzv-gredelj.hr| title = TZV Gredelj|language = en, hr| work = www.tzv-gredelj.hr}}, official website
+** {{citation| url =http://tzv-gredelj.biz.hr|title = TŽV Gredelj| work = tzv-gredelj.biz.hr| archive-url =https://web.archive.org/web/20080108045546/http://tzv-gredelj.biz.hr/ | archive-date= 8 January 2008}}, archive of official website (2008-2012)
+**{{citation| url = http://www.tzv-gredelj.hr/|title = tvornica željezničkih vozila "Gredelj" d.o.o.| work = www.tzv-gredelj.hr| archive-url =https://web.archive.org/web/20071228012740/http://www.tzv-gredelj.hr/ | archive-date =28 December 2007}}, archive of official website (2001-7)
+
+{{DEFAULTSORT:Tzv Gredelj}}
+[[Category:Rail vehicle manufacturers of Croatia]]
+[[Category:Locomotive manufacturers of Croatia]]
+[[Category:Manufacturing companies based in Zagreb]]
+[[Category:Manufacturing companies established in 1894]]
+[[Category:Croatian brands]]
+[[Category:1894 establishments in Austria-Hungary]]

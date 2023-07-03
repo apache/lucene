@@ -1,0 +1,551 @@
+{{short description|Finnish ice hockey player}}
+{{Infobox ice hockey player
+| image= 
+| played_for = '''[[National Hockey League|NHL]]''' <br> [[Chicago Blackhawks]] <br> '''[[SM-liiga]]''' <br> [[Lukko]] <br> '''[[Deutsche Eishockey Liga|DEL]]''' <br> [[Star Bulls Rosenheim]] <br> '''[[Serie A (ice hockey)|Serie A]]''' <br> [[HC Merano]] <br> [[HC Milano]] <br> '''[[Ice Hockey Superleague|BISL]]''' <br> [[Bracknell Bees]]
+| position = [[Winger (ice hockey)|Right Wing]]
+| shoots = Left
+| height_ft = 5
+| height_in = 11
+| weight_lb = 182
+| birth_date = {{birth date and age|1965|08|11}}
+| birth_place = [[Rauma, Finland|Rauma]], [[Finland|FIN]]
+| ntl_team = Finland
+| draft = 115th overall
+| draft_year = 1983
+| draft_team = [[Chicago Blackhawks]]
+| career_start = 1981
+| career_end = 2003
+}}
+
+'''Jari Kaarlo Torkki''' (born August 11, 1965 in [[Rauma, Finland]]) is a retired professional [[ice hockey]] player who played in the [[National Hockey League]] and [[SM-liiga]]. He also won a silver medal at the 1988 [[Olympics]] with Team Finland.
+
+==Career==
+Jari Torkki played his entire [[SM-liiga]] career for [[Lukko]], a team located in [[Rauma, Finland]]. Torkki along with [[Erik Hämäläinen]] has an [[iconic]] status in Lukko and is held in high regard by Lukko fans.
+
+Despite having a good form in SM-liiga, Torkki did not have a great career in [[National Hockey League|NHL]]. Torkki played two seasons in North America and played for the [[Chicago Blackhawks]] of the [[NHL]]. Torkki also played for [[International Hockey League (1945–2001)|IHL]] teams [[Saginaw Hawks]] and [[Indianapolis Ice]] during his two-season tenure in North America.
+
+After his short NHL visit, Torkki returned to Lukko and played 6 more seasons for Lukko, totaling 13 seasons in Lukko.
+
+After playing for Lukko, Torkki to play for [[Star Bulls Rosenheim]], of [[Deutsche Eishockey Liga|DEL]], [[HC Merano]] and [[HC Milano]] of Italian [[Serie A (ice hockey)|Serie A]] and finally, [[Bracknell Bees]] of the British [[Ice Hockey Superleague]] (BISL).
+
+Jari Torkki was also an Olympian as a member of Finland's team who took home Silver in Calgary 1988.
+
+Jari Torkki retired in 2003.
+
+==Career statistics==
+===Regular season and playoffs===
+{| border="0" cellpadding="1" cellspacing="0" style="text-align:center; width:60em"
+|- bgcolor="#e0e0e0"
+! colspan="3" bgcolor="#ffffff" | &nbsp;
+! rowspan="99" bgcolor="#ffffff" | &nbsp;
+! colspan="5" | [[regular season|Regular&nbsp;season]]
+! rowspan="99" bgcolor="#ffffff" | &nbsp;
+! colspan="5" | [[Playoffs]]
+|- bgcolor="#e0e0e0"
+! [[Season (sports)|Season]]
+! Team
+! League
+! GP
+! [[Goal (ice hockey)|G]]
+! [[Assist (ice hockey)|A]]
+! [[Point (ice hockey)|Pts]]
+! [[Penalty (ice hockey)|PIM]]
+! GP
+! G
+! A
+! Pts
+! PIM
+|- 
+| 1981–82
+| [[Lukko]]
+| FIN Jr.
+| 8
+| 15
+| 10
+| 25
+| 10
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1981–82 SM-liiga season|1981–82]]
+| Lukko
+| [[SM-liiga|Liiga]]
+| 1
+| 0
+| 0
+| 0
+| 0
+| —
+| —
+| —
+| —
+| —
+|- 
+| 1982–83
+| Lukko
+| FIN Jr.
+| 7
+| 8
+| 6
+| 14
+| 24
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1982–83 SM-liiga season|1982–83]]
+| Lukko
+| Liiga
+| 34
+| 13
+| 17
+| 30
+| 34
+| —
+| —
+| —
+| —
+| —
+|- 
+| 1983–84
+| Lukko
+| FIN Jr.
+| 1
+| 3
+| 0
+| 3
+| 2
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1983–84 I-Divisioona season|1983–84]]
+| Lukko
+| [[I-Divisioona|FIN II]]
+| 36
+| 41
+| 25
+| 66
+| 70
+| —
+| —
+| —
+| —
+| —
+|- 
+| [[1984–85 SM-liiga season|1984–85]]
+| Lukko
+| Liiga
+| 36
+| 25
+| 21
+| 46
+| 40
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1985–86 SM-liiga season|1985–86]]
+| Lukko
+| Liiga
+| 32
+| 22
+| 18
+| 40
+| 40
+| —
+| —
+| —
+| —
+| —
+|- 
+| [[1986–87 SM-liiga season|1986–87]]
+| Lukko
+| Liiga
+| 44
+| 27
+| 8
+| 35
+| 42
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1987–88 SM-liiga season|1987–88]]
+| Lukko
+| Liiga
+| 43
+| 23
+| 24
+| 47
+| 54
+| 8
+| 4
+| 3
+| 7
+| 12
+|- 
+| [[1988–89 NHL season|1988–89]]
+| [[Chicago Blackhawks]]
+| [[National Hockey League|NHL]]
+| 4
+| 1
+| 0
+| 1
+| 0
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1988–89 IHL season|1988–89]]
+| [[Saginaw Hawks]]
+| [[International Hockey League (1945–2001)|IHL]]
+| 72
+| 30
+| 42
+| 72
+| 22
+| —
+| —
+| —
+| —
+| —
+|- 
+| [[1989–90 IHL season|1989–90]]
+| [[Indianapolis Ice]]
+| IHL
+| 66
+| 25
+| 29
+| 54
+| 50
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1990–91 SM-liiga season|1990–91]]
+| Lukko
+| Liiga
+| 44
+| 23
+| 26
+| 49
+| 52
+| —
+| —
+| —
+| —
+| —
+|-
+| [[1991–92 SM-liiga season|1991–92]]
+| Lukko
+| Liiga
+| 44
+| 16
+| 19
+| 35
+| 34
+| 2
+| 0
+| 0
+| 0
+| 4
+|- bgcolor="#f0f0f0"
+| [[1992–93 SM-liiga season|1992–93]]
+| Lukko
+| Liiga
+| 48
+| 17
+| 14
+| 31
+| 38
+| 3
+| 1
+| 0
+| 1
+| 0
+|-
+| [[1993–94 SM-liiga season|1993–94]]
+| Lukko
+| Liiga
+| 46
+| 14
+| 18
+| 32
+| 22
+| 9
+| 4
+| 1
+| 5
+| 8
+|- bgcolor="#f0f0f0"
+| [[1994–95 SM-liiga season|1994–95]]
+| Lukko
+| Liiga
+| 33
+| 14
+| 30
+| 44
+| 48
+| 9
+| 2
+| 0
+| 2
+| 4
+|-
+| [[1995–96 SM-liiga season|1995–96]]
+| Lukko
+| Liiga
+| 48
+| 16
+| 20
+| 36
+| 50
+| 8
+| 0
+| 1
+| 1
+| 10
+|- bgcolor="#f0f0f0"
+| [[1996–97 DEL season|1996–97]]
+| [[Starbulls Rosenheim]]
+| [[Deutsche Eishockey Liga|DEL]]
+| 47
+| 17
+| 18
+| 35
+| 80
+| 3
+| 0
+| 1
+| 1
+| 6
+|-
+| [[1997–98 DEL season|1997–98]]
+| Starbulls Rosenheim
+| DEL
+| 41
+| 10
+| 14
+| 24
+| 20
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1998–99 Alpenliga season|1998–99]]
+| [[HC Merano]]
+| [[Alpenliga|Alp]]
+| 27
+| 7
+| 7
+| 14
+| 18
+| —
+| —
+| —
+| —
+| —
+|-
+| [[1998–99 Serie A (ice hockey) season|1998–99]]
+| HC Merano
+| [[Serie A (ice hockey)|ITA]]
+| 16
+| 11
+| 12
+| 23
+| 10
+| 9
+| 2
+| 3
+| 5
+| 4
+|- bgcolor="#f0f0f0"
+| [[1999–2000 Serie A (ice hockey) season|1999–2000]]
+| HC Merano
+| ITA
+| 21
+| 11
+| 24
+| 35
+| 38
+| —
+| —
+| —
+| —
+| —
+|-
+| [[2000–01 Serie A (ice hockey) season|2000–01]]
+| [[HC Milano]]
+| ITA
+| 18
+| 14
+| 13
+| 27
+| 16
+| 10
+| 7
+| 15
+| 22
+| 12
+|- bgcolor="#f0f0f0"
+| [[2001–02 Serie A (ice hockey) season|2001–02]]
+| HC Merano
+| ITA
+| 11
+| 8
+| 2
+| 10
+| 2
+| —
+| —
+| —
+| —
+| —
+|-
+| [[2001–02 ISL season|2001–02]]
+| [[Bracknell Bees]]
+| [[Ice Hockey Superleague|GBR]]
+| 10
+| 1
+| 1
+| 2
+| 2
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#e0e0e0"
+! colspan="3" | Liiga totals
+! 453
+! 210
+! 215
+! 425
+! 454
+! 39
+! 11
+! 5
+! 16
+! 38
+|- bgcolor="#e0e0e0"
+! colspan="3" | ITA totals
+! 66
+! 44
+! 51
+! 95
+! 66
+! 19
+! 9
+! 18
+! 27
+! 16
+|}
+
+===International===
+{| border="0" cellpadding="1" cellspacing="0" style="text-align:center; width:50em"
+|- ALIGN="center" bgcolor="#e0e0e0"
+! Year
+! Team
+! Event
+! rowspan="99" bgcolor="#ffffff" | &nbsp;
+! GP
+! G
+! A
+! Pts
+! PIM
+|-
+| [[1982 IIHF European U18 Championship|1982]]
+| [[Finland men's national junior ice hockey team|Finland]]
+| [[IIHF European Junior Championships|EJC]]
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1983 IIHF European U18 Championship|1983]]
+| Finland
+| EJC
+| 5
+| 6
+| 1
+| 7
+| 10
+|-
+| [[1984 World Junior Ice Hockey Championships|1984]]
+| Finland
+| [[World Junior Ice Hockey Championships|WJC]]
+| 7
+| 4
+| 2
+| 6
+| 8
+|- bgcolor="#f0f0f0"
+| [[1987 World Ice Hockey Championships|1987]]
+| [[Finland men's national ice hockey team|Finland]]
+| [[World Ice Hockey Championships|WC]]
+| 10
+| 5
+| 2
+| 7
+| 12
+|-
+| [[Ice hockey at the 1988 Winter Olympics|1988]]
+| Finland
+| [[Ice hockey at the Winter Olympics|OG]]
+| 4
+| 1
+| 0
+| 1
+| 2
+|- bgcolor="#e0e0e0"
+! colspan=3 | Junior totals
+! 19
+! 15
+! 7
+! 22
+! 26
+|- bgcolor="#e0e0e0"
+! colspan=3 | Senior totals
+! 14
+! 6
+! 2
+! 8
+! 14
+|}
+
+== External links ==
+*{{hockeydb|5436}}
+
+{{DEFAULTSORT:Torkki, Jari}}
+[[Category:1965 births]]
+[[Category:Living people]]
+[[Category:Chicago Blackhawks draft picks]]
+[[Category:Chicago Blackhawks players]]
+[[Category:Finnish ice hockey right wingers]]
+[[Category:Ice hockey players at the 1988 Winter Olympics]]
+[[Category:Indianapolis Ice players]]
+[[Category:Lukko players]]
+[[Category:Olympic ice hockey players of Finland]]
+[[Category:Olympic medalists in ice hockey]]
+[[Category:Olympic silver medalists for Finland]]
+[[Category:People from Rauma, Finland]]
+[[Category:Saginaw Hawks players]]

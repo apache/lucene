@@ -1,0 +1,47 @@
+{{short description|American baseball player}}
+{{Infobox baseball biography
+|name=John Happenny
+|image=John Happenny NEWSPAPER.png
+|position=[[Infielder]]
+|bats=Right
+|throws=Right
+|birth_date={{birth date|1901|5|18}}
+|birth_place=[[Waltham, Massachusetts]]
+|death_date={{death date and age|1988|12|29|1901|5|18}}
+|death_place=[[Coral Springs, Florida]]
+|debutleague = MLB
+|debutdate=July 2
+|debutyear=1923
+|debutteam=Chicago White Sox
+|finalleague = MLB
+|finaldate=October 6
+|finalyear=1923
+|finalteam=Chicago White Sox
+|statleague = MLB
+|stat1label=[[Batting average (baseball)|Batting average]]
+|stat1value=.221
+|stat2label=[[Home run]]s
+|stat2value=0
+|stat3label=[[Run batted in|Runs batted in]]
+|stat3value=10
+|teams=
+*[[Chicago White Sox]] ({{baseball year|1923}})
+}}
+'''John Clifford Happenny''' (May 18, 1901 – December 29, 1988) was an [[infielder]] in [[Major League Baseball]]. He played for the [[Chicago White Sox]].<ref name="statistics">[https://www.baseball-reference.com/players/h/happejo01.shtml "John Happenny Statistics and History"]. baseball-reference.com. Retrieved January 13, 2012.</ref>
+
+==References==
+{{reflist}}
+
+==External links==
+{{Baseballstats|br=h/happejo01}}
+
+{{DEFAULTSORT:Happenny, John}}
+[[Category:1901 births]]
+[[Category:1988 deaths]]
+[[Category:Major League Baseball infielders]]
+[[Category:Chicago White Sox players]]
+[[Category:Baseball players from Massachusetts]]
+[[Category:Sportspeople from Waltham, Massachusetts]]
+
+
+{{baseball-infielder-stub}}

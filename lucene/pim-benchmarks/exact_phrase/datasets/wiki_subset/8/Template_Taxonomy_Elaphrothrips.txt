@@ -1,0 +1,6 @@
+{{Don't edit this line {{{machine code|}}}
+|rank=genus
+|link=Elaphrothrips
+|parent=Idolothripinae
+|refs=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=695064
+}}

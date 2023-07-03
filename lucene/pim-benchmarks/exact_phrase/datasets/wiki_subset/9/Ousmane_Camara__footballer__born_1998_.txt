@@ -1,0 +1,39 @@
+{{short description|Guinean footballer|bot=PearBOT 5}}
+{{Infobox football biography
+| name        = Ousmane Camara
+| fullname    = Ousmane Camara
+| image       = 
+| birth_date  = {{birth date and age|df=yes|1998|12|28}}
+| birth_place = [[Conakry]], Guinea
+| height      = 
+| position    = [[Forward (association football)|Winger]]
+| currentclub = [[Vålerenga Fotball|Vålerenga]]
+| clubnumber  = 17
+| years1      = 2018–2019 | clubs1  = [[AFC Eskilstuna]] | caps1  = 43  | goals1  = 6
+| years2      = 2019–     | clubs2  = [[Vålerenga Fotball|Vålerenga]] | caps2  = 10  | goals2  = 0
+| nationalyears1      = 2015
+| nationalteam1       = [[Guinea national under-17 football team|Guinea U17]]
+| nationalcaps1       = 2 | nationalgoals1 = 0
+| pcupdate    = 1 November 2020
+}}
+'''Ousmane Camara''' (born 28 December 1998) is a Guinean footballer who plays for [[Vålerenga Fotball|Vålerenga]].<ref>{{soccerway|ousmane-camara/425083}}</ref>
+
+==References==
+{{reflist}}
+
+{{Vålerenga Fotball squad}}
+
+{{DEFAULTSORT:Camara, Ousmane}}
+[[Category:1998 births]]
+[[Category:Living people]]
+[[Category:Guinean footballers]]
+[[Category:Association football forwards]]
+[[Category:AFC Eskilstuna players]]
+[[Category:Allsvenskan players]]
+[[Category:Vålerenga Fotball players]]
+[[Category:Superettan players]]
+[[Category:Eliteserien players]]
+[[Category:Guinean expatriate footballers]]
+[[Category:Expatriate footballers in Sweden]]
+[[Category:Expatriate footballers in Norway]]
+{{Guinea-footy-bio-stub}}

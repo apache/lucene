@@ -1,0 +1,68 @@
+{{Portuguese name|dos Santos|Oliveira}}
+{{Infobox musical artist
+| name = Karol Conka
+| background = solo_singer
+| image = Show Karol Conka (15067698030).jpg
+| caption = Conka in 2014
+| birth_name = Karoline dos Santos Oliveira
+| birth_date = {{Birth date and age|1987|1|1|mf=y}} 
+| birth_place = [[Curitiba]], [[Paraná (state)|Paraná]], Brazil
+| genre = {{hlist|[[Hip hop music|Hip-hop]]|[[Pop music|Pop]]|[[Música popular brasileira|MPB]]}}
+| occupation = {{hlist|Rapper|composer}}
+| years_active = 2002&ndash;present
+| website = {{URL|http://www.karolconka.com/}}
+}}
+
+'''Karol Conka''' (born '''Karoline dos Santos Oliveira'''; January 1, 1987) is a  [[Brazilian hip hop|Brazilian rapper]], songwriter, actress, record producer, model and television presenter. Born in [[Curitiba]], Conka is one of the most prominent female rappers in Brazil today.<ref>{{citation |url=http://www.smh.com.au/entertainment/music/brazilian-hiphop-artist-karol-conka-set-to-rock-the-domain-for-free-concert-20150109-12jwpi.html |title=Brazilian hip-hop artist Karol Conka set to rock the Domain for free concert |work=[[The Sydney Morning Herald]] |date=January 9, 2015 }}</ref><ref>{{citation |url=https://www.theguardian.com/music/2014/jun/19/sao-paulo-every-day-monday-every-night-friday |title=São Paulo's music scene: 'Every day is Monday, every night is Friday' |work=[[The Guardian]] |date=June 19, 2014 }}</ref> Her music is a blend of modern hip-hop and rap with sounds from Brazilian pop and traditional music.<ref>{{citation |url=http://www1.folha.uol.com.br/ilustrada/2013/07/1319023-critica-com-batuk-freak-karol-conka-avanca-e-deixa-de-ser-aposta.shtml |title=Crítica: Com 'Batuk Freak', Karol Conka avança e deixa de see aposta |date=July 31, 2013 |work=[[Folha de S.Paulo]] }}</ref><ref>{{citation |url=http://www.refinery29.com/2015/07/91465/karol-conka-brazilian-rapper |date=July 28, 2015 |work=[[Refinery29]] |title=Brazilian Artist Karol Conka Opens Up About Discrimination, Self-Esteem & Personal Style }}</ref> In 2013, she won [[Multishow]]'s Best New Artist award and released her debut album, ''Batuk Freak''.<ref>{{citation |url=https://www.rollingstone.com/music/pictures/10-new-artists-you-need-to-know-april-2014-20140410/karol-conka-0274380 |title=10 New Artists You Need to Know: April 2014 |work=[[Rolling Stone]] }}</ref> Her song, "Boa Noite", is featured in the [[EA Sports]] video game, ''[[FIFA 14]]''.
+
+== Artistry ==
+=== Influences ===
+Karol Conka cites [[Beyoncé]], [[Erykah Badu]], [[Lauryn Hill]], [[Donna Summer]] and [[Missy Elliott]] as her influences.{{citation needed|date = February 2019}}
+
+== Personal life ==
+Karol Conka publicly came out as bisexual and is an advocate of [[feminism]].<ref>{{cite web|url = http://portalpopline.com.br/karol-conka-estampa-capa-de-revista-e-diz-sempre-soube-que-era-bi-desde-pequena/|date = December 26, 2016|accessdate = September 13, 2017|title = Karol Conka estampa capa de revista e diz sempre soube que era bi desde pequena|website = POPLine|language = Portuguese}}</ref><ref>{{cite web|url = https://oglobo.globo.com/ela/moda/karol-conka-fala-sobre-feminismo-racismo-preconceito-machuca-20042189|date = September 3, 2016|accessdate = September 13, 2017|website = O Goblo|title = Karol Conka fala sobre feminismo racismo preconceito machuca|language = Portuguese}}</ref>
+
+== Discography ==
+;Albums
+* 2001 - ''Karol Conka''
+*
+
+* 2013 - ''Batuk Freak''
+*2018 - ''Ambulante''
+
+;Singles
+* 2011 - ''Boa Noite''
+* 2014 - ''Tombei''
+* 2015 - ''É o Poder''
+*2017 - ''Lalá''
+*2018 - ''Kaça''
+*2018 - ''Cabeça de Nego'' (Prod. Instituto & Boss in Drama)
+*2019 - ''Saudade''
+*2019 - ''Nossa Que Isso'' (feat. Mc Rebecca & MC Rogê)
+*2019 - ''Alavancô'' (feat. [[Gloria Groove]] & [[Linn Da Quebrada]])
+
+== References ==
+{{reflist}}
+
+== External links == 
+* {{Official website|http://www.karolconka.com/}}
+* {{Facebook|karolconka}}
+
+{{authority control}}
+
+{{DEFAULTSORT:Conka, Karol}}
+[[Category:Brazilian female rappers]]
+[[Category:1987 births]]
+[[Category:Living people]]
+[[Category:African-Brazilian feminists]]
+[[Category:LGBT African Brazilians]]
+[[Category:Bisexual feminists]]
+[[Category:Feminist musicians]]
+[[Category:African-Brazilian female singers]]
+[[Category:Brazilian female pop singers]]
+[[Category:African-Brazilian female models]]
+[[Category:Brazilian female models]]
+[[Category:People from Curitiba]]
+
+{{Brazil-musician-stub}}
+{{hiphop-bio-stub}}

@@ -1,0 +1,25 @@
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was    '''delete'''. -- '''[[User:Cirt|Cirt]]''' ([[User talk:Cirt|talk]]) 04:57, 22 July 2010 (UTC)
+===[[Jesse Barrett-Mills]]===
+
+:{{la|Jesse Barrett-Mills}} – (<includeonly>[[Wikipedia:Articles for deletion/Jesse Barrett-Mills|View AfD]]</includeonly><noinclude>[[Wikipedia:Articles for deletion/Log/2010 July 18#{{anchorencode:Jesse Barrett-Mills}}|View log]]</noinclude>{{•}} {{plainlink|1=http://toolserver.org/~betacommand/cgi-bin/afdparser?afd={{urlencode:Wikipedia:Articles for deletion/Jesse Barrett-Mills}}|2=AfD statistics}})
+:({{Find sources|Jesse Barrett-Mills}})
+not notable, at all -- no independent sources writing about this minor director of unreleased short documentaries. plus it's an orphan article. i suspect it's a promotional entry created by sock puppet.
+[[User:Aroundthewayboy|Aroundthewayboy]] ([[User talk:Aroundthewayboy|talk]]) 20:31, 3 July 2010 (UTC)
+
+*'''Keep''', I disagree about the lack of independent sources. There are links to articles on the wiki page, including legitimate award wins verified with newspaper articles and imdb. I've also found some of his work on Amazon.com, so he does have some films that are released and available on the market. 
+[[User:bchang84|bchang84]]  16:21, 6 July 2010
+*<small class="delsort-notice">'''Note''':  This debate has been included in the [[Wikipedia:WikiProject Deletion sorting/Actors and filmmakers|list of Actors and filmmakers-related deletion discussions]]. <!--Template:Deletion sorting--></small> <small>-- [[User:Gene93k|• Gene93k]] ([[User talk:Gene93k|talk]]) 19:37, 4 July 2010 (UTC)</small>
+*'''Delete'''. Very minor filmmaker. Certainly has not received coverage in reliable sources. Awards won are minor. Refs are weak and spammy. [[User:Christopher Connor|Christopher Connor]] ([[User talk:Christopher Connor|talk]]) 19:38, 9 July 2010 (UTC)
+<hr style="width:50%;" />
+:<span style="color:#FF4F00;">'''[[WP:RELIST|Relisted]] to generate a more thorough discussion so consensus may be reached.'''</span><br /><small>Please add new comments below this notice. Thanks, [[User:Ron Ritzman|Ron Ritzman]] ([[User talk:Ron Ritzman|talk]]) 00:00, 10 July 2010 (UTC)</small><!-- from Template:Relist -->
+<hr style="width:50%;" />
+:<span style="color:#FF4F00;">'''[[WP:RELIST|Relisted]] to generate a more thorough discussion so consensus may be reached.'''</span><br /><small>Please add new comments below this notice. Thanks, ''[[User:NativeForeigner|NativeForeigner]]'' <sup>[[User talk:NativeForeigner|Talk]]</sup>/<sub>[[Special:Contributions/NativeForeigner|Contribs]]</sub> 06:07, 18 July 2010 (UTC)</small><!-- from Template:Relist -->
+*'''Delete'''.  I can't fit this into any of the criteria at [[WP:BIO]] without stretching considerably.  Awards are not enough; they have to be well-recognized ones, such as an oscar.  He has made films and they have been published, it seems, but they are far from prolific and I can't see much citation of them.  [[User:Falcon Kirtaran|--Falcon Darkstar Momot]] ([[User talk:Falcon Kirtaran|talk]]) 06:37, 18 July 2010 (UTC)
+*'''Delete''' No evidacne awards are notable. No hits on google news (he's that noted a director no one cares).[[User:Slatersteven|Slatersteven]] ([[User talk:Slatersteven|talk]]) 18:20, 18 July 2010 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

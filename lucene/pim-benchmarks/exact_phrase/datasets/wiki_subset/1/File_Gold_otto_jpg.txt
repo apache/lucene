@@ -1,0 +1,15 @@
+{{Non-free use rationale
+|Article=Bravo Otto
+|Description=An official photograph of the Gold [[Bravo Otto]] statuette.
+|Source=[http://www.Bravo.de www.Bravo.de]
+|Portion=The entire copyrighted image is used.  However, this does not make the work as a whole less valuable to the copyright holder.
+|Low_resolution=The image has been resized to maintain the quality intended, without being unnecessarily high resolution.
+|Purpose=#The image is used as the primary means of visual identification for the article's subject matter.  
+#It is believed that the representation of the Golden Bravo Otto statuette in the [[Bravo Otto]] article on Wikipedia which refers to the annual Gold Otto Awards as an event and describes the purpose and history of the Bravo Otto Award itself, constitutes [[fair use]] under [[United States copyright law]].
+|Replaceability=There are no free equivalents of this image since all depictions of the Golden Otto statuette are most likely subject to the copyright regulations of [[Bravo (magazine)|Bravo magazine]]. No image showing a Gold Otto statuette can claim to be free, regardless of the license under which it may be released on Wikipedia. Any other Gold Otto related images, including Gold Otto icons created by Wikipedia users, or photos of look-alike Gold Otto statuettes would not accurately represent the genuine Bravo Otto Award.
+|other_information=
+}}
+
+==Licensing==
+{{Non-free 3D art|image has rationale=yes}}
+{{Trademark}}

@@ -1,0 +1,72 @@
+{{Use mdy dates|date=June 2020}}
+{{Infobox officeholder
+| name            = Levi H. Bancroft
+| image           = Levi Horace Bancroft.png
+| alt             = 
+| caption         = 
+| birth_name      = Levi Horace Bancroft
+| birth_date      = {{Birth date|1861|12|26}}
+| birth_place     = [[Sauk County, Wisconsin|Sauk County]], Wisconsin
+| death_date      = {{Death date and age|1948|09|05|1861|12|26}}
+| death_place     = [[Richland Center, Wisconsin|Richland Center]], Wisconsin
+| resting_place   = 
+| other_names     = 
+| occupation      = Teacher, lawyer, politician
+| spouse          = {{Marriage|Myrtle DeLap|June 11, 1890}}
+| children        = 
+| awards          = 
+| education       = [[University of Wisconsin Law School]]
+| party           = [[Republican Party of Wisconsin|Republican]]
+| office1         = [[Attorney General of Wisconsin]]
+| term_start1     = 1911
+| term_end1       = 1913
+| office2         = Member of the [[Wisconsin State Assembly]]
+| constituency2   = [[Richland County, Wisconsin|Richland County]]
+| term_start2     = 1906
+| term_end2       = 1910
+}}
+
+'''Levi Horace Bancroft''' (December 26, 1861 – September 5, 1948) was a politician and jurist in the State of [[Wisconsin]].
+
+==Biography==
+Levi H. Bancroft was born on December 26, 1861 to George I. and Helen M. Bancroft; reports have differed on the location. He attended high school in [[Lone Rock, Wisconsin]] and later became a teacher. In 1884, he graduated from the [[University of Wisconsin Law School]].<ref>{{cite book |chapter-url=https://books.google.com/books?id=AEwNAAAAIAAJ&pg=PA1129 |chapter=Biographical Sketches |title=Blue Book of the State of Wisconsin |year=1909 |publisher=[[Wisconsin|State of Wisconsin]] |page=1129 |accessdate=2020-06-24 |via=Google Books}}</ref> On June 11, 1890, Bancroft married Myrtle DeLap. From 1907 to 1913, he was a [[judge advocate]] of what is now the [[Wisconsin Army National Guard]].
+
+He died at his farm near [[Richland Center, Wisconsin|Richland Center]] on September 5, 1948.<ref>{{cite web|url=http://ci.richland-center.wi.us/wp-content/uploads/2014/03/Bancroft-House-2.pdf|title=Levi H. and Myrtle Bancroft House, 277 N. Sheldon Street|publisher=City of Richland Center|accessdate=2016-04-29}}</ref><ref>{{Cite news |url=https://www.newspapers.com/clip/54080494/judge-levi-h-bancroft-dies-at-age-of-87/ |title=Judge Levi H. Bancroft Dies At Age of 87 |newspaper=[[The Capital Times]] |location=Richland Center, Wisconsin |page=1 |date=1948-09-07 |access-date=2020-06-24 |via=Newspapers.com}}</ref>
+
+==Political career==
+Bancroft served as the District Attorney of [[Richland County, Wisconsin]] from 1886 to 1888, [[Richland Center, Wisconsin]] City Attorney for six years, and City Supervisor. From 1897 to 1902, he was a county judge of Richland County. Bancroft was a delegate to the [[1900 Republican National Convention]]. In addition, he was delegate to a number of State Republican Conventions. He would serve as an Assistant Attorney General for a disputed amount of time. Bancroft was a member of the Wisconsin State Assembly from 1907 to 1910, serving as Speaker in 1909 and 1910. From 1911 to 1913, he was Attorney General of Wisconsin, and he was a [[Wisconsin circuit courts|Wisconsin Circuit Court]] judge. Sources are varied over his length of service. Later, he served as a U.S. Attorney in Wisconsin from 1927 to 1932. From 1934 to 1936, Bancroft was Mayor of Richland Center.<ref>{{cite web|url=http://digicoll.library.wisc.edu/cgi/f/findaid/findaid-idx?c=wiarchives;view=reslist;subview=standard;didno=uw-whs-pltv000y;focusrgn=bioghist;cc=wiarchives;byte=491276492|title=Levi H. Bancroft Papers, 1863-1956|publisher=University of Wisconsin Digital Collections|accessdate=2016-04-30}}</ref> He was again a county judge of Richland County from 1938 to 1948.
+
+==See also==
+*[[List of Attorneys General of Wisconsin]]
+
+==References==
+{{reflist}}
+
+==External links==
+*[http://politicalgraveyard.com/bio/ballam-bancroft.html#00118T1RS The Political Graveyard]
+
+{{s-start}}
+{{s-legal}}
+{{succession box | title=[[Attorney General of Wisconsin]] | before=[[Frank L. Gilbert]] | after=[[Walter C. Owen]]| years= 1911&ndash;1913 }}
+{{s-end}}
+{{Wisconsin Attorneys General}}
+
+{{authority control}}
+
+{{DEFAULTSORT:Bancroft, Levi H.}}
+[[Category:People from Richland Center, Wisconsin]]
+[[Category:Wisconsin Attorneys General]]
+[[Category:District attorneys in Wisconsin]]
+[[Category:City and town attorneys in the United States]]
+[[Category:Wisconsin state court judges]]
+[[Category:County judges in the United States]]
+[[Category:Members of the Wisconsin State Assembly]]
+[[Category:Mayors of places in Wisconsin]]
+[[Category:Wisconsin Republicans]]
+[[Category:Military personnel from Wisconsin]]
+[[Category:National Guard of the United States officers]]
+[[Category:Schoolteachers from Wisconsin]]
+[[Category:United States Attorneys for the Eastern District of Wisconsin]]
+[[Category:University of Wisconsin Law School alumni]]
+[[Category:1861 births]]
+[[Category:1948 deaths]]

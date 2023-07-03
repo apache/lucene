@@ -1,0 +1,68 @@
+{{Drugbox
+| Verifiedfields = changed
+| Watchedfields = changed
+| verifiedrevid = 459522276
+| IUPAC_name = 3-(3''R'')-1-Benzylpyrrolidin-3-yl 5-methyl 2,6-dimethyl-4-(3-nitrophenyl)-1,4-dihydropyridine-3,5-dicarboxylate
+| image = Barnidipine structure.svg
+| width = 250
+<!--Clinical data-->
+| tradename =  
+| Drugs.com = {{drugs.com|international|barnidipine}}
+| pregnancy_AU = <!-- A / B1 / B2 / B3 / C / D / X -->
+| pregnancy_US = <!-- A / B            / C / D / X -->
+| pregnancy_category =  
+| legal_AU = <!-- S2, S3, S4, S5, S6, S7, S8, S9 or Unscheduled-->
+| legal_CA = <!-- Schedule I, II, III, IV, V, VI, VII, VIII -->
+| legal_UK = <!-- GSL, P, POM, CD, or Class A, B, C -->
+| legal_US = <!-- OTC / Rx-only / Schedule I, II, III, IV, V -->
+| legal_status =  
+| routes_of_administration = [[Mouth|Oral]]
+
+<!--Pharmacokinetic data-->
+| bioavailability =  
+| protein_bound =  
+| metabolism =  
+| elimination_half-life =  
+| excretion =  
+
+<!--Identifiers-->
+| CAS_number_Ref = {{cascite|changed|CAS}}
+| CAS_number = 104713-75-9
+| ATC_prefix = C08
+| ATC_suffix = CA12
+| ATC_supplemental =  
+| DrugBank_Ref = {{drugbankcite|correct|drugbank}}
+| DrugBank =  
+| ChEMBL_Ref = {{ebicite|changed|EBI}}
+| ChEMBL = 2103761
+| UNII_Ref = {{fdacite|correct|FDA}}
+| UNII = 2VBY96ASWJ
+|  PubChem = 443869
+|  ChemSpiderID_Ref = {{chemspidercite|changed|chemspider}}
+| ChemSpiderID = 391959
+|  StdInChI_Ref = {{stdinchicite|changed|chemspider}}
+| StdInChI = 1S/C27H29N3O6/c1-17-23(26(31)35-3)25(20-10-7-11-21(14-20)30(33)34)24(18(2)28-17)27(32)36-22-12-13-29(16-22)15-19-8-5-4-6-9-19/h4-11,14,22,25,28H,12-13,15-16H2,1-3H3/t22-,25-/m0/s1
+|  StdInChIKey_Ref = {{stdinchicite|changed|chemspider}}
+| StdInChIKey = VXMOONUMYLCFJD-DHLKQENFSA-N
+
+<!--Chemical data-->
+| C=27 | H=29 | N=3 | O=6 
+| smiles = [O-][N+](=O)c1cccc(c1)[C@H]4C(/C(=O)OC)=C(\N\C(=C4\C(=O)O[C@H]3CCN(Cc2ccccc2)C3)C)C
+}}
+
+'''Barnidipine''' ([[International Nonproprietary Name|INN]]; also known as '''mepirodipine''') is a [[calcium channel blocker]] which belongs to the [[dihydropyridine]] (DHP) group of [[calcium channel blocker]]s. It is used in the treatment of [[hypertension]].<ref>{{PubChem|443869}}</ref>
+
+==References==
+{{reflist}}
+
+{{Calcium channel blockers}}
+
+[[Category:Calcium channel blockers]]
+[[Category:Dihydropyridines]]
+[[Category:Pyrrolidines]]
+[[Category:Carboxylate esters]]
+[[Category:Nitrobenzenes]]
+[[Category:Methyl esters]]
+
+
+{{Cardiovascular-drug-stub}}

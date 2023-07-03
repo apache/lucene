@@ -1,0 +1,61 @@
+{{Infobox settlement <!--more fields are available for this Infobox--See Template:Infobox Settlement-->
+|settlement_type = District
+|subdivision_type = [[Countries of the world|Country]]
+|subdivision_name = {{TUR}}
+|timezone= [[Eastern European Time|EET]]
+|utc_offset=+2
+|image_map= Konya districts.png
+|map_caption =Location of Halkapınar within Turkey.
+|timezone_DST=[[Eastern European Summer Time|EEST]]
+|utc_offset_DST=+3
+|official_name = Halkapınar
+|image_skyline = 
+|image_caption = 
+|image_blank_emblem = 
+|blank_emblem_type = 
+|map cap = Location in [[Turkey]]
+|subdivision_type2=[[Provinces of Turkey|Province]]
+|subdivision_name2 = Konya
+| area_footnotes          = {{Turkey district areas|SOURCE}}
+| area_blank1_title       = District
+| area_blank1_km2         = {{Turkey district areas|Konya|Halkapınar}}
+| population_footnotes    = {{Turkey district populations|SOURCE|Konya}}
+| population_urban        = {{Turkey district populations|Konya|Halkapınar|şehir}}
+| population_as_of        = {{Turkey district populations|YEAR}}
+| population_blank1_title = District
+| population_blank1       = {{Turkey district populations|Konya|Halkapınar|toplam}}
+| population_density_blank1_km2  = auto
+| pushpin_map             = Turkey
+|coordinates             = {{coord|37|27|N|34|11|E|region:TR|display=inline}}
+|elevation_m = 1172
+|postal_code_type=[[Postal code]]
+|postal_code = 42xxx
+|area_code = 0332
+|blank_info = 42|blank_name=[[Turkish car number plates|Licence&nbsp;plate]]
+|leader_title= Mayor
+|leader_name = Fatih Şentürk ([[Nationalist Movement Party|MHP]])
+|website = [http://www.halkapinar.gov.tr/ www.halkapinar.gov.tr]
+}}
+
+'''Halkapınar''' is a town and [[Districts of Turkey|district]] of [[Konya Province]] in the [[Central Anatolia Region, Turkey|Central Anatolia]] region of [[Turkey]]. According to 2000 census, population of the district is 6,255 of which 2,021 live in the town of Halkapınar.<ref name="die">{{cite web|url=http://www.die.gov.tr/nufus_sayimi/2000tablo5.xls|title=Census 2000, Key statistics for urban areas of Turkey|accessdate=2008-03-22|author=[[Turkish Statistical Institute]]|format=XLS|language=Turkish}}</ref><ref>{{cite web|url=http://www.geohive.com/cntry/turkey.aspx?levels=Ic%20Anadolu|title=Statistical information on Turkey's administrative units|accessdate=2008-03-22|author=GeoHive}}</ref>
+
+==Notes==
+{{reflist}}
+
+==References==
+* {{cite web|url=http://www.fallingrain.com/world/TU/71/Halkapinar.html|title=Geographical information on Halkapınar, Turkey|accessdate=2008-03-22|author=Falling Rain Genomics, Inc}}
+
+==External links==
+* [http://www.halkapinar.gov.tr/ District governor's official website] {{in lang|tr}}
+* [http://www.halkapinar.bel.tr/ District municipality's official website] {{in lang|tr}}
+
+{{Districts of Turkey|provname=Konya}}
+
+{{coord|37|26|44|N|34|10|40|E|region:TR_type:city|display=title}}
+
+{{DEFAULTSORT:Halkapinar, Konya}}
+[[Category:Populated places in Konya Province]]
+[[Category:Districts of Konya Province]]
+
+
+{{Konya-geo-stub}}

@@ -1,0 +1,136 @@
+{{Infobox settlement
+|official_name          = Planina 
+|other_name             = Planina pod Mirno Goro
+|native_name            = 
+|nickname               =
+|settlement_type        = 
+|motto                  =
+|image_skyline          = Planina Semic Slovenia 2.jpg
+|imagesize              = 250px
+|image_caption          =
+|image_flag             =
+|flag_size              =
+|image_seal             =
+|seal_size              =
+|image_shield           =
+|shield_size            =
+|image_blank_emblem     =
+|blank_emblem_type      =
+|blank_emblem_size      =
+|image_map              =
+|mapsize                =
+|map_caption            =
+|image_map1             =
+|mapsize1               =
+|map_caption1           =
+|image_dot_map          =
+|dot_mapsize            =
+|dot_map_caption        =
+|dot_x =  |dot_y =
+||pushpin_map           = Slovenia
+|pushpin_label_position = left
+|pushpin_map_caption    = Location in Slovenia
+|subdivision_type       = Country
+|subdivision_name       = [[File:Flag of Slovenia.svg|25px]] [[Slovenia]]
+|subdivision_type1      = Traditional region
+|subdivision_name1      = [[Lower Carniola]]
+|subdivision_type2      = [[Statistical regions of Slovenia|Statistical region]]
+|subdivision_name2      = [[Southeast Slovenia Statistical Region|Southeast Slovenia]]
+|subdivision_type3      = [[Municipalities of Slovenia|Municipality]]
+|subdivision_name3      = [[Municipality of Semič|Semič]]
+|subdivision_type4      =
+|subdivision_name4      =
+|leader_name            =
+|leader_title1          =
+|leader_name1           =
+|leader_title2          =
+|leader_name2           =
+|leader_title3          =
+|leader_name3           =
+|leader_title4          =
+|leader_name4           =
+|established_title      =
+|established_date       =
+|established_title2     =
+|established_date2      =
+|established_title3     =
+|established_date3      =
+|area_magnitude         =
+|unit_pref                = 
+|area_footnotes           =
+|area_total_km2           = 32.22
+|area_land_km2            =
+|area_water_km2           =
+|area_total_sq_mi         =
+|area_land_sq_mi          =
+|area_water_sq_mi         =
+|area_water_percent       =
+|area_urban_km2           =
+|area_urban_sq_mi         =
+|area_metro_km2           =
+|area_metro_sq_mi         =
+|area_blank1_title        =
+|area_blank1_km2          =
+|area_blank1_sq_mi        =
+|population_as_of               =2002
+|population_footnotes           =
+|population_note                =
+|population_total               = 95
+|population_density_km2         =
+|population_density_sq_mi       =
+|population_metro               =
+|population_density_metro_km2   =
+|population_density_metro_sq_mi =
+|population_urban               =
+|population_density_urban_km2   =
+|population_density_urban_sq_mi =
+|population_blank1_title        =Ethnicities
+|population_blank1              =
+|population_blank2_title        =Religions
+|population_blank2              =
+|population_density_blank1_km2 =
+|population_density_blank1_sq_mi =
+|timezone               =
+|utc_offset             =
+|timezone_DST           =
+|utc_offset_DST         =
+|coordinates            = {{coord|45|40|13.98|N|15|13|3.12|E|region:SI|display=inline,title}}
+|elevation_footnotes    =
+|elevation_m            = 269.1
+|elevation_ft           =
+|postal_code_type       =
+|postal_code            =
+|area_code              =
+|blank_name             =
+|blank_info             =
+|blank1_name            =
+|blank1_info            =
+|website                =
+|footnotes              = <ref>[http://www.stat.si/eng/index.asp Statistical Office of the Republic of Slovenia]</ref>
+}}
+
+'''Planina''' ({{IPA-sl|plaˈniːna|pron}}; {{lang-de|Stockendorf}},<ref name="Leksikon">''Leksikon občin kraljestev in dežel zastopanih v državnem zboru,'' vol. 6: ''Kranjsko''. 1906. Vienna: C. Kr. Dvorna in Državna Tiskarna, p. 6.</ref><ref>Ferenc, Mitja. 2007. ''Nekdanji nemški jezikovni otok na kočevskem''. Kočevje: Pokrajinski muzej, p. 4.</ref> [[Gottscheerish|Gottschee German]]: ''Aobə''<ref name="Ferenc Zupan">{{cite book |last1=Ferenc |first1=Mitja |last2=Zupan |first2=Gojko |title=Izgubljene kočevske vasi, vol. 1 (A–J). |date=2011 |publisher=Znanstvena založba Filozofske fakultete Univerze v Ljubljani |location=Ljubljana |isbn=9789612374273 |pages=200-206}}</ref>) is a [[village]] in the [[Municipality of Semič]] in [[Slovenia]]. It lies on the southern slopes of [[Mount Mirna]] ({{lang-sl|Mirna gora}}) in the southern part of [[Kočevje Rog]]. It was inhabited by [[Gottschee County|Gottschee Germans]] that were expelled in 1941 during the [[Second World War]]. The area is part of the historical region of [[Lower Carniola]]. The municipality is now included in the [[Southeast Slovenia Statistical Region]].<ref>[http://www.semic.si/ Semič municipal site]</ref> 
+
+==Name==
+[[File:Planina Semic Slovenia - gravestone.jpg|thumb|left|[[Gottscheers|Gottschee German]] gravestone with the toponym ''Stockendorf'']]
+The name ''Planina'' comes from the Slovene common noun ''planina'', referring to a mountain without trees or to a grassy mountain area used for grazing livestock.<ref>{{cite book |last1=Snoj |first1=Marko |title=Etimološki slovar slovenskih zemljepisnih imen |date=2009 |publisher=Modrijan |location=Ljubljana |page=309}}</ref> The longer name ''Planina pod Mirno Goro'' means 'Planina below [[Mount Mirna]]'. The German name of the settlement, ''Stockendorf'', is a compound of ''Stock'' 'stump' and ''Dorf'' 'village', referring to a settlement at a site where land was cleared by burning and the stumps were then grubbed out.<ref name="Ferenc Zupan"/><ref name="Simonic">{{cite journal |last1=Simonič |first1=Ivan |title=Kočevarji v luči krajevnih in ledinskih imen |journal=Glasnik Muzejskega društva za Slovenijo |date=1935 |volume=16 |pages=64-65 |url=https://www.dlib.si/stream/URN:NBN:SI:DOC-LNG0USOZ/e7ae8251-ea79-4f4e-a78a-8b489dbc21c8/PDF |accessdate=June 28, 2018}}</ref> The [[Gottscheerish|Gottschee German]] name ''Aobə''<ref name="Simonic"/> is the dialect form of the standard German noun ''Alpe'' 'mountain pasture'<ref>{{cite book |last1=Schroer |first1=Karl Julius |title=Wörterbuch der Mundart von Gottschee |date=1870 |publisher=K. k. Hof- und Staatsdruckerei |location=Vienna |page=37}}</ref> and semantically corresponds to the Slovene name ''Planina''.
+
+==Church==
+[[File:Planina Semic Slovenia - church 2.jpg|thumb|right|Prophet Elijah Church]]
+The local [[parish church]] is dedicated to the [[Elijah|Prophet Elijah]] and belongs to the [[Roman Catholic Diocese of Novo Mesto]]. It was built in around 1730 and extended in the late 18th century. It was renovated in the early 21st century.<ref>{{cite web |url=http://giskd2s.situla.org/rkd/Opis.asp?ESD=2101&submit.x=0&submit.y=0 |title=EŠD 2101 |language=Slovenian |work=Registry of Immovable Cultural Heritage |publisher=Ministry of Culture of the Republic of Slovenia |accessdate=11 March 2011}}</ref>
+
+==References==
+{{Reflist}}
+
+==External links==
+*{{commons category-inline|Planina, Semič}}
+*[http://www.geopedia.si/Geopedia_en.html?params=L410_F10089727_T105_vF_b4_x507260.34349999995_y53237.6855_s13 Planina at Geopedia]
+*[http://www.gottscheerland.at/ortsplaene/Stockendorf.pdf Pre–World War II List of oeconyms and family names in Planina]
+
+{{Semič}}
+
+{{DEFAULTSORT:Planina, Semic}}
+[[Category:Populated places in the Municipality of Semič]]
+
+
+{{Semič-geo-stub}}

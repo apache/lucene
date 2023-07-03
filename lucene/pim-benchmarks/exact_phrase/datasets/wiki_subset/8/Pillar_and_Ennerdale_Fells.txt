@@ -1,0 +1,30 @@
+{{Use dmy dates|date=June 2018}}
+'''Pillar and Ennerdale Fells''' is a [[Site of Special Scientific Interest]] (SSSI) in [[Ennerdale, Cumbria]], England. Protected for its biological interest, the site is named after [[Pillar (Lake District)|Pillar]], which at {{convert|892|m}} is the eighth-highest mountain in the [[Lake District]], and other [[fell]]s in the same range. The area is 425.25 [[Hectare|ha]].<ref name="NEpdf"/>
+
+==History==
+The site was notified in 1991. The site includes Side Wood on the south side of [[Ennerdale Water]], which was formerly part of the adjacent Ennerdale SSSI.<ref name="NEpdf"/>
+
+==Ecology==
+
+Side Wood is described as one of the best examples of an upland birch ''[[Betula pubescens]]'' – sessile oak ''[[Quercus petraea]]'' woodland in West Cumbria. The trees of Ennerdale are important as an example of altitudinal succession. The vegetation changes from "native upland birch-oak woodland at 120 m" on the shores of the lake, through "[[sub-montane]] heaths and grasslands to montane heaths along the summit ridge at an altitude of 890 m".<ref name="NEpdf">{{Cite web |url=https://designatedsites.naturalengland.org.uk/PDFsForWeb/Citation/1001459.pdf |title=Site Name: Pillar and Ennerdale Fells}}</ref>
+
+Above the woodland is gently sloping heathland dominated by [[Calluna|heather]], [[Erica cinerea|bell heather]] and [[Vaccinium    myrtillus|bilberry]]; the associated grasses are [[Festuca ovina|sheep’s-fescue]], [[Agrostis capillaris|common bent]], [[Nardus|mat-grass]], [[Potentilla erecta|tormentil]] and [[Galium saxatile|heath bedstraw]]. Higher up, bilberry and grasses predominate, while on the summit ridge, where the snow lies late, mosses, sedges, lichens and [[Festuca vivipara|viviparous fescue]] occur.<ref name="NEpdf"/>
+
+The crags of Pillar, away from grazing sheep, are home to a lush, herb-rich upland ledge community of plants. Breeding birds on Pillar and Ennerdale Fells include [[buzzard]], [[peregrine falcon]], [[merlin]], [[raven]], [[wheatear]], [[whinchat]], [[ring ouzel]] and [[red  grouse]].<ref name="NEpdf"/>
+
+Ennerdale is managed as a [[Rewilding (conservation biology)|rewilding]] project called "Wild Ennerdale", which was established in 2003. The Wild Ennerdale Partnership gives scope for the management of this site holistically at the landscape scale.<ref name="Wild">{{Cite web |url=http://www.wildennerdale.co.uk/wordpress/wp-content/uploads/2017/06/wild-ennerdale-sssi-plans-2015-2025-.pdf |title=Wild Ennerdale SSSI Plan |access-date=27 April 2018}}</ref>
+
+==Other measures of protection==
+The SSSI is one of ten underpinning a [[Special Area of Conservation]], [[Lake District High Fells]], which was designated in 2005.<ref>{{cite book|title=European Site Conservation Objectives for Lake District High Fells Special Area of Conservation: Site Code: UK0012960 |url=https://books.google.com/books?id=n5UwygEACAAJ |year=2014 |publisher=Natural England}}</ref>
+
+==See also==
+*[[List of Sites of Special Scientific Interest in Cumbria|SSSIs in Cumbria]]
+
+==References==
+{{Reflist}}
+
+{{coord|54.496|-3.339|type:landmark_region:GB_dim:3000|display=title}}
+
+[[Category:Sites of Special Scientific Interest in Cumbria]]
+[[Category:Forests and woodlands of Cumbria]]
+[[Category:Protected areas established in 1991]]

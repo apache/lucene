@@ -1,0 +1,41 @@
+{{Infobox venue
+| stadium_name      = Stadio Pier Cesare Tombolato
+| nickname          = 
+| image             = 
+| caption           = 
+| location          = [[Cittadella]], [[Italy]] {{flagicon|Italy}}
+| coordinates       = {{coord|45|38|34|N|11|46|52|E|type:landmark_region:IT|display=it}}
+| broke_ground      = 
+| opened            = 1981
+| renovated         = 2008, 2015
+| closed            = 
+| demolished        = 
+| owner             = Municipality of [[Cittadella]]
+| operator          = 
+| surface           = [[Grass]]<br/>105x68m
+| construction_cost = 
+| architect         = 
+| former_names      = 
+| tenants           = [[A.S. Cittadella]]
+| seating_capacity  = 7,623<ref>{{cite news |url=http://www.ascittadella.it/StadioMain.asp |publisher=A.S. Cittadella - Sito ufficiale |language=Italian |title=A.S. Cittadella - Stadio |access-date=2010-10-17 |url-status=dead |archive-url=https://web.archive.org/web/20110129081537/http://www.ascittadella.it/StadioMain.asp |archive-date=2011-01-29 |df= }}</ref>
+}}
+
+'''Stadio Pier Cesare Tombolato''' is a multi-use [[stadium]] in [[Cittadella]], [[Italy]]. It is currently used mostly for [[football (soccer)|football]] matches and is the home ground of [[A.S. Cittadella]]. The stadium holds 7,623.
+
+==History==
+The stadium was named after Piercesare Tombolato, a goalkeeper of Cittadella who died in hospital after a collision with a rival player in a match against [[Calcio Padova]] in 1957.<ref>{{cite web |url=http://stadiumdb.com/stadiums/ita/stadio_piercesare_tombolato |title=Stadio Piercesare Tombolato |website=Stadiumdb.com |date= }}</ref><ref>{{cite web |url=https://footballtripper.com/italy/cittadella-stadium/#:~:text=The%20stadium%20is%20named%20after,Padua%20on%203rd%20March%201957. |title=Stadio Piercesare Tombolato |website=Football Tripper |date= }}</ref>
+
+The stadium's capacity was boosted to 7,500 for the 2008–09 season, in order to enable [[A.S. Cittadella]] play in their home town, though it needed a dispensation from the [[FIGC]], that requires a stadium of at least 10,000 seats for Serie B. The first game in the renovated stadium was against [[A.C. Ancona]] on October 29, 2008.
+
+==References==
+{{Reflist|1}}
+
+{{Serie B stadiums}}
+{{Football in Italy}}
+
+[[Category:A.S. Cittadella]]
+[[Category:Football venues in Italy|P.C. Tombolato]]
+[[Category:Sports venues in Veneto]]
+
+
+{{Italy-sports-venue-stub}}

@@ -1,0 +1,61 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Onychobaris
+| species = densa
+| authority = ([[John Lawrence LeConte|LeConte]], 1858)
+}}
+
+'''''Onychobaris densa''''' is a species of [[flower weevil]] in the [[beetle]] family [[Curculionidae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Onychobaris densa'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=618545
+| website=Integrated Taxonomic Information System
+| access-date=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Onychobaris densa''
+| url=https://www.gbif.org/species/1178497
+| website=GBIF
+| access-date=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Onychobaris densa'' species Information
+| url=https://bugguide.net/node/view/879475
+| website=BugGuide.net
+| access-date=2019-09-23
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 7: Curculionoidea I
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-26093-1
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 8: Curculionoidea II
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-25916-4
+}}
+{{refend}}
+
+{{Taxonbar|from=Q54984794}}
+
+[[Category:Baridinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1858]]
+
+
+{{Baridinae-stub}}

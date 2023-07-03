@@ -1,0 +1,35 @@
+{{Taxobox
+| image = 
+| image_caption = 
+| regnum = [[Animal]]ia
+| phylum = [[Arthropod]]a
+| classis = [[Insect]]a
+| ordo = [[Lepidoptera]]
+| familia = [[Ypsolophidae]]
+| genus = ''[[Ypsolopha]]''
+| species = '''''Y. undulatella'''''
+| binomial = ''Ypsolopha undulatella''
+| binomial_authority = ([[August Busck|Busck]], 1906)<ref>[http://www.nearctica.com/nomina/lepid/lepr-z.htm nearctica] {{webarchive |url=https://web.archive.org/web/20110114170817/http://www.nearctica.com/nomina/lepid/lepr-z.htm |date=January 14, 2011 }}</ref>
+| synonyms =
+*''Cerostoma undulatella'' <small>Busck, 1906</small>
+}}
+
+'''''Ypsolopha undulatella''''' is a [[moth]] of the family [[Ypsolophidae]]. It is known from the United States, including [[Arizona]], [[Utah]] and [[Colorado]].
+
+The [[wingspan]] is about 20–24&nbsp;mm.<ref>[http://mothphotographersgroup.msstate.edu/species.php?hodges=2396 mothphotographersgroup]</ref>
+
+The antennae are light fuscous with indistinct darker annulations. The labial palpi are white, dusted with black. The face, head and thorax are bluish white minutely dusted with black atoms, each scale being white with dark lines. The forewings are bluish silvery white, densely overlaid with black and brown in ill-defined wavy transverse lines. Each white scale is tipped with black. The apical part of the wing is strongly cupreous brown, especially around the edge. The hindwings are light fuscous, the abdomen is silvery fuscous and the legs are white dusted with black.<ref>[https://archive.org/stream/entomologicalnew17acad/entomologicalnew17acad_djvu.txt Description of American Moths of the Genus Cerostoma]</ref>
+
+==References==
+{{Reflist}}
+
+{{Wikispecies}}
+{{Commons}}
+
+{{Taxonbar|from=Q8059590}}
+
+[[Category:Ypsolophidae]]
+[[Category:Moths of the United States]]
+
+
+{{Ypsolophidae-stub}}

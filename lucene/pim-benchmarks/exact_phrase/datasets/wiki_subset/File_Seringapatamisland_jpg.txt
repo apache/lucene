@@ -1,0 +1,15 @@
+== Summary ==
+{{Information
+ |Description    = Etching of Seringapatam Island on the Cauvery River.
+ |Source         = http://www.bl.uk/onlinegallery/onlineex/kinggeorge/a/003ktop00000115u06700002.html
+ |Date           = 1792
+ |Author         = D. Orme & Co., part of King George III's Topographical Collection.
+ |Permission     = 
+ |other_versions = 
+}}
+
+Uploaded by [[User:Fowler&fowler|<font color="#B8860B">Fowler&fowler</font>]][[User talk:Fowler&fowler|<font color="#708090">«Talk»</font>]] 21:20, 30 September 2009 (UTC)
+== Licensing ==
+{{PD-art}}
+
+{{Copy to Wikimedia Commons|bot=Svenbot|priority=true}}

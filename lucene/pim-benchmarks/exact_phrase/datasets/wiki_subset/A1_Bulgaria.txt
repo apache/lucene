@@ -1,0 +1,111 @@
+{{short description|Bulgarian telecommunications company}}
+{{Infobox company
+| name = A1 Bulgaria
+| logo = A1 logo.png
+| logo_size = 80 px
+| logo_caption = A1 Bulgaria Primary Logo
+| native_name_lang = <!-- Use ISO 639-1 code, e.g. "fr" for French. For multiple names in different languages, use {{lang|[code]|[name]}}. -->
+| former_name = Mtel, Mobiltel
+| industry = [[mobile phone|mobile]] [[telecommunications]]
+| founded = {{Start date and age|1994}} (as Mobiltel)<br />{{Start date and age|2018}} (as A1 Bulgaria)
+| founder = <!-- or:
+| founders            = -->
+| hq_location = 1 Kukush Str.
+| hq_location_city = [[Sofia]]
+| hq_location_country = [[Bulgaria]]
+| key_people = [[Alexander Dimitrov]], CEO
+| products = 
+| brands = A1
+| services = [[Satellite television]], [[IPTV]], [[fixed phone|Fixed]]/[[Mobile telephony|Mobile]] [[telephony]], [[Internet service provider]], [[ICT Solutions]], [[Own Sport Channels]]
+| revenue = {{increase}} €431.2 mil.<ref>{{Cite web|url=https://cdn1.a1.group/final/en/media/pdf/Combined%20Annual%20Report_2017.pdf|title=A1 Telekom Austria Group’s Combined Annual Report for 2017|date=13 February 2018|website=www.a1.group}}</ref>
+| revenue_year = 2017
+| operating_income = {{increase}} €130.1 mil.<ref>{{Cite web|url=https://cdn1.a1.group/final/en/media/pdf/Combined%20Annual%20Report_2017.pdf|title=A1 Telekom Austria Group’s Combined Annual Report for 2017|date=13 February 2018|website=www.a1.group}}</ref>
+| income_year = 2017
+| net_income = <!-- or:
+| profit              = -->
+| net_income_year = <!-- or:
+| profit_year         = --><!-- Year of net_income/profit data (when known) -->
+| num_employees = 3,751<ref>{{Cite web|url=https://cdn1.a1.group/final/en/media/pdf/Combined%20Annual%20Report_2017.pdf|title=A1 Telekom Austria Group’s Combined Annual Report for 2017|date=13 February 2018|website=www.a1.group}}</ref>
+| num_employees_year = 2017
+| parent = [[A1 Telekom Austria Group]]
+| website = [https://www.a1.bg/ www.a1.bg]
+}}
+
+'''A1 Bulgaria''' (previously known as '''Mtel''' or '''Mobiltel''' /network code 284-01/), is a GSM [[mobile phone operator]] in [[Bulgaria]].
+
+==History==
+A1 Bulgaria was founded in March 1994 but was not launched commercially until September 1995 (as ''Citron'').<ref>{{cite web |url=http://www.capital.bg/show.php?storyid=490495 |title=Редакционни коментари - Ако Мтел все още беше Цитрон... - Капитал |work=capital.bg |access-date=30 September 2008 |archive-url=https://web.archive.org/web/20081019232129/http://www.capital.bg/show.php?storyid=490495 |archive-date=19 October 2008 |url-status=live}}</ref>
+
+In 2001, M-Tel (the brand then) launched its prepayment sim cards which allowed customers to purchase credits prior to calling friends. This proved to be a great success and saw the number of customers using their network increase dramatically.
+
+The company had a market share of about 58% and 3,000,000 clients in September 2004. On 14 September 2006 M-Tel reached 4,000,000 clients. {{as of|2006|May}} the company has 4,400,000 subscribers and its market share fell to 51.1%. Its contract customers increased to 1.7 mln, while the profit per customer dropped to 9.9 euros for Q1 2007.<ref>{{cite web |url=http://www.investor.bg/?cat=5&id=50601 |title=Приходите на Мтел нарастват с 12%, пазарният дял намалява |author=Калина  Декова |work=Investor.bg |access-date=16 May 2007 |archive-url=https://web.archive.org/web/20070927173029/http://www.investor.bg/?cat=5&id=50601 |archive-date=27 September 2007 |url-status=live}}</ref>
+
+The operator has been owned by [[Telekom Austria Group]] since July 2005, when it was acquired for up to [[Euro|€]]1.6&nbsp;billion in one of [[Central and Eastern Europe]]'s largest deals and one of the largest foreign investments in [[Austria]]. Mobiltel was the first Bulgarian operator to offer [[Enhanced Data Rates for GSM Evolution|EDGE]], [[UMTS]], [[HSDPA]], [[High Speed Packet Access|HSPA+]] and second to offer [[LTE (telecommunication)|LTE]] services to its clients, with [[video telephony]] services being available since 6 March 2006 in the capital [[Sofia]] and since mid-July 2006 throughout the Bulgarian Black Sea resorts.<ref>{{cite web |url=http://www.mtel.bg/mobiltel/press_det.php?press_det_id=138 |title=Archived copy |accessdate=4 August 2006 |url-status=dead |archiveurl=https://web.archive.org/web/20081020094319/http://www.mtel.bg/mobiltel/press_det.php?press_det_id=138 |archivedate=20 October 2008}}</ref>
+
+The company was the official sponsor of Bulgarian football club [[PFC Levski Sofia]]. Since 2005, the company also organizes the strong annual [[M-Tel Masters]] chess tournament, which is attended by six of the world's best [[International Grandmaster]]s.
+
+Despite the difficult economic environment affecting the entire IT and Telco industry in Bulgaria, Mobiltel's performance remains stable with a customer base of 5.3&nbsp;million.  The postpaid subscribers increased from 61% to roughly 66%. Mobiltel's market share by end Q1/2011 stays at 49.3%.
+
+The Mtel network uses the access code 88. Until 2003, it also used the codes 89 and 87, which had been added as the network had expanded. In mid-2003, however, mobile numbers in Bulgaria increased by one digit and the M-Тel network code returned to being 88 only.
+
+Mobiltel owns Loop, the largest virtual mobile operator operating in Bulgaria, specially designed for young customers. In 2011 Mtel created pre-paid service for cheap telephone calls, SMS and mobile Internet [[Bob (mobile operator)|bob]], which is available in [[Austria]] and [[Slovenia]] too.
+
+In 2012 M-tel was rebranded with a new logo, and the dash in the name was removed leaving Mtel (Мтел) as shown in the new logo.
+
+On 28 July 2015, Mtel and [[Max Telecom|Max]] signed a contract for national roaming. This is the first agreement for sharing networks in the Bulgarian telecom market.
+
+On 29 July 2015, Mobiltel said has agreed to buy cable TV and internet service provider [[Blizoo]]. On 18 September 2015, CPC gave green light of the deal and the merger was done by the end of the year.
+
+On 15 September 2016, Mtel became the official sponsor of the most successful Bulgarian football club [[PFC CSKA Sofia|CSKA Sofia]]. From 2016 to 2017 season Mtel became the team's principal shirt sponsor.
+
+On 14 January 2016 Mtel launched its own pay television sports pack – [https://www.a1.bg/max-sport MAX Sport] (then under the brand [[Max Sport|Mtel Sport]]), consisting of two TV channels.<ref>{{Cite web|url=https://cdn1.a1.group/final/en/media/pdf/Combined%20Annual%20Report_2017.pdf|title=A1 Telekom Austria Group’s Combined Annual Report for 2017|date=13 February 2018|website=www.a1.group/}}</ref>
+
+{{as of|2018|May|22}}, the company is operating under the A1 brand.
+
+== Network ==
+{{Expand section|date=June 2016}}
+
+A1 has built various types of networks. The company was first to launch GSM, GPRS, HSPA, HSPA+ and test LTE in Bulgaria. They also have fiber optic internet in most of the big cities (by recent acquisition of former [[blizoo]]). In 2012 after big commercials A1 (Mtel back then) announced [[Direct-broadcast satellite|DTH]]. {{as of|2016}} depending on a viewer's location A1 can offer to IPTV (marketed as interactive television), CATV (former blizoo), HSPA, HSPA+, LTE and fiber internet (up to 1 Gbit/s).
+
+=== Mobile ===
+
+=== Television ===
+
+==== IPTV ====
+A1's IPTV is marketed as interactive television.
+
+==== CATV ====
+A1 acquired [[blizoo]] in June 2015 as a result the company now has access to up to 1.5 million people thanks to blizoo's [[DVB-C]] network. Most of the network is [[FTTB]].
+
+==== DTH ====
+In 2012 after big commercials A1 announced [[Direct-broadcast satellite|DTH]].
+
+==== A1 Xplore TV (formerly A1 Now, Mtel Now) ====
+After many unsuccessful tries with [[mobile IPTV]], A1 finally made a breakthrough with its latest new service called A1 Xplore TV. {{as of|2016|June}} it has been free for current television users (including blizoo's). A1 Xplore TV offers up to 74 channels ({{as of|2018|April|lc=y}}), some in HD on all type of devices. The app is available in [[Google Play Store]] and [[AppStore]].
+
+=== Broadband Internet ===
+A1's first major investment was in Megalan Networks.
+
+== Services ==
+* [[fixed phone|Fixed]]/[[Mobile telephony|Mobile]] [[telephony]]
+* [[DVB-C]] ([[blizoo]]'s network)
+* [[DVB-S]]
+* [[IPTV]]
+* [[Analog television]]
+* [[Broadband Internet]]
+
+== References ==
+{{reflist}}
+
+== External links ==
+* {{Official website|http://www.a1.bg/bg }} {{in lang|bg}}
+* {{Official website|http://www.a1.bg/en }}
+{{America Movil}}
+{{Mobile network operators in Bulgaria}}
+{{Television in Bulgaria}}
+{{CATV Europe}}
+{{Use dmy dates|date=September 2018}}
+
+[[Category:Cable television companies]]
+[[Category:Mobile phone companies of Bulgaria]]
+[[Category:Vodafone]]

@@ -1,0 +1,52 @@
+{{short description|Japanese baseball player}}
+{{Infobox NPB player
+|name=Ryota Yachi
+|image=Yachi ryota.jpg
+|image_size=250
+|caption=Yachi with the Tokyo Yakult Swallows
+|position=[[Infielder]]
+|team=Hokkaido Nippon-Ham Fighters
+|number=32
+|bats=Right
+|throws=Right
+|birth_date={{Birth date and age|1991|2|3}}
+|birth_place=Kanazawa, Ishikawa, Japan
+|debutdate=August 28
+|debutyear=2013
+|debutteam=[[Tokyo Yakult Swallows]]
+|statyear=2019 season
+| statleague  = NPB
+| stat1label  = [[Batting average (baseball)|Batting average]]
+| stat1value  = .216
+| stat2label  = [[Hit (baseball)|Hits]]
+| stat2value  = 75
+| stat3label  = [[Home run]]s
+| stat3value  = 2
+| stat4label  = [[Run batted in|RBI]]
+| stat4value  = 38
+| stat5label  = [[Stolen base]]s
+| stat5value  = 0
+|teams=
+* [[Tokyo Yakult Swallows]] ({{npby|2013}}–{{npby|2018}})
+* [[Hokkaido Nippon-Ham Fighters]] ({{npby|2019}}–present)
+}}
+
+{{nihongo|'''Ryota Yachi'''|谷内 亮太|Yachi Ryota|extra=born February 3, 1991 in [[Kanazawa]], [[Ishikawa Prefecture|Ishikawa]], [[Japan]]}} is a professional [[Japanese people|Japanese]] [[baseball]] player. He plays [[infielder]] for the [[Hokkaido Nippon-Ham Fighters]].
+
+==External links==
+{{Baseballstats|brm=yachi-000ryo}}
+* [http://bis.npb.or.jp/eng/players/11615137.html NPB.com]
+
+{{Hokkaido Nippon Ham Fighters roster navbox}}
+
+{{DEFAULTSORT:Yachi, Ryota}}
+[[Category:1991 births]]
+[[Category:Living people]]
+[[Category:Baseball people from Ishikawa Prefecture]]
+[[Category:Japanese baseball players]]
+[[Category:Nippon Professional Baseball infielders]]
+[[Category:Tokyo Yakult Swallows players]]
+[[Category:Hokkaido Nippon-Ham Fighters players]]
+
+
+{{Japan-baseball-infielder-stub}}

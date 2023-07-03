@@ -1,0 +1,9 @@
+==Summary ==
+{{Non-free use rationale poster
+| Article           = Sulthan Hyderali
+| Use               = Infobox
+| Source            = https://en.msidb.org/m.php?2738
+}}
+
+== Licensing ==
+{{Non-free poster|image has rationale=yes}}

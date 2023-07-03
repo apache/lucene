@@ -1,0 +1,17 @@
+<div class="boilerplate metadata afd vfd xfd-closed" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was    '''delete'''. '''[[User:Cirt|Cirt]]''' ([[User talk:Cirt|talk]]) 06:02, 7 October 2009 (UTC)
+===[[Locked Area Lite]]===
+
+:{{la|Locked Area Lite}} – <includeonly>([[Wikipedia:Articles for deletion/Locked Area Lite|View AfD]])</includeonly><noinclude>([[Wikipedia:Articles for deletion/Log/2009 September 30#{{anchorencode:Locked Area Lite}}|View log]])</noinclude>
+:({{findsources|Locked Area Lite}})
+I can't find [[WP:N|significant coverage]] for this software. [[User:Joe Chill|Joe Chill]] ([[User talk:Joe Chill|talk]]) 20:50, 30 September 2009 (UTC)
+
+*'''Delete''': I happened to share the nominator's observation on this one. The best case scenario for this article's survival would be a merger with some others on password storage, or a list comparing them. <sup>(Wow my first delete !vote on an AfD!)</sup> --[[User:Mokhov|Mokhov]] ([[User talk:Mokhov|talk]]) 00:33, 1 October 2009 (UTC)
+
+*'''Delete''' - I can find only download links.  No reliable sources actually writing about this. -- [[User:Whpq|Whpq]] ([[User talk:Whpq|talk]]) 16:25, 2 October 2009 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

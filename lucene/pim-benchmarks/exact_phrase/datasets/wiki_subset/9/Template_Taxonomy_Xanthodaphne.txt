@@ -1,0 +1,7 @@
+{{Don't edit this line {{{machine code|}}}
+|rank=genus
+|link=Xanthodaphne
+|parent=Raphitomidae
+|extinct=<!--leave blank or delete this line for "not extinct"; put "yes" for "extinct" -->
+|refs=<!--Shown on this page only; don't include <ref> tags -->
+}}

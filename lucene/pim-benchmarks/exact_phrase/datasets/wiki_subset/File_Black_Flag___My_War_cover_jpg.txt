@@ -1,0 +1,31 @@
+== Summary ==
+{{Non-free use rationale album cover
+<!-- REQUIRED -->
+|Article=My War
+|Use=Infobox
+<!-- HIGHLY RECOMMENDED -->
+|Source=https://www.amazon.com/My-War-Black-Flag/dp/B000000LZO
+<!-- ADDITIONAL INFORMATION -->
+|Name= ''[[My War]]''
+|Artist= [[Black Flag (band)|Black Flag]]
+|Label= [[SST Records]]
+|Graphic Artist= [[Raymond Pettibon]]
+|Item= 
+|Type= 
+|Website= 
+|Owner= 
+|Commentary= 
+<!-- OVERRIDE FIELDS -->
+|Description= 
+|Portion= 
+|Low_resolution= 
+|Purpose=
+|Replaceability= 
+|other_information= 
+}}
+
+== Licensing ==
+{{Non-free album cover|image has rationale=yes}}
+
+[[Category:Black Flag (band) album covers|My War]]
+[[Category:Album covers by Raymond Pettibon]]

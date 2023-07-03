@@ -1,0 +1,119 @@
+{{Infobox album
+| name       = Wonder Woman: Original Motion Picture Soundtrack
+| type       = Soundtrack
+| artist     = [[Rupert Gregson-Williams]]
+| cover      = Wonder Woman (Original Motion Picture Soundtrack).jpg
+| alt        =
+| released   = {{Start date|2017|6|2}}
+| recorded   = 2017
+| venue      =
+| studio     =
+| genre      = [[Soundtrack]]
+| length     = 78:38
+| label      = [[WaterTower Music|WaterTower]]
+| producer   = [[Rupert Gregson-Williams]]
+| prev_title = [[Sandy Wexler]]
+| prev_year  = 2017
+| next_title = [[Terminal (2018 film)|Terminal]]
+| next_year  = 2018
+| misc       = {{Extra chronology
+ | artist     = [[DC Extended Universe]] soundtrack
+ | type       = Soundtrack
+ | prev_title = [[Suicide Squad (soundtrack)|Suicide Squad]]
+ | prev_year  = 2016
+ | title      = Wonder Woman
+ | year       = 2017
+ | next_title = [[Justice League (soundtrack)|Justice League]]
+ | next_year  = 2017
+}}
+{{Singles
+ | name        = Wonder Woman
+ | type        = Soundtrack
+ | single1     = [[To Be Human]]
+ | single1date = May 25, 2017
+}}
+}}
+
+'''''Wonder Woman: Original Motion Picture Soundtrack''''' is the [[soundtrack]] to the [[Wonder Woman (2017 film)|film of the same name]]. 
+The music is composed and arranged by [[Rupert Gregson-Williams]]. It was released on June 2, 2017, by [[WaterTower Music]].
+
+On November 3, 2016, [[Rupert Gregson-Williams]] was hired to compose the film's music.<ref>{{Cite news|url=http://screenrant.com/wonder-woman-composer-hacksaw-ridge-rupert-gregson-williams/|title=Wonder Woman Gets Hacksaw Ridge Composer|date=2016-11-03|work=Screen Rant|access-date=2017-04-28|language=en-US}}</ref><ref name="Wonder Woman Gets Hacksaw Ridge Composer">{{cite web|title=Wonder Woman Gets Hacksaw Ridge Composer|url=http://screenrant.com/wonder-woman-composer-hacksaw-ridge-rupert-gregson-williams/|publisher=Screen Rant|accessdate=November 4, 2016}}</ref> He is joined by Evan Jolly, Tom Howe,<ref name="tomhowe">{{cite web|title=Credits: Tom Howe|url=http://www.tomhowe.co.uk/credits/|publisher=tomhowe.co.uk|accessdate=March 25, 2017}}</ref> Paul Mounsey,<ref name="paulmounsey">{{cite web|title=Credits: Paul Mounsey|url=http://www.hans-zimmer.com/index.php?rub=rcpmember&numid=122|publisher=hans-zimmer.com|accessdate=May 2, 2017}}</ref> and Andrew Kawczynski<ref name="andrewkawczynski">{{cite web|title=Credits: Andrew Kawczynski|url=http://www.hans-zimmer.com/index.php?rub=rcpmember&numid=115|publisher=hans-zimmer.com|accessdate=May 19, 2017}}</ref> who provide additional music. The soundtrack was released on the same day as the film on CD, digital, and vinyl.<ref name="RupertGWilliams">{{cite web|title=Rupert Gregson-Williams|url=https://twitter.com/RupertGWilliams/status/860081860944293888|publisher=@RupertGWilliams on Twitter|accessdate=May 19, 2017}}</ref> The score also heavily samples the "Is She with You?" theme from the film ''[[Batman v Superman: Dawn of Justice]]'', which was written by [[Hans Zimmer]] and [[Junkie XL]].
+
+Australian singer [[Sia (musician)|Sia]] sang a song for the film, titled "[[To Be Human]]", featuring English musician [[Labrinth]]. Written by [[Florence Welch]] and [[Rick Nowels]], the song is featured on the soundtrack.<ref>{{cite web|url=http://radio.com/2017/05/11/sia-new-track-to-be-human-wonder-woman/|title=Sia's New Track, 'To Be Human,' Featured on 'Wonder Woman' Soundtrack|website=radio.com|accessdate=1 June 2017}}</ref> The single was released on May 25, 2017.<ref>{{cite web|url=http://www.billboard.com/articles/columns/pop/7809337/sia-wonder-woman-song-to-be-human-listen|title=Sia Channels Her Inner 'Wonder Woman' with New 'To Be Human' Single for Soundtrack: Listen|publisher=Billboard|accessdate=June 4, 2017}}</ref>
+
+==Track listing==
+{{Track listing
+| all_music = [[Rupert Gregson-Williams]], except where noted
+| extra_column = Artist(s)
+| title1 = Amazons of Themyscira
+| length1 =6:47 
+| title2 = History Lesson
+| length2 =5:16 
+| title3 = Angel on the Wing
+| length3 =3:45 
+| title4 = Ludendorff, Enough!
+| length4 =7:37 
+| title5 = Pain, Loss & Love
+| length5 =5:27 
+| title6 = No Man's Land
+| length6 =8:52 
+| title7 = Fausta
+| length7 =3:20 
+| title8 = Wonder Woman's Wrath
+| length8 =4:06 
+| title9 = The God of War
+| length9 =8:02 
+| title10 = We Are All to Blame
+| length10 =3:11 
+| title11 = Hell Hath No Fury
+| length11 =3:58 
+| title12 = Lightning Strikes
+| length12 =3:35 
+| title13 = Trafalgar Celebration
+| length13 =4:50 
+| title14 = Action Reaction
+| length14 =5:54 
+| title15 = [[To Be Human]]
+| note15 = [[Florence Welch]] and [[Rick Nowels]]
+| length15 =4:00 
+| extra15 = [[Sia (musician)|Sia]] featuring [[Labrinth]]
+| total_length = 78:38
+}}
+
+==Charts==
+{| class="wikitable sortable plainrowheaders" style="text-align:center"
+|-
+! scope="col"| Chart (2017)
+! scope="col"| Peak<br /> position
+|-
+! scope="row"| Australian Albums ([[ARIA Charts|ARIA]])<ref>{{cite web|url=https://www.auspop.com.au/2017/06/aria-chart-watch-424/|title=ARIA Chart Watch #424|publisher=Auspop.com.au |date=June 10, 2017|accessdate=June 10, 2017}}</ref>
+| 52
+|-
+{{album chart|BillboardCanada|98|artist=Soundtrack|rowheader=true|accessdate=June 14, 2017}}
+|-
+! scope="row"| New Zealand Heatseekers Albums ([[Recorded Music NZ|RMNZ]])<ref>{{cite web|url=http://nztop40.co.nz/chart/albums?chart=4371|title=NZ Heatseekers Albums Chart|publisher=[[Recorded Music NZ]]|date=June 12, 2017|accessdate=June 9, 2017}}</ref>
+| 5
+|-
+{{album chart|Scotland|71|date=2017-06-09|rowheader=true|accessdate=June 10, 2017}}
+|-
+{{album chart|Billboard200|53|artist=Soundtrack|rowheader=true|accessdate=June 13, 2017}}
+|-
+{{album chart|BillboardSoundtrack|7|artist=Soundtrack|rowheader=true|accessdate=June 13, 2017}}
+|}
+
+==References==
+{{reflist|30em}}
+
+==External links==
+* [http://www.watertower-music.com/releases/release.php?title=wonderwomanfilm Official site]
+
+{{Wonder Woman}}
+{{DC Extended Universe}}
+
+[[Category:2017 soundtrack albums]]
+[[Category:2010s film soundtrack albums]]
+[[Category:DC Extended Universe soundtracks]]
+[[Category:Film scores]]
+[[Category:WaterTower Music soundtracks]]
+[[Category:Wonder Woman in other media]]
+[[Category:Superhero film soundtracks]]

@@ -1,0 +1,52 @@
+{{Use dmy dates|date=October 2019}}
+{{Infobox UK place  
+  |official_name= Carnalbanagh
+  |irish_name=     
+  |scots_name= Carn Albanach       
+  |local_name=   
+  |static_image= Carnalbanagh2.jpg 
+  |static_image_caption= Carnalbanagh in 2007
+  |map_type=         
+  |coordinates = {{coord|54.901|-6.081|display=inline,title}}
+  |belfast_distance=  
+| population =
+| population_ref = 
+   |irish_grid_reference=
+  |unitary_northern_ireland= [[Mid and East Antrim]]
+  |country=           Northern Ireland
+  |post_town=        
+  |postcode_area=    BT
+  |postcode_district=
+  |dial_code=        
+  |constituency_westminster= 
+  |lieutenancy_northern_ireland= [[County Antrim]]
+  |website=           
+}}
+'''Carnalbanagh''' ({{etymology|ga|Carn Albanach|cairn of the Scotsmen}})<ref name=Pla>{{cite web|title=Carnalbanagh|url=http://www.placenamesni.org/resultdetails.php?entry=17064|website=Place Names NI|accessdate=22 April 2015}}</ref> is a small village and [[townland]] (of 1,628 acres) in [[County Antrim]], [[Northern Ireland]], 13&nbsp;km east-north-east of [[Ballymena]].<ref name=Pla/> It is situated in the [[Civil parishes in Ireland|civil parish]] of [[Tickmacrevan]] and the historic [[Barony (Ireland)|barony]] of [[Glenarm Lower]],<ref>{{cite web|title=Carnalbanagh|url=http://www.thecore.com/seanruad/|website=IreAtlas Townlands Database|accessdate=22 April 2015}}</ref> and is part of [[Mid and East Antrim]] district. It lies above [[Glenarm]] and is close to Mount [[Slemish]].
+
+Local services include Carnalbanagh Primary School,<ref>[http://www.schoolsnet.com/uk-schools/school-details-reviews/north-eastern/carnalbanagh-primary-school/16180339/0/215627.html Schoolsnet.com]</ref> [[Orange Lodge|Orange Hall]] and [[Presbyterian]] church. The local flute band is known as Carnalbanagh Flute Band.
+
+The name 'Carnalbanagh' can also be spelt 'Cairnalbana' or 'Carnalbana.'
+
+== Presbyterian Church ==
+The congregation saw their new minister John Brogan installed on 10 January 2020 and he commenced his ministry on 12 January 2020.
+
+==See also==
+*[[List of towns and villages in Northern Ireland]]
+*[[List of townlands in County Antrim]]
+
+==References==
+{{reflist}}
+{{Commons category|Carnalbanagh}}
+
+==External links==
+*[https://web.archive.org/web/20130515225746/http://www.carnalbanaghprimaryschool.co.uk/ Carnalbanagh Primary School]
+*[http://www.cairnalbanapci.com Cairnalbana Presbyterian Church]
+{{authority control}}
+
+[[Category:Villages in County Antrim]]
+[[Category:Civil parish of Tickmacrevan]]
+[[Category:Townlands of County Antrim]]
+
+
+{{antrim-geo-stub}}

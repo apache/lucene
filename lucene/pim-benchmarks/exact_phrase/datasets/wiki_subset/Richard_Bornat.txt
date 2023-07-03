@@ -1,0 +1,43 @@
+{{Use dmy dates|date=October 2013}}
+'''Richard Bornat''' (born 1944), is a British author and researcher in the field of [[computer science]]. He is also professor of [[Computer programming]] at [[Middlesex University]]. Previously he was at [[Queen Mary, University of London]].
+
+== Research ==
+
+Bornat's research interests includes ''program proving'' in [[separation logic]]. His focus is on the [[Proof theory|proof]]s themselves; as opposed to any logical underpinnings. Much of the work involves discovering ways to state the properties of independent modules, in a manner that makes their composition into useful systems conducive.
+
+Bornat (in conjunction with [[Bernard Sufrin]] of the [[Oxford University Computing Laboratory]]) developed [[Jape (software)|Jape]], a [[proof calculator]]; he is involved in research on the usability of this tool for exploration of novel proofs.
+
+Richard Bornat's PhD students have included [[Samson Abramsky]] in the early 1980s.
+
+In 2004, one of Bornat's students developed an aptitude test to ''"divide people up into programmers and non-programmers before they ever come into contact with programming."'' The test was first given to a group of students in 2005 during an experiment on the use of mental models in programming.<ref>{{cite paper|url=http://www.cs.mdx.ac.uk/research/PhDArea/saeed/paper1.pdf|title=The camel has two humps|publisher=School of Computing, Middlesex University, UK|author=Dehnadi,Saeed & Bornat, Richard|date=20 February 2006|url-status=dead|archiveurl=https://web.archive.org/web/20091122080500/http://www.cs.mdx.ac.uk/research/PhDArea/saeed/paper1.pdf|archivedate=22 November 2009|df=dmy-all}}</ref> In 2008 and 2014, Bornat partially retracted some of the claims,<ref>{{cite paper|url=http://www.eis.mdx.ac.uk/staffpages/r_bornat/papers/camel_hump_retraction.pdf |title=Camels and humps: a retraction|publisher=School of Science and Technology, Middlesex University, London, UK|author=Bornat, Richard|date=24 July 2014}}</ref> impugning its validity as a test for programming capability.<ref>{{Cite news|url=http://retractionwatch.com/2014/07/18/the-camel-doesnt-have-two-humps-programming-aptitude-test-canned-for-overzealous-conclusion/|title=The camel doesn't have two humps: Programming "aptitude test" canned for overzealous conclusion - Retraction Watch|date=2014-07-18|work=Retraction Watch|access-date=2017-11-13|language=en-US}}</ref>
+
+== Publications ==
+
+Bornat published a book entitled ''"Understanding and Writing Compilers: A Do It Yourself Guide"'', which is regarded as one of the most extensive resources on [[compiler]] development. Although it has been out of print for some time, he has now made it available as an [http://www.cs.mdx.ac.uk/staffpages/r_bornat/books/compiling.pdf online edition].
+
+Other publications from Bornat include:
+* R. Bornat; 1987; ''Programming from First Principles''; [[Prentice Hall International Series in Computer Science]]; {{ISBN|0-13-729104-3}}.
+* Richard Bornat and Harold Thimbleby; 1989; ''The life and times of ded, display editor;'' in J.B. Long & A. Whitefield (eds); Cognitive Ergonomics and Human-Computer Interaction; [[Cambridge University Press]]; pp.&nbsp;225–255.
+* Richard Bornat and Bernard Sufrin;1999; ''Animating Formal Proof at the Surface: The {Jape} Proof Calculator;'' [[The Computer Journal]]; Vol. 42; no. 3; pp.&nbsp;177–192.
+* Aczel, J. C., Fung, P., Bornat, R., Oliver, M., O'Shea, T., & Sufrin, B.; 1999; ''Influences of Software Design on Formal Reasoning;'' in Brewster, S., Cawsey, A. & Cockton, G. (Eds.) Proceedings of IFIP TC.13 International Conference on Human-Computer Interaction INTERACT '99; Vol. 2; pp.&nbsp;3–4; Swindon, UK, [[British Computer Society]]; {{ISBN|1-902505-19-0}}.
+* R. Bornat; 2000; ''Proving Pointer Programs in Hoare Logic;'' in Backhouse & Oliveira (eds) MPC 2000; [[LNCS]] 1837; pp.&nbsp;102–126.
+* C. Calcagno, P. O'Hearn, R. Bornat; 2002; ''Program Logic and Equivalence in the Presence of Garbage Collection.'' To appear in ''[[Theoretical Computer Science (journal)|Theoretical Computer Science]]'' special issue on ''Foundations''.
+
+== References ==
+{{reflist}}
+
+== External links ==
+* [http://homepages.phonecoop.coop/randj/richard/ Richard Bornat (home page)]
+* [http://www.eis.mdx.ac.uk/staffpages/r_bornat/ Page at Middlesex University]
+
+{{Authority control}}
+
+{{DEFAULTSORT:Bornat, Richard}}
+[[Category:1944 births]]
+[[Category:English computer scientists]]
+[[Category:English non-fiction writers]]
+[[Category:Academics of Queen Mary University of London]]
+[[Category:Academics of Middlesex University]]
+[[Category:Formal methods people]]
+[[Category:Living people]]
+[[Category:English male non-fiction writers]]

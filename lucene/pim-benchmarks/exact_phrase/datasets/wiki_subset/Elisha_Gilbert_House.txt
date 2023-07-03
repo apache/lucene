@@ -1,0 +1,36 @@
+{{Infobox NRHP
+  | name = Elisha Gilbert House
+  | nrhp_type = 
+  | image = 
+  | caption = 
+  | location= US 20, [[New Lebanon, New York]]
+  | coordinates = {{coord|42|28|9|N|73|25|46|W|display=inline,title}}
+| locmapin = New York#USA
+  | built = 1794
+  | architecture = Federal
+  | added = September 7, 1984
+  | area = {{convert|11.8|acre}}
+  | governing_body = Private
+  | refnum = 84002098<ref name="nris">{{NRISref|2009a}}</ref>
+}}
+'''Elisha Gilbert House''' is a historic home located at [[New Lebanon, New York|New Lebanon]] in [[Columbia County, New York]].  Built in 1794, the home is a massive, two story frame [[Federal architecture|Federal]] style residence with a gambrel roof and a five bay facade with a center entrance pavilion and clapboard siding.  The attic level once held a [[Masonic Lodge]] meeting hall.  Also on the property is a family [[cemetery]] and 19th century barn.<ref name="nrhpinv_ny">{{cite web|url=http://www.oprhp.state.ny.us/hpimaging/hp_view.asp?GroupView=1436|title=National Register of Historic Places Registration: Elisha Gilbert House|date=July 1984|accessdate=2010-07-03 |author=Neil G. Larson|publisher=[[New York State Office of Parks, Recreation and Historic Preservation]]}}</ref>
+
+It was added to the [[National Register of Historic Places]] in 1984.<ref name="nris"/>
+
+==References==
+{{reflist}}
+
+{{National Register of Historic Places in New York}}
+
+{{DEFAULTSORT:Gilbert, Elisha, House}}
+[[Category:Houses on the National Register of Historic Places in New York (state)]]
+[[Category:Cemeteries on the National Register of Historic Places in New York (state)]]
+[[Category:Federal architecture in New York (state)]]
+[[Category:Houses completed in 1794]]
+[[Category:Cemeteries in Columbia County, New York]]
+[[Category:Houses in Columbia County, New York]]
+[[Category:National Register of Historic Places in Columbia County, New York]]
+[[Category:1794 establishments in New York (state)]]
+
+
+{{ColumbiaCountyNY-NRHP-stub}}

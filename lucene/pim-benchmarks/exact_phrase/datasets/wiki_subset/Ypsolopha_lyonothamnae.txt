@@ -1,0 +1,36 @@
+{{Taxobox
+| image = 
+| image_caption = 
+| regnum = [[Animal]]ia
+| phylum = [[Arthropod]]a
+| classis = [[Insect]]a
+| ordo = [[Lepidoptera]]
+| familia = [[Ypsolophidae]]
+| genus = ''[[Ypsolopha]]''
+| species = '''''Y. lyonothamnae'''''
+| binomial = ''Ypsolopha lyonothamnae''
+| binomial_authority = (Powell, 1967)<ref>[http://www.nearctica.com/nomina/lepid/lepr-z.htm nearctica] {{webarchive |url=https://web.archive.org/web/20110114170817/http://www.nearctica.com/nomina/lepid/lepr-z.htm |date=January 14, 2011 }}</ref>
+| synonyms =
+*''Cerostoma lyonothamnae'' <small>Powell, 1967</small>
+}}
+
+'''''Ypsolopha lyonothamnae''''' is a [[moth]] of the family [[Ypsolophidae]].<ref>[http://mothphotographersgroup.msstate.edu/species.php?hodges=2385 mothphotographersgroup]</ref> It is known from the [[Channel Islands of California]] in the United States.<ref>[http://science.nature.nps.gov/im/units/medn/symposia/4th%20California%20Islands%20Symposium%20%281994%29/Population%20and%20Community%20Ecology/Powell_Biogeography_Lepidoptera_Channel_Islands.pdf Biogeography of Lepidoptera on the California Channel Islands] {{webarchive |url=https://web.archive.org/web/20110721060320/http://science.nature.nps.gov/im/units/medn/symposia/4th%20California%20Islands%20Symposium%20%281994%29/Population%20and%20Community%20Ecology/Powell_Biogeography_Lepidoptera_Channel_Islands.pdf |date=July 21, 2011 }}</ref>
+
+The larvae feed on ''[[Lyonothamnus]]'' species.
+
+==References==
+{{Reflist}}
+
+{{Wikispecies}}
+{{Commons}}
+
+{{Taxonbar|from=Q8059544}}
+
+[[Category:Ypsolophidae]]
+[[Category:Endemic fauna of California]]
+[[Category:Moths of the United States]]
+[[Category:Fauna of the California chaparral and woodlands]]
+[[Category:Natural history of the Channel Islands of California]]
+
+
+{{Ypsolophidae-stub}}

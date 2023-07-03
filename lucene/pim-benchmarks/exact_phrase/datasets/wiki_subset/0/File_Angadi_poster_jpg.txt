@@ -1,0 +1,9 @@
+==Summary ==
+{{Non-free use rationale poster
+| Article           = Angadi (film)
+| Use               = Infobox
+| Source            = https://www.discogs.com/Shyam-Angadi/release/7669430
+}}
+
+== Licensing ==
+{{Non-free poster|image has rationale=yes}}

@@ -1,0 +1,9 @@
+{{asbox
+| image     = POL powiat strzelecko drezdenecki COA.svg
+| pix       =
+| subject   = [[Strzelce-Drezdenko County]] location 
+| qualifier = 
+| category  = Strzelce-Drezdenko County geography stubs
+| tempsort  =  
+| name      = Template:StrzelceDrezdenko-geo-stub
+}}

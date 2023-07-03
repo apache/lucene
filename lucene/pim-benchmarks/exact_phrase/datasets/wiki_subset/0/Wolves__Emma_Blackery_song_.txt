@@ -1,0 +1,6 @@
+#REDIRECT [[Emma Blackery]]
+<!-- Please do not remove this redirect until this can be clearly shown to meet [[WP:NSONG]]-->
+
+{{Rcat shell|
+{{R from song}}
+}}

@@ -1,0 +1,31 @@
+==Summary==
+{{Non-free use rationale 2
+|Description = Logo for the Gabonese Football Federation to be used on the main article
+|Source = http://www.fegafoot.com/sites/all/themes/tb_sirate/logo.png
+|Article = Gabonese Football Federation
+|Purpose = to serve as the primary means of visual identification at the top of the article dedicated to the entity in question.
+|Replaceability = n.a.
+|Minimality = For use only on the main article for the subject
+|Commercial = n.a.
+}}
+{{Non-free use rationale 2
+|Description = Logo for the Gabonese Football Federation to be used on the main article
+|Source = http://www.fegafoot.com/sites/all/themes/tb_sirate/logo.png
+|Article = Gabon national football team
+|Purpose = to serve as the primary means of visual identification at the top of the article dedicated to the entity in question.
+|Replaceability = n.a.
+|Minimality = For use only on the main article for the subject
+|Commercial = n.a.
+}}
+{{Non-free use rationale 2
+|Description = Logo for the Gabonese Football Federation to be used on the main article
+|Source = http://www.fegafoot.com/sites/all/themes/tb_sirate/logo.png
+|Article = Gabon women's national football team
+|Purpose = to serve as the primary means of visual identification at the top of the article dedicated to the entity in question.
+|Replaceability = n.a.
+|Minimality = For use only on the main article for the subject
+|Commercial = n.a.
+}}
+
+==Licensing==
+{{Non-free logo}}

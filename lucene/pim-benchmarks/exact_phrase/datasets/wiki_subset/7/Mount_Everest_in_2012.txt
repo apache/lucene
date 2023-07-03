@@ -1,0 +1,103 @@
+{| class="wikitable" style="float:right; margin-right: 0; margin-left: 1em;"
+|+Years in Review Summary
+|-
+!Year
+!Summiters
+!Reference(s)
+|- style="background: red; color: white"
+|2012
+|547 
+|<ref name="NG - Maxed Out on Everest">{{cite web|url=http://ngm.nationalgeographic.com/2013/06/125-everest-maxed-out/jenkins-text |title=Everest Maxed Out |publisher=ngm.nationalgeographic.com|accessdate=29 May 2016}}</ref>
+|-  style="background:#efefef;"
+|[[Mount Everest in 2013|2013]]
+|658
+|<ref name="alanarnette">{{cite web|url=http://www.alanarnette.com/blog/2013/06/03/everest-2013-season-recap/|title=Everest 2013: Season Recap: Summits, Records and Fights|publisher=alanarnette.com|accessdate=29 May 2016}}</ref>
+|-
+|2014
+|106
+|<ref name="alanarnette2">{{cite web|url=http://www.alanarnette.com/blog/2014/06/09/everest-2014-season-summary-nepal-tragedy/|title=Everest 2014: Season Summary - A Nepal Tragedy|publisher=alanarnette.com|accessdate=29 May 2016}}</ref>
+|- style="background:#efefef;"
+|2015
+|0
+|<ref name="washingtonpost">{{cite web|url=https://www.washingtonpost.com/news/worldviews/wp/2016/01/12/for-the-first-time-in-42-years-nobody-made-it-to-the-top-of-mount-everest-last-year/ |title= The Washington Post - For the first time in four decades, nobody made it to the top of Mount Everest last year|author= Peter Holley|date=12 January 2016 |publisher=washingtonpost.com|accessdate=29 May 2016}}</ref>
+|-
+|2016
+|641
+| <reF>[http://www.alanarnette.com/blog/2016/12/30/everest-by-the-numbers-2017-edition/]</ref>
+|}
+[[File:Mt. Everest from Gokyo Ri November 5, 2012 Cropped.jpg|thumb|Everest from Gokyo Ri, 2012]]
+[[File:Andreas Breitfuss Mt Everest Summit.jpg|thumb|People on the summit in 2012]]
+Mount Everest climbing season included 245 summits on May 19, 2012, a record number of summits on a single day.<ref>{{cite web |title=Dangerous Heights |url=http://graphics.reuters.com/NEPAL-EVEREST/0100B4S22JR/index.html |website=Reuters |accessdate=27 April 2020}}</ref> It would take seven more years to break this record. This added congestion resulted in the highest fatality total since 1996.<ref>{{Cite web|url=http://www.spiegel.de/international-zeitgeist/mount-everest-records-deadliest-year-in-over-a-decade-a-859533.html|title=Congestion in the Death Zone: The Story Behind another Deadly Year on Everest - SPIEGEL ONLINE - International|last=Germany|first=SPIEGEL ONLINE, Hamburg|website=SPIEGEL ONLINE|access-date=2017-05-30}}</ref> 683 climbers from 34 countries attempted to climb the mountain, and 547 people summited.<ref name="NG - Maxed Out on Everest2">{{cite web|url=http://ngm.nationalgeographic.com/2013/06/125-everest-maxed-out/jenkins-text|title=Everest Maxed Out|work=National Geographic|accessdate=20 September 2015}}</ref> A record was set in May when 234 climbers summitted on a single day.<ref>{{Cite news|url=https://www.bbc.com/news/magazine-22680192|title=Everest crowds: The world's highest traffic jam|last=Kelly|first=Jon|date=2013-05-28|work=BBC News|access-date=2017-05-30|language=en-GB}}</ref> There were 11 deaths, some of which were attributed to overcrowding near the peak.<ref>[http://www.spiegel.de/international/zeitgeist/mount-everest-records-deadliest-year-in-over-a-decade-a-859533.html]</reF> 
+
+==Mountaineering season==
+In addition to an increase in mountaineers compared to previous decades, the success rate for expeditions increased.<ref>{{Cite web|url=http://ngm.nationalgeographic.com/2013/06/125-everest-maxed-out/jenkins-text|title=Everest Maxed Out|access-date=2017-06-11}}</ref> There was a 56 percent success rate in summit attempts in 2012, compared to 24 percent in 2000. 547 people reached the summit, compared to 72 in 1990 and 145 in 2000.<ref name="NG - Maxed Out on Everest" /> Amongst those who summited in 2012 was [[Vanessa O'Brien]] who completed the [[Explorers Grand Slam]].
+
+The difficult decisions made during the climbing season were highlighted by the departure of guiding company [[Himex]] from the mountain after concerns about a hanging serac in the Khumbu icefall. Two years later, 16 Nepalese guides were killed when ice broke from the serac and created an avalanche.<ref>{{Cite web|url=http://www.newyorker.com/news/news-desk/death-and-anger-on-everest|title=Death and Anger on Everest|date=2014-04-21|website=The New Yorker|access-date=2017-06-11}}</ref>
+
+In 2012 [[Montana State University]] conducted a scientific expedition to Everest. The Everest Education Expedition studied the geology of the Everest massif which includes Everest-Nuptse-Lhotse-Khumbutse, and advanced the state of mineralogy, strain, and predicted rock ages. Of interest was the fossil-bearing limestone that crowns Mount Everest, the nature and impact of ice in the region (such as the icefall), and the overall [[stratigraphy]] (including limestone, [[metamorphic rock]]s, [[pelite]]s, and [[quartzite]]s).<ref name="montana.edu">{{cite web|url=http://www.montana.edu/everest/about/research.htm|title=Montana State University - Everest Education Expedition - Scientific Research|work=montana.edu|accessdate=20 September 2015}}</ref>
+
+In May, [[Tamae Watanabe]] became the oldest woman to reach the summit, at the age of 73. She broke her own record, set in 2002 at the age of 63. The retired office worker lives at the base of Mount Fuji, and had climbed many other peaks including Denali, the Eiger, and Lhotse. She climbed with a group of four, and beat a competing 72-year-old woman who was trying for the same record.<ref name="telegraph.co.uk">{{cite web|url=https://www.telegraph.co.uk/news/worldnews/asia/nepal/9279824/73-year-old-becomes-oldest-woman-to-climb-Mount-Everest.html|title=73-year-old becomes oldest woman to climb Mount Everest|date=21 May 2012|author=Julian Ryall|work=The Telegraph|accessdate=20 September 2015}}</ref>
+
+The ''[[Guinness Book of World Records]]'' states that 234 climbers summited on one day in 2012.<ref>{{cite web|url=http://www.guinnessworldrecords.com/world-records/highest-mountain|title=Guinness - Highest mountain}}</ref> However, it was one of the deadliest seasons since 1996, with 11 climbers dying on Everest in the spring.<ref>{{cite web|url=http://www.spiegel.de/international/zeitgeist/mount-everest-records-deadliest-year-in-over-a-decade-a-859533.html|title=Congestion in the Death Zone: The Story Behind another Deadly Year on Everest|author=Lukas Eberle|work=Der Spiegel}}</ref>
+
+==Fatalities==
+The death of Canadian climber [[Shriya Shah-Klorfine]] in May made headlines and fed a debate about whether inexperienced climbers should climb Mount Everest. Issues of overcrowding and unqualified guides were also raised.<ref>{{cite web|url=https://www.washingtonpost.com/opinions/five-myths-about-mount-everest/2014/04/24/9a30ace2-caf5-11e3-a993-b6b5a03db7b4_story.html|title=Five myths about Mount Everest|author=Grayson Schaffer|date=24 April 2014|work=Washington Post|accessdate=20 September 2015}}</ref><ref name="cbc" /> Although Shah-Klorfine did manage to summit, she did not survive the descent.<ref name="cbc">{{cite news|url=http://www.cbc.ca/news/canada/exclusive-canadian-everest-victim-used-inexperienced-company-lacked-oxygen-1.1195149|title=Canadian Everest victim used inexperienced company, lacked oxygen|date=14 September 2012|work=CBC|accessdate=20 September 2015}}</ref><ref>{{cite web|url=http://www.macleans.ca/general/the-lure-and-the-cruelty-of-mount-everest/|title=The lure, and the cruelty, of Mount Everest|author=Barbara Amiel|work=Macleans|accessdate=20 September 2015}}</ref> Questions were raised about her lack of previous mountaineering experience, as Everest was reportedly her first mountain climb. The guiding company she employed had reportedly never guided a climber to the summit before.<ref>{{Cite news|url=http://www.macleans.ca/society/life/more-details-and-blame-in-the-death-of-canadian-everest-victim/|title=More details, and blame, in the death of Canadian Everest victim - Macleans.ca|date=2012-09-14|work=Macleans.ca|access-date=2017-07-14|language=en-US}}</ref> Other factors involved overcrowding on the mountain,<ref>{{Cite news|url=http://www.cbc.ca/news/canada/toronto/save-me-last-words-of-mount-everest-climber-1.1182656|title='Save me' last words of Mount Everest climber|work=CBC News|access-date=2017-06-03|language=en}}</ref> a late summit bid, and insufficient bottled oxygen.<ref>{{Cite news|url=http://www.cbc.ca/news/canada/exclusive-canadian-everest-victim-used-inexperienced-company-lacked-oxygen-1.1195149|title=EXCLUSIVE {{!}} Canadian Everest victim used inexperienced company, lacked oxygen|work=CBC News|access-date=2017-07-14|language=en}}</ref> The company alleges that she ignored instructions to turn around and earlier recommendations to not attempt the climb due to her lack of climbing skills.<ref>{{Cite news|url=http://www.macleans.ca/society/life/more-details-and-blame-in-the-death-of-canadian-everest-victim/|title=More details, and blame, in the death of Canadian Everest victim - Macleans.ca|date=2012-09-14|work=Macleans.ca|access-date=2017-06-03|language=en-US}}</ref> 
+
+Four people, including Shah-Klorfine, died on Saturday May 19, 2012. Conditions on the mountain were described as overcrowded.<ref>{{Cite news|url=http://www.cbc.ca/news/canada/toronto/save-me-last-words-of-mount-everest-climber-1.1182656|title='Save me' last words of Mount Everest climber|work=CBC News|access-date=2017-07-14|language=en}}</ref>
+
+{| class="wikitable collapsible sortable floatleft|" style="font-size: 90%; "
+|-
+! style="text-align:center;" colspan="2"|2012 fatalities
+|-
+!Deaths<ref name="HBD-Deaths">{{cite web|title=Deaths - Spring 2012|url=http://www.himalayandatabase.com/2012%20Season%20Lists/2012%20Spring%20A18.html|website=The Himalayan Database|accessdate=31 January 2017}}</ref>
+!Nation<ref name="HBD-Deaths"/>
+|-
+|Ralf Dieter Arnold
+|{{Flagcountry|Germany}}
+|-
+|Juan Jose Polo Carbayo
+|{{Flagcountry|Spain}}
+|-
+|Karsang Namgyal
+|{{Flagcountry|Nepal}}
+|-
+|Ramesh Gulave 
+|{{Flagcountry|India}}
+|-
+|Namgyal Tshering
+|{{Flagcountry|Nepal}}
+|-
+|Dawa Tenzing
+|{{Flagcountry|Nepal}}
+|-
+|Wen-Yi Ha
+|{{Flagcountry|PRC}}
+|-
+|Dr. Eberhard Schaaf 
+|{{Flagcountry|Germany}}
+|-
+|[[Shriya Shah-Klorfine]]
+|{{Flagcountry|Canada}}
+|-
+|Won-Bin Song
+|{{Flagcountry|South Korea}} 
+|-
+|Milan Sedlacek*
+|{{Flagcountry|Czech Republic}}
+|-
+|Temba Sherpa*<ref>[http://www.himalayandatabase.com/2012%20Season%20Lists/2012%20Autumn%20A11.html]</ref>
+||{{Flagcountry|Nepal}}
+|-
+|colspan="2"|<center>''*Lhotse fatality''</center>
+|}
+{{clear}}
+
+==References==
+{{reflist}}
+
+{{Mount Everest}}
+
+[[Category:Mount Everest]]
+[[Category:2012 in Nepal]]
+[[Category:2012 in Tibet]]
+[[Category:History of mountaineering]]

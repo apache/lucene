@@ -1,0 +1,9 @@
+==Summary==
+{{Non-free use rationale poster
+| Article           = Thumboli Kadappuram
+| Use               = Infobox
+| Source            = https://www.flipkart.com/thumboli-kadappuram/p/itmczgstsn6jfzxj
+}}
+
+== Licensing ==
+{{Non-free poster|image has rationale=yes}}

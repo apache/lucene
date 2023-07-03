@@ -1,0 +1,674 @@
+{{Infobox football club season
+  | club             = [[FC Barcelona]]
+  | season           = 2004–05
+  | manager          = [[Frank Rijkaard]]
+  | mgrtitle         = Head Coach
+  | chairman         = [[Joan Laporta]]
+  | chrtitle         = President
+  | stadium          = [[Camp Nou]]
+  | league           = [[La Liga]]
+  | league result    = '''1st'''
+  | cup1             = [[Copa del Rey]]
+  | cup1 result      = Round of 64
+  | cup2             = [[UEFA Champions League]]
+  | cup2 result      = Round of 16
+  | league topscorer = <br>[[Samuel Eto'o]] (25)
+  | season topscorer = <br>[[Samuel Eto'o]] (29)
+  | pattern_la1      = _fcbarcelona0405h
+  | pattern_b1       = _fcbarcelona0405h
+  | pattern_ra1      = _fcbarcelona0405h
+  | pattern_sh1      = 
+  | pattern_so1      = _fcbarcelona0405h
+  | leftarm1         = 000080
+  | body1            = 000080
+  | rightarm1        = 000080
+  | shorts1          = 000080
+  | socks1           = 000080
+  | pattern_la2      = _barca0405a
+  | pattern_b2       = _fcbarcelona0405a
+  | pattern_ra2      = _barca0405a
+  | pattern_sh2      = _barca0405a
+  | pattern_so2      = _fcbarcelona0405a
+  | leftarm2         = 000000
+  | body2            = 000000
+  | rightarm2        = 000000
+  | shorts2          = 191970
+  | socks2           = 191970
+  | pattern_la3      = _fcbarcelona0304a
+  | pattern_b3       = _fcbarcelona0304a
+  | pattern_ra3      = _fcbarcelona0304a
+  | pattern_sh3      = _barca0304a
+  | pattern_so3      = _barca0304a
+  | leftarm3         = 000000
+  | body3            = 000000
+  | rightarm3        = 000000
+  | shorts3          = 000000
+  | socks3           = E3D9C4
+  | prevseason       = [[2003–04 FC Barcelona season|2003–04]]
+  | nextseason       = [[2005–06 FC Barcelona season|2005–06]]
+}}
+The '''2004-05 season''' saw '''[[FC Barcelona|Futbol Club Barcelona]]''' end their six-year wait for the [[La Liga]] title, having not won the league or, indeed, any trophy since the [[1998–99 La Liga|1998–99 season]] and thus [[La Liga]] trophy returned to Barcelona's trophy room. Having finished second in La Liga the [[2003–04 La Liga|previous season]], Barcelona once again competed in the [[UEFA Champions League]] as well as the [[Copa del Rey]]. The squad was restructured significantly following the retirement of key players [[Luis Enrique (footballer)|Luis Enrique]] and [[Marc Overmars]], as well as the return of [[Edgar Davids]] to [[Juventus F.C.|Juventus]] and first team regulars [[Patrick Kluivert]] and [[Phillip Cocu]] moving onto new clubs. [[Ronaldinho]]'s and new signing [[Samuel Eto'o]]'s performances won them places in [[FIFPro#Awards|FIFPro's XI]] of 2004–05. Ronaldinho was later named [[FIFA World Player of the Year]] for [[2005 FIFA World Player of the Year|2005]] for the second time in succession and with the highest points total ever;<ref>{{cite web|url=http://www.timerime.com/timeline/49574|title=TimeRime.com - FIFA World Player of the Year timeline|publisher=|access-date=2009-09-30|archive-url=https://web.archive.org/web/20090830122937/http://www.timerime.com/timeline/49574|archive-date=2009-08-30|url-status=dead|df=}}</ref> Eto'o came third. This season was also notable for the debut of [[Lionel Messi]].
+
+==Players==
+
+===Squad===
+''Correct as of 30 September 2009.''<ref>{{cite web|url=http://www.eufo.de/football/esp/2004/fc_blona.htm|title=FC Barcelona 2004-05|first=Dennis Grebasch, Michael|last=Woile|publisher=}}</ref><ref>{{cite web|url=http://www.footballsquads.co.uk/spain/2004-2005/laliga/barce.htm|title=FootballSquads - Barcelona - 2004/05|publisher=}}</ref>
+{{Fs start}}
+{{Fs player|no=1|nat=ESP|pos=GK|name=[[Víctor Valdés]]}}
+{{Fs player|no=2|nat=BRA|pos=DF|name=[[Juliano Belletti]]}}
+{{Fs player|no=3|nat=BRA|pos=MF|name=[[Thiago Motta]]}}
+{{Fs player|no=4|nat=MEX|pos=DF|name=[[Rafael Márquez]]}}
+{{Fs player|no=5|nat=ESP|pos=DF|name=[[Carles Puyol]]|other=[[Captain (association football)|captain]]}}
+{{Fs player|no=6|nat=ESP|pos=MF|name=[[Xavi Hernández|Xavi]]}}
+{{Fs player|no=7|nat=SWE|pos=FW|name=[[Henrik Larsson]]}}
+{{Fs player|no=8|nat=FRA|pos=MF|name=[[Ludovic Giuly]]}}
+{{Fs player|no=9|nat=CMR|pos=FW|name=[[Samuel Eto'o]]}}
+{{Fs player|no=10|nat=BRA|pos=MF|name=[[Ronaldinho]]}}
+{{Fs player|no=11|nat=ARG|pos=FW|name=[[Maxi López]]}}
+{{Fs player|no=12|nat=NED|pos=DF|name=[[Giovanni van Bronckhorst]]}}
+{{Fs player|no=14|nat=ESP|pos=MF|name=[[Gerard López|Gerard]]}}
+{{Fs player|no=15|nat=BRA|pos=MF|name=[[Edmílson]]}}
+{{Fs mid}}
+{{Fs player|no=16|nat=BRA|pos=DF|name=[[Sylvinho]]}}
+{{Fs player|no=18|nat=ESP|pos=MF|name=[[Gabri García|Gabri]]}}
+{{Fs player|no=19|nat=ESP|pos=DF|name=[[Fernando Navarro]]}}
+{{Fs player|no=20|nat=POR|pos=MF|name=[[Deco]]}}
+{{Fs player|no=22|nat=ITA|pos=MF|name=[[Demetrio Albertini]]}}
+{{Fs player|no=23|nat=ESP|pos=DF|name=[[Oleguer Presas|Oleguer]]}}
+{{Fs player|no=24|nat=ESP|pos=MF|name=[[Andrés Iniesta]]}}
+{{Fs player|no=25|nat=ESP|pos=GK|name=[[Albert Jorquera]]}}
+{{Fs player|no=28|nat=ESP|pos=GK|name=[[Rubén Iván Martínez|Rubén]]}}
+{{Fs player|no=30|nat=ARG|pos=FW|name=[[Lionel Messi]]}}
+{{Fs player|no=31|nat=ESP|pos=MF|name=[[Joan Verdú]]}}
+{{Fs player|no=32|nat=ESP|pos=DF|name=[[Damià Abella|Damià]]}}
+{{Fs player|no=34|nat=ESP|pos=DF|name=[[Sergio Rodríguez García|Rodri]]}}
+{{Fs player|no=36|nat=ESP|pos=MF|name=[[Javito]]}}
+{{Fs end}}
+
+====In====
+{{fb in2 header}}
+{{fb in2 player |tc=ESP |bg=y |p=[[Demetrio Albertini|Albertini]] |type=Transfer |eu=y |nb=ITA |n=22 |pos=MF |age={{age|1971|08|23|2004|05|18}} |fcl=[[Atalanta B.C.|Atalanta]]|fcnat=ITA|w=W |e=2005 |f=Free |os=[http://www.weblo.com/celebrity/available/asset_news/981610/Demetrio_Albertini/Albertini_delighted_to_join_Barcelona_at_advanced_age/] }}
+{{fb in2 player |tc=ESP |bg= |p=[[Ludovic Giuly|Giuly]] |type=Transfer |eu=y |nb=FRA |n=8 |pos=MF |age={{age|1976|10|7|2004|05|18}} |fcl=[[AS Monaco FC|Monaco]]|fcnat=FRA|w=S |e=2007 |f=€8.5M |os=[http://www.footballdatabase.com/index.php?page=player&Id=1288&pn=Ludovic_Flange] }}
+{{fb in2 player |tc=ESP |bg=y |p=[[Edmílson]] |type=Transfer |eu=y |nb=BRA |n=15 |pos=MF |age={{age|1976|02|13|2004|05|18}} |fcl=[[Olympique Lyonnais|Lyon]]|fcnat=FRA|w=S |e=2008 |f=€8M |os=[http://www.rediff.com/sports/2004/jul/29barca.htm] }}
+{{fb in2 player |tc=ESP |bg= |p=[[Juliano Belletti|Belletti]] |type=Transfer |eu=n |nb=BRA |n=2 |pos=DF |age={{age|1976|06|20|2004|05|18}} |fcl=[[Villarreal CF|Villarreal]]|fcnat=ESP|w=S |e=2007 |f=€3.7M |os=[http://edition.cnn.com/2004/SPORT/football/06/29/barcelona.larsson/index.html] }}
+{{fb in2 player |tc=ESP |bg=y |p=[[Henrik Larsson|Larsson]] |type=Transfer |eu=y |nb=Sweden |n=7 |pos=FW |age={{age|1971|09|20|2004|06|30}} |fcl=[[Celtic F.C.|Celtic]]|fcnat=SCO|w=S |e=2005 |f=Free |os=[http://news.bbc.co.uk/sport1/hi/football/europe/3844495.stm] }}
+{{fb in2 player |tc=ESP |bg=y |p=[[Deco]] |type=Transfer |eu=y |nb=POR |n=20 |pos=MF |age={{age|1977|08|27|2004|07|6}} |fcl=[[FC Porto|Porto]]|fcnat=POR|w=S |e=2008 |f=€21m |os=[https://archive.is/20121209225135/http://www.fcbarcelona.cat/web/english/futbol/temporada_07-08/plantilla/jugadors/deco.html] }}
+{{fb in2 player |tc=ESP |bg= |p=[[Sylvinho]] |type=Transfer |eu=y |nb=BRA |n=16 |pos=DF |age={{age|1975|06|20|2004|05|18}} |fcl=[[Celta de Vigo]]|fcnat=ESP|w=S |e=2009 |f=€2M |os=[http://www.footballdatabase.com/index.php?page=player&Id=1077&pn=Sylvio_Mendes_Campos_J%C3%BAnior] }}
+{{fb in2 player |tc=ESP |bg=y |p=[[Samuel Eto'o|Eto'o]] |type=Transfer |eu=y |nb=CMR |n=9 |pos=FW |age={{age|1981|03|10|2004|05|18}} |fcl=[[RCD Mallorca|Mallorca]]|fcnat=ESP|w=S |e=2008 |f=€24M |os=[http://news.bbc.co.uk/sport1/hi/football/europe/3556318.stm] }}
+{{fb in2 player |tc=ESP |bg= |p=[[Albert Jorquera]] |type=Promoted |eu=y |nb=ESP |n=25 |pos=GK |age={{age|1979|03|3|2004|05|18}} |fcl=[[FC Barcelona B|Barcelona B]]|fcnat=ESP|w=S |e=2008 |f=Free |os= }}
+{{fb in2 player |tc=ESP |bg=y |p=[[Damià Abella|Damià]] |type=Promoted |eu=y |nb=ESP |n=32 |pos=FW |age={{age|1982|4|15|2004|05|18}} |fcl=[[FC Barcelona B|Barcelona B]]|fcnat=ESP|w=S |e=2008 |f=Free |os= }}
+{{fb in2 player |tc=ESP |bg=y |p=[[Lionel Messi]] |type=Promoted |eu=y |nb=ARG |n=30 |pos=FW |age={{age|1987|6|24|2004|05|18}} |fcl=[[FC Barcelona B|Barcelona B]]|fcnat=ESP|w=S |e=2008 |f=Free |os= }}
+{{fb in footer|date=September 2008}}
+
+Total spending: {{loss}}  €74.2 million
+
+====Out====
+{{fb out2 header }}
+{{fb out2 player |tc=ESP |bg= |type=Contract terminated |p=[[Phillip Cocu|Cocu]] |eu=y |nb=NED |n=8 |pos=MF |age={{age|1970|10|29|2004|06|30}} |ncl=[[PSV Eindhoven|PSV]]|ncnat=NED|w=S |f=Free |os=}}
+{{fb out2 player |tc=ESP |bg=y |type=Contract terminated |p=[[Patrick Kluivert|Kluivert]] |eu=y |nb=NED |n=9 |pos=FW
+|age={{age|1976|1|7|2004|06|30}} |ncl=[[Newcastle United F.C.|Newcastle United]]|ncnat=ENG|w=S |f=Free |os=[https://www.telegraph.co.uk/sport/2383318/Kluivert-joins-Newcastle.html]}}
+{{fb out2 player |tc=ESP |bg= |type=Contract terminated |p=[[Michael Reiziger|Reiziger]] |eu=y |nb=NED |n=2 |pos=DF |age={{age|1973|5|3|2004|06|30}} |ncl=[[Middlesbrough F.C.|Middlesbrough]]|ncnat=ENG|w=S |f=Free |os=[https://www.gazettelive.co.uk/sport/football/football-news/onthisboroday-2004-michael-reiziger-reveals-9598549]}}
+{{fb out2 player |tc=ESP |bg=y |type=Transfer |p=[[Luis García (footballer, born 1978)|Luis García]] |eu=y |nb=ESP |n=29 |pos=MF |age={{age|1978|6|24|2004|06|30}} |ncl=[[Liverpool F.C.|Liverpool]]|ncnat=ENG|w=S |f=€8.75M |os=[http://www.abc.net.au/news/stories/2004/08/20/1181747.htm]}}
+{{fb out2 player |tc=ESP |bg= |type=Retired |p=[[Marc Overmars|Overmars]] |eu=y |nb=NED |n=11 |pos=MF |age={{age|1973|3|29|2004|06|30}} |nc= |w=S |f=N/A |os=[https://www.independent.co.uk/sport/football/european/marc-overmars-retires-due-to-knee-problems-554582.html]}}
+{{fb out2 player |tc=ESP |bg= |type=Retired |p=[[Luis Enrique (footballer)|Luis Enrique]] |eu=y |nb=ESP |n=21 |pos=FW |age={{age|1970|5|8|2004|06|30}} |nc= |w=S |f=N/A |os=[http://news.bbc.co.uk/sport1/hi/football/europe/3551636.stm]}}
+{{fb out2 player |tc=ESP |bg=y |type=Swap |p=[[Ricardo Quaresma|Quaresma]] |eu=y |nb=POR |n=20 |pos=MF |age={{age|1981|9|29|2004|06|30}} |ncl=[[FC Porto|Porto]]|ncnat=POR|w=S |f=€6M |os=[http://www.ricardoquaresma.azplayers.com/biography.html]}}
+{{fb out2 player |tc=ESP |bg= |type=Transfer |p=[[Robert Enke|Enke]] |eu=y |nb=GER |n=25 |pos=GK |age={{age|1977|8|24|2004|06|30}} |ncl=[[Hannover 96]]|ncnat=GER|w=S |f=Free |os=[https://web.archive.org/web/20081026072136/http://www.hannover96.com/CDA/profis0/portraits0/versteck-fuer-portraits/robert-enke0.html]}}
+{{fb out2 player |tc=ESP |bg=y |type=Transfer |p=[[Sergio García (footballer, born 1983)|Sergio García]] |eu=y |nb=ESP |n=36 |pos=FW |age={{age|1983|9|29|2004|06|30}} |ncl=[[Levante UD|Levante]]|ncnat=ESP|w=S |f=Free |os=[http://footballdatabase.com/index.php?page=player&Id=1952&pn=Sergio_Garc%C3%ADa]}}
+{{fb out2 player |tc=ESP |bg= |type=Loan |p=[[Rüştü Reçber|Rüştü]] |eu=n |nb=TUR |n=1 |pos=GK |age={{age|1973|5|10|2004|06|30}} |ncl=[[Fenerbahçe S.K. (football)|Fenerbahçe]]|ncnat=TUR|w=S |f=N/A |os=[http://www.footballdatabase.com/index.php?page=player&Id=238]}}
+{{fb out2 player |tc=ESP |bg=y |type=Loan |p=[[Javier Saviola|Saviola]] |eu=y |nb=ARG |n=7 |pos=FW |age={{age|1979|12|11|2004|06|30}} |ncl=[[AS Monaco FC|Monaco]]|ncnat=FRA|w=S |f=N/A |os=[http://www.skysports.com/football/player/0,19754,11835_225655,00.html]}}
+{{fb out2 player |tc=ESP |bg= |type=Loan ended |p=[[Edgar Davids|Davids]] |eu=y |nb=NED |n=3 |pos=MF |age={{age|1973|3|13|2004|06|30}} |ncl=[[Juventus F.C.|Juventus]]|ncnat=ITA|w=S |f=N/A |os=[http://www.soccerbase.com/players_details.sd?playerid=1918]}}
+{{fb out2 player |tc=ESP |bg=y |type=Loan |p=[[Óscar López (footballer, born 1980)|Óscar]] |eu=y |nb=ESP |n=27 |pos=DF |age={{age|1980|11|5|2004|06|30}} |ncl=[[S.S. Lazio|Lazio]]|ncnat=ITA|w=S |f=N/A |os=[http://www.uefa.com/competitions/ucl/news/kind=1/newsid=323212.html]}}
+{{end}}
+
+Total income: {{gain}}  €14.75 million
+{|
+{{fb out2 footer |u=30 September |ss=2005 |date=September 2005}}
+
+==Competitions==
+
+===La Liga===
+<ref>{{Cite web |url=http://www.alltimesoccer.com/table/la_liga/20040829 |title=Archived copy |access-date=2011-12-28 |archive-url=https://web.archive.org/web/20120426075409/http://www.alltimesoccer.com/table/la_liga/20040829 |archive-date=2012-04-26 |url-status=dead |df= }}</ref>
+====League table====
+{{:2004–05 La Liga|showteam=FCB}}
+
+{| border="2" cellpadding="4" style="border-collapse:collapse; text-align:center;"
+|-
+!Date
+!Opponents
+!H / A
+!Result<br>F – A
+!Scorers
+!Points
+!Position
+|- bgcolor="#ddffdd"
+|29 August 2004
+|[[Racing Santander]]
+|A
+|2–0
+|[[Ludovic Giuly|Giuly]] 68', [[Samuel Eto'o|Eto'o]] 74'
+|3
+|3
+|- bgcolor="#ddffdd"
+|11 September 2004
+|[[Sevilla F.C.|Sevilla]]
+|H
+|2–0
+|[[Ludovic Giuly|Giuly]] 35', [[Henrik Larsson|Larsson]] 79'
+|6
+|1
+|- bgcolor="#ffffdd"
+|19 September 2004
+|[[Atlético de Madrid]]
+|A
+|1–1
+|[[Giovanni van Bronckhorst|Van Bronckhorst]] 22'
+|7
+|2
+|- bgcolor="#ddffdd"
+|23 September 2004
+|[[Real Zaragoza|Zaragoza]]
+|H
+|4–1
+|[[Samuel Eto'o|Eto'o]] 26', 46', [[Xavi]] 66', [[Giovanni van Bronckhorst|Van Bronckhorst]] 78'
+|10
+|2
+|- bgcolor="#ddffdd"
+|26 September 2004
+|[[RCD Mallorca|Mallorca]]
+|A
+|3–1
+|[[Henrik Larsson|Larsson]] 10', [[Samuel Eto'o|Eto'o]] 38', 39'
+|13
+|2
+|- bgcolor="#ddffdd"
+|3 October 2004
+|[[CD Numancia|Numancia]]
+|H
+|1–0
+|[[Henrik Larsson|Larsson]] 70'
+|16
+|1
+|- bgcolor="#ddffdd"
+|16 October 2004
+|[[RCD Espanyol|Espanyol]]
+|A
+|1–0
+|[[Deco]] 9'
+|19
+|1
+|- bgcolor="#ddffdd"
+|24 October 2004
+|[[CA Osasuna|Osasuna]]
+|H
+|3–0
+|[[Samuel Eto'o|Eto'o]] 40', 90', [[Ronaldinho]] 42'
+|22
+|1
+|- bgcolor="#ffffdd"
+|30 October 2004
+|[[Athletic Bilbao]]
+|A
+|1–1
+|[[Samuel Eto'o|Eto'o]] 10'
+|23
+|1
+|- bgcolor="#ddffdd"
+|6 November 2004
+|[[Deportivo de La Coruña|Deportivo]]
+|H
+|2–1
+|[[Xavi]] 22', [[Samuel Eto'o|Eto'o]] 35'
+|26
+|1
+|- bgcolor="#ffdddd"
+|14 November 2004
+|[[Real Betis|Betis]]
+|A
+|1–2
+|[[Gerard López|Gerard]] 71'
+|26
+|1
+|- bgcolor="#ddffdd"
+|20 November 2004
+|[[Real Madrid C.F.|Real Madrid]]
+|H
+|3–0
+|[[Samuel Eto'o|Eto'o]] 23', [[Giovanni van Bronckhorst|Van Bronckhorst]] 42', [[Ronaldinho]] {{goal|75|[[Penalty kick (association football)|pen.]]}}
+|29
+|1
+|- bgcolor="#ddffdd"
+|27 November 2004
+|[[Getafe CF|Getafe]]
+|A
+|2–1
+|[[Rafael Márquez|Márquez]] 20', [[Deco]] 22'
+|32
+|1
+|- bgcolor="#ddffdd"
+|4 December 2004
+|[[Málaga CF|Málaga]]
+|H
+|4–0
+|[[Samuel Eto'o|Eto'o]] 24', 89', [[Deco]] 28', [[Andrés Iniesta|Iniesta]] 60'
+|35
+|1
+|- bgcolor="#ddffdd"
+|11 December 2004
+|[[Albacete Balompie|Albacete]]
+|A
+|2–1
+|[[Andrés Iniesta|Iniesta]] 1', [[Xavi]] 85'
+|38
+|1
+|- bgcolor="#ffffdd"
+|18 December 2004
+|[[Valencia CF|Valencia]]
+|H
+|1–1
+|[[Ronaldinho]] 79'
+|39
+|1
+|- bgcolor="#ddffdd"
+|21 December 2004
+|[[Levante UD|Levante]]
+|H
+|2–1
+|[[Deco]] 35', [[Samuel Eto'o|Eto'o]] 86'
+|42
+|1
+|- bgcolor="#ffdddd"
+|9 January 2005
+|[[Villarreal CF|Villarreal]]
+|A
+|0–3
+|
+|42
+|1
+|- bgcolor="#ddffdd"
+|16 January 2005
+|[[Real Sociedad]]
+|H
+|1–0
+|[[Samuel Eto'o|Eto'o]] 80'
+|45
+|1
+|- bgcolor="#ddffdd"
+|22 January 2005
+|[[Racing de Santander|Racing Santander]]
+|H
+|3–0
+|[[Samuel Eto'o|Eto'o]] 7', [[Ronaldinho]] 74', [[Deco]] 76'
+|48
+|1
+|- bgcolor="#ddffdd"
+|29 January 2005
+|[[Sevilla FC|Sevilla]]
+|A
+|4–0
+|[[Samuel Eto'o|Eto'o]] 48', [[Júlio Baptista|Baptista]] 55' {{own goal|o.g.}}, [[Ronaldinho]] 57', [[Ludovic Giuly|Giuly]] 74'
+|51
+|1
+|- bgcolor="#ffdddd"
+|1 February 2005
+|[[Atlético Madrid]]
+|H
+|0–2
+|
+|51
+|1
+|- bgcolor="#ddffdd"
+|12 February 2005
+|[[Real Zaragoza|Zaragoza]]
+|A
+|4–1
+|[[Delio Toledo|Toledo]] 1' {{own goal|o.g.}}, [[Ludovic Giuly|Giuly]] 29', [[Samuel Eto'o|Eto'o]] 39', [[Rafael Márquez|Márquez]] 71'
+|54
+|1
+|- bgcolor="#ddffdd"
+|19 February 2005
+|[[RCD Mallorca|Mallorca]]
+|H
+|2–0
+|[[Deco]] 16', 56'
+|57
+|1
+|- bgcolor="#ffffdd"
+|26 February 2005
+|[[CD Numancia|Numancia]]
+|A
+|1–1
+|[[Rafael Márquez|Márquez]] 46'
+|58
+|1
+|- bgcolor="#ffffdd"
+|1 March 2005
+|[[RCD Espanyol|Espanyol]]
+|H
+|0–0
+|
+|59
+|1
+|- bgcolor="#ddffdd"
+|5 March 2005
+|[[CA Osasuna|Osasuna]]
+|A
+|1–0
+|[[Samuel Eto'o|Eto'o]] 39'
+|62
+|1
+|- bgcolor="#ddffdd"
+|12 March 2005
+|[[Athletic Bilbao]]
+|H
+|2–0
+|[[Deco]] 20', [[Ludovic Giuly|Giuly]] 38'
+|65
+|1
+|- bgcolor="#ddffdd"
+|19 March 2005
+|[[Deportivo de La Coruña|Deportivo]]
+|A
+|1–0
+|[[Ludovic Giuly|Giuly]] 10'
+|68
+|1
+|- bgcolor="#ffffdd"
+|3 April 2005
+|[[Real Betis|Betis]]
+|H
+|3–3
+|[[Samuel Eto'o|Eto'o]] 14', 82', [[Giovanni van Bronckhorst|Van Bronckhorst]] 90'
+|69
+|1
+|- bgcolor="#ffdddd"
+|10 April 2005
+|[[Real Madrid]]
+|A
+|2–4
+|[[Samuel Eto'o|Eto'o]] 28', [[Ronaldinho]] 73'
+|69
+|1
+|- bgcolor="#ddffdd"
+|17 April 2005
+|[[Getafe CF|Getafe]]
+|H
+|2–0
+|[[Ronaldinho]] 29', [[Ludovic Giuly|Giuly]] 56'
+|72
+|1
+|- bgcolor="#ddffdd"
+|24 April 2005
+|[[Málaga CF|Málaga]]
+|A
+|4–0
+|[[Oleguer Presas|Oleguer]] 21', [[Ludovic Giuly|Giuly]] 33', 67', [[Gerard López|Gerard]] 89'
+|75
+|1
+|- bgcolor="#ddffdd"
+|1 May 2005
+|[[Albacete Balompie|Albacete]]
+|H
+|2–0
+|[[Samuel Eto'o|Eto'o]] 66', [[Lionel Messi|Messi]] 88'
+|78
+|1
+|- bgcolor="#ddffdd"
+|8 May 2005
+|[[Valencia CF|Valencia]]
+|A
+|2–0
+|[[Ronaldinho]] 28', [[Samuel Eto'o|Eto'o]] 29'
+|81
+|1
+|- bgcolor="#ffffdd"
+|14 May 2005
+|[[Levante UD|Levante]]
+|A
+|1–1
+|[[Samuel Eto'o|Eto'o]] 60'
+|82
+|1
+|- bgcolor="#ffffdd"
+|22 May 2005
+|[[Villarreal CF|Villarreal]]
+|H
+|3–3
+|[[Ronaldinho]] 34', [[Ludovic Giuly|Giuly]] 37', 48'
+|83
+|1
+|- bgcolor="#ffffdd"
+|28 May 2005
+|[[Real Sociedad]]
+|A
+|0–0
+|
+|84
+|1
+|}
+
+===Copa del Rey===
+{{main|2004–05 Copa del Rey}}
+====Round of 64====
+{{footballbox collapsible
+|date=27 October 2004
+|round=Round of 64
+|time=20:45 [[Central European Time|CET]]
+|team1=[[UDA Gramenet]]
+|score=1-0
+|aet=yes
+|report=https://www.worldfootball.net/report/copa-del-rey-2004-2005-1-runde-uda-gramenet-fc-barcelona/
+|team2=[[FC Barcelona]]
+|goals1=Ollés{{goal|103}}
+|goals2=
+|stadium=Nou Camp Municipal, [[Santa Coloma de Gramenet]]
+|attendance=
+|referee=Daudén Ibáñez
+|result=L
+}}
+
+===Champions League===
+
+====Group stage====
+{{football box collapsible
+|result=W
+|date=14 September 2004
+|time=20:45
+|team1=[[Celtic F.C.|Celtic]] {{flagicon|SCO}}
+|score= 1–3
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1968/match=1077156/index.html Report]
+|team2={{flagicon|ESP}} [[FC Barcelona|Barcelona]]
+|goals1=[[Chris Sutton|Sutton]] {{goal|59}}
+|goals2=[[Deco]] {{goal|20}}<br>[[Ludovic Giuly|Giuly]] {{goal|78}}<br>[[Henrik Larsson|Larsson]] {{goal|82}}
+|stadium=[[Celtic Park]], [[Glasgow]]
+|attendance=58,589
+|referee=[[Markus Merk]] ([[German Football Association|Germany]])
+}}
+{{football box collapsible
+|result=W
+|date=29 September 2004
+|time=20:45
+|team1=[[FC Barcelona|Barcelona]] {{flagicon|ESP}}
+|score= 3–0
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1968/match=1077171/index.html Report]
+|team2={{flagicon|UKR}} [[FC Shakhtar Donetsk|Shakhtar Donetsk]]
+|goals1=[[Deco]] {{goal|15}}<br>[[Ronaldinho]] {{goal|64|pen.}}<br>[[Samuel Eto'o|Eto'o]] {{goal|89}}
+|goals2=
+|stadium=[[Camp Nou]], [[Barcelona]]
+|attendance=64,148
+|referee=[[Terje Hauge]] ([[Norwegian Football Association|Norway]])
+}}
+{{football box collapsible
+|result=L
+|date=20 October 2004
+|time=20:45
+|team1=[[A.C. Milan|Milan]] {{flagicon|ITA}}
+|score= 1–0
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1968/match=1077187/index.html Report]
+|team2={{flagicon|ESP}} [[FC Barcelona|Barcelona]]
+|goals1=[[Andriy Shevchenko|Shevchenko]] {{goal|31}}
+|goals2=
+|stadium=[[San Siro]], [[Milan]]
+|attendance=76,502
+|referee=[[Graham Poll]] ([[The Football Association|England]])
+}}
+{{football box collapsible
+|result=W
+|date=2 November 2004
+|time=20:45
+|team1=[[FC Barcelona|Barcelona]] {{flagicon|ESP}}
+|score= 2–1
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1968/match=1077203/index.html Report]
+|team2={{flagicon|ITA}} [[A.C. Milan|Milan]]
+|goals1=[[Samuel Eto'o|Eto'o]] {{goal|37}}<br>[[Ronaldinho]] {{goal|89}}
+|goals2=[[Andriy Shevchenko|Shevchenko]] {{goal|17}}
+|stadium=[[Camp Nou]], [[Barcelona]]
+|attendance=94,682
+|referee=[[Urs Meier]] ([[Swiss Football Association|Switzerland]])
+}}
+{{football box collapsible
+|result=D
+|date=24 November 2004
+|time=20:45
+|team1=[[FC Barcelona|Barcelona]] {{flagicon|ESP}}
+|score= 1–1
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1968/match=1077220/index.html Report]
+|team2={{flagicon|SCO}} [[Celtic F.C.|Celtic]]
+|goals1=[[Samuel Eto'o|Eto'o]] {{goal|24}}
+|goals2=[[John Hartson|Hartson]] {{goal|45}}
+|stadium=[[Camp Nou]], [[Barcelona]]
+|attendance=74,119
+|referee=[[Ľuboš Micheľ]] ([[Slovak Football Association|Slovakia]])
+}}
+{{football box collapsible
+|result=L
+|date=7 December 2004
+|time=20:45
+|team1=[[FC Shakhtar Donetsk|Shakhtar Donetsk]] {{flagicon|UKR}}
+|score= 2–0
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1968/match=1077235/index.html Report]
+|team2={{flagicon|ESP}} [[FC Barcelona|Barcelona]]
+|goals1=[[Julius Aghahowa|Aghahowa]] {{goal|14||22}}
+|goals2=
+|stadium=[[Donbass Arena]], [[Donetsk]]
+|attendance=25,000
+|referee=[[Claus Bo Larsen]] ([[Danish Football Association|Denmark]])
+}}
+
+====First knockout round====
+{{football box collapsible
+|result=W
+|date=23 February 2005
+|team1=[[FC Barcelona|Barcelona]] {{flagicon|ESP}}
+|score= 2–1
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1969/match=1081507/index.html Report]
+|team2={{flagicon|ENG}} [[Chelsea F.C.|Chelsea]]
+|goals1=[[Maxi López|M. López]] {{goal|67}}<br>[[Samuel Eto'o|Eto'o]] {{goal|73}}
+|goals2=[[Juliano Belletti|Belletti]] {{goal|33|o.g.}}
+|stadium=[[Camp Nou]], [[Barcelona]]
+|attendance=96,650
+|referee=[[Anders Frisk]] ([[Swedish Football Association|Sweden]])
+}}
+{{football box collapsible
+|result=L
+|date=8 March 2005
+|team1=[[Chelsea F.C.|Chelsea]] {{flagicon|ENG}}
+|score= 4–2
+|aggregatescore= 5–4
+|report=[http://www.uefa.com/uefachampionsleague/season=2004/matches/round=1969/match=1081508/index.html Report]
+|team2={{flagicon|ESP}} [[FC Barcelona|Barcelona]]
+|goals1=[[Eiður Guðjohnsen|Guðjohnsen]] {{goal|8}}<br>[[Frank Lampard|Lampard]] {{goal|17}}<br>[[Damien Duff|Duff]] {{goal|19}}<br>[[John Terry|Terry]] {{goal|76}}
+|goals2=[[Ronaldinho]] {{goal|27|pen.|38}}
+|stadium=[[Stamford Bridge (stadium)|Stamford Bridge]], London
+|attendance=42,450
+|referee=[[Pierluigi Collina]] ([[Italian Football Federation|Italy]])
+}}
+
+==Results==
+{| class="wikitable collapsed"
+|-
+! GAMES 2004-2005 [http://www.webdelcule.com/1899-96/2000-2005.html]
+|-
+| 16-07-2004 FRIENDLY. BANYOLES-BARCELONA 1-1
+
+18-07-2004 FRIENDLY.
+FIGUERES-BARCELONA 1-2
+
+20-07-2004 FRIENDLY.
+PALAMÓS-BARCELONA 0-6
+
+23-07-2004 FRIENDLY. 
+HÈRCULES-BARCELONA 1-1
+
+29-07-2004 FRIENDLY. 
+[[Suwon Samsung Bluewings|SUWON SAMSUNG BLUEWINGS]]-BARCELONA 1-0
+
+01-08-2004 FRIENDLY.
+[[Kashima Antlers|KASHIMA ANTLERS]]-BARCELONA 0-5
+
+04-08-2004 FRIENDLY.
+[[Júbilo Iwata|JUBILO IWATA]]-BARCELONA 0-3
+
+08-08-2004 FRIENDLY.
+INTERNATIONAL SHANGHAI UNITED-BARCELONA 0-3
+
+14-08-2004 Cardiff Capital Challenge Trophy.
+[[Parma F.C.|PARMA]]-BARCELONA 0-1
+
+18-08-2004 Trofeo Centenario Vilafranca.
+VILAFRANCA-BARCELONA 0-6
+
+20-08-2004 [[Copa Catalunya]] (semifinal).
+PERALADA-BARCELONA 0-4
+
+22-08-2004 [[Copa Catalunya]] (final).
+ESPANYOL-BARCELONA 0-2
+
+25-08-2004 [[Joan Gamper Trophy]].
+BARCELONA-[[A.C. Milan|MILAN]] 2-1
+
+07-10-2004 FRIENDLY.
+[[Olympique Marseille|MARSEILLE]]-BARCELONA 0-0
+
+
+30-11-2004 FRIENDLY.
+BARCELONA-SELECT WORLD STARS 4-3
+
+14-12-2004 FRIENDLY.
+BARCELONA-[[AFC Ajax|AJAX]] 2-1
+
+02-06-2005 FRIENDLY.
+LLEIDA-BARCELONA 3-3
+
+12-06-2005 FRIENDLY.
+[[Yokohama Marinos|YOKOHAMA MARINOS]]-BARCELONA 3-3
+
+15-06-2005 Saitama City Cup.
+[[Urawa Red Diamonds|URAWA RED DIAMONDS]]-BARCELONA 0-3
+|}
+
+==See also==
+*[[FC Barcelona]]
+*[[2004–05 UEFA Champions League]]
+*[[2004–05 La Liga]]
+*[[2004–05 Copa del Rey]]
+
+==References==
+{{reflist}}
+
+==External links==
+* {{Cite web |url=http://www.fcbarcelona.cat/web/english/ |title=FC Barcelona official website |access-date=2009-09-30 |archive-url=http://webarchive.loc.gov/all/20100823140730/http://www.fcbarcelona.cat/web/english/ |archive-date=2010-08-23 |url-status=bot: unknown }}
+* [http://www.fcbarcelonaweb.co.uk FCBarcelonaweb.co.uk] English Speaking FC Barcelona Supporters
+* [http://soccernet.espn.go.com/team?id=83&cc=5901 ESPNsoccernet: Barcelona Team Page]
+* [http://www.footballdatabase.com/index.php?page=club&Id=7&b=true&cont=Europe&cln=FC_Barcelona FC Barcelona (Spain) profile]
+* [http://www.uefa.com/competitions/ucl/ uefa.com&nbsp;-&nbsp;UEFA Champions League]
+* [http://www.lfp.es/ Web Oficial de la Liga de Fútbol Profesional]
+* {{Cite web |url=http://www.fifa.com/clubworldcup/index.html |title=FIFA.com |access-date=2009-09-30 |archive-url=https://web.archive.org/web/20111225041824/http://www.fifa.com/clubworldcup/index.html |archive-date=2011-12-25 |url-status=bot: unknown }}
+* {{Cite web |url=http://www.fcf.cat/pub/home.asp |title=Federació Catalana de Futbol |access-date=2009-09-30 |archive-url=https://web.archive.org/web/20091223210501/http://www.fcf.cat/pub/home.asp |archive-date=2009-12-23 |url-status=dead |df= }}
+
+{{FC Barcelona seasons}}
+{{2004–05 in Spanish football}}
+
+{{DEFAULTSORT:2004-05 Fc Barcelona Season}}
+[[Category:FC Barcelona seasons]]
+[[Category:Spanish football clubs 2004–05 season|Barcelona]]
+[[Category:Spanish football championship-winning seasons|2004–05]]

@@ -1,0 +1,90 @@
+{{Use dmy dates|date=September 2020}}
+{{Use Australian English|date=August 2011}}
+{{Infobox scientist
+| honorific_prefix  = Sir
+| name = Ronald Sydney Nyholm
+| honorific_suffix  = 
+| birth_date = {{Birth date|df=yes|1917|01|29}}
+| death_date = {{Death date and age|df=yes|1971|12|04|1917|01|29}}
+| birth_place = [[Broken Hill]], [[New South Wales]], Australia
+| spouse = Maureen Richardson (1948)<ref name = adb>
+{{cite web|first = Stanley E.| last = Livingstone|title = Nyholm, Sir Ronald Sydney (1917–1971)|
+url = http://adb.anu.edu.au/biography/nyholm-sir-ronald-sydney-11269| work = [[Australian Dictionary of Biography]]}}</ref>
+| field = [[Chemistry]]
+| nationality = [[Australia]]
+| workplaces = [[Eveready Battery Co]]<br>[[University of Sydney]]<br>[[University College London]]<br>[[Sydney Technical College]]
+| doctoral_advisor  = [[Christopher Kelk Ingold|Christopher Ingold]]<ref name=adb/>
+| doctoral_students = [[Robin Clark (chemist)|Robin Clark]]
+| death_place = [[Cambridge]], England
+| awards = [[Fellow of the Royal Society]]<ref name="frs">{{Cite journal | last1 = Craig | first1 = D. P. | doi = 10.1098/rsbm.1972.0015 | title = Ronald Sydney Nyholm 1917-1971 | journal = [[Biographical Memoirs of Fellows of the Royal Society]] | volume = 18 | pages = 445 | year = 1972 | doi-access = free }}</ref>
+}}
+
+'''Sir Ronald Sydney Nyholm''' (29 January 1917 – 4 December 1971) was an Australian chemist who was a leading figure in [[inorganic chemistry]] in the 1950s and 1960s.
+
+==Education==
+Born on 29 January 1917 as the fourth in a family of six children. Nyholm's father, Eric Edward Nyholm (1878–1932) was a railway guard.  Nyholm's paternal grandfather, Erik Nyholm (1850–1887) was a coppersmith born in [[Nykarleby]] in the Swedish-speaking part of [[Finland]], who migrated to [[Adelaide]] in 1873.  Ronald Nyholm valued his Finnish roots and was particularly proud in his election in 1959 as Corresponding Member of the Finnish Chemical Society.
+
+Hailing from the small mining town of [[Broken Hill]], [[New South Wales]], he was early exposed to the role of inorganic chemistry.<ref name="frs"/><ref>[http://www.asap.unimelb.edu.au/bsparcs/biogs/P002030b.htm Bright Sparcs Biographical entry]</ref> He attended [[Burke Ward Public School]] and Broken Hill High School.  Nyholm married Maureen Richardson of [[Epping, New South Wales|Epping]], a suburb of [[Sydney]], [[New South Wales|NSW]], at St Mary Abbotts Parish Church,<ref>http://www.stmaryabbotschurch.org/</ref> Kensington, London on 6 August 1948.   <!--His father ...who worked for the [[Silverton Tramway]] a railways line that ran from Broken Hill to the South Australian border with NSW.  In 1915, Eric Nyholm was the guard on the train of picnickers that was subjected to fatal attack by Islamic militants in the [[Battle of Broken Hill]].-->
+
+After graduating from Broken Hill High School, he attended the [[University of Sydney]] (BSc, 1938; MSc, 1942) and then [[University College London]] (PhD, 1950, supervised by [[Christopher Kelk Ingold|Sir Christopher Ingold]]; D.Sc., 1953).<ref name = adb/> On graduation Nyholm became a High School teacher – a contractual requirement of his scholarship to university.
+
+==Independent career==
+He then joined the Eveready Battery Co as a chemist where he was frustrated that his work to make longer lasting batteries was not well received by the marketing department.  He then returned to teaching but now in tertiary education.  During World War II he was a Gas Officer as the civil defence forces were very concerned that the likely Japanese invasion would include gas attacks.  He was lecturer, then senior lecturer in Chemistry at [[Sydney Technical College]] from 1940 to 1951, although on leave in London from 1947.  From 1952 to 1954 he was associate professor of Inorganic Chemistry at the New South Wales University of Technology.  In 1954 he was elected President of the [[Royal Society of New South Wales]].  In 1955, Nyholm returned to England as Professor of Chemistry at University College London, where he worked until his death on 4 December 1971 as a result of a motorcar accident on the outskirts of Cambridge, England.<ref name="frs"/><ref>{{cite journal |last1=Chatt |first1=J. |title=A tribute to Sir Ronald Nyholm. |journal=Journal of Chemical Education |year=1974 |volume=51 |issue=3 |pages=146–149 |doi=10.1021/ed051p146}}</ref>
+
+===Research in inorganic chemistry===
+Nyholm's research in inorganic chemistry was primarily concerned with the preparation of [[transition metal]] compounds, particularly those involving organo-arsenic ligands.  His interest in [[organoarsenic chemistry]] was fostered at the University of Sydney by George Joseph Burrows (1888–1950).  Using the strong chelating ligand [[1,2-Bis(dimethylarsino)benzene|diars]], Nyholm demonstrated a range of oxidation states and coordination numbers for several of the transition metals.<ref>R S Nyholm & M L Tobe; The stabilization of oxidation states of the transition metals; ''Advan. Inorg. Chem. Radiochem.'', 5, 1–40.</ref> Nyholm noted that the term 'unusual valence state' had an 'historical, but not chemical significance.'  'The definition of usual oxidation state refers to oxidation states that are stable in environments made up of those chemical species that were common in classical inorganic compounds, e.g. oxides, water and other simple oxygen donors, the halogens, excluding fluorine, and sulphur.  Nowadays, however, such species constitute only a minority of the vast number of donor atoms and ligands that can be attached to metal.'
+
+After joining Sydney Technology college in 1940 Nyholm formed a close personal friendship with Francis (Franky) Dwyer and they collaborated in their research. Despite heavy teaching loads, between 1942 and 1947 they reported complexes of [[rhodium]], [[iridium]], and [[osmium]] in seventeen papers in the Journal and Proceedings of the [[Royal Society of New South Wales]].<ref>Stanley E Livingstone; Dwyer, [http://www.adb.online.anu.edu.au/biogs/A140071b.htm Francis Patrick John (Frank) (1910–1962)]; ''[[Australian Dictionary of Biography]]''</ref>
+
+One of Nyholm's early successes was the preparation of an octahedral complex of trivalent nickel [Ni([[1,2-Bis(dimethylarsino)benzene|diars]])<sub>2</sub>Cl<sub>2</sub>]Cl, by aerial oxidation of the red salt of bivalent nickel [Ni([[1,2-Bis(dimethylarsino)benzene|diars]])<sub>2</sub>]Cl<sub>2</sub>.<ref>R S Nyholm; Trivalent nickel; ''Nature'' 1950, '''165''', 154.</ref> He also described stable complexes of quadrivalent nickel such as the deep blue [Ni([[1,2-Bis(dimethylarsino)benzene|diars]])<sub>2</sub>Cl<sub>2</sub>] [ClO<sub>4</sub>]<sub>2</sub>, by nitric acid oxidation of the trivalent complex.<ref>R S Nyholm; Studies in co-ordination chemistry, Part IX: Quadrivalent nickel; ''J. Chem. Soc.''; 1951, 2602–2607</ref> This stabilisation of higher oxidation states became significant in the [[Nyholm-Rail reaction]] where the ditertiary arsine, [[1,2-Bis(dimethylarsino)benzene|diars]] undergoes a condensation reaction to a tritertiary arsine, [[Nyholm-Rail reaction|triars]].  Nyholm prepared examples of divalent octahedral complexes of the type M([[1,2-Bis(dimethylarsino)benzene|diars]])<sub>2</sub>X<sub>2</sub>, where X is Cl, Br or I, and M is Cr, Mn, Fe, Co, Ni, Mo, Tc, Ru, Pd, W, Re, Os, and Pt.
+
+Many of these divalent complexes are sensitive to aerial oxidation.  The chromium complex is oxidized by water.  Indeed, previous attempts to prepare Cr([[1,2-Bis(dimethylarsino)benzene|diars]])<sub>2</sub>X<sub>2</sub> had failed.  The chromium compounds were eventually synthesized by his co-worker Anthony Nicholl Rail only a month before Nyholm's death, using rigorous [[air-free techniques]].<ref>Anthony Nicholl Rail; ''Some new reactions of a ditertiary arsine ligand''; PhD Thesis; University College London; September 1973</ref>
+
+Together with Professor [[Ronald Gillespie]], Nyholm developed the [[VSEPR]] concept, which emphasized classical pictures of bonding, adapted to include features of [[Quantum chemistry|quantum theory]], but focusing on electron clouds of varying density within a probability envelope.
+
+===Teaching philosophy===
+In his inaugural lecture as professor of chemistry at University College London, Nyholm spoke of his concern for the teaching of chemistry.<ref>R S Nyholm; ''The renaissance of inorganic chemistry''; London, H K Lewis & Co</ref><ref>{{Cite journal | last1 = Nyholm | first1 = R. S. | title = The renaissance of inorganic chemistry | doi = 10.1021/ed034p166 | journal = Journal of Chemical Education | volume = 34 | issue = 4 | pages = 166 | year = 1957 | bibcode = 1957JChEd..34..166N }}</ref> In 1957 Nyholm organized the first of an annual series of Summer Schools at University College on new aspects of chemical knowledge and theory, and demonstrations of new equipment.  In the early sixties, the [[Nuffield Foundation]], at least partly as a result of Nyholm's influence, established the Science Teaching project, of which Nyholm was the first Chairman of the Chemistry Consultative Committee.  This program led to the development of experiential GCE courses that emphasized the ''process'' of chemistry, rather than the recall of chemical facts, and explored the role of chemistry in society.  In 1971 Nyholm published an article entitled 'Education for Change' in which he differentiated between education and training as it applies to chemistry.<ref>{{Cite journal | last1 = Nyholm | first1 = S. R. | doi = 10.1021/ed048p34 | title = Education for change | journal = Journal of Chemical Education | volume = 48 | pages = 34 | year = 1971 | bibcode = 1971JChEd..48...34N }}</ref> He defined education as 'a process in which a person receives a training for a ''full life'' in a rapidly changing modern society, carried out in such a manner as will ensure the maximum development of the individual personality'.  He was not a person who placed too much emphasis on fact-burdened and fact-tested learning such as in the National Curriculum developments in England in the nineteen-nineties.
+
+Nyholm defined training for a full life as including:{{citation needed|date=November 2010}}
+# Recognition of oneself as an ''individual'' with the development of some kind of ethical standards.  This may take place via training in religion of one kind or other; whether these beliefs are rejected later or not, they form at least a basis against which future behaviour can be measured.
+# Man is a social being and needs to be made familiar with the nature of, and the reason for, the development of the society in which he is living
+# Man needs to be able to communicate both by the spoken word and the written word
+# Man must be numerate. It is essential that he receive an understanding of the process of quantitative thinking appropriate to his intellectual ability.
+
+===Industrial consulting===
+Nyholm was associated with industry all of his life. One of his earliest positions was as a chemist at Eveready Batteries in Sydney.  The application of science to useful products was of great importance to him, and he is purported to have admired the DuPont logo "Better things for better living through chemistry".  He was an active consultant to a number of companies including ICI and Johnson Matthey in the UK and DuPont in the US.  <!--In addition to his many close academic friends from his work in the UK and Australia, and also in the US - people like Stanley Kirschener at Wayne State and James V Quagliano at Notre Dame, some of his closest friends were in industry.  They included world class leaders in chemical industry research such as Duncan S Davies, General Manager of ICI R&D, Wendell F Jackson of DuPont's Explosives Division, the first person to see Teflon when as a young man it was his job cut open the famous cylinder, Hub (Harold M) Hubbard formerly of DuPont and latterly head of SERI (NREL) the Solar Energy Research Institute a man who felt as comfortable in a lab as in boots in the middle of Kansas, and Robert M Cavanaugh, Director of Research at DuPont's Explosives Division. All of these individuals provided Ron, and received from him, stimulation in both the arts and sciences with a firm foothold on the real world.-->   <!--One comment on Nyholm's relationship with industry was summarized by [[RJP Williams]];<ref>[https://doi.org/10.1007%2FBFb0036781]; Structure and Bonding 15, 1973</ref> who felt that Nyholm was not a real believer in theoretical chemical studies as such.  Instead he believed that Ron was an old school empiricist, collecting data.... and then searching for correlations.-->
+
+==Honours and awards==
+* 1950. Awarded the [[Corday-Morgan medal]] and Prize of the [[Royal Society of Chemistry|Chemical Society]].
+* 1955. Awarded the H G Smith Medal of the [[Royal Australian Chemical Institute]].
+* 1959. Elected Fellow of the [[Royal Society]].
+* 1959. Awarded the Royal Medal of the [[Royal Society of New South Wales]].
+* 1959. Elected Corresponding Member of the Finnish Chemical Society.
+* 1961. Appointed Tilden Lecturer of the [[Royal Society of Chemistry|Chemical Society]].
+* 1967. Appointed Liversidge Lecturer of the [[Royal Society of Chemistry|Chemical Society]].
+* 1967. Created [[Knight Bachelor]] for services to science.
+* 1968. Awarded the Gold Medal of the Italian Chemical Society.
+* 1968. Honorary Doctor of Science, [[University of East Anglia]].
+* 1968. Honorary Doctor of Science, [[City University, London]].
+* 1969. Awarded the Sigillum Magnum Medal, [[University of Bologna]].
+* 1969. Honorary Doctor of Science, [[University of New South Wales]].
+* 1971. Elected Honorary Member of the Accademia Peloritana (Sicily)
+
+The [[Nyholm Prize for Inorganic Chemistry]]<ref>{{cite web| title = The Nyholm Prize for Inorganic Chemistry| url = http://www.rsc.org/ScienceAndTechnology/Awards/NyholmPrizeInorganicChemistry/Index.asp| work = [[Royal Society of Chemistry]]}}</ref> and the [[Nyholm Prize for Education]],<ref>{{cite web|title = The Nyholm Prize for Education| url = http://www.rsc.org/ScienceAndTechnology/Awards/NyholmPrizeEducation/Index.asp| work = [[Royal Society of Chemistry]]}}</ref> founded by the Chemical Society in 1973, are now awarded biennially by the [[Royal Society of Chemistry]].
+
+The mineral [[Nyholmite]] is named after Nyholm.<ref>{{Cite web|title=Nyholmite: Mineral information, data and localities.|url=https://www.mindat.org/min-39210.html|access-date=2020-07-30|website=www.mindat.org}}</ref> It was discovered in Broken Hill in 2009 and its structure was elucidated by Elliot et al.<ref>{{Cite journal|last1=Elliott|first1=P.|last2=Turner|first2=P.|last3=Jensen|first3=P.|last4=Kolitsch|first4=U.|last5=Pring|first5=A.|year=2009|title=Description and crystal structure of nyholmite, a new mineral related to hureaulite, from Broken Hill, New South Wales, Australia|journal=Mineralogical Magazine|volume=73|issue=5|pages=723|bibcode=2009MinM...73..723E|doi=10.1180/minmag.2009.073.5.723}}</ref><!--could go in a separate page or section: is a cadmium-zinc arsenate  species, isostructural with the minerals of the [[hureaulite]] group. The mineral occurs in a quartz-garnet-arsenopyrite matrix as white globules, tufted aggregates of fibrous crystals and radiating hemispheres of thin, colourless, bladed crystals.-->
+
+==References==
+{{reflist}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Nyholm, Sir Ronald Sydney}}
+[[Category:Fellows of the Royal Society]]
+[[Category:Australian chemists]]
+[[Category:Inorganic chemists]]
+[[Category:Australian Knights Bachelor]]
+[[Category:1917 births]]
+[[Category:1971 deaths]]
+[[Category:Road incident deaths in England]]
+[[Category:Australian people of Finnish descent]]

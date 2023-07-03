@@ -1,0 +1,133 @@
+{{short description|Tribe of ground beetles}}
+{{Automatic taxobox
+| image = Calathus (Acalathus) advena (39259615205).jpg
+| image_caption = ''Calathus advena''
+| taxon = Sphodrini
+| authority = Laporte, 1834
+}}
+
+'''Sphodrini''' is a tribe of [[ground beetle]]s in the family [[Carabidae]]. There are at least 4 genera and more than 490 described species in Sphodrini.<ref name=itis/><ref name=buglink/><ref name=Bousquet2012/><ref name=Bouchard2011/>
+[[File:Synuchus nivalis Jacobson.png| thumb|''Synuchus vivalis'']]
+
+==Genera==
+These four genera belong to the tribe Sphodrini:
+* ''[[Calathus (beetle)|Calathus]]'' <small>Bonelli, 1810</small>
+* ''[[Laemostenus]]'' <small>Bonelli, 1810</small>
+* ''[[Pseudamara]]'' <small>Lindroth, 1968</small>
+* ''[[Synuchus]]'' <small>Gyllenhal, 1810</small>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=Sphodrini Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=931392
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=Sphodrini tribe Information
+| url=https://bugguide.net/node/view/726944
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=Bousquet2012>
+{{Cite journal
+| title = Catalogue of Geadephaga (Coleoptera, Adephaga) of America, north of Mexico
+| date = 2012
+| last1 = Bousquet | first1 = Yves
+| journal = ZooKeys
+| issue = 245| pages = 1–1722
+| url = https://zookeys.pensoft.net/articles.php?id=4003
+| doi = 10.3897/zookeys.245.3416
+| pmc=3577090
+| pmid=23431087
+}}</ref>
+
+<ref name=Bouchard2011>
+{{Cite journal
+| title = Family-group names in Coleoptera (Insecta)
+| date = 2011
+| last1 = Bouchard | first1 = Patrice
+| last2 = Bousquet | first2 = Yves
+| last3 = Davies | first3 = Anthony E.
+| last4 = Alonso-Zarazaga | first4 = Miguel A.
+| last5 = Lawrence | first5 = John F.
+| last6 = Lyal | first6 = Chris H. C.
+| last7 = Newton | first7 = Alfred F.
+| last8 = Reid | first8 = Chris A. M.
+| last9 = Schmitt | first9 = Michael
+| last10 = Ślipiński | first10 = S. Adam
+| last11 = Smith | first11 = Andrew B. T.
+| display-authors = 4
+| journal = ZooKeys
+| issue = 88| pages = 1–972
+| url = https://zookeys.pensoft.net/articles.php?id=4001
+| doi = 10.3897/zookeys.88.807
+| pmc=3088472
+| pmid=21594053
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite journal
+| title = Changes in ground beetle diversity and community composition in age structured forests (Coleoptera, Carabidae)
+| date = 2011
+| last1 = Riley | first1 = K.
+| last2 = Browne | first2 = R.
+| journal = ZooKeys
+| issue = 147| pages = 601–621
+| doi = 10.3897/zookeys.147.2102
+| pmc=3286241
+| pmid=22371677
+}}
+* {{Cite book
+| title = Illustrated Identification Guide to Adults and Larvae of Northeastern North American Ground Beetles (Coleoptera: Carabidae)
+| date = 2010
+| last1 = Bousquet | first1 = Yves
+| publisher = Pensoft Publishers
+| isbn = 978-954-642-522-5
+}}
+* {{Cite book
+| title = A Treatise on the Western Hemisphere Caraboidea (Coleoptera): Their classification, distributions, and ways of life. Volume I. Trachypachidae, Carabidae - Nebriiformes 1
+| date = 2007
+| last1 = Erwin | first1 = Terry L.
+| publisher = Pensoft Publishers
+| series = Pensoft Series Faunistica| volume = 66
+| isbn = 978-954-642-2989
+| issn = 1312-0174
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 1: Archostemata - Myxophaga - Adephaga
+| date = 2017
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-33029-0
+}}
+* {{Cite book
+| title = Classification of the Coleoptera of North America
+| date = 1861
+| last1 = LeConte | first1 = J. L.
+| publisher = Smithsonian Institution
+| series = Smithsonian Miscellaneous Collections| volume = 3| issue = 136
+| isbn = 978-0665100550
+| url = https://www.biodiversitylibrary.org/item/85732
+| doi = 10.5962/bhl.title.38459
+}}
+{{refend}}
+
+==External links==
+{{refbegin}}
+* {{Commons category-inline|Sphodrini}}
+{{refend}}
+
+{{Taxonbar|from=Q6133169}}
+
+[[Category:Harpalinae]]
+[[Category:Articles created by Qbugbot]]
+
+
+{{harpalinae-stub}}

@@ -1,0 +1,77 @@
+{{Infobox German location
+|image_photo       =
+|image_coa            =Wappen_Niederelbert.png
+|coordinates       = {{coord|50|24|28|N|7|48|45|E|format=dms|display=inline,title}}
+|image_plan          = Niederelbert im Westerwaldkreis.png
+|state        = Rheinland-Pfalz
+|district         = Westerwaldkreis
+|Verbandsgemeinde  = Montabaur
+|elevation              = 264
+|area            = 10.26
+|population         = 1618
+|Stand             = 2006-12-31
+|postal_code               = 56412
+|area_code           = 02602
+|licence               = WW
+|Gemeindeschlüssel = 07 1 43 053
+|Adresse-Verband   = Konrad-Adenauer-Platz 8<br />56410 Montabaur
+|website           = [https://www.niederelbert.de/ www.niederelbert.de]
+|mayor     = Christoph Neyer
+|party            =
+}}
+'''Niederelbert''' is an ''Ortsgemeinde'' – a community belonging to a ''[[Verbandsgemeinde]]'' – in the [[Westerwaldkreis]] in [[Rhineland-Palatinate]], [[Germany]].
+
+==Geography==
+The municipal area ranges in elevation from 240 to 275&nbsp;m above [[sea level]].
+
+===Location===
+The community lies in the [[Westerwald]] south of [[Montabaur]] in the Nassau Nature Park. The community belongs to the [[Montabaur (Verbandsgemeinde)|''Verbandsgemeinde'' of Montabaur]], a kind of collective municipality. Its seat is in the [[Montabaur|like-named town]].
+
+===Neighbouring communities===
+Niederelbert's neighbours are [[Oberelbert]], [[Holler, Germany|Holler]], [[Horressen]] and Montabaur.
+
+==History==
+In 1211, Niederelbert had its first documentary mention. Other forms of the name over the centuries are ''Elewarthe'' (1233), ''Elwarten'' (1260), ''Eylewart'' (1326), ''Elwert'' (1385), ''Nederen eelfart'' (1427), ''Nederen Elwert'' (1499) and ''Niederlebert'' (1786).
+
+===Religion===
+In Niederelbert there is a [[Roman Catholicism|Catholic]] [[Church (building)|church]]. It was consecrated in 1910 and has been known since then as ''St. Josef''.
+
+==Politics==
+
+===Community council===
+The council is made up of 13 council members, including the extraofficial mayor (''Bürgermeister''), who were elected in a municipal election on 13 June 2004.
+{| border="0" cellpadding="2" cellspacing="0" width="60%"
+|- bgcolor="#eeeeee" align="center"
+| || [[Freie Wähler|Freie Wähler Niederelbert]] || [[Freie Wähler|Wählergruppe FWG]] || '''Total'''
+|- align="center"
+| 2004 || 10 || 6 || 16 seats
+|}
+
+===Coat of arms===
+The two silver antlers in the chief of the community's [[Coat of arms|arms]] refer to its old name ''Elewarthin''. The golden lily in blue is taken from the arms borne by the feudal lords of Helfenstein. For the four brooks (Elbertbach, Gambach, Seelebach and Weiherhellbach), the arms symbolically bear the golden wavy fess with the four waves. The cock, Niederelbert's customary emblem, has been included as a [[charge (heraldry)|charge]] in the civic arms, in silver [[tincture (heraldry)|tincture]] on a red background, and armed Or (''ie'' with golden claws). Red and silver are also the tinctures used in the arms borne by the old [[Electorate of Trier]].
+
+==Economy and infrastructure==
+
+===Transport===
+The nearest [[Autobahn]] [[interchange (road)|interchange]] is ''[[Montabaur]]'' on the [[Bundesautobahn 3|A&nbsp;3]] ([[Cologne]]&ndash;[[Frankfurt am Main|Frankfurt]]), some 4&nbsp;km away. The nearest [[InterCityExpress]] stop is the [[railway station]] at Montabaur on the [[Cologne-Frankfurt high-speed rail line]]. There are also regional connections there.
+
+==Notable people==
+* [[Rudolf Scharping]] (born 2 December 1947), [[Social Democratic Party of Germany|SPD]] politician, former German Defence Minister
+
+==References==
+{{Reflist}}
+
+==Further reading==
+* Village chronicle: ''Niederelbert. Texte und Bilder im Spiegel der Zeit.'' {{ISBN|3-921548-53-5}}
+* Picturebook: ''Niederelbert – im Wandel der Zeit. Das Dorf, seine Menschen und ihre Werke.'' {{ISBN|3-89570-307-9}}
+
+==External links==
+*{{Official website}} {{in lang|de}}
+
+{{Cities and towns in Westerwaldkreis (district)}}
+
+{{Authority control}}
+[[Category:Westerwaldkreis]]
+
+
+{{Westerwaldkreis-geo-stub}}

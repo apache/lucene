@@ -1,0 +1,79 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Cassida
+| species = relicta
+| authority = Spaeth, 1927
+}}
+
+'''''Cassida relicta''''' is a [[species]] of [[tortoise beetle]] in the [[family (taxonomy)|family]] [[Chrysomelidae]].<ref name=itis/><ref name=catlife/><ref name=gbif/><ref name=bugref/> It is found in North America.<ref name=itis/><ref name=xcit0/><ref name=xcit3/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Cassida relicta'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=720012
+| website=[[Integrated Taxonomic Information System]]
+| access-date=2018-04-25
+}}</ref>
+<ref name=catlife>
+{{Cite web| title=''Cassida relicta'' species details
+| url=http://www.catalogueoflife.org/col/details/species/id/b17c7158f4bcc3edb5945f9742c64ea4
+| website=[[Catalogue of Life]]
+| access-date=2018-04-25
+}}</ref>
+<ref name=gbif>
+{{Cite web| title=''Cassida relicta''
+| url=https://www.gbif.org/species/4990528
+| website=[[Global Biodiversity Information Facility|GBIF]]
+| access-date=2018-04-25
+}}</ref>
+<ref name=bugref>
+{{Cite web| title=''Cassida relicta'' Species Information
+| url=https://bugguide.net/node/view/835394
+| website=[[BugGuide.net]]
+| access-date=2018-04-25
+}}</ref>
+<ref name=xcit0>
+{{Cite web
+| access-date = 2018-04-25
+| last1 = Staines | first1 = C.L.
+| title = Catalog of the hispines of the World
+| url = https://entomology.si.edu/collections_coleoptera-hispines.html
+| publisher = [[Smithsonian Institution]]
+}}</ref>
+<ref name=xcit3>
+{{Cite web
+| access-date = 2018-04-25
+| title = North American Cryptocephalus species (Chrysomelidae, Cryptocephalinae)
+| url = http://texasento.net/Crypto.html
+| publisher = Texas Entomology
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite book
+| title = A world catalogue of the Cassidinae (Coleoptera: Chrysomelidae)
+| date = 1999
+| last1 = Borowiec | first1 = Lech
+| publisher = Biologicae Silesiae
+| isbn = 978-83-909804-4-7
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 6: Chrysomeloidea
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-26091-7
+}}
+{{refend}}
+
+{{Taxonbar|from=Q14934053}}
+
+[[Category:Cassidinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1927]]
+
+
+{{Cassidinae-stub}}

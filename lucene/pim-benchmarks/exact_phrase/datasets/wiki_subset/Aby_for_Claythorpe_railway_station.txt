@@ -1,0 +1,57 @@
+{{short description|Former railway station in Lincolnshire, England}}
+{{Use dmy dates|date=August 2015}}
+{{Use British English|date=August 2015}}
+{{Infobox station
+| name                = Aby for Claythorpe
+| status              = Disused
+| image               = Aby for Claythorpe goods shed.jpg
+| caption             = Former goods shed in March 2010.
+| borough             = [[Aby, Lincolnshire|Aby]], [[East Lindsey]]
+| country             = United Kingdom
+| platforms           = 3
+| original            = [[East Lincolnshire Railway]]
+| pregroup            = [[Great Northern Railway (Great Britain)|Great Northern Railway]]
+| postgroup           = [[London and North Eastern Railway]] <br /> [[Eastern Region of British Railways]]
+| years               = 3 September 1848
+| events              = Opened as '''Claythorpe'''
+| years1              = 1 November 1885
+| events1             = Renamed '''Aby for Claythorpe'''
+| years2              = 11 September 1961
+| events2             = Closed
+}}
+[[File:Aby (for Claythorpe) former station geograph-3225802-by-Ben-Brooksbank.jpg|thumb|right|The former station house in 1992]]
+'''Aby for Claythorpe''' was a [[railway station]] on the [[East Lincolnshire Railway]]{{sfn|Conolly|2004|loc=p. 17, section A3}} which served the hamlets of [[Aby, Lincolnshire|Aby]] and [[Claythorpe]] in [[Lincolnshire]] between 1848 and 1961.<ref>{{cite PastScape|mnumber=506735|mname=Aby station|accessdate=18 May 2013}}</ref> It originally opened as ''Claythorpe'', but was renamed in 1885. Withdrawal of goods facilities took place in 1961, on the same day that the station was closed to passengers. The line through the station is closed.
+
+==History==
+The station was opened on 3 September 1848 as ''Claythorpe''{{sfn|Butt|1995|p=62}} after the settlement of [[Claythorpe]], and renamed in November 1885 to ''Aby'' after the nearby hamlet of [[Aby, Lincolnshire|Aby]].{{sfn|Butt|1995|p=13}} It was constructed by [[Samuel Morton Peto|Peto]] and [[Edward Betts|Betts]] [[civil engineer]]ing [[General contractor|contractors]] who, in January 1848, had taken over the contract to construct the section of the [[East Lincolnshire Railway]] between {{rws|Louth}} and {{rws|Boston}} from John Waring and Sons.{{sfn|Ludlam|1991|p=14}} This section was the last to be completed in September 1848 at an agreed cost of £123,000 ({{Inflation|UK|123000|1848|fmt=eq|cursign=£|r=-4}}).{{Inflation-fn|UK|df=y}}{{sfn|Ludlam|1991|p=14}} The station was provided with parallel platforms to the north of a skew [[level crossing]],{{sfn|Ludlam|1991|p=49}} with the stationmaster's house situated on the south side of the crossing on the down side.{{sfn|Ludlam|1991|p=75}} Adjacent to the stationmaster's house, which comprised a booking office, was a short low platform{{sfn|Ludlam|1991|p=76}} which may have been used by [[rail motor]]s.<ref name="subbrit">{{subbrit|a\aby}}</ref> On the opposite side of the line was a [[signal box]] bearing the name ''Aby'', which may have been the shortest name for any signal box in the country.{{sfn|Ludlam|1991|p=76}}{{sfn|Stennett|2007|p=31}} The box controlled the crossing and a [[goods yard]] with a [[goods shed]] and a 1½-ton crane.<ref name="subbrit"/> The yard, which was the largest of the three stations between Louth and {{rws|Alford Town}},<ref name="subbrit"/> was the first to close on 11 September 1961.{{sfn|Clinker|1978|p=2}} The station closed to passengers on the same day.{{sfn|Butt|1995|p=13}}
+
+{{Disused Rail Start}}
+{{Rail line|next={{rws|Alford Town}}<br /><small>Line and station closed</small>|previous={{rws|Authorpe}}<br /><small>Line and station closed</small>|route=[[Great Northern Railway (Great Britain)|Great Northern Railway]]<br /><small>[[East Lincolnshire Railway|East Lincolnshire Line]]</small>|col={{GNR colour}}}}
+{{end}}
+
+==Present day==
+The stationmaster's house has survived as a private residence, and the goods shed is still standing.{{sfn|Stennett|2007|p=40}} The low platform in front of the stationmaster's house is still extant, but the parallel platforms have been removed and the land returned to agriculture.<ref name="subbrit"/>  To the south, the bridge which carried the line over [[Great Eau]] also remains.{{sfn|Stennett|2007|p=40}}
+
+==References==
+{{reflist}}
+
+==Sources==
+*{{Butt-Stations}}
+* {{Cite book | last1 = Clinker | first1 = C.R. | title = Clinker's Register of Closed Passenger Stations and Goods Depots in England, Scotland and Wales 1830-1977 |date=October 1978 | publisher = Avon-Anglia Publications & Services | location = Bristol | isbn = 0-905466-19-5 | pages = | ref = harv}}
+* {{Cite book  | last1 = Hill | first1 = Roger | last2 = Vessey | first2 = Carey | title = British Railways Past and Present: Lincolnshire (No. 27) | year = 1999 | origyear = 1996 | publisher = Past & Present Publishing Ltd | location = Kettering, Northants | isbn = 978-1-85895-083-9 | pages =  | ref = harv}}
+*{{Cite book  | last1 = Ludlam | first1 = A.J. | title = The East Lincolnshire Railway (Locomotive Papers No. 82) | year = 1991 | publisher = The Oakwood Press | location = Headington, Oxford | isbn = 0-85361-416-4 | pages =  | ref = harv}}
+* {{Cite book  | last1 = Conolly | first1 = W. Philip | title = British Railways Pre-Grouping Atlas and Gazetteer | year = 2004 | origyear = 1958 | publisher = Ian Allan Ltd | location = Hersham, Surrey | isbn = 978-0-7110-0320-0 | pages =  | ref = harv}}
+* {{Cite book  | last1 = Stennett | first1 = Alan | title = Lost Railways of Lincolnshire | year = 2007 | publisher = Countryside Books | location = Newbury, Berkshire | isbn = 978-1-84674-040-4 | pages =  | ref = harv}}
+
+==External links==
+* [http://www.npemap.org.uk/tiles/map.html#540,379,1 Aby for Claythorpe station on navigable O. S. map]
+* [http://www.lostrailwayswestyorkshire.co.uk/images/donations/Patrick%20Blow/Claythorpe%20station.jpg Image of the goods shed]
+
+{{Coord|53.29025|0.11600|type:railwaystation_region:GB_source:enwiki-npemap.org.uk|display=title}}
+
+{{Closed stations Lincolnshire}}
+
+[[Category:Disused railway stations in Lincolnshire]]
+[[Category:Railway stations in Great Britain closed in 1961]]
+[[Category:Railway stations in Great Britain opened in 1848]]
+[[Category:Former Great Northern Railway stations]]

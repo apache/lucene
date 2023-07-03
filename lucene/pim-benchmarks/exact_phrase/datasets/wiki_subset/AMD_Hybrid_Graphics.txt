@@ -1,0 +1,89 @@
+{{update|date=December 2018}}
+[[File:AMD_Radeon_Dual_Graphics_Logo_sticker.png|thumb|right|Sticker/badge featured on AMD APU+GPU compatible computers]]
+'''AMD Hybrid Graphics technology''', is a collective brand from [[Advanced Micro Devices|AMD]] for its [[Radeon]] line of discrete and integrated [[Graphics Processing Unit|GPU]], promoting higher performance and productivity while saving energy consumption in GPUs.
+
+The technology previously applied to selected chipsets of the [[AMD 700 chipset series]] and [[AMD 800 chipset series]] only.
+
+The ATI Hybrid Graphics technology was announced on January 23, 2008 with [[Radeon R600#Radeon HD 2400|Radeon HD 2400 series]] and [[Radeon R600#Radeon HD 3400|Radeon HD 3400 series]] video cards supporting hybrid graphics functionality. Originally, ATI announced this feature would only be supported in Vista, but in August 2008 they included support in their Windows XP drivers as well.<ref>{{cite web|last=Hruska |first=Joel |url=https://arstechnica.com/hardware/news/2008/08/ati-cat-8-8-drivers-include-hybrid-graphics-in-windows-xp.ars |title=ATI Cat 8.8 drivers include Hybrid Graphics in Windows XP |publisher=Ars Technica |date=2008-08-22 |accessdate=2012-09-14}}</ref> The architecture has been patented by ATI.<ref>{{patent|US|2006282604|"Methods and apparatus for processing graphics data using multiple processing circuits." filed on May 27, 2005}}</ref>
+The previous generation of [[AMD CrossFireX#Hybrid CrossFireX / Dual Graphics|Hybrid Crossfire]] paired 890GX or 880G (with Radeon HD4290 and HD 4250 respectively) motherboards from the AMD 800 chipset series with an HD 5450, 5550, 5570 or 5670 Radeon video card from the [[Radeon hd 5000|Radeon HD 5000 series]].<ref>{{cite web |url=http://sites.amd.com/us/game/technology/Pages/crossfirex.aspx |title=AMD CrossFireX™ |publisher=Sites.amd.com |date=2010-11-05 |accessdate=2012-09-14 |archive-url=https://web.archive.org/web/20120903065608/http://sites.amd.com/us/game/technology/Pages/crossfirex.aspx |archive-date=2012-09-03 |url-status=dead |df= }}</ref>
+Newer information suggests that A6-series and A8-series [[AMD Accelerated Processing Unit|AMD APUs]] can be used in Hybrid Crossfire (Subsequently, called "Dual Graphics") with HD 6570 and HD 6670 video cards.<ref name="vr-zone">{{cite web|url=http://vr-zone.com/articles/exclusive-amd-s-dual-radeon-graphics-for-desktops-unveiled/12746.html |title=Exclusive: AMD's Dual Radeon Graphics for desktops unveiled by |publisher=Vr-zone.com |date=2011-06-24 |accessdate=2012-09-14 |url-status=dead |archive-url=https://web.archive.org/web/20120727035018/http://vr-zone.com/articles/exclusive-amd-s-dual-radeon-graphics-for-desktops-unveiled/12746.html |archive-date=July 27, 2012 }}</ref><ref name="AMD#3">{{cite web|url=https://www.amd.com/us/products/technologies/dual-graphics/Pages/dual-graphics.aspx#3 |title=AMD Radeon Dual Graphics |publisher=Amd.com |date= |accessdate=2012-09-14}}</ref><ref name="AMD#4">{{cite web|url=https://www.amd.com/us/products/technologies/dual-graphics/Pages/dual-graphics.aspx#4 |title=AMD Radeon Dual Graphics |publisher=Amd.com |date= |accessdate=2012-09-14}}</ref><ref name="AMD#5">{{cite web|url=https://www.amd.com/us/products/technologies/dual-graphics/Pages/dual-graphics.aspx#5 |title=AMD Radeon Dual Graphics |publisher=Amd.com |date= |accessdate=2012-09-14}}</ref><ref name="ASCII">{{cite web|author=文● 宇野 貴教 |url=http://ascii.jp/elem/000/000/626/626734/index-3.html |title=ASCII.jp：ゲームPCを安く作るならAMD Dual Graphicsを活用すべし！ |publisher=Ascii.jp |date= |accessdate=2012-09-14}}</ref><ref name="Toms">{{cite web|url=http://www.tomshardware.com/reviews/amd-a8-3850-llano,2975-2.html |title=Dual Graphics: How Does It Perform? : AMD A8-3850 Review: Llano Rocks Entry-Level Desktops |publisher=Tomshardware.com |date=2011-06-30 |accessdate=2012-09-14}}</ref><ref name="Canucks">{{cite web|url=http://www.hardwarecanucks.com/forum/hardware-canucks-reviews/44338-amd-a8-3850-apu-review-llano-hits-desktop-7.html |title=AMD A8-3850 APU Review: Llano Hits the Desktop - Page 7 |publisher=Hardwarecanucks.com |date= |accessdate=2012-09-14}}</ref> Dual-graphic-capable second-generation [[AMD Fusion#2012 platforms|Trinity]] A-series APUs like the A8-5500 and A10-5700, with HD 7500 / 7600 series GPUs, and based on [[Socket FM2]], are expected in June 2012.<ref>{{cite web|url=http://www.cpu-world.com/news_2012/2012021501_AMD_Trinity_Desktop_APU_Specs_Revealed.html |title=AMD Trinity Desktop APU Specs Revealed |publisher=Cpu-world.com |date= |accessdate=2012-09-14 |url-status=dead |archive-url=https://web.archive.org/web/20121110165216/http://www.cpu-world.com/news_2012/2012021501_AMD_Trinity_Desktop_APU_Specs_Revealed.html |archive-date=2012-11-10 }}</ref>
+
+==Technologies==
+
+===Hybrid CrossFire / Hybrid CrossFireX / Dual Graphics===
+The Hybrid CrossFireX is a technology allowing the IGP, or Integrated Graphics Processor, and the discrete GPU, or Graphics Processing Unit, to form a CrossFire setup to enhance the system capability to render 3D scenes, while the Hybrid CrossFire X technology is present on the 790GX and 890G chipsets, with two supplied physical PCI-E x16 slots at x8 bandwidth,<ref name="HKEPC780G">{{in lang|zh}} [http://www.hkepc.com/?id=734 HKEPC review], retrieved January 29, 2008</ref> can form a Hybrid CrossFire X setup with two video cards and the IGP, enhancing the 3D rendering capabilities.<ref name="HKEPC4">{{in lang|zh}} [http://hkepc.com/?id=484 HKEPC report]: AMD touts Hybrid Crossfire X technology, combining IGP and GPU, available in Q2 2008. Retrieved December 12, 2007</ref>
+
+Initial performance results paired with a Radeon HD 2400 video card leads to a 50% performance increase over standalone Radeon HD 2400 performance,<ref name="Exp1">[http://www.expreview.com/news/hard/2007-10-29/1193620831d6610.html ExpReview report] {{Webarchive|url=https://web.archive.org/web/20080405135601/http://www.expreview.com/news/hard/2007-10-29/1193620831d6610.html |date=2008-04-05 }}, retrieved October 31, 2007</ref> notebook products will also be available. Three operation modes were spotted as follows:<ref>[http://pc.watch.impress.co.jp/docs/2008/0123/tawada_1.jpg PC Watch image], retrieved January 24, 2008</ref>
+
+<center>
+{| class="wikitable" style="text-align:center; width:auto;"
+|-
+|+ style="background:#096; font-size:16px; color:white;" | ATI Hybrid Graphics
+|-
+! Mode
+! [[Integrated Graphics Processor|On-board IGP]]
+! Discrete PCI-E video card(s)<br />(including [[Advanced eXpress I/O Module|AXIOM]]/[[Mobile PCI Express Module|MXM]] module(s))
+|-
+| '''On-board IGP only'''||{{Yes|On}}||{{No|Off}}
+|- style="background:#eee;"
+| style="background:#f9f9f9;"|'''Discrete mode'''||{{No|Off}}||{{Yes|On}}
+|-
+| '''Hybrid Mode'''||{{Yes|On}}||{{Yes|On}}
+|-
+| colspan="4" style="text-align: left;"|Notes:
+Hybrid CrossFire X was formerly only available on [[AMD 790GX|790GX]], [[AMD 790G|780G]], [[AMD 700 chipset series#760G|760G]], [[AMD 700 chipset series#785G|785G]], and [[AMD 800 chipset series#880G|880G]] and [[AMD 800 chipset series#890GX|890GX]] chipsets, but now A6-series and A8-series AMD Fusion APUs can be used in "Dual Graphics" configurations with HD 6570 & HD 6670 video cards.<ref name="vr-zone" /><ref name="AMD#3" /><ref name="AMD#4" />
+|}
+</center>
+
+One notable issue is that when the IGP paired with a [[DirectX 10|DirectX 10.1]] video card, the whole hybrid CrossFire setup will support up to DirectX 10.0 only, and the UVD in IGP will be shut down. The new 785G chipset has solved this issue however and supports DirectX 10.1.
+
+As of 2012, it seems that this "Hybrid CrossFireX" is called "Dual Graphics".<ref name="AMD#3" /> AMD claims that – for an A8-3850 APU paired with an HD 6670 video card – dual graphics more than doubles performance (the benchmark increased by 123%) compared with the APU alone.<ref name="AMD#5" /> But the performance of a standalone HD 6670 video card does not appear to be stated or compared. However, the Japanese computer magazine ASCII has published charts showing worthwhile improvements for the combination of A8-3850 with HD 6450, HD 6570 and HD 6670, as have Tom's Hardware and Hardware Canucks.<ref name="ASCII" /><ref name="Toms" /><ref name="Canucks" /> Furthermore, on this issue, there are certain APU+GPU combinations that only work in Directx 10 or above with the APU graphics being the default rendering GPU, notably A6/A8-3000 series and HD 6490/7400.
+
+===SurroundView===
+SurroundView is a brand/marketing term for the capability to drive [[Multi-monitor|multiple monitors]] as available in the ATI RS480 chipset. At most four monitors with a discrete graphics card can be connected onto the supported video output ports (one through [[Low Voltage Differential Signaling|LVDS]], that is either HDMI or DVI-D port and one [[D-subminiature|D-Sub]] port), in "extended desktop mode" or "clone/mirror/duplicate mode". The integrated graphics processor and the discrete graphics processor work in parallel to drive multiple displays. Therefore, SurroundView is different from Hybrid CrossFireX.
+
+The successor of SurroundView is [[AMD Eyefinity]].
+
+===PowerXpress===
+Available on mainstream mobile IGP chipsets (AMD [[AMD mobile platform#Puma platform (2008)|M780G]] and [[AMD mobile platform#Yukon platform (2009)|M690]]), the PowerXpress technology allows seamless switching from integrated graphics (IGP) to discrete graphics on notebooks when the notebook is connected to the AC power supply for better 3D rendering capabilities, and ''vice versa'' when disconnected from the power supply to increase battery life. The process does not require a system reboot as in the past and some current notebook implementations, and it features a UI within the driver which can profile applications to run on specified GPUs. In addition to that, later GPU models feature an Ultra Low Power Saving (ULPS) state that completely disables the discrete GPU when not in use, thus further saving power. However this feature proved to be buggy when inappropriate drivers are installed.<ref>{{cite web|url=https://community.amd.com/thread/176003 |title=ULPS: How to disable |publisher=Amd.com |date=2014-05-08 |accessdate=2019-07-11}}</ref>
+
+Current Linux support of this feature may be complete since Catalyst 11.4 (fglrx driver 8.840 or newer) according to a ''Phoronix'' article.<ref>{{cite web|url=https://www.phoronix.com/scan.php?page=news_item&px=OTI3Mg |title=[Phoronix&#93; PowerXpress Support Notebooks Under Linux |publisher=Phoronix.com |date=2011-03-30 |accessdate=2012-09-14}}</ref><ref>{{cite web|url=https://www.phoronix.com/scan.php?page=news_item&px=OTI3MQ |title=[Phoronix&#93; Here's The Special AMD Present For Ubuntu Users |publisher=Phoronix.com |date=2011-03-30 |accessdate=2012-09-14}}</ref> X.org currently does not support seamless graphic cards hot-switching without restarting the X server.<ref>{{cite web|url=https://www.phoronix.com/scan.php?page=news_item&px=OTIyMQ |title=[Phoronix&#93; Multi-GPU PRIME & GPU Hot-Switching Proposal |publisher=Phoronix.com |date=2011-03-16 |accessdate=2012-09-14}}</ref>
+
+<center>
+{|class="wikitable" style="font-size:90%;text-align:center; width:auto;"
+|-
+|+ style="background:#096; font-size:16px; color:white;"|'''PowerXpress''' (Mobile)
+|-
+!Mode
+!Plugged to AC power?
+!On-board IGP
+!discrete [[Advanced eXpress I/O Module|AXIOM]]/MXM<br />GPU module(s)
+!Default [[ATI PowerPlay|PowerPlay]] power settings
+|- style="background:#eee;"
+| style="background:#f9f9f9;"|'''AC Mode'''||{{Yes}}||{{No|Off}}||{{Yes|On}}|| style="background:#f9f9f9;"|"Maximum performance"
+|-
+|'''DC Mode'''||{{No}}||{{Yes|On}}||{{No|Off}}||"Maximum battery life"
+|}
+</center>
+
+The internal AMD technology name is PowerXpress
+* PowerXpress v1 – v3.0, were branded by the same name, "PowerXpress"
+* PowerXpress v4.0, the external name is rebranded as "Dynamic Switchable Graphics" (DSG).<ref>{{cite web|url=https://www.amd.com/us/products/technologies/switchable-graphics/Pages/dynamic-switchable-graphics.aspx|title=Products We Design|publisher=}}</ref><ref>{{cite web|url=http://www.anandtech.com/show/4839/mobile-gpu-faceoff-amd-dynamic-switchable-graphics-vs-nvidia-optimus-technology/2|title=Mobile GPU Faceoff: AMD Dynamic Switchable Graphics vs. NVIDIA Optimus Technology|first=Jarred|last=Walton|publisher=}}</ref>
+* PowerXpress v5.0 - present, DSG is rebranded as "Enduro".<ref>{{cite web|url=http://www.anandtech.com/show/6243/amds-enduro-switchable-graphics-levels-up/2|title=AMD's Enduro Switchable Graphics Levels Up|first=Jarred|last=Walton|publisher=}}</ref>
+
+== See also ==
+
+* [[Nvidia Optimus]]
+
+==References==
+{{Reflist|30em}}
+
+==External links==
+* {{Official website|http://sites.amd.com/us/game/technology/Pages/crossfirex.aspx}}
+
+{{ATI}}
+
+{{DEFAULTSORT:Hybrid Graphics}}
+[[Category:ATI Technologies]]
+[[Category:Graphics processing units]]
+[[Category:Computer-related introductions in 2008]]

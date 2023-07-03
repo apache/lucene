@@ -1,0 +1,26 @@
+{{Invalid SVG|2}}
+
+== Summary ==
+{{logo fur
+<!-- REQUIRED -->
+ |Article           = Chrome (XM)
+ |Use               = Infobox
+<!-- HIGHLY RECOMMENDED -->
+ |Source            = http://www.dishbyfish.com/header%20pages/XM_radio_channel_guide.pdf
+<!-- ADDITIONAL INFORMATION -->
+ |Used for          = 
+ |Owner             = 
+ |Website           = 
+ |History           = 
+ |Commentary        = 
+<!-- OVERRIDE FIELDS -->
+ |Description       = 
+ |Portion           = 
+ |Low_resolution    = 
+ |Purpose           = 
+ |Replaceability    = 
+ |other_information = 
+}}
+== Licensing ==
+{{SVG-Logo}}
+{{Non-free logo|image has rationale=yes|auto=yes}}

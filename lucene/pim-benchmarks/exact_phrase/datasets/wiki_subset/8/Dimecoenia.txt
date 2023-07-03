@@ -1,0 +1,83 @@
+{{Automatic taxobox
+| taxon = Dimecoenia
+| authority = [[Ezra Townsend Cresson|Cresson]], 1916
+}}
+'''''Dimecoenia''''' is a genus of [[shore fly|shore flies]] in the family [[Ephydridae]]. There are about 18 described species in ''Dimecoenia''.<ref name=itis/><ref name=catlife/><ref name=gbif/><ref name=bugref/>
+
+==Species==
+The following 18 species belong to the genus ''Dimecoenia'':
+{{Div col|colwidth=29em}}
+*''[[Dimecoenia abrupta|D. abrupta]]'' <small>[[Ezra Townsend Cresson|Cresson]], 1935</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia caesia|D. caesia]]'' <small>([[Frederik Maurits van der Wulp|Wulp]], 1883)</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia carrerai|D. carrerai]]'' <small>Oliveira, 1957</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia chilensis|D. chilensis]]'' <small>([[Pierre-Justin-Marie Macquart|Macquart]], 1850)</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia ciligena|D. ciligena]]'' <small>([[Camillo Róndani|Róndani]], 1868)</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia coltaensis|D. coltaensis]]'' <small>[[Ezra Townsend Cresson|Cresson]], 1935</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia densepilosa|D. densepilosa]]'' <small>([[Friedrich Georg Hendel|Hendel]], 1930)</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia fuscifemur|D. fuscifemur]]'' <small>Steyskal, 1970</small><span style="color:gray"><sup> i c g</sup></span>
+*''[[Dimecoenia gilvipes|D. gilvipes]]'' <small>([[Daniel William Coquillett|Coquillett]], 1901)</small><span style="color:gray"><sup> c</sup></span>
+*''[[Dimecoenia grumanni|D. grumanni]]'' <small>Oliveira, 1954</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia lenti|D. lenti]]'' <small>Oliveira, 1954</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia lopesi|D. lopesi]]'' <small>Oliveira, 1954</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia prionoptera|D. prionoptera]]'' <small>([[Carl Gustaf Thomson|Thomson]], 1869)</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia spinosa|D. spinosa]]'' <small>([[Hermann Loew|Loew]], 1864)</small><span style="color:gray"><sup> i c g b</sup></span>
+*''[[Dimecoenia travassosi|D. travassosi]]'' <small>Mello & Oliveira, 1992</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia tristanensis|D. tristanensis]]'' <small>[[Heinrich Frey|Frey]], 1954</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia venteli|D. venteli]]'' <small>Oliveira, 1954</small><span style="color:gray"><sup> c g</sup></span>
+*''[[Dimecoenia zurcheri|D. zurcheri]]'' <small>[[Friedrich Georg Hendel|Hendel]], 1933</small><span style="color:gray"><sup> c g</sup></span>
+
+{{Div col end}}
+<small>Data sources: i = ITIS,<ref name=itis/> c = Catalogue of Life,<ref name=catlife/> g = GBIF,<ref name=gbif/> b = Bugguide.net<ref name=bugref/></small>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Dimecoenia'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=147482
+| website=Integrated Taxonomic Information System
+| accessdate=2018-04-25
+}}</ref>
+<ref name=catlife>
+{{Cite web| title=Browse ''Dimecoenia''
+| url=http://www.catalogueoflife.org/col/browse/tree/id/4815fe832b80cb56522b382c62e51ecb
+| website=Catalogue of Life
+| accessdate=2018-04-25
+}}</ref>
+<ref name=gbif>
+{{Cite web| title=''Dimecoenia''
+| url=https://www.gbif.org/species/1618039
+| website=GBIF
+| accessdate=2018-04-25
+}}</ref>
+<ref name=bugref>
+{{Cite web| title=''Dimecoenia'' Genus Information
+| url=https://bugguide.net/node/view/1315765
+| website=BugGuide.net
+| accessdate=2018-04-25
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite book
+| title = Manual of Nearctic Diptera, Volume II
+| date = 1987
+| editor-last1 = McAlpine | editor-first1 = J. F.
+| editor-last2 = Petersen | editor-first2 = B. V.
+| editor-last3 = Shewell | editor-first3 = G. E.
+| editor-last4 = Teskey | editor-first4 = H. J.
+| editor-last5 = Vockeroth | editor-first5 = J. R.
+| editor-last6 = Wood | editor-first6 = D. M.
+| publisher = Agriculture Canada, Research Branch
+| isbn = 978-0-660-10731-8
+| url = http://publications.gc.ca/site/eng/9.817747/publication.html
+}}
+{{refend}}
+
+{{Taxonbar|from=Q3707716}}
+
+[[Category:Ephydridae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Schizophora genera]]
+
+{{Ephydroidea-stub}}

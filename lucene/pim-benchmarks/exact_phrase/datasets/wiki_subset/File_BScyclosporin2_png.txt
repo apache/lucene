@@ -1,0 +1,13 @@
+{{Information
+| description = Ciclosporin Biosynthesis
+.
+
+
+| source      = {{own}}
+| date        = 12 June 2008
+| author      = [[User:Jsindac|Jsindac]] ([[User talk:Jsindac|talk]]) ([[Special:ListFiles/Jsindac|Uploads]])
+}}
+Ciclosporin Biosynthesis
+{{PD-self|date=June 2008}}.
+
+{{Copy to Wikimedia Commons|bot=Fbot|priority=true|date=March 2012}}

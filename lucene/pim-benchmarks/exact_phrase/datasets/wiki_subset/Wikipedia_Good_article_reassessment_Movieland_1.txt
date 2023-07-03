@@ -1,0 +1,24 @@
+===[[Wikipedia:Good article reassessment/Movieland/1|Movieland]]===
+
+: {{al|Movieland|noname=yes}} • <span class="plainlinksneverexpand">[http://en.wikipedia.org/w/index.php?title=Wikipedia:Good_article_reassessment/Movieland/1&action=watch Watch article reassessment page]</span>
+: {{#ifeq:{{NAMESPACE}}|Wikipedia|<span>|{{error:not substituted|GAR/result}}<span style="display:none;">}}[[Category:GAR/38]] '''Result''': Delist.</span> As I write this there is some copyediting taking place (slowly) but there is still a lot that needs to be done, as noted below. —'''[[user talk:giggy|Giggy]]''' 08:50, 9 July 2008 (UTC)
+
+#Page has been tagged as needing to be updated for 2 months.
+#Page contains no infobox.
+#Page references fail to use appropriate templates (e.g. <nowiki>{{cite web}}</nowiki>
+[[User:Jclemens|Jclemens]] ([[User talk:Jclemens|talk]]) 17:29, 12 June 2008 (UTC)
+
+*'''Comment''': Infoboxes and citation templates are not mandatory.  I don't see how it fails the GA-criteria.  Granted, the references are missing pertinent information (publisher, date, etc), and it does seem to be out of date, but that should be easy enough to fix.  Have the main contributors been contacted? <span style="font-family:verdana">[[User:Yllosubmarine|María]] </span><small>([[User talk:Yllosubmarine|<span style="color:green">habla</span>]] con[[Special:Contributions/Yllosubmarine|<span style="color:green">migo</span>]])</small> 19:27, 12 June 2008 (UTC)
+:Sorry, I must have missed that in the list of steps.  I've left a note for the main contributor. [[User:Jclemens|Jclemens]] ([[User talk:Jclemens|talk]]) 19:53, 12 June 2008 (UTC)
+
+*'''Comment''': Sorry, I have been remiss on this.  I've had an update on my to-do list since the case settled out of court back in August.  Perhaps I've been bummed out because (IMO) the settlement didn't really force them to change the way they do business, only to limit the number and frequency of their popup demands for payment.  I'll try to get an update done over the next week.  I did see the update-needed notice on the talk page two months back, thanks for giving me a poke.  --[[User:CliffC|CliffC]] ([[User talk:CliffC|talk]]) 20:18, 12 June 2008 (UTC)
+
+*'''Delist''' per the following:
+**1A and 1B: Inappropriate and/or editorial prose (e.g. "In summary,...")  Lead does not fully summarize article; list incorporation issues in "Pre-trial stipulations" and 'Alleged violations" sections (could be more effectively and succinctly presented as prose - see also 3B).
+**2B: "Product status" section contains uncited data (i.e. "statistics", per the criterion).
+**3A and 3B: Article is insufficiently broad.  Article purports to be about the movie download service (per title and lead sentence), yet precious little information about the service itself, the underlying corporate entities, etc. is presented.  The article, as it is, would almost be better titled "Movieland Litigation", as the vast majority of the discussion pertains solely to the two complaints.  Additionally, listing of all defendants seems unnecessary detail; choosing the "big players" and an "et al" would be more appropriate, concise and combat [[WP:TLDR]].
+**6A: Both images have incorrect licenses.  The images are derivative works of Digital Enterprises, Inc. (Movieland) software.  Appearing in an FTC complaint ''does not'' make them works of the federal government.  These images would need to claim fair use and meet the [[WP:NFCC|criteria]] therefor. [[User:elcobbola|<font color="red"><i>'''ЭLСОВВОLД'''</i></font>]]&nbsp;<sub>[[User talk:elcobbola|talk]]</sub> 14:21, 13 June 2008 (UTC)
+
+*'''Delist''' per Elcobbola. There are numerous issues. The article has short, choppy, list-like sections. The lead is deficient.  However, my biggest concern is the quality of the citations. Too many refer to legal and government documents. It's far better to utilize coverage from reliable media sources, legal reviews and the like. [[User:Majoreditor|Majoreditor]] ([[User talk:Majoreditor|talk]]) 05:50, 14 June 2008 (UTC)
+
+*'''Delist''', per above. I'd also like to add to the list that the references need to be formatted. [[User:Nikki311|<font color="Teal">'''Nikki'''</font>]][[User Talk:Nikki311|<font color="Salmon">'''311'''</font>]] 19:11, 20 June 2008 (UTC)

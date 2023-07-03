@@ -1,0 +1,31 @@
+{{short description|Hungarian wrestler}}
+{{Use dmy dates|date=January 2020}}
+{{Infobox sportsperson
+| name           = József Doncsecz
+| full_name      = 
+| image          = 
+| caption        = 
+| nationality    = Hungarian
+| sport          = [[Wrestling]]
+| birth_date     = {{birth date and age|1950|1|16|df=yes}}
+| birth_place    = [[Szentgotthárd]], Hungary
+| death_date     = 
+| death_place    = 
+}}
+
+'''József Doncsecz''' (born 16 January 1950) is a Hungarian [[amateur wrestling|wrestler]]. He competed at the [[1972 Summer Olympics]] and the [[1976 Summer Olympics]].<ref name="SportsRef">{{cite Sports-Reference |url=https://www.sports-reference.com/olympics/athletes/do/jozsef-doncsecz-1.html |archive-url=https://web.archive.org/web/20200418071953/https://www.sports-reference.com/olympics/athletes/do/jozsef-doncsecz-1.html |url-status=dead |archive-date=18 April 2020 |title=József Doncsecz Olympic Results |accessdate=6 April 2019}}</ref>
+
+==References==
+{{reflist}}
+
+{{Authority control}}
+
+{{DEFAULTSORT:Doncsecz, Jozsef}}
+[[Category:1950 births]]
+[[Category:Living people]]
+[[Category:Hungarian male sport wrestlers]]
+[[Category:Olympic wrestlers of Hungary]]
+[[Category:Wrestlers at the 1972 Summer Olympics]]
+[[Category:Wrestlers at the 1976 Summer Olympics]]
+[[Category:People from Szentgotthárd]]
+{{Hungary-wrestling-bio-stub}}

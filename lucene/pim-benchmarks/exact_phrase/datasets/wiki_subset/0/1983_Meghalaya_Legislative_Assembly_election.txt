@@ -1,0 +1,130 @@
+{{Infobox election
+| election_name = 1983 Meghalaya Legislative Assembly election
+| country = India
+| type = parliamentary
+| ongoing = no
+| previous_election = 1978 Meghalaya Legislative Assembly election
+| previous_year = 1978
+| next_election = 1988 Meghalaya Legislative Assembly election
+| next_year = 1988
+| seats_for_election = All 60 seats in the [[Meghalaya Legislative Assembly]]
+| majority_seats = 31
+| election_date = 17 February 1983
+| turnout = 72.58%
+| opinion_polls = 
+| image1 = 
+| leader1 = 
+| leader_since1 = 
+| party1 = Indian National Congress
+| alliance1 = 
+| leaders_seat1 = 
+| popular_vote1 = 130,956
+| percentage1 = 27.68
+| swing1 = 1.64 {{decrease}}
+| last_election1 = 
+| seats_before1 = 20
+| seats_needed1 = 
+| seats1 = 25
+| seat_change1 = 5 {{increase}}
+| image2 = 
+| leader2 = 
+| leader_since2 = 
+| party2 = All Party Hill Leaders Conference
+| alliance2 = 
+| leaders_seat2 = 
+| popular_vote2 = 118,593
+| percentage2 = 24.92
+| swing2 = 0.15 {{increase}}
+| last_election2 = 
+| seats_before2 = 16
+| seats_needed2 = 
+| seats2 = 15
+| seat_change2 = 1 {{decrease}}
+| map_alt = 
+| map_image = 
+| map_size = 
+| map_caption = 
+| title = [[List of Chief Ministers of Meghalaya|Chief Minister]]
+| before_election = [[Williamson A. Sangma]]
+| before_party = Indian National Congress
+| posttitle = 
+| after_election = [[B. B. Lyngdoh]]
+| after_party = All Party Hill Leaders Conference
+}}
+The '''1983 Meghalaya Legislative Assembly election''' was held on 17 February 1983.<ref name=":0">{{Cite journal|last=Warjri|first=Antarwell|date=March 2017|title=Role of Regional Political Parties and Formation of the Coalition Governments in Meghalaya|url=https://www.ijhsss.com/files/19.-Antarwell-Warjri.pdf|journal=International Journal of Humanities & Social Science Studies|volume=3|issue=5|pages=206–218|via=}}</ref> No party secured a majority of seats and no women were elected.<ref name=":1" />  A coalition named the Meghalaya United Parliamentary Party was formed by the [[All Party Hill Leaders Conference]] (AHL), the [[Hill State People's Democratic Party]], the [[Public Demands Implementation Convention|Public Demands Implementation Convention (PDIC)]] and two independent members.  On 2 March 1983 the coalition presented [[B. B. Lyngdoh]] from AHL as Chief Minister.  However, the coalition only lasted 29 days and on 2 April a new coalition, the Meghalaya Democratic Forum, was formed with the [[Indian National Congress]] (INC) in the lead.  [[Williamson A. Sangma|W. A. Sangma]] of the INC was appointed Chief Minister.<ref name=":0" />
+
+== Results ==
+{| class="wikitable" style="text-align:right; font-size:95%;"
+|+ [[1978 Meghalaya Legislative Assembly election#Results|←]] Summary of the 17 February 1983 [[Meghalaya Legislative Assembly]] election results [[1988 Meghalaya Legislative Assembly election#Results|→]]
+|-
+|- bgcolor="#E9E9E9" align="center"
+! style="text-align:left;" rowspan="2" colspan="2" width="485"| Parties and coalitions
+! colspan="3"| Popular vote
+! colspan="2"| Seats
+|- bgcolor="#E9E9E9" align="center"
+! width="70"| Votes
+! width="45"| %
+! width="50"| ±[[Percentage point|pp]]
+! width="30"| Won
+! width="30"| +/−
+|-
+| width="1" bgcolor="{{Indian National Congress/meta/color}}"|
+| align="left"| [[Indian National Congress]] (INC)
+| 130,956 || 27.68 ||1.64 {{Decrease}}
+| 25 || 5 {{Increase}}
+|-
+| width="1" bgcolor="{{All Party Hill Leaders Conference/meta/color}}"|
+| align="left" |[[All Party Hill Leaders Conference]] (AHL)
+|118,593
+|24.92
+|0.15 {{Increase}}
+|15
+|1 {{Decrease}}
+|-
+| width="1" bgcolor="{{Hill State People's Democratic Party/meta/color}}"|
+| align="left" |[[Hill State People's Democratic Party]] (HDP)
+|91,386
+|19.32
+|0.08 {{Increase}}
+|15
+|1 {{Increase}}
+|-
+|
+|align="left" |[[Public Demands Implementation Convention|Public Demands Implementation Convention (PDIC)]]
+|23,253
+|4.92
+|bgcolor="#E9E9E9" |
+|2
+|{{Steady}} {{ref label|alpha|a}}
+|-
+| bgcolor="{{Communist Party of India/meta/color}}" |
+| align="left" |[[Communist Party of India]]
+|2,442
+|0.52
+|0.1 {{Decrease}}
+|0
+|{{Steady}}
+|-
+| bgcolor="{{Independent (politician)/meta/color}}" |
+| align="left" |[[Independent (politician)|Independents]] (IND)
+| 106,378 || 22.49 ||2.33 {{Decrease}}
+| 3 ||5 {{Decrease}}{{ref label|beta|b}}
+|-
+| colspan="7" bgcolor="#E9E9E9"|
+|- style="font-weight:bold;"
+| align="left" colspan="2"| Total
+| 473,050 || 100.00 || bgcolor="#E9E9E9"|
+| 60 || ±0
+|-
+| style="text-align:left;" colspan="7" |<small>Source: [[Election Commission of India]]</small><ref name=":1">{{Cite web|url=https://eci.gov.in/files/file/3672-meghalaya-1983/|title=Meghalaya 1983|last=|first=|date=|website=Election Commission of India|url-status=live|archive-url=|archive-date=|access-date=2 April 2020}}</ref>
+|}
+{{note label|alpha|a}}<small>In the 1978 election, two candidates from the PDIC were elected, but the party had not obtained registration in time for the election; at that time, the party's representatives were recorded as independents in the official results.</small><ref>{{Cite book|last=Gupta|first=Susmita Sen|url=https://books.google.com/books?id=MRWKAAAAMAAJ|title=Regionalism in Meghalaya|date=2005|publisher=South Asian Publishers|year=|isbn=978-81-7003-288-5|location=|pages=118|language=en}}</ref>
+
+{{note label|beta|b}}<small>Does not include the two PDIC candidates elected as independents in 1978.</small>
+
+== References ==
+{{Reflist}}
+{{Meghalaya elections}}
+
+[[Category:1983 State Assembly elections in India]]
+[[Category:State Assembly elections in Meghalaya]]

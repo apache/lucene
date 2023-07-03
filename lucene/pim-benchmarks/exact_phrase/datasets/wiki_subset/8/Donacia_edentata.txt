@@ -1,0 +1,64 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Donacia
+| species = edentata
+| authority = Schaeffer, 1919
+}}
+
+'''''Donacia edentata''''' is a species of aquatic [[leaf beetle]] in the family [[Chrysomelidae]].<ref name=itis/><ref name=catlife/><ref name=gbif/><ref name=bugref/> It is found in [[North America]].<ref name=itis/><ref name=xcit0/>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Donacia edentata'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=114530
+| website=Integrated Taxonomic Information System
+| accessdate=2018-04-25
+}}</ref>
+<ref name=catlife>
+{{Cite web| title=''Donacia edentata'' species details
+| url=http://www.catalogueoflife.org/col/details/species/id/371a4cd3e47e1083a41e0de1b996843f
+| website=Catalogue of Life
+| accessdate=2018-04-25
+}}</ref>
+<ref name=gbif>
+{{Cite web| title=''Donacia edentata''
+| url=https://www.gbif.org/species/1049450
+| website=GBIF
+| accessdate=2018-04-25
+}}</ref>
+<ref name=bugref>
+{{Cite web| title=''Donacia edentata'' Species Information
+| url=https://bugguide.net/node/view/834634
+| website=BugGuide.net
+| accessdate=2018-04-25
+}}</ref>
+<ref name=xcit0>
+{{Cite web
+| accessdate = 2018-04-25
+| title = North American Cryptocephalus species (Chrysomelidae, Cryptocephalinae)
+| url = http://texasento.net/Crypto.html
+| publisher = Texas Entomology
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 6: Chrysomeloidea
+| date = 2013
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-26091-7
+}}
+{{refend}}
+
+{{Taxonbar|from=Q14933436}}
+
+[[Category:Donaciinae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1919]]
+
+
+{{chrysomelidae-stub}}

@@ -1,0 +1,43 @@
+<noinclude><!-- From archive header-->
+{{#ifeq:{{PAGENAME}}|Special:Undelete| |{{#if:|<div style="display:none;">}} {{#ifeq:{{NAMESPACE}}|Wikipedia|{{#switch:{{NAMESPACE}}|= |<div style="display:none;">}}|{{error:not substituted|Archive header}}<div style="display:none;">}}}} {{#if:|</div></div>}}{| width = "100%"
+|-
+! colspan="3" align="center" | [[Wikipedia:Reference desk/Entertainment|Entertainment desk]]
+|-
+! width="20%" align="left"  | &lt; [[Wikipedia:Reference desk/Archives/Entertainment/2011 March 6|March 6]]
+! width="25%" align="center"|&lt;&lt; [[Wikipedia:Reference desk/Archives/Entertainment/February 2011|Feb]] | [[Wikipedia:Reference desk/Archives/Entertainment/March 2011|March]] | [[Wikipedia:Reference desk/Archives/Entertainment/April 2011|Apr]] &gt;&gt;
+! width="20%" align="right" |{{#ifexist:Wikipedia:Reference desk/Archives/Entertainment/2011 March 8|[[Wikipedia:Reference desk/Archives/Entertainment/2011 March 8|March 8]]|[[Wikipedia:Reference desk/Entertainment|Current desk]]}} &gt;
+|}
+{| align=center width=95% style="background: #FFFFFF; border: 1px solid #003EBA;" cellpadding="8" cellspacing="0"
+|-
+! style="background: #5D7CBA; text-align: center;" align="center" | <font face="Arial" color="#FFFFFF">'''Welcome to the Wikipedia Entertainment Reference Desk Archives'''</font>
+|-
+| The page you are currently viewing is {{#ifexist:Wikipedia:Reference desk/Archives/Entertainment/2011 March 17|an archive page|a [[Wikipedia:Transclusion|transcluded]] archive page}}. While you can leave answers for any questions shown below, please ask new questions on one of the [[Wikipedia:Reference desk|current reference desk]] pages.
+|}
+
+
+__TOC__
+</noinclude>
+= March 7 =
+
+== Trying to identify a song (Spanish rock song, possibly from TV commercials) ==
+
+I'm looking for the name of a song I heard on the radio. I think it's Spanish, and I think it might have been featured in television commercials. It reminds me a little of [[Little Green Bag]], although it's actually rather different. I made a midi file from memory, and hopefully if you listen to it you might recognize it—You can find it [http://www.mediafire.com/?hl7exjuavl3jfhp here]. Thanks. [[Special:Contributions/124.171.67.0|124.171.67.0]] ([[User talk:124.171.67.0|talk]]) 07:02, 7 March 2011 (UTC)
+: That link doesn't let me download the midi, though it tells me it's a little over 9k in size. It bounces me endlessly between two pages, using redirects or something. Neither page has a "click to download" button, or has the midi embedded in it. [[Special:Contributions/213.122.10.143|213.122.10.143]] ([[User talk:213.122.10.143|talk]]) 13:08, 7 March 2011 (UTC)
+::My audio is hosed at the moment, but the song which immediately springs to mind is [[Los Bravos]]' ''Black is Black''. Why not check it out on YouTube and see if it's the song you're looking for.--[[User:Jeanne boleyn|Jeanne Boleyn]] ([[User talk:Jeanne boleyn|talk]]) 14:55, 7 March 2011 (UTC)
+:::Hm sorry about that 213.. the link appears to be working again, but I've mirrored the same file [http://www.sendspace.com/file/smewg3 here] and [http://www.filedropper.com/whatisthis_2 here] (sorry about the ads).
+:::Thanks Jeanne, that's not it, although I wouldn't be surprised if it was the same era. The lyrics weren't in English—They were probably Spanish, but despite that I think the song is familiar to English-speakers also (possibly from commercials). [[Special:Contributions/124.171.70.0|124.171.70.0]] ([[User talk:124.171.70.0|talk]]) 08:41, 8 March 2011 (UTC)
+: A Minha Menina by [[The_Bees_(UK_band)|The Bees]]. --[[User:Frumpo|Frumpo]] ([[User talk:Frumpo|talk]]) 16:46, 8 March 2011 (UTC)
+::Thanks Frumpo, that's it! Looks like I actually heard the version by Os Mutantes in Portugeuse (not Spanish as I thought). Much appreciated! [[Special:Contributions/124.171.70.0|124.171.70.0]] ([[User talk:124.171.70.0|talk]]) 07:11, 9 March 2011 (UTC)
+
+==December's Children==
+{{Resolved}}
+Would anyone happen to know how or where the Rolling Stones derived the title of their American LP ''December's Children (and Everybody's)''? Only Keith has a December birthday, so it cannot be that they were all born in December. Thank you.--[[User:Jeanne boleyn|Jeanne Boleyn]] ([[User talk:Jeanne boleyn|talk]]) 12:48, 7 March 2011 (UTC)
+: I notice it was released in December, if that explains anything. [[Special:Contributions/213.122.10.143|213.122.10.143]] ([[User talk:213.122.10.143|talk]]) 13:28, 7 March 2011 (UTC)
+::No idea about its reliability, but the [http://latimesblogs.latimes.com/music_blog/2010/10/decembers-children-the-power-of-the-final-month-for-taylor-swift-and-other-teen-pop-stars.html L.A. Times] says "The Rolling Stones once referred to themselves as December’s Children, the partial title of their fifth album and a way to point out their wintry, difficult, rebel-may-care cool, as opposed to the Beatles spring-time, lovesick happiness."  [[User:Ghmyrtle|Ghmyrtle]] ([[User talk:Ghmyrtle|talk]]) 13:41, 7 March 2011 (UTC)
+
+:In a Rolling Stone magazine interview (appears to be 1995, but I haven't found it yet), Mick Jagger stated that it was the producer's idea of something cool and poetic. An except of it is [http://www.rollingstone.com/music/news/jagger-remembers-the-rolling-stone-interview-19951214 here], but it doesn't contain the questions/answers about that album. -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 13:44, 7 March 2011 (UTC)
+
+:Found it on the interviewer's website [http://www.jannswenner.com/Archives/Jagger_Remembers.aspx here]: "It was our manager’s (Andrew Loog Oldham) idea of hip, Beat poetry." -- [[User:Kainaw|<font color='#ff0000'>k</font><font color='#cc0033'>a</font><font color='#990066'>i</font><font color='#660099'>n</font><font color='#3300cc'>a</font><font color='#0000ff'>w</font>]][[User talk:Kainaw|&trade;]] 13:46, 7 March 2011 (UTC)
+::That's great, I've got my answer! Thanks for all your prompt replies and useful links. Cheers!--[[User:Jeanne boleyn|Jeanne Boleyn]] ([[User talk:Jeanne boleyn|talk]]) 14:14, 7 March 2011 (UTC)
+
+:And the article has now been updated with that info and source.  Thanks!  <span style="font-family:monospace;">[[User:Dismas|Dismas]]</span>|[[User talk:Dismas|<sup>(talk)</sup>]] 03:08, 8 March 2011 (UTC)

@@ -1,0 +1,150 @@
+{{Infobox Olympic event
+|event = Boys' halfpipe
+|games = 2012 Winter Youth
+|image = Snowboarding pictogram.svg
+|image_size = 100px
+|venue = [[Kühtai]]
+|date = January 14–15, 2012
+|competitors = 27
+|nations = 18
+|gold = Ben Ferguson
+|goldNOC = USA
+|silver = Tim-Kevin Ravnjak 
+|silverNOC = SLO
+|bronze = Taku Hiraoka
+|bronzeNOC = JPN
+|win_value = 
+|win_label =
+|prev= 
+|next= [[Snowboarding at the 2016 Winter Youth Olympics – Boys' halfpipe|2016]]
+}}
+
+The '''boys' halfpipe''' competition of the [[snowboarding]] events at the [[2012 Winter Youth Olympics]] in [[Innsbruck]], [[Austria]], was held between January 14 and 15, at [[Kühtai]]. 27 athletes from 18 different countries took part in this event.<ref>[http://www.innsbruck2012.com/uploads/yog_pdf/SBM060910_C51C_1.0.pdf Boys' Freestyle halfpipe heat 1 start list]</ref><ref>[http://www.innsbruck2012.com/uploads/yog_pdf/SBM060920_C51C_1.0.pdf Boys' Freestyle halfpipe heat 2 start list]</ref><ref>[http://www.innsbruck2012.com/uploads/yog_pdf/SBM060200_C51H_1.0.pdf Boys' Freestyle halfpipe semifinal start list]</ref><ref>[http://www.innsbruck2012.com/uploads/yog_pdf/SBM060100_C51H_1.0.pdf Boys' Freestyle halfpipe final start list]</ref>
+
+== Results ==
+
+===Qualification===
+{| class="wikitable sortable" style="text-align:center"
+|-
+!Rank  !! Bib !! Heat !!  Name !!  Country !!  Run 1 !! Run 2 !! Best !!  Notes
+|-bgcolor=ccffcc
+| 1 || 8 || 1 || align=left| [[Taku Hiraoka]] || align=left| {{flagIOC|JPN|2012 Winter Youth}} || 91.75 || '''95.00''' || '''95.00''' || QF
+|-bgcolor=ccffcc
+| 2 || 2 || 1 || align=left| [[Sebbe de Buck]] || align=left| {{flagIOC|BEL|2012 Winter Youth}} || '''76.75''' || 45.50 || '''76.75''' || QF
+|-bgcolor=ccffcc
+| 3 || 3 || 1 || align=left| [[Nikita Avtaneev]] || align=left| {{flagIOC|RUS|2012 Winter Youth}} || 66.00 || '''72.50''' || '''72.50''' || QF
+|-bgcolor=ddffdd
+| 4 || 4 || 1 || align=left| [[Jan Kralj]] || align=left| {{flagIOC|SLO|2012 Winter Youth}} || 65.50 || '''69.00''' || '''69.00''' || QS
+|-bgcolor=ddffdd
+| 5 || 14 || 1 || align=left| [[Hamish Bagley]] || align=left| {{flagIOC|NZL|2012 Winter Youth}} || 58.50 || '''64.75''' || '''64.75''' || QS
+|-bgcolor=ddffdd
+| 6 || 6 || 1 || align=left| [[Yannis Tourki]] || align=left| {{flagIOC|FRA|2012 Winter Youth}} || '''62.50''' || 39.00 || '''62.50''' || QS
+|-bgcolor=ddffdd
+| 7 || 5 || 1 || align=left| [[Sean Taylor (snowboard)|Sean Taylor]] || align=left| {{flagIOC|NED|2012 Winter Youth}} || 34.25 || '''60.50''' || '''60.50''' || QS
+|-bgcolor=ddffdd
+| 8 || 13 || 1 || align=left| [[Na Myung-Joo]] || align=left| {{flagIOC|KOR|2012 Winter Youth}} || '''54.75''' || 37.00 || '''54.75''' || QS
+|-bgcolor=ddffdd
+| 9 || 9 || 1 || align=left| [[Ivan Kardonov]] || align=left| {{flagIOC|RUS|2012 Winter Youth}} || 54.00 || '''54.50''' || '''54.50''' || QS
+|-
+| 10 || 11 || 1 || align=left| [[Max Raymer]] || align=left| {{flagIOC|USA|2012 Winter Youth}} || 47.00 || '''48.50''' || '''48.50''' ||
+|-
+| 11 || 10 || 1 || align=left| [[Ondrej Porkert]] || align=left| {{flagIOC|CZE|2012 Winter Youth}} || 41.50 || '''47.50''' || '''47.50''' ||
+|-
+| 12 || 12 || 1 || align=left| [[Roland Hörtnagl]] || align=left| {{flagIOC|AUT|2012 Winter Youth}} || '''42.25''' || 10.75 || '''42.25''' ||
+|-
+| 13 || 7 || 1 || align=left| [[Linus Birkendahl]] || align=left| {{flagIOC|GER|2012 Winter Youth}} || '''40.25''' || 21.00 || '''40.25''' ||
+|-
+| 14 || 1 || 1 || align=left| [[Philipp Wilhelm Kundratitz]] || align=left| {{flagIOC|AUT|2012 Winter Youth}} || '''31.25''' || 18.00 || '''31.25''' ||
+|-bgcolor=ccffcc
+| 1 || 20 || 2 || align=left| [[Tim-Kevin Ravnjak]] || align=left| {{flagIOC|SLO|2012 Winter Youth}} || 89.25 || '''93.00''' || '''93.00''' || QF
+|-bgcolor=ccffcc
+| 2 || 21 || 2 || align=left| [[Ben Ferguson (snowboarder)|Ben Ferguson]] || align=left| {{flagIOC|USA|2012 Winter Youth}} || '''88.00''' || 33.75 || '''88.00''' || QF
+|-bgcolor=ccffcc
+| 3 || 16 || 2 || align=left| [[David Hablützel]] || align=left| {{flagIOC|SUI|2012 Winter Youth}} || 78.25 || '''82.75''' || '''82.75''' || QF
+|-bgcolor=ddffdd
+| 4 || 26 || 2 || align=left| [[Michael Ciccarelli]] || align=left| {{flagIOC|CAN|2012 Winter Youth}} || 53.25 || '''78.75''' || '''78.75''' || QS
+|-bgcolor=ddffdd
+| 5 || 17 || 2 || align=left| [[Johannes Höpfl]] || align=left| {{flagIOC|GER|2012 Winter Youth}} || '''67.00''' || 21.25 || '''67.00''' || QS
+|-bgcolor=ddffdd
+| 6 || 15 || 2 || align=left| [[Lucas Baume]] || align=left| {{flagIOC|SUI|2012 Winter Youth}} || 31.75 || '''62.25''' || '''62.25''' || QS
+|-bgcolor=ddffdd
+| 7 || 27 || 2 || align=left| [[Lewis Courtier-Jones]] || align=left| {{flagIOC|GBR|2012 Winter Youth}} || 46.75 || '''60.00''' || '''60.00''' || QS
+|-bgcolor=ddffdd
+| 8 || 23 || 2 || align=left| [[Kalle Jarvilehto]] || align=left| {{flagIOC|FIN|2012 Winter Youth}} || 51.25 || '''53.75''' || '''53.75''' || QS
+|-bgcolor=ddffdd
+| 9 || 19 || 2 || align=left| [[Victor Habermacher]] || align=left| {{flagIOC|FRA|2012 Winter Youth}} || '''52.50''' || 29.00 || '''52.50''' || QS
+|-
+| 10 || 18 || 2 || align=left| [[Manex Azula]] || align=left| {{flagIOC|ESP|2012 Winter Youth}} || 35.00 || '''49.00''' || '''49.00''' ||
+|-
+| 11 || 24 || 2 || align=left| [[Stef van Deursen]] || align=left| {{flagIOC|BEL|2012 Winter Youth}} || 44.50 || '''47.50''' || '''47.50''' ||
+|-
+| 12 || 22 || 2 || align=left| [[Tuomas Pohjonen]] || align=left| {{flagIOC|FIN|2012 Winter Youth}} || '''47.25''' || 45.00 || '''47.25''' ||
+|-
+| 13 || 25 || 2 || align=left| [[Ludvig Billtoft]] || align=left| {{flagIOC|SWE|2012 Winter Youth}} || 35.50 || '''38.00''' || '''38.00''' ||
+|}
+
+===Semi-Final===
+{| class="wikitable sortable" style="text-align:center"
+|-
+!Rank  !! Bib !!  Name !!  Country !!  Run 1 !! Run 2 !! Best !!  Notes
+|-bgcolor=ccffcc
+| 1 || 26 || align=left| [[Michael Ciccarelli]] || align=left| {{flagIOC|CAN|2012 Winter Youth}} || '''84.75''' || 77.25 || '''84.75''' || QF
+|-bgcolor=ccffcc
+| 2 || 17 || align=left| [[Johannes Höpfl]] || align=left| {{flagIOC|GER|2012 Winter Youth}} || '''80.25''' || 21.50 || '''80.25''' || QF
+|-bgcolor=ccffcc
+| 3 || 4 || align=left| [[Jan Kralj]] || align=left| {{flagIOC|SLO|2012 Winter Youth}} || '''76.00''' || 67.50 || '''76.00''' || QF
+|-bgcolor=ccffcc
+| 4 || 6 || align=left| [[Yannis Tourki]] || align=left| {{flagIOC|FRA|2012 Winter Youth}} || 70.50 || '''71.25'''|| '''71.25''' || QF
+|-bgcolor=ccffcc
+| 5 || 14 || align=left| [[Hamish Bagley]] || align=left| {{flagIOC|NZL|2012 Winter Youth}} || 40.50 || '''68.50''' || '''68.50''' || QF
+|-bgcolor=ccffcc
+| 6 || 5 || align=left| [[Sean Taylor (snowboard)|Sean Taylor]] || align=left| {{flagIOC|NED|2012 Winter Youth}} || 47.00 || '''67.00''' || '''67.00''' || QF
+|-
+| 7 || 13 || align=left| [[Na Myung-Joo]] || align=left| {{flagIOC|KOR|2012 Winter Youth}} || '''65.00''' || 45.00 || '''65.00''' ||
+|-
+| 8 || 27 || align=left| [[Lewis Courtier-Jones]] || align=left| {{flagIOC|GBR|2012 Winter Youth}} || '''59.75''' || 41.25 || '''59.25''' ||
+|-
+| 9 || 9 || align=left| [[Ivan Kardonov]] || align=left| {{flagIOC|RUS|2012 Winter Youth}} || 55.25 || '''57.50''' || '''57.50''' ||
+|-
+| 10 || 23 || align=left| [[Kalle Jarvilehto]] || align=left| {{flagIOC|FIN|2012 Winter Youth}} || '''54.00''' || 37.50 || '''54.00''' ||
+|-
+| 11 || 19 || align=left| [[Victor Habermacher]] || align=left| {{flagIOC|FRA|2012 Winter Youth}} || '''36.25''' || 35.75 || '''36.25''' ||
+|-
+| – || 15 || align=left| [[Lucas Baume]] || align=left| {{flagIOC|SUI|2012 Winter Youth}} || DNS || || ||
+|}
+
+===Final===
+{| class="wikitable sortable" style="text-align:center"
+|-
+!Rank  !! Bib !!  Name !!  Country !!  Run 1 !! Run 2 !! Best !!  Notes
+|-
+| 1|| 21 || align=left| [[Ben Ferguson (snowboarder)|Ben Ferguson]] || align=left| {{flagIOC|USA|2012 Winter Youth}} ||90.25 ||'''93.25''' || '''93.25''' || {{gold01}} 
+|-
+| 2|| 20 || align=left| [[Tim-Kevin Ravnjak]] || align=left| {{flagIOC|SLO|2012 Winter Youth}} ||59.35 ||'''86.75''' ||'''86.75''' || {{silver02}}
+|-
+| 3|| 8 || align=left| [[Taku Hiraoka]] || align=left| {{flagIOC|JPN|2012 Winter Youth}} ||55.75 || '''84.25''' ||'''84.25''' || {{bronze03}}
+|-
+| 4|| 26 || align=left| [[Michael Ciccarelli]] || align=left| {{flagIOC|CAN|2012 Winter Youth}} || 74.50||'''84.00''' ||'''84.00''' ||
+|-
+| 5|| 16 || align=left| [[David Habluetzel]] || align=left| {{flagIOC|SUI|2012 Winter Youth}} ||49.00 ||'''80.25''' ||'''80.25''' ||
+|-
+| 6|| 4 || align=left| [[Jan Kralj]] || align=left| {{flagIOC|SLO|2012 Winter Youth}} ||68.25 ||'''75.00''' ||'''75.00''' ||
+|-
+|7 || 3 || align=left| [[Nikita Avtaneev]] || align=left| {{flagIOC|RUS|2012 Winter Youth}} ||'''74.25''' || 70.25||'''74.25''' ||
+|-
+| 8|| 17 || align=left| [[Johannes Höpfl]] || align=left| {{flagIOC|GER|2012 Winter Youth}} ||64.25 ||'''71.50''' ||'''71.50''' ||
+|-
+|9 || 6 || align=left| [[Yannis Tourki]] || align=left| {{flagIOC|FRA|2012 Winter Youth}} ||'''63.00''' ||57.25 ||'''63.00''' ||
+|-
+| 10 || 14 || align=left| [[Hamish Bagley]] || align=left| {{flagIOC|NZL|2012 Winter Youth}} ||'''57.25'''||46.25 ||'''57.25''' ||
+|-
+|11 || 5 || align=left| [[Sean Taylor (snowboard)|Sean Taylor]] || align=left| {{flagIOC|NED|2012 Winter Youth}} ||'''49.25''' ||39.00 ||'''49.25''' ||
+|-
+| 12 || 2 || align=left| [[Sebbe de Buck]] || align=left| {{flagIOC|BEL|2012 Winter Youth}} ||'''33.50''' ||24.00 ||'''33.50''' ||
+|}
+
+== References ==
+{{reflist}}
+{{Footer Youth Olympic Champions Snowboarding Halfpipe Boys}} 
+{{DEFAULTSORT:Snowboarding at the 2012 Winter Youth Olympics - Boys' halfpipe}}
+[[Category:Snowboarding at the 2012 Winter Youth Olympics]]

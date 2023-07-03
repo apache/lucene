@@ -1,0 +1,5 @@
+#Redirect [[Action civique de Québec]]
+
+{{Redirect category shell|
+{{R from title without diacritics}}
+}}

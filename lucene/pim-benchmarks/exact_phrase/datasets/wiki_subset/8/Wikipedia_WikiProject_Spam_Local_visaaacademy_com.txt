@@ -1,0 +1,34 @@
+<!--Please put any comments at the bottom of the report, AFTER the tag at the bottom-->
+{{User:COIBot/Summary/SpecificReports}}
+{{User:COIBot/linksaverdatabases|||||}}
+
+<!-- tags and categories -->{{NOINDEX}}[[Category:Local COIBot Reports|visaaacademy.com]]
+== Links ==
+* {{LinkSummary|visaaacademy.com}}
+:* visaaacademy.com resolves to [//160.153.137.166 160.153.137.166]
+:*: {{LinkSummary|160.153.137.166}}
+:* Link is not on the [[en:User:COIBot#Blacklist|blacklist]].
+:* Link is not on the [[en:User:COIBot#Domainredlist|domainredlist]].
+:* Link is not on the [[en:User:COIBot#Monitorlist|Monitorlist]].
+:* None of the mentioned users is on the [[en:User:COIBot#Blacklist|blacklist]].
+:* Link is not on the [[en:User:COIBot#Whitelist|whitelist]].
+:* Link is not on the [[en:User:COIBot#Monitor list|monitor list]].
+== Users ==
+* {{UserSummary|Varun Sharma VISAA}}
+
+== Selected additions ==
+{{User:COIBot/Additionlist_top}}
+{{User:COIBot/EditSummary|id=446816943|lang=en|wikidomain=w|namespace=User|pagename=User:Varun Sharma VISAA|username=Varun Sharma VISAA|link=visaaacademy.com/ielts-online/|sortdomain=com.visaaacademy.|domain=visaaacademy.com|origdiff=https://en.wikipedia.org/w/index.php?oldid=838166351&rcid=1048664408|resolved=X|isIP=0|date=2018-04-25|time=09:41:33|wiki=en.wikipedia.org|revid=838166351|oldid=0|whitelisted=0|blacklisteduser=0|whitereason=|blackreason=|usercount=24|top=1|deleted=0|there=1|checked=1|coiflag=0|otherlinks={{User:COIBot/OtherLinks|link=varunvisaa.blogspot.in/2018/03/ielts-exam-dates-2018.html|domain=varunvisaa.blogspot.in|U=24|L=2|UL=>>|WUL=>>|base=|basedomain=|baseip=}}{{User:COIBot/OtherLinks|link=varunvisaa.blogspot.in/2018/03/ielts-exam-dates-2018.html|domain=varunvisaa.blogspot.in|U=24|L=2|UL=>>|WUL=>>|base=|basedomain=|baseip=}}{{User:COIBot/OtherLinks|link=visaaacademy.com|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}{{User:COIBot/OtherLinks|link=www.ieltsidpindia.com/Registration/ielts-test-dates-india|domain=ieltsidpindia.com|U=24|L=8|UL=>>|WUL=>>|base=|basedomain=|baseip=}}{{User:COIBot/OtherLinks|link=www.ieltsidpindia.com/Registration/ielts-test-dates-india|domain=ieltsidpindia.com|U=24|L=8|UL=>>|WUL=>>|base=|basedomain=|baseip=}}{{User:COIBot/OtherLinks|link=www.britishcouncil.in/exam/ielts/test-dates-charges|domain=britishcouncil.in|U=24|L=53|UL=>>|WUL=>>|base=|basedomain=|baseip=}}{{User:COIBot/OtherLinks|link=www.britishcouncil.in/exam/ielts/test-dates-charges|domain=britishcouncil.in|U=24|L=53|UL=>>|WUL=>>|base=|basedomain=|baseip=}}{{User:COIBot/OtherLinks|link=visaaacademy.com/ielts-online/|domain=visaaacademy.com|U=24|L=18|UL=>>|WUL=>>}}}}
+{{User:COIBot/Additionlist_bottom}}
+* Displayed 1 additions out of 1 total.	 For more info see [[Wikipedia:WikiProject_Spam/LinkReports/visaaacademy.com]]
+== Entry ==
+[[MediaWiki talk:Spam-blacklist/log|Log]] entry for the [[MediaWiki:Spam-blacklist]]:
+
+ \bvisaaacademy\.com\b&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# <span id="adminname">ADMINNAME</span> # see <nowiki>[[</nowiki>[[Wikipedia:WikiProject_Spam/Local/visaaacademy.com]]<nowiki>]]</nowiki>
+== Discussion ==
+
+{{LinkStatusLocal|en.wikipedia.org|Open}}
+
+See [[Wikipedia:WikiProject_Spam/LinkReports/visaaacademy.com|COIBot report]] for more details.<!-- Please put comments after this remark -->
+
+New data reported. --[[User:COIBot|COIBot]] ([[User talk:COIBot|talk]]) 09:48, 25 April 2018 (UTC)

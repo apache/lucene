@@ -1,0 +1,86 @@
+{{short description|Species of beetle}}
+{{Speciesbox
+| genus = Colymbetes
+| species = exaratus
+| authority = [[John Lawrence LeConte|Leconte]], 1862
+| synonyms = {{Species list
+|  Colymbetes rugipennis | Sharp, 1882
+}}
+| synonyms_ref = <ref name=itis/>
+}}
+
+'''''Colymbetes exaratus''''' is a species of [[predaceous diving beetle]] in the family [[Dytiscidae]]. It is found in North America.<ref name=itis/><ref name=gbif/><ref name=buglink/><ref name=Nilsson2015/>
+
+==Subspecies==
+These two subspecies belong to the species ''Colymbetes exaratus'':
+* ''Colymbetes exaratus exaratus''
+* ''Colymbetes exaratus incognitus'' <small>Zimmerman</small>
+
+==References==
+{{Reflist|refs=
+<ref name=itis>
+{{Cite web| title=''Colymbetes exaratus'' Report
+| url=https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=112380
+| website=Integrated Taxonomic Information System
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=gbif>
+{{Cite web| title=''Colymbetes exaratus''
+| url=https://www.gbif.org/species/4989372
+| website=GBIF
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=buglink>
+{{Cite web| title=''Colymbetes exaratus'' species Information
+| url=https://bugguide.net/node/view/249070
+| website=BugGuide.net
+| accessdate=2019-09-23
+}}</ref>
+
+<ref name=Nilsson2015>{{Cite book
+| title = A World Catalogue of the Family Dytiscidae, or the Diving Beetles (Coleoptera, Adephaga), Version 1.I.2015
+| date = 2015
+| last1 = Nilsson
+| first1 = A.N.
+| publisher = Department of Ecology and Environmental Science, University of Umeå
+| url = http://www2.emg.umu.se/projects/biginst/andersn/World%20catalogue%20of%20Dytiscidae%202015.pdf
+| access-date = 2019-09-23
+| archive-url = https://web.archive.org/web/20190726055144/http://www2.emg.umu.se/projects/biginst/andersn/World%20catalogue%20of%20Dytiscidae%202015.pdf
+| archive-date = 2019-07-26
+| url-status = dead
+}}</ref>
+}}
+
+==Further reading==
+{{refbegin}}
+* {{Cite journal
+| title = Catalogue of Geadephaga (Coleoptera, Adephaga) of America, north of Mexico
+| date = 2012
+| last1 = Bousquet | first1 = Yves
+| journal = ZooKeys
+| issue = 245| pages = 1–1722
+| url = https://zookeys.pensoft.net/articles.php?id=4003
+| doi = 10.3897/zookeys.245.3416
+| pmc=3577090
+| pmid=23431087
+}}
+* {{Cite book
+| title = Catalogue of Palaearctic Coleoptera, Volume 1: Archostemata - Myxophaga - Adephaga
+| date = 2017
+| editor-last1 = Lobl | editor-first1 = I.
+| editor-last2 = Smetana | editor-first2 = A.
+| publisher = Apollo Books
+| isbn = 978-90-04-33029-0
+}}
+{{refend}}
+
+{{Taxonbar|from=Q3053609}}
+
+[[Category:Dytiscidae]]
+[[Category:Articles created by Qbugbot]]
+[[Category:Beetles described in 1862]]
+
+
+{{dytiscidae-stub}}

@@ -1,0 +1,277 @@
+<noinclude><!-- From archive header-->
+{{#ifeq:{{PAGENAME}}|Special:Undelete| |{{#if:|<div style="display:none;">}} {{#ifeq:{{NAMESPACE}}|Wikipedia|{{#switch:{{NAMESPACE}}|= |<div style="display:none;">}}|{{error:not substituted|Archive header}}<div style="display:none;">}}}} {{#if:|</div></div>}}{| width = "100%"
+|-
+! colspan="3" align="center" | [[Wikipedia:Help desk|Help desk]]
+|-
+! width="20%" align="left"  | &lt; [[Wikipedia:Help desk/Archives/2011 March 7|March 7]]
+! width="25%" align="center"|&lt;&lt; [[Wikipedia:Help desk/Archives/February 2011|Feb]] | [[Wikipedia:Help desk/Archives/March 2011|March]] | [[Wikipedia:Help desk/Archives/April 2011|Apr]] &gt;&gt;
+! width="20%" align="right" |{{#ifexist:Wikipedia:Help desk/Archives/2011 March 9|[[Wikipedia:Help desk/Archives/2011 March 9|March 9]]|[[Wikipedia:Help desk|Current help desk]]}} &gt;
+|}
+{| align=center width=95% style="background: #FFFFFF; border: 1px solid #003EBA;" cellpadding="8" cellspacing="0"
+|-
+! style="background: #5D7CBA; text-align: center;" align="center" | <font face="Arial" color="#FFFFFF">'''Welcome to the Wikipedia Help Desk Archives'''</font>
+|-
+| The page you are currently viewing is {{#ifexist:Wikipedia:Help desk/Archives/2011 March 18|an archive page|a [[Wikipedia:Transclusion|transcluded]] archive page}}. While you can leave answers for any questions shown below, please ask new questions on one of the [[Wikipedia:Help desk|current Help Desk]] pages.
+|}
+
+
+__TOC__</noinclude>
+= March 8 =
+
+== help on an entry ==
+
+{{lu|Sandybarnes/Amy schrier}}
+
+Hello, I have put a draft on an entry for Amy Schrier in the "sandbox" or a place where it is not finalized. I hope a Wikipedia editor
+can edit it and launch it as I have been unsuccessful, perhaps because I am not so familiar with how Wikipedia works.
+Thank you in advance.  00:03, 8 March 2011 (UTC)  <small><span class="autosigned">— Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[User:Sandybarnes|Sandybarnes]] ([[User talk:Sandybarnes|talk]] • [[Special:Contributions/Sandybarnes|contribs]]) </span></small><!-- Template:Unsigned --> <!--Autosigned by SineBot-->
+:Moved to [[Amy Schrier]]. —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 16:48, 8 March 2011 (UTC)
+
+== How to create account with same name on Commons? ==
+I need to create a User account on [[Wikimedia Commons]], I already have an account here on [[English Wikipedia]], so is there a way to create an account with the same name on the Commons? The User name I want is "Hibernian", so I tried to create a new account with that on the Commons, but it says that an account with that name already exists, but I've checked the Commons and there is no [[User: Hibernian]] there. Could the Commons be referring to my account here? I've also tried logging in with my usual User name and password on the Commons, but it just doesn't work, says "wrong password". How do I create an account with my current User name on the Commons? I was told that there was some way to link the accounts but, I have no idea how to do this. --[[User:Hibernian|Hibernian]] ([[User talk:Hibernian|talk]]) 03:43, 8 March 2011 (UTC)
+:The [http://commons.wikimedia.org/w/index.php?title=Special:Log&user=Hibernian Commons log] shows Hibernian create an account 22 September 2007, uploaded a few files that day (subsequently deleted), and has had no activity since. —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 04:02, 8 March 2011 (UTC)
+
+::Ah ok, does that mean I can't create an account with that name at all? Is there no rule that an old account is deleted after a certain amount of time? I did register the name first, in November 2005 ([http://toolserver.org/~soxred93/pcount/index.php?name=Hibernian&lang=en&wiki=wikipedia]). I suppose I can just create another User name on the Commons, but it would be better if I had the same one for both. --[[User:Hibernian|Hibernian]] ([[User talk:Hibernian|talk]]) 04:10, 8 March 2011 (UTC)
+
+:::See [[WP:USURP]].  <span style="font-family:monospace;">[[User:Dismas|Dismas]]</span>|[[User talk:Dismas|<sup>(talk)</sup>]] 04:27, 8 March 2011 (UTC)
+::::Or maybe see [[Commons:Commons:Changing username/Usurp requests]]. —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 04:49, 8 March 2011 (UTC)
+
+Ok thanks, that's useful, but how would I go about doing this, it seems pretty complicated. Should I try to get some advice on those Talk pages? --[[User:Hibernian|Hibernian]] ([[User talk:Hibernian|talk]]) 19:29, 8 March 2011 (UTC)
+
+:http://toolserver.org/~vvv/sulutil.php?user=Hibernian shows you don't have [[Wikipedia:Unified login|unified login]] so I suggest that as your first step. It will strengthen your claim to the name Hibernian. You can get unified login at [[Special:MergeAccount]]. It will probably tell you that you don't have the password for the Commons account. Once you have unified login, create a Commons account with an arbitrary name, log in to Commons with the account and request to usurp Hibernian with the procedure at [[Commons:Commons:Changing username/Usurp requests]]. Mention that you want to complete your unified login and you intent to use the Commons account. Then you will have a better claim to the name than the current [[Commons:User:Hibernian]] but I cannot say whether your request will be granted. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 01:01, 9 March 2011 (UTC)
+
+::Ok, I've followed your advice and created a Unified Login ([http://toolserver.org/~vvv/sulutil.php?user=Hibernian]) (though at the moment it only has my en.wiki account on it) and have created a temporary user name on Wiki Commons called [http://commons.wikimedia.org/wiki/User:Hibernian_temp User:Hibernian_temp]. I suppose the next step is to officially request a usurpation of the Commons account, now I just need to work out how to do that. (Any help or advice would be appreciated). --[[User:Hibernian|Hibernian]] ([[User talk:Hibernian|talk]]) 19:45, 9 March 2011 (UTC)
+
+:::I see you have posted to [[commons:Commons:Changing username/Usurp requests]]. I'm not active there but the request looks OK to me. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 02:00, 11 March 2011 (UTC)
+::::The Commons request has been accepted and performed. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 17:46, 11 March 2011 (UTC)
+
+== track spikes ==
+
+I looked up 'track spikes' and there was a picture of track spikes and GOLF SPIKES...  WTF?
+Golf spikes have nothing to do with track spikes..........DUH!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Please take the picture of golf spikes off of the track spike info.
+I USED to think that the info. here was acurate, but now??????..............................  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/71.90.71.116|71.90.71.116]] ([[User talk:71.90.71.116|talk]]) 04:20, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+:I removed the image.  In the future [[WP:SOFIXIT|you can to]].  I am not anymore special, in this regard, than you are, and you have as much right as anyone else to make Wikipedia better.   --[[User:Jayron32|<font style="color:#000099">Jayron</font>]]'''''[[User talk:Jayron32|<font style="color:#009900">32</font>]]''''' 04:26, 8 March 2011 (UTC)
+
+::They were identified as golf shoes in the caption and the article said track spikes are used for track and field events when running, throwing or jumping. Maybe the golf shoes with spikes in the heal were intended as a comparison to the track spikes in the image above [http://en.wikipedia.org/w/index.php?title=Track_spikes&oldid=416616929] but it wasn't stated. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 04:58, 8 March 2011 (UTC)
+
+== copying without acknowledgement ==
+
+The content of these 2 pages has been lifted without citation:
+http://hi.wikipedia.org/wiki/%E0%A4%B5%E0%A4%BE%E0%A4%A8%E0%A4%B8%E0%A5%8D%E0%A4%AA%E0%A4%A4%E0%A4%BF%E0%A4%95_%E0%A4%A8%E0%A4%BE%E0%A4%AE
+
+http://hi.wikipedia.7val.com/wiki/%E0%A4%B5%E0%A4%BE%E0%A4%A8%E0%A4%B8%E0%A5%8D%E0%A4%AA%E0%A4%A4%E0%A4%BF%E0%A4%95_%E0%A4%A8%E0%A4%BE%E0%A4%AE
+ See 
+http://www.plantnames.unimelb.edu.au/Sorting/Hindi_index_new.html
+
+and bottom of page:
+Copyright © 1995 - 2020 The University of Melbourne.
+
+Your rule"
+"Please do not copy and paste from copyrighted websites – only public domain resources can be copied without permission." !!!!!!  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/121.220.28.53|121.220.28.53]] ([[User talk:121.220.28.53|talk]]) 06:23, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+:You are going to need to raise this issue at the Hindi Wikipedia.  This is the English Wikipedia, and we here have no control over what goes on over there.  --[[User:Jayron32|<font style="color:#000099">Jayron</font>]]'''''[[User talk:Jayron32|<font style="color:#009900">32</font>]]''''' 06:27, 8 March 2011 (UTC)
+
+::Maybe we can do more. Are you a representative of the copyright holder? It seems plausible from your IP address. If so, will you donate the material with proper attribution to The University of Melbourne? See [[Wikipedia:Donating copyrighted materials]]. Can you communicate in Hindi? If not then lots of Hindi editors must know English. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 13:56, 8 March 2011 (UTC)
+
+== Editing the main article on 'Tony Mills Musician' ==
+
+Can you explain to me how I edit the main article regularly ?
+When I click on edit, it only allows me access to the discography underneath the main article, I cant get into the main article.
+Tony Mills  <small><span class="autosigned">— Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[User:Tonymills77|Tonymills77]] ([[User talk:Tonymills77|talk]] • [[Special:Contributions/Tonymills77|contribs]]) 07:42, 8 March 2011 (UTC)</span></small><!-- Template:Unsigned --> <!--Autosigned by SineBot-->
+:You were clicking on the edit link for the discography section.  To edit the lede paragraph you need to use the edit tab at the top of the page.  Looking at your user name, you may need to read [[WP:COI]] if you have not already done so. - [[User:David Biddulph|David Biddulph]] ([[User talk:David Biddulph|talk]]) 07:54, 8 March 2011 (UTC)
+
+== Mobile version for iPod touch not working ==
+
+Thanks for reading, The 'mobile version' of wikipedia on my iPod touch has stopped running. I've searched fairly hard, tho I'm not very advanced with these things, looking to re-install the mobile version for my device & haven't figured it out. It stopped running the mobile version a few days ago & only opens the standard wikipedia page. This same issue happened awhile back & was re-installed but it was long ago & again I can't figure it out on my own. There appears to be a way to disable the 'mobile version' when in the mobile mode, but no way to change it to the 'mobile version' when in the standard mode that i can see.     I don't know why it stopped running in the mobile version cause I know not to click on the disable button. I'm grateful for your time & help, thanks.  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/71.185.100.43|71.185.100.43]] ([[User talk:71.185.100.43|talk]]) 08:37, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:Does [[Wikipedia:Enable mobile version|this page]] fix it for you? Go to that page while using your mobile device and click on the link there, and you will re-enable the mobile version. If that doesn't work, post again here. -- [[User:John of Reading|John of Reading]] ([[User talk:John of Reading|talk]]) 09:30, 8 March 2011 (UTC)
+
+== Commons ==
+
+Is there a separate "help desk" kind of thing for problems at Commons, or is this it here?
+:Yes, Commons has it's own help desk.  If you click on the Help link on the left when you're at Commons, there will be a link.  I'd provide one for you but Commons seems to be down right now (for me at least).  <span style="font-family:monospace;">[[User:Dismas|Dismas]]</span>|[[User talk:Dismas|<sup>(talk)</sup>]] 08:45, 8 March 2011 (UTC)
+:[[:Commons:Commons:Help desk|This link]] should work when Commons is back up. [[User:Bencherlite|Bencherlite]][[User talk:Bencherlite|<i><sup>Talk</sup></i>]] 08:47, 8 March 2011 (UTC)
+
+== Opening Weekapedya ==
+
+Helo sires, is the weekapedya in solely engrish?  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/2.148.153.141|2.148.153.141]] ([[User talk:2.148.153.141|talk]]) 10:00, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:Yes, this is the English-language Wikipedia. Your IP address tells me you are in Norway, so [http://no.wikipedia.org/wiki/Portal:Forside the Norsk (bokmål)‬ version] or [http://nn.wikipedia.org/wiki/Hovudside the Norsk (nynorsk)‬ version] may be better for you. For links to other languages, have a look at the list on the left hand side of the page. -- [[User:John of Reading|John of Reading]] ([[User talk:John of Reading|talk]]) 10:06, 8 March 2011 (UTC)
+
+== iPhone 4 not redirecting to en.m.wikipedia.com ==
+
+When I'm on my iPhone it normally redirects me from regular wikipedia (en.wikipedia.com) to the mobile version (en.m.wikipedia.com) but suddenly it has stopped doing that. If i go to the address bar and add the .m to the address it will take me to the mobile version, but how do I get it to automatically redirect me? I have already tried to use this link: http://en.wikipedia.org/wiki/Wikipedia:Enable_mobile_version but that hasn't fixed the problem.  <small><span class="autosigned">— Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[User:Jessex515|Jessex515]] ([[User talk:Jessex515|talk]] • [[Special:Contributions/Jessex515|contribs]]) 10:51, 8 March 2011 (UTC)</span></small><!-- Template:Unsigned --> <!--Autosigned by SineBot-->
+
+
+This problem is occurring with all mobile phones and all browsers.  The javascript console shows an error: "MobileRedirect.js: Uncaught Reference Error: wgNamespaceNumber is not defined."  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/161.136.100.71|161.136.100.71]] ([[User talk:161.136.100.71|talk]]) 13:37, 9 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+== Is there any guideline for the surveying of academic research for English Wikipedians ==
+
+I have learned how to use English Wikipedia, and also am studying on the behaviors of the Wikipedians, specifically the motivation of the Wikipedians to contribute. I would like to know whether or not any guideline for the surveying of academic research for English Wikipedians exist and what is the best way to survey for English Wikipedia users with no privacy problem. [[User:Cooldenny|cooldenny]] ([[User talk:Cooldenny|talk]]) 13:39, 8 March 2011 (UTC)
+
+:Much research has already been done, so you could start by reading the article [[Academic studies about Wikipedia]] and the sources listed in the "References" and "Further reading" sections there. Just glancing through that article, I get the impression that most researchers work by analysing a [[WP:database dump|database dump]] rather than conducting their own surveys. -- [[User:John of Reading|John of Reading]] ([[User talk:John of Reading|talk]]) 13:53, 8 March 2011 (UTC)
+
+::Thanks for your helpful answer. I know some researchers use Wikipedia database to be dumped. However, I need my own survey because the study is about how Wikipedians perceive some concepts and some objects on Wikipeida. Please give an advice to me. In addition, I would like to know whether or not it makes legal or communal problem to send Wikipedians survey questions via special:sending email. In another way, I can post survey questions on my talk page and post the notice for the survey on the community portal. Is it available for the Wikipedia community? [[User:Cooldenny|cooldenny]] ([[User talk:Cooldenny|talk]]) 12:00, 9 March 2011 (UTC)
+
+:::I'm sorry, I don't know the answers here. There's a collection of pages aimed at researchers in [[:Category:Wikipedia resources for researchers]]; you should have a look through those. The page [[Wikipedia:Ethically researching Wikipedia]] seems relevant. I am pretty sure that sending bulk emails via "Email this user" would be seen as disruptive unless you have cleared this beforehand at a ''very'' high level, with [[Wikimedia Foundation]] staff members perhaps. -- [[User:John of Reading|John of Reading]] ([[User talk:John of Reading|talk]]) 21:10, 10 March 2011 (UTC)
+
+:::: John of Reading, Thanks a lot. [[Wikipedia:Ethically researching Wikipedia]] you informed is very helpful for me. If you do not mind, Let me know how to get IRB approval. [[User:Cooldenny|cooldenny]] ([[User talk:Cooldenny|talk]]) 16:31, 11 March 2011 (UTC)
+:::::From the "Cornell" example at [[Wikipedia:Ethically researching Wikipedia]], it looks as if you should be talking to the IRB at your University. "IRB" is the US term; I happen to know that the UK equivalent is a "Research Ethics Committee". -- [[User:John of Reading|John of Reading]] ([[User talk:John of Reading|talk]]) 09:40, 12 March 2011 (UTC)
+
+== Reactivating mobile site ==
+
+For some reason the wikipedia mobile site is not working, I don't think I disabled the mobile site from my phone. I checked with your help desk and there is another user who has had the same issue, but when I used the steps offered, it does not work, it just brings me back to the regular wikipedia site. There is also another link in the option provided that I clicked on, and it worked, but only while I don't leave the site. Once I leave the site and come back, it goes to regular site again. Please fix. Thankyou. [[Special:Contributions/74.198.164.237|74.198.164.237]] ([[User talk:74.198.164.237|talk]]) 14:25, 8 March 2011 (UTC)
+
+== Please restore my page. ==
+
+[[http://en.wikipedia.org/wiki/User:Farleygospel|http;//en.wikipedia.org/wiki/User:]]  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by {{details removed}} 14:40, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+:I assume that the link that you intended to give was [[User:Farleygospel]].  The reason for the deletion, and the process for asking for it back, are described on the [[User_talk:Farleygospel|user page]] for the account under which it was created. - [[User:David Biddulph|David Biddulph]] ([[User talk:David Biddulph|talk]]) 14:50, 8 March 2011 (UTC)
+
+== Psych Folk Musicians (Category) ==
+
+I would like to submit Alison O'Donnell under 'O' in the alphabetical list. References are:
+The Owl Service
+Clodagh Simonds
+Mellow Candle
+1960s groups
+1970s groups  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/86.40.29.109|86.40.29.109]] ([[User talk:86.40.29.109|talk]]) 17:10, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+{{Quote box
+ | quote  = A Wizard is available to walk you through these steps. See the [[Wikipedia:Article wizard|Article Wizard]].'''''
+ | source = Thank you.
+ | width  = 20%
+ | align  = right
+}}
+:You will need to first [[Special:Userlogin|register an account]], which has [[Wikipedia:Why create an account?|many benefits]], including the ability to create articles. Once you have registered, please [[Wikipedia:Searching|search]] Wikipedia first to make sure that an article does not ''already exist'' on the subject. Please also review a few of our relevant policies and guidelines which all articles should comport with. As Wikipedia is an encyclopedia, articles must not contain [[Wikipedia:No original research|original research]], must be written from a [[Wikipedia:Neutral point of view|neutral point of view]], should [[Wikipedia:Citing sources|cite]] to [[Wikipedia:Reliable sources|reliable sources]] which [[Wikipedia:Verifiability|verify]] their content and must not contain [[Wikipedia:Biographies of living persons|unsourced, negative content about living people]].
+
+:Articles must also demonstrate the [[Wikipedia:Notability|notability]] of the subject. Please see our subject specific guidelines for [[Wikipedia:Notability (people)|people]], [[Wikipedia:Notability (music)|bands and musicians]], [[Wikipedia:Notability (organizations and companies)|companies and organizations]] and [[Wikipedia:Notability (web)|web content]] and note that if you are closely associated with the subject, our [[Wikipedia:Conflict of interest|conflict of interest guideline]] strongly recommends against ''you'' creating the article. 
+
+:If you still think an article is appropriate, see [[Wikipedia:Your first article]] and [[Wikipedia:How to write a great article]], and please consider taking a tour through the [[Wikipedia:Tutorial]] so that you know how to properly format the article before creation. An [[Wikipedia:Article wizard 2.0|Article Wizard]] is available to walk you through creating an article, but you will need to [[Wikipedia:Why create an account?|create an account]] to use it. if you don't wish to do so, you can submit a proposal for an article at [[WP:Articles for creation|Articles for Creation]].{{z26}}<!-- Template:Creation --> <font color="darkorange">[[User:Tnxman307|TN]]</font><b><font color="midnightblue"><big>[[User talk:Tnxman307|X]]</big></font></b><font color="red">[[Special:Contributions/Tnxman307|Man]]</font> 17:14, 8 March 2011 (UTC)
+::The bit that Tnxman didn't explain is that all the entries in a [[WP:Category|category]] are separate articles in Wikipedia, so for her to have an entry in the category there must be an article on her. --[[User:ColinFine|ColinFine]] ([[User talk:ColinFine|talk]]) 00:27, 9 March 2011 (UTC)
+
+== Irish singer-songwriters ==
+
+I would like to submit Alison O'Donnell under 'O'.
+References are:
+
+Mellow Candle
+1960s groups
+1970s groups
+The Owl Service  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/86.40.29.109|86.40.29.109]] ([[User talk:86.40.29.109|talk]]) 17:15, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:The [[Alison O'Donnell]] article must be created first. Please see the advice left in the section above. <font color="darkorange">[[User:Tnxman307|TN]]</font><b><font color="midnightblue"><big>[[User talk:Tnxman307|X]]</big></font></b><font color="red">[[Special:Contributions/Tnxman307|Man]]</font> 17:29, 8 March 2011 (UTC)
+
+== AERONAUTICS ==
+
+What do you mean by the terms'mod root' and 'mod tip' in airfoils?pls give me the answer......would someone help me??????  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/220.225.117.34|220.225.117.34]] ([[User talk:220.225.117.34|talk]]) 17:25, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:"[[Wing root|root]]" and "[[Wing tip|tip]]" indicate the inner and outer parts of the wing. "mod" is short for "modified", and acts as a suffix to the preceding code letters and numbers. The fourth paragraph in [http://www.ae.illinois.edu/m-selig/ads/aircraft.html this external web page] indicates the kinds of modifications involved. I couldn't find anything at Wikipedia to explain it. -- [[User:John of Reading|John of Reading]] ([[User talk:John of Reading|talk]]) 18:38, 8 March 2011 (UTC)
+
+== How do I take my template live? ==
+
+I have a template that is ready to be launched. What do I need to do to launch it and have it included?
+
+SJ  <small><span class="autosigned">— Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[User:Msh111963|Msh111963]] ([[User talk:Msh111963|talk]] • [[Special:Contributions/Msh111963|contribs]]) 17:32, 8 March 2011 (UTC)</span></small><!-- Template:Unsigned --> <!--Autosigned by SineBot-->
+:Do you mean [[User:Msh111963/Enter your new article name here]]? If so, I would strongly encourage you to read our info on writing [[WP:YFA|your first article]], as well as our info on [[WP:PROMO|promotional editing]]. The article, as currently written, reads like an add for the subject. <font color="darkorange">[[User:Tnxman307|TN]]</font><b><font color="midnightblue"><big>[[User talk:Tnxman307|X]]</big></font></b><font color="red">[[Special:Contributions/Tnxman307|Man]]</font> 17:48, 8 March 2011 (UTC)
+
+::And based on your user name, please also read [[WP:AUTOBIOGRAPHY]].&nbsp;–&nbsp;[[User:Ukexpat|ukexpat]] ([[User talk:Ukexpat|talk]]) 18:40, 8 March 2011 (UTC)
+
+== logging in unsuccessful ==
+
+We have been hired by USM to rehaul their page. I'm trying to login to the USM site for edits and after many attempts, it's still not letting me login.  It's also not letting me send a new password.  http://en.wikipedia.org/wiki/University_of_Santa_Monica  
+
+[[Special:Contributions/97.93.74.40|97.93.74.40]] ([[User talk:97.93.74.40|talk]]) 17:54, 8 March 2011 (UTC)
+
+:If you have been hired by an organisation to edit a Wikipedia page related to that organisation, you ought to read [[WP:COI]]. - [[User:David Biddulph|David Biddulph]] ([[User talk:David Biddulph|talk]]) 18:02, 8 March 2011 (UTC)
+
+::Give them back their money and walk away because we will revert all your edits as violations of the WP:COI policy. Taking money to edit WP verges on fraud because you have no control over any content you produce. You cannot guarantee delivery of any "product" to your client. Now that you have "outed" yourself there is a whole squad of volunteer editors standing by to delete everything you write and there is absolutely nothing you can do to stop them. Please note this post is my personal opinion, it has no official standing. It is however based on my understanding of the [[WP:COI|conflict of interest rules]]. Short answer - paid for editing is not allowed. [[User:Dodger67|Roger]] ([[User talk:Dodger67|talk]]) 18:36, 8 March 2011 (UTC)
+
+:::The IP may be [[User:Mhulnick]] whose recent edits to the article have just been reverted ''in toto''.&nbsp;–&nbsp;[[User:Ukexpat|ukexpat]] ([[User talk:Ukexpat|talk]]) 18:43, 8 March 2011 (UTC)
+
+::::The edit history of [[User:Mhulnick/Dr._H._Ronald_Hulnick]] confirms this identification. [[User:Dodger67|Roger]] ([[User talk:Dodger67|talk]]) 18:49, 8 March 2011 (UTC)
+
+Please note: it is possible that this IP is literally meaning what they write: that they are trying to edit the USM's own webpage, and somehow came here thinking we could help! --[[User:Orangemike|<font color="darkorange">Orange Mike</font>]]  &#x007C;  [[User talk:Orangemike|<font color="orange">Talk</font>]] 19:58, 8 March 2011 (UTC)
+
+:[http://en.wikipedia.org/w/index.php?title=User_talk:Ukexpat&diff=prev&oldid=417824839 I think not].&nbsp;–&nbsp;[[User:Ukexpat|ukexpat]] ([[User talk:Ukexpat|talk]]) 20:03, 8 March 2011 (UTC)
+::Actually, Roger, paid editing is actually allowed.  Two attempts at policy/guidelines concerning [[WP:Paid editing]] have failed.  [[WP:COI]] allows paid editing and conflict of interest editing as long as it is [[WP:NEUTRAL|neutral]] and properly [[WP:RS|cited]].  Jimbo banned paid editing services or admins/crats/editors offering their services for payment though.--v/r - [[User:TParis|T]][[User_talk:TParis|P]] 22:37, 8 March 2011 (UTC)
+
+:::Well as far as I am concerned paid editors are the baby rapists and serial killers of WP. They should be exterminated on sight. A paid editor has an inherent conflict of interest, to even suggest that a neutral paid editor could exist is insane. I'm sorry but I really feel very strongly about this. Paid editing inherently violates at least two of WP's fundamental policies: NPOV, COI - there is simply no way to get around that. It is also simply fraud as I stated above because it is impossible to guarantee delivery of the contracted product. It's only a matter of time before somebody sues a paid editor for breach of contract through failing to deliver the goods. [[User:Dodger67|Roger]] ([[User talk:Dodger67|talk]]) 13:37, 9 March 2011 (UTC)
+::::Still, the community has not been able to come to a consensus to ban the practice.  As far as somebody being sued by their employer, that's really not Wikipedia's problem.  [[WP:AGF]] comes into practice here where [[WP:NPOV]] and [[WP:COI]] are concerned.  You shouldn't assume an editor is going to be inherently POV until you've seen clear evidence of it.  In addition, [[WP:COI]] says "Conflict of interest is not a reason to delete an article" and "Editors with COIs who wish to edit responsibly are strongly encouraged to follow Wikipedia policies and best practices scrupulously."  The practice is not banned or forbidden, just strongly scrutinized and discouraged.  It's not that I'm making assumptions based on a lack of addressing the issue, the issue has been addressed by the community and the consensus (or lack thereof) has been that paid editing is discouraged but not forbidden.--v/r - [[User:TParis|T]][[User_talk:TParis|P]] 14:55, 9 March 2011 (UTC)
+
+== Hard to understand! ==
+
+Why is Wikipedia so complex with their words?! sometimes its really hard to understand! why is this?  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/62.249.223.217|62.249.223.217]] ([[User talk:62.249.223.217|talk]]) 18:11, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:Wikipedia is an encyclopedia, and some things are hard to explain in a simple fashion. However, there's a [http://simple.wikipedia.org/wiki/Main_Page Simple English Wikipedia] that should be a lot easier to understand. [[User:Zakhalesh|Zakhalesh]] ([[User talk:Zakhalesh|talk]]) 18:22, 8 March 2011 (UTC)
+::The question should be more specific. Is there some [[WP:WIAA|article]] or [[Help:Contents|instruction page]] you find hard to understand? If you tell us the name of the specific page or [[Help:Section|sections]] you don't understand, perhaps we can explain it better, and maybe improve the confusing page to make it more understandable. One common problem is un[[Help:Link|linked]] jargon (see: [[Wikipedia:Build the web]]). However, as [[User:Zakhalesh|Zakhalesh]] points out, some things are inherently complex and take time and effort to learn. As Albert Einstein said, everything should be as simple as possible, but not simpler. See also [[No Silver Bullet]]. We can and should try to eliminate [[accidental complexity]], but we cannot remove [[essential complexity]] without destroying value, accuracy, functionality, etc. For very complex topics, we can and should have introductory articles for the nonexpert, for example [[Special relativity]] and [[Introduction to special relativity]]. --[[User:Teratornis|Teratornis]] ([[User talk:Teratornis|talk]]) 19:48, 8 March 2011 (UTC)
+
+== Verizon iPhone 4 auto redirect to wikipedia mobile ==
+
+Google searches made from the safari browser on my Verizon iPhone 4 would auto redirect to wikipedia mobile for wikipedia results - that has suddenly stopped … now searches that yield wikipedia results launch the full site (not wikipedia mobile) which is difficult to read on the iPhone ... I have clicked on the wikipedia reactivation link for wikipedia mobile but to no effect … how can I reenable the wikipedia mobile auto redirect for safari searches on the Verizon iPhone 4?  Thanks.  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/70.107.99.151|70.107.99.151]] ([[User talk:70.107.99.151|talk]]) 20:05, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+This problem is occurring with all mobile phones and all browsers.  The javascript console shows an error: "MobileRedirect.js: Uncaught Reference Error: wgNamespaceNumber is not defined."  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/161.136.100.71|161.136.100.71]] ([[User talk:161.136.100.71|talk]]) 13:39, 9 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+== Category sorting problem ? ==
+
+Is it just me or has category sorting gone awry eg. [[:Category:Debut novels]] now begins with lots of "The ..." ? [[User:GrahamHardy|GrahamHardy]] ([[User talk:GrahamHardy|talk]]) 20:34, 8 March 2011 (UTC)
+
+: No, it's not just you. Graham.  The Defaultsort function seems not to be working, but that's only half the problem.  Let's hope the IT guys fix this, and soon.  --  [[User:JackofOz|<font face="Papyrus">Jack of Oz</font>]] [[User talk:JackofOz#top|<font face="Papyrus">[your turn]</font>]] 20:40, 8 March 2011 (UTC)
+
+::It looks like it might be fixed.  '''[[User:GB fan|<span style='color: #ffac2c;background-color: #00422f;'>~~&nbsp;GB</span>]][[User talk:GB fan|<span style='color: #ffac2c;background-color: #00422f;'>&nbsp;fan&nbsp;~~</span>]]''' 20:44, 8 March 2011 (UTC)
+::Then again, maybe not, it is only finding 199 articles in that category, and none og them start with anything after the letter G.  '''[[User:GB fan|<span style='color: #ffac2c;background-color: #00422f;'>~~&nbsp;GB</span>]][[User talk:GB fan|<span style='color: #ffac2c;background-color: #00422f;'>&nbsp;fan&nbsp;~~</span>]]''' 20:47, 8 March 2011 (UTC)
+
+::: Definitely not fixed.  [[:Category:Spanish composers]] gives names up to mid-way thru the S's, then nothing.  But there are plenty of T, U, V, X, Y and Z names in that cat, too.  [[Joaquín Valverde Sanjuán]], for example, which is defsorted under Valverde. --  [[User:JackofOz|<font face="Papyrus">Jack of Oz</font>]] [[User talk:JackofOz#top|<font face="Papyrus">[your turn]</font>]] 21:54, 8 March 2011 (UTC)
+
+::::The first page of the listings is working OK: it is supposed to list only the first 200. But the "next 200" link is broken; it just relists the first 200. —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 22:14, 8 March 2011 (UTC)
+Apparently this is a problem with all categories with over 200 entries. How do we call attention of this to the IT guys? —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 00:26, 9 March 2011 (UTC)
+
+:I have posted to [[Wikipedia:Village pump (technical)#categorically random categories]] and [[bugzilla:4912]] but I'm not sure who sees it. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 00:38, 9 March 2011 (UTC)
+
+== please help me i made a mistake - i need help to repair it ==
+
+i was trying to use another webpage as a template for redirecting and messed it up.<br>
+[[Clare Amory]] ← this goes to the wrong place.<br>
+[http://en.wikipedia.org/w/index.php?title=Clare_Amory&redirect=no] ← a search leading to this link should redirect here [[Excepter]]
+and this 
+[[East Coast Rapist]] should redirect here [[Aaron H. Thomas]]
+
+any help would be greatly appreciated[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 19:40, 8 March 2011 (UTC)
+:http://en.wikipedia.org/wiki/Clare_Amory ←  this link says in the address line "Clare_Amory" and yet it goes to the wrong place--[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 20:03, 8 March 2011 (UTC)
+::i tried but it will not "undo" and revert back  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 21:46, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->--[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 22:11, 8 March 2011 (UTC)
+--[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 22:17, 8 March 2011 (UTC)
+:They appear to work fine to me.--v/r - [[User:TParis|T]][[User_talk:TParis|P]] 22:25, 8 March 2011 (UTC)
+::click on the first link in the paragraph it goes to the wrong place[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 23:40, 8 March 2011 (UTC)
+:::By first link do you mean "[[Brooklyn]]"? —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 23:52, 8 March 2011 (UTC)
+::::[[Clare Amory]][[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 00:07, 9 March 2011 (UTC)
+:::::Do you mean the link in “(Redirected from [http://en.wikipedia.org/w/index.php?title=Clare_Amory&redirect=no Clare Amory])”? If so, that link should take you to the redirect page (with a bent arrow to [[Excepter]]). Is that where it goes? If so, that is just what it is supposed to do. —[[User:TEB728|teb728]] [[User talk:TEB728|t]] [[Special:Contributions/TEB728|c]] 00:18, 9 March 2011 (UTC)
+
+:::::Everything behaves as it should as far as I can tell. Perhaps you don't know how Wikipedia "redirects" are supposed to behave. [[Clare Amory]] is a [[WP:R|redirect]] (in the Wikipedia sense) to [[Excepter]]. This means that the url http://en.wikipedia.org/wiki/Clare_Amory displays almost the same as the url http://en.wikipedia.org/wiki/Excepter. The only difference is that http://en.wikipedia.org/wiki/Clare_Amory has the message "(Redirected from [http://en.wikipedia.org/w/index.php?title=Clare_Amory&redirect=no Clare Amory])" near the top. Wikipedia redirects do ''not'' change the url, so http://en.wikipedia.org/wiki/Clare_Amory isn't and shouldn't be changed to the url http://en.wikipedia.org/wiki/Excepter. If you still think something is wrong then try to be more specific about which url you are reporting, what happens with it for you and what you think should have happened instead. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 00:33, 9 March 2011 (UTC)
+::::::clicking on this → [[Clare Amory]] ← takes me to this → a page with aaron h. thomas as the header ← which is the wrong redirect final location[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 01:16, 9 March 2011 (UTC)
+:::::::Thanks for being specific. It sounds like you simply have to [[WP:BYPASS|bypass your cache]]. It only had that content for 6 minutes between your edits many hours ago.[http://en.wikipedia.org/w/index.php?title=Clare_Amory&action=history] [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 01:37, 9 March 2011 (UTC)
+solved thank you
+[[Special:Contributions/70.162.171.210|70.162.171.210]] ([[User talk:70.162.171.210|talk]]) 02:05, 9 March 2011 (UTC)
+
+== Expert Editors ==
+
+My professor has asked me to see if there is a special program for people who are experts in a field (Particularly, he has a PhD and is an Historian).
+
+Several times he has seen tags on historical articles saying "it is in need of a revision by an expert", and he is interested in how to participate, if he should just edit like a normal member, or if there is a special usergroup or something for experts.
+
+He doesn't understand computers very well so he asked my help.  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/173.68.79.64|173.68.79.64]] ([[User talk:173.68.79.64|talk]]) 22:40, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+:As far as I know, there isn't a specific pillar that experts are placed on above other editors.  He can participate in [[WP:Ambassadors]] which is a great program for folks like him.  There is also [[WP:Wiki Guides]].  He can put any information about himself on his user page which would give other editors insight into his contributions.--v/r - [[User:TParis|T]][[User_talk:TParis|P]] 22:47, 8 March 2011 (UTC)
+
+::See also [[Wikipedia:Expert editors]]. [[User:PrimeHunter|PrimeHunter]] ([[User talk:PrimeHunter|talk]]) 22:55, 8 March 2011 (UTC)
+
+Thank you very much :) -Original Annon who asked this question.  <span style="font-size: smaller;" class="autosigned">—Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[Special:Contributions/173.68.79.64|173.68.79.64]] ([[User talk:173.68.79.64|talk]]) 22:58, 8 March 2011 (UTC)</span><!-- Template:UnsignedIP --> <!--Autosigned by SineBot-->
+
+== Where is my downloaded wikipedia book? ==
+
+I down loaded my wikipedia book and nothing else happened.  I did a search on my computer and couldn't find it that way either.  After I click on "down load book" what is supposed to happen next and what do I do to obtain the assembled book?
+
+Thanks,
+
+Dale  <small><span class="autosigned">— Preceding [[Wikipedia:Signatures|unsigned]] comment added by [[User:Dalefoote|Dalefoote]] ([[User talk:Dalefoote|talk]] • [[Special:Contributions/Dalefoote|contribs]]) 22:51, 8 March 2011 (UTC)</span></small><!-- Template:Unsigned --> <!--Autosigned by SineBot-->
+:It should open in a PDF like I just did  [http://en.wikipedia.org/w/index.php?title=Special:Book&bookcmd=download&collection_id=7d46dc7202b8e6c3&writer=rl&return_to=Special%3ABook here] <span style="background:silver;font-family:Kristen ITC;">[[User:Ctjf83|<font color="red">C</font><font color="#ff6600">T</font><font color="yellow">J</font><font color="green">F</font><font color="blue">8</font><font color="#6600cc">3</font>]]</span> 23:09, 8 March 2011 (UTC)
+
+==How can I count how many words are in an article?==
+
+Is a tool available that would allow me to count how many words are in an article without having to copy and paste the article's comments into an offline word processor? [[User:Prioryman|Prioryman]] ([[User talk:Prioryman|talk]]) 23:23, 8 March 2011 (UTC)
+: Pls see [[Wikipedia:Article size#Measuring "readable prose" size]].[[User:Moxy|Moxy]] ([[User talk:Moxy|talk]]) 00:27, 9 March 2011 (UTC)
+::Thank you. [[User:Prioryman|Prioryman]] ([[User talk:Prioryman|talk]]) 08:18, 9 March 2011 (UTC)

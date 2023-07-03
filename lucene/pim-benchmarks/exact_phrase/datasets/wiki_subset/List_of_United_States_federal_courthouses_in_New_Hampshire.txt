@@ -1,0 +1,41 @@
+{{short description|Wikipedia list article}}
+<!-- This page is part of a series which transcludes to List of United States federal courthouses. Please make sure that changes to this page conform to changes in all pages in the series. -->
+Following is a list of current and former [[courthouse]]s of the [[United States federal court]] system located in [[New Hampshire]]. Each entry indicates the name of the building along with an image, if available, its location and the jurisdiction it covers,<ref name="j">For the usage of court abbreviations, see [[List of United States district and territorial courts]].</ref> the dates during which it was used for each such jurisdiction, and, if applicable the person for whom it was named, and the date of renaming. Dates of use will not necessarily correspond with the dates of construction or demolition of a building, as pre-existing structures may be adapted or court use, and former court buildings may later be put to other uses. Also, the official name of the building may be changed at some point after its use as a federal court building has been initiated.
+
+==Courthouses==
+<onlyinclude>
+{|class="sortable wikitable"
+|- bgcolor="#ececec"
+|'''Courthouse'''||'''City'''||'''Image'''||'''Street address'''||'''Jurisdiction'''<ref name="j"/>||'''Dates of use'''||'''Named for'''
+|-
+|[[United States Post Office and Court House (Concord, New Hampshire, 1889)|U.S. Post Office & Court House]]†||[[Concord, New Hampshire|Concord]]||[[File:Post Office, Concord, NH.jpg|80px]]||33 North State Street||[[United States District Court for the District of New Hampshire|D.N.H.]]||1889–1967<br/>Now the state's Legislative Office Building.||n/a
+|-
+|[[Warren B. Rudman U.S. Courthouse]]||[[Concord, New Hampshire|Concord]]||[[File:Concord NH Dist Court.JPG|80px]]||55 Pleasant Street||[[United States District Court for the District of New Hampshire|D.N.H.]]||1968–present||U.S. Senator [[Warren Rudman]]
+|-
+|[[United States Post Office and Court House (Littleton, New Hampshire, 1935)|U.S. Post Office & Court House]]'''<sup>†</sup>'''||[[Littleton, New Hampshire|Littleton]]||[[File:Littleton NH Courthouse and Post Office.JPG|80px]]||134 Main St.||[[United States District Court for the District of New Hampshire|D.N.H.]]||1935–1982<br/>Still in use as a post office.||n/a
+|-
+|[[United States Custom House and Post Office (Portsmouth, New Hampshire)|U.S. Custom House & Post Office]]||[[Portsmouth, New Hampshire|Portsmouth]]||[[File:U.S. Post Office & Custom House, Portsmouth, NH 1993.jpg|80px]]||40 Pleasant Street||[[United States District Court for the District of New Hampshire|D.N.H.]]||1860–1926<br/>Now privately owned.||n/a
+|}</onlyinclude>
+
+==Key==
+{|class="wikitable" 
+|-
+!|'''<sup>†</sup>''' 
+|Listed on the [[National Register of Historic Places]] (NRHP)
+|-
+!|'''<sup>††</sup>''' 
+|NRHP-listed and also designated as a [[National Historic Landmark]]
+|-
+|}
+
+==References==
+{{reflist}}
+
+==External links==
+* {{FJC courthouses|New|Hampshire}}
+*{{GSA courthouses|category|22235|New Hampshire}}
+*[http://www.usmarshals.gov/district/nh/locations/index.html U.S. Marshals Service District of New Hampshire Courthouse Locations]
+
+[[Category:Lists of federal courthouses in the United States by state|New Hampshire]]
+[[Category:New Hampshire-related lists|Federal courthouses]]
+[[Category:Courthouses in New Hampshire|Federal courthouses]]

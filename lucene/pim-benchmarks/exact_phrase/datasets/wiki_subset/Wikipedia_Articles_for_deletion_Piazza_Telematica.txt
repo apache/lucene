@@ -1,0 +1,40 @@
+<div class="boilerplate metadata vfd" style="background-color: #F3F9FF; margin: 2em 0 0 0; padding: 0 10px 0 10px; border: 1px solid #AAAAAA;">
+:''The following discussion is an archived debate of the proposed deletion of the article below. <span style="color:red">'''Please do not modify it.'''</span>  Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]).  No further edits should be made to this page.  ''
+<!--Template:Afd top
+
+Note:  If you are seeing this page as a result of an attempt to re-nominate an article for deletion, you must manually edit the AfD nomination links in order to create a new discussion page using the name format of [[Wikipedia:Articles for deletion/PAGENAME (2nd nomination)]].  When you create the new discussion page, please provide a link to this old discussion in your nomination. -->
+
+The result was '''delete'''. --[[User:Samuel Blanning|Sam Blanning]]<sup>[[User talk:Samuel Blanning|(talk)]]</sup> 11:43, 23 October 2006 (UTC)
+===[[Piazza Telematica]]===
+At first sight, this looks legitimate, if unheard of in English. The definition is remarkably vague, making it somewhat hard to figure out what, exactly, [[Piazza Telematica]] could be (a place? a service? a product? how does it differ from a [[hotspot]]?). The term is unheard of on English-language Internet ([http://www.google.com/search?q=%22Piazza+Telematica%22&btnG=Szukaj&lr=lang_en&num=100 30 mostly bogus hits on Google]), and there are only [http://groups.google.pl/groups/search?q=%22Piazza+telematica%22&start=0&scoring=d&hl=pl&lr=& 6 mentions of it] in 2006 on Italian Usenet. 
+
+'''But here's the interesting bit:''' what's odd is that this article started popping up in exactly the same format, neatly translated, on various Wikipedias in immediate succession. Compare nearly identical inital versions:
+[http://pl.wikipedia.org/w/index.php?title=Piazza_Telematica&oldid=4925039 pl.wiki],
+[http://fr.wikipedia.org/w/index.php?title=Piazza_telematica&oldid=10637168 fr.wiki],
+[http://en.wikipedia.org/w/index.php?title=Piazza_Telematica&oldid=79839116 en.wiki],
+[http://it.wikipedia.org/w/index.php?title=Piazza_telematica&oldid=4942159 it.wiki],
+[http://es.wikipedia.org/w/index.php?title=Piazza_Telematica&oldid=5014992 es.wiki]. Most of them are edited from the same or related IPs that have no other contributions.
+
+I did some research and found out that the name is actually being used to identify a specific product by [http://www.piazzetelematiche.it/1994-2005/pt_faq_eng.html#faq004 this organization]. They apparently market it to cities and other communities, and fund it from [[European Union|EU]] structural funds. If yes, they would have a clear interest in promoting this term on random Wikipedias thae are used by citizens of the European Community. '''Moreover, on es.wiki and en.wiki, where named accounts were used, the name coincides with one of the founders of the organization'''.
+
+Either way, the article is either a vague non-notable concept-gone-OR published on multiple Wikipedias by an anonymous altruistic polyglot; or more likely, a nicely orchestrated marketing attempt.
+
+I submitted the article for deletion on plwiki, where I'm a regular contributor; I figured I'd make a guest appearance here to submit our findings for your consideration. [[User:Lcamtuf|lcamtuf]] 16:18, 12 October 2006 (UTC)
+
+'''Update:''' We also asked it.wikipedians for a second opinion - [http://it.wikipedia.org/wiki/Discussioni_Wikipedia:Ambasciata#Piazza_telematica here] is a link to up-to-date responses; they confirm that the phrase is used locally, but seem to suspect advertising. --[[User:Lcamtuf|lcamtuf]] 17:59, 12 October 2006 (UTC)
+
+*<s>'''Delete''', I don't know exactly what to make of it, but unless someone can point to some news articles about it or something then I will say delete. [[User:Recury|Recury]] 16:59, 12 October 2006 (UTC)</s>
+**'''Neutral''', Uncle G's links at least prove it exists but it is still a pretty weak case for notability. Definitely needs cleanup to remove the promotional language. Would consider a redirect or merge to [[hotspot]] since it appears this is some kind of variation on it. [[User:Recury|Recury]] 17:31, 12 October 2006 (UTC)
+*<s>Pure spam. I've tagged it as such. --[[User:Aaron|Aaron]] 16:59, 12 October 2006 (UTC)</s> NawlinWiki is right; let's have precedent. '''Delete''' per nom. --[[User:Aaron|Aaron]] 17:40, 12 October 2006 (UTC)
+*'''Delete''' per well-researched nomination, but removing speedy tag to allow full AFD and precedent if article is recreated later. [[User:NawlinWiki|NawlinWiki]] 17:23, 12 October 2006 (UTC)
+*Some things that might help:
+** [http://www.regione.lazio.it/web/sala_stampa/news_dettaglio.php?id=522 a news report in ''Regione Lazio''] about the chancellor of [[Third University of Rome|Università Roma Tre]] opening a Piazza Telematica programme.
+** [http://www.comune.ancona.it/ankonline/contesti/Ufficio_Stampa/Conferenze/3549_piazza_telematica.html the mayor of] [[Ancona]] announcing public consultation on a possible Piazza Telematica programme
+** [http://www.grtv.it/www/2001/luglio2001/12luglio2001/grtv5.htm Adolfo Urso, Vice Ministro per le Attività produttive, activating] a Piazza Telematica
+* Excluding non-English search results for an Italian subject really [[WP:BIAS|doesn't make sense]]. [[User:Uncle G|Uncle G]] 17:24, 12 October 2006 (UTC)
+** Actually, it kinda does, since we're debating the notability of a vaguely defined subject matter on English Wikipedia (as opposed to a mention in [[hotspot]] or no mention at all). Either way, it wasn't my intention to mislead others: the term certainly is used in Italy, but same can be said about names for thousands of other local phenomena (note, however, that ''hotspot'' and ''hot spot'' are used far more often on .it pages). I'm simply curious as to why it's propagating on various Wikipedias as a seamless translation. --[[User:Lcamtuf|lcamtuf]] 17:48, 12 October 2006 (UTC)
+
+*'''Keep''' Does not appear to be the same as a hotspot. Any spam that was in it seems to have been removed before I saw the article. [[User:Fg2|Fg2]] 01:10, 13 October 2006 (UTC)
+*'''Weak delete'''.  Seems to be what would be a public [[hotspot]], except the article doesn't specify whether it requires wires.  However, all the references are in Italian, so it may be something different.  &mdash; [[User:Arthur Rubin|Arthur Rubin]] |  [[User_talk:Arthur_Rubin|(talk)]] 22:56, 16 October 2006 (UTC)
+*'''Delete''' - non-notable, advert.  [[User:Michael K. Edwards|Michael K. Edwards]] 09:58, 17 October 2006 (UTC)
+:''The above discussion is preserved as an archive of the debate.  <span style="color:red">'''Please do not modify it.'''</span> Subsequent comments should be made on the appropriate discussion page (such as the article's talk page or in a [[Wikipedia:Deletion review|deletion review]]). No further edits should be made to this page. <!--Template:Afd bottom--></div>

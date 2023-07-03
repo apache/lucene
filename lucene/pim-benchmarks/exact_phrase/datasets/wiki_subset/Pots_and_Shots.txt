@@ -1,0 +1,45 @@
+{{Infobox album
+| name       = Pots and Shots
+| type       = [[Album]]
+| artist     = [[Potshot (band)|Potshot]]
+| cover      = Pots and Shots.jpg
+| alt        =
+| released   = October 14, 1997
+| recorded   =
+| venue      =
+| studio     =
+| genre      = [[Ska-punk]]<br />[[Third wave of ska|Third wave ska]]
+| length     =
+| label      = [[Asian Man Records]]
+| producer   = [[Mike Park]]
+| prev_title =
+| prev_year  =
+| next_title = [[Rock 'n' Roll (Potshot)|Rock 'n' Roll]]
+| next_year  = 1999
+}}
+{{Album ratings
+| rev1      = [[Allmusic]]
+| rev1Score = {{Rating|4.5|5}} [{{Allmusic|class=album|id=r313053|pure_url=yes}} link] |
+}}
+'''''Pots and Shots''''' is the debut album of [[J-ska]] band [[Potshot (band)|Potshot]]. The album was released in the United States by [[Asian Man Records]] in [[1997 in music|1997]].
+
+==Tracks==
+# We Are Potshot    1:06
+# Someone to Lean On    2:26
+# Radio    1:49
+# Handle    2:35
+# Time    2:49
+# Since Yesterday   1:46
+# Anytime    2:33
+# Clear    2:35
+# Under the Blue Sky    3:00
+# Tears of a Clown    1:06
+# In Hi-Fi     2:27
+# Not Worth Your While But Worth My Life    2:49
+# Mexico     3:15
+# Change     3:40
+
+{{DEFAULTSORT:Pots And Shots}}
+[[Category:1997 debut albums]]
+[[Category:Potshot (band) albums]]
+[[Category:Asian Man Records albums]]

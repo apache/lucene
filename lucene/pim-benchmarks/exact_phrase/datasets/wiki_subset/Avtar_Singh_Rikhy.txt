@@ -1,0 +1,52 @@
+{{Use Indian English|date=September 2017}}
+{{Use dmy dates|date=February 2020}}
+{{more footnotes|date=March 2011}}
+{{Infobox person
+| name = Shri Avtar Singh Rikhy
+| image = 
+| caption = 
+| birth_date = {{birth date and age |df=yes|1923|12|23}}<ref>{{cite book|last1=Lok Sabha Secretariat|title=The Journal of Parliamentary Information - Volume 23|date=1977|publisher=Lok Sabha Secretariat|location=India}}</ref>
+| birth_place = [[Lahore]], Pakistan
+| death_date = 
+| death_place = 
+| nationality = [[India]]n 
+| alma_mater = [[University of the Punjab|Punjab University]] and [[University of Calcutta]]
+| doctoral_students = 
+| known_for  = 
+| awards = 
+| footnotes = 
+}}
+
+'''Shri Avtar Singh Rikhy'''<ref>{{cite book|last=Kashyap|first=Subhash C.|title=The Office of the Secretary-General, Monograph Series. 20|year=1989|publisher=Lok Sabha Secretariat|location=New Delhi|pages=27–28}}</ref> ( born 23 December 1923) was a former Secretary-General of [[6th Lok Sabha]] and [[7th Lok Sabha]] (Lower House of Parliament of India). He succeeded Shri [[S. L. Shakdhar]], after his appointment as the Chief Election Commissioner.
+
+==Early life==
+Sardar Rikhy had his higher education from Punjab University and Calcutta University. He was Double M.A. in History and English. He stood third in order of merit in the Punjab University in M.A. (English) 1945; diploma in Journalism, Punjab University 1944; diploma in Social Work (Welfare), Calcutta University, 1948 where he stood second in order of merit; after being successful in the All-India Combined Services Competitive Examination, 1945 served in various administrative capacities in the government, 1946–1956.
+
+==Positions held==
+
+* Deputy Secretary, Lok Sabha, 1956–69
+* Joint Secretary, Lok Sabha, 1969–74
+* Additional Secretary, 1974–77
+* Secretary, Lok Sabha, 1977–83
+* Secretary-General, Lok Sabha, 22-31 Dec 1983
+
+==References==
+{{Reflist}}
+
+==External links==
+*http://legislativebodiesinindia.nic.in/chairman%20SECY.htm
+*https://web.archive.org/web/20110703133158/http://164.100.47.132/LssNew/Members/lokprelist.aspx?lsno=7
+*https://web.archive.org/web/20110703133208/http://164.100.47.132/LssNew/Members/lokprelist.aspx?lsno=6
+*http://parliamentofindia.nic.in/ls/lok06/lok06.htm
+*http://parliamentofindia.nic.in/ls/lok07/lok07.htm
+*https://web.archive.org/web/20110718101556/http://www.sikhreview.org/pdf/july2003/pdf-files/member.pdf
+*http://pib.nic.in/archieve/pelection2007.pdf
+*[https://web.archive.org/web/20101216025613/http://164.100.24.207/loksabha_hindi/Members/lokprelist.aspx?lsno=6 Source Sixth Lok Sabha]
+
+{{DEFAULTSORT:Rikhy, Avtar Singh}}
+[[Category:1923 births]]
+[[Category:Living people]]
+[[Category:Indian civil servants]]
+[[Category:University of Calcutta alumni]]
+[[Category:Panjab University alumni]]
+[[Category:Secretaries General of the Lok Sabha]]

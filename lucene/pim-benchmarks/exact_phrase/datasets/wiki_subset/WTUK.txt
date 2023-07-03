@@ -1,0 +1,43 @@
+{{Infobox radio station
+| name             = WTUK
+| logo             =
+| city             = [[Harlan, Kentucky|Harlan]], [[Kentucky]]
+| area             =
+| slogan           =
+| branding         = ''Wild Country''
+| frequency        = 105.1 [[MHz]]
+| repeater         =
+| airdate          = August 1, 1990
+| format           = [[Country music]]
+| power            =
+| erp              = 530 [[watt]]s
+| haat             = 316.0 meters
+| class            = A
+| facility_id      = 18281
+| coordinates      = {{coord|36|54|9|N| 83|18|1|W|region:US_type:city}}
+| callsign_meaning =
+| former_callsigns =
+| owner            = Eastern Broadcasting Company
+| licensee         =
+| sister_stations  =
+| webcast          = http://www.wtukradio.com/livestream.html
+| website          = {{official website|wtukradio.com}}
+| affiliations     = [[UK Sports Network]]
+}}
+
+'''WTUK''' (105.1 [[FM broadcasting|FM]]) is a [[radio station]]  broadcasting a [[country music]] format and is licensed to broadcast from [[Harlan, Kentucky]], in the United States.  The station is owned by Eastern Broadcasting Company.<ref>{{cite web|url=http://www.fcc.gov/fcc-bin/fmq?call=WTUK |title=WTUK Facility Record |work=United States [[Federal Communications Commission]], audio division }}</ref><ref>{{cite web|url=http://www1.arbitron.com/sip/displaySip.do?surveyID=SU08&band=fm&callLetter=WTUK|title=WTUK Station Information Profile|publisher=[[Arbitron]]}}</ref>
+
+The station broadcasts on 105.1&nbsp;MHz. Its 530-watt signal covers [[Harlan County, Kentucky]], and much of southeastern [[Kentucky]]. The FM station broadcasts 24 hours with a [[country music]] format, with daily news, coverage of local high school sports, and [[University of Kentucky]] [[Kentucky Wildcats football|football]] and [[Kentucky Wildcats men's basketball|basketball]] games on the [[UK Sports Network]], as well as newscasts from the Kentucky News Network of Louisville.
+
+==References==
+{{reflist}}
+
+==External links==
+*{{FM station data|WTUK}}
+
+[[Category:Country radio stations in Kentucky]]
+[[Category:Harlan County, Kentucky]]
+[[Category:Radio stations in Kentucky|TUK]]
+
+
+{{Kentucky-radio-station-stub}}

@@ -1,0 +1,25 @@
+== Summary ==
+{{Information
+| Description =  [[Associated Gospel Churches of Canada]] logo. Image is a trace of the previous uploaded logo, to provide better screen quality.  Image may not be an exact replica of AGC logo but is of sufficient likeness for purposes of article.
+|      Source =  http://www.agcofcanada.com/
+|        Date = 
+|    Location = 
+|      Author =  Original by [[Associated Gospel Churches of Canada]]
+|  Permission = Non-free logo
+}}
+
+{{Non-free use rationale|Description= [[Associated Gospel Churches of Canada]] logo. Image is a trace of the previous uploaded logo, to provide better screen quality.  Image may not be an exact replica of AGC logo but is of sufficient likeness for purposes of article.
+|Source= http://www.agcofcanada.com/
+|Portion=
+|Resolution=
+|Article=Associated Gospel Churches of Canada
+|Purpose=From http://www.cbstv2.com for fair use on [[Associated Gospel Churches of Canada]]
+# This image is a low-resolution image of the [[logo]] of a Christian denomination.
+# This image does not limit the copyright holder's ability to profit from the original source, nor will it dilute the importance or recognition of the logo in connection with its organization.
+# This image enhances the article in which it's displayed, as it provides an immediate relevance to the reader more capably than the textual description alone.
+#Use of the logo visually identifies the denomination's doctrines and operations in a manner that mere prose cannot, and meets all criteria in [[WP:NFCC]].
+|Replaceability=Not replaceable; logos are always presumed non-free per [[WP:LOGO]].
+}}
+== Licensing ==
+{{Non-free logo|image has rationale=yes}}
+[[Category:Religious logos]]

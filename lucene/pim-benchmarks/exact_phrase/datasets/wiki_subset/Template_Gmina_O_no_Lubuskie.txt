@@ -1,0 +1,29 @@
+{{Navbox
+|name=Gmina Ośno Lubuskie
+|state = {{{state|uncollapsed}}}
+|title=[[Gmina Ośno Lubuskie]]
+|listclass = hlist
+|group1=Town and seat
+|list1=
+* [[Ośno Lubuskie]]
+|group2=Villages
+|list2=
+* [[Grabno, Lubusz Voivodeship|Grabno]]
+* [[Gronów, Słubice County|Gronów]]
+* [[Kochań]]
+* [[Lipienica, Lubusz Voivodeship|Lipienica]]
+* [[Lubień, Lubusz Voivodeship|Lubień]]
+* [[Podośno]]
+* [[Połęcko, Słubice County|Połęcko]]
+* [[Radachów]]
+* [[Rosławice]]
+* [[Sienno, Lubusz Voivodeship|Sienno]]
+* [[Smogóry]]
+* [[Świniary, Słubice County|Świniary]]
+* [[Trześniów, Lubusz Voivodeship|Trześniów]]
+* [[Wysokie Dęby]]
+}}<noinclude>
+{{collapsible option}}
+
+[[Category:Lubusz Voivodeship gmina templates|Osno Lubuskie]]
+</noinclude>

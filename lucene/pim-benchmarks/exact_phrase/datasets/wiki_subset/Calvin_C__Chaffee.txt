@@ -1,0 +1,91 @@
+{{Infobox congressman
+| honorific-prefix    = 
+| name                = Calvin C. Chaffee
+| honorific-suffix    = 
+| image               = File:Calvin C. Chaffee.jpg
+| alt                 = 
+| state1              = [[Massachusetts]]
+| district1           = {{ushr|MA|10|10th}}
+| term_start1         = March 4, 1855
+| term_end1           = March 3, 1859
+| predecessor1        = [[Edward Dickinson]]
+| successor1          = [[Charles Delano]]
+| birth_date          = {{birth date|1811|8|28}}
+| birth_place         = [[Saratoga Springs, New York]]
+| death_date          = {{death date and age|1896|8|8|1811|8|28}}
+| death_place         = [[Springfield, Massachusetts]]
+| spouse              = Clara Nourse<br/>Eliza Irene Sanford
+| party               = [[Know Nothing]]<br>[[Republican Party (United States)|Republican]]
+| relations           = 
+| children            = Emma Lovetta Wilder (Chaffee) (daughter)<br/>Clemens Clifford Chaffee (son)<br/>Henrietta Sanford King (Emerson) (stepdaughter)
+| residence           = 
+| alma_mater          = [[Middlebury College]]
+| occupation          = Physician
+| profession          = 
+| religion            = 
+| signature           = 
+| signature_alt       = 
+| website             = 
+| footnotes           = 
+| parents             = Calvin Chaffee<br/>Elizabeth Hall
+}}
+
+'''Calvin Clifford Chaffee''' (August 28, 1811 &ndash; August 8, 1896) was an American doctor and politician. He was an outspoken opponent of slavery.
+
+==Life and work==
+Born in [[Saratoga Springs, New York]], Chaffee graduated from the medical school of [[Middlebury College]], [[Middlebury, Vermont]], in 1835. He settled in [[Springfield, Massachusetts]], where he began his medical practice.
+
+In 1854 he was elected on the [[Know Nothing|American Party]] party ticket to the [[Thirty-fourth United States Congress|Thirty-fourth Congress]] as part of the [[Know-Nothing|Know Nothing]] party sweep of the Massachusetts congressional delegation that year. An abolitionist who received an honorary degree from Amherst in the same ceremony as [[Charles Sumner]], he became a [[Republican Party (United States)|Republican]] and was reelected to Congress as such in 1856. 
+
+He was married to Clara Nourse (1813 – 1848) until her death in 1848. <ref>{{Cite web|title=Clara Nourse 1813-1848 - Ancestry®|url=https://www.ancestry.com.au/genealogy/records/clara-nourse-24-2r3hl7|website=www.ancestry.com.au|language=en-US|access-date=2020-06-01}}</ref> They had two children: a daughter, Emma Lovetta Wilder (Chaffee) (1838 – 1910) and a son, Clemens Clifford Chaffee (1841 – 1867). 
+
+In 1850 Chaffee married Eliza Irene Emerson (née Sanford) (1815 – 1903). Irene Emerson was the widow of Dr. John Emerson, the owner of the slave [[Dred Scott]]. She had a daughter, Henrietta Sanford King (Emerson) (1843 – 1919), from her first marriage. There is speculation <ref>Blaustein, pp 147</ref> that Chaffee advanced the [[Dred Scott v. Sandford|''Dred Scott'']] case as a test for slavery.  However, contemporary reports have him discover from the ''Springfield Argus'' that his new wife owned the most famous slave in the world in February 1857, only a month before the [[Supreme Court of the United States|Supreme Court]] handed down the infamous [[Dred Scott v. Sandford|''Dred Scott'']] decision. Criticized nationwide for apparent hypocrisy, Chaffee immediately arranged for the return of Scott to his original owners, the Blow family, for emancipation.  
+
+Because of negative publicity from the Scott case, Chaffee did not seek reelection in 1858 and became Librarian of the [[United States House of Representatives|House of Representatives]] from 1860-1862. He then practiced medicine in Washington, D.C. until 1876, when he returned to Springfield. He died there in 1896 at age 84. 
+
+==References==
+{{reflist}}
+
+==Bibliography==
+*{{cite book
+ | author = Albert P. Blaustein, Robert L. Zangrando
+ | year = 1991
+ | title = Civil Rights and African Americans: A Documentary History
+ | url = https://archive.org/details/civilrightsafric00blau
+ | url-access = registration
+ | publisher = [[Northwestern University Press]]
+ | location = Evanston, IL
+ | id = 0810109204
+}}
+
+==External links==
+{{CongBio|C000270}}
+* [http://www.sos.mo.gov/archives/resources/africanamerican/scott/scott.asp Biography of Dred Scott] by Christyn Elley, Missouri State Archives
+*{{Findagrave|7481822}}
+
+{{s-start}}
+{{s-par|us-hs}}
+{{US House succession box
+| state=Massachusetts
+| district=10
+| before=[[Edward Dickinson]]
+| after=[[Charles Delano]]
+| years=March 4, 1855–March 3, 1859}}
+{{end}}
+
+{{Authority control}}
+
+{{USRepMA}}
+
+{{DEFAULTSORT:Chaffee, Calvin C.}}
+[[Category:1811 births]]
+[[Category:1896 deaths]]
+[[Category:Politicians from Saratoga Springs, New York]]
+[[Category:Members of the United States House of Representatives from Massachusetts]]
+[[Category:American abolitionists]]
+[[Category:Middlebury College alumni]]
+[[Category:Massachusetts Republicans]]
+[[Category:Politicians from Springfield, Massachusetts]]
+[[Category:Know-Nothing members of the United States House of Representatives from Massachusetts]]
+[[Category:Republican Party members of the United States House of Representatives]]
+[[Category:19th-century American politicians]]

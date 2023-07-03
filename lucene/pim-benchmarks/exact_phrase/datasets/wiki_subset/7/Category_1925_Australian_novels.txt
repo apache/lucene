@@ -1,0 +1,14 @@
+{{Portal<!--
+-->|Novels<!--
+-->|Australia<!--
+-->|{{FindYDCportal|{{Title year}}}}<!--
+-->}}<!--
+-->'''[[Australian literature|Australian]] [[novel]]s''' written or published  in the '''year [[{{Title year}}]]'''.
+{{Navseasoncats}}
+{{Cat more if exists|{{Title year}} in Australian literature|{{Title year}} in Australia|{{Title year}} in literature}}
+{{CatAutoTOC}}
+
+[[Category:{{Century name from title year|dash}} Australian novels]]
+[[Category:{{Title year}} novels|Australian]]
+[[Category:{{Title year}} in Australia|Novels]]
+[[Category:Australian novels by year|{{Title year}}]]

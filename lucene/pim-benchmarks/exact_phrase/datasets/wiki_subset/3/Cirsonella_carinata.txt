@@ -1,0 +1,33 @@
+{{Use dmy dates|date=June 2020}}
+{{Speciesbox
+| taxon = Cirsonella carinata
+| image = Cirsonella carinata 001.jpg
+| image_caption = Original drawing of a shell of ''Cirsonella carinata''
+| authority =  (Hedley, 1903) 
+| synonyms_ref = 
+| synonyms =
+* ''Crossea carinata'' <small>Hedley, C. 1903</small>
+* ''Crosseola carinata'' <small>Iredale, T. & McMichael, D.F. 1962</small>
+}}
+
+'''''Cirsonella carinata''''', common name the '''ridged false-top-shell''', is a [[species]] of minute [[sea snail]], a marine [[gastropod]] [[mollusk]] in the [[family (biology)|family]] [[Skeneidae]].<ref name="WoRMS">Marshall, B. (2013). Cirsonella carinata (Hedley, 1903). Accessed through: World Register of Marine Species at http://www.marinespecies.org/aphia.php?p=taxdetails&id=720338 on 2013-10-02</ref>
+
+==Description==
+The height of the shell attains 1.7&nbsp;mm, its diameter 1.8&nbsp;mm. The minute, smooth and glossy, cream-colored shell has a turbinate shape. The four [[Whorl (mollusc)|whorl]]s have an impressed [[Suture (anatomy)|suture]]. The [[body whorl]] is bluntly keeled at the periphery. There is a sculpture of dense spiral microscopic striae. The base of the shell is rounded. The [[Umbilicus (mollusc)|umbilicus]] is narrow and deep, and it is surrounded by a callus funicle which expands anteriorly to join the simple [[Lip (gastropod)|lip]] in an angular lobe. The [[Aperture (mollusc)|aperture]] is subcircular.<ref>[https://archive.org/details/memoirsaustralia4181aust  Hedley, C. 1903. Scientific results of the trawling expedition of H.M.C.S. "Thetis" off the coast of New South Wales in February and March, 1898, pt. 6. Memoirs of the Australian Museum 4(1): 326–402] (described as  ''Crossea carinata'')</ref>
+
+==Distribution==
+This marine species occurs off [[New South Wales]], [[South Australia]], [[Tasmania]], [[Victoria (Australia)|Victoria]], Australia, at depths between 73 m and 200 m.
+
+==References==
+{{Reflist}}
+* Cotton, B.C. 1959. ''South Australian Mollusca. Archaeogastropoda''. Handbook of the Flora and Fauna of South Australia. Adelaide : South Australian Government Printer 449 pp
+* Iredale, T. & McMichael, D.F. 1962. ''A reference list of the marine Mollusca of New South Wales''. Memoirs of the Australian Museum 11: 1–109
+
+==External links==
+* {{Gastropods.com|key=9|id=16349|title=''Cirsonella carinata''|access-date=15 January 2019}}
+
+{{Taxonbar|from=Q16975750}}
+
+{{DEFAULTSORT:Cirsonella Carinata}}
+[[Category:Cirsonella|carinata]]
+[[Category:Gastropods described in 1903]]

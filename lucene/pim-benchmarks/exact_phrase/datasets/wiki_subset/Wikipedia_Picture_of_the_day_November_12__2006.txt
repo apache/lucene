@@ -1,0 +1,12 @@
+<!--If you make a correction to the text below, please also check the article the text came from. -->
+{| width=600 cellspacing=5 style="border-style:solid;border-color:#ccccff;padding:5px;text-align:center;background-color:white;" 
+|align="center"|
+<font size="+1">[[Wikipedia:Picture of the day|Picture of the day]]</font>
+|-
+|[[Image:Dingle peninsula panorama crop.jpg|500px|Dingle Peninsula, County Kerry, Ireland]]
+|-
+|[[Panorama|Panoramic]] view of the '''[[Dingle Peninsula]]''', the [[west]]ernmost point of the [[Republic of Ireland]]. The [[peninsula]] is named after the town of [[Dingle]] and is the location of numerous [[prehistory|prehistoric]] and early [[medieval]] remains, for example the [[Gallarus Oratory]] in the very west of the peninsula near the village of [[Baile an Fheirtéaraigh]] in [[Ard na Caithne]].
+
+<small>{{{type|Photo}}} credit: Steve Ford Ellis/[[User:Howcheng|Howcheng]]</small><br>
+<small>[[Wikipedia:Picture_of_the_day/{{CURRENTMONTHNAME}} {{CURRENTYEAR}}|Archive]] - [[Wikipedia:Featured pictures|More featured pictures...]]</small>
+|}

@@ -1,0 +1,67 @@
+{{short description|megalithic site near Loures, Portugal}}
+{{Infobox ancient site
+| name           = Anta de Carcavelos 
+| native_name    = 
+| alternate_name = 
+<!-- image & map -->
+| image          = AntadeCarcavelos1.jpg
+| image_size     = 
+| alt            = 
+| caption        = Anta de Carcavelos 
+| map            = 
+| map_type       = 
+| map_caption    = 
+| map_size       = 
+| coordinates    = {{coord|38|53|09|N|9|12|59|W|display=inline,title}}
+| location       = [[Loures]], [[Lisbon District]], Portugal
+| type           = [[Dolmen]]
+| part_of        = 
+<!-- stats -->
+| altitude_m     = 
+| length         = 
+| width          = 
+| area           = 
+| volume         = 
+| diameter       = 
+| circumference  = 
+| height         = 
+| builder        = 
+| material       = 
+| built          = 
+| abandoned      = 
+| epochs         = <!-- actually displays as 'Periods' --> Late neolithic
+| cultures       = 
+| dependency_of  = 
+| occupants      = 
+| event          = 
+| discovered     = unknown
+| excavations    = 1986; 1991-4; 1998; 2005-6
+| archaeologists = Gustavo Marques; Florbela Estêvão; Rui Boaventura 
+| condition      = 
+| ownership      = 
+| management     = 
+| public_access  = Yes
+| website        = 
+| notes          = 
+<!-- Other -->
+| other_designation =
+}}
+The '''Anta de Carcavelos''', located close to the village of Carcavelos near the town of Lousa in the municipality of [[Loures]] in the [[Lisbon District]] of [[Portugal]], is a stone age [[dolmen]] (burial chamber) or megalithic monument from the [[Chalcolithic]] period. It is one of many such tombs that have been identified in Portugal.<ref name="Hillier">{{cite book |last1=Hillier |first1=Maria |last2=Boaventura |first2=Rui |last3=Anthunes-Ferreira |first3=Nathalie |last4=Estêvão |first4=Florbela |title=Cutmarks on human remains from the dolmen of Carcavelos (Portugal): Possible evidence of disarticulation and defleshing in the late-Neolithic? |date=August 2009 |publisher=Centro Portugues de Geo-Historia e Pre-Historia |isbn=978-989-96416-0-0}}</ref><ref name="Portal">{{cite web |title=Anta de Carcavelos |url=https://www.megalithic.co.uk/article.php?sid=36142 |website=Megalithic Portal |accessdate=6 April 2019}}</ref>
+
+The Anta was a communal grave consisting of a [[sepulchre|sepulchral chamber]] with a polygonal shape. The remains of the tomb consist of six [[cretaceous]] limestone slabs that originated in the area, which has several sizeable limestone [[outcrop]]s. Five of these slabs are believed to have been part of the burial chamber and the sixth part of the corridor. Near the monument there are other slabs of limestone, one of which of could have been the roof of the chamber.<ref name=Portal/><ref name="Rui">{{cite book |last1=Boaventura |first1=Rui Jorge Narciso |title=As antas e o Megalitismo da região de Lisboa (Vol. 1) |date=2009 |publisher=Universidade de Lisboa |url=http://repositorio.ul.pt/handle/10451/587 |accessdate=6 April 2019}}</ref>
+
+Based on earlier identification by Mesquita Figueiredo and Carlos Ribeiro (1813-82), the German archaeologists [[Georg and Vera Leisner]] visited the Anta of Carcavelos in 1944 as part of preparing a systematic inventory of the [[Neolithic]] tombs of the Lisbon area. They produced drawings but did not carry out any excavations. Hastened as a result of looting at the site, the first excavations were carried out in 1986 and continued again from 1991-94, under the supervision of Gustavo Marques of the Loures municipality. Further intermittent excavation was carried out in 1998 and again in 2005-06 by Florbela Estêvão and Rui Boaventura.<ref name=Rui/> 
+
+From the studies carried out in 1994, many bones were collected, with over 80 adult males and females believed to have been buried there. Various objects were also found such as flint arrowheads, smooth and decorated [[Beaker culture|bell-shaped]] ceramics, dishes, cylindrical idols, and objects of adornment. The items collected came mainly from the interior of the chamber, but some were also found close to the site. In general, the number of items found was significantly lower than those found at other comparable sites in the area, such as the [[Anta do Monte Abraão]]. The evaluation of items found suggested a probable initial use of the dolmen as being in the last centuries of the 4th millennium BCE, with an intensification in its use between 3000 and 2600 BCE, this period having been identified using radiocarbon dating on an adult femur and jaw.<ref name=Hillier/><ref name=Rui/>  
+
+Preliminary microscopic analysis of human bones indicates cut marks. This suggests that the bodies could have been [[disarticulation|disarticulated]] and/or [[excarnation|defleshed]] prior to burial in the dolmen, which thus served as an [[ossuary]] rather than as a repository of bodies. However, archaeologists recognise that further work is required to confirm this.<ref name=Hillier/> 
+==References==
+{{reflist}}
+{{stack|{{Portal|Portugal}}}}
+
+{{European Standing Stones}}
+
+[[Category:Megalithic monuments in Portugal]]
+[[Category:Prehistoric sites in Portugal]]
+[[Category:Dolmens in Portugal]]
+[[Category:Loures]]

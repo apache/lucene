@@ -1,0 +1,35 @@
+{{Infobox school
+| name = MCP Middle and High School (Monterey Coast Prep) 
+| image = 
+| established = 2010
+| image caption = 
+| type = Private, Gifted Talented Learning Differences
+| city = [[Scotts Valley, California|Scotts Valley]]
+| state = [[California]]
+| country = [[United States]]
+| coordinates = {{Coord|37|04|03|N|121|59|51|W|region:US-CA_type:edu|display=inline,title|notes=<ref>http://mapper.acme.com</ref>}}
+| enrollment = approximately 24
+| grades = 6-12
+| class = 5-8
+| school colors = 
+| mascot = 
+| homepage = [http://www.exploremcp.org exploremcp.org]
+|}}
+
+'''Monterey Coast Preparatory (MCP) Middle & High School''' is a private, independent middle and high school in [[Scotts Valley, California|Scotts Valley]], [[California]], [[United States]].  It focuses on using a UDL-modified [[Universal Design for Learning]] curriculum for [[list of gifted and talented programmes#United States|gifted & talented students]], including those with [[Learning disability|learning differences]] such as [[ADHD]], [[dyslexia]], and [[autism spectrum disorder]]s. Founded in 2010 by parents and teachers from another private school, its enrollment numbered thirty five total in 2018, with classes varying from 5 to 8 students each, in grades 6 through 12. The school utilizes laptops, software, and [[assistive technology|assistive and adaptive technology]] for [[Learning disability|LD students]].<ref name="Parent Reflection in Santa Cruz Sentinel">{{cite web|last=Hanna|first=Carin|title=Praiseworthy, Sept. 12, 2011: Preparing students for college|url=http://www.santacruzsentinel.com/ci_18875929|publisher=Santa Cruz Sentinel|accessdate=11 January 2012}}</ref>
+
+MCP began life as Empire Academy, a similarly formatted school which suddenly and unexpectedly closed its doors during the school year. Parents of students who were attending Empire banded together to form a new school, MCP becoming the result. After a brief stint in a location on Encinal street, they moved to Fern street after the discovery of mold in the previous building.<ref>{{Cite web|url=http://www.santacruzsentinel.com/general-news/20100419/empire-academy-reborn-as-monterey-coast-prep|title=Empire Academy reborn as Monterey Coast Prep|date=2010-04-19|website=Santa Cruz Sentinel|language=en-US|access-date=2019-02-25}}</ref> Eventually, they would move to their current location, 125 Bethany Drive.
+
+MCP Middle & High School requirements include a community service component. In 2009, 2010<ref name="Sentinel Article on Food Drive">{{cite web|last=Guzman|first=Isaiah|title=Tiny school fills the food barrels: Monterey Coast Prep tips the donation scales|url=http://www.santacruzsentinel.com/ci_16890542?IADID=Search-www.santacruzsentinel.com-www.santacruzsentinel.com|accessdate=11 January 2012}}</ref>  and 2011, MCP students were awarded highest honors (the "Heavyweight" Award) for their donations to [https://www.youtube.com/watch?v=A5fbAdspc1U/ "Grind Out Hunger"], a local program of [[Second Harvest Food Bank]]. Their 2010 contributions exceeded 20,000 pounds of food.
+
+MCP is accredited by the [http://www.acswasc.org/ Western Association of Schools and Colleges].
+
+==References==
+{{reflist}}
+
+==External links==
+*[http://exploremcp.com Official site]
+
+{{authority control}}
+
+[[Category:Private high schools in California]]

@@ -1,0 +1,27 @@
+{{Cite Russian law
+|id=1208
+|ru_entity=Государственный Совет Удмуртской Республики
+|ru_type=Закон
+|ru_number=1-РЗ
+|ru_date=28 января 2005 г.
+|ru_title=Об установлении границ муниципальных образований и наделении соответствующим статусом муниципальных образований на территории Селтинского района Удмуртской Республики
+|ru_effective_date=с 1&nbsp;января 2005&nbsp;г
+|ru_published_in="Октябрь", №14
+|ru_published_date=25 февраля 2005 г
+|ru_url=
+|ru_amendment_type=Закона
+|ru_amendment_number=39-РЗ
+|ru_amendment_date=12 июля 2005 г.
+|ru_amendment_title=О внесении изменений в отдельные Законы Удмуртской Республики об установлении границ муниципальных образований и наделении соответствующим статусом муниципальных образований на территории Удмуртской Республики в связи с уточнением статуса и наименования отдельных населённых пунктов Удмуртской Республики
+|en_entity=[[State Council of the Udmurt Republic]]
+|en_type=Law
+|en_number=1-RZ
+|en_date=January&nbsp;28, 2005
+|en_title=On Establishing the Borders of the Municipal Formations and Granting the Status to the Municipal Formations on the Territory of Seltinsky District of the Udmurt Republic
+|en_effective_date=January&nbsp;1, 2005
+|en_url=
+|en_amendment_type=Law
+|en_amendment_number=39-RZ
+|en_amendment_date=July&nbsp;12, 2005
+|en_amendment_title=On Amending Various Laws of the Udmurt Republic on Establishing the Borders of the Municipal Formations and Granting the Status to the Municipal Formations on the Territory of the Udmurt Republic Due to Clarifications of Status and Names of Various Inhabited Localities in the Udmurt Republic
+}}<noinclude>[[Category:Subtemplates of Template RussiaAdmMunRef]]</noinclude>

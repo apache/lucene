@@ -1,0 +1,38 @@
+{{see also|Buszewko, Greater Poland Voivodeship}}
+{{Infobox settlement
+| name = Buszewko
+| settlement_type = Village
+| total_type = &nbsp;
+| image_skyline =
+| image_caption =
+| image_flag =
+| image_shield =
+| coordinates = 
+| pushpin_map = Poland 
+| subdivision_type = [[Countries of the world|Country]]
+| subdivision_name = {{flag icon|Poland}} [[Poland]]
+| subdivision_type1 = [[Voivodeships of Poland|Voivodeship]]
+| subdivision_name1 = [[Lubusz Voivodeship|Lubusz]]
+| subdivision_type2 = [[Powiat|County]]
+| subdivision_name2 = [[Strzelce-Drezdenko County|Strzelce-Drezdenko]]
+| subdivision_type3 = [[Gmina]]
+| subdivision_name3 = [[Gmina Strzelce Krajeńskie|Strzelce Krajeńskie]]
+| elevation_m =
+| population_total =
+| website = }}
+'''Buszewko''' {{IPAc-pl|b|u|'|sz|e|f|k|o}} is a [[village]] in the administrative district of [[Gmina Strzelce Krajeńskie]], within [[Strzelce-Drezdenko County]], [[Lubusz Voivodeship]], in western Poland.<ref name="TERYT">{{cite web |url=http://www.stat.gov.pl/broker/access/prefile/listPreFiles.jspa |title=Central Statistical Office (GUS) - TERYT (National Register of Territorial Land Apportionment Journal) |date=2008-06-01 |language=Polish}}</ref>
+
+Before 1945 the area was part of Germany (see ''[[Territorial changes of Poland after World War II]]'').
+
+==References==
+{{reflist}}
+
+<br>
+{{Gmina Strzelce Krajeńskie}}
+
+{{coord|52|54|31|N|15|25|06|E|region:PL_type:city_source:kolossus-plwiki|display=title}}
+
+[[Category:Villages in Strzelce-Drezdenko County|Buszewko]]
+
+
+{{Strzelce-Drezdenko-geo-stub}}

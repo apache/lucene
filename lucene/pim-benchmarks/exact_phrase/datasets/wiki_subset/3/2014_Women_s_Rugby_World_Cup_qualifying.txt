@@ -1,0 +1,308 @@
+{{Use dmy dates|date=February 2012}}
+
+The qualification process for the [[2014 Women's Rugby World Cup]] began on 5 February 2012. A total of 12 teams will qualify for the tournament, which will be held in [[France]]<ref>{{cite web |url= http://www.rwcwomens.com/mediazone/mediarelease/newsid=2066385.html |title= WRWC 2014 dates and venues announced |publisher= IRB |access-date= 2 October 2013 |archive-url= https://web.archive.org/web/20140903095248/http://www.rwcwomens.com/mediazone/mediarelease/newsid=2066385.html |archive-date= 3 September 2014 |url-status= dead |df= dmy-all }}</ref> between 1 and 17 August 2014.
+
+==Qualification process==
+Following WRWC 2010, six teams received an automatic qualification berth - these berths being given the top 3 teams (New Zealand, England, and Australia), the hosts (France), Canada, and the United States. The remaining six berths for the tournament will be awarded through regional tournaments.
+
+The non-automatic qualification process began on 5 February 2012. Twenty teams competed in over 49 matches to win one of the six remaining places at the 2014 tournament.
+
+==Regional qualification==
+There will be 12 nations participating in the [[2014 Women's Rugby World Cup]]. Six teams have automatically qualified by virtue of their performance at the prior Rugby World Cup, leaving six teams to qualify through regional matches. Regional Qualification began on 5 February 2012, during the first round of the [[2012 Women's Six Nations Championship]].
+
+In all, 26 national teams have been involved in the 2014 World Cup - six as automatic qualifiers and 20 as entrants in the qualification rounds.
+
+{| class="wikitable" width="90%" style="font-size:90%;" align=center
+
+|- bgcolor="#efefef"
+!width="25%"| Region
+!width="12%"| Automatic qualifiers
+!width="12%"| Teams in qualifying process
+!width="11%"| Qualifying places
+!width="20%"| Qualified teams
+!width="20%"| World Cup pools
+|-align=center
+|align=left| Africa (CAR) || 0 || 3 || 1 || {{ruw|RSA}} || C
+|-align=center
+|align=left| Americas (NACRA/CONSUR) || 2 || 0 || 0 || {{ruw|CAN}} (AQ)<br/>{{ruw|USA}} (AQ) || A<br/>B
+|-align=center
+|align=left| Asia (ARFU) || 0 || 7 || 1 || {{ruw|KAZ}} || B
+|-align=center
+|align=left| Europe (FIRA-AER) || 2 || 10 || 4 || {{ruw|ENG}} (AQ)<br/>{{ruw|FRA}} (AQ)<br/>{{ruw|IRE}}<br/>{{ruw|SAM}} *<br/>{{ruw|ESP}}<br/>{{ruw|WAL}} || A<br/>C<br/>B<br/>A<br/>A<br/>C
+|-align=center
+|align=left| Oceania (FORU) || 2 || 0 || 0 || {{ruw|AUS}} (AQ)<br/>{{ruw|NZL}} (AQ) || C<br/>B
+|-align=center
+|align=left| TOTAL || 6 || 20 || 6 || || 
+|}
+
+<small>* Samoa, despite being from Oceania, qualified through the European tournament.</small>
+
+===African Qualification===
+
+====Round One====
+
+The initial round of African qualification was the annual, two game, [[Elgon Cup (women's)#2013|Elgon Cup]] tournament between Kenya and Uganda. Each team won their home games, however Uganda won on point aggregate.
+
+{{wrugbybox |
+test# =993|
+date = 2013-06-15|
+nohome = {{Ruw-rt|KEN}}|
+score = 18-17|
+noaway = {{Ruw|UGA}} |
+stadium = [[Moi International Sports Centre]], [[Nairobi]]|
+code = 15/17/15}}
+
+{{wrugbybox |
+test# =994|
+date = 2013-06-22|
+nohome = {{Ruw-rt|UGA}}|
+score = 13-8|
+noaway = {{Ruw|KEN}} |
+stadium =  [[Kyadondo Rugby Club]], [[Kampala]]|
+code = 18/16/16}}
+
+'''''One game each. {{Ruw-rt|UGA}} win the Elgon Cup 30-26 on aggregate'''''
+
+====Round Two====
+
+South Africa played a single game against the Round One winners, Uganda. South Africa won easily, and secured qualification to the World Cup.
+
+{{wrugbybox |
+test# = 1015|
+date = 2013-09-07 |
+nohome = {{ruw-rt|RSA}} |
+score = 63-3 |
+noaway = {{ruw|UGA}} |
+stadium = [[East London, Eastern Cape]]|
+code = 33/19/1}}
+
+===Americas Qualification===
+
+Canada and the United States automatically qualified.
+
+===Asian Qualification===
+
+{{main|ARFU Women's Rugby Championship}}
+
+The winner of the 2013 ARFU Asian Four Nations, Kazakhstan, qualified directly.
+
+====Round One====
+
+Singapore won the 2012 ARFU D2. They were promoted to D1 and were eligible to qualify
+
+{{Round4
+<!--Date-Place|Team 1|Score 1|Team 2|Score 2 -->
+<!--semi-finals -->
+| 14 June 2012 |{{ruw|LAO}}|0|'''{{ruw|SIN}}'''|'''74'''
+| 14 June 2012 |{{ruw|PHI}}|18|'''{{ruw|THA}}'''|'''50'''
+<!--final -->
+| 16 June 2012 |'''{{ruw|SIN}}'''|'''21'''|{{ruw|THA}}|19}}
+
+====Round Two====
+
+Kazakhstan defeated tough competition to win the 2013 ARFU A4N and qualify directly.
+
+{{Round4
+<!--Date-Place|Team 1|Score 1|Team 2|Score 2 -->
+<!--semi-finals -->
+| 4 September 2013 |'''{{ruw|JPN}}'''|'''82'''|{{ruw|HKG}}|0
+| 4 September 2013 |'''{{ruw|KAZ}}'''|'''91'''|{{ruw|SIN}}|5
+<!--final -->
+| 7 September 2013 |bgcolor=#ccffcc|'''{{ruw|KAZ}}'''|'''25'''|{{ruw|JPN}}|23}}
+
+===European Qualification===
+
+France automatically qualified by virtue of being hosts. England automatically qualified by finishing second in the 2010 tournament. In addition, there were four other places available for European countries.
+
+(Samoa participated in the European qualification)
+
+====Round One====
+
+{{main|2012 Women's Six Nations Championship}}
+{{main|2013 Women's Six Nations Championship}}
+
+The top two teams from the combined [[2012 Women's Six Nations Championship|2012]] and [[2013 Women's Six Nations Championship]], Ireland and Wales, qualify directly. The remaining two teams, Italy and Scotland, proceed to Round Three.
+
+{| class="wikitable" style="text-align: center;"
+!rowspan=2 width="8%"| Position
+!rowspan=2 width="18%"| Nation
+!colspan=4 width="32%"| Games
+!colspan=4 width="32%"| Points
+!rowspan=2 width="10%"| Table<br />points
+|-
+!width="8%"| Played 
+!width="8%"| Won 
+!width="8%"| Drawn 
+!width="8%"| Lost 
+!width="8%"| For 
+!width="8%"| Against
+!width="8%"| Difference
+!width="8%"| Tries 
+|- bgcolor=#ccffcc  align=center
+| 1 || align=left| {{ruw|IRE}}
+| 10
+| 8
+| 0
+| 2
+| 197
+| 67
+| 130
+| 25
+| 16
+|- bgcolor=#ccffcc  align=center
+| 2 || align=left| {{ruw|WAL}}
+| 10
+| 4
+| 0
+| 6
+| 105
+| 192
+| -86
+| 16
+| 8
+|- 
+| 3 || align=left| {{ruw|ITA}}
+| 10
+| 3
+| 0
+| 7
+| 94
+| 225
+| -131
+| 9
+| 6
+|-
+| 4 || align=left| {{ruw|SCO}}
+| 10
+| 0
+| 0
+| 10
+| 15
+| 342
+| -327
+| 2
+| 0
+|}
+
+====Round Two====
+
+{{main|2012 Women's European Championship}}
+
+The top two teams from the [[2012 Women's European Championship#Group B|2012 Women's European Championship (Group B)]] proceed to Round Three.
+
+{{Round4
+<!--Date-Place|Team 1|Score 1|Team 2|Score 2 -->
+<!--semi-finals -->
+| 3 May 2012 |{{ruw|FIN}}|0|'''{{ruw|NED}}'''|'''105'''
+| 3 May 2012 |{{ruw|RUS}}|0|'''{{ruw|SWE}}'''|'''67'''
+<!--final -->
+| 7 May 2012 |'''{{ruw|SWE}}'''|'''10'''|{{ruw|NED}}|3}}
+
+====Round Three====
+
+{{main|2013 Women's European Qualification Tournament}}
+
+The four teams from the previous two rounds, plus Spain and Samoa, competed in a tournament. The top two teams, Spain and Samoa, qualified.
+
+{| class="wikitable" style="text-align: center;"
+!rowspan=2 width="8%"| Position
+!rowspan=2 width="18%"| Nation
+!colspan=4 width="32%"| Games
+!colspan=2 width="16%"| Match points
+!colspan=2 width="16%"| Bonus points
+!rowspan=2 width="10%"| Table<br />points
+|-
+!width="8%"| Played 
+!width="8%"| Won 
+!width="8%"| Drawn 
+!width="8%"| Lost 
+!width="8%"| For 
+!width="8%"| Against 
+!width="8%"| Tries (4+) 
+!width="8%"| Losing (≤7) 
+|-bgcolor=#ccffcc  align=center
+| 1 || align=left| {{ruw|ESP}}
+| 3
+| 3
+| 0
+| 0
+| 171
+| 7
+| 3
+| 0
+| 15
+|-bgcolor=#ccffcc  align=center
+| 2 || align=left| {{ruw|SAM}}
+| 3
+| 2
+| 0
+| 1
+| 84
+| 69
+| 3
+| 0
+| 11
+|-
+| 3 || align=left| {{ruw|SCO}}
+| 3
+| 2
+| 0
+| 1
+| 95
+| 42
+| 2
+| 0
+| 10
+|-
+| 4 || align=left| {{ruw|ITA}}
+| 3
+| 2
+| 0
+| 1
+| 99
+| 62
+| 1
+| 0
+| 9
+|-
+| 5 || align=left| {{ruw|NED}}
+| 3
+| 0
+| 0
+| 3
+| 21
+| 138
+| 0
+| 0
+| 0
+|-
+| 6 || align=left| {{ruw|SWE}}
+| 3
+| 0
+| 0
+| 3
+| 8
+| 147
+| 0
+| 0
+| 0
+|}
+
+===Oceanic Qualification===
+
+New Zealand and Australia automatically qualified by finishing first and third respectively in the 2010 tournament. Samoa qualified through the European qualification.
+
+==Sources==
+{{reflist}}
+
+==External links==
+{{Commonscat}}
+*[https://web.archive.org/web/20141010114646/http://www.rwcwomens.com/home/teams/index.html]. RWCWomens.com
+
+
+{{Women's Rugby World Cup}}
+
+{{DEFAULTSORT:Qualifying}}
+[[Category:2014 Women's Rugby World Cup]]
+[[Category:2012 in women's rugby union]]
+[[Category:2013 in women's rugby union]]

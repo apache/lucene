@@ -1,0 +1,22 @@
+The '''[[Cantons of France|canton]] of Le Mont-Blanc''' is an administrative division of the [[Haute-Savoie]] [[departments of France|department]], southeastern [[France]]. It was created at the French canton reorganisation which came into effect in March 2015. Its seat is in [[Passy, Haute-Savoie|Passy]].<ref name=decret>{{cite web|url=http://www.legifrance.gouv.fr/affichTexte.do?cidTexte=JORFTEXT000028621987|title=Décret n° 2014-153 du 13 février 2014 portant délimitation des cantons dans le département de la Haute-Savoie &#124; Legifrance|accessdate=2017-05-23}}</ref>
+
+It consists of the following communes:<ref name=decret/>
+#[[Chamonix-Mont-Blanc]]
+#[[Les Contamines-Montjoie]]
+#[[Les Houches]]
+#[[Passy, Haute-Savoie|Passy]]
+#[[Saint-Gervais-les-Bains]]
+#[[Servoz]]
+#[[Vallorcine]]
+
+==References==
+{{Reflist}}
+
+{{Cantons of Haute-Savoie}}
+
+{{coord|45.92|6.70|display=title}}
+
+{{DEFAULTSORT:Mont-Blanc}}
+[[Category:Cantons of Haute-Savoie]]
+
+{{HauteSavoie-geo-stub}}

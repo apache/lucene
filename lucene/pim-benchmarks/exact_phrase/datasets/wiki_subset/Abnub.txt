@@ -1,0 +1,72 @@
+{{Infobox settlement
+| name                            = Abnub
+| native_name                     = اب‌ناب
+| pushpin_map                     = Egypt
+| pushpin_label_position          = bottom
+| pushpin_mapsize                 = 300
+| pushpin_map_caption             = Location in Egypt
+<!-- Location ------------------>| coordinates                     = {{coord|27|16|N|31|09|E|region:EG|display=inline,title}}
+| subdivision_type                = Country
+| subdivision_name                = {{flag|Egypt}}
+| subdivision_type1               = [[Governorates of Egypt|Governorate]]
+| subdivision_type2               = 
+| subdivision_type3               = 
+| subdivision_name1               = [[Asyut Governorate]]
+| subdivision_name2               = 
+| subdivision_name3               = 
+| established_title               = <!-- Settled -->
+| established_date                = <!-- Area    --------------------->
+| government_footnotes            = 
+| government_type                 = 
+| leader_title                    = 
+| leader_name                     = 
+| leader_title1                   = <!-- for places with, say, both a mayor and a city manager -->
+| leader_name1                    = 
+| unit_pref                       = Imperial <!--Enter: Imperial, if Imperial (metric) is desired-->
+| area_footnotes                  = 
+| area_magnitude                  = 
+| area_total_km2                  = <!-- ALL fields dealing with a measurements are subject to automatic unit conversion-->
+| area_land_km2                   = <!--See table @ Template:Infobox Settlement for details on automatic unit conversion-->
+<!-- Population   ----------------------->| elevation_footnotes             = <!--for references: use <ref> </ref> tags-->
+| elevation_m                     = 
+| elevation_ft                    = <!-- Area/postal codes & others -------->
+| population_total                = 64526
+| population_as_of                = 2006
+| population_footnotes            = 
+| population_density_km2          = 
+| population_density_sq_mi        = 
+| population_metro                = 
+| population_density_metro_km2    = 
+| population_density_metro_sq_mi  = 
+| population_blank1_title         = Ethnicities
+| population_blank1               = 
+| population_density_blank1_km2   = 
+| population_density_blank1_sq_mi = <!-- General information  --------------->
+| population_note                 = 
+| postal_code_type                = <!-- enter ZIP code, Postcode, Post code, Postal code... -->
+| postal_code                     = 
+| area_code                       = 
+| website                         = 
+| footnotes                       = |<!-- Politics ----------------->
+| timezone                        = [[Egypt Standard Time|EST]]
+| utc_offset                      = +2
+| timezone_DST                    = +3
+| utc_offset_DST                  = 
+| blank_name                      = 
+| blank_info                      = 
+| blank1_name                     = 
+| blank1_info                     = 
+}} 
+
+'''Abnub''' ({{Lang-ar|أبنوب}}, {{Lang-cop|ⲁⲡⲁⲛⲟⲩⲃ}}) is a city in [[Egypt]]. It is located on the east bank of the [[Nile]], in the [[Asyut Governorate]], several kilometres northwest of [[Asyut]]. As of the 2006 census, the population was 67,526. The city's name is derived from the Egyptian god of [[mummification]], [[Anubis]].<ref>{{cite news|url=http://english.ahram.org.eg/NewsContent/32/97/46369/Folk/Street-Smart/Egyptian-cities-and-markets-Whats-behind-a-name-.aspx|title=Egyptian cities and markets: What's behind a name?|last=El-Gergawi|first=Sherry|date=June 28, 2012|work=[[Ahram Online]]|accessdate=17 June 2017}}</ref>
+
+==Notable people==
+Abnub is the birthplace of [[Pope Shenouda III of Alexandria]], the [[Coptic Pope|Pope]] of the [[Coptic Orthodox Church]] from 1971 to 2012.<ref>{{cite news|url=http://www.asianews.it/news-en/Coptic-Christians-after-Shenouda-24280.html|title=Coptic Christians after Shenouda|last=Samir|first=Samir Khalil|date=March 20, 2012|work=Asia News|accessdate=17 June 2017}}</ref>
+
+==References==
+{{reflist}}
+
+[[Category:Populated places in Asyut Governorate]]
+
+{{Cities of Egypt}} 
+{{egypt-geo-stub}}

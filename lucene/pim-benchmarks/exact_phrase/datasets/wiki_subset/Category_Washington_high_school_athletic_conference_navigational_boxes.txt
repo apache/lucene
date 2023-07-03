@@ -1,0 +1,4 @@
+{{template category|type=navbox}}
+[[Category:Washington (state) education navigational boxes]]
+[[Category:United States high school athletic conference navigational boxes]]
+{{CatAutoTOC}}

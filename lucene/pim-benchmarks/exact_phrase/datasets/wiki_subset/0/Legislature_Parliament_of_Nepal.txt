@@ -1,0 +1,5 @@
+#REDIRECT [[2nd Nepalese Constituent Assembly]]
+
+{{Redirect category shell|
+{{R from move}}
+}}

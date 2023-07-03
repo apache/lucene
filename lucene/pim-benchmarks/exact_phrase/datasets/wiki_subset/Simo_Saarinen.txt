@@ -1,0 +1,418 @@
+{{Use mdy dates|date=November 2011}}
+{{Infobox ice hockey player
+| image =
+| image_size =
+| league = [[SM-liiga|SM-l]]
+| position = [[Defenceman (ice hockey)|Defence]]
+| shoots = Left
+| height_ft = 5
+| height_in = 10
+| weight_lb = 178
+| played_for = [[HIFK]] <br> [[New York Rangers]]
+| ntl_team = Finland
+| birth_date = {{birth date and age|1963|02|14}}
+| birth_place = [[Helsinki]], [[Finland|FIN]]
+| draft = 193rd overall
+| draft_year = 1982
+| draft_team = [[New York Rangers]]
+| career_start = 1980
+| career_end = 1996
+}}
+
+'''Simo Olavi Saarinen''' (born February 14, 1963 in [[Helsinki]], Finland) is a retired professional [[ice hockey]] [[defenceman (ice hockey)|defenceman]]
+
+== Playing career ==
+Simo Saarinen started his career in his hometown team [[HIFK|Helsingin IFK]]. Saarinen played once in the [[European Junior Ice Hockey Championships]] and twice in the World Junior Ice Hockey Championships and was soon noticed by NHL scouts. Saarinen was drafted by [[New York Rangers]] in the [[1982 NHL Entry Draft]]. After [[1984 Winter Olympics|1984 Olympic Ice Hockey tournament]] Saarinen went to NHL. Saarinen was injured during his debut season for [[New York Rangers]]. Due to the injuries Saarinen did not play in the 1985–86 season and returned to [[HIFK]] for 1986–87 season. Saarinen played for [[HIFK]] until 1996 when he finally retired from active playing.
+
+== After retirement ==
+After retiring in 1996 Saarinen started to referee ice hockey games in Finland. Saarinen refereed his first [[SM-liiga]] games in the 2001–2002 SM-Liiga season. Currently Saarinen referees hockey games in [[Helsinki]] and Southern Finland area.
+
+== International play ==
+{{MedalTop}}
+{{MedalSport | Men's [[Ice hockey at the Winter Olympics|Ice hockey]]}}
+{{MedalSilver| [[1988 Winter Olympics|1988 Calgary]] |[[Ice hockey at the 1988 Winter Olympics|Ice hockey]]}}
+{{MedalBottom}}
+
+For [[Finland men's national ice hockey team|Finland]] Saarinen played twice in [[Ice Hockey World Championships]] and three times in [[Winter Olympics|Olympic Hockey Tournament]]. Saarinen was part of the historic [[1988 Winter Olympics|Ice Hockey at the 1988 Winter Olympics]] Ice Hockey Team which won Finland's first international tournament medal, a silver one.
+
+==Career statistics==
+===Regular season and playoffs===
+{| border="0" cellpadding="1" cellspacing="0" style="text-align:center; width:60em"
+|- bgcolor="#e0e0e0"
+! colspan="3" bgcolor="#ffffff" | &nbsp;
+! rowspan="99" bgcolor="#ffffff" | &nbsp;
+! colspan="5" | [[regular season|Regular&nbsp;season]]
+! rowspan="99" bgcolor="#ffffff" | &nbsp;
+! colspan="5" | [[Playoffs]]
+|- bgcolor="#e0e0e0"
+! [[Season (sports)|Season]]
+! Team
+! League
+! GP
+! [[Goal (ice hockey)|G]]
+! [[Assist (ice hockey)|A]]
+! [[Point (ice hockey)|Pts]]
+! [[Penalty (ice hockey)|PIM]]
+! GP
+! G
+! A
+! Pts
+! PIM
+|- 
+| [[1980–81 SM-liiga season|1980–81]]
+| [[HIFK (ice hockey)|HIFK]]
+| [[SM-liiga|Liiga]]
+| 20
+| 1
+| 0
+| 1
+| 4
+| 2
+| 0
+| 0
+| 0
+| 0
+|- bgcolor="#f0f0f0"
+| [[1981–82 SM-liiga season|1981–82]]
+| HIFK
+| Liiga
+| 36
+| 5
+| 10
+| 15
+| 20
+| 8
+| 1
+| 3
+| 4
+| 6
+|-
+| [[1982–83 SM-liiga season|1982–83]]
+| HIFK
+| Liiga
+| 36
+| 9
+| 6
+| 15
+| 24
+| 9
+| 0
+| 1
+| 1
+| 14
+|- bgcolor="#f0f0f0"
+| [[1983–84 SM-liiga season|1983–84]]
+| HIFK
+| Liiga
+| 36
+| 7
+| 7
+| 14
+| 32
+| 2
+| 0
+| 0
+| 0
+| 0
+|-
+| [[1984–85 NHL season|1984–85]]
+| [[New York Rangers]]
+| [[National Hockey League|NHL]]
+| 8
+| 0
+| 0
+| 0
+| 0
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1985–86 AHL season|1985–86]]
+| [[New Haven Nighthawks]]
+| [[American Hockey League|AHL]]
+| 13
+| 3
+| 4
+| 7
+| 11
+| —
+| —
+| —
+| —
+| —
+|-
+| [[1986–87 SM-liiga season|1986–87]]
+| HIFK
+| Liiga
+| 36
+| 1
+| 6
+| 7
+| 12
+| 5
+| 1
+| 1
+| 2
+| 2
+|- bgcolor="#f0f0f0"
+| [[1987–88 SM-liiga season|1987–88]]
+| HIFK
+| Liiga
+| 39
+| 8
+| 11
+| 19
+| 29
+| 6
+| 2
+| 2
+| 4
+| 2
+|-
+| [[1988–89 SM-liiga season|1988–89]]
+| HIFK
+| Liiga
+| 34
+| 1
+| 7
+| 8
+| 14
+| 2
+| 0
+| 1
+| 1
+| 0
+|- bgcolor="#f0f0f0"
+| [[1989–90 SM-liiga season|1989–90]]
+| HIFK
+| Liiga
+| 41
+| 9
+| 11
+| 20
+| 38
+| 2
+| 0
+| 1
+| 1
+| 2
+|-
+| [[1990–91 SM-liiga season|1990–91]]
+| HIFK
+| Liiga
+| 27
+| 3
+| 8
+| 11
+| 12
+| —
+| —
+| —
+| —
+| —
+|- bgcolor="#f0f0f0"
+| [[1991–92 SM-liiga season|1991–92]]
+| HIFK
+| Liiga
+| 43
+| 5
+| 18
+| 23
+| 14
+| 7
+| 0
+| 0
+| 0
+| 2
+|-
+| [[1992–93 SM-liiga season|1992–93]]
+| HIFK
+| Liiga
+| 46
+| 7
+| 5
+| 12
+| 22
+| 4
+| 0
+| 3
+| 3
+| 0
+|- bgcolor="#f0f0f0"
+| [[1993–94 SM-liiga season|1993–94]]
+| HIFK
+| Liiga
+| 40
+| 4
+| 5
+| 9
+| 38
+| 3
+| 0
+| 1
+| 1
+| 0
+|-
+| [[1994–95 SM-liiga season|1994–95]]
+| HIFK
+| Liiga
+| 42
+| 7
+| 7
+| 14
+| 40
+| 3
+| 0
+| 0
+| 0
+| 2
+|- bgcolor="#f0f0f0"
+| [[1995–96 SM-liiga season|1995–96]]
+| HIFK
+| Liiga
+| 30
+| 4
+| 3
+| 7
+| 32
+| 1
+| 1
+| 0
+| 1
+| 0
+|- bgcolor="#e0e0e0"
+! colspan="3" | Liiga totals
+! 506
+! 71
+! 104
+! 175
+! 331
+! 54
+! 5
+! 13
+! 18
+! 30
+|}
+
+===International===
+{| border="0" cellpadding="1" cellspacing="0" style="text-align:center; width:50em"
+|- ALIGN="center" bgcolor="#e0e0e0"
+! Year
+! Team
+! Event
+! rowspan="99" bgcolor="#ffffff" | &nbsp;
+! GP
+! G
+! A
+! Pts
+! PIM
+|-
+| [[1981 IIHF European U18 Championship|1981]]
+| [[Finland men's national junior ice hockey team|Finland]]
+| [[IIHF European Junior Championships|EJC]]
+| 5
+| 1
+| 1
+| 2
+| 2
+|- bgcolor="#f0f0f0"
+| [[1982 World Junior Ice Hockey Championships|1982]]
+| Finland
+| [[World Junior Ice Hockey Championships|WJC]]
+| 7
+| 3
+| 3
+| 6
+| 6
+|-
+| [[1983 World Junior Ice Hockey Championships|1983]]
+| Finland
+| WJC
+| 7
+| 3
+| 3
+| 6
+| 4
+|- bgcolor="#f0f0f0"
+| [[Ice hockey at the 1984 Winter Olympics|1984]]
+| [[Finland men's national ice hockey team|Finland]]
+| [[Ice hockey at the Winter Olympics|OG]]
+| 6
+| 1
+| 0
+| 1
+| 14
+|-
+| [[Ice hockey at the 1988 Winter Olympics|1988]]
+| Finland
+| OG
+| 7
+| 0
+| 2
+| 2
+| 4
+|- bgcolor="#f0f0f0"
+| [[1989 Men's World Ice Hockey Championships|1989]]
+| Finland
+| [[World Ice Hockey Championships|WC]]
+| 5
+| 0
+| 0
+| 0
+| 2
+|-
+| [[1990 Men's World Ice Hockey Championships|1990]]
+| Finland
+| WC
+| 7
+| 0
+| 3
+| 3
+| 6
+|- bgcolor="#f0f0f0"
+| [[Ice hockey at the 1992 Winter Olympics|1992]]
+| Finland
+| OG
+| 5
+| 0
+| 1
+| 1
+| 6
+|- bgcolor="#e0e0e0"
+! colspan=3 | Junior totals
+! 19
+! 7
+! 7
+! 14
+! 12
+|- bgcolor="#e0e0e0"
+! colspan=3 | Senior totals
+! 30
+! 1
+! 6
+! 7
+! 34
+|}
+
+== External links ==
+*{{hockeydb|9643}}
+
+{{DEFAULTSORT:Saarinen, Simo}}
+[[Category:1963 births]]
+[[Category:Finnish ice hockey defencemen]]
+[[Category:HIFK (ice hockey) players]]
+[[Category:Ice hockey players at the 1984 Winter Olympics]]
+[[Category:Ice hockey players at the 1988 Winter Olympics]]
+[[Category:Ice hockey players at the 1992 Winter Olympics]]
+[[Category:Ice hockey players with retired numbers]]
+[[Category:Living people]]
+[[Category:New Haven Nighthawks players]]
+[[Category:New York Rangers draft picks]]
+[[Category:New York Rangers players]]
+[[Category:Olympic ice hockey players of Finland]]
+[[Category:Olympic silver medalists for Finland]]
+[[Category:Sportspeople from Helsinki]]
+[[Category:Olympic medalists in ice hockey]]
+[[Category:Medalists at the 1988 Winter Olympics]]

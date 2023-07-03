@@ -1,0 +1,20 @@
+[[File:Oneida, Ohio RR Bridge over Sandy Creek from south.JPG|right|thumb|[[Wheeling and Lake Erie Railway (1990)|W&LE]] bridge over [[Sandy Creek (Ohio)|Sandy Creek]] in Oneida]]
+'''Oneida''' is an [[unincorporated community]] in [[Carroll County, Ohio|Carroll County]], in the [[U.S. state]] of [[Ohio]].<ref>{{GNIS|1070879|name=Oneida}}</ref>
+
+==History==
+Onedia sprang up around 1840 when a [[watermill|mill]] was built at that point.<ref name="Overman 105">{{cite book | url=https://babel.hathitrust.org/cgi/pt?id=mdp.39015015361465;view=1up;seq=121 | title=Ohio Town Names | publisher=Atlantic Press | last=Overman | first=William Daniel | year=1958 | location=Akron, OH | page=105}}</ref>  The community takes its name from [[Oneida County, New York]], the native home of the mill's proprietor.<ref name="Overman 105" /> A post office called Oneida Mills was established in 1851, the name was changed to Oneida in 1899, and the post office closed in 1918.<ref>{{GNIS|1083281|name=Oneida Post Office (historical)}}</ref>
+
+The [[Patrick Hull House]] in Oneida is listed on the National Register of Historic Places.<ref>{{cite book|author1=Editorial Staff|author2=State History Publications, LLC|title=Ohio Historic Places Dictionary|url=https://books.google.com/books?id=YfvhVln0D20C&pg=PA110|year=2008|publisher=North American Book Dist LLC|isbn=978-1-878592-70-5|page=110}}</ref>
+
+==References==
+{{Reflist}}
+
+{{Carroll County, Ohio}}
+{{Authority control}}
+
+{{coord|40|41|55|N|81|08|56|W|type:city_region:US-OH_source:GNIS-enwiki|display=title}}
+
+[[Category:Unincorporated communities in Carroll County, Ohio]]
+[[Category:Unincorporated communities in Ohio]]
+
+{{CarrollCountyOH-geo-stub}}

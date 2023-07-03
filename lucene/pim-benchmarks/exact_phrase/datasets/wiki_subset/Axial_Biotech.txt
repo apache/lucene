@@ -1,0 +1,44 @@
+{{advert|date=May 2019}}
+{{Infobox company | name = Axial Biotech, Inc. | company_logo = | company_type = [[Product (business)|Privately held]] | foundation = [[Salt Lake City, UT|SLC, Utah]], [[United States|USA]] {{Start date|2002}} | defunct = {{End date|2013}} }}
+
+'''Axial Biotech, Inc.''' was a privately held molecular diagnostics company based in [[Salt Lake City]], [[Utah]].<ref>{{cite news |title=Axial raises $15.3 million in second financing round |newspaper=[[Deseret News]] |date=2007-03-28 |url=http://www.deseretnews.com/article/1,5143,660206760,00.html |accessdate=2009-10-15 |archiveurl=https://www.webcitation.org/5kYNYlbDr?url=http://www.deseretnews.com/article/1,5143,660206760,00.html |archivedate=2009-10-15 |url-status=live }}</ref> It was founded in 2002 by a group of spine surgeons and geneticists,<ref>{{cite web |url=http://investing.businessweek.com/research/stocks/private/snapshot.asp?privcapId=20759926 |title=Company Overview of Axial Biotech, Inc |publisher=Bloomberg |work=Businessweek |accessdate=20 April 2014}}</ref> and was closed in March 2013.<ref>{{cite web |url=http://www.crunchbase.com/company/axial-biotech |title=Axial Biotech |publisher=CrunchBase |accessdate=20 April 2014}}</ref>
+
+The company's mission was to deliver diagnostics that improve and personalize the treatment of spine disorders.  Axial Biotech conducted genetic research on [[scoliosis]] and [[degenerative disc disease]].
+
+In September 2009, Axial Biotech announced the commercial launch of the ScoliScore AIS Prognostic Test with the claim of it being a DNA-based diagnostic test for scoliosis. In 2012 [[Transgenomic]] acquired the rights to the ScoliScore test.<ref name=bw-20120828>{{cite web |url=http://www.businesswire.com/news/home/20120828005099/en/Transgenomic-Acquires-ScoliScore%E2%84%A2-Adolescent-Idiopathic-Scoliosis-Prognostic |title=Transgenomic Acquires ScoliScore Adolescent Idiopathic Scoliosis Prognostic Test from Axial Biotech |publisher=Bloomberg |work=Businessweek |date=28 August 2012 |accessdate=20 April 2014}}</ref>
+
+==AIS genetic testing==
+{{update-section|date=April 2014}}
+'''AIS genetic testing''' is the process of analyzing the [[DNA]] of a patient who has been diagnosed with adolescent idiopathic scoliosis to determine his or her likelihood of progression to a severe spinal curve.
+
+Approximately 4% of AIS patients will progress to the point where surgery is done.  The majority of adolescents with idiopathic scoliosis are observed at regular intervals (usually between 4–6 months) with a physical exam and [[x-ray]] to evaluate the magnitude of the curve.<ref>Kuivala, Thomas, M.D. "What You Need to Know About Scoliosis." 1/17/08 Spine Universe. 2009 {{cite web|url=http://www.spineuniverse.com/displayarticle.php/article2177.html |title=Archived copy |accessdate=2012-05-08 |url-status=dead |archiveurl=https://web.archive.org/web/20100116092543/http://www.spineuniverse.com/displayarticle.php/article2177.html |archivedate=2010-01-16 }}</ref>
+
+Adolescent Idiopathic Scoliosis is a polygenic trait, meaning it is affected by the characteristics of more than a single [[gene]].  The heritability of scoliosis has long been suspected, and many research projects have been conducted in search of the genes responsible for the disease.<ref>Ward K, Ogilvie J, Argyle V, Nelson L, Meade M, and Braun J.  "Polygenic Inheritance of Adolescent Idiopathic Scoliosis: A Study of Extended Families in Utah" 2008</ref>
+
+Axial Biotech performed a [[genome]]-wide association study, testing millions of genetic markers to find any associated with [[scoliosis]].  The study of DNA heritability was enhanced through the use of rich genealogical data available in Utah.  Utah contains the headquarters of [[The Church of Jesus Christ of Latter-day Saints]], which emphasizes the knowledge of ancestry and genealogy.<ref>Ward, K. "Demystifying the Genetic Test for Scoliosis" Roundtables in Spine Surgery, Volume 2, Number 3, 2008</ref>  Over the course of the research, DNA samples from over 9500 patients from 100 clinical sites worldwide were analyzed.<ref>"Axial Biotech Announces Commercial Availability of SCOLISCORE AIS Prognostic Test" Press Release. Sept 24, 2009 [http://www.axialbiotech.com/company/find/press/2009/16]</ref>
+
+Researchers at Axial Biotech identified 53 genetic markers (28 which, when positive, contribute to the progression of the scoliosis curve and 25 which, when positive, protect against the progression of the curve.)<ref name=stenning-nelson-2011>{{cite web |url=http://www.boneandjoint.org.uk/content/recent-advances-treatment-scoliosis-children |title=Recent advances in the treatment of scoliosis in children |author=M. Stenning, I. Nelson |publisher=British Editorial Society of Bone and Joint Surgery |year=2011 |accessdate=1 January 2014}}</ref>  The ScoliScore test was developed around these 53 markers.
+
+==ScoliScore==
+{{update-section|date=April 2014}}
+'''ScoliScore AIS Prognostic Test''' is a [[gene]]tic test, which analyzes the [[DNA]] of patients who are diagnosed with Adolescent Idiopathic [[Scoliosis]], the most common type of scoliosis.  The test shows the likelihood of spinal curve progression.  In other words, it helps doctors and patients to see how likely it is that a patient's [[Vertebral column|spine]] will become more curved and whether it is likely that the patient will eventually need [[surgery]] or other interventions.
+
+Approximately 85-90% of patients initially diagnosed with AIS will never have their mild scoliotic curve progress to a magnitude that requires surgical treatment.  The test results may be used to predict, with over 99% probability, when a mild scoliotic curve is unlikely to progress to the point of requiring surgical treatment.  This knowledge can make it unnecessary for these patients to undergo numerous office visits and be exposed to radiographic imaging over many years to monitor potential curve progression.  The ScoliScore test is a powerful tool, which helps physicians predict spinal curvature through one test, accomplishing what was previously only possible through years of observation.
+
+The test is distributed by DePuy Spine, a Johnson & Johnson company.<ref>{{cite news |title=Genetic markers for scoliosis are ID'd |newspaper=[[Deseret News]] |date=2008-09-14 |url=http://www.deseretnews.com/article/1,5143,700258673,00.html |accessdate=2009-10-15 |archiveurl=https://www.webcitation.org/5kYNiJRtM?url=http://www.deseretnews.com/article/1,5143,700258673,00.html |archivedate=2009-10-15 |url-status=live }}</ref>  It was made available in a few physicians offices in September, 2009, and will be commercially launched in 2010.
+
+In 2012 Transgenomic acquired the rights to the ScoliScore test.<ref name=bw-20120828/>
+
+==References==
+{{reflist}}
+
+==External links==
+* [https://web.archive.org/web/20120730021040/http://www.axialbiotech.com/ Official website as archived in July 2012]
+
+[[Category:Biotechnology companies of the United States]]
+[[Category:Companies based in Salt Lake City]]
+[[Category:Biotechnology companies established in 2002]]
+[[Category:Skeletal disorders]]
+[[Category:2002 establishments in Utah]]
+[[Category:Biotechnology companies disestablished in 2013]]
+[[Category:2013 disestablishments in Utah]]

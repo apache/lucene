@@ -1,0 +1,38 @@
+{{operational plan
+| name        = Attack on the Montclair Hotel
+| partof      = [[Rhodesian Bush War]]
+| image       = 
+| caption     = 
+| scope       = [[Terrorist attack]]
+| planned     = 
+| planned_by  = Unknown 
+| objective   = 
+| target      = Guests staying at the Montclair Hotel
+| date        = 9 May 1978
+| time        = 
+| time-begin  = 
+| time-end    =
+| timezone    =
+| executed_by = {{flagicon image|Flag of ZANU-PF.svg}} [[Zimbabwe African National Liberation Army|ZANLA]]
+| outcome     = 
+| casualties  = 
+| fatalities  = 2
+| injuries    = 3
+}}
+{{Campaignbox Rhodesian Bush War}}
+
+The '''Attack on the Montclair Hotel''' was a terrorist attack on the hotel, which had once been popular among tourists spending their holidays in [[Rhodesia]], by the [[Zimbabwe African National Liberation Army]] (ZANLA) on the 9th May 1978. <ref>[https://www.nytimes.com/1978/05/10/archives/guerrillas-raid-hotel-in-rhodesia-killing-2-and-wounding-american.html]</ref> During the attack, the guerrillas fired at least three rocket‐propelled grenades at the hotel, before opening fire with [[AK-47]] assault rifles.
+
+During the attack, the guerrillas killed two Rhodesian civilians and wounded three, including one [[Americans|American]] tourist. They were then chased away from the hotel by some of the staff who had armed themselves with guns, kept for protection from guerrillas. The two dead civilians were identified as Betty Verran of [[Juliasdale]] and Mrs. D. Groenewald of Salisbury. 
+
+==References==
+{{reflist}}
+
+===External links===
+*[https://www.nytimes.com/1978/05/10/archives/guerrillas-raid-hotel-in-rhodesia-killing-2-and-wounding-american.html] New York Times, ‘Guerrillas Raid Hotel in Rhodesia, Killing 2 and Wounding American’
+
+{{coord missing|Zimbabwe}}
+
+[[Category:Battles and operations of the Rhodesian Bush War]]
+[[Category:1978 in Rhodesia]]
+[[Category:Attacks on hotels in Africa]]

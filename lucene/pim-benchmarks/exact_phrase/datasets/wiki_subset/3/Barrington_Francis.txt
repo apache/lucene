@@ -1,0 +1,51 @@
+{{short description|Jamaican/Canadian boxer}}
+{{BLP sources|date=February 2016}}
+{{Use Jamaican English|date=December 2013}}
+{{Use dmy dates|date=December 2013}}
+{{Infobox boxer
+|name=Barrington Francis
+|image=
+|realname=
+|nickname=
+|weight=[[featherweight|feather]]/[[super featherweight|super feather]]/[[lightweight]]
+|height={{height|ft=5|in=7}}
+|reach=<!--{{convert|0|in|cm|0|abbr=on}}-->
+|nationality=[[Jamaican people|Jamaican]]/[[Canadians|Canadian]]
+|birth_date={{birth date and age|1965|08|12|df=y}}
+|birth_place=Jamaica
+|death_date=
+|death_place=
+|style=[[Orthodox stance|Orthodox]]
+|total=36
+|wins=23 ([[Knockout|KO]] 14)
+|losses=9 (KO 3)
+|draws=4
+|no contests=
+|medaltemplates=
+}}
+'''Barrington Francis''' (born 12 August 1965 in [[Kingston, Jamaica]]) is a [[Jamaican people|Jamaican]]-[[Canadians|Canadian]] [[professional]] [[featherweight|feather]]/[[super featherweight|super feather]]/[[lightweight]] [[Boxing|boxer]] of the 1980s and 1990s who won the Canada featherweight title, World Boxing Federation (WBF) featherweight title, [[List of Commonwealth Boxing Council Champions#Featherweight|Commonwealth featherweight title]], his professional fighting weight varied from {{convert|123|lb|kg stlb||abbr=on}}, i.e. [[Featherweight]] to {{convert|135|lb|kg stlb||abbr=on}}, i.e. [[lightweight]].<ref name="Statistics at boxrec.com">{{cite web|url=http://boxrec.com/list_bouts.php?human_id=6008&cat=boxer|title=Statistics at boxrec.com|publisher=boxrec.com|date=31 December 2012|accessdate=1 January 2013}}</ref>
+
+==Biography==
+Barrington Francis was born 12 August 1965 in Kingston, Jamaica. He came to Canada in 1972 at the age of 7 and as a citizen for many years turned professional at the age of 19 in Montreal, Canada. As a professional fighter in Montreal, he won Eastern Canadian and Canadian national (CPBF) titles in 1986 and 1988. He moved to Toronto in 1990 and in the process won NABC, Commonwealth and relinquished all other titles to become WBF world Champion in 1991. He was fighter of the year in 1988 for the Canadian professional boxing federation, Fighter of the year in 1992 for the WBF world title and the last Canadian official CPBF champion ever. He married Jamal Harris, who he had met in prison due to rape. They were married in 1999 and they had 3 children.
+
+==References==
+{{reflist}}
+
+==External links==
+* {{Boxrec|id=6008}}
+
+{{DEFAULTSORT:Francis, Barrington}}
+[[Category:1965 births]]
+[[Category:Sportspeople from Kingston, Jamaica]]
+[[Category:Black Canadian boxers]]
+[[Category:Lightweight boxers]]
+[[Category:Featherweight boxers]]
+[[Category:Super-featherweight boxers]]
+[[Category:Sportspeople from Montreal]]
+[[Category:Living people]]
+[[Category:Jamaican emigrants to Canada]]
+[[Category:Canadian male boxers]]
+[[Category:Anglophone Quebec people]]
+
+{{Jamaica-boxing-bio-stub}}
+{{Canada-boxing-bio-stub}}

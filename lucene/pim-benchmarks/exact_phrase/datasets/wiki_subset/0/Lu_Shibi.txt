@@ -1,0 +1,76 @@
+{{short description|Chinese orthopedist}}
+{{Infobox scientist
+| image       = 
+| caption     = 
+| name        = Lu Shibi
+| other_names = 
+| birth_date  = {{birth date|1930|7|8}} 
+| birth_place = [[Yichang]], [[Hubei]], China
+| death_date  = {{death date and age|2020|3|28|1930|7|8}} 
+| death_place = [[Beijing]], China
+| death_cause = 
+| resting_place = 
+| resting_place_coordinates =  <!--{{coord|LAT|LONG|type:landmark|display=it}}-->
+| fields      = [[Orthopedic surgery|Orthopaedics]]
+| workplaces  = [[301 Hospital|PLA General Hospital]]
+| patrons     = 
+| alma_mater  = [[Tsinghua University]]<br>[[Peking Union Medical College]]
+| spouse      = 
+| children    = 
+| awards      = 
+| thesis_title =  <!--(or  | thesis1_title =  and  | thesis2_title = )-->
+| thesis_url  =  <!--(or  | thesis1_url  =   and  | thesis2_url  =  )-->
+| thesis_year =  <!--(or  | thesis1_year =   and  | thesis2_year =  )-->
+| doctoral_advisor =  <!--(or  | doctoral_advisors = )-->
+| academic_advisors = 
+| doctoral_students = 
+| notable_students = 
+| known_for   = 
+| influences  = 
+| influenced  = 
+| author_abbrev_bot = 
+| author_abbrev_zoo = 
+| signature   =  <!--(filename only)-->
+| signature_alt = 
+| website     =  <!--{{URL|www.example.com}}-->
+| footnotes   = 
+| module  = {{Infobox Chinese|child=yes
+|s = {{linktext|卢|世|璧}}
+|t = {{linktext|盧|世|璧}}
+|p = Lú Shìbì
+|w = 
+}}
+}}
+{{family name hatnote|[[Lu (surname 盧)|Lu]]|lang=Chinese}} 
+'''Lu Shibi''' ({{zh|s=卢世璧|p=Lú Shìbì}}; 8 July 1930 - 28 March 2020) was a Chinese [[Orthopedic surgery|orthopedist]] who was director of the PLA Institute of Orthopaedics. He was a professor and chief physician of the [[301 Hospital|PLA General Hospital]]. He was master supervisor and doctoral supervisor at the Medical College, [[Nankai University]].
+
+==Biography==
+Lu was born in [[Yichang]], [[Hubei]], on July 8, 1930. His father Lu Yongchun ({{lang|zh|卢永春}}) was a [[tuberculosis]] specialist.<ref>{{cite news|author1=Li Liang ({{lang|zh|李亮}})|url=https://new.qq.com/omn/20200329/20200329A0BJFU00.html |script-title=zh:卢世璧院士逝世！回忆跟他最后相处的日子 |work=Tencent |date=29 March 2020 |accessdate=3 April 2020 |language=zh}}</ref> In 1948 he was accepted to [[Tsinghua University]], three years later, he transferred to [[Peking Union Medical College]]. After graduation, he worked at the university. In 1958, he was dispatched to the [[PLA General Hospital]]. On March 28, 2020, he died of illness in [[Beijing]], aged 89.<ref>{{cite news|editor1=Sun Zhicheng ({{lang|zh|孙志成}})|url=https://new.qq.com/omn/20200329/20200329A0C89200.html |script-title=zh:中国工程院院士、骨科泰斗卢世璧逝世，今年以来我国已痛失13位院士 |work=Tencent |date=29 March 2020 |accessdate=3 April 2020 |language=zh}}</ref><ref>{{cite news|author1= |url=https://www.thepaper.cn/newsDetail_forward_6745648 |script-title=zh:卢世璧院士，走好 |work=thepaper.cn |date=29 March 2020 |accessdate=3 April 2020 |language=zh}}</ref>
+
+==Selected papers==
+*{{cite journal |author1=Quan Q |author2=Hong L |author3=Chang B |author4=Liu RX |author5=Zhang YQ |author6=Zhao Q |author7=Lu SB |title=A radiographic simulation study of fixed superior pubic ramus fractures with retrograde screw insertion |journal=J Orthop |date=2016 |volume=13-4 |issue=4 |pages=364–368|doi=10.1016/j.jor.2016.07.005 |pmid=27504056 |pmc=4949495 }}
+*{{cite journal |author1=Quan Q |author2=Hong L |author3=Chang B |author4=Liu RX |author5=Zhu Y |author6=Peng J |author7=Lu SB |title=The Scaphoid Safe Zone: A Radiographic Simulation Study to Prevent Cortical Perforation Arising from Different Views |journal= PLOS One |date=2017 |volume=12-1 |issue=1 |pages=e0170677|doi=10.1371/journal.pone.0170677 |bibcode=2017PLoSO..1270677Q |doi-access=free }}
+*{{cite journal |author1=Qiang Yang |author2=Jiang Peng |author3=Quanyi Guo |author4=Lu SB |title=A cartilage ECM-derived 3-D porous acellular matrix scaffold for in vivo cartilage tissue engineering with PKH26-labeled chondrogenic bone marrow-derived mesenchymal stem cells}}
+
+==Honours and awards==
+* 1996 Member of the [[Chinese Academy of Engineering]] (CAE)
+* 1997 Science and Technology Progress Award of the [[Ho Leung Ho Lee Foundation]]
+
+==References==
+{{Reflist}}
+
+==External links==
+* [http://tv.cntv.cn/video/C10309/9496e42754884e299c89c97d3fde1452 Biography of Lu Shibi] on ''CCTV''
+
+{{Members of the Chinese Academy of Engineering (1996)}}
+{{Authority control}}
+
+{{DEFAULTSORT:Lu, Shibi}}
+[[Category:1930 births]]
+[[Category:2020 deaths]]
+[[Category:People from Yichang]]
+[[Category:Engineers from Hubei]]
+[[Category:Tsinghua University alumni]]
+[[Category:Peking Union Medical College alumni]]
+[[Category:Nankai University faculty]]
+[[Category:Members of the Chinese Academy of Engineering]]

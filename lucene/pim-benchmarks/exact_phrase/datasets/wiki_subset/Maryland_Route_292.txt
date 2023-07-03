@@ -1,0 +1,90 @@
+{{Infobox road
+|state=MD
+|type=MD
+|route=292
+|map=Maryland Route 292 map.png
+|map_notes=Maryland Route 292 highlighted in red
+|length_mi=4.58
+|length_round=2
+|length_ref=<ref name="Maryland HLR"/>
+|tourist=[[File:MD scenic byway.svg|20px|alt=|link=]] [[Chesapeake Country Scenic Byway]]
+|established=1927
+|direction_a=South
+|terminus_a={{jct|state=MD|MD|298}} near [[Still Pond, Maryland|Still Pond]]
+|junction={{jct|state=MD|MD|566}} at Still Pond
+|direction_b=North
+|terminus_b=Road end at [[Sassafras River]] in [[Betterton, Maryland|Betterton]]
+|counties=[[Kent County, Maryland|Kent]]
+|previous_type=MD
+|previous_route=291
+|next_type=I
+|next_route=295
+|browse=
+}}
+
+'''Maryland Route 292''' ('''MD 292''') is a [[state highway]] in the [[U.S. state]] of [[Maryland]]. Known for most of its length as Still Pond Road, the highway runs {{convert|4.58|mi|km}} from [[Maryland Route 298|MD 298]] near [[Still Pond, Maryland|Still Pond]] north to the [[Sassafras River]] in [[Betterton, Maryland|Betterton]] in northern [[Kent County, Maryland|Kent County]]. MD 292 was constructed in the early to mid-1910s between Still Pond and Betterton and in the early 1920s south of Still Pond to what is now [[Maryland Route 213|MD 213]]. The highway from Still Pond to Betterton was widened in the late 1940s and resurfaced in the late 1960s. The portion of MD 292 between MD 213 and MD 298 was transferred to county control in 1994.
+
+==Route description==
+[[File:MD 292 - Betterton Beach.jpg|left|thumb|MD&nbsp;292's northern terminus at the Sassafras River in Betterton]]
+[[File:2017-08-12 17 32 06 View north along Maryland State Route 292 (Still Pond Road) at Maryland State Route 298 (Lambs Meadow Road) in Still Pond, Kent County, Maryland.jpg|thumb|right|MD 292's southern terminus at MD 298 near Still Pond]]
+MD 292 begins at an intersection with MD 298 (Lambs Meadow Road) south of Still Pond. Still Pond Road continues south as a county highway that passes the historic home [[Shepherd's Delight]] on its way to MD 213. MD 292 heads north as two-lane undivided Still Pond Road, which passes the historic home [[Hebron (Still Pond, Maryland)|Hebron]] on its way to the village of Still Pond. Within the [[Still Pond Historic District]], the highway turns west at an intersection with MD 566 (Still Pond Harmony Road) and Main Street adjacent to the [[George Harper Store]]. MD 292 leaves the village, crosses the headwaters of Stillpond Creek, and curves north at Bessicks Corner Road, a portion of which is [[unsigned highway|unsigned]] [[Maryland Route 864|MD 864]]. The highway's name changes to Main Street on entering the town of Betterton. MD 292 passes through the [[Betterton Historic District]] and makes a sharp turn to the east immediately before reaching its northern terminus at Betterton Beach Park on the [[Sassafras River]] where that river enters the [[Chesapeake Bay]].<ref name="Maryland HLR"/><ref name="Maryland grid map"/>
+
+==History==
+The highway from Betterton through the village of Still Pond to the Still Pond railroad crossing (also known as Hepbron) was originally improved by Kent County with state aid as a {{convert|9|ft|m|adj=mid|-wide}} macadam road by 1915.<ref name="1915 src report"/> The highway was extended south from the railroad to the [[Chestertown, Maryland|Chestertown]]&ndash;[[Galena, Maryland|Galena]] state road (now MD 213) as a concrete road in 1921 and 1922. The main streets of Betterton and Still Pond were paved with concrete in 1922 and 1923.<ref name="1923 src report"/><ref name="1923 map"/> By 1934, MD 292 from [[U.S. Route 213|US 213]] to Betterton was proposed to be widened from {{convert|15|to|16|ft|m}} to {{convert|20|ft|m}}.<ref name="1934 src report"/> The portion of the highway from Still Pond to Betterton was widened in 1948. MD 292 was resurfaced with bituminous concrete from MD 298 to the town limit of Betterton in 1968. This work included the relocation at Bessicks Corner Road, bypassing what is now MD 864.<ref name="logbook 1p61"/> Main Street in Betterton was resurfaced with bituminous concrete in 1976 and reconstructed in a streetscape project in 2002 and 2003.<ref name="logbook 3p74"/> The portion of MD 292 between MD 213 and MD 298 was transferred from state to county maintenance through a November 18, 1994, road transfer agreement.<ref name="memo 1994-11-18"/>
+
+==Junction list==
+{{jcttop|length_ref=<ref name="Maryland HLR"/>|state=MD|county=Kent}}
+{{MDint
+|location=Still Pond
+|lspan=2
+|mile=0.00
+|road={{jct|state=MD|MD|298|name1=Lambs Meadow Road|road=Still Pond Road south|city1=Galena|city2=Lynch|city3=Chestertown|city4=Rock Hall}}
+|notes=Southern terminus
+}}
+{{MDint
+|mile=0.93
+|road={{jct|state=MD|MD|566|dir1=east|name1=Still Pond Harmony Road|road=Main Street north|city1=Galena}}
+|notes=Western terminus of MD 566; MD 292 turns west at this intersection
+}}
+{{MDint
+|location=Betterton
+|mile=4.58
+|road=Road end at [[Sassafras River]]
+|notes=Northern terminus
+}}
+{{jctbtm}}
+
+==See also==
+*{{Portal-inline|Maryland Roads}}
+
+==References==
+{{reflist|30em|refs=
+
+<ref name="Maryland HLR">{{Maryland HLR|year=2015|county1=Kent|accessdate=August 19, 2016}}</ref>
+
+<ref name="Maryland grid map">{{Maryland grid map|sections=D15A, C15C|access-date=August 19, 2016}}</ref>
+
+<ref name="1915 src report">{{Maryland SRC report|year=1915|page=124|accessdate=August 19, 2016}}</ref>
+
+<ref name="1923 src report">{{Maryland SRC report|year=1923|pages=44, 89|accessdate=August 19, 2016}}</ref>
+
+<ref name="1923 map">{{Maryland road map|year=1923}}</ref>
+
+<ref name="1934 src report">{{Maryland SRC report|year=1934|page=22|accessdate=August 19, 2016}}</ref>
+
+<ref name="logbook 1p61">{{Maryland road logbook|key=1|page=61|contract1=K-169X-215|date1=July 1, 1948|contract2=K-311-277|date2=September 16, 1968|access-date=August 19, 2016}}</ref>
+
+<ref name="logbook 3p74">{{Maryland road logbook|key=1|page=61|contract1=K-355-0-277|date1=July 30, 1976|contract2=KE-446-5184|date2=October 30, 2002|access-date=August 19, 2016}}</ref>
+
+<ref name="memo 1994-11-18">{{Maryland road memo|key=16|page=36|title=Memorandum of Action of Director Neil J. Pedersen|date=November 18, 1994|publisher=Maryland State Highway Administration|access-date=August 19, 2016}}</ref>
+
+}}
+
+==External links==
+{{commonscat|Maryland Route 292}}
+{{Attached KML|display=title,inline}}
+*[http://www.mdroads.com/routes/280-299.html#md292 MDRoads: MD 292]
+
+
+[[Category:State highways in Maryland|292]]
+[[Category:Roads in Kent County, Maryland|Maryland Route 292]]
