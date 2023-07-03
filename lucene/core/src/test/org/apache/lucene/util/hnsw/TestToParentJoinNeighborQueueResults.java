@@ -22,11 +22,11 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     nn.pop();
   }
 
-  public void testInsertions() {
-    int[] nodes = new int[] {5, 1, 5, 6, 6, 8, 1};
+  public void testInsertions() throws IOException {
+    int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
-    
-    ToParentJoinNeighborQueueResults ToParentJoinNeighborQueueResults = new ToParentJoinNeighborQueueResults(7, null);
+    BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
+    ToParentJoinNeighborQueueResults ToParentJoinNeighborQueueResults = new ToParentJoinNeighborQueueResults(7, parentBitSet);
     for (int i = 0; i < nodes.length; i++) {
       ToParentJoinNeighborQueueResults.add(nodes[i], scores[i]);
       ToParentJoinNeighborQueueResults.ensureValidCache();
@@ -40,14 +40,15 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
       ToParentJoinNeighborQueueResults.pop();
       ToParentJoinNeighborQueueResults.ensureValidCache();
     }
-    assertArrayEquals(new int[] {5, 8, 6, 1}, sortedNodes);
+    assertArrayEquals(new int[] {6, 12, 9, 3}, sortedNodes);
     assertArrayEquals(new float[] {1f, 1.2f, 2f, 4f}, sortedScores, 0f);
   }
 
-  public void testInsertionWithOverflow() {
-    int[] nodes = new int[] {5, 1, 5, 6, 6, 8, 1, 9, 10};
+  public void testInsertionWithOverflow() throws IOException {
+    int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2, 12, 14};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 3f, 4f, 1f, 1f};
-    ToParentJoinNeighborQueueResults ToParentJoinNeighborQueueResults = new ToParentJoinNeighborQueueResults(5, null);
+    BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
+    ToParentJoinNeighborQueueResults ToParentJoinNeighborQueueResults = new ToParentJoinNeighborQueueResults(5, parentBitSet);
     for (int i = 0; i < 5; i++) {
       assertTrue(ToParentJoinNeighborQueueResults.insertWithOverflow(nodes[i], scores[i]));
       ToParentJoinNeighborQueueResults.ensureValidCache();
@@ -68,7 +69,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
       ToParentJoinNeighborQueueResults.pop();
       ToParentJoinNeighborQueueResults.ensureValidCache();
     }
-    assertArrayEquals(new int[] {9, 5, 6, 8, 1}, sortedNodes);
+    assertArrayEquals(new int[] {13, 6, 9, 11, 3}, sortedNodes);
     assertArrayEquals(new float[] {1f, 1f, 2f, 3f, 4f}, sortedScores, 0f);
   }
 
@@ -91,6 +92,9 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
 
     @Override
     public int nextDoc() throws IOException {
+      if (i >= length) {
+        return NO_MORE_DOCS;
+      }
       return doc = docs[i++];
     }
 
