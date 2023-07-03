@@ -122,11 +122,13 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
+  collection has finished running on a leaf. (Adrien Grand)
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
 
 Optimizations
 ---------------------
@@ -136,9 +138,13 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
+
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
 
 Bug Fixes
 ---------------------
@@ -149,7 +155,12 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
+  (Uwe Schindler)
+
+* GITHUB#12410: Refactor vectorization support (split provider from implementation classes).
+  (Uwe Schindler, Chris Hegarty)
 
 ======================== Lucene 9.7.0 =======================
 

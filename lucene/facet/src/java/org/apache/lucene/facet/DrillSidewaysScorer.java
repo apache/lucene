@@ -18,6 +18,7 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -198,6 +199,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
       docID = baseApproximation.nextDoc();
     }
+    finish(collector, Collections.singleton(dim));
   }
 
   /**
@@ -334,6 +336,8 @@ class DrillSidewaysScorer extends BulkScorer {
 
       docID = baseApproximation.nextDoc();
     }
+
+    finish(collector, sidewaysDims);
   }
 
   private static int advanceIfBehind(int docID, DocIdSetIterator iterator) throws IOException {
@@ -552,6 +556,7 @@ class DrillSidewaysScorer extends BulkScorer {
 
       nextChunkStart += CHUNK;
     }
+    finish(collector, Arrays.asList(dims));
   }
 
   private void doUnionScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
@@ -706,6 +711,8 @@ class DrillSidewaysScorer extends BulkScorer {
 
       nextChunkStart += CHUNK;
     }
+
+    finish(collector, Arrays.asList(dims));
   }
 
   private void collectHit(LeafCollector collector, DocsAndCost[] dims) throws IOException {
@@ -755,6 +762,16 @@ class DrillSidewaysScorer extends BulkScorer {
     //  System.out.println("      missingDim=" + dim);
     // }
     sidewaysCollector.collect(collectDocID);
+  }
+
+  private void finish(LeafCollector collector, Collection<DocsAndCost> dims) throws IOException {
+    collector.finish();
+    if (drillDownLeafCollector != null) {
+      drillDownLeafCollector.finish();
+    }
+    for (DocsAndCost dim : dims) {
+      dim.sidewaysLeafCollector.finish();
+    }
   }
 
   private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
