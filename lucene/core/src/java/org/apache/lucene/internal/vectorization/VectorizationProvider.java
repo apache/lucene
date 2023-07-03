@@ -25,8 +25,8 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.VectorUtil;
 
@@ -162,11 +162,8 @@ public abstract class VectorizationProvider {
     }
   }
 
-  private static boolean isValidCaller(String cn) {
-    // add any class that is allowed to call getInstance()
-    // NOTE: the list here is lazy
-    return Stream.of(VectorUtil.class).map(Class::getName).anyMatch(cn::equals);
-  }
+  // add all possible callers here as FQCN:
+  private static final Set<String> VALID_CALLERS = Set.of("org.apache.lucene.util.VectorUtil");
 
   private static void ensureCaller() {
     final boolean validCaller =
@@ -176,7 +173,7 @@ public abstract class VectorizationProvider {
                     s.skip(2)
                         .limit(1)
                         .map(StackFrame::getClassName)
-                        .allMatch(VectorizationProvider::isValidCaller));
+                        .allMatch(VALID_CALLERS::contains));
     if (!validCaller) {
       throw new UnsupportedOperationException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");
