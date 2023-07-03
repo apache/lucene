@@ -17,10 +17,10 @@
 
 from fractions import gcd
 
-"""Code generation for ForUtil.java"""
+"""Code generation for DefaultForUtil90.java"""
 
 MAX_SPECIALIZED_BITS_PER_VALUE = 24
-OUTPUT_FILE = "ForUtil.java"
+OUTPUT_FILE = "DefaultForUtil90.java"
 PRIMITIVE_SIZE = [8, 16, 32]
 HEADER = """// This file has been automatically generated, DO NOT EDIT
 
@@ -40,7 +40,7 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
@@ -51,10 +51,7 @@ import org.apache.lucene.store.DataOutput;
 // If bitsPerValue <= 8 then we pack 8 ints per long
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
-final class ForUtil {
-
-  static final int BLOCK_SIZE = 128;
-  private static final int BLOCK_SIZE_LOG2 = 7;
+final class DefaultForUtil90 implements ForUtil90 {
 
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
@@ -159,7 +156,8 @@ final class ForUtil {
   private final long[] tmp = new long[BLOCK_SIZE / 2];
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
-  void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
+  @Override
+  public void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
     final int numLongs;
     if (bitsPerValue <= 8) {
@@ -229,11 +227,6 @@ final class ForUtil {
     for (int i = 0; i < numLongsPerShift; ++i) {
       out.writeLong(tmp[i]);
     }
-  }
-
-  /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
-  int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
@@ -383,7 +376,8 @@ if __name__ == '__main__':
 
   f.write("""
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  @Override
+  public void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
@@ -410,7 +404,8 @@ if __name__ == '__main__':
    * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
    * representation may allow subsequent operations to be performed on two values at a time.
    */
-  void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  @Override
+  public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
   for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):

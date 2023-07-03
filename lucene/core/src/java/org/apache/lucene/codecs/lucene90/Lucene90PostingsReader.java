@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import static org.apache.lucene.codecs.lucene90.ForUtil.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.MAX_SKIP_LEVELS;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.PAY_CODEC;
@@ -24,6 +23,7 @@ import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.POS_CODEC
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.TERMS_CODEC;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.VERSION_CURRENT;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.VERSION_START;
+import static org.apache.lucene.internal.vectorization.ForUtil90.BLOCK_SIZE;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -39,6 +39,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.internal.vectorization.ForUtil90;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -306,7 +307,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockDocsEnum extends PostingsEnum {
 
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -394,7 +395,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       this.needsFreq = PostingsEnum.featureRequested(flags, PostingsEnum.FREQS);
       this.isFreqsRead = true;
       if (indexHasFreq == false || needsFreq == false) {
-        for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+        for (int i = 0; i < ForUtil90.BLOCK_SIZE; ++i) {
           freqBuffer[i] = 1;
         }
       }
@@ -563,7 +564,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
   // Also handles payloads + offsets
   final class EverythingEnum extends PostingsEnum {
 
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE + 1];
@@ -1047,7 +1048,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsDocsEnum extends ImpactsEnum {
 
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     private final long[] docBuffer = new long[BLOCK_SIZE + 1];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1240,7 +1241,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsPostingsEnum extends ImpactsEnum {
 
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     private final long[] docBuffer = new long[BLOCK_SIZE];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1532,7 +1533,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
 
   final class BlockImpactsEverythingEnum extends ImpactsEnum {
 
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     private final long[] docBuffer = new long[BLOCK_SIZE];
     private final long[] freqBuffer = new long[BLOCK_SIZE];
@@ -1696,7 +1697,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
           docFreq);
 
       if (indexHasFreq == false) {
-        for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+        for (int i = 0; i < ForUtil90.BLOCK_SIZE; ++i) {
           freqBuffer[i] = 1;
         }
       }

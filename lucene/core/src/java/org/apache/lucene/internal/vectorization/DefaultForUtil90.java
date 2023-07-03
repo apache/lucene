@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
@@ -27,10 +27,7 @@ import org.apache.lucene.store.DataOutput;
 // If bitsPerValue <= 8 then we pack 8 ints per long
 // else if bitsPerValue <= 16 we pack 4 ints per long
 // else we pack 2 ints per long
-final class ForUtil {
-
-  static final int BLOCK_SIZE = 128;
-  private static final int BLOCK_SIZE_LOG2 = 7;
+final class DefaultForUtil90 implements ForUtil90 {
 
   private static long expandMask32(long mask32) {
     return mask32 | (mask32 << 32);
@@ -135,7 +132,8 @@ final class ForUtil {
   private final long[] tmp = new long[BLOCK_SIZE / 2];
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
-  void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
+  @Override
+  public void encode(long[] longs, int bitsPerValue, DataOutput out) throws IOException {
     final int nextPrimitive;
     final int numLongs;
     if (bitsPerValue <= 8) {
@@ -205,11 +203,6 @@ final class ForUtil {
     for (int i = 0; i < numLongsPerShift; ++i) {
       out.writeLong(tmp[i]);
     }
-  }
-
-  /** Number of bytes required to encode 128 integers of {@code bitsPerValue} bits per value. */
-  int numBytes(int bitsPerValue) {
-    return bitsPerValue << (BLOCK_SIZE_LOG2 - 3);
   }
 
   private static void decodeSlow(int bitsPerValue, DataInput in, long[] tmp, long[] longs)
@@ -317,7 +310,8 @@ final class ForUtil {
   private static final long MASK32_24 = MASKS32[24];
 
   /** Decode 128 integers into {@code longs}. */
-  void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  @Override
+  public void decode(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
       case 1:
         decode1(in, tmp, longs);
@@ -428,7 +422,8 @@ final class ForUtil {
    * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
    * representation may allow subsequent operations to be performed on two values at a time.
    */
-  void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
+  @Override
+  public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
       case 1:
         decode1(in, tmp, longs);
