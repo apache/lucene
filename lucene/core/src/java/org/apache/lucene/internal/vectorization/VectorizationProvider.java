@@ -43,8 +43,8 @@ public abstract class VectorizationProvider {
    * Returns the default instance of the provider matching vectorization possibilities of actual
    * runtime.
    *
-   * @throws UnsupportedOperationException if the singleton getter is called from code outside of
-   *     Apache Lucene.
+   * @throws UnsupportedOperationException if the singleton getter is not called from known Lucene
+   *     classes.
    */
   public static VectorizationProvider getInstance() {
     ensureCaller();
@@ -53,7 +53,7 @@ public abstract class VectorizationProvider {
   }
 
   VectorizationProvider() {
-    // no instance except from this package
+    // no instance/subclass except from this package
   }
 
   /**
@@ -179,7 +179,7 @@ public abstract class VectorizationProvider {
                         .allMatch(VectorizationProvider::isValidCaller));
     if (!validCaller) {
       throw new UnsupportedOperationException(
-          "VectorizationProvider is internal and can only be used from inside Lucene's own modules.");
+          "VectorizationProvider is internal and can only be used by known Lucene classes.");
     }
   }
 
