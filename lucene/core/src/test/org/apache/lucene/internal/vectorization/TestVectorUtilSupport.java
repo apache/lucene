@@ -20,15 +20,10 @@ import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.IntStream;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.BeforeClass;
 
-public class TestVectorUtilSupport extends LuceneTestCase {
+public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
   private static final double DELTA = 1e-3;
-  private static final VectorUtilSupport LUCENE_SUPP = new DefaultVectorUtilSupport();
-  private static final VectorUtilSupport JDK_SUPP =
-      VectorizationProvider.lookup(true).getVectorUtilSupport();
 
   private static final int[] VECTOR_SIZES = {
     1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024
@@ -43,13 +38,6 @@ public class TestVectorUtilSupport extends LuceneTestCase {
   @ParametersFactory
   public static Iterable<Object[]> parametersFactory() {
     return () -> IntStream.of(VECTOR_SIZES).boxed().map(i -> new Object[] {i}).iterator();
-  }
-
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    assumeFalse(
-        "Test only works when JDK's vector incubator module is enabled.",
-        JDK_SUPP instanceof DefaultVectorUtilSupport);
   }
 
   public void testFloatVectors() {
@@ -75,10 +63,15 @@ public class TestVectorUtilSupport extends LuceneTestCase {
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertEquals(func.applyAsDouble(LUCENE_SUPP), func.applyAsDouble(JDK_SUPP), DELTA);
+    assertEquals(
+        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
+        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
+        DELTA);
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
-    assertEquals(func.applyAsInt(LUCENE_SUPP), func.applyAsInt(JDK_SUPP));
+    assertEquals(
+        func.applyAsInt(LUCENE_PROVIDER.getVectorUtilSupport()),
+        func.applyAsInt(PANAMA_PROVIDER.getVectorUtilSupport()));
   }
 }
