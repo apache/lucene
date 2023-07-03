@@ -70,8 +70,7 @@ public final class LongHeap {
    * Adds a value to an LongHeap in log(size) time. If the number of values would exceed the heap's
    * maxSize, the least value is discarded.
    *
-   * @return whether the value was added (unless the heap is full, or the new value is less than the
-   *     top value)
+   * @return the heap position of the new value if it was pushed, -1 if it was not inserted
    */
   public int insertWithOverflow(long value) {
     if (size >= maxSize) {

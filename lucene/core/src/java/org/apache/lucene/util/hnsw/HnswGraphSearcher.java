@@ -210,7 +210,7 @@ public class HnswGraphSearcher<T> {
     int numVisited = 0;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
       results.clear();
-      graphSearcher.searchLevel(results, query, 1, level, eps, vectors, graph, null, visitedLimit);
+      graphSearcher.searchLevel(results, query, 1, level, eps, vectors, graph, acceptOrds, visitedLimit);
 
       numVisited += results.visitedCount();
       visitedLimit -= results.visitedCount();

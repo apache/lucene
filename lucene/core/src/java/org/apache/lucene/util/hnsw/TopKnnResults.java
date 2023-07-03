@@ -18,18 +18,22 @@
 package org.apache.lucene.util.hnsw;
 
 /**
- * NeighborQueueResults is a specific NeighborQueue, enforcing a minHeap is utilized for results.
+ * TopKnnResults is a specific NeighborQueue, enforcing a minHeap is utilized for results.
  *
  * This way as better results are found, the minimum result can be easily removed from the collection
  */
-public class NeighborQueueResults extends NeighborQueue {
+public class TopKnnResults extends KnnResults {
 
-  public NeighborQueueResults(int initialSize) {
-    super(initialSize, false);
+  public TopKnnResults(int initialSize) {
+    super(initialSize);
+  }
+
+  @Override
+  protected void doClear() {
   }
 
   @Override
   public String toString() {
-    return "NeighborQueueResults[" + heap.size() + "]";
+    return "TopKnnResults[" + size() + "]";
   }
 }

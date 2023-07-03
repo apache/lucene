@@ -12,7 +12,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
   public void testNeighborsProduct() throws IOException {
     // make sure we have the sign correct
     BitSet bitSet = BitSet.of(DocIdSetIterator.all(3), 3);
-    ToParentJoinNeighborQueueResults nn = new ToParentJoinNeighborQueueResults(2, bitSet);
+    ToParentJoinKnnResults nn = new ToParentJoinKnnResults(2, bitSet);
     assertTrue(nn.insertWithOverflow(2, 0.5f));
     assertTrue(nn.insertWithOverflow(1, 0.2f));
     assertTrue(nn.insertWithOverflow(3, 1f));
@@ -26,7 +26,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
-    ToParentJoinNeighborQueueResults ToParentJoinNeighborQueueResults = new ToParentJoinNeighborQueueResults(7, parentBitSet);
+    ToParentJoinKnnResults ToParentJoinNeighborQueueResults = new ToParentJoinKnnResults(7, parentBitSet);
     for (int i = 0; i < nodes.length; i++) {
       ToParentJoinNeighborQueueResults.add(nodes[i], scores[i]);
       ToParentJoinNeighborQueueResults.ensureValidCache();
@@ -48,7 +48,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2, 12, 14};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 3f, 4f, 1f, 1f};
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
-    ToParentJoinNeighborQueueResults ToParentJoinNeighborQueueResults = new ToParentJoinNeighborQueueResults(5, parentBitSet);
+    ToParentJoinKnnResults ToParentJoinNeighborQueueResults = new ToParentJoinKnnResults(5, parentBitSet);
     for (int i = 0; i < 5; i++) {
       assertTrue(ToParentJoinNeighborQueueResults.insertWithOverflow(nodes[i], scores[i]));
       ToParentJoinNeighborQueueResults.ensureValidCache();
