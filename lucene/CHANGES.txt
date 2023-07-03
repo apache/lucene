@@ -159,6 +159,9 @@ Other
 * GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
   (Uwe Schindler)
 
+* GITHUB#12410: Refactor vectorization support (split provider from implementation classes).
+  (Uwe Schindler, Chris Hegarty)
+
 ======================== Lucene 9.7.0 =======================
 
 API Changes
