@@ -524,7 +524,6 @@ public class LongValueFacetCounts extends Facets {
 
     boolean countsAdded = false;
     for (int i = 0; i < upto; i++) {
-      // nocommit: shouldn't hash counts always follow the dense counts?
       if (countsAdded == false && hashValues[i] >= counts.length) {
         countsAdded = true;
         appendCounts(labelValues);
