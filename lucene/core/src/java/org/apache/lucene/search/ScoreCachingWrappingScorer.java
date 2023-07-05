@@ -57,7 +57,7 @@ public final class ScoreCachingWrappingScorer extends Scorable {
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      scorer = new ScoreCachingWrappingScorer(scorer);
+      this.scorer = new ScoreCachingWrappingScorer(scorer);
       super.setScorer(this.scorer);
     }
 
