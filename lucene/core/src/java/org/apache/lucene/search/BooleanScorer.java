@@ -119,6 +119,7 @@ final class BooleanScorer extends BulkScorer {
   final Score score = new Score();
   final int minShouldMatch;
   final long cost;
+  final boolean needsScores;
 
   final class OrCollector implements LeafCollector {
     Scorable scorer;
@@ -141,6 +142,37 @@ final class BooleanScorer extends BulkScorer {
 
   final OrCollector orCollector = new OrCollector();
 
+  final class DocIdStreamView extends DocIdStream {
+
+    int base;
+
+    @Override
+    void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+      long[] matching = BooleanScorer.this.matching;
+      int base = this.base;
+      for (int idx = 0; idx < matching.length; idx++) {
+        long bits = matching[idx];
+        while (bits != 0L) {
+          int ntz = Long.numberOfTrailingZeros(bits);
+          consumer.consume(base | (idx << 6) | ntz);
+          bits ^= 1L << ntz;
+        }
+      }
+    }
+
+    @Override
+    int count() {
+      int count = 0;
+      for (long l : matching) {
+        count += Long.bitCount(l);
+      }
+      return count;
+    }
+  }
+  ;
+
+  private final DocIdStreamView docIdStreamView = new DocIdStreamView();
+
   BooleanScorer(
       BooleanWeight weight,
       Collection<BulkScorer> scorers,
@@ -161,6 +193,7 @@ final class BooleanScorer extends BulkScorer {
     this.head = new HeadPriorityQueue(scorers.size() - minShouldMatch + 1);
     this.tail = new TailPriorityQueue(minShouldMatch - 1);
     this.minShouldMatch = minShouldMatch;
+    this.needsScores = needsScores;
     for (BulkScorer scorer : scorers) {
       if (needsScores == false) {
         // OrCollector calls score() all the time so we have to explicitly
@@ -220,7 +253,12 @@ final class BooleanScorer extends BulkScorer {
       scorer.score(orCollector, acceptDocs, min, max);
     }
 
-    scoreMatches(collector, base);
+    if (minShouldMatch > 1 || needsScores) {
+      scoreMatches(collector, base);
+    } else {
+      docIdStreamView.base = base;
+      collector.collect(docIdStreamView);
+    }
     Arrays.fill(matching, 0L);
   }
 

@@ -83,6 +83,11 @@ public interface LeafCollector {
    */
   void collect(int doc) throws IOException;
 
+  /** Bulk-collect doc IDs. */
+  default void collect(DocIdStream stream) throws IOException {
+    stream.forEach(this::collect);
+  }
+
   /**
    * Optionally returns an iterator over competitive documents.
    *
