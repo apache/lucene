@@ -270,18 +270,27 @@ public class HnswGraphSearcher<T> {
   private int[] findBestEntryPoint(
       T query, RandomAccessVectorValues<T> vectors, HnswGraph graph, int visitLimit)
       throws IOException {
-    int currentEp = graph.entryNode();
-    float currentScore = compare(query, vectors, currentEp);
-    boolean betterEntryFound = true;
     int size = graph.size();
     int visitedCount = 1;
     prepareScratchState(vectors.size());
-    visited.set(currentEp);
-    for (int level = graph.numLevels() - 1; level >= 1 && betterEntryFound; level--) {
-      while (betterEntryFound) {
-        betterEntryFound = false;
+    final NeighborQueue results = new NeighborQueue(1, false);
+    int currentEp = graph.entryNode();
+    float currentScore = compare(query, vectors, currentEp);
+    float minAcceptedSimilarity = currentScore;
+    results.add(currentEp, currentScore);
+    for (int level = graph.numLevels() - 1; level >= 1; level--) {
+      candidates.add(currentEp, currentScore);
+      visited.set(currentEp);
+      // Keep searching the given level until we stop finding a better candidate entry point
+      while (candidates.size() > 0) {
         // get the best candidate (closest or best scoring)
-        graphSeek(graph, level, currentEp);
+        float topCandidateSimilarity = candidates.topScore();
+        if (topCandidateSimilarity < minAcceptedSimilarity) {
+          break;
+        }
+
+        int topCandidateNode = candidates.pop();
+        graphSeek(graph, level, topCandidateNode);
         int friendOrd;
         while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -291,17 +300,24 @@ public class HnswGraphSearcher<T> {
           if (visitedCount >= visitLimit) {
             return new int[] {-1, visitedCount};
           }
-          visitedCount++;
-
           float friendSimilarity = compare(query, vectors, friendOrd);
-          if (friendSimilarity > currentScore
-              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
-            currentEp = friendOrd;
-            currentScore = friendSimilarity;
-            betterEntryFound = true;
+          visitedCount++;
+          if (friendSimilarity >= minAcceptedSimilarity) {
+            candidates.add(friendOrd, friendSimilarity);
+            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= 1) {
+              minAcceptedSimilarity = results.topScore();
+            }
           }
         }
       }
+      while (results.size() > 1) {
+        results.pop();
+      }
+      currentEp = results.topNode();
+      minAcceptedSimilarity = results.topScore();
+      currentScore = minAcceptedSimilarity;
+      candidates.clear();
+      visited.clear();
     }
     return new int[] {currentEp, visitedCount};
   }
