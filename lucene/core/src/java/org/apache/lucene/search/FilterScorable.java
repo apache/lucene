@@ -46,11 +46,6 @@ public class FilterScorable extends Scorable {
   }
 
   @Override
-  public int docID() {
-    return in.docID();
-  }
-
-  @Override
   public Collection<ChildScorable> getChildren() throws IOException {
     return Collections.singletonList(new ChildScorable(in, "FILTER"));
   }

@@ -164,7 +164,7 @@ final class BooleanWeight extends Weight {
           throws IOException {
         final LeafCollector noScoreCollector =
             new LeafCollector() {
-              ScoreAndDoc fake = new ScoreAndDoc();
+              Score fake = new Score();
 
               @Override
               public void setScorer(Scorable scorer) throws IOException {
@@ -173,7 +173,6 @@ final class BooleanWeight extends Weight {
 
               @Override
               public void collect(int doc) throws IOException {
-                fake.doc = doc;
                 collector.collect(doc);
               }
             };

@@ -125,7 +125,6 @@ abstract class QueryIndex implements Closeable {
     LeafReaderContext ctx;
 
     void advanceTo(int doc) throws IOException {
-      assert scorer.docID() == doc;
       queryId.advanceExact(doc);
       cacheId.advanceExact(doc);
       if (mq != null) {

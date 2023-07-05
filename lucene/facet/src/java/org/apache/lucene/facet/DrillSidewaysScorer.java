@@ -208,7 +208,8 @@ class DrillSidewaysScorer extends BulkScorer {
    */
   private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
       throws IOException {
-    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
+    collector = ScoreCachingWrappingScorer.wrap(collector);
+    setScorer(collector, baseScorer);
 
     // Specialize the single-dim use-case as we have a more efficient implementation for that:
     if (dims.length == 1) {
@@ -351,7 +352,7 @@ class DrillSidewaysScorer extends BulkScorer {
   /** Used when drill downs are highly constraining vs baseQuery. */
   private void doDrillDownAdvanceScoring(
       Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims) throws IOException {
-    setScorer(collector, new ScoreAndDoc());
+    setScorer(collector, new Score());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -564,7 +565,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // if (DEBUG) {
     //  System.out.println("  doUnionScoring");
     // }
-    setScorer(collector, new ScoreAndDoc());
+    setScorer(collector, new Score());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -784,12 +785,7 @@ class DrillSidewaysScorer extends BulkScorer {
     }
   }
 
-  private final class ScoreAndDoc extends Scorable {
-
-    @Override
-    public int docID() {
-      return collectDocID;
-    }
+  private final class Score extends Scorable {
 
     @Override
     public float score() {

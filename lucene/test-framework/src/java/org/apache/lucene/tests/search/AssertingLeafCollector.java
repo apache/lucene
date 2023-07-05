@@ -28,7 +28,6 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private final int min;
   private final int max;
 
-  private Scorable scorer;
   private int lastCollected = -1;
   private boolean finishCalled;
 
@@ -40,7 +39,6 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
-    this.scorer = scorer;
     super.setScorer(AssertingScorable.wrap(scorer));
   }
 
@@ -49,7 +47,6 @@ class AssertingLeafCollector extends FilterLeafCollector {
     assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
     assert doc >= min : "Out of range: " + doc + " < " + min;
     assert doc < max : "Out of range: " + doc + " >= " + max;
-    assert scorer.docID() == doc : "Collected: " + doc + " but scorer: " + scorer.docID();
     in.collect(doc);
     lastCollected = doc;
   }
