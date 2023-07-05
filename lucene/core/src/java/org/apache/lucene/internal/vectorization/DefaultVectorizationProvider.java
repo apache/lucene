@@ -22,6 +22,11 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
 
   private final VectorUtilSupport vectorUtilSupport;
 
+  @Override
+  public ForUtil90 newForUtil90() {
+    return new DefaultForUtil90();
+  }
+
   DefaultVectorizationProvider() {
     vectorUtilSupport = new DefaultVectorUtilSupport();
   }

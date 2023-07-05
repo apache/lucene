@@ -52,6 +52,9 @@ public abstract class VectorizationProvider {
         Holder.INSTANCE, "call to getInstance() from subclass of VectorizationProvider");
   }
 
+  /** Returns a new {@link ForUtil90} implementation to support SIMD usage in Lucene 9.0 codec. */
+  public abstract ForUtil90 newForUtil90();
+
   VectorizationProvider() {
     // no instance/subclass except from this package
   }
@@ -163,7 +166,8 @@ public abstract class VectorizationProvider {
   }
 
   // add all possible callers here as FQCN:
-  private static final Set<String> VALID_CALLERS = Set.of("org.apache.lucene.util.VectorUtil");
+  private static final Set<String> VALID_CALLERS =
+      Set.of("org.apache.lucene.util.VectorUtil", "org.apache.lucene.codecs.lucene90.PForUtil");
 
   private static void ensureCaller() {
     final boolean validCaller =
