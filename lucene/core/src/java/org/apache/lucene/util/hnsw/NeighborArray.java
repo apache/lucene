@@ -29,8 +29,8 @@ import org.apache.lucene.util.ArrayUtil;
  * @lucene.internal
  */
 public class NeighborArray {
-  private final boolean scoresDescOrder;
-  private int size;
+  protected final boolean scoresDescOrder;
+  protected int size;
 
   float[] score;
   int[] node;
@@ -49,8 +49,7 @@ public class NeighborArray {
   public void addInOrder(int newNode, float newScore) {
     assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
     if (size == node.length) {
-      node = ArrayUtil.grow(node);
-      score = ArrayUtil.growExact(score, node.length);
+      growArrays();
     }
     if (size > 0) {
       float previousScore = score[size - 1];
@@ -70,8 +69,7 @@ public class NeighborArray {
   /** Add node and score but do not insert as sorted */
   public void addOutOfOrder(int newNode, float newScore) {
     if (size == node.length) {
-      node = ArrayUtil.grow(node);
-      score = ArrayUtil.growExact(score, node.length);
+      growArrays();
     }
     node[size] = newNode;
     score[size] = newScore;
@@ -126,10 +124,14 @@ public class NeighborArray {
     return insertionPoint;
   }
 
-  /** This method is for test only. */
-  void insertSorted(int newNode, float newScore) {
+  protected void insertSorted(int newNode, float newScore) {
     addOutOfOrder(newNode, newScore);
     insertSortedInternal();
+  }
+
+  protected void growArrays() {
+    node = ArrayUtil.grow(node);
+    score = ArrayUtil.growExact(score, node.length);
   }
 
   public int size() {
@@ -173,7 +175,7 @@ public class NeighborArray {
     return "NeighborArray[" + size + "]";
   }
 
-  private int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
+  protected int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
     int insertionPoint = Arrays.binarySearch(score, 0, bound, newScore);
     if (insertionPoint >= 0) {
       // find the right most position with the same score
@@ -187,7 +189,7 @@ public class NeighborArray {
     return insertionPoint;
   }
 
-  private int descSortFindRightMostInsertionPoint(float newScore, int bound) {
+  protected int descSortFindRightMostInsertionPoint(float newScore, int bound) {
     int start = 0;
     int end = bound - 1;
     while (start <= end) {

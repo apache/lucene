@@ -23,3 +23,12 @@ dependencies {
   moduleTestImplementation project(':lucene:codecs')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+test {
+  // open jdk classes for inspection by ram usage estimator
+  jvmArgs(
+          '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+          '--add-opens', 'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+          '--add-opens', 'java.base/java.util.concurrent.locks=ALL-UNNAMED'
+  )
+}

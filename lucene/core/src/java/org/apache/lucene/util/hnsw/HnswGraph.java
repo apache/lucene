@@ -44,9 +44,10 @@ import org.apache.lucene.index.FloatVectorValues;
  *       many of the <code>efConst</code> neighbors are connected to the new node
  * </ul>
  *
- * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
- * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
+ * <p>Note: The search method optionally takes a set of "accepted nodes", which can be used to
  * exclude deleted documents.
+ *
+ * <p>Thread safety of inserts and searches depends on the implementation.
  */
 public abstract class HnswGraph {
 
@@ -121,6 +122,24 @@ public abstract class HnswGraph {
           return ArrayNodesIterator.EMPTY;
         }
       };
+
+  /**
+   * Add node on the given level with an empty set of neighbors.
+   *
+   * <p>Nodes can be inserted out of order, but it requires that the nodes preceded by the node
+   * inserted out of order are eventually added.
+   *
+   * <p>Actually populating the neighbors, and establishing bidirectional links, is the
+   * responsibility of the caller.
+   *
+   * <p>It is also the responsibility of the caller to ensure that each node is only added once.
+   *
+   * @param level level to add a node on
+   * @param node the node to add, represented as an ordinal on the level 0.
+   */
+  public void addNode(int level, int node) {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total

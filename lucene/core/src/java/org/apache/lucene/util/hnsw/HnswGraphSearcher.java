@@ -25,6 +25,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.GrowableBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
@@ -87,6 +88,67 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
+    return search(
+        query,
+        topK,
+        vectors,
+        vectorEncoding,
+        similarityFunction,
+        graph,
+        acceptOrds,
+        visitedLimit,
+        new SparseFixedBitSet(vectors.size()));
+  }
+
+  /**
+   * Searches a concurrent HNSW graph for the nearest neighbors of a query vector.
+   *
+   * @param query search query vector
+   * @param topK the number of nodes to be returned
+   * @param vectors the vector values
+   * @param similarityFunction the similarity function to compare vectors
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @return a priority queue holding the closest neighbors found
+   */
+  public static NeighborQueue searchConcurrent(
+      float[] query,
+      int topK,
+      RandomAccessVectorValues<float[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      HnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit)
+      throws IOException {
+    // concurrent searches need to use a growable bitset because new vectors may be added
+    // while the search is in progress
+    return search(
+        query,
+        topK,
+        vectors,
+        vectorEncoding,
+        similarityFunction,
+        graph,
+        acceptOrds,
+        visitedLimit,
+        new GrowableBitSet(vectors.size()));
+  }
+
+  private static NeighborQueue search(
+      float[] query,
+      int topK,
+      RandomAccessVectorValues<float[]> vectors,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      HnswGraph graph,
+      Bits acceptOrds,
+      int visitedLimit,
+      BitSet visited)
+      throws IOException {
     if (query.length != vectors.dimension()) {
       throw new IllegalArgumentException(
           "vector query dimension: "
@@ -96,10 +158,7 @@ public class HnswGraphSearcher<T> {
     }
     HnswGraphSearcher<float[]> graphSearcher =
         new HnswGraphSearcher<>(
-            vectorEncoding,
-            similarityFunction,
-            new NeighborQueue(topK, true),
-            new SparseFixedBitSet(vectors.size()));
+            vectorEncoding, similarityFunction, new NeighborQueue(topK, true), visited);
     return search(query, topK, vectors, graph, graphSearcher, acceptOrds, visitedLimit);
   }
 
@@ -275,7 +334,6 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     assert results.isMinHeap();
 
-    int size = graph.size();
     prepareScratchState(vectors.size());
 
     int numVisited = 0;
@@ -311,7 +369,6 @@ public class HnswGraphSearcher<T> {
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
         }
@@ -349,7 +406,14 @@ public class HnswGraphSearcher<T> {
   private void prepareScratchState(int capacity) {
     candidates.clear();
     if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+      // this happens during graph construction; otherwise the size of the vector values should
+      // be constant, and it will be a SparseFixedBitSet instead of FixedBitSet
+      assert (visited instanceof FixedBitSet || visited instanceof GrowableBitSet)
+          : "Unexpected visited type: " + visited.getClass().getName();
+      if (visited instanceof FixedBitSet) {
+        visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+      }
+      // else GrowableBitSet knows how to grow itself safely
     }
     visited.clear();
   }

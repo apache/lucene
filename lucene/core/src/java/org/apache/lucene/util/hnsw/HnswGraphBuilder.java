@@ -78,6 +78,7 @@ public final class HnswGraphBuilder<T> {
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
   private final RandomAccessVectorValues<T> vectorsCopy;
+  // tracks nodes that were already added when initializing from another graph
   private final Set<Integer> initializedNodes;
 
   public static <T> HnswGraphBuilder<T> create(

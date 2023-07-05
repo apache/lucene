@@ -29,6 +29,9 @@ import org.apache.lucene.util.RamUsageEstimator;
 /**
  * An {@link HnswGraph} where all nodes and connections are held in memory. This class is used to
  * construct the HNSW graph before it's written to the index.
+ *
+ * <p>This implementation is NOT threadsafe for insertion. It accommodates multiple concurrent
+ * searches given the appropriate scaffolding (which is performed by HnswGraphSeacrher).
  */
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
@@ -47,6 +50,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // element
   // null.
   private final List<Map<Integer, NeighborArray>> graphUpperLevels;
+  // this is the default, but make it explicit since we can't retrieve it once set
+  private final float levelLoadFactor = 0.75f;
   private final int nsize;
   private final int nsize0;
 
@@ -87,13 +92,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return graphLevel0.size(); // all nodes are located on the 0th level
   }
 
-  /**
-   * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
-   * preceded by the node inserted out of order are eventually added.
-   *
-   * @param level level to add a node on
-   * @param node the node to add, represented as an ordinal on the level 0.
-   */
+  @Override
   public void addNode(int level, int node) {
     if (entryNode == -1) {
       entryNode = node;
@@ -104,7 +103,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       // and make this node the graph's new entry point
       if (level >= numLevels) {
         for (int i = numLevels; i <= level; i++) {
-          graphUpperLevels.add(new HashMap<>());
+          graphUpperLevels.add(
+              new HashMap<>(
+                  16, levelLoadFactor)); // these are the default parameters, made explicit
         }
         numLevels = level + 1;
         entryNode = node;
@@ -169,35 +170,43 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public long ramBytesUsed() {
+    // local vars here just to make it easier to keep lines short enough to read
+    long AH_BYTES = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+    long REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+
     long neighborArrayBytes0 =
-        nsize0 * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
-            + Integer.BYTES * 3;
+        (long) nsize0 * (Integer.BYTES + Float.BYTES)
+            + AH_BYTES * 2
+            + REF_BYTES
+            + Integer.BYTES * 2;
     long neighborArrayBytes =
-        nsize * (Integer.BYTES + Float.BYTES)
+        (long) nsize * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + REF_BYTES * 2
             + Integer.BYTES * 3;
     long total = 0;
+
+    // a hashmap Node contains an int hash and a Node reference, as well as K and V references.
+    long mapNodeBytes = 3L * REF_BYTES + Integer.BYTES;
+
     for (int l = 0; l < numLevels; l++) {
       if (l == 0) {
-        total +=
-            graphLevel0.size() * neighborArrayBytes0
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF; // for graph;
+        total += graphLevel0.size() * neighborArrayBytes0 + REF_BYTES; // for graph;
       } else {
         long numNodesOnLevel = graphUpperLevels.get(l).size();
 
-        // For levels > 0, we represent the graph structure with a tree map.
-        // A single node in the tree contains 3 references (left root, right root, value) as well
-        // as an Integer for the key and 1 extra byte for the color of the node (this is actually 1
-        // bit, but
-        // because we do not have that granularity, we set to 1 byte). In addition, we include 1
-        // more reference for
-        // the tree map itself.
+        // For levels > 0, we represent the graph structure with a hash map.
+        // we expect there to be nodesOnLevel / levelLoadFactor Nodes in its internal table.
+        // there is also an entrySet reference, 3 ints, and a float for internal use.
+        int nodeCount = (int) (numNodesOnLevel / levelLoadFactor);
         total +=
-            numNodesOnLevel * (3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF + Integer.BYTES + 1)
-                + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+            nodeCount * mapNodeBytes // nodes
+                + nodeCount * REF_BYTES
+                + AH_BYTES // nodes array
+                + 3 * Integer.BYTES
+                + Float.BYTES
+                + REF_BYTES // extra internal fields
+                + REF_BYTES; // the Map reference itself
 
         // Add the size neighbor of each node
         total += numNodesOnLevel * neighborArrayBytes;
