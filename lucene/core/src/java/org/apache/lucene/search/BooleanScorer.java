@@ -169,7 +169,6 @@ final class BooleanScorer extends BulkScorer {
       return count;
     }
   }
-  ;
 
   private final DocIdStreamView docIdStreamView = new DocIdStreamView();
 
