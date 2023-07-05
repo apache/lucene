@@ -53,18 +53,18 @@ public final class ScoreCachingWrappingScorer extends Scorable {
       super(in);
     }
 
-    private ScoreCachingWrappingScorer score;
+    private ScoreCachingWrappingScorer scorer;
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      score = new ScoreCachingWrappingScorer(scorer);
-      super.setScorer(this.score);
+      scorer = new ScoreCachingWrappingScorer(scorer);
+      super.setScorer(this.scorer);
     }
 
     @Override
     public void collect(int doc) throws IOException {
-      if (score != null) {
-        score.curDoc = doc;
+      if (scorer != null) {
+        scorer.curDoc = doc;
       }
       super.collect(doc);
     }
