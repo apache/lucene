@@ -681,6 +681,9 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 26).and(mask);
     outVec.intoArray(output, outOff += 4);
 
+    outVec = inVec.lanewise(VectorOperators.LSHR, 28).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
     outVec = inVec.lanewise(VectorOperators.LSHR, 30);
     outVec.intoArray(output, outOff += 4);
   }
@@ -1108,6 +1111,15 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 12).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 20).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 24).and(mask);
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 28);
@@ -1567,6 +1579,9 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 14).and(mask);
     outVec.intoArray(output, outOff += 4);
 
+    outVec = inVec.lanewise(VectorOperators.LSHR, 20).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
     outVec = inVec.lanewise(VectorOperators.LSHR, 26);
     outVec.intoArray(output, outOff += 4);
   }
@@ -2019,6 +2034,26 @@ final class PanamaForUtil90 implements ForUtil90 {
     inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 8).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 24).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 8).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 24);
@@ -2516,6 +2551,9 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 2).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 12).and(mask);
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 22);
@@ -3023,6 +3061,17 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 4).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 28);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 4).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 8).and(mask);
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 20);
@@ -3562,6 +3611,9 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 10).and(mask));
     outVec.intoArray(output, outOff += 4);
 
+    outVec = inVec.lanewise(VectorOperators.LSHR, 4).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
     outVec = inVec.lanewise(VectorOperators.LSHR, 18);
     outVec.intoArray(output, outOff += 4);
   }
@@ -3987,6 +4039,46 @@ final class PanamaForUtil90 implements ForUtil90 {
 
     outVec = inVec.and(mask);
     outVec.intoArray(output, outOff);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 16).and(mask);
     outVec.intoArray(output, outOff += 4);
@@ -4643,6 +4735,11 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 10).and(mask);
     outVec.intoArray(output, outOff += 4);
 
+    outVec = inVec.lanewise(VectorOperators.LSHR, 28);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 4).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
     outVec = inVec.lanewise(VectorOperators.LSHR, 14);
     outVec.intoArray(output, outOff += 4);
   }
@@ -5226,6 +5323,19 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 28);
     inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 4).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 16).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 4).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 24);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 8).and(mask));
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 12);
@@ -5843,6 +5953,11 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 2).and(mask));
     outVec.intoArray(output, outOff += 4);
 
+    outVec = inVec.lanewise(VectorOperators.LSHR, 20);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 12).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
     outVec = inVec.lanewise(VectorOperators.LSHR, 10);
     outVec.intoArray(output, outOff += 4);
   }
@@ -6447,6 +6562,34 @@ final class PanamaForUtil90 implements ForUtil90 {
     inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 24);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 8).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 16).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 8).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 0).and(mask);
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 24);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 8).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 16).and(mask));
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 8);
@@ -7102,6 +7245,11 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 18);
     inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 14).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 12);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 20).and(mask));
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 6);
@@ -7765,6 +7913,21 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 20);
     inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 12).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 16);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 16).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 12);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 20).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 8);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 24).and(mask));
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 4);
@@ -8460,6 +8623,11 @@ final class PanamaForUtil90 implements ForUtil90 {
     outVec = inVec.lanewise(VectorOperators.LSHR, 6);
     inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 26).and(mask));
+    outVec.intoArray(output, outOff += 4);
+
+    outVec = inVec.lanewise(VectorOperators.LSHR, 4);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+    outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, 28).and(mask));
     outVec.intoArray(output, outOff += 4);
 
     outVec = inVec.lanewise(VectorOperators.LSHR, 2);

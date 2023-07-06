@@ -385,14 +385,14 @@ def generate_unpack_code(bitPerValue, f):
             break
         if bitsRemaining == 0:
             f.write(prefect_fit)
-            bitsRemaining = 32
+            bitsRemaining = total_bits
 
-        elif bitsRemaining >= bitPerValue:
+        if bitsRemaining >= bitPerValue:
             f.write(decompress % (total_bits - bitsRemaining))
             bitsRemaining -= bitPerValue
         else:
             f.write(unprefect_fit % (total_bits - bitsRemaining, bitsRemaining))
-            bitsRemaining = 32 + (bitsRemaining - bitPerValue)
+            bitsRemaining = total_bits + (bitsRemaining - bitPerValue)
 
 
 if __name__ == '__main__':
