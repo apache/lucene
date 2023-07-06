@@ -116,7 +116,7 @@ public class NeighborQueue {
   /**
    * @return is the underlying heap currently at or exceeding maxSize()
    */
-  protected final boolean isFull() {
+  protected final boolean isHeapFull() {
     return size() >= heap.maxSize();
   }
 

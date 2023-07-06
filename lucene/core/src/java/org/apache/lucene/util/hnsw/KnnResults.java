@@ -33,6 +33,9 @@ public abstract class KnnResults extends NeighborQueue {
     doClear();
   }
 
+  abstract public void popWhileFull();
+  abstract public boolean isFull();
+
   abstract protected void doClear();
 
   @Override

@@ -7,11 +7,12 @@ import org.apache.lucene.util.BitSet;
 public class ToParentJoinKnnResults extends KnnResults {
   private final Map<Integer, Integer> nodeIdToHeapIndex;
   private final BitSet parentBitSet;
-
-  public ToParentJoinKnnResults(int initialSize, BitSet parentBitSet) {
-    super(initialSize);
-    this.nodeIdToHeapIndex = new HashMap<>(initialSize < 2 ? initialSize + 1 : (int) (initialSize / 0.75 + 1.0));
+  private final int k;
+  public ToParentJoinKnnResults(int k, BitSet parentBitSet) {
+    super(k);
+    this.nodeIdToHeapIndex = new HashMap<>(k < 2 ? k + 1 : (int) (k / 0.75 + 1.0));
     this.parentBitSet = parentBitSet;
+    this.k = k;
   }
 
   /**
@@ -50,7 +51,7 @@ public class ToParentJoinKnnResults extends KnnResults {
    */
   @Override
   public boolean insertWithOverflow(int childNodeId, float nodeScore) {
-    final boolean full = isFull();
+    final boolean full = isHeapFull();
     int minNodeId = this.topNode();
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     boolean nodeAdded = false;
@@ -105,6 +106,25 @@ public class ToParentJoinKnnResults extends KnnResults {
                   + "]"
                   + nodeIdToHeapIndex;
         });
+  }
+
+  @Override
+  public void popWhileFull() {
+    while (size() > k) {
+      long popped = super.pop();
+      int nodeId = decodeNodeId(popped);
+      nodeIdToHeapIndex.remove(nodeId);
+    }
+    // Shift all node IDs above the popped index down by 1
+    for (int i = 1; i < size(); i++) {
+      int nodeIdToShift = getNodeAt(i);
+      nodeIdToHeapIndex.put(nodeIdToShift, i);
+    }
+  }
+
+  @Override
+  public boolean isFull() {
+    return size() >= k;
   }
 
   @Override
