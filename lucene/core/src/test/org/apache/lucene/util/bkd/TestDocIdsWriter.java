@@ -18,6 +18,7 @@ package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Set;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
@@ -85,7 +86,12 @@ public class TestDocIdsWriter extends LuceneTestCase {
         while (set.size() < size) {
           set.add(small + random().nextInt(size * 16));
         }
-        int[] docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
+        int[] docIDs;
+        if (random().nextBoolean()) {
+          docIDs = set.stream().sorted(Comparator.reverseOrder()).mapToInt(t -> t).toArray();
+        } else {
+          docIDs = set.stream().mapToInt(t -> t).sorted().toArray();
+        }
         test(dir, docIDs);
       }
     }
@@ -99,7 +105,11 @@ public class TestDocIdsWriter extends LuceneTestCase {
         int[] docIDs = new int[size];
         int start = random().nextInt(1000000);
         for (int i = 0; i < docIDs.length; i++) {
-          docIDs[i] = start + i;
+          if (random().nextBoolean()) {
+            docIDs[i] = start + i;
+          } else {
+            docIDs[i] = start + docIDs.length - i;
+          }
         }
         test(dir, docIDs);
       }

@@ -502,6 +502,17 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     }
 
     {
+      // test ReverseDocBaseBitSetIterator
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      int[] offsetBits = Arrays.stream(bits1).map(i -> i - offset1).toArray();
+      DocIdSetIterator disi =
+          new ReverseDocBaseBitSetIterator(
+              makeFixedBitSet(offsetBits, numBits1 - offset1), count1, offset1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
+
+    {
       // test other
       FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
       int[] sorted = new int[bits1.length + 1];

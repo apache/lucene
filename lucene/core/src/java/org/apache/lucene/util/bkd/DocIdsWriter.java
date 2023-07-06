@@ -23,9 +23,44 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.DocBaseBitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.ReverseDocBaseBitSetIterator;
 
 final class DocIdsWriter {
 
+  private static final class BitSetWriter {
+    int currentWordIndex = 0;
+    long currentWord = 0;
+    final int totalWordCount;
+    final DataOutput out;
+
+    BitSetWriter(DataOutput out, int totalWordCount) {
+      this.out = out;
+      this.totalWordCount = totalWordCount;
+    }
+
+    void add(int index) throws IOException {
+      final int nextWordIndex = index >> 6;
+      assert currentWordIndex <= nextWordIndex;
+      if (currentWordIndex < nextWordIndex) {
+        out.writeLong(currentWord);
+        currentWord = 0L;
+        currentWordIndex++;
+        while (currentWordIndex < nextWordIndex) {
+          currentWordIndex++;
+          out.writeLong(0L);
+        }
+      }
+      currentWord |= 1L << index;
+    }
+
+    void finish() throws IOException {
+      out.writeLong(currentWord);
+      assert currentWordIndex + 1 == totalWordCount;
+    }
+  }
+
+  private static final byte REVERSE_BITSET_IDS = (byte) -4;
+  private static final byte REVERSE_CONTINUOUS_IDS = (byte) -3;
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
@@ -44,6 +79,7 @@ final class DocIdsWriter {
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
     boolean strictlySorted = true;
+    boolean strictlySortedReverse = true;
     int min = docIds[0];
     int max = docIds[0];
     for (int i = 1; i < count; ++i) {
@@ -52,15 +88,18 @@ final class DocIdsWriter {
       if (last >= current) {
         strictlySorted = false;
       }
+      if (last <= current) {
+        strictlySortedReverse = false;
+      }
       min = Math.min(min, current);
       max = Math.max(max, current);
     }
 
     int min2max = max - min + 1;
-    if (strictlySorted) {
+    if (strictlySorted || strictlySortedReverse) {
       if (min2max == count) {
         // continuous ids, typically happens when segment is sorted
-        out.writeByte(CONTINUOUS_IDS);
+        out.writeByte(strictlySorted ? CONTINUOUS_IDS : REVERSE_CONTINUOUS_IDS);
         out.writeVInt(docIds[start]);
         return;
       } else if (min2max <= (count << 4)) {
@@ -68,8 +107,8 @@ final class DocIdsWriter {
         // Only trigger bitset optimization when max - min + 1 <= 16 * count in order to avoid
         // expanding too much storage.
         // A field with lower cardinality will have higher probability to trigger this optimization.
-        out.writeByte(BITSET_IDS);
-        writeIdsAsBitSet(docIds, start, count, out);
+        out.writeByte(strictlySorted ? BITSET_IDS : REVERSE_BITSET_IDS);
+        writeIdsAsBitSet(docIds, start, count, out, strictlySortedReverse);
         return;
       }
     }
@@ -128,48 +167,46 @@ final class DocIdsWriter {
     }
   }
 
-  private static void writeIdsAsBitSet(int[] docIds, int start, int count, DataOutput out)
-      throws IOException {
-    int min = docIds[start];
-    int max = docIds[start + count - 1];
+  private static void writeIdsAsBitSet(
+      int[] docIds, int start, int count, DataOutput out, boolean reverse) throws IOException {
+    int min = reverse ? docIds[start + count - 1] : docIds[start];
+    int max = reverse ? docIds[start] : docIds[start + count - 1];
 
     final int offsetWords = min >> 6;
     final int offsetBits = offsetWords << 6;
     final int totalWordCount = FixedBitSet.bits2words(max - offsetBits + 1);
-    long currentWord = 0;
-    int currentWordIndex = 0;
 
     out.writeVInt(offsetWords);
     out.writeVInt(totalWordCount);
     // build bit set streaming
-    for (int i = 0; i < count; i++) {
-      final int index = docIds[start + i] - offsetBits;
-      final int nextWordIndex = index >> 6;
-      assert currentWordIndex <= nextWordIndex;
-      if (currentWordIndex < nextWordIndex) {
-        out.writeLong(currentWord);
-        currentWord = 0L;
-        currentWordIndex++;
-        while (currentWordIndex < nextWordIndex) {
-          currentWordIndex++;
-          out.writeLong(0L);
-        }
+    BitSetWriter bitSetWriter = new BitSetWriter(out, totalWordCount);
+    if (reverse == false) {
+      for (int i = 0; i < count; i++) {
+        final int index = docIds[start + i] - offsetBits;
+        bitSetWriter.add(index);
       }
-      currentWord |= 1L << index;
+    } else {
+      for (int i = count - 1; i >= 0; i--) {
+        final int index = docIds[start + i] - offsetBits;
+        bitSetWriter.add(index);
+      }
     }
-    out.writeLong(currentWord);
-    assert currentWordIndex + 1 == totalWordCount;
+    bitSetWriter.finish();
   }
 
   /** Read {@code count} integers into {@code docIDs}. */
   void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
+      case REVERSE_CONTINUOUS_IDS:
+        readReverseContinuousIds(in, count, docIDs);
+        break;
       case CONTINUOUS_IDS:
         readContinuousIds(in, count, docIDs);
         break;
       case BITSET_IDS:
-        readBitSet(in, count, docIDs);
+      case REVERSE_BITSET_IDS:
+        readBitSet(in, count, docIDs, bpv == REVERSE_BITSET_IDS);
         break;
       case DELTA_BPV_16:
         readDelta16(in, count, docIDs);
@@ -188,12 +225,16 @@ final class DocIdsWriter {
     }
   }
 
-  private static DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
+  private static DocIdSetIterator readBitSetIterator(IndexInput in, int count, boolean reverse)
+      throws IOException {
     int offsetWords = in.readVInt();
     int longLen = in.readVInt();
     long[] bits = new long[longLen];
     in.readLongs(bits, 0, longLen);
     FixedBitSet bitSet = new FixedBitSet(bits, longLen << 6);
+    if (reverse) {
+      return new ReverseDocBaseBitSetIterator(bitSet, count, offsetWords << 6);
+    }
     return new DocBaseBitSetIterator(bitSet, count, offsetWords << 6);
   }
 
@@ -201,6 +242,14 @@ final class DocIdsWriter {
     int start = in.readVInt();
     for (int i = 0; i < count; i++) {
       docIDs[i] = start + i;
+    }
+  }
+
+  private static void readReverseContinuousIds(IndexInput in, int count, int[] docIDs)
+      throws IOException {
+    int start = in.readVInt();
+    for (int i = 0; i < count; i++) {
+      docIDs[i] = start - i;
     }
   }
 
@@ -213,8 +262,9 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, int[] docIDs) throws IOException {
-    DocIdSetIterator iterator = readBitSetIterator(in, count);
+  private static void readBitSet(IndexInput in, int count, int[] docIDs, boolean reverse)
+      throws IOException {
+    DocIdSetIterator iterator = readBitSetIterator(in, count, reverse);
     int docId, pos = 0;
     while ((docId = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       docIDs[pos++] = docId;
@@ -267,11 +317,13 @@ final class DocIdsWriter {
   void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
+      case REVERSE_CONTINUOUS_IDS:
       case CONTINUOUS_IDS:
-        readContinuousIds(in, count, visitor);
+        readContinuousIds(in, count, visitor, bpv == REVERSE_CONTINUOUS_IDS);
         break;
       case BITSET_IDS:
-        readBitSet(in, count, visitor);
+      case REVERSE_BITSET_IDS:
+        readBitSet(in, count, visitor, bpv == REVERSE_BITSET_IDS);
         break;
       case DELTA_BPV_16:
         readDelta16(in, count, visitor);
@@ -290,21 +342,28 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readBitSet(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
-    DocIdSetIterator bitSetIterator = readBitSetIterator(in, count);
+  private static void readBitSet(
+      IndexInput in, int count, IntersectVisitor visitor, boolean reverse) throws IOException {
+    DocIdSetIterator bitSetIterator = readBitSetIterator(in, count, reverse);
     visitor.visit(bitSetIterator);
   }
 
-  private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
+  private static void readContinuousIds(
+      IndexInput in, int count, IntersectVisitor visitor, boolean reverse) throws IOException {
     int start = in.readVInt();
+    if (reverse) {
+      start = start - count + 1; // set to min value in reverse case
+    }
     int extra = start & 63;
     int offset = start - extra;
     int numBits = count + extra;
     FixedBitSet bitSet = new FixedBitSet(numBits);
     bitSet.set(extra, numBits);
-    visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
+    if (reverse) {
+      visitor.visit(new ReverseDocBaseBitSetIterator(bitSet, count, offset));
+    } else {
+      visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
+    }
   }
 
   private static void readLegacyDeltaVInts(IndexInput in, int count, IntersectVisitor visitor)
