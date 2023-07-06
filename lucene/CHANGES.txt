@@ -153,6 +153,8 @@ Bug Fixes
 
 * GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
+* GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).
+
 Other
 ---------------------
 
