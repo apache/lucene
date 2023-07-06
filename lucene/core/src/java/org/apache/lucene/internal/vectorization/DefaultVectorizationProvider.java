@@ -15,38 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.search;
+package org.apache.lucene.internal.vectorization;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
+/** Default provider returning scalar implementations. */
+final class DefaultVectorizationProvider extends VectorizationProvider {
 
-/**
- * Filter a {@link Scorable}, intercepting methods and optionally changing their return values
- *
- * <p>The default implementation simply passes all calls to its delegate, with the exception of
- * {@link #setMinCompetitiveScore(float)} which defaults to a no-op.
- */
-public class FilterScorable extends Scorable {
+  private final VectorUtilSupport vectorUtilSupport;
 
-  protected final Scorable in;
-
-  /**
-   * Filter a scorer
-   *
-   * @param in the scorer to filter
-   */
-  public FilterScorable(Scorable in) {
-    this.in = in;
+  DefaultVectorizationProvider() {
+    vectorUtilSupport = new DefaultVectorUtilSupport();
   }
 
   @Override
-  public float score() throws IOException {
-    return in.score();
-  }
-
-  @Override
-  public Collection<ChildScorable> getChildren() throws IOException {
-    return Collections.singletonList(new ChildScorable(in, "FILTER"));
+  public VectorUtilSupport getVectorUtilSupport() {
+    return vectorUtilSupport;
   }
 }

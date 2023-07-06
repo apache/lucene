@@ -55,6 +55,8 @@ API Changes
 
 * GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
 
+* GITHUB#12407: Removed Scorable#docID. (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -122,11 +124,13 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
+  collection has finished running on a leaf. (Adrien Grand)
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
 
 Optimizations
 ---------------------
@@ -136,9 +140,13 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
+
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
 
 Bug Fixes
 ---------------------
@@ -147,9 +155,16 @@ Bug Fixes
 
 * GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
+* GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).
+
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
+  (Uwe Schindler)
+
+* GITHUB#12410: Refactor vectorization support (split provider from implementation classes).
+  (Uwe Schindler, Chris Hegarty)
 
 ======================== Lucene 9.7.0 =======================
 

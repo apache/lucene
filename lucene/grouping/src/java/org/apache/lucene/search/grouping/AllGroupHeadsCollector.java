@@ -320,7 +320,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, int docBase)
         throws IOException {
       super(groupValue, doc, docBase);
-      assert scorer.docID() == doc;
       this.scorer = scorer;
       this.topScore = scorer.score();
     }
@@ -332,7 +331,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     @Override
     protected int compare(int compIDX, int doc) throws IOException {
-      assert scorer.docID() == doc;
       assert compIDX == 0;
       float score = scorer.score();
       int c = Float.compare(score, topScore);
