@@ -26,11 +26,15 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 final class PanamaForUtil90 implements ForUtil90 {
-  private final int[] tmp = new int[BLOCK_SIZE];
+  private static final int[] tmp = new int[BLOCK_SIZE];
+   
+  private static final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
   private static final VectorSpecies<Integer> SPECIES_128 = IntVector.SPECIES_128;
 
+  /** Encode 128 integers from {@code input} into {@code out}. */
+  @Override
   public void encode(int[] input, int bitsPerValue, DataOutput out) throws IOException {
     if (bitsPerValue == 32) {
       for (int i = 0; i < 128; i++) {
@@ -141,7 +145,8 @@ final class PanamaForUtil90 implements ForUtil90 {
     }
   }
 
-  /** Decode 128 integers into {@code longs}. */
+  /** Decode 128 integers into {@code output}. */
+  @Override
   public void decode(int bitsPerValue, DataInput in, int[] output) throws IOException {
     in.readInts(tmp, 0, 4 * bitsPerValue);
     if (bitsPerValue == 32) {
@@ -253,6 +258,7 @@ final class PanamaForUtil90 implements ForUtil90 {
    * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
    * representation may allow subsequent operations to be performed on two values at a time.
    */
+  @Override
   public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     decode(bitsPerValue, in, tmp);
     for (int i = 0; i < 64; ++i) {

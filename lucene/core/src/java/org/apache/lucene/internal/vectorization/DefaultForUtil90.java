@@ -23,11 +23,14 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 final class DefaultForUtil90 implements ForUtil90 {
-  private final int[] tmp = new int[BLOCK_SIZE];
+  private static final int[] tmp = new int[BLOCK_SIZE];
+
+  private static final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
 
-  /** Encode 128 integers from {@code longs} into {@code out}. */
+  /** Encode 128 integers from {@code input} into {@code out}. */
+  @Override
   public void encode(int[] input, int bitsPerValue, DataOutput out) throws IOException {
     int MASK = (1 << bitsPerValue) - 1;
     int cur = 0;
@@ -44,26 +47,13 @@ final class DefaultForUtil90 implements ForUtil90 {
 
       bitsRemaining -= bitsPerValue;
 
-      if (bitsRemaining < 0) {
+      if (bitsRemaining <= 0) {
         cur += 4;
-        tmp[cur] = 0;
-        tmp[cur + 1] = 0;
-        tmp[cur + 2] = 0;
-        tmp[cur + 3] = 0;
-        tmp[cur] |= ((input[i] & MASK) >>> (bitsPerValue + bitsRemaining));
-        tmp[cur + 1] |= ((input[i + 1] & MASK) >>> (bitsPerValue + bitsRemaining));
-        tmp[cur + 2] |= ((input[i + 2] & MASK) >>> (bitsPerValue + bitsRemaining));
-        tmp[cur + 3] |= ((input[i + 3] & MASK) >>> (bitsPerValue + bitsRemaining));
+        tmp[cur] = ((input[i] & MASK) >>> (bitsPerValue + bitsRemaining));
+        tmp[cur + 1] = ((input[i + 1] & MASK) >>> (bitsPerValue + bitsRemaining));
+        tmp[cur + 2] = ((input[i + 2] & MASK) >>> (bitsPerValue + bitsRemaining));
+        tmp[cur + 3] = ((input[i + 3] & MASK) >>> (bitsPerValue + bitsRemaining));
         bitsRemaining += totalBits;
-      }
-
-      if (bitsRemaining == 0) {
-        cur += 4;
-        tmp[cur] = 0;
-        tmp[cur + 1] = 0;
-        tmp[cur + 2] = 0;
-        tmp[cur + 3] = 0;
-        bitsRemaining = totalBits;
       }
     }
 
@@ -72,11 +62,10 @@ final class DefaultForUtil90 implements ForUtil90 {
     }
   }
 
-  /** Decode 128 integers into {@code longs}. */
+  /** Decode 128 integers into {@code output}. */
+  @Override
   public void decode(int bitsPerValue, DataInput in, int[] output) throws IOException {
-    for (int i = 0; i < 4 * bitsPerValue; ++i) {
-      tmp[i] = in.readInt();
-    }
+    in.readInts(tmp, 0, 4 * bitsPerValue);
     int MASK = (1 << bitsPerValue) - 1;
     int cur = 0;
     int bitsRemaining = totalBits;
@@ -93,7 +82,7 @@ final class DefaultForUtil90 implements ForUtil90 {
       tmp[cur + 3] >>>= bitsPerValue;
       bitsRemaining -= bitsPerValue;
 
-      if (bitsRemaining < 0) {
+      if (bitsRemaining <= 0) {
         cur += 4;
         int PART_MASK = (1 << (-bitsRemaining)) - 1;
         output[i] |= ((tmp[cur] & PART_MASK) << (bitsRemaining + bitsPerValue));
@@ -107,11 +96,6 @@ final class DefaultForUtil90 implements ForUtil90 {
         tmp[cur + 3] >>>= (-bitsRemaining);
         bitsRemaining += totalBits;
       }
-
-      if (bitsRemaining == 0) {
-        cur += 4;
-        bitsRemaining = totalBits;
-      }
     }
     assert cur == 4 * bitsPerValue;
   }
@@ -122,8 +106,8 @@ final class DefaultForUtil90 implements ForUtil90 {
    * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
    * representation may allow subsequent operations to be performed on two values at a time.
    */
+  @Override
   public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
-    int[] decoded = new int[128];
     decode(bitsPerValue, in, decoded);
     for (int i = 0; i < 64; ++i) {
       longs[i] |= decoded[i];
@@ -132,4 +116,3 @@ final class DefaultForUtil90 implements ForUtil90 {
     }
   }
 }
-

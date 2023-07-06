@@ -33,7 +33,6 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  */
 package org.apache.lucene.internal.vectorization;
 
-
 import java.io.IOException;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
@@ -42,11 +41,15 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 final class PanamaForUtil90 implements ForUtil90 {
-  private final int[] tmp = new int[BLOCK_SIZE];
+  private static final int[] tmp = new int[BLOCK_SIZE];
+   
+  private static final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
   private static final VectorSpecies<Integer> SPECIES_128 = IntVector.SPECIES_128;
 
+  /** Encode 128 integers from {@code input} into {@code out}. */
+  @Override
   public void encode(int[] input, int bitsPerValue, DataOutput out) throws IOException {
     if (bitsPerValue == 32) {
       for (int i = 0; i < 128; i++) {
@@ -157,7 +160,8 @@ final class PanamaForUtil90 implements ForUtil90 {
     }
   }
 
-  /** Decode 128 integers into {@code longs}. */
+  /** Decode 128 integers into {@code output}. */
+  @Override
   public void decode(int bitsPerValue, DataInput in, int[] output) throws IOException {
     in.readInts(tmp, 0, 4 * bitsPerValue);
     if (bitsPerValue == 32) {
@@ -269,6 +273,7 @@ final class PanamaForUtil90 implements ForUtil90 {
    * [0..63], and values [64..127] are encoded in the low-order bits of {@code longs} [0..63]. This
    * representation may allow subsequent operations to be performed on two values at a time.
    */
+  @Override
   public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     decode(bitsPerValue, in, tmp);
     for (int i = 0; i < 64; ++i) {
@@ -291,35 +296,35 @@ def generate_pack_code(bitPerValue, f):
     IntVector outVec;
     IntVector inVec = IntVector.fromArray(SPECIES_128, input, inOff);
     outVec = inVec;
-    inVec = IntVector.fromArray(SPECIES_128, input, inOff+=4);
-    """ % (bitPerValue, bitPerValue)
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+""" % (bitPerValue, bitPerValue)
     f.write(function_defination)
 
     function_end = """
     outVec = inVec.lanewise(VectorOperators.LSHL, %d).or(outVec);
     outVec.intoArray(output, outOff);
   }
-    """
+"""
 
     prefect_fit = """
     outVec.intoArray(output, outOff);
-    outOff+=4;
+    outOff += 4;
     outVec = inVec;
-    inVec = IntVector.fromArray(SPECIES_128, input, inOff+=4);
-    """
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+"""
 
     compress_code = """
     outVec = inVec.lanewise(VectorOperators.LSHL, %d).or(outVec);
-    inVec = IntVector.fromArray(SPECIES_128, input, inOff+=4);
-    """
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+"""
 
     unprefect_fit = """
     outVec = inVec.lanewise(VectorOperators.LSHL, %d).or(outVec);
     outVec.intoArray(output, outOff);
-    outOff+=4;
+    outOff += 4;
     outVec = inVec.lanewise(VectorOperators.LSHR, %d);
-    inVec = IntVector.fromArray(SPECIES_128, input, inOff+=4);\n
-    """
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+"""
 
     bitsRemaining = total_bits - bitPerValue
     for i in range(0, 124, 4):
@@ -346,32 +351,32 @@ def generate_unpack_code(bitPerValue, f):
     int inOff = 0;
     int outOff = 0;
     final int mask = (1 << %d) - 1;
-    
+
     outVec = inVec.and(mask);
     outVec.intoArray(output, outOff);
-    """ % (bitPerValue, bitPerValue, bitPerValue)
+""" % (bitPerValue, bitPerValue, bitPerValue)
 
     decompress = """
     outVec = inVec.lanewise(VectorOperators.LSHR, %d).and(mask);
-    outVec.intoArray(output, outOff+=4);
-    """
+    outVec.intoArray(output, outOff += 4);
+"""
 
     unprefect_fit = """
     outVec = inVec.lanewise(VectorOperators.LSHR, %d);
-    inVec = IntVector.fromArray(SPECIES_128, input, inOff+=4);
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
     outVec = outVec.or(inVec.lanewise(VectorOperators.LSHL, %d).and(mask));
-    outVec.intoArray(output, outOff+=4);
-    """
+    outVec.intoArray(output, outOff += 4);
+"""
 
     prefect_fit = """
-    inVec = IntVector.fromArray(SPECIES_128, input, inOff+=4);
-    """;
+    inVec = IntVector.fromArray(SPECIES_128, input, inOff += 4);
+"""
 
     function_end = """
     outVec = inVec.lanewise(VectorOperators.LSHR, %d);
-    outVec.intoArray(output, outOff+=4);
+    outVec.intoArray(output, outOff += 4);
   }
-    """;
+"""
     f.write(function_defination)
     bitsRemaining = total_bits - bitPerValue
     for i in range(0, 124, 4):
@@ -398,5 +403,4 @@ if __name__ == '__main__':
         generate_pack_code(bits, f)
         generate_unpack_code(bits, f)
 
-    f.write("""
-}\n""")
+    f.write("""}\n""")
