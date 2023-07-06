@@ -44,9 +44,9 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 final class DefaultForUtil90 implements ForUtil90 {
-  private static final int[] tmp = new int[BLOCK_SIZE];
+  private final int[] tmp = new int[BLOCK_SIZE];
    
-  private static final int[] decoded = new int[BLOCK_SIZE];
+  private final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
 

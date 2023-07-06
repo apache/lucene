@@ -41,9 +41,9 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 final class PanamaForUtil90 implements ForUtil90 {
-  private static final int[] tmp = new int[BLOCK_SIZE];
+  private final int[] tmp = new int[BLOCK_SIZE];
    
-  private static final int[] decoded = new int[BLOCK_SIZE];
+  private final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
   private static final VectorSpecies<Integer> SPECIES_128 = IntVector.SPECIES_128;
@@ -275,11 +275,11 @@ final class PanamaForUtil90 implements ForUtil90 {
    */
   @Override
   public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
-    decode(bitsPerValue, in, tmp);
+    decode(bitsPerValue, in, decoded);
     for (int i = 0; i < 64; ++i) {
-      longs[i] |= tmp[i];
+      longs[i] |= decoded[i];
       longs[i] <<= 32;
-      longs[i] |= tmp[i + 64];
+      longs[i] |= decoded[i + 64];
     }
   }
 """
