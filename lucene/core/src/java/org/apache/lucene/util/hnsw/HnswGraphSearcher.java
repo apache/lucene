@@ -273,24 +273,16 @@ public class HnswGraphSearcher<T> {
     int size = graph.size();
     int visitedCount = 1;
     prepareScratchState(vectors.size());
-    final NeighborQueue results = new NeighborQueue(1, false);
     int currentEp = graph.entryNode();
     float currentScore = compare(query, vectors, currentEp);
-    float minAcceptedSimilarity = currentScore;
-    results.add(currentEp, currentScore);
+    boolean foundBetter;
     for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      candidates.add(currentEp, currentScore);
+      foundBetter = true;
       visited.set(currentEp);
       // Keep searching the given level until we stop finding a better candidate entry point
-      while (candidates.size() > 0) {
-        // get the best candidate (closest or best scoring)
-        float topCandidateSimilarity = candidates.topScore();
-        if (topCandidateSimilarity < minAcceptedSimilarity) {
-          break;
-        }
-
-        int topCandidateNode = candidates.pop();
-        graphSeek(graph, level, topCandidateNode);
+      while (foundBetter) {
+        foundBetter = false;
+        graphSeek(graph, level, currentEp);
         int friendOrd;
         while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
@@ -302,22 +294,14 @@ public class HnswGraphSearcher<T> {
           }
           float friendSimilarity = compare(query, vectors, friendOrd);
           visitedCount++;
-          if (friendSimilarity >= minAcceptedSimilarity) {
-            candidates.add(friendOrd, friendSimilarity);
-            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.size() >= 1) {
-              minAcceptedSimilarity = results.topScore();
-            }
+          if (friendSimilarity > currentScore
+              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
+            currentScore = friendSimilarity;
+            currentEp = friendOrd;
+            foundBetter = true;
           }
         }
       }
-      while (results.size() > 1) {
-        results.pop();
-      }
-      currentEp = results.topNode();
-      minAcceptedSimilarity = results.topScore();
-      currentScore = minAcceptedSimilarity;
-      candidates.clear();
-      visited.clear();
     }
     return new int[] {currentEp, visitedCount};
   }
