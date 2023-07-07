@@ -126,15 +126,12 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
   }
 
   @Override
-  public boolean equals(Object other) {
-    return sameClassAs(other) && equalsTo(getClass().cast(other));
-  }
-
-  private boolean equalsTo(ToParentBlockJoinFloatKnnVectorQuery other) {
-    return childFilter.equals(other.childFilter)
-        && parentsFilter.equals(other.parentsFilter)
-        && k == other.k
-        && Arrays.equals(query, other.query);
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    ToParentBlockJoinFloatKnnVectorQuery that = (ToParentBlockJoinFloatKnnVectorQuery) o;
+    return k == that.k && Objects.equals(parentsFilter, that.parentsFilter) && Objects.equals(childFilter, that.childFilter) && Arrays.equals(query, that.query);
   }
 
   @Override

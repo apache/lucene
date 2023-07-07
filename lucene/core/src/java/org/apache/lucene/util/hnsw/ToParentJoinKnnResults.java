@@ -3,25 +3,48 @@ package org.apache.lucene.util.hnsw;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.LongValues;
 
 public class ToParentJoinKnnResults extends KnnResults {
 
-  public record Provider(int k, BitSet parentBitSet) implements KnnResultsProvider {
+  public static class Provider implements KnnResultsProvider {
+
+    private IntToIntFunction values;
+    private final int k;
+    private final BitSet parentBitSet;
+
+    public Provider(int k, BitSet parentBitSet) {
+      this.k = k;
+      this.parentBitSet = parentBitSet;
+    }
+
+    @Override
+    public int k() {
+      return k;
+    }
+
     @Override
     public KnnResults getKnnResults() {
-      return new ToParentJoinKnnResults(k, parentBitSet);
+      return new ToParentJoinKnnResults(k, parentBitSet, values);
+    }
+
+    @Override
+    public void setVectorToOrd(IntToIntFunction vectorToOrd) {
+      values = vectorToOrd;
     }
   }
 
   private final Map<Integer, Integer> nodeIdToHeapIndex;
   private final BitSet parentBitSet;
   private final int k;
+  private final IntToIntFunction values;
 
-  public ToParentJoinKnnResults(int k, BitSet parentBitSet) {
+  public ToParentJoinKnnResults(int k, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
     super(k);
     this.nodeIdToHeapIndex = new HashMap<>(k < 2 ? k + 1 : (int) (k / 0.75 + 1.0));
     this.parentBitSet = parentBitSet;
     this.k = k;
+    this.values = vectorToOrd;
   }
 
   /**
@@ -34,6 +57,7 @@ public class ToParentJoinKnnResults extends KnnResults {
   @Override
   public void add(int childNodeId, float nodeScore) {
     int newHeapIndex;
+    childNodeId = values.apply(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     Integer existingHeapIndex = nodeIdToHeapIndex.get(nodeId);
     if (existingHeapIndex == null) {
@@ -62,6 +86,9 @@ public class ToParentJoinKnnResults extends KnnResults {
   public boolean insertWithOverflow(int childNodeId, float nodeScore) {
     final boolean full = isHeapFull();
     int minNodeId = this.topNode();
+    // Parent and child nodes should be disjoint sets parent bit set should never have a child node ID present
+    childNodeId = values.apply(childNodeId);
+    assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     boolean nodeAdded = false;
     Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
@@ -91,18 +118,18 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   @Override
   public int pop() {
-    long popped = super.pop();
-    int nodeId = decodeNodeId(popped);
-    nodeIdToHeapIndex.remove(nodeId);
+    int popped = super.pop();
+    nodeIdToHeapIndex.remove(popped);
     // Shift all node IDs above the popped index down by 1
     for (int i = 1; i < size(); i++) {
       int nodeIdToShift = getNodeAt(i);
       nodeIdToHeapIndex.put(nodeIdToShift, i);
     }
-    return nodeId;
+    assert ensureValidCache();
+    return popped;
   }
 
-  void ensureValidCache() {
+  boolean ensureValidCache() {
     nodeIdToHeapIndex.forEach(
         (nodeId, heapIndex) -> {
           assert nodeId == getNodeAt(heapIndex)
@@ -115,20 +142,25 @@ public class ToParentJoinKnnResults extends KnnResults {
                   + "]"
                   + nodeIdToHeapIndex;
         });
+    return true;
   }
 
   @Override
   public void popWhileFull() {
+    boolean didPop = false;
     while (size() > k) {
-      long popped = super.pop();
-      int nodeId = decodeNodeId(popped);
+      int nodeId = super.pop();
       nodeIdToHeapIndex.remove(nodeId);
+      didPop = true;
     }
     // Shift all node IDs above the popped index down by 1
-    for (int i = 1; i < size(); i++) {
-      int nodeIdToShift = getNodeAt(i);
-      nodeIdToHeapIndex.put(nodeIdToShift, i);
+    if (didPop) {
+      for (int i = 1; i < size(); i++) {
+        int nodeIdToShift = getNodeAt(i);
+        nodeIdToHeapIndex.put(nodeIdToShift, i);
+      }
     }
+    assert ensureValidCache();
   }
 
   @Override
@@ -152,6 +184,7 @@ public class ToParentJoinKnnResults extends KnnResults {
       nodeIdToHeapIndex.put(nodeIdToShift, i);
     }
     nodeIdToHeapIndex.put(nodeId, heapIndex);
+    assert ensureValidCache();
   }
 
   private void shiftDownIndexesCache(Integer heapIndex, int nodeId) {
@@ -160,5 +193,6 @@ public class ToParentJoinKnnResults extends KnnResults {
       nodeIdToHeapIndex.put(nodeIdToShift, i);
     }
     nodeIdToHeapIndex.put(nodeId, heapIndex);
+    assert ensureValidCache();
   }
 }

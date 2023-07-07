@@ -301,6 +301,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    knnResultsProvider.setVectorToOrd(vectorValues::ordToDoc);
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
@@ -318,6 +319,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       int node = results.topNode();
       float score = results.topScore();
       results.pop();
+      //TODO this is bad
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
     }
 

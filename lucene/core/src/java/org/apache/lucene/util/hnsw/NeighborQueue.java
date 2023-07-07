@@ -164,11 +164,11 @@ public class NeighborQueue {
         (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node));
   }
 
-  protected final float decodeScore(long heapValue) {
+  private float decodeScore(long heapValue) {
     return NumericUtils.sortableIntToFloat((int) (order.apply(heapValue) >> 32));
   }
 
-  protected final int decodeNodeId(long heapValue) {
+  private int decodeNodeId(long heapValue) {
     return (int) ~(order.apply(heapValue));
   }
 

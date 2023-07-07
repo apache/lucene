@@ -11,7 +11,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
   public void testNeighborsProduct() throws IOException {
     // make sure we have the sign correct
     BitSet bitSet = BitSet.of(DocIdSetIterator.all(3), 3);
-    ToParentJoinKnnResults nn = new ToParentJoinKnnResults(2, bitSet);
+    ToParentJoinKnnResults nn = new ToParentJoinKnnResults(2, bitSet, i -> i);
     assertTrue(nn.insertWithOverflow(2, 0.5f));
     assertTrue(nn.insertWithOverflow(1, 0.2f));
     assertTrue(nn.insertWithOverflow(3, 1f));
@@ -26,7 +26,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
     ToParentJoinKnnResults ToParentJoinNeighborQueueResults =
-        new ToParentJoinKnnResults(7, parentBitSet);
+        new ToParentJoinKnnResults(7, parentBitSet, i -> i);
     for (int i = 0; i < nodes.length; i++) {
       ToParentJoinNeighborQueueResults.add(nodes[i], scores[i]);
       ToParentJoinNeighborQueueResults.ensureValidCache();
@@ -50,7 +50,7 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
     ToParentJoinKnnResults ToParentJoinNeighborQueueResults =
-        new ToParentJoinKnnResults(5, parentBitSet);
+        new ToParentJoinKnnResults(5, parentBitSet, i -> i);
     for (int i = 0; i < 5; i++) {
       assertTrue(ToParentJoinNeighborQueueResults.insertWithOverflow(nodes[i], scores[i]));
       ToParentJoinNeighborQueueResults.ensureValidCache();

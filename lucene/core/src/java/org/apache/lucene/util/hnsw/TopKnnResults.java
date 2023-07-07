@@ -17,6 +17,8 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.util.LongValues;
+
 /**
  * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results.
  *
@@ -30,6 +32,11 @@ public class TopKnnResults extends KnnResults {
     @Override
     public KnnResults getKnnResults() {
       return new TopKnnResults(k);
+    }
+
+    @Override
+    public void setVectorToOrd(IntToIntFunction vectorToOrd) {
+      //pass
     }
   }
 
