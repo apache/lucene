@@ -42,6 +42,12 @@ import org.apache.lucene.index.LeafReaderContext;
  * otherwise, ie. in the case that another part of the query is already leading iteration but we
  * still need the ability to verify that some documents match.
  *
+ * <p>Some field types that work well with {@link IndexOrDocValuesQuery} are {@link
+ * org.apache.lucene.document.IntField}, {@link org.apache.lucene.document.LongField}, {@link
+ * org.apache.lucene.document.FloatField}, {@link org.apache.lucene.document.DoubleField}, and
+ * {@link org.apache.lucene.document.KeywordField}. These fields provide both an indexed structure
+ * and doc values.
+ *
  * <p><b>NOTE</b>This query currently only works well with point range/exact queries and their
  * equivalent doc values queries.
  *

@@ -675,7 +675,14 @@ public class QueryUtils {
     query = searcher.rewrite(query);
     Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
     for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-      final Scorer scorer = weight.scorer(context);
+      final Scorer scorer;
+      if (weight.scorerSupplier(context) != null) {
+        // For IndexOrDocValuesQuey, the bulk scorer will use the indexed structure query
+        // and the scorer with a lead cost of 0 will use the doc values query.
+        scorer = weight.scorerSupplier(context).get(0);
+      } else {
+        scorer = weight.scorer(context);
+      }
       final BulkScorer bulkScorer = weight.bulkScorer(context);
       if (scorer == null && bulkScorer == null) {
         continue;
