@@ -19,14 +19,20 @@ package org.apache.lucene.search;
 import java.io.IOException;
 
 /**
- * A stream of doc IDs. Most methods on {@link DocIdStream}s are terminal, meaning that the {@link DocIdStream} may not be further used.
+ * A stream of doc IDs. Most methods on {@link DocIdStream}s are terminal, meaning that the {@link
+ * DocIdStream} may not be further used.
+ *
  * @see LeafCollector#collect(DocIdStream)
  * @lucene.experimental
  */
 public abstract class DocIdStream {
 
+  /** Sole constructor, for invocation by sub classes. */
+  protected DocIdStream() {}
+
   /**
-   * Iterate over doc IDs contained in this stream in order, calling the given {@link CheckedIntConsumer} on them. This is a terminal operation.
+   * Iterate over doc IDs contained in this stream in order, calling the given {@link
+   * CheckedIntConsumer} on them. This is a terminal operation.
    */
   public abstract void forEach(CheckedIntConsumer<IOException> consumer) throws IOException;
 
