@@ -155,19 +155,35 @@ final class BooleanScorer extends BulkScorer {
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
       long[] matching = BooleanScorer.this.matching;
+      Bucket[] buckets = BooleanScorer.this.buckets;
       int base = this.base;
       for (int idx = 0; idx < matching.length; idx++) {
         long bits = matching[idx];
         while (bits != 0L) {
           int ntz = Long.numberOfTrailingZeros(bits);
-          consumer.accept(base | (idx << 6) | ntz);
+          if (buckets != null) {
+            final int indexInWindow = (idx << 6) | ntz;
+            final Bucket bucket = buckets[indexInWindow];
+            if (bucket.freq >= minShouldMatch) {
+              score.score = (float) bucket.score;
+              consumer.accept(base | indexInWindow);
+            }
+            bucket.freq = 0;
+            bucket.score = 0;
+          } else {
+            consumer.accept(base | (idx << 6) | ntz);
+          }
           bits ^= 1L << ntz;
         }
       }
     }
 
     @Override
-    public int count() {
+    public int count() throws IOException {
+      if (minShouldMatch > 1) {
+        // We can't just count bits in that case
+        return super.count();
+      }
       int count = 0;
       for (long l : matching) {
         count += Long.bitCount(l);
@@ -218,31 +234,6 @@ final class BooleanScorer extends BulkScorer {
     return cost;
   }
 
-  private void scoreDocument(LeafCollector collector, int base, int i) throws IOException {
-    final Score score = this.score;
-    final Bucket bucket = buckets[i];
-    if (bucket.freq >= minShouldMatch) {
-      score.score = (float) bucket.score;
-      final int doc = base | i;
-      collector.collect(doc);
-    }
-    bucket.freq = 0;
-    bucket.score = 0;
-  }
-
-  private void scoreMatches(LeafCollector collector, int base) throws IOException {
-    long[] matching = this.matching;
-    for (int idx = 0; idx < matching.length; idx++) {
-      long bits = matching[idx];
-      while (bits != 0L) {
-        int ntz = Long.numberOfTrailingZeros(bits);
-        int doc = idx << 6 | ntz;
-        scoreDocument(collector, base, doc);
-        bits ^= 1L << ntz;
-      }
-    }
-  }
-
   private void scoreWindowIntoBitSetAndReplay(
       LeafCollector collector,
       Bits acceptDocs,
@@ -258,12 +249,9 @@ final class BooleanScorer extends BulkScorer {
       scorer.score(orCollector, acceptDocs, min, max);
     }
 
-    if (buckets != null) {
-      scoreMatches(collector, base);
-    } else {
-      docIdStreamView.base = base;
-      collector.collect(docIdStreamView);
-    }
+    docIdStreamView.base = base;
+    collector.collect(docIdStreamView);
+
     Arrays.fill(matching, 0L);
   }
 
