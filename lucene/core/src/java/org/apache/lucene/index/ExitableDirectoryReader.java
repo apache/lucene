@@ -364,6 +364,37 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       return in.searchNearestVectors(field, target, k, timeoutCheckingAcceptDocs, visitedLimit);
     }
 
+    @Override
+    public TopDocs searchNearestVectors(
+        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
+      // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
+      // match all docs to allow timeout checking.
+      final Bits updatedAcceptDocs =
+          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
+
+      Bits timeoutCheckingAcceptDocs =
+          new Bits() {
+            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
+            private int calls;
+
+            @Override
+            public boolean get(int index) {
+              if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+                checkAndThrowForSearchVectors();
+              }
+
+              return updatedAcceptDocs.get(index);
+            }
+
+            @Override
+            public int length() {
+              return updatedAcceptDocs.length();
+            }
+          };
+
+      return in.searchNearestVectors(field, target, k, timeoutCheckingAcceptDocs, visitedLimit);
+    }
+
     private void checkAndThrowForSearchVectors() {
       if (queryTimeout.shouldExit()) {
         throw new ExitingReaderException(

@@ -44,6 +44,8 @@ Bug Fixes
 
 * GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).
 
+* GITHUB#12423: Respect timeouts in ExitableDirectoryReader when searching with byte[] vectors (Ben Trent).
+
 Other
 ---------------------
 
