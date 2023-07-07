@@ -25,6 +25,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.hnsw.KnnResultsProvider;
 
 /**
  * The {@link ExitableDirectoryReader} wraps a real index {@link DirectoryReader} and allows for a
@@ -362,6 +363,43 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           };
 
       return in.searchNearestVectors(field, target, k, timeoutCheckingAcceptDocs, visitedLimit);
+    }
+
+    @Override
+    public TopDocs searchNearestVectors(
+        String field,
+        float[] target,
+        KnnResultsProvider knnResultsProvider,
+        Bits acceptDocs,
+        int visitedLimit)
+        throws IOException {
+      // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
+      // match all docs to allow timeout checking.
+      final Bits updatedAcceptDocs =
+          acceptDocs == null ? new Bits.MatchAllBits(maxDoc()) : acceptDocs;
+
+      Bits timeoutCheckingAcceptDocs =
+          new Bits() {
+            private static final int MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK = 16;
+            private int calls;
+
+            @Override
+            public boolean get(int index) {
+              if (calls++ % MAX_CALLS_BEFORE_QUERY_TIMEOUT_CHECK == 0) {
+                checkAndThrowForSearchVectors();
+              }
+
+              return updatedAcceptDocs.get(index);
+            }
+
+            @Override
+            public int length() {
+              return updatedAcceptDocs.length();
+            }
+          };
+
+      return in.searchNearestVectors(
+          field, target, knnResultsProvider, timeoutCheckingAcceptDocs, visitedLimit);
     }
 
     private void checkAndThrowForSearchVectors() {

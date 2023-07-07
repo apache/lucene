@@ -20,13 +20,21 @@ package org.apache.lucene.util.hnsw;
 /**
  * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results.
  *
- * This way as better results are found, the minimum result can be easily removed from the collection
+ * <p>This way as better results are found, the minimum result can be easily removed from the
+ * collection
  *
- * The size maximum size of the results is enforced by the provided `k`
+ * <p>The size maximum size of the results is enforced by the provided `k`
  */
 public class TopKnnResults extends KnnResults {
+  public record Provider(int k) implements KnnResultsProvider {
+    @Override
+    public KnnResults getKnnResults() {
+      return new TopKnnResults(k);
+    }
+  }
 
   private final int k;
+
   public TopKnnResults(int k) {
     super(k);
     this.k = k;
@@ -45,8 +53,7 @@ public class TopKnnResults extends KnnResults {
   }
 
   @Override
-  protected void doClear() {
-  }
+  protected void doClear() {}
 
   @Override
   public String toString() {

@@ -47,7 +47,9 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.KnnResultsProvider;
 import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.TopKnnResults;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -268,6 +270,27 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   @Override
   public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
       throws IOException {
+    // bound k by total number of vectors to prevent oversizing data structures
+    k = Math.min(k, fields.get(field).size());
+    return search(field, target, new TopKnnResults.Provider(k), acceptDocs, visitedLimit);
+  }
+
+  @Override
+  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+      throws IOException {
+    // bound k by total number of vectors to prevent oversizing data structures
+    k = Math.min(k, fields.get(field).size());
+    return search(field, target, new TopKnnResults.Provider(k), acceptDocs, visitedLimit);
+  }
+
+  @Override
+  public TopDocs search(
+      String field,
+      float[] target,
+      KnnResultsProvider knnResultsProvider,
+      Bits acceptDocs,
+      int visitedLimit)
+      throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0) {
@@ -277,14 +300,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
-
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
-            k,
+            knnResultsProvider,
             vectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
@@ -293,7 +313,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             visitedLimit);
 
     int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnResultsProvider.k())];
     while (results.size() > 0) {
       int node = results.topNode();
       float score = results.topScore();
@@ -309,7 +329,12 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(
+      String field,
+      byte[] target,
+      KnnResultsProvider knnResultsProvider,
+      Bits acceptDocs,
+      int visitedLimit)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -320,14 +345,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
-
     NeighborQueue results =
         HnswGraphSearcher.search(
             target,
-            k,
+            knnResultsProvider,
             vectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
@@ -336,7 +358,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             visitedLimit);
 
     int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnResultsProvider.k())];
     while (results.size() > 0) {
       int node = results.topNode();
       float score = results.topScore();

@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.KnnResultsProvider;
 
 /**
  * Wraps arbitrary readers for merging. Note that this can cause slow and memory-intensive merges.
@@ -182,6 +183,30 @@ public final class SlowCodecReaderWrapper {
       public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
           throws IOException {
         return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+      }
+
+      @Override
+      public TopDocs search(
+          String field,
+          float[] target,
+          KnnResultsProvider knnResultsProvider,
+          Bits acceptDocs,
+          int visitedLimit)
+          throws IOException {
+        return reader.searchNearestVectors(
+            field, target, knnResultsProvider, acceptDocs, visitedLimit);
+      }
+
+      @Override
+      public TopDocs search(
+          String field,
+          byte[] target,
+          KnnResultsProvider knnResultsProvider,
+          Bits acceptDocs,
+          int visitedLimit)
+          throws IOException {
+        return reader.searchNearestVectors(
+            field, target, knnResultsProvider, acceptDocs, visitedLimit);
       }
 
       @Override

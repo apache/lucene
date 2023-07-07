@@ -5,9 +5,18 @@ import java.util.Map;
 import org.apache.lucene.util.BitSet;
 
 public class ToParentJoinKnnResults extends KnnResults {
+
+  public record Provider(int k, BitSet parentBitSet) implements KnnResultsProvider {
+    @Override
+    public KnnResults getKnnResults() {
+      return new ToParentJoinKnnResults(k, parentBitSet);
+    }
+  }
+
   private final Map<Integer, Integer> nodeIdToHeapIndex;
   private final BitSet parentBitSet;
   private final int k;
+
   public ToParentJoinKnnResults(int k, BitSet parentBitSet) {
     super(k);
     this.nodeIdToHeapIndex = new HashMap<>(k < 2 ? k + 1 : (int) (k / 0.75 + 1.0));

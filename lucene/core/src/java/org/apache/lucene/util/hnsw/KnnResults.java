@@ -20,7 +20,8 @@ package org.apache.lucene.util.hnsw;
 /**
  * NeighborQueueResults is a specific NeighborQueue, enforcing a minHeap is utilized for results.
  *
- * This way as better results are found, the minimum result can be easily removed from the collection
+ * <p>This way as better results are found, the minimum result can be easily removed from the
+ * collection
  */
 public abstract class KnnResults extends NeighborQueue {
 
@@ -33,10 +34,11 @@ public abstract class KnnResults extends NeighborQueue {
     doClear();
   }
 
-  abstract public void popWhileFull();
-  abstract public boolean isFull();
+  public abstract void popWhileFull();
 
-  abstract protected void doClear();
+  public abstract boolean isFull();
+
+  protected abstract void doClear();
 
   @Override
   public String toString() {

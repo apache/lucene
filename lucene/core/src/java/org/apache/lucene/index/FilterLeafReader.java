@@ -23,6 +23,7 @@ import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Unwrappable;
+import org.apache.lucene.util.hnsw.KnnResultsProvider;
 
 /**
  * A <code>FilterLeafReader</code> contains another LeafReader, which it uses as its basic source of
@@ -366,6 +367,28 @@ public abstract class FilterLeafReader extends LeafReader {
   public TopDocs searchNearestVectors(
       String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
     return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
+  }
+
+  @Override
+  public TopDocs searchNearestVectors(
+      String field,
+      float[] target,
+      KnnResultsProvider knnResultsProvider,
+      Bits acceptDocs,
+      int visitedLimit)
+      throws IOException {
+    return in.searchNearestVectors(field, target, knnResultsProvider, acceptDocs, visitedLimit);
+  }
+
+  @Override
+  public TopDocs searchNearestVectors(
+      String field,
+      byte[] target,
+      KnnResultsProvider knnResultsProvider,
+      Bits acceptDocs,
+      int visitedLimit)
+      throws IOException {
+    return in.searchNearestVectors(field, target, knnResultsProvider, acceptDocs, visitedLimit);
   }
 
   @Override
