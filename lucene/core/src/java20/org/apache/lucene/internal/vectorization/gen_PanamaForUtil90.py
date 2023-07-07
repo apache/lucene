@@ -42,7 +42,7 @@ import org.apache.lucene.store.DataOutput;
 
 final class PanamaForUtil90 implements ForUtil90 {
   private final int[] tmp = new int[BLOCK_SIZE];
-   
+
   private final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
@@ -51,12 +51,6 @@ final class PanamaForUtil90 implements ForUtil90 {
   /** Encode 128 integers from {@code input} into {@code out}. */
   @Override
   public void encode(int[] input, int bitsPerValue, DataOutput out) throws IOException {
-    if (bitsPerValue == 32) {
-      for (int i = 0; i < 128; i++) {
-        out.writeInt(input[i]);
-      }
-      return;
-    }
     switch (bitsPerValue) {
       case 1:
         fastPack1(input, tmp);
@@ -164,10 +158,6 @@ final class PanamaForUtil90 implements ForUtil90 {
   @Override
   public void decode(int bitsPerValue, DataInput in, int[] output) throws IOException {
     in.readInts(tmp, 0, 4 * bitsPerValue);
-    if (bitsPerValue == 32) {
-      in.readInts(output, 0, 128);
-      return;
-    }
     switch (bitsPerValue) {
       case 1:
         fastUnpack1(tmp, output);

@@ -24,12 +24,12 @@ import org.apache.lucene.store.DataOutput;
 
 final class DefaultForUtil90 implements ForUtil90 {
   private final int[] tmp = new int[BLOCK_SIZE];
-   
+
   private final int[] decoded = new int[BLOCK_SIZE];
 
   private static final int totalBits = 32;
 
- /** Encode 128 integers from {@code input} into {@code out}. */
+  /** Encode 128 integers from {@code input} into {@code out}. */
   @Override
   public void encode(int[] input, int bitsPerValue, DataOutput out) throws IOException {
     int MASK = (1 << bitsPerValue) - 1;
@@ -116,4 +116,3 @@ final class DefaultForUtil90 implements ForUtil90 {
     }
   }
 }
-
