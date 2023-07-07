@@ -147,21 +147,21 @@ final class BooleanScorer extends BulkScorer {
     int base;
 
     @Override
-    void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
       long[] matching = BooleanScorer.this.matching;
       int base = this.base;
       for (int idx = 0; idx < matching.length; idx++) {
         long bits = matching[idx];
         while (bits != 0L) {
           int ntz = Long.numberOfTrailingZeros(bits);
-          consumer.consume(base | (idx << 6) | ntz);
+          consumer.accept(base | (idx << 6) | ntz);
           bits ^= 1L << ntz;
         }
       }
     }
 
     @Override
-    int count() {
+    public int count() {
       int count = 0;
       for (long l : matching) {
         count += Long.bitCount(l);

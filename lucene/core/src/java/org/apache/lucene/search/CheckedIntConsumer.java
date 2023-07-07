@@ -19,5 +19,5 @@ package org.apache.lucene.search;
 @FunctionalInterface
 public interface CheckedIntConsumer<T extends Exception> {
 
-  void consume(int value) throws T;
+  void accept(int value) throws T;
 }
