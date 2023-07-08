@@ -18,14 +18,13 @@ package org.apache.lucene.search;
 
 import java.util.function.IntConsumer;
 
-/**
- * Like {@link IntConsumer}, but may throw checked exceptions.
- */
+/** Like {@link IntConsumer}, but may throw checked exceptions. */
 @FunctionalInterface
 public interface CheckedIntConsumer<T extends Exception> {
 
   /**
    * Process the given value.
+   *
    * @see IntConsumer#accept(int)
    */
   void accept(int value) throws T;
