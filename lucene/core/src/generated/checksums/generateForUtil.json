@@ -1,4 +1,4 @@
 {
-    "lucene/core/src/java/org/apache/lucene/codecs/lucene90/ForUtil.java": "f2091e2b7284b70c740052a9b0ee389e67eb48a9",
-    "lucene/core/src/java/org/apache/lucene/codecs/lucene90/gen_ForUtil.py": "7a137c58f88d68247be4368122780fa9cc8dce3e"
+    "lucene/core/src/java/org/apache/lucene/internal/vectorization/DefaultForUtil90.java": "ce81acc8a62c90ff70fff10fb8511667eb2dbec7",
+    "lucene/core/src/java/org/apache/lucene/internal/vectorization/gen_DefaultForUtil90.py": "38836ff5bdefc78db5394157adee95b0851a244e"
 }
