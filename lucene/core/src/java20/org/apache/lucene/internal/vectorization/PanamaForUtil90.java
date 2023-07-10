@@ -252,9 +252,7 @@ final class PanamaForUtil90 implements ForUtil90 {
   public void decodeTo32(int bitsPerValue, DataInput in, long[] longs) throws IOException {
     decode(bitsPerValue, in, decoded);
     for (int i = 0; i < 64; ++i) {
-      longs[i] |= decoded[i];
-      longs[i] <<= 32;
-      longs[i] |= decoded[i + 64];
+      longs[i] = (long) decoded[i] << 32 | decoded[i + 64];
     }
   }
 

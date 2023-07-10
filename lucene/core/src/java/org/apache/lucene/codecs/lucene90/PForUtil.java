@@ -157,6 +157,12 @@ final class PForUtil {
         // decode the deltas then apply the prefix sum logic
         forUtil.decodeTo32(bitsPerValue, in, longs);
         prefixSum32(longs, base);
+        //        int[] ints = new int[ForUtil90.BLOCK_SIZE];
+        //        forUtil.decode(bitsPerValue, in, ints);
+        //        for(int i = 0; i < ForUtil90.BLOCK_SIZE; i++) {
+        //          longs[i] = ints[i];
+        //        }
+        //        prefixSum(longs, ForUtil90.BLOCK_SIZE, base);
       }
     } else {
       // pack two values per long so we can apply prefixes two-at-a-time
