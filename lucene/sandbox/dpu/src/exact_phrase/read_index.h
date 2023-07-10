@@ -16,6 +16,11 @@ struct Block {
     uint32_t block_size;
 };
 
+struct Term {
+    const uint8_t* term;
+    uint32_t size;
+};
+
 // read a variable length integer in MRAM
 int readVInt_mram(const uint8_t** data, seqreader_t* reader) {
     int i = **data & 0x7F;
@@ -50,10 +55,13 @@ int readVInt(const uint8_t** data) {
 }
 
 // compare terms, return 0 if equal, < 0 if term1 < term2, > 0 if term1 > term2
-int compare_terms(const uint8_t* term1, int term1_length,
-        const uint8_t* term2, seqreader_t* term2_reader, int term2_length) {
+int compare_terms(const struct Term* term1_ptr, const struct Term* term2_ptr, seqreader_t* term2_reader) {
     // terms are encoded as UTF-8, so we can compare the bytes directly
     // perform the comparison 4B per 4B if the terms have the same alignment modulo 8
+    const uint8_t* term1 = term1_ptr->term;
+    const uint8_t* term2 = term2_ptr->term;
+    uint32_t term1_length = term1_ptr->size;
+    uint32_t term2_length = term2_ptr->size;
     int term1_w, term2_w;
     int offset = 0;
     if((((uintptr_t)term1) & 7) == (((uintptr_t)term2) & 7)) {
@@ -86,8 +94,8 @@ int compare_terms(const uint8_t* term1, int term1_length,
 }
 
 // search for a particular block in the block table in MRAM (floor operation in BST)
-void get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_reader,
-        const uint8_t* term, int term_length, struct Block* block) {
+int get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_reader,
+        const struct Term* term, struct Block* block) {
 
     block->term = 0;
     block->term_size = 0;
@@ -95,13 +103,15 @@ void get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_r
     block->block_size = 0;
     __mram_ptr const uint8_t* succ_node = 0;
     __mram_ptr const uint8_t* succ_node_ancestor = 0;
+    int found_cmp = 0;
 
     while (1) {
         __mram_ptr const uint8_t* curr_block = seqread_tell((void*)block_table, block_table_reader);
         int block_term_length = readVInt_mram(&block_table, block_table_reader);
         __mram_ptr const uint8_t* curr_term = seqread_tell((void*)block_table, block_table_reader);
 
-        int cmp = compare_terms(term, term_length, block_table, block_table_reader, block_term_length);
+        struct Term term2 = {.term = block_table, .size = block_term_length};
+        int cmp = compare_terms(term, &term2, block_table_reader);
         block_table = seqread_seek((__mram_ptr void*)(curr_term + block_term_length), block_table_reader);
         int childInfo = readVInt_mram(&block_table, block_table_reader);
         int address = readVLong_mram(&block_table, block_table_reader);
@@ -140,6 +150,7 @@ void get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_r
             block->term = curr_term;
             block->term_size = block_term_length;
             block->block_address = address;
+            found_cmp = cmp;
 
             int right_child_offset = childInfo >> 2;
             if(right_child_offset) {
@@ -182,12 +193,70 @@ void get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_r
         }
         block->block_size = addr - block->block_address;
     }
+    return found_cmp;
 }
 
  __mram_ptr const uint8_t*
  get_term_postings_from_index(const uint8_t* index, seqreader_t *seqread,
-                               const uint8_t* term, uint32_t term_size, struct Block* block) {
+                               const struct Term* term,
+                              __mram_ptr const uint8_t* start_addr_block_list,
+                              __mram_ptr const uint8_t* start_addr_postings,
+                               struct Block* block) {
 
-    //TODO
+    // search for the term in the block table
+    int cmp = get_block_from_table(index, seqread, term, block);
+    if(block->term == 0) {
+        // term not found
+        block->term = 0;
+        block->term_size = 0;
+        block->block_address = 0;
+        block->block_size = 0;
+        return 0;
+    }
+
+    // search for the term in the block list
+    index = seqread_seek((__mram_ptr void*)(start_addr_block_list + block->block_address), seqread);
+    // first check if the term seeked is the same as the first in the block
+    if(cmp == 0) {
+        // the term is the first in the block, return the mram address to postings
+        block->block_address = readVLong_mram(&index, seqread);
+        block->block_size = readVLong_mram(&index, seqread);
+        return (__mram_ptr const uint8_t*)(start_addr_postings + block->block_address);
+    }
+
+    // ignore first term postings address and size
+    readVLong_mram(&index, seqread);
+    readVLong_mram(&index, seqread);
+
+    // loop over remaining terms and compare to find the seeked term
+    uintptr_t curr_addr = (uintptr_t)seqread_tell((void*)index, seqread);
+    uintptr_t last_addr = (uintptr_t)(start_addr_block_list + block->block_address + block->block_size);
+    block->term = 0;
+    block->term_size = 0;
+    block->block_address = 0;
+    block->block_size = 0;
+    struct Term term2;
+    while(curr_addr < last_addr) {
+        int term_length = readVInt_mram(&index, seqread);
+        __mram_ptr const uint8_t* curr_term = seqread_tell((void*)index, seqread);
+        term2.term = index;
+        term2.size = term_length;
+        int cmp = compare_terms(term, &term2, seqread);
+        index = seqread_seek((__mram_ptr void*)(curr_term + term_length), seqread);
+        int address = readVLong_mram(&index, seqread);
+        int size = readVLong_mram(&index, seqread);
+        if(cmp == 0) {
+            // term found, return the mram address to postings
+            block->block_address = address;
+            block->block_size = size;
+            return (__mram_ptr const uint8_t*)(start_addr_postings + address);
+        }
+        else if(cmp < 0) {
+            // term is larger than the seeked term, term not found
+            return 0;
+        }
+        curr_addr = (uintptr_t)seqread_tell((void*)index, seqread);
+    }
+
     return 0;
  }

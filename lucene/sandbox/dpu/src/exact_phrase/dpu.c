@@ -44,6 +44,7 @@ seqreader_t index_seqread[NR_TASKLETS];
 seqreader_buffer_t postings_seqread_buffer[NR_TASKLETS][MAX_NR_TERMS] = {0};
 seqreader_t postings_seqread[NR_TASKLETS][MAX_NR_TERMS];
 const uint8_t* postings[NR_TASKLETS][MAX_NR_TERMS];
+uint32_t postings_size[NR_TASKLETS][MAX_NR_TERMS] = {0};
 
 int main() {
 
@@ -105,7 +106,12 @@ int main() {
         __mram_ptr uint8_t* index_begin_addr = seqread_tell((void*)index, &index_seqread[me()]);
 
         // find the field block
-        get_block_from_table(index, &index_seqread[me()], query, field_size, &term_block[me()]);
+        struct Term field = {.term = query, .size = field_size};
+        get_block_from_table(index, &index_seqread[me()], &field, &term_block[me()]);
+        if(term_block[me()].term == 0) {
+            // the field is not in the index, so we can skip this query
+            continue;
+        }
 
         // retrieve the block address for the field
         __mram_ptr uint8_t* field_block_address = index_begin_addr + block_offset + term_block[me()].block_address;
@@ -113,20 +119,37 @@ int main() {
         // for each term in the phrase, look for its postings
         query += query_size;
         int nb_terms = readVInt(&query);
+        uint8_t not_found = 0;
+        struct Term term;
         for(int i = 0; i < nb_terms; ++i) {
             int term_size = readVInt(&query);
             // seek the seq reader to the field block address
             index = seqread_seek(field_block_address, &index_seqread[me()]);
             // get the postings address for this term
+            term.term = query;
+            term.size = term_size;
             __mram_ptr const uint8_t* postings_addr =
-                    get_term_postings_from_index(index, &index_seqread[me()], query, term_size, &term_block[me()]);
+                    get_term_postings_from_index(index, &index_seqread[me()], &term,
+                                                index_begin_addr + block_list_offset,
+                                                index_begin_addr + postings_offset,
+                                                &term_block[me()]);
+            if(postings_addr == 0) {
+                // the term is not in the index, so we can skip this query
+                not_found = 1;
+                break;
+            }
+
             // seek the seq reader to the postings address
             postings[me()][i] = seqread_init(postings_seqread_buffer[me()][i], (__mram_ptr void*)postings_addr,
                                     &postings_seqread[me()][i]);
+            postings_size[me()][i] = term_block[me()].block_size;
             query += term_size;
         }
+        if(not_found) {
+            continue;
+        }
 
-        //TODO
+        //TODO: implement phrase match algorithm
 
     }
 

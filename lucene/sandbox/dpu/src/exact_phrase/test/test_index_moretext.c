@@ -168,25 +168,32 @@ __mram uint8_t index_mram[3126] = {
 0x2, 0x2, 0x3, 0x9, 0x3, 0x0, 0x1, 0x1, 0x12, 0x2, 0x0, 0x5, 0x5, 0x16, 0x17, 0x9, 0x7, 0x8, 0x0, 0x0,
 0x1, 0x1, 0x4, 0x0, 0x0, 0x1, 0x1};
 
-uint8_t field_title[5] = {0x74, 0x69, 0x74, 0x6c, 0x65};
+uint8_t field_title_arr[5] = {0x74, 0x69, 0x74, 0x6c, 0x65};
+struct Term field_title = { field_title_arr, 5};
 uint32_t title_addr = 0;
 
-uint8_t field_body[4] = {0x62, 0x6f, 0x64, 0x79};
+uint8_t field_body_arr[4] = {0x62, 0x6f, 0x64, 0x79};
+struct Term field_body = { field_body_arr, 4};
 uint32_t body_addr = 10;
 
-uint8_t apache[6] = {0x41, 0x70, 0x61, 0x63, 0x68, 0x65};
+uint8_t apache_arr[6] = {0x41, 0x70, 0x61, 0x63, 0x68, 0x65};
+struct Term apache = { apache_arr, 6};
 uint32_t apache_addr = 0;
 
-uint8_t munchen[8] = {0x4d, 0xc3, 0xbc, 0x6e, 0x63, 0x68, 0x65, 0x6e};
+uint8_t munchen_arr[8] = {0x4d, 0xc3, 0xbc, 0x6e, 0x63, 0x68, 0x65, 0x6e};
+struct Term munchen = { munchen_arr, 8};
 uint32_t munchen_addr = 0;
 
-uint8_t conserve[9] = {0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x76, 0xc3, 0xa9};
+uint8_t conserve_arr[9] = {0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x76, 0xc3, 0xa9};
+struct Term conserve = { conserve_arr, 9};
 uint32_t conserve_addr = 678;
 
-uint8_t dativ[5] ={0x44, 0x61, 0x74, 0x69, 0x76};
+uint8_t dativ_arr[5] ={0x44, 0x61, 0x74, 0x69, 0x76};
+struct Term dativ = { dativ_arr, 5};
 uint32_t dativ_addr = 108;
 
-uint8_t wird[4] = {0x77, 0x69, 0x72, 0x64};
+uint8_t wird_arr[4] = {0x77, 0x69, 0x72, 0x64};
+struct Term wird = { wird_arr, 4};
 uint32_t wird_addr = 1735;
 
 struct Block term_block;
@@ -205,7 +212,7 @@ int main() {
     int postings_offset = readVInt_mram(&index_ptr, &seqread);
     __mram_ptr uint8_t* index_begin_addr = seqread_tell((void*)index_ptr, &seqread);
 
-    get_block_from_table(index_ptr, &seqread, field_title, 5, &term_block);
+    get_block_from_table(index_ptr, &seqread, &field_title, &term_block);
     if(term_block.block_address == title_addr) {
         printf("field title OK\n");
     } else {
@@ -214,7 +221,7 @@ int main() {
     __mram_ptr uint8_t* block_address = index_begin_addr + block_offset + term_block.block_address;
     // search for the term "Apache"
     index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, apache, 6, &term_block);
+    get_block_from_table(index_ptr, &seqread, &apache, &term_block);
     if(term_block.block_address == apache_addr) {
         printf("Apache OK\n");
     } else {
@@ -222,7 +229,7 @@ int main() {
     }
     // search for the term "München"
     index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, munchen, 8, &term_block);
+    get_block_from_table(index_ptr, &seqread, &munchen, &term_block);
     if(term_block.block_address == munchen_addr) {
         printf("München OK\n");
     } else {
@@ -235,7 +242,7 @@ int main() {
     block_offset = readVInt_mram(&index_ptr, &seqread);
     block_list_offset = readVInt_mram(&index_ptr, &seqread);
     postings_offset = readVInt_mram(&index_ptr, &seqread);
-    get_block_from_table(index_ptr, &seqread, field_body, 4, &term_block);
+    get_block_from_table(index_ptr, &seqread, &field_body, &term_block);
     if(term_block.block_address == body_addr) {
         printf("field body OK\n");
     } else {
@@ -244,7 +251,7 @@ int main() {
     block_address = index_begin_addr + block_offset + term_block.block_address;
     //searching for the term conserve
     index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, conserve, 9, &term_block);
+    get_block_from_table(index_ptr, &seqread, &conserve, &term_block);
     if(term_block.block_address == conserve_addr) {
         printf("conserve OK\n");
     } else {
@@ -252,7 +259,7 @@ int main() {
     }
     // searching for term dativ
     index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, dativ, 5, &term_block);
+    get_block_from_table(index_ptr, &seqread, &dativ, &term_block);
     if(term_block.block_address == dativ_addr) {
         printf("dativ OK\n");
     } else {
@@ -260,7 +267,7 @@ int main() {
     }
     //searching for term wird
     index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, wird, 4, &term_block);
+    get_block_from_table(index_ptr, &seqread, &wird, &term_block);
     if(term_block.block_address == wird_addr) {
         printf("wird OK\n");
     } else {
