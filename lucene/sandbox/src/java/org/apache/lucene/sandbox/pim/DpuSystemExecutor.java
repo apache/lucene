@@ -9,6 +9,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class DpuSystemExecutor implements PimQueriesExecutor {
     static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
@@ -19,6 +21,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     private final byte[][] dpuResults;
     private final byte[][][] dpuResultsPerRank;
     private final int[] dpuIdOffset;
+    private CountDownLatch dpuResultsLatch;
 
     DpuSystemExecutor() throws DpuException {
         queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
@@ -38,6 +41,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                 dpuResultsPerRank[i][j] = dpuResults[cnt++];
             }
         }
+        dpuResultsLatch = null;
     }
 
     @Override
@@ -57,6 +61,17 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // 3) results transfer from DPUs to CPU
         // first get the meta-data (index of query results in results array for each DPU)
         // This meta-data has one integer per query in the batch
+        // Wait for the results array to be read before overwritting it with a new transfer
+        if(dpuResultsLatch != null) {
+            dpuSystem.async().call(
+                    (DpuSet set, int rankId) -> {
+                        try {
+                            dpuResultsLatch.await();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+        }
         dpuSystem.async().copy(dpuQueryResultsAddr, DpuConstants.dpuResultsIndexVarName,
                 queryBatch.getNbElems() * Integer.BYTES);
 
@@ -82,11 +97,15 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         dpuSystem.async().sync();
 
         // 5) Update the results map for the client threads to read their results
+        dpuResultsLatch = new CountDownLatch(queryBatch.getNbElems());
         resultReceiver.startResultBatch();
         try {
             for (int q = 0; q < queryBatch.getNbElems(); ++q) {
                 resultReceiver.addResults(queryBatch.getUniqueIdOf(q),
-                        new DpuResultsInput(dpuResults, dpuQueryResultsAddr, q));
+                        new DpuResultsInput(dpuResults, dpuQueryResultsAddr, q),
+                        () -> {
+                            dpuResultsLatch.countDown();
+                        });
             }
         } finally {
             resultReceiver.endResultBatch();
@@ -128,11 +147,23 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // 3) results transfer from DPUs to CPU
         // first get the meta-data (index of query results in results array for each DPU)
         // This meta-data has one integer per query in the batch
+        // Wait for the results array to be read before overwriting it with a new transfer
+        if(dpuResultsLatch != null) {
+            dpuSystem.async().call(
+                    (DpuSet set, int rankId) -> {
+                        try {
+                            dpuResultsLatch.await();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+        }
         dpuSystem.async().copy(dpuQueryResultsAddr, DpuConstants.dpuResultsIndexVarName,
                 queryBuffers.size() * Integer.BYTES);
 
         // then transfer the results
         // use a callback to transfer a minimal number of results per rank
+        // TODO need to wait here if the dpuResults array has not been fully read by the search threads
         final int batchSize = queryBuffers.size() * Integer.BYTES;
         dpuSystem.async().call(
                 (DpuSet set, int rankId) -> {
@@ -153,8 +184,12 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         dpuSystem.async().sync();
 
         // 5) Update the results map for the client threads to read their results
+        dpuResultsLatch = new CountDownLatch(queryBuffers.size());
         for (int q = 0, size = queryBuffers.size(); q < size; ++q) {
-            queryBuffers.get(q).addResults(new DpuResultsInput(dpuResults, dpuQueryResultsAddr, q));
+            queryBuffers.get(q).addResults(new DpuResultsInput(dpuResults, dpuQueryResultsAddr, q),
+                    () -> {
+                        dpuResultsLatch.countDown();
+                    });
         }
     }
 

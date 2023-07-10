@@ -69,7 +69,7 @@ class DpuSystemSimulator implements PimQueriesExecutor {
 
             resultReceiver.startResultBatch();
             try {
-                resultReceiver.addResults(queryBatch.getUniqueIdOf(q), new ByteArrayDataInput(matchesByteArr));
+                resultReceiver.addResults(queryBatch.getUniqueIdOf(q), new ByteArrayDataInput(matchesByteArr), ()->{});
             } finally {
                 resultReceiver.endResultBatch();
             }
@@ -116,7 +116,7 @@ class DpuSystemSimulator implements PimQueriesExecutor {
                 byteOut.writeVInt((int) m.score);
             }
 
-            queryBuffer.addResults(new ByteArrayDataInput(matchesByteArr));
+            queryBuffer.addResults(new ByteArrayDataInput(matchesByteArr), ()->{});
         }
     }
 }

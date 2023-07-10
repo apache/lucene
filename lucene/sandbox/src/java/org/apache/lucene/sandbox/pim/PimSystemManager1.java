@@ -312,7 +312,7 @@ public final class PimSystemManager1 implements PimSystemManager {
 
         List<PimMatch> matches = getMatches(q, resultsReader, scorer);
 
-        // remove results array from the map
+        // remove the results reader from the map
         resultsLock.writeLock().lock();
         try {
             queryResultsMap.remove(id);
@@ -320,7 +320,7 @@ public final class PimSystemManager1 implements PimSystemManager {
         finally {
             resultsLock.writeLock().unlock();
         }
-
+        resultReceiver.releaseResults();
         unregisterQueryId(id);
 
         return matches;
@@ -531,12 +531,19 @@ public final class PimSystemManager1 implements PimSystemManager {
 
     class ResultReceiverImpl implements ResultReceiver {
 
+        Runnable releaseResults;
+
         public void startResultBatch() {
             resultsLock.writeLock().lock();
         }
 
-        public void addResults(int queryId, DataInput results) {
+        public void addResults(int queryId, DataInput results, Runnable releaseResults) {
+            this.releaseResults = releaseResults;
             queryResultsMap.put(queryId, results);
+        }
+
+        public void releaseResults() {
+            releaseResults.run();
         }
 
         public void endResultBatch() {

@@ -151,8 +151,13 @@ public class PimSystemManager2 implements PimSystemManager {
             throw new PimQueryQueueFullException();
             //TODO: or return null?
         }
-        DataInput results = queryBuffer.waitForResults();
-        return getMatches(query, results, scorer);
+        try {
+            DataInput results = queryBuffer.waitForResults();
+            return getMatches(query, results, scorer);
+        }
+        finally {
+            queryBuffer.releaseResults();
+        }
     }
 
     private <QueryType extends Query & PimQuery> void writeQueryToPim(QueryType query, int leafIdx, QueryBuffer queryBuffer) {
@@ -188,6 +193,7 @@ public class PimSystemManager2 implements PimSystemManager {
         final BlockingQueue<DataInput> resultQueue = new LinkedBlockingQueue<>();
         byte[] bytes = new byte[128];
         int length;
+        private Runnable releaseResults;
 
         QueryBuffer reset() {
             length = 0;
@@ -202,8 +208,14 @@ public class PimSystemManager2 implements PimSystemManager {
             return resultQueue.take();
         }
 
-        void addResults(DataInput results) {
+        void addResults(DataInput results, Runnable releaseResults) {
+
+            this.releaseResults = releaseResults;
             resultQueue.add(results);
+        }
+
+        void releaseResults() {
+            releaseResults.run();
         }
 
         @Override
