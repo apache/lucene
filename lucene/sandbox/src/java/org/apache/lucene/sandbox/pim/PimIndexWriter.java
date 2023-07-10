@@ -395,6 +395,7 @@ public class PimIndexWriter extends IndexWriter {
 
         private static int numBytesToEncode(long value) {
             try {
+                outByteCount.reset();
                 outByteCount.writeVLong(value);
             } catch (IOException e) {
                 throw new RuntimeException(e);
