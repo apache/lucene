@@ -7,7 +7,9 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#11248: IntBlockPool's SliceReader, SliceWriter, and all int slice functionality are moved out to MemoryIndex.
+  (Stefan Vodita)
 
 New Features
 ---------------------
@@ -38,7 +40,7 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* GITHUB#9660: Throw and ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
+* GITHUB#9660: Throw an ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
 
 * GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
