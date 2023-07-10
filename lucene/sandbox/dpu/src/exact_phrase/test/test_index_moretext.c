@@ -186,6 +186,9 @@ uint8_t wird_arr[4] = {0x77, 0x69, 0x72, 0x64};
 struct Term wird = { wird_arr, 4};
 uint32_t wird_addr = 1729;
 
+uint8_t search_arr[6] = {0x73, 0x65, 0x61, 0x72, 0x63, 0x68};
+struct Term search = { search_arr, 6};
+
 struct Block term_block;
 
 int zigZagDecode(int i) {
@@ -287,5 +290,29 @@ int main() {
         printf("wird postings KO: doc:%d freq:%d pos:%d pos:%d\n", doc_id, freq, pos, pos2);
     }
 
+    // searching for postings of search
+    index_ptr = seqread_seek(block_address, &seqread);
+    postings_addr =
+                    get_term_postings_from_index(index_ptr, &seqread,
+                            &search, index_begin_addr + block_list_offset,
+                            index_begin_addr + postings_offset, &term_block);
+    // read postings
+    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    doc_id = readVInt_mram(&index_ptr, &seqread);
+    freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    length = readByte_mram(&index_ptr, &seqread);
+    pos = readVInt_mram(&index_ptr, &seqread);
+    pos2 = readVInt_mram(&index_ptr, &seqread) + pos;
+    uint32_t doc_id2 = readVInt_mram(&index_ptr, &seqread) + doc_id;
+    int freq2 = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    uint32_t length2 = readByte_mram(&index_ptr, &seqread);
+    uint32_t pos3 = readVInt_mram(&index_ptr, &seqread);
+    if(doc_id == 1 && freq == 2 && doc_id2 == 3 && freq2 == 1) {
+        printf("search postings OK: doc:%d freq:%d length:%d pos:%d pos:%d / doc:%d freq:%d length:%d pos:%d\n",
+        doc_id, freq, length, pos, pos2, doc_id2, freq2, length2, pos3);
+    } else {
+        printf("search postings KO: doc:%d freq:%d length:%d pos:%d pos:%d / doc:%d freq:%d length:%d pos:%d\n",
+                doc_id, freq, length, pos, pos2, doc_id2, freq2, length2, pos3);
+    }
     return 0;
 }

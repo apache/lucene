@@ -27,6 +27,14 @@ int readByte_mram(const uint8_t** data, seqreader_t* reader) {
     return i;
 }
 
+int readShort_mram(const uint8_t** data, seqreader_t* reader) {
+    int i = **data & 0x7F;
+    *data = seqread_get((void*)*data, 1, reader);
+    i |= (**data & 0x7F) << 7;
+    *data = seqread_get((void*)*data, 1, reader);
+    return i;
+}
+
 // read a variable length integer in MRAM
 int readVInt_mram(const uint8_t** data, seqreader_t* reader) {
     int i = **data & 0x7F;
@@ -125,6 +133,7 @@ int get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_re
             block->term = curr_term;
             block->term_size = block_term_length;
             block->block_address = address;
+            found_cmp = 0;
 
             // update successor node
             // if there is a right child this is the successor

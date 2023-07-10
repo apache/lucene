@@ -556,6 +556,7 @@ public class PimIndexWriter extends IndexWriter {
                 // freq < 0 => offset encoded on 2 bytes
                 // freq = 0 => write real freq and offset encoded on variable length
                 assert freq > 0;
+                //System.out.print(" numBytesPos=" + numBytesPos + " numBytesToEncode=" + numBytesToEncode(numBytesPos));
                 switch (numBytesToEncode(numBytesPos)) {
                     case 1 -> {
                         postingsOutput.writeZInt(freq);
