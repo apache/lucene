@@ -42,6 +42,10 @@ uint32_t orange_addr = 53;
 
 struct Block term_block;
 
+int zigZagDecode(int i) {
+    return ((((uint32_t)i) >> 1) ^ -(i & 1));
+}
+
 int main() {
 
     // init sequential reader to read the index
@@ -72,15 +76,18 @@ int main() {
         printf("green KO: %d\n", (int)term_block.term);
     }
     // look for the green term postings
-    /*
     index_ptr = seqread_seek(block_address, &seqread);
-    __mram_ptr uint8_t* postings_addr =
+    __mram_ptr const uint8_t* postings_addr =
                     get_term_postings_from_index(index_ptr, &seqread,
-                            green, index_begin_addr + block_list_offset,
+                            &green, index_begin_addr + block_list_offset,
                             index_begin_addr + postings_offset, &term_block);
     // read postings
-    uint32_t doc_id = readVInt_mram(&postings_addr, &seqread);
-    */
+    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    uint32_t doc_id = readVInt_mram(&index_ptr, &seqread);
+    uint32_t freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    freq = readVInt_mram(&index_ptr, &seqread);
+    uint32_t pos = readVInt_mram(&index_ptr, &seqread);
+    printf("green postings: %d %d %d\n", doc_id, freq, pos);
 
     // look for field "field2"
     index_ptr = seqread_init(buffer, index_mram, &seqread);
