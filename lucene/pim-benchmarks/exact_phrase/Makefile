@@ -28,6 +28,9 @@ index_dpu:
 run:
 	source shell/setclasspath.sh && javac src/SearchWiki.java && java SearchWiki -index "${INDEX_DIRECTORY}/index_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_${OUTPUT_PREFIX}
 
+run_parallel:
+	source shell/setclasspath.sh && javac src/SearchWikiMultiThread.java && java SearchWikiMultiThread -index "${INDEX_DIRECTORY}/index_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_parallel_${OUTPUT_PREFIX}
+
 run_dpu:
 	source shell/setclasspathDPU.sh && javac src/SearchWikiDPU.java && java SearchWikiDPU -index "${INDEX_DIRECTORY}/index_dpu_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_dpu_${OUTPUT_PREFIX}
 
