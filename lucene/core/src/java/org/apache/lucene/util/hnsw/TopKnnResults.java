@@ -17,6 +17,9 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.LongValues;
 
 /**
@@ -30,21 +33,19 @@ import org.apache.lucene.util.LongValues;
 public class TopKnnResults extends KnnResults {
   public record Provider(int k) implements KnnResultsProvider {
     @Override
-    public KnnResults getKnnResults() {
-      return new TopKnnResults(k);
+    public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
+      return new TopKnnResults(k, vectorToOrd);
     }
 
-    @Override
-    public void setVectorToOrd(IntToIntFunction vectorToOrd) {
-      //pass
-    }
   }
 
   private final int k;
+  private final IntToIntFunction vectorToOrd;
 
-  public TopKnnResults(int k) {
+  public TopKnnResults(int k, IntToIntFunction vectorToOrd) {
     super(k);
     this.k = k;
+    this.vectorToOrd = vectorToOrd;
   }
 
   @Override
@@ -61,6 +62,24 @@ public class TopKnnResults extends KnnResults {
 
   @Override
   protected void doClear() {}
+
+  @Override
+  public TopDocs topDocs() {
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(size(), k)];
+    while (size() > 0) {
+      int node = topNode();
+      float score = topScore();
+      pop();
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(this.vectorToOrd.apply(node), score);
+    }
+
+    TotalHits.Relation relation =
+            incomplete()
+                    ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+                    : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+  }
 
   @Override
   public String toString() {

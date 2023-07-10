@@ -299,7 +299,7 @@ public class HnswGraphSearcher<T> {
       results.markIncomplete();
       return results;
     }
-    KnnResults results = knnResultsProvider.getKnnResults();
+    KnnResults results = knnResultsProvider.getKnnResults(vectors::ordToDoc);
     graphSearcher.searchLevel(
         results, query, 0, new int[] {ep}, vectors, graph, acceptOrds, visitedLimit - numVisited);
     results.setVisitedCount(results.visitedCount() + numVisited);
@@ -329,7 +329,7 @@ public class HnswGraphSearcher<T> {
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
-    KnnResults results = new TopKnnResults(topK);
+    KnnResults results = new TopKnnResults(topK, vectors::ordToDoc);
     searchLevel(results, query, level, eps, vectors, graph, null, Integer.MAX_VALUE);
     return results;
   }

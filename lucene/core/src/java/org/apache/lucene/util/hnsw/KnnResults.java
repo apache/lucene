@@ -17,6 +17,8 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.search.TopDocs;
+
 /**
  * NeighborQueueResults is a specific NeighborQueue, enforcing a minHeap is utilized for results.
  *
@@ -39,6 +41,8 @@ public abstract class KnnResults extends NeighborQueue {
   public abstract boolean isFull();
 
   protected abstract void doClear();
+
+  public abstract TopDocs topDocs();
 
   @Override
   public String toString() {

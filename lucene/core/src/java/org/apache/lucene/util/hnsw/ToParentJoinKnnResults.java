@@ -2,6 +2,10 @@ package org.apache.lucene.util.hnsw;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.LongValues;
 
@@ -9,7 +13,6 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   public static class Provider implements KnnResultsProvider {
 
-    private IntToIntFunction values;
     private final int k;
     private final BitSet parentBitSet;
 
@@ -24,27 +27,22 @@ public class ToParentJoinKnnResults extends KnnResults {
     }
 
     @Override
-    public KnnResults getKnnResults() {
-      return new ToParentJoinKnnResults(k, parentBitSet, values);
-    }
-
-    @Override
-    public void setVectorToOrd(IntToIntFunction vectorToOrd) {
-      values = vectorToOrd;
+    public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
+      return new ToParentJoinKnnResults(k, parentBitSet, vectorToOrd);
     }
   }
 
   private final Map<Integer, Integer> nodeIdToHeapIndex;
   private final BitSet parentBitSet;
   private final int k;
-  private final IntToIntFunction values;
+  private final IntToIntFunction vectorToOrd;
 
   public ToParentJoinKnnResults(int k, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
     super(k);
     this.nodeIdToHeapIndex = new HashMap<>(k < 2 ? k + 1 : (int) (k / 0.75 + 1.0));
     this.parentBitSet = parentBitSet;
     this.k = k;
-    this.values = vectorToOrd;
+    this.vectorToOrd = vectorToOrd;
   }
 
   /**
@@ -57,7 +55,7 @@ public class ToParentJoinKnnResults extends KnnResults {
   @Override
   public void add(int childNodeId, float nodeScore) {
     int newHeapIndex;
-    childNodeId = values.apply(childNodeId);
+    childNodeId = vectorToOrd.apply(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     Integer existingHeapIndex = nodeIdToHeapIndex.get(nodeId);
     if (existingHeapIndex == null) {
@@ -87,7 +85,7 @@ public class ToParentJoinKnnResults extends KnnResults {
     final boolean full = isHeapFull();
     int minNodeId = this.topNode();
     // Parent and child nodes should be disjoint sets parent bit set should never have a child node ID present
-    childNodeId = values.apply(childNodeId);
+    childNodeId = vectorToOrd.apply(childNodeId);
     assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     boolean nodeAdded = false;
@@ -195,4 +193,23 @@ public class ToParentJoinKnnResults extends KnnResults {
     nodeIdToHeapIndex.put(nodeId, heapIndex);
     assert ensureValidCache();
   }
+
+  @Override
+  public TopDocs topDocs() {
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(size(), k)];
+    while (size() > 0) {
+      int node = topNode();
+      float score = topScore();
+      pop();
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
+    }
+
+    TotalHits.Relation relation =
+            incomplete()
+                    ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+                    : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+  }
+
 }

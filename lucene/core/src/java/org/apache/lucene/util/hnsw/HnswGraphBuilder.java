@@ -151,8 +151,8 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
-    entryCandidates = new TopKnnResults(1);
-    beamCandidates = new TopKnnResults(beamWidth);
+    entryCandidates = new TopKnnResults(1, vectors::ordToDoc);
+    beamCandidates = new TopKnnResults(beamWidth, vectors::ordToDoc);
     this.initializedNodes = new HashSet<>();
   }
 

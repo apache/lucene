@@ -69,8 +69,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
   }
 
-  public abstract int ordToDoc(int ord);
-
   static OffHeapByteVectorValues load(
       Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2 || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {

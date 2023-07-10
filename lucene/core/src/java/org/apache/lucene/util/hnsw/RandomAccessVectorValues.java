@@ -46,4 +46,8 @@ public interface RandomAccessVectorValues<T> {
    * {@link RandomAccessVectorValues#vectorValue}.
    */
   RandomAccessVectorValues<T> copy() throws IOException;
+
+  default int ordToDoc(int ord) {
+    return ord;
+  }
 }

@@ -47,6 +47,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.KnnResultsProvider;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.TopKnnResults;
@@ -301,9 +302,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
-    knnResultsProvider.setVectorToOrd(vectorValues::ordToDoc);
-    NeighborQueue results =
-        HnswGraphSearcher.search(
+    KnnResults results =
+            (KnnResults) HnswGraphSearcher.search(
             target,
             knnResultsProvider,
             vectorValues,
@@ -312,22 +312,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
             visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnResultsProvider.k())];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      //TODO this is bad
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    return results.topDocs();
   }
 
   @Override
@@ -348,8 +333,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
-    NeighborQueue results =
-        HnswGraphSearcher.search(
+    KnnResults results =
+            (KnnResults) HnswGraphSearcher.search(
             target,
             knnResultsProvider,
             vectorValues,
@@ -358,21 +343,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
             visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnResultsProvider.k())];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    return results.topDocs();
   }
 
   /** Get knn graph values; used for testing */
