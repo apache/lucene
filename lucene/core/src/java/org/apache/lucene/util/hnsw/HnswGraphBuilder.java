@@ -59,7 +59,6 @@ public final class HnswGraphBuilder<T> {
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int M; // max number of connections on upper layers
-  private final int beamWidth;
   private final double ml;
   private final NeighborArray scratch;
 
@@ -138,7 +137,6 @@ public final class HnswGraphBuilder<T> {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = M;
-    this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);

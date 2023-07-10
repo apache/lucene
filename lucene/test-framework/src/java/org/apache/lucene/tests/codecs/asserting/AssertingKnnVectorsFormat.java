@@ -166,22 +166,35 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs, int visitedLimit) throws IOException {
+    public TopDocs search(
+        String field,
+        float[] target,
+        KnnResultsProvider knnResultsProvider,
+        Bits acceptDocs,
+        int visitedLimit)
+        throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
-              && fi.getVectorDimension() > 0
-              && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
       TopDocs hits = delegate.search(field, target, knnResultsProvider, acceptDocs, visitedLimit);
       assert hits != null;
       assert hits.scoreDocs.length <= knnResultsProvider.k();
-      return hits;    }
+      return hits;
+    }
 
     @Override
-    public TopDocs search(String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs, int visitedLimit) throws IOException {
+    public TopDocs search(
+        String field,
+        byte[] target,
+        KnnResultsProvider knnResultsProvider,
+        Bits acceptDocs,
+        int visitedLimit)
+        throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
-              && fi.getVectorDimension() > 0
-              && fi.getVectorEncoding() == VectorEncoding.BYTE;
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.BYTE;
       TopDocs hits = delegate.search(field, target, knnResultsProvider, acceptDocs, visitedLimit);
       assert hits != null;
       assert hits.scoreDocs.length <= knnResultsProvider.k();

@@ -62,8 +62,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     return value;
   }
 
-  public abstract int ordToDoc(int ord);
-
   static OffHeapFloatVectorValues load(
       Lucene95HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2

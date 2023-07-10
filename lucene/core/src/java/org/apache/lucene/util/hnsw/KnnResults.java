@@ -31,6 +31,7 @@ public abstract class KnnResults extends NeighborQueue {
     super(initialSize, false);
   }
 
+  @Override
   public final void clear() {
     super.clear();
     doClear();

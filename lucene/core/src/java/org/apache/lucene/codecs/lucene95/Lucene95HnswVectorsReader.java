@@ -49,7 +49,6 @@ import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.KnnResultsProvider;
-import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.TopKnnResults;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
@@ -303,15 +302,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
     KnnResults results =
-            (KnnResults) HnswGraphSearcher.search(
-            target,
-            knnResultsProvider,
-            vectorValues,
-            fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+        (KnnResults)
+            HnswGraphSearcher.search(
+                target,
+                knnResultsProvider,
+                vectorValues,
+                fieldEntry.vectorEncoding,
+                fieldEntry.similarityFunction,
+                getGraph(fieldEntry),
+                vectorValues.getAcceptOrds(acceptDocs),
+                visitedLimit);
     return results.topDocs();
   }
 
@@ -334,15 +334,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
     KnnResults results =
-            (KnnResults) HnswGraphSearcher.search(
-            target,
-            knnResultsProvider,
-            vectorValues,
-            fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+        (KnnResults)
+            HnswGraphSearcher.search(
+                target,
+                knnResultsProvider,
+                vectorValues,
+                fieldEntry.vectorEncoding,
+                fieldEntry.similarityFunction,
+                getGraph(fieldEntry),
+                vectorValues.getAcceptOrds(acceptDocs),
+                visitedLimit);
     return results.topDocs();
   }
 

@@ -251,14 +251,14 @@ public class TestBlockJoin extends LuceneTestCase {
 
     final List<Document> docs = new ArrayList<>();
 
-    docs.add(makeVector("vector", new float[]{1f, 2f, 3f}));
-    docs.add(makeVector("vector", new float[]{3f, 3f, 3f}));
+    docs.add(makeVector("vector", new float[] {1f, 2f, 3f}));
+    docs.add(makeVector("vector", new float[] {3f, 3f, 3f}));
     docs.add(makeParent("parent1"));
     w.addDocuments(docs);
 
     docs.clear();
-    docs.add(makeVector("vector", new float[]{0f, 0f, 1f}));
-    docs.add(makeVector("vector", new float[]{1f, 1f, 1f}));
+    docs.add(makeVector("vector", new float[] {0f, 0f, 1f}));
+    docs.add(makeVector("vector", new float[] {1f, 1f, 1f}));
     docs.add(makeParent("parent2"));
     w.addDocuments(docs);
 
@@ -267,16 +267,23 @@ public class TestBlockJoin extends LuceneTestCase {
     IndexSearcher s = newSearcher(r, false);
 
     // Create a filter that defines "parent" documents in the index
-    BitSetProducer parentsFilter = new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+    BitSetProducer parentsFilter =
+        new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
     CheckJoinIndex.check(r, parentsFilter);
 
-    ToParentBlockJoinFloatKnnVectorQuery childKnnJoin = new ToParentBlockJoinFloatKnnVectorQuery("vector", new float[]{4f, 4f, 4f}, null, 3, parentsFilter);
+    ToParentBlockJoinFloatKnnVectorQuery childKnnJoin =
+        new ToParentBlockJoinFloatKnnVectorQuery(
+            "vector", new float[] {4f, 4f, 4f}, null, 3, parentsFilter);
 
     TopDocs topDocs = s.search(childKnnJoin, 5);
     assertEquals(2, topDocs.totalHits.value);
     Document parentDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("parent1", parentDoc.get("parent_id"));
-    assertEquals(topDocs.scoreDocs[0].score, VectorSimilarityFunction.EUCLIDEAN.compare(new float[]{4f, 4f, 4f}, new float[]{3f, 3f, 3f}), 1e-7);
+    assertEquals(
+        topDocs.scoreDocs[0].score,
+        VectorSimilarityFunction.EUCLIDEAN.compare(
+            new float[] {4f, 4f, 4f}, new float[] {3f, 3f, 3f}),
+        1e-7);
     parentDoc = s.storedFields().document(topDocs.scoreDocs[1].doc);
     assertEquals("parent2", parentDoc.get("parent_id"));
     r.close();

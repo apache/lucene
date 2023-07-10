@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.util.LongValues;
 
 /**
  * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results.
@@ -31,12 +30,23 @@ import org.apache.lucene.util.LongValues;
  * <p>The size maximum size of the results is enforced by the provided `k`
  */
 public class TopKnnResults extends KnnResults {
-  public record Provider(int k) implements KnnResultsProvider {
+  /** The provider */
+  public static class Provider implements KnnResultsProvider {
+    private final int k;
+
+    public Provider(int k) {
+      this.k = k;
+    }
+
+    @Override
+    public int k() {
+      return k;
+    }
+
     @Override
     public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
       return new TopKnnResults(k, vectorToOrd);
     }
-
   }
 
   private final int k;
@@ -75,9 +85,7 @@ public class TopKnnResults extends KnnResults {
     }
 
     TotalHits.Relation relation =
-            incomplete()
-                    ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-                    : TotalHits.Relation.EQUAL_TO;
+        incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
