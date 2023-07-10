@@ -21,6 +21,12 @@ struct Term {
     uint32_t size;
 };
 
+int readByte_mram(const uint8_t** data, seqreader_t* reader) {
+    int i = **data & 0x7F;
+    *data = seqread_get((void*)*data, 1, reader);
+    return i;
+}
+
 // read a variable length integer in MRAM
 int readVInt_mram(const uint8_t** data, seqreader_t* reader) {
     int i = **data & 0x7F;
@@ -178,8 +184,15 @@ int get_block_from_table(const uint8_t* block_table, seqreader_t* block_table_re
             // the last address is the next element after this node
             succ_node = block->term + block->term_size;
             const uint8_t* last_node = seqread_seek((__mram_ptr void*)succ_node, block_table_reader);
-            readVInt_mram(&last_node, block_table_reader);
+            uint32_t childInfo = readVInt_mram(&last_node, block_table_reader);
             readVLong_mram(&last_node, block_table_reader);
+            while((childInfo & 1) != 0) {
+                int block_term_length = readVInt_mram(&last_node, block_table_reader);
+                __mram_ptr const uint8_t* curr_term = seqread_tell((void*)last_node, block_table_reader);
+                last_node = seqread_seek((__mram_ptr void*)(curr_term + block_term_length), block_table_reader);
+                childInfo = readVInt_mram(&last_node, block_table_reader);
+                readVLong_mram(&last_node, block_table_reader);
+            }
             addr = readVLong_mram(&last_node, block_table_reader);
         }
         else {
