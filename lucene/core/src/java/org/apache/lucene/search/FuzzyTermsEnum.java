@@ -49,7 +49,7 @@ public final class FuzzyTermsEnum extends TermsEnum {
   // We use this to communicate the score (boost) of the current matched term we are on back to
   // MultiTermQuery.TopTermsBlendedFreqScoringRewrite that is collecting the best (default 50)
   // matched terms:
-  private final BoostAttribute boostAtt;
+  private final MultiTermQueryBoostAttribute boostAtt;
 
   // MultiTermQuery.TopTermsBlendedFreqScoringRewrite tells us the worst boost still in its queue
   // using this att,
@@ -142,7 +142,7 @@ public final class FuzzyTermsEnum extends TermsEnum {
     this.term = term;
 
     this.maxBoostAtt = atts.addAttribute(MaxNonCompetitiveBoostAttribute.class);
-    this.boostAtt = atts.addAttribute(BoostAttribute.class);
+    this.boostAtt = atts.addAttribute(MultiTermQueryBoostAttribute.class);
 
     atts.addAttributeImpl(new AutomatonAttributeImpl());
     AutomatonAttribute aa = atts.addAttribute(AutomatonAttribute.class);

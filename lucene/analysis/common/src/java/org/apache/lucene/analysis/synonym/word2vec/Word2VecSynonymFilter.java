@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
+import org.apache.lucene.analysis.tokenattributes.BoostAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
@@ -41,11 +42,13 @@ public final class Word2VecSynonymFilter extends TokenFilter {
   private final PositionIncrementAttribute posIncrementAtt =
       addAttribute(PositionIncrementAttribute.class);
   private final PositionLengthAttribute posLenAtt = addAttribute(PositionLengthAttribute.class);
+  private final BoostAttribute boostAtt = addAttribute(BoostAttribute.class);
   private final TypeAttribute typeAtt = addAttribute(TypeAttribute.class);
 
   private final Word2VecSynonymProvider synonymProvider;
   private final int maxSynonymsPerTerm;
   private final float minAcceptedSimilarity;
+  private final boolean similarityAsBoost;
   private final LinkedList<TermAndBoost> synonymBuffer = new LinkedList<>();
   private State lastState;
 
@@ -62,7 +65,8 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       TokenStream input,
       Word2VecSynonymProvider synonymProvider,
       int maxSynonymsPerTerm,
-      float minAcceptedSimilarity) {
+      float minAcceptedSimilarity,
+      boolean similarityAsBoost) {
     super(input);
     if (synonymProvider == null) {
       throw new IllegalArgumentException("The SynonymProvider must be non-null");
@@ -70,6 +74,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
     this.synonymProvider = synonymProvider;
     this.maxSynonymsPerTerm = maxSynonymsPerTerm;
     this.minAcceptedSimilarity = minAcceptedSimilarity;
+    this.similarityAsBoost = similarityAsBoost;
   }
 
   @Override
@@ -81,6 +86,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       restoreState(this.lastState);
       termAtt.setEmpty();
       termAtt.append(synonym.term.utf8ToString());
+      boostAtt.setBoost(this.similarityAsBoost ? synonym.boost : 1);
       typeAtt.setType(SynonymGraphFilter.TYPE_SYNONYM);
       posLenAtt.setPositionLength(1);
       posIncrementAtt.setPositionIncrement(0);

@@ -14,41 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.analysis.tokenattributes;
 
-import org.apache.lucene.util.AttributeImpl;
-import org.apache.lucene.util.AttributeReflector;
+import org.apache.lucene.util.Attribute;
 
 /**
- * Implementation class for {@link BoostAttribute}.
+ * Add this {@link BoostAttribute} if you want to manipulate the token stream in order to update the
+ * boost associated to a token
+ *
+ * <p><b>Please note:</b> This attribute does not work at index time
  *
  * @lucene.internal
  */
-public final class BoostAttributeImpl extends AttributeImpl implements BoostAttribute {
-  private float boost = 1.0f;
-
-  @Override
-  public void setBoost(float boost) {
-    this.boost = boost;
-  }
-
-  @Override
-  public float getBoost() {
-    return boost;
-  }
-
-  @Override
-  public void clear() {
-    boost = 1.0f;
-  }
-
-  @Override
-  public void copyTo(AttributeImpl target) {
-    ((BoostAttribute) target).setBoost(boost);
-  }
-
-  @Override
-  public void reflectWith(AttributeReflector reflector) {
-    reflector.reflect(BoostAttribute.class, "boost", boost);
-  }
+public interface BoostAttribute extends Attribute {
+  /** Sets the boost in this attribute */
+  public void setBoost(float boost);
+  /** Retrieves the boost, default is {@code 1.0f}. */
+  public float getBoost();
 }

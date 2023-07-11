@@ -33,7 +33,7 @@ import org.apache.lucene.util.AttributeSource; // javadocs only
  *
  * @lucene.internal
  */
-public interface BoostAttribute extends Attribute {
+public interface MultiTermQueryBoostAttribute extends Attribute {
   float DEFAULT_BOOST = 1.0f;
   /** Sets the boost in this attribute */
   public void setBoost(float boost);

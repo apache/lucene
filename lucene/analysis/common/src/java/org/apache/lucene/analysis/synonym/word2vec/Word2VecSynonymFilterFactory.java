@@ -45,6 +45,7 @@ public class Word2VecSynonymFilterFactory extends TokenFilterFactory
   private final float minAcceptedSimilarity;
   private final Word2VecSupportedFormats format;
   private final String word2vecModelFileName;
+  private final boolean similarityAsBoost;
 
   private Word2VecSynonymProvider synonymProvider;
 
@@ -61,6 +62,7 @@ public class Word2VecSynonymFilterFactory extends TokenFilterFactory
     } catch (IllegalArgumentException exc) {
       throw new IllegalArgumentException("Model format '" + modelFormat + "' not supported", exc);
     }
+    this.similarityAsBoost = getBoolean(args, "similarityAsBoost", true);
 
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
@@ -90,7 +92,7 @@ public class Word2VecSynonymFilterFactory extends TokenFilterFactory
     return synonymProvider == null
         ? input
         : new Word2VecSynonymFilter(
-            input, synonymProvider, maxSynonymsPerTerm, minAcceptedSimilarity);
+            input, synonymProvider, maxSynonymsPerTerm, minAcceptedSimilarity, similarityAsBoost);
   }
 
   @Override

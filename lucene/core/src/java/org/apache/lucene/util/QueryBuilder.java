@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.util;
 
-import static org.apache.lucene.search.BoostAttribute.DEFAULT_BOOST;
+import static org.apache.lucene.search.MultiTermQueryBoostAttribute.DEFAULT_BOOST;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,9 +31,9 @@ import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
+import org.apache.lucene.search.MultiTermQueryBoostAttribute;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SynonymQuery;
@@ -372,7 +372,7 @@ public class QueryBuilder {
   /** Creates simple term query from the cached tokenstream contents */
   protected Query analyzeTerm(String field, TokenStream stream) throws IOException {
     TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
-    BoostAttribute boostAtt = stream.addAttribute(BoostAttribute.class);
+    MultiTermQueryBoostAttribute boostAtt = stream.addAttribute(MultiTermQueryBoostAttribute.class);
 
     stream.reset();
     if (!stream.incrementToken()) {
@@ -385,7 +385,7 @@ public class QueryBuilder {
   /** Creates simple boolean query from the cached tokenstream contents */
   protected Query analyzeBoolean(String field, TokenStream stream) throws IOException {
     TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
-    BoostAttribute boostAtt = stream.addAttribute(BoostAttribute.class);
+    MultiTermQueryBoostAttribute boostAtt = stream.addAttribute(MultiTermQueryBoostAttribute.class);
 
     stream.reset();
     List<TermAndBoost> terms = new ArrayList<>();
@@ -419,7 +419,7 @@ public class QueryBuilder {
 
     TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
     PositionIncrementAttribute posIncrAtt = stream.getAttribute(PositionIncrementAttribute.class);
-    BoostAttribute boostAtt = stream.addAttribute(BoostAttribute.class);
+    MultiTermQueryBoostAttribute boostAtt = stream.addAttribute(MultiTermQueryBoostAttribute.class);
 
     stream.reset();
     while (stream.incrementToken()) {
@@ -440,7 +440,7 @@ public class QueryBuilder {
     builder.setSlop(slop);
 
     TermToBytesRefAttribute termAtt = stream.getAttribute(TermToBytesRefAttribute.class);
-    BoostAttribute boostAtt = stream.addAttribute(BoostAttribute.class);
+    MultiTermQueryBoostAttribute boostAtt = stream.addAttribute(MultiTermQueryBoostAttribute.class);
     PositionIncrementAttribute posIncrAtt = stream.getAttribute(PositionIncrementAttribute.class);
     int position = -1;
     float phraseBoost = DEFAULT_BOOST;
@@ -545,7 +545,8 @@ public class QueryBuilder {
                 .map(
                     s -> {
                       TermToBytesRefAttribute t = s.addAttribute(TermToBytesRefAttribute.class);
-                      BoostAttribute b = s.addAttribute(BoostAttribute.class);
+                      MultiTermQueryBoostAttribute b =
+                          s.addAttribute(MultiTermQueryBoostAttribute.class);
                       return new TermAndBoost(t.getBytesRef(), b.getBoost());
                     })
                 .toArray(TermAndBoost[]::new);

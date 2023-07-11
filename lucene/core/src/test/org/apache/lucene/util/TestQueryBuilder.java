@@ -27,10 +27,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiPhraseQuery;
+import org.apache.lucene.search.MultiTermQueryBoostAttribute;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SynonymQuery;
@@ -550,7 +550,7 @@ public class TestQueryBuilder extends LuceneTestCase {
 
   private static final class MockBoostTokenFilter extends TokenFilter {
 
-    final BoostAttribute boostAtt = addAttribute(BoostAttribute.class);
+    final MultiTermQueryBoostAttribute boostAtt = addAttribute(MultiTermQueryBoostAttribute.class);
     final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
     protected MockBoostTokenFilter(TokenStream input) {
