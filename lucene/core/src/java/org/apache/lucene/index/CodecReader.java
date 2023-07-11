@@ -269,7 +269,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
+  public final TopDocs searchNearestVectors(
       String field,
       float[] target,
       KnnResultsProvider knnResultsProvider,
@@ -282,12 +282,11 @@ public abstract class CodecReader extends LeafReader {
       // Field does not exist or does not index vectors
       return null;
     }
-
     return getVectorReader().search(field, target, knnResultsProvider, acceptDocs, visitedLimit);
   }
 
   @Override
-  public TopDocs searchNearestVectors(
+  public final TopDocs searchNearestVectors(
       String field,
       byte[] target,
       KnnResultsProvider knnResultsProvider,
@@ -300,7 +299,6 @@ public abstract class CodecReader extends LeafReader {
       // Field does not exist or does not index vectors
       return null;
     }
-
     return getVectorReader().search(field, target, knnResultsProvider, acceptDocs, visitedLimit);
   }
 

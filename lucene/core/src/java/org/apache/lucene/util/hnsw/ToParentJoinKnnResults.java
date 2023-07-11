@@ -24,10 +24,10 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.BitSet;
 
-/** parent joining knn results */
+/** parent joining knn results, de-duplicates children nodes by their parent bit set */
 public class ToParentJoinKnnResults extends KnnResults {
 
-  /** provider */
+  /** provider class for creating a new {@link ToParentJoinKnnResults} */
   public static class Provider implements KnnResultsProvider {
 
     private final int k;
@@ -113,8 +113,8 @@ public class ToParentJoinKnnResults extends KnnResults {
       if (heapIndex != -1) {
         nodeAdded = true;
         if (full) {
-          this.shiftUpIndexesCache(heapIndex, nodeId);
           nodeIdToHeapIndex.remove(minNodeId);
+          this.shiftUpIndexesCache(heapIndex, nodeId);
         } else {
           this.shiftDownIndexesCache(heapIndex, nodeId);
         }

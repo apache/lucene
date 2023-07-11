@@ -17,15 +17,43 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 
 /**
- * NeighborQueueResults is a specific NeighborQueue, enforcing a minHeap is utilized for results.
+ * KnnResults is a specific NeighborQueue, enforcing a minHeap is utilized for results.
  *
  * <p>This way as better results are found, the minimum result can be easily removed from the
  * collection
  */
 public abstract class KnnResults extends NeighborQueue {
+
+  /** KnnResults when exiting search early and returning empty top docs */
+  public static class EmptyKnnResults extends KnnResults {
+    public EmptyKnnResults() {
+      super(1);
+    }
+
+    @Override
+    public void popWhileFull() {
+      throw new IllegalArgumentException("cannot pop empty knn results");
+    }
+
+    @Override
+    public boolean isFull() {
+      throw new IllegalArgumentException("cannot pop empty knn results");
+    }
+
+    @Override
+    protected void doClear() {}
+
+    @Override
+    public TopDocs topDocs() {
+      TotalHits th = new TotalHits(visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO);
+      return new TopDocs(th, new ScoreDoc[0]);
+    }
+  }
 
   public KnnResults(int initialSize) {
     super(initialSize, false);

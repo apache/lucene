@@ -27,11 +27,11 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
 
   public void testNeighborsProduct() throws IOException {
     // make sure we have the sign correct
-    BitSet bitSet = BitSet.of(DocIdSetIterator.all(3), 3);
-    ToParentJoinKnnResults nn = new ToParentJoinKnnResults(2, bitSet, i -> i);
+    BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {1, 3, 5}, 3), 6);
+    ToParentJoinKnnResults nn = new ToParentJoinKnnResults(2, parentBitSet, i -> i);
     assertTrue(nn.insertWithOverflow(2, 0.5f));
-    assertTrue(nn.insertWithOverflow(1, 0.2f));
-    assertTrue(nn.insertWithOverflow(3, 1f));
+    assertTrue(nn.insertWithOverflow(0, 0.2f));
+    assertTrue(nn.insertWithOverflow(4, 1f));
     assertEquals(0.5f, nn.topScore(), 0);
     nn.pop();
     assertEquals(1f, nn.topScore(), 0);

@@ -22,15 +22,11 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
 /**
- * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results.
- *
- * <p>This way as better results are found, the minimum result can be easily removed from the
- * collection
- *
- * <p>The size maximum size of the results is enforced by the provided `k`
+ * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results. There is no
+ * special logic other than keeping track of the topK results for kNN
  */
 public class TopKnnResults extends KnnResults {
-  /** The provider */
+  /** A provider used to construct a new {@link TopKnnResults} */
   public static class Provider implements KnnResultsProvider {
     private final int k;
 

@@ -36,7 +36,9 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.ToParentJoinKnnResults;
 
-/** */
+/**
+ * kNN float vector query that joins matching children vector documents with their parent doc id.
+ */
 public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
@@ -48,6 +50,10 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
   /**
    * Create a ToParentBlockJoinFloatVectorQuery.
    *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
    * @param parentsFilter Filter identifying the parent documents.
    */
   public ToParentBlockJoinFloatKnnVectorQuery(
