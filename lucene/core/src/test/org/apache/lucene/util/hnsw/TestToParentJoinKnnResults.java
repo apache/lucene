@@ -20,10 +20,11 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 
-public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
+public class TestToParentJoinKnnResults extends LuceneTestCase {
 
   public void testNeighborsProduct() throws IOException {
     // make sure we have the sign correct
@@ -42,23 +43,20 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
-    ToParentJoinKnnResults ToParentJoinNeighborQueueResults =
-        new ToParentJoinKnnResults(7, parentBitSet, i -> i);
+    ToParentJoinKnnResults results = new ToParentJoinKnnResults(7, parentBitSet, i -> i);
     for (int i = 0; i < nodes.length; i++) {
-      ToParentJoinNeighborQueueResults.add(nodes[i], scores[i]);
-      ToParentJoinNeighborQueueResults.ensureValidCache();
+      results.add(nodes[i], scores[i]);
+      results.ensureValidCache();
     }
-    int[] sortedNodes = new int[ToParentJoinNeighborQueueResults.size()];
-    float[] sortedScores = new float[ToParentJoinNeighborQueueResults.size()];
-    int size = ToParentJoinNeighborQueueResults.size();
-    for (int i = 0; i < size; i++) {
-      sortedNodes[i] = ToParentJoinNeighborQueueResults.topNode();
-      sortedScores[i] = ToParentJoinNeighborQueueResults.topScore();
-      ToParentJoinNeighborQueueResults.pop();
-      ToParentJoinNeighborQueueResults.ensureValidCache();
+    TopDocs topDocs = results.topDocs();
+    int[] sortedNodes = new int[topDocs.scoreDocs.length];
+    float[] sortedScores = new float[topDocs.scoreDocs.length];
+    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+      sortedNodes[i] = topDocs.scoreDocs[i].doc;
+      sortedScores[i] = topDocs.scoreDocs[i].score;
     }
-    assertArrayEquals(new int[] {6, 12, 9, 3}, sortedNodes);
-    assertArrayEquals(new float[] {1f, 1.2f, 2f, 4f}, sortedScores, 0f);
+    assertArrayEquals(new int[] {3, 9, 12, 6}, sortedNodes);
+    assertArrayEquals(new float[] {4f, 2f, 1.2f, 1f}, sortedScores, 0f);
   }
 
   public void testInsertionWithOverflow() throws IOException {
@@ -66,30 +64,25 @@ public class TestToParentJoinNeighborQueueResults extends LuceneTestCase {
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 3f, 4f, 1f, 1f};
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
-    ToParentJoinKnnResults ToParentJoinNeighborQueueResults =
-        new ToParentJoinKnnResults(5, parentBitSet, i -> i);
+    ToParentJoinKnnResults results = new ToParentJoinKnnResults(5, parentBitSet, i -> i);
     for (int i = 0; i < 5; i++) {
-      assertTrue(ToParentJoinNeighborQueueResults.insertWithOverflow(nodes[i], scores[i]));
-      ToParentJoinNeighborQueueResults.ensureValidCache();
+      assertTrue(results.insertWithOverflow(nodes[i], scores[i]));
+      results.ensureValidCache();
     }
     for (int i = 5; i < nodes.length - 1; i++) {
-      assertTrue(ToParentJoinNeighborQueueResults.insertWithOverflow(nodes[i], scores[i]));
-      ToParentJoinNeighborQueueResults.ensureValidCache();
+      assertTrue(results.insertWithOverflow(nodes[i], scores[i]));
+      results.ensureValidCache();
     }
-    assertFalse(
-        ToParentJoinNeighborQueueResults.insertWithOverflow(
-            nodes[nodes.length - 1], scores[nodes.length - 1]));
+    assertFalse(results.insertWithOverflow(nodes[nodes.length - 1], scores[nodes.length - 1]));
     int[] sortedNodes = new int[5];
     float[] sortedScores = new float[5];
-    int size = ToParentJoinNeighborQueueResults.size();
-    for (int i = 0; i < size; i++) {
-      sortedNodes[i] = ToParentJoinNeighborQueueResults.topNode();
-      sortedScores[i] = ToParentJoinNeighborQueueResults.topScore();
-      ToParentJoinNeighborQueueResults.pop();
-      ToParentJoinNeighborQueueResults.ensureValidCache();
+    TopDocs topDocs = results.topDocs();
+    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+      sortedNodes[i] = topDocs.scoreDocs[i].doc;
+      sortedScores[i] = topDocs.scoreDocs[i].score;
     }
-    assertArrayEquals(new int[] {13, 6, 9, 11, 3}, sortedNodes);
-    assertArrayEquals(new float[] {1f, 1f, 2f, 3f, 4f}, sortedScores, 0f);
+    assertArrayEquals(new int[] {3, 11, 9, 6, 13}, sortedNodes);
+    assertArrayEquals(new float[] {4f, 3f, 2f, 1f, 1f}, sortedScores, 0f);
   }
 
   static class IntArrayDocIdSetIterator extends DocIdSetIterator {

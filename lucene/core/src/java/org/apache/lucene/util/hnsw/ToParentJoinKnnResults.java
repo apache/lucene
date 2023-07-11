@@ -73,6 +73,7 @@ public class ToParentJoinKnnResults extends KnnResults {
   public void add(int childNodeId, float nodeScore) {
     int newHeapIndex;
     childNodeId = vectorToOrd.apply(childNodeId);
+    assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     Integer existingHeapIndex = nodeIdToHeapIndex.get(nodeId);
     if (existingHeapIndex == null) {

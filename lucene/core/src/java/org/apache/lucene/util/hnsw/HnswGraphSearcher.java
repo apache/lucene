@@ -294,7 +294,9 @@ public class HnswGraphSearcher<T> {
     int numVisited = epAndVisited[1];
     int ep = epAndVisited[0];
     if (ep == -1) {
-      return new KnnResults.EmptyKnnResults();
+      KnnResults results = new KnnResults.EmptyKnnResults();
+      results.setVisitedCount(numVisited);
+      return results;
     }
     KnnResults results = knnResultsProvider.getKnnResults(vectors::ordToDoc);
     graphSearcher.searchLevel(

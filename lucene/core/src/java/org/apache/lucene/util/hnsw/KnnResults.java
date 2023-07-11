@@ -33,6 +33,7 @@ public abstract class KnnResults extends NeighborQueue {
   public static class EmptyKnnResults extends KnnResults {
     public EmptyKnnResults() {
       super(1);
+      markIncomplete();
     }
 
     @Override
@@ -42,7 +43,7 @@ public abstract class KnnResults extends NeighborQueue {
 
     @Override
     public boolean isFull() {
-      throw new IllegalArgumentException("cannot pop empty knn results");
+      return true;
     }
 
     @Override
@@ -75,6 +76,6 @@ public abstract class KnnResults extends NeighborQueue {
 
   @Override
   public String toString() {
-    return "NeighborQueueResults[" + size() + "]";
+    return "KnnResults[" + size() + "]";
   }
 }
