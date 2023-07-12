@@ -306,9 +306,21 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(fieldDoc.fields[0], fieldDoc2.fields[0]);
         assertEquals(fieldDoc.doc, fieldDoc2.doc);
       }
+      assertTrue(topDocs1.totalHits.value < topDocs2.totalHits.value);
     }
 
-    assertTrue(topDocs1.totalHits.value < topDocs2.totalHits.value);
+    { // Test that we can't do optimization via NumericDocValues when there are multiple comparators
+      final SortField sortField1 = new SortField("my_field", SortField.Type.LONG, true);
+      final SortField sortField2 = new SortField("other", SortField.Type.LONG, true);
+      sortField1.setMissingValue(0L); // missing value is not competitive
+      sortField2.setMissingValue(0L); // missing value is not competitive
+      final Sort multiSorts = new Sort(new SortField[] {sortField1, sortField2});
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(multiSorts, numHits, null, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+      // can't optimization with NumericDocValues when there are multiple comparators
+      assertEquals(topDocs.totalHits.value, numDocs);
+    }
 
     reader.close();
     dir.close();
