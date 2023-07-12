@@ -32,7 +32,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
@@ -319,6 +318,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.close();
   }
 
+  private int getVectorsMaxDimensions() {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions();
+  }
+
   private IndexableFieldType randomFieldType(Random r) {
     FieldType type = new FieldType();
 
@@ -352,7 +355,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(FloatVectorValues.MAX_DIMENSIONS);
+      int dimension = 1 + r.nextInt(getVectorsMaxDimensions());
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());

@@ -108,6 +108,9 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
+  /** A maximum number of vector dimensions supported by this codeс */
+  public static final int MAX_DIMENSIONS = 1024;
+
   /**
    * A maximum configurable maximum max conn.
    *
@@ -183,6 +186,11 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene95HnswVectorsReader(state);
+  }
+
+  @Override
+  public int getMaxDimensions() {
+    return MAX_DIMENSIONS;
   }
 
   @Override
