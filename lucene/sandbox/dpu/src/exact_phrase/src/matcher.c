@@ -7,6 +7,7 @@ typedef struct _did_matcher {
     parser_t *parser;
     uint32_t current_did;
     uint32_t current_pos_freq;
+    uint32_t current_pos_len;
     uint32_t current_pos;
 } did_matcher_t;
 
@@ -18,12 +19,12 @@ static did_matcher_t matchers[NR_TASKLETS][MAX_NR_TERMS];
 // =============================================================================
 // INIT MATCHERS FUNCTIONS
 // =============================================================================
-did_matcher_t *setup_matchers(query_parser_t query_parser)
+did_matcher_t *setup_matchers(query_parser_t query_parser, uintptr_t index)
 {
     // lookup the field block table address, if not found return 0
     // do it only once for all the terms
     uintptr_t field_address;
-    if(!get_field_address((uintptr_t)DPU_MRAM_HEAP_POINTER, &(query_parser.field), &field_address))
+    if(!get_field_address(index, &(query_parser.field), &field_address))
         return 0;
 
     // setup the postings parser for each term
@@ -46,13 +47,15 @@ static bool matcher_has_next_did(did_matcher_t *matcher)
 {
     uint32_t did;
     uint32_t freq;
-    parse_did_t next_item = parse_did(matcher->parser, &did, &freq);
+    uint32_t len;
+    parse_did_t next_item = parse_did(matcher->parser, &did, &freq, &len);
 
     if (next_item == END_OF_FRAGMENT)
         return false;
 
     matcher->current_did = did;
     matcher->current_pos_freq = freq;
+    matcher->current_pos_len = len;
     return true;
 }
 
@@ -161,13 +164,13 @@ void get_max_pos_and_index(did_matcher_t *matchers, uint32_t nr_terms, uint32_t 
 void start_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
 {
     for (uint32_t i = 0; i < nr_terms; i++) {
-        prepare_to_parse_pos_list(matchers[i].parser, matchers[i].current_pos_freq);
+        prepare_to_parse_pos_list(matchers[i].parser, matchers[i].current_pos_freq, matchers[i].current_pos_len);
     }
 }
 
-void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_words)
+void stop_pos_matching(did_matcher_t *matchers, uint32_t nr_terms)
 {
-    for (uint32_t i = 0; i < nr_words; i++) {
+    for (uint32_t i = 0; i < nr_terms; i++) {
         abort_parse_pos(matchers[i].parser);
     }
 }

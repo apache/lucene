@@ -9,6 +9,7 @@ static int read_vint(const uint8_t** data) {
         *data+=1;
         i |= ((**data) & 0x7F) << shift;
     }
+    *data+=1;
     return i;
 }
 
@@ -30,6 +31,7 @@ void parse_query(query_parser_t* parser, const uint8_t* query) {
     query++;
     parser->field.size = read_vint(&query);
     parser->field.term = query;
+    query += parser->field.size;
     parser->nr_terms = read_vint(&query);
     for(int i = 0; i < parser->nr_terms; i++) {
         parser_query_term(parser, &query, i);

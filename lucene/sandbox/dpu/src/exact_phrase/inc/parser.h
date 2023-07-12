@@ -13,10 +13,10 @@ typedef enum {
 
 typedef struct _parser parser_t;
 
-parse_did_t parse_did(parser_t *parser, uint32_t *did, uint32_t *freq);
+parse_did_t parse_did(parser_t *parser, uint32_t *did, uint32_t *freq, uint32_t* len);
 void abort_parse_did(parser_t *parser);
 
-void prepare_to_parse_pos_list(parser_t *parser, uint32_t len);
+void prepare_to_parse_pos_list(parser_t *parser, uint32_t freq, uint32_t len);
 bool parse_pos(parser_t *parser, uint32_t *pos);
 void abort_parse_pos(parser_t *parser);
 

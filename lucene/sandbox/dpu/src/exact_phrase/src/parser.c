@@ -14,6 +14,7 @@ typedef struct _parser {
     struct {
         int32_t nr_pos_left; // How many positions still to be read
         uint32_t current_pos; // Last position recorded during the parsing
+        uint32_t pos_end_addr;
     } pos_parser;
     struct {
         uint32_t current_did; // Either the first DID of a new segment, or the last DID read in the current segment.
@@ -72,14 +73,14 @@ static void parse_length_and_freq(parser_t *parser, uint32_t *freq, unsigned int
     }
 }
 
-parse_did_t parse_did(parser_t *parser, uint32_t *did, unsigned int *freq)
+parse_did_t parse_did(parser_t *parser, uint32_t *did, uint32_t *freq, uint32_t *len)
 {
-    if(get_absolute_address_from(parser->decoder) >= parser->did_parser.did_end_addr)
+    uintptr_t decoder_addr = get_absolute_address_from(parser->decoder);
+    if(decoder_addr >= parser->did_parser.did_end_addr)
         return END_OF_FRAGMENT;
 
     uint32_t delta_did = decode_vint_from(parser->decoder);
-    uint32_t len;
-    parse_length_and_freq(parser, freq, &len);
+    parse_length_and_freq(parser, freq, len);
     uint32_t next_did = parser->did_parser.current_did + delta_did;
 
     *did = parser->did_parser.current_did = next_did;
@@ -98,8 +99,9 @@ void abort_parse_did(parser_t *parser)
 
 // Sets up the parser to decode a series of positions. The parameter specifies
 // the size of the position list, in bytes
-void prepare_to_parse_pos_list(parser_t *parser, uint32_t freq)
+void prepare_to_parse_pos_list(parser_t *parser, uint32_t freq, uint32_t len)
 {
+    parser->pos_parser.pos_end_addr = get_absolute_address_from(parser->decoder) + len;
     parser->pos_parser.nr_pos_left = (int32_t)freq;
     parser->pos_parser.current_pos = 0;
 }
@@ -121,4 +123,4 @@ bool parse_pos(parser_t *parser, uint32_t *pos)
 
 // Aborts the parsing of positions, moving the cursor to the next
 // document or segment descriptor.
-void abort_parse_pos(parser_t *parser) { skip_bytes_to_jump(parser->decoder, parser->did_parser.did_end_addr); }
+void abort_parse_pos(parser_t *parser) { skip_bytes_to_jump(parser->decoder, parser->pos_parser.pos_end_addr); }

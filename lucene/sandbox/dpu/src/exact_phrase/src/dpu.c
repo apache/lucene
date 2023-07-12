@@ -5,6 +5,9 @@
 #include <mutex.h>
 #include <assert.h>
 #include <alloc.h>
+#include <stdio.h>
+#include <string.h>
+#include <mram_unaligned.h>
 #include "matcher.h"
 #include "decoder.h"
 #include "common.h"
@@ -27,6 +30,11 @@ uint32_t batch_num = 0;
 MUTEX_INIT(batch_mutex);
 BARRIER_INIT(barrier, NR_TASKLETS);
 
+#ifdef TEST1
+#define TEST
+#include "../test/test1.h"
+#endif
+
 /**
   A buffer to hold the query in WRAM
   */
@@ -40,6 +48,12 @@ int main() {
         batch_num = 0;
         mem_reset();
         initialize_decoders();
+#ifdef TEST
+        nb_queries_in_batch = test_nb_queries_in_batch;
+        nb_bytes_in_batch = test_nb_bytes_in_batch;
+        mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
+        memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
+#endif
     }
     barrier_wait(&barrier);
 
@@ -53,8 +67,8 @@ int main() {
             break;
 
         // load the query from MRAM
-        int query_offset = query_offset_in_batch[batch_num_tasklet];
-        int query_size;
+        uint32_t query_offset = query_offset_in_batch[batch_num_tasklet];
+        uint32_t query_size;
         if(batch_num_tasklet + 1 < nb_queries_in_batch) {
             query_size = query_offset_in_batch[batch_num_tasklet + 1] - query_offset;
         } else {
@@ -62,17 +76,23 @@ int main() {
         }
 
         // the query size should not exceed the max size of the query buffer
-        assert(query_size < DPU_QUERY_MAX_BYTE_SIZE);
-        mram_read(query_batch + query_offset, query_buffer[me()], query_size);
+        uint32_t query_size_align = ((query_size + 7) >> 3) << 3;
+        assert(query_size_align < DPU_QUERY_MAX_BYTE_SIZE);
+        const uint8_t* query = mram_read_unaligned(query_batch + query_offset, query_buffer[me()], query_size);
 
         // parse the query
         query_parser_t query_parser;
-        const uint8_t* query = query_buffer[me()];
         parse_query(&query_parser, query);
 
-        did_matcher_t *matchers = setup_matchers(query_parser);
+#ifdef TEST
+        printf("Query %d: %d terms\n", batch_num_tasklet, query_parser.nr_terms);
+        did_matcher_t *matchers = setup_matchers(query_parser, (uintptr_t)(&index_mram[0]));
+#else
+        did_matcher_t *matchers = setup_matchers(query_parser, (uintptr_t)DPU_MRAM_HEAP_POINTER);
+#endif
 
-        can_perform_did_and_pos_matching(batch_num_tasklet, matchers, query_parser.nr_terms);
+        if(matchers != 0)
+            can_perform_did_and_pos_matching(batch_num_tasklet, matchers, query_parser.nr_terms);
     }
 
     return 0;
@@ -110,6 +130,9 @@ static void can_perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *m
             }
             */
             //TODO store the result in the results buffer
+#ifdef TEST
+            printf("Found a result for query %d: did=%d, pos=%d\n", query_id, did, max_pos - index);
+#endif
             goto end;
         }
         case POSITIONS_NOT_FOUND:

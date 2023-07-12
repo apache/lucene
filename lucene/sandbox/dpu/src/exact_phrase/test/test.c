@@ -22,6 +22,13 @@ int main() {
         DPU_ASSERT(dpu_log_read(dpu, stdout));
     }
 
+    printf(">> test phrase\n");
+    DPU_ASSERT(dpu_load(dpu_set, "test_phrase", NULL));
+    DPU_ASSERT(dpu_launch(dpu_set, DPU_SYNCHRONOUS));
+    DPU_FOREACH(dpu_set, dpu) {
+        DPU_ASSERT(dpu_log_read(dpu, stdout));
+    }
+
     DPU_ASSERT(dpu_free(dpu_set));
 
 }

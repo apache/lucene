@@ -5,6 +5,8 @@
 #include <attributes.h>
 #include <defs.h>
 #include <mram.h>
+//TODO implement a pool of seqreader as most queries will use less than the max allowed number of terms in a query
+#define SEQREAD_CACHE_SIZE 32
 #include <seqread.h>
 
 #include <stdbool.h>
