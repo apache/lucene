@@ -21,7 +21,6 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -283,15 +282,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           && DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1)
               < DirectWriter.unsignedBitsRequired((max - min) / gcd)) {
         numBitsPerValue = DirectWriter.unsignedBitsRequired(uniqueValues.size() - 1);
-        final Long[] sortedUniqueValues = uniqueValues.toArray(new Long[0]);
-        Arrays.sort(sortedUniqueValues);
-        meta.writeInt(sortedUniqueValues.length); // tablesize
-        for (Long v : sortedUniqueValues) {
-          meta.writeLong(v); // table[] entry
-        }
+        meta.writeInt(uniqueValues.size()); // tablesize
+        int ord = 0;
         encode = new HashMap<>();
-        for (int i = 0; i < sortedUniqueValues.length; ++i) {
-          encode.put(sortedUniqueValues[i], i);
+        for (Long v : uniqueValues) {
+          meta.writeLong(v); // table[] entry
+          encode.put(v, ord++);
         }
         min = 0;
         gcd = 1;
