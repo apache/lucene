@@ -353,7 +353,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             vectors, getVectorEncoding(), similarityFunction, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
-    NeighborQueue nn =
+    KnnResults nn =
         switch (getVectorEncoding()) {
           case BYTE -> HnswGraphSearcher.search(
               (byte[]) getTargetVector(),
@@ -375,7 +375,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               Integer.MAX_VALUE);
         };
 
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.popUntilNearestKNodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
     for (int node : nodes) {
@@ -406,7 +406,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, nDoc);
-    NeighborQueue nn =
+    KnnResults nn =
         switch (getVectorEncoding()) {
           case BYTE -> HnswGraphSearcher.search(
               (byte[]) getTargetVector(),
@@ -427,7 +427,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               acceptOrds,
               Integer.MAX_VALUE);
         };
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.popUntilNearestKNodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
     for (int node : nodes) {
@@ -456,7 +456,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // Check the search finds all accepted vectors
     int numAccepted = acceptOrds.cardinality();
-    NeighborQueue nn =
+    KnnResults nn =
         switch (getVectorEncoding()) {
           case FLOAT32 -> HnswGraphSearcher.search(
               (float[]) getTargetVector(),
@@ -478,7 +478,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               Integer.MAX_VALUE);
         };
 
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.popUntilNearestKNodes();
     assertEquals(numAccepted, nodes.length);
     for (int node : nodes) {
       assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
@@ -724,7 +724,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
-    NeighborQueue nn =
+    KnnResults nn =
         switch (getVectorEncoding()) {
           case FLOAT32 -> HnswGraphSearcher.search(
               (float[]) getTargetVector(),
@@ -946,7 +946,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
-      NeighborQueue actual;
+      KnnResults actual;
       T query = randomVector(dim);
       actual =
           switch (getVectorEncoding()) {
@@ -971,7 +971,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           };
 
       while (actual.size() > topK) {
-        actual.pop();
+        actual.popNode();
       }
       NeighborQueue expected = new NeighborQueue(topK, false);
       for (int j = 0; j < size; j++) {
@@ -991,7 +991,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         }
       }
       assertEquals(topK, actual.size());
-      totalMatches += computeOverlap(actual.nodes(), expected.nodes());
+      totalMatches += computeOverlap(actual.popUntilNearestKNodes(), expected.nodes());
     }
     double overlap = totalMatches / (double) (100 * topK);
     System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
@@ -1005,7 +1005,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int size = atLeast(100);
     int dim = atLeast(10);
     AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
-    int topK = 5;
     HnswGraphBuilder<T> builder =
         HnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 10, 30, random().nextLong());
@@ -1013,9 +1012,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     List<T> queries = new ArrayList<>();
-    List<NeighborQueue> expects = new ArrayList<>();
+    List<KnnResults> expects = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      NeighborQueue expect;
+      KnnResults expect;
       T query = randomVector(dim);
       queries.add(query);
       expect =
@@ -1040,20 +1039,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 Integer.MAX_VALUE);
           };
 
-      while (expect.size() > topK) {
-        expect.pop();
-      }
       expects.add(expect);
     }
 
     ExecutorService exec =
         Executors.newFixedThreadPool(4, new NamedThreadFactory("onHeapHnswSearch"));
-    List<Future<NeighborQueue>> futures = new ArrayList<>();
+    List<Future<KnnResults>> futures = new ArrayList<>();
     for (T query : queries) {
       futures.add(
           exec.submit(
               () -> {
-                NeighborQueue actual;
+                KnnResults actual;
                 try {
                   actual =
                       switch (getVectorEncoding()) {
@@ -1079,21 +1075,18 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 } catch (IOException ioe) {
                   throw new RuntimeException(ioe);
                 }
-                while (actual.size() > topK) {
-                  actual.pop();
-                }
                 return actual;
               }));
     }
-    List<NeighborQueue> actuals = new ArrayList<>();
-    for (Future<NeighborQueue> future : futures) {
+    List<KnnResults> actuals = new ArrayList<>();
+    for (Future<KnnResults> future : futures) {
       actuals.add(future.get(10, TimeUnit.SECONDS));
     }
     exec.shutdownNow();
     for (int i = 0; i < expects.size(); i++) {
-      NeighborQueue expect = expects.get(i);
-      NeighborQueue actual = actuals.get(i);
-      assertArrayEquals(expect.nodes(), actual.nodes());
+      KnnResults expect = expects.get(i);
+      KnnResults actual = actuals.get(i);
+      assertArrayEquals(expect.popUntilNearestKNodes(), actual.popUntilNearestKNodes());
     }
   }
 

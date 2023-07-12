@@ -137,7 +137,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     for (int i = 500; i < nDoc; i++) {
       acceptOrds.set(i);
     }
-    NeighborQueue nn =
+    KnnResults nn =
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
@@ -148,7 +148,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
             acceptOrds,
             Integer.MAX_VALUE);
 
-    int[] nodes = nn.nodes();
+    int[] nodes = nn.popUntilNearestKNodes();
     assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
     int sum = 0;
     for (int node : nodes) {

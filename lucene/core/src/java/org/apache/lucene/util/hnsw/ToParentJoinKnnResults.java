@@ -55,7 +55,7 @@ public class ToParentJoinKnnResults extends KnnResults {
   private final IntToIntFunction vectorToOrd;
 
   public ToParentJoinKnnResults(int k, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
-    super(k);
+    super(k, vectorToOrd);
     this.nodeIdToHeapIndex = new HashMap<>(k < 2 ? k + 1 : (int) (k / 0.75 + 1.0));
     this.parentBitSet = parentBitSet;
     this.k = k;
@@ -70,21 +70,21 @@ public class ToParentJoinKnnResults extends KnnResults {
    * @param nodeScore the score of the neighbor, relative to some other node
    */
   @Override
-  public void add(int childNodeId, float nodeScore) {
+  public void collect(int childNodeId, float nodeScore) {
     int newHeapIndex;
     childNodeId = vectorToOrd.apply(childNodeId);
     assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     Integer existingHeapIndex = nodeIdToHeapIndex.get(nodeId);
     if (existingHeapIndex == null) {
-      newHeapIndex = this.push(nodeId, nodeScore);
+      newHeapIndex = queue.push(nodeId, nodeScore);
       this.shiftDownIndexesCache(newHeapIndex, nodeId);
     } else {
-      float originalScore = getScoreAt(existingHeapIndex);
+      float originalScore = queue.getScoreAt(existingHeapIndex);
       if (originalScore > nodeScore) {
         return;
       }
-      newHeapIndex = updateElement(existingHeapIndex, nodeId, nodeScore);
+      newHeapIndex = queue.updateElement(existingHeapIndex, nodeId, nodeScore);
       this.shiftUpIndexesCache(newHeapIndex, nodeId);
     }
   }
@@ -99,9 +99,9 @@ public class ToParentJoinKnnResults extends KnnResults {
    * @param nodeScore the score of the neighbor, relative to some other node
    */
   @Override
-  public boolean insertWithOverflow(int childNodeId, float nodeScore) {
-    final boolean full = isHeapFull();
-    int minNodeId = this.topNode();
+  public boolean collectWithOverflow(int childNodeId, float nodeScore) {
+    final boolean full = isFull();
+    int minNodeId = queue.topNode();
     // Parent and child nodes should be disjoint sets parent bit set should never have a child node
     // ID present
     childNodeId = vectorToOrd.apply(childNodeId);
@@ -110,7 +110,7 @@ public class ToParentJoinKnnResults extends KnnResults {
     boolean nodeAdded = false;
     Integer heapIndex = nodeIdToHeapIndex.get(nodeId);
     if (heapIndex == null) {
-      heapIndex = insertWithOverflowWithPos(nodeId, nodeScore);
+      heapIndex = queue.insertWithOverflowWithPos(nodeId, nodeScore);
       if (heapIndex != -1) {
         nodeAdded = true;
         if (full) {
@@ -123,66 +123,47 @@ public class ToParentJoinKnnResults extends KnnResults {
       return nodeAdded;
     } else {
       // We are not removing a node, so no overflow detected in this branch
-      float originalScore = getScoreAt(heapIndex);
+      float originalScore = queue.getScoreAt(heapIndex);
       if (originalScore > nodeScore) {
         return true;
       }
-      heapIndex = updateElement(heapIndex, nodeId, nodeScore);
+      heapIndex = queue.updateElement(heapIndex, nodeId, nodeScore);
       this.shiftUpIndexesCache(heapIndex, nodeId);
       return true;
     }
   }
 
-  @Override
-  public int pop() {
-    int popped = super.pop();
-    nodeIdToHeapIndex.remove(popped);
-    // Shift all node IDs above the popped index down by 1
-    for (int i = 1; i < size(); i++) {
-      int nodeIdToShift = getNodeAt(i);
-      nodeIdToHeapIndex.put(nodeIdToShift, i);
-    }
-    assert ensureValidCache();
-    return popped;
-  }
-
   boolean ensureValidCache() {
     nodeIdToHeapIndex.forEach(
         (nodeId, heapIndex) -> {
-          assert nodeId == getNodeAt(heapIndex)
+          assert nodeId == queue.getNodeAt(heapIndex)
               : "["
                   + nodeId
                   + "] not at ["
                   + heapIndex
                   + "] but ["
-                  + getNodeAt(heapIndex)
+                  + queue.getNodeAt(heapIndex)
                   + "]"
                   + nodeIdToHeapIndex;
         });
     return true;
   }
 
-  @Override
-  public void popWhileFull() {
+  private void popWhileFull() {
     boolean didPop = false;
     while (size() > k) {
-      int nodeId = super.pop();
+      int nodeId = queue.pop();
       nodeIdToHeapIndex.remove(nodeId);
       didPop = true;
     }
     // Shift all node IDs above the popped index down by 1
     if (didPop) {
       for (int i = 1; i < size(); i++) {
-        int nodeIdToShift = getNodeAt(i);
+        int nodeIdToShift = queue.getNodeAt(i);
         nodeIdToHeapIndex.put(nodeIdToShift, i);
       }
     }
     assert ensureValidCache();
-  }
-
-  @Override
-  public boolean isFull() {
-    return size() >= k;
   }
 
   @Override
@@ -192,12 +173,12 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   @Override
   public String toString() {
-    return "ToParentJoinNeighborQueueResults[" + size() + "]";
+    return "ToParentJoinKnnResults[" + size() + "]";
   }
 
   private void shiftUpIndexesCache(Integer heapIndex, int nodeId) {
     for (int i = heapIndex - 1; i > 0; i--) {
-      int nodeIdToShift = getNodeAt(i);
+      int nodeIdToShift = queue.getNodeAt(i);
       nodeIdToHeapIndex.put(nodeIdToShift, i);
     }
     nodeIdToHeapIndex.put(nodeId, heapIndex);
@@ -206,7 +187,7 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   private void shiftDownIndexesCache(Integer heapIndex, int nodeId) {
     for (int i = heapIndex + 1; i <= size(); i++) {
-      int nodeIdToShift = getNodeAt(i);
+      int nodeIdToShift = queue.getNodeAt(i);
       nodeIdToHeapIndex.put(nodeIdToShift, i);
     }
     nodeIdToHeapIndex.put(nodeId, heapIndex);
@@ -215,12 +196,15 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   @Override
   public TopDocs topDocs() {
+    while (size() > k) {
+      queue.pop();
+    }
     int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(size(), k)];
-    while (size() > 0) {
-      int node = topNode();
-      float score = topScore();
-      pop();
+    while (i < scoreDocs.length) {
+      int node = queue.topNode();
+      float score = queue.topScore();
+      queue.pop();
       scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
     }
 

@@ -17,10 +17,6 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
-
 /**
  * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results. There is no
  * special logic other than keeping track of the topK results for kNN
@@ -45,45 +41,12 @@ public class TopKnnResults extends KnnResults {
     }
   }
 
-  private final int k;
-  private final IntToIntFunction vectorToOrd;
-
   public TopKnnResults(int k, IntToIntFunction vectorToOrd) {
-    super(k);
-    this.k = k;
-    this.vectorToOrd = vectorToOrd;
-  }
-
-  @Override
-  public boolean isFull() {
-    return size() >= k;
-  }
-
-  @Override
-  public void popWhileFull() {
-    while (size() > k) {
-      pop();
-    }
+    super(k, vectorToOrd);
   }
 
   @Override
   protected void doClear() {}
-
-  @Override
-  public TopDocs topDocs() {
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(size(), k)];
-    while (size() > 0) {
-      int node = topNode();
-      float score = topScore();
-      pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(this.vectorToOrd.apply(node), score);
-    }
-
-    TotalHits.Relation relation =
-        incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
-  }
 
   @Override
   public String toString() {

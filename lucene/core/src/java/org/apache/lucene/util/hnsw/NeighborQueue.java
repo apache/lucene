@@ -221,10 +221,6 @@ public class NeighborQueue {
     this.incomplete = true;
   }
 
-  final boolean isMinHeap() {
-    return order == Order.MIN_HEAP;
-  }
-
   @Override
   public String toString() {
     return "Neighbors[" + heap.size() + "]";

@@ -45,7 +45,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -273,7 +273,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     k = Math.min(k, fieldEntry.size());
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
 
-    NeighborQueue results =
+    KnnResults results =
         HnswGraphSearcher.search(
             target,
             k,
@@ -283,21 +283,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
             visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    return results.topDocs();
   }
 
   @Override
@@ -313,7 +299,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     k = Math.min(k, fieldEntry.size());
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
 
-    NeighborQueue results =
+    KnnResults results =
         HnswGraphSearcher.search(
             target,
             k,
@@ -323,21 +309,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
             getGraph(fieldEntry),
             vectorValues.getAcceptOrds(acceptDocs),
             visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    return results.topDocs();
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {

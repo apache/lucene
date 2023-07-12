@@ -28,7 +28,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 
 /**
@@ -73,7 +73,7 @@ public class Word2VecSynonymProvider {
     LinkedList<TermAndBoost> result = new LinkedList<>();
     float[] query = word2VecModel.vectorValue(term);
     if (query != null) {
-      NeighborQueue synonyms =
+      KnnResults synonyms =
           HnswGraphSearcher.search(
               query,
               // The query vector is in the model. When looking for the top-k
@@ -88,8 +88,8 @@ public class Word2VecSynonymProvider {
 
       int size = synonyms.size();
       for (int i = 0; i < size; i++) {
-        float similarity = synonyms.topScore();
-        int id = synonyms.pop();
+        float similarity = synonyms.minSimilarity();
+        int id = synonyms.popNode();
 
         BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term

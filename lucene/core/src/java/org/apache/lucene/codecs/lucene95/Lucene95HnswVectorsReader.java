@@ -302,16 +302,15 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
     KnnResults results =
-        (KnnResults)
-            HnswGraphSearcher.search(
-                target,
-                knnResultsProvider,
-                vectorValues,
-                fieldEntry.vectorEncoding,
-                fieldEntry.similarityFunction,
-                getGraph(fieldEntry),
-                vectorValues.getAcceptOrds(acceptDocs),
-                visitedLimit);
+        HnswGraphSearcher.search(
+            target,
+            knnResultsProvider,
+            vectorValues,
+            fieldEntry.vectorEncoding,
+            fieldEntry.similarityFunction,
+            getGraph(fieldEntry),
+            vectorValues.getAcceptOrds(acceptDocs),
+            visitedLimit);
     return results.topDocs();
   }
 
@@ -334,16 +333,15 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
     KnnResults results =
-        (KnnResults)
-            HnswGraphSearcher.search(
-                target,
-                knnResultsProvider,
-                vectorValues,
-                fieldEntry.vectorEncoding,
-                fieldEntry.similarityFunction,
-                getGraph(fieldEntry),
-                vectorValues.getAcceptOrds(acceptDocs),
-                visitedLimit);
+        HnswGraphSearcher.search(
+            target,
+            knnResultsProvider,
+            vectorValues,
+            fieldEntry.vectorEncoding,
+            fieldEntry.similarityFunction,
+            getGraph(fieldEntry),
+            vectorValues.getAcceptOrds(acceptDocs),
+            visitedLimit);
     return results.topDocs();
   }
 

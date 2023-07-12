@@ -46,7 +46,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
@@ -241,7 +241,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     k = Math.min(k, fieldEntry.size());
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
 
-    NeighborQueue results =
+    KnnResults results =
         HnswGraphSearcher.search(
             target,
             k,
@@ -252,20 +252,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
             getAcceptOrds(acceptDocs, fieldEntry),
             visitedLimit);
 
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float minSimilarity = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), minSimilarity);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    return results.topDocs();
   }
 
   @Override

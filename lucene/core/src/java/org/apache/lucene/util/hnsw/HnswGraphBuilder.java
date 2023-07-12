@@ -275,7 +275,7 @@ public final class HnswGraphBuilder<T> {
       candidates.clear();
       graphSearcher.searchLevel(
           candidates, value, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
-      eps = new int[] {candidates.pop()};
+      eps = new int[] {candidates.popNode()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     candidates = beamCandidates;
@@ -283,7 +283,7 @@ public final class HnswGraphBuilder<T> {
       candidates.clear();
       graphSearcher.searchLevel(
           candidates, value, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
-      eps = candidates.nodes();
+      eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
@@ -306,8 +306,7 @@ public final class HnswGraphBuilder<T> {
     return now;
   }
 
-  private void addDiverseNeighbors(int level, int node, NeighborQueue candidates)
-      throws IOException {
+  private void addDiverseNeighbors(int level, int node, KnnResults candidates) throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
@@ -347,14 +346,14 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
-  private void popToScratch(NeighborQueue candidates) {
+  private void popToScratch(KnnResults candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float maxSimilarity = candidates.topScore();
-      scratch.addInOrder(candidates.pop(), maxSimilarity);
+      float maxSimilarity = candidates.minSimilarity();
+      scratch.addInOrder(candidates.popNode(), maxSimilarity);
     }
   }
 

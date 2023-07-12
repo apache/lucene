@@ -77,7 +77,7 @@ public class HnswGraphSearcher<T> {
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
-  public static NeighborQueue search(
+  public static KnnResults search(
       float[] query,
       int topK,
       RandomAccessVectorValues<float[]> vectors,
@@ -112,7 +112,7 @@ public class HnswGraphSearcher<T> {
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
-  public static NeighborQueue search(
+  public static KnnResults search(
       float[] query,
       KnnResultsProvider knnResultsProvider,
       RandomAccessVectorValues<float[]> vectors,
@@ -144,7 +144,7 @@ public class HnswGraphSearcher<T> {
    * {@link #search(float[], int, RandomAccessVectorValues, VectorEncoding,
    * VectorSimilarityFunction, HnswGraph, Bits, int)}
    */
-  public static NeighborQueue search(
+  public static KnnResults search(
       float[] query,
       int topK,
       RandomAccessVectorValues<float[]> vectors,
@@ -184,7 +184,7 @@ public class HnswGraphSearcher<T> {
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
-  public static NeighborQueue search(
+  public static KnnResults search(
       byte[] query,
       int topK,
       RandomAccessVectorValues<byte[]> vectors,
@@ -219,7 +219,7 @@ public class HnswGraphSearcher<T> {
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return a priority queue holding the closest neighbors found
    */
-  public static NeighborQueue search(
+  public static KnnResults search(
       byte[] query,
       KnnResultsProvider knnResultsProvider,
       RandomAccessVectorValues<byte[]> vectors,
@@ -251,7 +251,7 @@ public class HnswGraphSearcher<T> {
    * {@link #search(byte[], int, RandomAccessVectorValues, VectorEncoding, VectorSimilarityFunction,
    * HnswGraph, Bits, int)}
    */
-  public static NeighborQueue search(
+  public static KnnResults search(
       byte[] query,
       int topK,
       RandomAccessVectorValues<byte[]> vectors,
@@ -277,7 +277,7 @@ public class HnswGraphSearcher<T> {
         visitedLimit);
   }
 
-  private static <T> NeighborQueue search(
+  private static <T> KnnResults search(
       T query,
       KnnResultsProvider knnResultsProvider,
       RandomAccessVectorValues<T> vectors,
@@ -288,7 +288,7 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
-      return new NeighborQueue(1, true);
+      return new KnnResults.EmptyKnnResults();
     }
     int[] epAndVisited = graphSearcher.findBestEntryPoint(query, vectors, graph, visitedLimit);
     int numVisited = epAndVisited[1];
@@ -319,7 +319,7 @@ public class HnswGraphSearcher<T> {
    * @param graph the graph values
    * @return a priority queue holding the closest neighbors found
    */
-  public NeighborQueue searchLevel(
+  public KnnResults searchLevel(
       // Note: this is only public because Lucene91HnswGraphBuilder needs it
       T query,
       int topK,
@@ -399,7 +399,6 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    assert results.isMinHeap();
 
     int size = graph.size();
     prepareScratchState(vectors.size());
@@ -415,7 +414,7 @@ public class HnswGraphSearcher<T> {
         numVisited++;
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.add(ep, score);
+          results.collect(ep, score);
         }
       }
     }
@@ -424,7 +423,7 @@ public class HnswGraphSearcher<T> {
     // have to be considered.
     float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
     if (results.isFull()) {
-      minAcceptedSimilarity = results.topScore();
+      minAcceptedSimilarity = results.minSimilarity();
     }
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
@@ -451,14 +450,13 @@ public class HnswGraphSearcher<T> {
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.insertWithOverflow(friendOrd, friendSimilarity) && results.isFull()) {
-              minAcceptedSimilarity = results.topScore();
+            if (results.collectWithOverflow(friendOrd, friendSimilarity) && results.isFull()) {
+              minAcceptedSimilarity = results.minSimilarity();
             }
           }
         }
       }
     }
-    results.popWhileFull();
     results.setVisitedCount(numVisited);
   }
 

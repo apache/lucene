@@ -30,13 +30,13 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     // make sure we have the sign correct
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {1, 3, 5}, 3), 6);
     ToParentJoinKnnResults nn = new ToParentJoinKnnResults(2, parentBitSet, i -> i);
-    assertTrue(nn.insertWithOverflow(2, 0.5f));
-    assertTrue(nn.insertWithOverflow(0, 0.2f));
-    assertTrue(nn.insertWithOverflow(4, 1f));
-    assertEquals(0.5f, nn.topScore(), 0);
-    nn.pop();
-    assertEquals(1f, nn.topScore(), 0);
-    nn.pop();
+    assertTrue(nn.collectWithOverflow(2, 0.5f));
+    assertTrue(nn.collectWithOverflow(0, 0.2f));
+    assertTrue(nn.collectWithOverflow(4, 1f));
+    assertEquals(0.5f, nn.minSimilarity(), 0);
+    TopDocs topDocs = nn.topDocs();
+    assertEquals(topDocs.scoreDocs[0].score, 1f, 0);
+    assertEquals(topDocs.scoreDocs[1].score, 0.5f, 0);
   }
 
   public void testInsertions() throws IOException {
@@ -45,7 +45,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
     ToParentJoinKnnResults results = new ToParentJoinKnnResults(7, parentBitSet, i -> i);
     for (int i = 0; i < nodes.length; i++) {
-      results.add(nodes[i], scores[i]);
+      results.collect(nodes[i], scores[i]);
       results.ensureValidCache();
     }
     TopDocs topDocs = results.topDocs();
@@ -66,14 +66,12 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
     ToParentJoinKnnResults results = new ToParentJoinKnnResults(5, parentBitSet, i -> i);
     for (int i = 0; i < 5; i++) {
-      assertTrue(results.insertWithOverflow(nodes[i], scores[i]));
-      results.ensureValidCache();
+      assertTrue(results.collectWithOverflow(nodes[i], scores[i]));
     }
     for (int i = 5; i < nodes.length - 1; i++) {
-      assertTrue(results.insertWithOverflow(nodes[i], scores[i]));
-      results.ensureValidCache();
+      assertTrue(results.collectWithOverflow(nodes[i], scores[i]));
     }
-    assertFalse(results.insertWithOverflow(nodes[nodes.length - 1], scores[nodes.length - 1]));
+    assertFalse(results.collectWithOverflow(nodes[nodes.length - 1], scores[nodes.length - 1]));
     int[] sortedNodes = new int[5];
     float[] sortedScores = new float[5];
     TopDocs topDocs = results.topDocs();
