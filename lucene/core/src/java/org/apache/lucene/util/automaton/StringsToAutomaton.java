@@ -18,7 +18,6 @@ package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import org.apache.lucene.util.ArrayUtil;
@@ -35,8 +34,8 @@ import org.apache.lucene.util.UnicodeUtil;
  * to directly build a binary {@link Automaton} representation. Users should access this
  * functionality through {@link Automata} static methods.
  *
- * @see Automata#makeStringUnion(Collection)
- * @see Automata#makeBinaryStringUnion(Collection)
+ * @see Automata#makeStringUnion(Iterable)
+ * @see Automata#makeBinaryStringUnion(Iterable)
  * @see Automata#makeStringUnion(BytesRefIterator)
  * @see Automata#makeBinaryStringUnion(BytesRefIterator)
  */
@@ -238,7 +237,7 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(Collection<BytesRef> input, boolean asBinary) {
+  static Automaton build(Iterable<BytesRef> input, boolean asBinary) {
     final StringsToAutomaton builder = new StringsToAutomaton();
 
     for (BytesRef b : input) {
@@ -273,9 +272,11 @@ final class StringsToAutomaton {
               + current);
     }
     assert stateRegistry != null : "Automaton already built.";
-    assert previous == null || previous.get().compareTo(current) <= 0
-        : "Input must be in sorted UTF-8 order: " + previous.get() + " >= " + current;
-    assert setPrevious(current);
+    if (previous != null && previous.get().compareTo(current) > 0) {
+      throw new IllegalArgumentException(
+          "Input must be in sorted UTF-8 order: " + previous.get() + " >= " + current);
+    }
+    setPrevious(current);
 
     // Reusable codepoint information if we're building a non-binary based automaton
     UnicodeUtil.UTF8CodePoint codePoint = null;
