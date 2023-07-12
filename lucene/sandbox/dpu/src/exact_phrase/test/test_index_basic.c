@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <seqread.h>
-#include "../read_index.h"
+#include "../inc/term_lookup.h"
+#include "../inc/decoder.h"
 
 /**
 * Test for the function get_block_from_table
@@ -24,25 +25,40 @@ __mram uint8_t index_mram[217] = {
    0x0};
 
 uint8_t field1_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x64, 0x31};
-struct Term field1 = {field1_arr, 6};
+term_t field1 = {field1_arr, 6, 0};
 uint32_t field1_addr = 7;
 
 uint8_t field2_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x64, 0x32};
-struct Term field2 = {field2_arr, 6};
+term_t field2 = {field2_arr, 6, 0};
 uint32_t field2_addr = 16;
 
 uint8_t field3_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x32, 0x64};
-struct Term field3 = {field3_arr, 6};
+term_t field3 = {field3_arr, 6, 0};
 
 uint8_t green_arr[5] = {0x67, 0x72, 0x65, 0x65, 0x6e};
-struct Term green = {green_arr, 5};
+term_t green = {green_arr, 5, 0};
 uint32_t green_addr = 14;
 
 uint8_t orange_arr[6] = {0x6f, 0x72, 0x61, 0x6e, 0x67, 0x65};
-struct Term orange = {orange_arr, 6};
+term_t orange = {orange_arr, 6, 0};
 uint32_t orange_addr = 53;
 
-struct Block term_block;
+// read a variable length integer in MRAM
+int readVInt_mram(const uint8_t** data, seqreader_t* reader) {
+    int i = **data & 0x7F;
+    for (int shift = 7; (**data & 0x80) != 0; shift += 7) {
+        *data = seqread_get((void*)*data, 1, reader);
+        i |= ((**data) & 0x7F) << shift;
+    }
+    *data = seqread_get((void*)*data, 1, reader);
+    return i;
+}
+
+int readByte_mram(const uint8_t** data, seqreader_t* reader) {
+    int i = **data & 0x7F;
+    *data = seqread_get((void*)*data, 1, reader);
+    return i;
+}
 
 int zigZagDecode(int i) {
     return ((((uint32_t)i) >> 1) ^ -(i & 1));
@@ -50,41 +66,33 @@ int zigZagDecode(int i) {
 
 int main() {
 
+    initialize_decoders();
+
     // init sequential reader to read the index
     seqreader_buffer_t buffer = seqread_alloc();
     seqreader_t seqread;
-
-    // look for the field "field1"
     const uint8_t* index_ptr = seqread_init(buffer, index_mram, &seqread);
-    //skip offsets first
     int block_offset = readVInt_mram(&index_ptr, &seqread);
     int block_list_offset = readVInt_mram(&index_ptr, &seqread);
     int postings_offset = readVInt_mram(&index_ptr, &seqread);
-    __mram_ptr uint8_t* index_begin_addr = seqread_tell((void*)index_ptr, &seqread);
+    uintptr_t index_begin_addr = (uintptr_t)seqread_tell((void*)index_ptr, &seqread);
 
-    get_block_from_table(index_ptr, &seqread, &field1, &term_block);
-    if(term_block.block_address == field1_addr) {
+    // look for field1
+    uintptr_t field_address;
+    if(get_field_address((uintptr_t)index_mram, &field1, &field_address)
+            && (field_address == (index_begin_addr + block_offset + field1_addr))) {
         printf("field1 OK\n");
     } else {
-        printf("field1 KO: %d\n", (int)term_block.term);
+        printf("field1 KO: %d\n", field_address);
     }
-    // search for the term "green"
-    __mram_ptr uint8_t* block_address = index_begin_addr + block_offset + term_block.block_address;
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &green, &term_block);
-    if(term_block.block_address == green_addr) {
-        printf("green OK\n");
-    } else {
-        printf("green KO: %d\n", (int)term_block.term);
-    }
+    
     // lookup for the green term postings
-    index_ptr = seqread_seek(block_address, &seqread);
-    __mram_ptr const uint8_t* postings_addr =
-                    get_term_postings_from_index(index_ptr, &seqread,
-                            &green, index_begin_addr + block_list_offset,
-                            index_begin_addr + postings_offset, &term_block);
+    uintptr_t postings_address;
+    uint32_t postings_byte_size;
+    get_term_postings(field_address, &green, &postings_address, &postings_byte_size);
+
     // read postings
-    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
     uint32_t doc_id = readVInt_mram(&index_ptr, &seqread);
     uint32_t freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
     uint32_t length = readByte_mram(&index_ptr, &seqread);
@@ -95,36 +103,20 @@ int main() {
         printf("green postings KO: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     }
 
+
     // look for field "field2"
-    index_ptr = seqread_init(buffer, index_mram, &seqread);
-    //skip offsets first
-    block_offset = readVInt_mram(&index_ptr, &seqread);
-    block_list_offset = readVInt_mram(&index_ptr, &seqread);
-    postings_offset = readVInt_mram(&index_ptr, &seqread);
-    get_block_from_table(index_ptr, &seqread, &field2, &term_block);
-    if(term_block.block_address == field2_addr) {
+    if(get_field_address((uintptr_t)index_mram, &field2, &field_address)
+                && (field_address == (index_begin_addr + block_offset + field2_addr))) {
         printf("field2 OK\n");
     } else {
-        printf("field2 KO: %d\n", (int)term_block.term);
-    }
-    //searching for the term orange
-    block_address = index_begin_addr + block_offset + term_block.block_address;
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &orange, &term_block);
-    if(term_block.block_address == orange_addr) {
-        printf("orange OK\n");
-    } else {
-        printf("orange KO: %d\n", (int)term_block.term);
+        printf("field2 KO: %d\n", field_address);
     }
 
     // lookup for the green term postings
-    index_ptr = seqread_seek(block_address, &seqread);
-    postings_addr =
-                    get_term_postings_from_index(index_ptr, &seqread,
-                            &green, index_begin_addr + block_list_offset,
-                            index_begin_addr + postings_offset, &term_block);
+    get_term_postings(field_address, &green, &postings_address, &postings_byte_size);
+
     // read postings
-    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
     doc_id = readVInt_mram(&index_ptr, &seqread);
     freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
     length = readByte_mram(&index_ptr, &seqread);
@@ -136,13 +128,10 @@ int main() {
     }
 
     // lookup for the orange term postings
-    index_ptr = seqread_seek(block_address, &seqread);
-    postings_addr =
-                    get_term_postings_from_index(index_ptr, &seqread,
-                            &orange, index_begin_addr + block_list_offset,
-                            index_begin_addr + postings_offset, &term_block);
+    get_term_postings(field_address, &orange, &postings_address, &postings_byte_size);
+
     // read postings
-    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
     doc_id = readVInt_mram(&index_ptr, &seqread);
     freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
     length = readByte_mram(&index_ptr, &seqread);
@@ -155,17 +144,11 @@ int main() {
     }
 
     // look for field "field3"
-    index_ptr = seqread_init(buffer, index_mram, &seqread);
-    //skip offsets first
-    block_offset = readVInt_mram(&index_ptr, &seqread);
-    block_list_offset = readVInt_mram(&index_ptr, &seqread);
-    postings_offset = readVInt_mram(&index_ptr, &seqread);
-    get_block_from_table(index_ptr, &seqread, &field3, &term_block);
-    if(term_block.term == 0) {
+    if(!get_field_address((uintptr_t)index_mram, &field3, &field_address)) {
         printf("field3 OK\n");
     }
     else {
-        printf("field3 KO: %d\n", (int)term_block.term);
+        printf("field3 KO: %d\n", field_address);
     }
 
     return 0;

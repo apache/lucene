@@ -27,14 +27,23 @@ dependencies {
 }
 
 task compileDpu (type: Exec) {
-  inputs.files('dpu/src/exact_phrase/dpu.c')
+  inputs.files('dpu/src/exact_phrase/inc/decoder.h', 'dpu/src/exact_phrase/src/matcher.h',
+          'dpu/src/exact_phrase/inc/parser.h', 'dpu/src/exact_phrase/inc/query_parser.h',
+          'dpu/src/exact_phrase/inc/term_lookup.h', 'dpu/src/exact_phrase/inc/term.h',
+          'dpu/src/exact_phrase/src/dpu.c', 'dpu/src/exact_phrase/src/matcher.c',
+          'dpu/src/exact_phrase/src/parser.c', 'dpu/src/exact_phrase/src/decoder.c',
+          'dpu/src/exact_phrase/src/query_parser.c', 'dpu/src/exact_phrase/src/term_lookup.c')
   outputs.files("dpu/build/dpu_program_exact_phrase")
 
   doFirst {
     file('dpu/build').mkdirs()
   }
 
-  commandLine 'dpu-clang', '-o', 'dpu/build/dpu_program_exact_phrase', 'dpu/src/exact_phrase/dpu.c'
+  commandLine 'dpu-clang', '-o', 'dpu/build/dpu_program_exact_phrase',
+          '-I', 'dpu/src/exact_phrase/inc', 'dpu/src/exact_phrase/src/dpu.c',
+          'dpu/src/exact_phrase/src/matcher.c', 'dpu/src/exact_phrase/src/parser.c',
+          'dpu/src/exact_phrase/src/decoder.c', 'dpu/src/exact_phrase/src/query_parser.c',
+          'dpu/src/exact_phrase/src/term_lookup.c'
 }
 
 compileJava.dependsOn(compileDpu)

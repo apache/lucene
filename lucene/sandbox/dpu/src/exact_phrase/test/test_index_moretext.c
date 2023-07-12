@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <seqread.h>
-#include "../read_index.h"
+#include "../inc/term_lookup.h"
+#include "../inc/decoder.h"
 
 /**
 * Test for the function get_block_from_table
@@ -159,37 +160,55 @@ __mram uint8_t index_mram[2921] = {
 0x2, 0x1, 0x6};
 
 uint8_t field_title_arr[5] = {0x74, 0x69, 0x74, 0x6c, 0x65};
-struct Term field_title = { field_title_arr, 5};
+term_t field_title = { field_title_arr, 5};
 uint32_t title_addr = 0;
 
 uint8_t field_body_arr[4] = {0x62, 0x6f, 0x64, 0x79};
-struct Term field_body = { field_body_arr, 4};
+term_t field_body = { field_body_arr, 4};
 uint32_t body_addr = 10;
 
 uint8_t apache_arr[6] = {0x41, 0x70, 0x61, 0x63, 0x68, 0x65};
-struct Term apache = { apache_arr, 6};
+term_t apache = { apache_arr, 6};
 uint32_t apache_addr = 0;
+uint32_t apache_size = 4;
 
 uint8_t munchen_arr[8] = {0x4d, 0xc3, 0xbc, 0x6e, 0x63, 0x68, 0x65, 0x6e};
-struct Term munchen = { munchen_arr, 8};
-uint32_t munchen_addr = 0;
+term_t munchen = { munchen_arr, 8};
+uint32_t munchen_addr = 16;
+uint32_t munchen_size = 4;
 
 uint8_t conserve_arr[9] = {0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x76, 0xc3, 0xa9};
-struct Term conserve = { conserve_arr, 9};
-uint32_t conserve_addr = 672;
+term_t conserve = { conserve_arr, 9};
 
 uint8_t dativ_arr[5] ={0x44, 0x61, 0x74, 0x69, 0x76};
-struct Term dativ = { dativ_arr, 5};
-uint32_t dativ_addr = 108;
+term_t dativ = { dativ_arr, 5};
+uint32_t dativ_addr = 60;
+uint32_t dativ_size = 4;
 
 uint8_t wird_arr[4] = {0x77, 0x69, 0x72, 0x64};
-struct Term wird = { wird_arr, 4};
-uint32_t wird_addr = 1729;
+term_t wird = { wird_arr, 4};
+uint32_t wird_addr = 817;
+uint32_t wird_size = 5;
 
 uint8_t search_arr[6] = {0x73, 0x65, 0x61, 0x72, 0x63, 0x68};
-struct Term search = { search_arr, 6};
+term_t search = { search_arr, 6};
 
-struct Block term_block;
+// read a variable length integer in MRAM
+int readVInt_mram(const uint8_t** data, seqreader_t* reader) {
+    int i = **data & 0x7F;
+    for (int shift = 7; (**data & 0x80) != 0; shift += 7) {
+        *data = seqread_get((void*)*data, 1, reader);
+        i |= ((**data) & 0x7F) << shift;
+    }
+    *data = seqread_get((void*)*data, 1, reader);
+    return i;
+}
+
+int readByte_mram(const uint8_t** data, seqreader_t* reader) {
+    int i = **data & 0x7F;
+    *data = seqread_get((void*)*data, 1, reader);
+    return i;
+}
 
 int zigZagDecode(int i) {
     return ((((uint32_t)i) >> 1) ^ -(i & 1));
@@ -198,87 +217,81 @@ int zigZagDecode(int i) {
 int main() {
 
     // init sequential reader to read the index
+    initialize_decoders();
+
+    // init sequential reader to read the index
     seqreader_buffer_t buffer = seqread_alloc();
     seqreader_t seqread;
-
-    // look for the field "title"
     const uint8_t* index_ptr = seqread_init(buffer, index_mram, &seqread);
-    //skip offsets first
     int block_offset = readVInt_mram(&index_ptr, &seqread);
     int block_list_offset = readVInt_mram(&index_ptr, &seqread);
     int postings_offset = readVInt_mram(&index_ptr, &seqread);
-    __mram_ptr uint8_t* index_begin_addr = seqread_tell((void*)index_ptr, &seqread);
+    uintptr_t index_begin_addr = (uintptr_t)seqread_tell((void*)index_ptr, &seqread);
 
-    get_block_from_table(index_ptr, &seqread, &field_title, &term_block);
-    if(term_block.block_address == title_addr) {
+    // look for title field
+    uintptr_t field_address;
+    if(get_field_address((uintptr_t)index_mram, &field_title, &field_address)
+            && (field_address == (index_begin_addr + block_offset + title_addr))) {
         printf("field title OK\n");
     } else {
-        printf("field title KO: %d\n", (int)term_block.term);
+        printf("field title KO: %d\n", field_address);
     }
-    __mram_ptr uint8_t* block_address = index_begin_addr + block_offset + term_block.block_address;
+
     // search for the term "Apache"
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &apache, &term_block);
-    if(term_block.block_address == apache_addr) {
+    uintptr_t postings_address;
+    uint32_t postings_byte_size;
+    get_term_postings(field_address, &apache, &postings_address, &postings_byte_size);
+    if(postings_address == index_begin_addr + postings_offset + apache_addr
+            && postings_byte_size == apache_size) {
         printf("Apache OK\n");
     } else {
-        printf("Apache KO: %d\n", (int)term_block.term);
+        printf("Apache KO: %u %u\n", postings_address, postings_byte_size);
     }
+
     // search for the term "München"
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &munchen, &term_block);
-    if(term_block.block_address == munchen_addr) {
+    get_term_postings(field_address, &munchen, &postings_address, &postings_byte_size);
+    if(postings_address == index_begin_addr + postings_offset + munchen_addr
+                && postings_byte_size == munchen_size) {
         printf("München OK\n");
     } else {
-        printf("München KO: %d\n", (int)term_block.term);
+        printf("München KO: %u %u\n", postings_address, postings_byte_size);
     }
 
     // look for field "body"
-    index_ptr = seqread_init(buffer, index_mram, &seqread);
-    //skip offsets first
-    block_offset = readVInt_mram(&index_ptr, &seqread);
-    block_list_offset = readVInt_mram(&index_ptr, &seqread);
-    postings_offset = readVInt_mram(&index_ptr, &seqread);
-    get_block_from_table(index_ptr, &seqread, &field_body, &term_block);
-    if(term_block.block_address == body_addr) {
+    if(get_field_address((uintptr_t)index_mram, &field_body, &field_address)
+                && (field_address == (index_begin_addr + block_offset + body_addr))) {
         printf("field body OK\n");
     } else {
-        printf("field body KO: %d\n", (int)term_block.term);
-    }
-    block_address = index_begin_addr + block_offset + term_block.block_address;
-    //searching for the term conserve
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &conserve, &term_block);
-    if(term_block.block_address == conserve_addr) {
-        printf("conserve OK\n");
-    } else {
-        printf("conserve KO: %d\n", (int)term_block.term);
-    }
-    // searching for term dativ
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &dativ, &term_block);
-    if(term_block.block_address == dativ_addr) {
-        printf("dativ OK\n");
-    } else {
-        printf("dativ KO: %d\n", (int)term_block.term);
-    }
-    //searching for term wird
-    index_ptr = seqread_seek(block_address, &seqread);
-    get_block_from_table(index_ptr, &seqread, &wird, &term_block);
-    if(term_block.block_address == wird_addr) {
-        printf("wird OK\n");
-    } else {
-        printf("wird KO: %d\n", (int)term_block.term);
+        printf("field body KO: %d\n", field_address);
     }
 
-    // searching for postings of wird
-    index_ptr = seqread_seek(block_address, &seqread);
-    __mram_ptr const uint8_t* postings_addr =
-                    get_term_postings_from_index(index_ptr, &seqread,
-                            &wird, index_begin_addr + block_list_offset,
-                            index_begin_addr + postings_offset, &term_block);
-    // read postings
-    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    //searching for the term conserve
+    if(!get_term_postings(field_address, &conserve, &postings_address, &postings_byte_size)) {
+        printf("conserve OK\n");
+    } else {
+        printf("conserve KO: %u %u\n", postings_address, postings_byte_size);
+    }
+
+    // searching for term dativ
+    get_term_postings(field_address, &dativ, &postings_address, &postings_byte_size);
+    if(postings_address == index_begin_addr + postings_offset + dativ_addr
+                    && postings_byte_size == dativ_size) {
+        printf("dativ OK\n");
+    } else {
+        printf("dativ KO: %u %u\n", postings_address, postings_byte_size);
+    }
+
+    //searching for term wird
+    get_term_postings(field_address, &wird, &postings_address, &postings_byte_size);
+    if(postings_address == index_begin_addr + postings_offset + wird_addr
+                        && postings_byte_size == wird_size) {
+        printf("wird OK\n");
+    } else {
+        printf("wird KO: %u %u\n", postings_address, postings_byte_size);
+    }
+
+    // read postings of term wird
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
     uint32_t doc_id = readVInt_mram(&index_ptr, &seqread);
     uint32_t freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
     uint32_t length = readByte_mram(&index_ptr, &seqread);
@@ -291,13 +304,10 @@ int main() {
     }
 
     // searching for postings of search
-    index_ptr = seqread_seek(block_address, &seqread);
-    postings_addr =
-                    get_term_postings_from_index(index_ptr, &seqread,
-                            &search, index_begin_addr + block_list_offset,
-                            index_begin_addr + postings_offset, &term_block);
+    get_term_postings(field_address, &search, &postings_address, &postings_byte_size);
+
     // read postings
-    index_ptr = seqread_seek((__mram_ptr void*)postings_addr, &seqread);
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
     doc_id = readVInt_mram(&index_ptr, &seqread);
     freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
     length = readByte_mram(&index_ptr, &seqread);
@@ -314,5 +324,6 @@ int main() {
         printf("search postings KO: doc:%d freq:%d length:%d pos:%d pos:%d / doc:%d freq:%d length:%d pos:%d\n",
                 doc_id, freq, length, pos, pos2, doc_id2, freq2, length2, pos3);
     }
+
     return 0;
 }
