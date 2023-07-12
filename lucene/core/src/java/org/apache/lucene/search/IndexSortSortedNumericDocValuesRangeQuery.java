@@ -608,7 +608,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       throws IOException {
     @SuppressWarnings("unchecked")
     FieldComparator<Number> fieldComparator =
-        (FieldComparator<Number>) sortField.getComparator(1, false);
+        (FieldComparator<Number>) sortField.getComparator(1, Pruning.NONE);
     if (type == Type.INT) {
       fieldComparator.setTopValue((int) topValue);
     } else {

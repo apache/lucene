@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 
 /**
  * Comparator based on {@link Double#compare} for {@code numHits}. This comparator provides a
@@ -32,8 +33,8 @@ public class DoubleComparator extends NumericComparator<Double> {
   protected double bottom;
 
   public DoubleComparator(
-      int numHits, String field, Double missingValue, boolean reverse, boolean enableSkipping) {
-    super(field, missingValue != null ? missingValue : 0.0, reverse, enableSkipping, Double.BYTES);
+      int numHits, String field, Double missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0.0, reverse, pruning, Double.BYTES);
     values = new double[numHits];
   }
 

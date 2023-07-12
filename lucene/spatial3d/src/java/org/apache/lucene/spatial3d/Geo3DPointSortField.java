@@ -17,6 +17,7 @@
 package org.apache.lucene.spatial3d;
 
 import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.spatial3d.geom.GeoDistanceShape;
 import org.apache.lucene.spatial3d.geom.PlanetModel;
@@ -41,7 +42,7 @@ final class Geo3DPointSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
+  public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
     return new Geo3DPointDistanceComparator(getField(), planetModel, distanceShape, numHits);
   }
 

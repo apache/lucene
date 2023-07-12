@@ -118,7 +118,7 @@ final class JustCompileSearch {
 
     @Override
     public FieldComparator<?> newComparator(
-        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
   }

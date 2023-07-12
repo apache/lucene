@@ -59,6 +59,7 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
@@ -1117,7 +1118,7 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, false).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, Pruning.NONE).getLeafComparator(readerContext);
       }
 
       int maxDoc = reader.maxDoc();

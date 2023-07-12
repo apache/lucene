@@ -481,8 +481,8 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     @Override
     public FieldComparator<Double> newComparator(
-        String fieldname, int numHits, boolean enableSkipping, boolean reversed) {
-      return new DoubleComparator(numHits, fieldname, missingValue, reversed, false) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
+      return new DoubleComparator(numHits, fieldname, missingValue, reversed, Pruning.NONE) {
         @Override
         public LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
           DoubleValuesHolder holder = new DoubleValuesHolder();

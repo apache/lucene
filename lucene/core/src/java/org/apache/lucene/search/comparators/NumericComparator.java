@@ -26,6 +26,7 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
@@ -57,14 +58,16 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   protected boolean hitsThresholdReached;
   protected boolean queueFull;
   private boolean canSkipDocuments;
+  private final Pruning pruning;
 
   protected NumericComparator(
-      String field, T missingValue, boolean reverse, boolean enableSkipping, int bytesCount) {
+      String field, T missingValue, boolean reverse, Pruning pruning, int bytesCount) {
     this.field = field;
     this.missingValue = missingValue;
     this.reverse = reverse;
     // skipping functionality is only relevant for primary sort
-    this.canSkipDocuments = enableSkipping;
+    this.canSkipDocuments = pruning != Pruning.NONE;
+    this.pruning = pruning;
     this.bytesCount = bytesCount;
     this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }
@@ -134,7 +137,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             new CompetitiveIterator(
                 context,
                 field,
-                dense,
+                (dense == false && pruning == Pruning.SKIP_MORE),
                 pointValues.getMinPackedValue(),
                 pointValues.getMaxPackedValue());
       } else {
@@ -325,23 +328,23 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       private final LeafReaderContext context;
       private final int maxDoc;
       private final String field;
-      private final boolean dense;
       private int doc = -1;
       private DocIdSetIterator docsWithDocValue;
       private DocIdSetIterator docsWithPoint;
       private final byte[] minPackedValue;
       private final byte[] maxPackedValue;
+      private final boolean skipWithDocValues;
 
       CompetitiveIterator(
           LeafReaderContext context,
           String field,
-          boolean dense,
+          boolean skipWithDocValues,
           byte[] minPackedValue,
           byte[] maxPackedValue) {
         this.context = context;
         this.maxDoc = context.reader().maxDoc();
         this.field = field;
-        this.dense = dense;
+        this.skipWithDocValues = skipWithDocValues;
         this.minPackedValue = minPackedValue;
         this.maxPackedValue = maxPackedValue;
       }
@@ -380,7 +383,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         // if dense == true, all documents have docValues, no sense to skip by docValues
         // docsWithDocValue need only init once
         // if missing values are always competitive, we can never skip via doc values
-        if (dense == false
+        if (skipWithDocValues
             && docsWithDocValue == null
             && isMissingValueNotCompetitive(minPackedValue, maxPackedValue)) {
           this.docsWithDocValue = getNumericDocValues(context, field);
