@@ -106,7 +106,11 @@ public class LongComparator extends NumericComparator<Long> {
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      LongPoint.encodeDimension(bottom, packedValue, 0);
+      if (pruning == Pruning.SKIP_MORE) {
+        LongPoint.encodeDimension(reverse ? bottom + 1 : bottom - 1, packedValue, 0);
+      } else {
+        LongPoint.encodeDimension(bottom, packedValue, 0);
+      }
     }
 
     @Override

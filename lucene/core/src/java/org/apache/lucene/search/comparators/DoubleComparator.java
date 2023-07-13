@@ -22,6 +22,7 @@ import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Comparator based on {@link Double#compare} for {@code numHits}. This comparator provides a
@@ -62,8 +63,12 @@ public class DoubleComparator extends NumericComparator<Double> {
   /** Leaf comparator for {@link DoubleComparator} that provides skipping functionality */
   public class DoubleLeafComparator extends NumericLeafComparator {
 
+    private final byte[] deltaOne;
+
     public DoubleLeafComparator(LeafReaderContext context) throws IOException {
       super(context);
+      deltaOne = new byte[Double.BYTES];
+      DoublePoint.encodeDimension(1d, deltaOne, 0);
     }
 
     private double getValueForDoc(int doc) throws IOException {
@@ -106,7 +111,17 @@ public class DoubleComparator extends NumericComparator<Double> {
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      DoublePoint.encodeDimension(bottom, packedValue, 0);
+      if (pruning == Pruning.SKIP_MORE) {
+        byte[] bottomByte = new byte[Double.BYTES];
+        DoublePoint.encodeDimension(bottom, bottomByte, 0);
+        if (reverse == false) {
+          NumericUtils.subtract(bytesCount, 0, bottomByte, deltaOne, packedValue);
+        } else {
+          NumericUtils.add(bytesCount, 0, bottomByte, deltaOne, packedValue);
+        }
+      } else {
+        DoublePoint.encodeDimension(bottom, packedValue, 0);
+      }
     }
 
     @Override

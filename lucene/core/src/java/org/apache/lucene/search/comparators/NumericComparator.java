@@ -50,7 +50,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
-  private final int bytesCount; // how many bytes are used to encode this number
+  protected final int bytesCount; // how many bytes are used to encode this number
   private final ByteArrayComparator bytesComparator;
 
   protected boolean topValueSet;

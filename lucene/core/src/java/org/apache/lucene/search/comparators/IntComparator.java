@@ -106,7 +106,11 @@ public class IntComparator extends NumericComparator<Integer> {
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      IntPoint.encodeDimension(bottom, packedValue, 0);
+      if (pruning == Pruning.SKIP_MORE) {
+        IntPoint.encodeDimension(reverse ? bottom + 1 : bottom - 1, packedValue, 0);
+      } else {
+        IntPoint.encodeDimension(bottom, packedValue, 0);
+      }
     }
 
     @Override
