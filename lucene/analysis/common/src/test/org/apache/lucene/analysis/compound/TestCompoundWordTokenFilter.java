@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
@@ -27,6 +29,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
+import org.apache.lucene.analysis.compound.hyphenation.Hyphenation;
 import org.apache.lucene.analysis.compound.hyphenation.HyphenationTree;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -374,9 +377,9 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
 
   public void testNoSubAndNoOverlap() throws Exception { // LUCENE-8183
     String input = "fußballpumpe";
-    Hyphenation hyphenation = new Hyphenation(new int[] {0, 3, 7, 10, 12}); // fuß ball pum pe
-    HyphenationTree hyphenator = new MockHyphenator(Collections.singletonMap(input, hyphenation));
-    CharArraySet dictionary = makeDictionary("fußball", "ballpumpe", "fuß", "ball", "pumpe");
+    InputSource is = new InputSource(getClass().getResource("hyphenation-LUCENE-8183.xml").toExternalForm());
+    HyphenationTree hyphenator = HyphenationCompoundWordTokenFilter.getHyphenationTree(is);
+    CharArraySet dictionary = makeDictionary("fuß", "fußball", "ballpumpe", "ball", "pumpe");
 
     // test the default configuration
     HyphenationCompoundWordTokenFilter tf1 =
@@ -472,8 +475,10 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     // test that no subwords are added if the token is part of the dictionary and
     // onlyLongestMatch or noSub is present
     String input = "fußball";
-    Hyphenation hyphenation = new Hyphenation(new int[] {0, 3, 7}); // fuß ball
-    HyphenationTree hyphenator = new MockHyphenator(Collections.singletonMap(input, hyphenation));
+    InputSource is = new InputSource(getClass().getResource("hyphenation-LUCENE-8183.xml").toExternalForm());
+    HyphenationTree hyphenator = HyphenationCompoundWordTokenFilter.getHyphenationTree(is);
+    // Hyphenation hyphenation = new Hyphenation(new int[] {0, 3, 7}); // fuß ball
+    // HyphenationTree hyphenator = new MockHyphenator(Collections.singletonMap(input, hyphenation));
     CharArraySet dictionary = makeDictionary("fußball", "fuß", "ball");
 
     // test the default configuration as baseline
@@ -481,7 +486,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         new HyphenationCompoundWordTokenFilter(
             whitespaceMockTokenizer(input), hyphenator, dictionary);
     assertTokenStreamContents(tf5, new String[] {"fußball", "fuß", "ball"});
-
+    
     // when onlyLongestMatch is enabled fußball matches dictionary. So even so
     // fußball is not added as token it MUST prevent shorter matches to be added
     HyphenationCompoundWordTokenFilter tf6 =
@@ -599,7 +604,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
       return hyphenations.get(new String(w, offset, len));
     }
   }
-  
+
   // SOLR-2891
   // *CompoundWordTokenFilter blindly adds term length to offset, but this can take things out of
   // bounds

@@ -65,6 +65,8 @@ New Features
 * LUCENE-10626 Hunspell: add tools to aid dictionary editing:
   analysis introspection, stem expansion and stem/flag suggestion (Peter Gromov)
 
+* Lucene-8183: Added the abbility to get noSubMatches and noOverlappingMatches in HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
+
 Improvements
 ---------------------
 
