@@ -358,7 +358,8 @@ public class TestSortOptimization extends LuceneTestCase {
           new NumericDocValuesField(
               "my_field2", numDocs - i)); // diff values for the field my_field2
       writer.addDocument(doc);
-      if (i == 7000) writer.flush(); // two segments
+      // if there is only one segment, we could test that totalHits must always equal (numHits + 1)
+      if (i == 7000 && random().nextBoolean()) writer.flush(); // two segments
     }
     final IndexReader reader = DirectoryReader.open(writer);
     writer.close();
@@ -368,7 +369,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
-    { // test that sorting on a single field with equal values uses the optimization
+    { // test that sorting on a single field with equal values uses the optimization with SKIP_MORE
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -379,11 +380,15 @@ public class TestSortOptimization extends LuceneTestCase {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
         assertEquals(100, fieldDoc.fields[0]);
       }
+      if (reader.leaves().size() == 1) {
+        // if segment size equals one, totalHits should always equals numHits plus 1
+        assertEquals(topDocs.totalHits.value, numHits + 1);
+      }
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that sorting on a single field with equal values and after parameter
-      // doesn't use the optimization
+      // use the optimization with SKIP_MORE
       final int afterValue = 100;
       final int afterDocID = 10 + random().nextInt(1000);
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
@@ -398,11 +403,11 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(100, fieldDoc.fields[0]);
         assertTrue(fieldDoc.doc > afterDocID);
       }
-      assertEquals(topDocs.totalHits.value, numDocs);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
     { // test that sorting on main field with equal values + another field for tie breaks doesn't
-      // use optimization
+      // use optimization with Pruning.SKIP
       final SortField sortField1 = new SortField("my_field1", SortField.Type.INT);
       final SortField sortField2 = new SortField("my_field2", SortField.Type.INT);
       final Sort sort = new Sort(sortField1, sortField2);
