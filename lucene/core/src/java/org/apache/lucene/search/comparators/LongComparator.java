@@ -99,9 +99,9 @@ public class LongComparator extends NumericComparator<Long> {
     @Override
     protected boolean isMissingValueCompetitive() {
       int result = Long.compare(missingValue, bottom);
-      // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
-      // in asc sort missingValue is competitive when it's smaller or equal to bottom
-      return reverse ? (result >= 0) : (result <= 0);
+      return reverse
+          ? (pruning == Pruning.SKIP_MORE ? result > 0 : result >= 0)
+          : (pruning == Pruning.SKIP_MORE ? result < 0 : result <= 0);
     }
 
     @Override

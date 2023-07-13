@@ -99,7 +99,9 @@ public class FloatComparator extends NumericComparator<Float> {
     @Override
     protected boolean isMissingValueCompetitive() {
       int result = Float.compare(missingValue, bottom);
-      return reverse ? (result >= 0) : (result <= 0);
+      return reverse
+          ? (pruning == Pruning.SKIP_MORE ? result > 0 : result >= 0)
+          : (pruning == Pruning.SKIP_MORE ? result < 0 : result <= 0);
     }
 
     @Override
