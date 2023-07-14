@@ -20,6 +20,8 @@ void prepare_to_parse_pos_list(parser_t *parser, uint32_t freq, uint32_t len);
 bool parse_pos(parser_t *parser, uint32_t *pos);
 void abort_parse_pos(parser_t *parser);
 
-parser_t *setup_parser(uintptr_t field_block_address, const term_t* term);
+void allocate_parsers(uint32_t nr_terms);
+parser_t *setup_parser(uintptr_t field_block_address, const term_t* term, uint32_t id);
+void release_parsers(uint32_t nr_terms);
 
 #endif /* PARSER_H_ */

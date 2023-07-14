@@ -1,10 +1,11 @@
 #ifndef TERM_H_
 #define TERM_H_
 
+typedef struct _decoder decoder_t;
+
 typedef struct _term {
-    const uint8_t* term;
+    decoder_t* term_decoder;
     uint32_t size;
-    uint32_t id;
 } term_t;
 
 #endif

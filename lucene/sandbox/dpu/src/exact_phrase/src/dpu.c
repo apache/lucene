@@ -17,14 +17,14 @@
   */
 __host uint32_t nb_queries_in_batch;
 __host uint32_t nb_bytes_in_batch;
-__mram_noinit char query_batch[DPU_QUERY_BATCH_BYTE_SIZE];
+__mram_noinit uint8_t query_batch[DPU_QUERY_BATCH_BYTE_SIZE];
 __host uint32_t query_offset_in_batch[DPU_MAX_BATCH_SIZE];
 
 /**
   Output results
   */
-__mram_noinit char results_batch[DPU_RESULTS_MAX_BYTE_SIZE];
-__mram_noinit char results_index[DPU_MAX_BATCH_SIZE];
+__mram_noinit uint8_t results_batch[DPU_RESULTS_MAX_BYTE_SIZE];
+__mram_noinit uint8_t results_index[DPU_MAX_BATCH_SIZE];
 
 uint32_t batch_num = 0;
 MUTEX_INIT(batch_mutex);
@@ -35,25 +35,21 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 #include "../test/test1.h"
 #endif
 
-/**
-  A buffer to hold the query in WRAM
-  */
-__dma_aligned uint8_t query_buffer[NR_TASKLETS][DPU_QUERY_MAX_BYTE_SIZE];
-
-static void can_perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms);
+static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms);
 
 int main() {
 
     if(me() == 0) {
         batch_num = 0;
         mem_reset();
-        initialize_decoders();
+        initialize_decoder_pool();
 #ifdef TEST
         nb_queries_in_batch = test_nb_queries_in_batch;
         nb_bytes_in_batch = test_nb_bytes_in_batch;
         mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
         memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
 #endif
+
     }
     barrier_wait(&barrier);
 
@@ -66,39 +62,34 @@ int main() {
         if(batch_num_tasklet >= nb_queries_in_batch)
             break;
 
-        // load the query from MRAM
-        uint32_t query_offset = query_offset_in_batch[batch_num_tasklet];
-        uint32_t query_size;
-        if(batch_num_tasklet + 1 < nb_queries_in_batch) {
-            query_size = query_offset_in_batch[batch_num_tasklet + 1] - query_offset;
-        } else {
-            query_size = nb_bytes_in_batch - query_offset;
-        }
-
-        // the query size should not exceed the max size of the query buffer
-        uint32_t query_size_align = ((query_size + 7) >> 3) << 3;
-        assert(query_size_align < DPU_QUERY_MAX_BYTE_SIZE);
-        const uint8_t* query = mram_read_unaligned(query_batch + query_offset, query_buffer[me()], query_size);
-
-        // parse the query
+        // initialize a query parser
         query_parser_t query_parser;
-        parse_query(&query_parser, query);
+        init_query_parser(&query_parser, query_batch + query_offset_in_batch[batch_num_tasklet]);
+        uint32_t segment_id;
+        uint8_t query_type;
+        read_segment_id(&query_parser, &segment_id);
+        read_query_type(&query_parser, &query_type);
+        assert(query_type == PIM_PHRASE_QUERY_TYPE); // only PIM PHRASE QUERY TYPE supported
+
+#ifdef TEST
+        did_matcher_t *matchers = setup_matchers(&query_parser, (uintptr_t)(&index_mram[0]));
+#else
+        did_matcher_t *matchers = setup_matchers(&query_parser, (uintptr_t)DPU_MRAM_HEAP_POINTER);
+#endif
 
 #ifdef TEST
         printf("Query %d: %d terms\n", batch_num_tasklet, query_parser.nr_terms);
-        did_matcher_t *matchers = setup_matchers(query_parser, (uintptr_t)(&index_mram[0]));
-#else
-        did_matcher_t *matchers = setup_matchers(query_parser, (uintptr_t)DPU_MRAM_HEAP_POINTER);
 #endif
-
         if(matchers != 0)
-            can_perform_did_and_pos_matching(batch_num_tasklet, matchers, query_parser.nr_terms);
+            perform_did_and_pos_matching(batch_num_tasklet, matchers, query_parser.nr_terms);
+
+        release_matchers(matchers, query_parser.nr_terms);
     }
 
     return 0;
 }
 
-static void can_perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *matchers,
+static void perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *matchers,
                                                 unsigned int nr_terms, uint32_t did)
 {
     start_pos_matching(matchers, nr_terms);
@@ -145,7 +136,7 @@ end:
     stop_pos_matching(matchers, nr_terms);
 }
 
-static void can_perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms)
+static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms)
 {
     while (true) {
         // This is either the initial loop, or we come back from a
@@ -162,7 +153,7 @@ static void can_perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *m
             case END_OF_INDEX_TABLE:
                 return;
             case DID_FOUND: {
-                can_perform_pos_matching_for_did(query_id, matchers, nr_terms, did);
+                perform_pos_matching_for_did(query_id, matchers, nr_terms, did);
             } break;
             case DID_NOT_FOUND:
                 break;

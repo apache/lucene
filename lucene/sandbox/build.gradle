@@ -28,8 +28,10 @@ dependencies {
 
 task compileDpu (type: Exec) {
   inputs.files('dpu/src/exact_phrase/inc/decoder.h', 'dpu/src/exact_phrase/src/matcher.h',
+          'dpu/src/exact_phrase/inc/common.h',
           'dpu/src/exact_phrase/inc/parser.h', 'dpu/src/exact_phrase/inc/query_parser.h',
           'dpu/src/exact_phrase/inc/term_lookup.h', 'dpu/src/exact_phrase/inc/term.h',
+          //'dpu/src/exact_phrase/inc/seqreader_buffer_pool.h', 'dpu/src/exact_phrase/src/seqreader_buffer_pool.c',
           'dpu/src/exact_phrase/src/dpu.c', 'dpu/src/exact_phrase/src/matcher.c',
           'dpu/src/exact_phrase/src/parser.c', 'dpu/src/exact_phrase/src/decoder.c',
           'dpu/src/exact_phrase/src/query_parser.c', 'dpu/src/exact_phrase/src/term_lookup.c')
@@ -44,7 +46,7 @@ task compileDpu (type: Exec) {
           '-I', 'dpu/src/exact_phrase/inc', 'dpu/src/exact_phrase/src/dpu.c',
           'dpu/src/exact_phrase/src/matcher.c', 'dpu/src/exact_phrase/src/parser.c',
           'dpu/src/exact_phrase/src/decoder.c', 'dpu/src/exact_phrase/src/query_parser.c',
-          'dpu/src/exact_phrase/src/term_lookup.c'
+          'dpu/src/exact_phrase/src/term_lookup.c'//, 'dpu/src/exact_phrase/src/seqreader_buffer_pool.c'
 }
 
 compileJava.dependsOn(compileDpu)

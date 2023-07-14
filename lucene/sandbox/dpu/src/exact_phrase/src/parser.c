@@ -29,27 +29,45 @@ static parser_t parsers[NR_TASKLETS][MAX_NR_TERMS];
 // ============================================================================
 // INIT PARSERS FUNCTIONS
 // ============================================================================
-static parser_t *initialize_parser(uintptr_t mram_addr, uint32_t term_id, uint32_t byte_size)
+static parser_t* initialize_parser(uintptr_t mram_addr, uint32_t byte_size, uint32_t term_id)
 {
-    parser_t *parser = &parsers[me()][term_id];
-
-    parser->decoder = initialize_decoder(mram_addr, term_id);
+    parser_t* parser = &parsers[me()][term_id];
+    initialize_decoder(parser->decoder, mram_addr);
     parser->did_parser.current_did = 0;
     parser->did_parser.did_end_addr = mram_addr + byte_size;
-
     return parser;
 }
 
-parser_t *setup_parser(uintptr_t field_block_address, const term_t* term)
+parser_t* setup_parser(uintptr_t field_block_address, const term_t* term, uint32_t term_id)
 {
-    parser_t parser = parsers[me()][term->id];
     uint32_t byte_size = 0;
     uintptr_t postings_address = 0;
 
     if(!get_term_postings(field_block_address, term, &postings_address, &byte_size))
         return 0;
 
-    return initialize_parser(postings_address, term->id, byte_size);
+    return initialize_parser(postings_address, byte_size, term_id);
+}
+
+static void next_decoder(decoder_t* decoder, uint32_t id, void* ctx)
+{
+    parser_t* parsers = (parser_t*)ctx;
+    parsers[id].decoder = decoder;
+}
+
+void allocate_parsers(uint32_t nr_terms)
+{
+  decoder_pool_get(nr_terms, next_decoder, parsers[me()]);
+}
+
+static decoder_t* next_decoder_release(uint32_t id, void* ctx)
+{
+    parser_t* parsers = (parser_t*)ctx;
+    return parsers[id].decoder;
+}
+
+void release_parsers(uint32_t nr_terms) {
+   decoder_pool_release(nr_terms, next_decoder_release, parsers[me()]);
 }
 
 // ============================================================================

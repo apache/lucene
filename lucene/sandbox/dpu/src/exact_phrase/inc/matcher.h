@@ -7,7 +7,8 @@
 
 typedef struct _did_matcher did_matcher_t;
 
-did_matcher_t *setup_matchers(query_parser_t query_parser, uintptr_t index);
+did_matcher_t *setup_matchers(query_parser_t* query_parser, uintptr_t index);
+void release_matchers(did_matcher_t *matchers, uint32_t nr_terms);
 
 typedef enum {
     DID_NOT_FOUND = 0,

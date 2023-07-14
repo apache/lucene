@@ -152,6 +152,15 @@ __mram uint8_t index_mram[2921] = {
 uint32_t test_nb_queries_in_batch = 6;
 uint32_t test_nb_bytes_in_batch = 228;
 
+/**
+* This array contains the following queries, which following expected matches:
+* query 0: title:[Apache, Lucene] => doc1
+* query 1: body:[recette, secrète] => doc2
+* query 2: body:[dem, Vorläufer, von, neuhochdeutsch] => doc0
+* query 3: body:[fuzzy, search]=> doc1, doc3
+* query 4: body:[edit, distance.]=> doc1, doc3
+* query 5: body:[Lucene, is, recognized, for, its, utility, in, the, implementation, of, Internet, search, engines] => doc1
+*/
 __dma_aligned uint8_t test_query_batch[228] = {
         0x0, 0x1, 0x5, 0x74, 0x69, 0x74, 0x6c, 0x65, 0x2, 0x6, 0x41, 0x70, 0x61, 0x63, 0x68, 0x65, 0x6, 0x4c,
         0x75, 0x63, 0x65, 0x6e, 0x65, 0x0, 0x1, 0x4, 0x62, 0x6f, 0x64, 0x79, 0x2, 0x7, 0x72, 0x65, 0x63, 0x65, 0x74,

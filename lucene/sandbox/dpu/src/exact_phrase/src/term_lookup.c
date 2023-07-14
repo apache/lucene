@@ -21,14 +21,14 @@ static uint32_t block_list_offset = 0;
 static uint32_t postings_offset = 0;
 
 // compare terms, return 0 if equal, < 0 if term1 < term2, > 0 if term1 > term2
-static int compare_terms(const term_t* term1_ptr, decoder_t* decoder_term2, uint32_t term2_length) {
+static int compare_terms(decoder_t* decoder_term1, uint32_t term1_length,
+                            decoder_t* decoder_term2, uint32_t term2_length) {
     // terms are encoded as UTF-8, so we can compare the bytes directly
     // perform the comparison 4B per 4B if the terms have the same alignment modulo 8
-    const uint8_t* term1 = term1_ptr->term;
-    uint32_t term1_length = term1_ptr->size;
     int term1_w, term2_w;
     int offset = 0;
-    if(decoder_is_aligned_with(decoder_term2, term1)) {
+    /* TODO implement this optim if valuable
+    if(decoder_is_aligned_with(decoder_term1, decoder_term2)) {
         // Need to be cautious of the endianness when loading as integer
         // Perform a load as big endian while the DPU is little-endian, hence using a builtin
         // Also need a prelude to align
@@ -47,25 +47,31 @@ static int compare_terms(const term_t* term1_ptr, decoder_t* decoder_term2, uint
             }
         }
     }
+    */
     for(; offset < term1_length && offset < term2_length; offset++) {
+        uint8_t term1 = decode_byte_from(decoder_term1);
         uint8_t term2 = decode_byte_from(decoder_term2);
-        if(term1[offset] != term2) {
-            return term1[offset] - term2;
+        if(term1 != term2) {
+            return term1 - term2;
         }
     }
     return term1_length - term2_length;
 }
 
-static int compare_with_next_term(const term_t* term, decoder_t* decoder, uint32_t* term_length) {
+static int compare_with_next_term(decoder_t* decoder_term1, uint32_t term1_length,
+                                   decoder_t* decoder_term2, uint32_t term2_length) {
 
-    *term_length = decode_vint_from(decoder);
-    uintptr_t curr_term = get_absolute_address_from(decoder);
+    uintptr_t curr_term = get_absolute_address_from(decoder_term2);
+    uintptr_t searched_term = get_absolute_address_from(decoder_term1);
 
-    // compare the searched term with the current term the decoder points to
-    int cmp = compare_terms(term, decoder, *term_length);
+    // compare the searched term with the next term the decoder points to
+    int cmp = compare_terms(decoder_term1, term1_length, decoder_term2, term2_length);
 
     // jump to the end of the term for further processing
-    skip_bytes_to_jump(decoder, curr_term + *term_length);
+    skip_bytes_to_jump(decoder_term2, curr_term + term2_length);
+
+    // reset the decoder to the searched term for next comparisons
+    skip_bytes_to_jump(decoder_term1, searched_term);
 
     return cmp;
 }
@@ -99,9 +105,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
         uintptr_t curr_term = get_absolute_address_from(decoder);
 
         // compare the searched term with the current term of the block table
-        int cmp = compare_terms(term, decoder, block_term_length);
-
-        skip_bytes_to_jump(decoder, curr_term + block_term_length);
+        int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, block_term_length);
 
         // read child info and address
         uint32_t childInfo = decode_vint_from(decoder);
@@ -193,9 +197,10 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
 
 bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_address) {
 
-    // when looking up the field address, the phrase match algorithm has not started
-    // we can use the same decoder as for the first term postings
-    decoder_t* decoder = initialize_decoder(index, 0 /*term id*/);
+    // get a decoder from the pool
+    decoder_t* decoder = decoder_pool_get_one();
+    initialize_decoder(decoder, index);
+
     // read index offsets
     block_table_offset = decode_vint_from(decoder);
     block_list_offset = decode_vint_from(decoder);
@@ -209,10 +214,12 @@ bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_ad
     if(term_blocks[me()].term == 0) {
         *field_address = 0;
         // field not found
+        decoder_pool_release_one(decoder);
         return false;
     }
 
     *field_address = index_begin_addr + block_table_offset + term_blocks[me()].block_address;
+    decoder_pool_release_one(decoder);
 
     return true;
 }
@@ -221,17 +228,18 @@ bool get_term_postings(uintptr_t field_address,
                         const term_t* term, uintptr_t* postings_address,
                         uint32_t* postings_byte_size) {
 
-    // when looking up the term postings, the phrase match algorithm has not started
-    // we can use the same decoder as for reading the term postings
-    decoder_t* decoder = initialize_decoder(field_address, term->id);
+    // get a decoder from the pool
+    decoder_t* decoder = decoder_pool_get_one();
+    initialize_decoder(decoder, field_address);
     *postings_address = 0;
     *postings_byte_size = 0;
+    bool res = false;
 
     // search for the term in the block table
     int cmp = lookup_term_block(decoder, term, &term_blocks[me()]);
     if(term_blocks[me()].term == 0) {
         // term not found
-        return false;
+        goto end;
     }
 
     // jump to the right block in the block list
@@ -244,7 +252,8 @@ bool get_term_postings(uintptr_t field_address,
         uint32_t size = decode_vint_from(decoder);
         *postings_address = index_begin_addr + postings_offset + address;
         *postings_byte_size = size;
-        return true;
+        res = true;
+        goto end;
     }
 
     // ignore first term postings address and size
@@ -258,10 +267,9 @@ bool get_term_postings(uintptr_t field_address,
 
     while(curr_addr < last_addr) {
 
-        uint32_t term_length;
-
+        uint32_t term_length = decode_vint_from(decoder);
         // compare the searched term with the current term of the block list
-        int cmp = compare_with_next_term(term, decoder, &term_length);
+        int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, term_length);
 
         uint32_t address = decode_vint_from(decoder);
         uint32_t size = decode_vint_from(decoder);
@@ -270,14 +278,17 @@ bool get_term_postings(uintptr_t field_address,
             // term found, set the mram address to postings
             *postings_address = index_begin_addr + postings_offset + address;
             *postings_byte_size = size;
-            return true;
+            res = true;
+            goto end;
         }
         else if(cmp < 0) {
             // term is larger than the seeked term, term not found
-            return false;
+            goto end;
         }
         curr_addr = get_absolute_address_from(decoder);
     }
 
-    return false;
+end:
+    decoder_pool_release_one(decoder);
+    return res;
 }
