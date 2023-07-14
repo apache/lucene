@@ -20,12 +20,14 @@ package org.apache.lucene.search;
 public enum Pruning {
   /** Not allowed to skip documents. */
   NONE,
-  /** Allowed to skip documents. */
+  /**
+   * Allowed to skip documents that compare strictly better than the top value, or strictly worse
+   * than the bottom value.
+   */
   SKIP,
   /**
-   * Allowed to skip documents. {@link LeafFieldComparator} is the only comparator so that could do
-   * more optimizations. e.g. We could skip missing values via {@link
-   * org.apache.lucene.index.NumericDocValues} in {@link LeafFieldComparator#competitiveIterator()}.
+   * Allowed to skip documents that compare better than the top value, or worse than or equal to the
+   * bottom value.
    */
   SKIP_MORE
 }
