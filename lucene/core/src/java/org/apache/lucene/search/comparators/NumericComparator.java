@@ -135,11 +135,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.dense = pointValues.getDocCount() == maxDoc;
         this.competitiveIterator =
             new CompetitiveIterator(
-                context,
-                field,
-                (dense == false && pruning == Pruning.SKIP_MORE),
-                pointValues.getMinPackedValue(),
-                pointValues.getMaxPackedValue());
+                context, field, (dense == false && pruning == Pruning.SKIP_MORE));
       } else {
         this.competitiveIterator = null;
         this.enableSkipping = false;
@@ -200,12 +196,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (enableSkipping == false
           || hitsThresholdReached == false
           || (queueFull == false && topValueSet == false)) return;
-      // try to init CompetitiveIterator#docsWithDocValue
-      competitiveIterator.setDocsWithDocValue();
       // if some documents have missing points, check that missing values prohibits optimization
       if ((pointValues.getDocCount() < maxDoc) && isMissingValueCompetitive()) {
         return; // we can't filter out documents, as documents with missing values are competitive
       }
+      competitiveIterator.setDocsWithDocValue();
 
       updateCounter++;
       // Start sampling if we get called too much
@@ -331,22 +326,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       private int doc = -1;
       private DocIdSetIterator docsWithDocValue;
       private DocIdSetIterator docsWithPoint;
-      private final byte[] minPackedValue;
-      private final byte[] maxPackedValue;
       private final boolean skipWithDocValues;
 
-      CompetitiveIterator(
-          LeafReaderContext context,
-          String field,
-          boolean skipWithDocValues,
-          byte[] minPackedValue,
-          byte[] maxPackedValue) {
+      CompetitiveIterator(LeafReaderContext context, String field, boolean skipWithDocValues) {
         this.context = context;
         this.maxDoc = context.reader().maxDoc();
         this.field = field;
         this.skipWithDocValues = skipWithDocValues;
-        this.minPackedValue = minPackedValue;
-        this.maxPackedValue = maxPackedValue;
       }
 
       @Override
@@ -383,9 +369,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         // if dense == true, all documents have docValues, no sense to skip by docValues
         // docsWithDocValue need only init once
         // if missing values are always competitive, we can never skip via doc values
-        if (skipWithDocValues
-            && docsWithDocValue == null
-            && isMissingValueNotCompetitive(minPackedValue, maxPackedValue)) {
+        if (skipWithDocValues && docsWithDocValue == null) {
           this.docsWithDocValue = getNumericDocValues(context, field);
         }
       }
@@ -403,13 +387,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     public DocIdSetIterator competitiveIterator() {
       return competitiveIterator;
     }
-
-    /**
-     * if reverse == true, missing value is non-competitive when it less than minPackedValue, if
-     * reverse == false, missing value is non-competitive when it great than maxPackedValue
-     */
-    protected abstract boolean isMissingValueNotCompetitive(
-        byte[] minPackedValue, byte[] maxPackedValue);
 
     /**
      * in ascending sort, missing value is competitive when it is less or equal(maybe there are two

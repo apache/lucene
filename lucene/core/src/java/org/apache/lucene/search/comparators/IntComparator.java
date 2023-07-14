@@ -117,12 +117,5 @@ public class IntComparator extends NumericComparator<Integer> {
     protected void encodeTop(byte[] packedValue) {
       IntPoint.encodeDimension(topValue, packedValue, 0);
     }
-
-    @Override
-    protected boolean isMissingValueNotCompetitive(byte[] minPackedValue, byte[] maxPackedValue) {
-      final int min = IntPoint.decodeDimension(minPackedValue, 0);
-      final int max = IntPoint.decodeDimension(maxPackedValue, 0);
-      return reverse ? missingValue < min : missingValue > max;
-    }
   }
 }
