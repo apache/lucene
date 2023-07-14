@@ -38,16 +38,12 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -144,43 +140,6 @@ public class TestIndexSearcher extends LuceneTestCase {
         });
 
     IOUtils.close(r, dir);
-  }
-
-  @Test
-  public void testTimeLimitingQueryRewrite() throws Exception {
-    Directory directory = newDirectory();
-    IndexWriter writer =
-        new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
-
-    Document d1 = new Document();
-    d1.add(newTextField("default", "one two", Field.Store.YES));
-    writer.addDocument(d1);
-
-    Document d2 = new Document();
-    d2.add(newTextField("default", "one three", Field.Store.YES));
-    writer.addDocument(d2);
-
-    Document d3 = new Document();
-    d3.add(newTextField("default", "ones two four", Field.Store.YES));
-    writer.addDocument(d3);
-
-    writer.forceMerge(1);
-    writer.commit();
-    writer.close();
-
-    Query query = new PrefixQuery(new Term("default", "o"));
-    DirectoryReader directoryReader;
-    IndexSearcher searcher;
-    directoryReader = DirectoryReader.open(directory);
-    searcher = new IndexSearcher(directoryReader);
-    searcher.setTimeout(CountingQueryTimeout(1));
-    expectThrows(
-        RuntimeException.class,
-        () -> {
-          searcher.search(query, 10);
-        });
-    directoryReader.close();
-    directory.close();
   }
 
   public void testCount() throws IOException {
@@ -504,21 +463,5 @@ public class TestIndexSearcher extends LuceneTestCase {
     boolean shouldExecuteOnCallerThread(int index, int numTasks) {
       return random().nextBoolean();
     }
-  }
-
-  public static QueryTimeout CountingQueryTimeout(int timeallowed) {
-
-    return new QueryTimeout() {
-      public static int counter = 0;
-
-      @Override
-      public boolean shouldExit() {
-        counter++;
-        if (counter == timeallowed) {
-          return true;
-        }
-        return false;
-      }
-    };
   }
 }

@@ -31,6 +31,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.ExitableIndexReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.IndexWriter;
@@ -373,6 +374,9 @@ public class IndexSearcher {
 
   /** Return the {@link IndexReader} this searches. */
   public IndexReader getIndexReader() {
+    if (queryTimeout != null) {
+      return new ExitableIndexReader(reader, queryTimeout);
+    }
     return reader;
   }
 
@@ -763,11 +767,6 @@ public class IndexSearcher {
     for (Query rewrittenQuery = query.rewrite(this);
         rewrittenQuery != query;
         rewrittenQuery = query.rewrite(this)) {
-      if (queryTimeout != null) {
-        if (queryTimeout.shouldExit() == true) {
-          throw new RuntimeException("Time limit exceeded during query rewrite");
-        }
-      }
       query = rewrittenQuery;
     }
     query.visit(getNumClausesCheckVisitor());
