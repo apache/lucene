@@ -49,6 +49,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
           doc.add(new StringField("foo", value, Field.Store.NO));
         }
         w.addDocument(doc);
+        for (int i = 1; i < MaxScoreBulkScorer.INNER_WINDOW_SIZE; ++i) {
+          w.addDocument(new Document());
+        }
       }
       w.forceMerge(1);
     }
@@ -95,11 +98,11 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(1, doc);
+                    assertEquals(2048, doc);
                     assertEquals(2, scorer.score(), 0);
                     break;
                   case 2:
-                    assertEquals(3, doc);
+                    assertEquals(6144, doc);
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 3:
@@ -162,13 +165,13 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(1, doc);
+                    assertEquals(2048, doc);
                     assertEquals(2, scorer.score(), 0);
                     // simulate top-2 retrieval
                     scorer.setMinCompetitiveScore(Math.nextUp(2));
                     break;
                   case 2:
-                    assertEquals(3, doc);
+                    assertEquals(6144, doc);
                     assertEquals(2 + 1, scorer.score(), 0);
                     scorer.setMinCompetitiveScore(Math.nextUp(2 + 1));
                     break;
@@ -227,19 +230,19 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(1, doc);
+                    assertEquals(2048, doc);
                     assertEquals(2, scorer.score(), 0);
                     break;
                   case 2:
-                    assertEquals(3, doc);
+                    assertEquals(6144, doc);
                     assertEquals(2 + 1 + 3, scorer.score(), 0);
                     break;
                   case 3:
-                    assertEquals(4, doc);
+                    assertEquals(8192, doc);
                     assertEquals(1, scorer.score(), 0);
                     break;
                   case 4:
-                    assertEquals(5, doc);
+                    assertEquals(10240, doc);
                     assertEquals(1 + 3, scorer.score(), 0);
                     break;
                   default:
@@ -297,18 +300,18 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 1:
-                    assertEquals(1, doc);
+                    assertEquals(2048, doc);
                     assertEquals(2, scorer.score(), 0);
                     // simulate top-2 retrieval
                     scorer.setMinCompetitiveScore(Math.nextUp(2));
                     break;
                   case 2:
-                    assertEquals(3, doc);
+                    assertEquals(6144, doc);
                     assertEquals(2 + 1 + 3, scorer.score(), 0);
                     scorer.setMinCompetitiveScore(Math.nextUp(2 + 1));
                     break;
                   case 3:
-                    assertEquals(5, doc);
+                    assertEquals(10240, doc);
                     assertEquals(1 + 3, scorer.score(), 0);
                     scorer.setMinCompetitiveScore(Math.nextUp(1 + 3));
                     break;
