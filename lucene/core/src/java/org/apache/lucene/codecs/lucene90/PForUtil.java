@@ -34,10 +34,12 @@ final class PForUtil {
 
   // IDENTITY_PLUS_ONE[i] == i + 1
   private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil90.BLOCK_SIZE];
+  private static final int[] IDENTITY_ONE = new int[ForUtil90.BLOCK_SIZE];
 
   static {
     for (int i = 0; i < ForUtil90.BLOCK_SIZE; ++i) {
       IDENTITY_PLUS_ONE[i] = i + 1;
+      IDENTITY_ONE[i] = 1;
     }
   }
 
@@ -133,6 +135,40 @@ final class PForUtil {
     for (int i = 0; i < numExceptions; ++i) {
       longs[Byte.toUnsignedInt(in.readByte())] |=
           Byte.toUnsignedLong(in.readByte()) << bitsPerValue;
+    }
+  }
+
+  void postDecode(DataInput in, int[] longs) throws IOException {
+    final int token = Byte.toUnsignedInt(in.readByte());
+    final int bitsPerValue = token & 0x1f;
+    final int numExceptions = token >>> 5;
+    if (numExceptions == 0) {
+      // when there are no exceptions to apply, we can be a bit more efficient with our decoding
+      if (bitsPerValue == 0) {
+        // a bpv of zero indicates all delta values are the same
+        long val = in.readVLong();
+        if (val == 1) {
+          // this will often be the common case when working with doc IDs, so we special-case it to
+          // be slightly more efficient
+          System.arraycopy(IDENTITY_ONE, 0, longs, 0, ForUtil.BLOCK_SIZE);
+        } else {
+          Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, (int) val);
+        }
+      } else {
+        // decode the deltas then apply the prefix sum logic
+        forUtil.decode(bitsPerValue, in, longs);
+      }
+    } else {
+      // pack two values per long so we can apply prefixes two-at-a-time
+      if (bitsPerValue == 0) {
+        Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, (int) in.readVLong());
+      } else {
+        forUtil.decode(bitsPerValue, in, longs);
+      }
+      for (int i = 0; i < numExceptions; ++i) {
+        longs[Byte.toUnsignedInt(in.readByte())] |=
+            Byte.toUnsignedLong(in.readByte()) << bitsPerValue;
+      }
     }
   }
 
