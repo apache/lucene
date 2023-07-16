@@ -85,6 +85,6 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
   @Override
   public ForUtil90 newForUtil90() {
-    return new PanamaForUtil90();
+    return hasFastIntegerVectors ?  new PanamaForUtil90() : new DefaultForUtil90();
   }
 }
