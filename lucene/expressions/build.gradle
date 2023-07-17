@@ -24,6 +24,8 @@ dependencies {
 
   moduleImplementation project(':lucene:codecs')
 
+  moduleImplementation 'com.carrotsearch:hppc'
+
   moduleImplementation 'org.antlr:antlr4-runtime'
 
   moduleImplementation 'org.ow2.asm:asm'

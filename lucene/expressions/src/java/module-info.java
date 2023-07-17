@@ -17,6 +17,7 @@
 
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.expressions {
+  requires com.carrotsearch.hppc;
   requires org.objectweb.asm;
   requires org.objectweb.asm.commons;
   requires org.antlr.antlr4.runtime;

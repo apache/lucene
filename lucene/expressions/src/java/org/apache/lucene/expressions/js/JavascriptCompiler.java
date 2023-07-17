@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.expressions.js;
 
+import com.carrotsearch.hppc.IntHashSet;
+import com.carrotsearch.hppc.IntSet;
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.invoke.MethodHandles;
@@ -104,7 +106,8 @@ public final class JavascriptCompiler {
   static final Type FUNCTION_VALUES_TYPE = Type.getType(DoubleValues.class);
 
   private static final org.objectweb.asm.commons.Method
-      EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
+      EXPRESSION_CTOR =
+          getAsmMethod(void.class, "<init>", String.class, String[].class, IntSet.class),
       EVALUATE_METHOD = getAsmMethod(double.class, "evaluate", DoubleValues[].class);
 
   static final org.objectweb.asm.commons.Method DOUBLE_VAL_METHOD =
@@ -218,19 +221,20 @@ public final class JavascriptCompiler {
    */
   private Expression compileExpression(ClassLoader parent) throws ParseException {
     final Map<String, Integer> externalsMap = new LinkedHashMap<>();
+    final IntSet reusedExternalsOrds = new IntHashSet();
     final ClassWriter classWriter =
         new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
     try {
-      generateClass(getAntlrParseTree(), classWriter, externalsMap);
+      generateClass(getAntlrParseTree(), classWriter, externalsMap, reusedExternalsOrds);
 
       final Class<? extends Expression> evaluatorClass =
           new Loader(parent).define(COMPILED_EXPRESSION_CLASS, classWriter.toByteArray());
       final Constructor<? extends Expression> constructor =
-          evaluatorClass.getConstructor(String.class, String[].class);
+          evaluatorClass.getConstructor(String.class, String[].class, IntSet.class);
 
       return constructor.newInstance(
-          sourceText, externalsMap.keySet().toArray(new String[externalsMap.size()]));
+          sourceText, externalsMap.keySet().toArray(new String[externalsMap.size()]), reusedExternalsOrds);
     } catch (RuntimeException re) {
       if (re.getCause() instanceof ParseException) {
         throw (ParseException) re.getCause();
@@ -302,7 +306,8 @@ public final class JavascriptCompiler {
   private void generateClass(
       final ParseTree parseTree,
       final ClassWriter classWriter,
-      final Map<String, Integer> externalsMap)
+      final Map<String, Integer> externalsMap,
+      final IntSet reusedExternalsOrds)
       throws ParseException {
     classWriter.visit(
         CLASSFILE_VERSION,
@@ -409,6 +414,7 @@ public final class JavascriptCompiler {
 
             if (externalsMap.containsKey(text)) {
               index = externalsMap.get(text);
+              reusedExternalsOrds.add(index);
             } else {
               index = externalsMap.size();
               externalsMap.put(text, index);

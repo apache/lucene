@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.expressions;
 
+import com.carrotsearch.hppc.IntSet;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
@@ -73,14 +74,32 @@ public abstract class Expression {
   public final String[] variables;
 
   /**
+   * Variable ords that are used more than one time in this expression. This can be used to decide
+   * which variables can benefit from caching. Null if selected parser doesn't support this attribute.
+   */
+  public final IntSet duplicateVariableOrds;
+
+  /**
    * Creates a new {@code Expression}.
    *
    * @param sourceText Source text for the expression: e.g. {@code ln(popularity)}
    * @param variables Names of external variables referred to by the expression
    */
   protected Expression(String sourceText, String[] variables) {
+    this(sourceText, variables, null);
+  }
+
+  /**
+   * Creates a new {@code Expression}.
+   *
+   * @param sourceText Source text for the expression: e.g. {@code ln(popularity)}
+   * @param variables Names of external variables referred to by the expression
+   * @param duplicateVariableOrds Ords of variables that are used more than once in the expression.
+   */
+  protected Expression(String sourceText, String[] variables, IntSet duplicateVariableOrds) {
     this.sourceText = sourceText;
     this.variables = variables;
+    this.duplicateVariableOrds = duplicateVariableOrds;
   }
 
   /**

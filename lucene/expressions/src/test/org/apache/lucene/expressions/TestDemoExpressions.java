@@ -137,6 +137,8 @@ public class TestDemoExpressions extends LuceneTestCase {
       float actual = ((Double) d.fields[0]).floatValue();
       assertEquals(expected, actual, 0d);
     }
+    // assert that first and only variable is marked as duplicated
+    assertTrue(expr.duplicateVariableOrds.contains(0));
   }
 
   /** Uses variables with $ */
