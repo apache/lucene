@@ -106,11 +106,11 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                     assertEquals(2 + 1, scorer.score(), 0);
                     break;
                   case 3:
-                    assertEquals(4, doc);
+                    assertEquals(8192, doc);
                     assertEquals(1, scorer.score(), 0);
                     break;
                   case 4:
-                    assertEquals(5, doc);
+                    assertEquals(10240, doc);
                     assertEquals(1, scorer.score(), 0);
                     break;
                   default:
