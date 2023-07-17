@@ -313,4 +313,9 @@ class ReqOptSumScorer extends Scorer {
     children.add(new ChildScorable(optScorer, "SHOULD"));
     return children;
   }
+
+  @Override
+  public void setTargetCost(long cost) {
+    reqScorer.setTargetCost(cost);
+  }
 }

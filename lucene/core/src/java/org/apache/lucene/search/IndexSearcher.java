@@ -135,6 +135,8 @@ public class IndexSearcher {
   private QueryCache queryCache = DEFAULT_QUERY_CACHE;
   private QueryCachingPolicy queryCachingPolicy = DEFAULT_CACHING_POLICY;
 
+  private float maxEvaluatedHitsRatio = 1f;
+
   /**
    * Expert: returns a default Similarity instance. In general, this method is only called to
    * initialize searchers and writers. User code and query implementations should respect {@link
@@ -286,6 +288,19 @@ public class IndexSearcher {
    */
   public void setQueryCache(QueryCache queryCache) {
     this.queryCache = queryCache;
+  }
+
+  /**
+   * Set a target maximum number of documents to evaluate for a given query as a ratio of the number
+   * of documents in the index. This effectively enables rank-unsafe optimizations, which could
+   * affect recall. Note that this approach is still better than a hard cut-off as it gives Lucene
+   * opportunities to jump more quickly to strong candidates for top hits.
+   */
+  public void setMaxEvaluatedHitRatio(float ratio) {
+    if (ratio > 0 == false || ratio <= 1 == false) {
+      throw new IllegalArgumentException("ratio must be in (0, 1], got " + ratio);
+    }
+    this.maxEvaluatedHitsRatio = ratio;
   }
 
   /**
@@ -730,6 +745,9 @@ public class IndexSearcher {
       }
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
+        final long targetCost =
+            (long) Math.ceil((double) maxEvaluatedHitsRatio * ctx.reader().maxDoc());
+        scorer.setTargetCost(targetCost);
         if (queryTimeout != null) {
           scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
         }

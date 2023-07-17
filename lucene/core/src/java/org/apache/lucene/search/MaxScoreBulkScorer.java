@@ -35,6 +35,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private int firstEssentialScorer;
   private final MaxScoreSumPropagator maxScorePropagator;
   private final long cost;
+  private long targetCost;
   private float minCompetitiveScore;
   private boolean minCompetitiveScoreUpdated;
   private Score scorable = new Score();
@@ -51,6 +52,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       allScorers[i++] = w;
     }
     this.cost = cost;
+    this.targetCost = cost;
     maxScorePropagator = new MaxScoreSumPropagator(scorers);
     essentialQueue = new DisiPriorityQueue(allScorers.length);
     maxScoreSums = new double[allScorers.length];
@@ -158,6 +160,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private boolean partitionScorers() {
     Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxWindowScore));
     double maxScoreSum = 0;
+    long essentialCost = cost;
     for (firstEssentialScorer = 0;
         firstEssentialScorer < allScorers.length;
         ++firstEssentialScorer) {
@@ -168,7 +171,17 @@ final class MaxScoreBulkScorer extends BulkScorer {
       if (maxScoreSumFloat >= minCompetitiveScore) {
         break;
       }
+      essentialCost -= allScorers[firstEssentialScorer].cost;
     }
+
+    // See if we can further reduce the set of essential scorers while still being above the target
+    // cost.
+    while (firstEssentialScorer < allScorers.length - 1
+        && essentialCost - allScorers[firstEssentialScorer].cost >= targetCost) {
+      essentialCost -= allScorers[firstEssentialScorer].cost;
+      firstEssentialScorer++;
+    }
+
     if (firstEssentialScorer == allScorers.length) {
       return false;
     }
@@ -200,6 +213,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return cost;
+  }
+
+  @Override
+  public void setTargetCost(long cost) {
+    this.targetCost = cost;
   }
 
   private class Score extends Scorable {
