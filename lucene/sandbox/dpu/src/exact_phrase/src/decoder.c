@@ -16,11 +16,13 @@
 #include <dpuruntime.h>
 #include <assert.h>
 #include "common.h"
-//#include "seqreader_buffer_pool.h"
 
 // counting the number of bytes read will make the measure of time to match not accurate
 /* #define COUNT_BYTES_READ */
 
+/**
+ * Decoder structure: holds a sequential reader to read the index
+ */
 typedef struct _decoder {
     seqreader_t reader;
     uint8_t *ptr;
@@ -30,38 +32,33 @@ typedef struct _decoder {
 #endif
 } decoder_t;
 
+/**
+ * Decoder pool variables
+ */
 MUTEX_INIT(decoder_mutex);
-uint32_t decoder_pool_index = 0;
-uint32_t tasklets_sleeping = 0;
+static uint32_t decoder_pool_index = 0;
+static uint32_t tasklets_sleeping = 0;
 static decoder_t decoders[NB_DECODERS];
 static decoder_t* decoders_pool[NB_DECODERS];
 
+/**
+ * For statistics, counting the number of bytes read from the index
+ */
 #if defined(STATS_ON) & defined(COUNT_BYTES_READ)
 #define READ_BYTE(decoder) decoder->nb_bytes_read_useful++;
-#define READ_256_BYTES(decoder) decoder->nb_bytes_read += 256;
-/*
-uint32_t get_bytes_read(uint32_t term_id, uint32_t segment_id) { return decoders[segment_id][term_id].nb_bytes_read; }
-uint32_t get_bytes_read_useful(uint32_t term_id, uint32_t segment_id)
-{
-    return decoders[segment_id][term_id].nb_bytes_read_useful;
-}
-*/
+#define READ_256_BYTES(decoder) decoder->nb_bytes_read += SEQ_READ_SIZE;
+
+uint32_t get_bytes_read(decoder_t* decoder) { return decoder->nb_bytes_read; }
+uint32_t get_bytes_read_useful(decoder_t* decoder) { return decoder->nb_bytes_read_useful; }
+
 #else
 #define READ_BYTE(decoder)
 #define READ_256_BYTES(decoder)
-/*
-uint32_t get_bytes_read(__attribute__((unused)) uint32_t term_id, __attribute__((unused)) uint32_t segment_id) { return 0; }
-uint32_t get_bytes_read_useful(__attribute__((unused)) uint32_t term_id, __attribute__((unused)) uint32_t segment_id)
-{
-    return 0;
-}
-*/
+uint32_t get_bytes_read(__attribute__((unused)) decoder_t*) { return 0; }
+uint32_t get_bytes_read_useful(__attribute__((unused)) decoder_t*) { return 0;}
 #endif
 
-// ============================================================================
-// LOAD AND DECODE DATA
-// ============================================================================
-void skip_bytes_to_jump(decoder_t *decoder, uint32_t target_address)
+void seek_decoder(decoder_t *decoder, uint32_t target_address)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;
     decoder->ptr = seqread_seek((__mram_ptr void *)target_address, &(decoder->reader));
@@ -76,7 +73,7 @@ void initialize_decoder_pool()
    for (int i = 0; i < NB_DECODERS; ++i) {
            decoders[i].ptr
                = seqread_init(seqread_alloc(),
-                       (__mram_ptr void *)(uintptr_t)DPU_MRAM_HEAP_POINTER, &(decoders[i].reader));
+                       DPU_MRAM_HEAP_POINTER, &(decoders[i].reader));
            decoders_pool[i] = &decoders[i];
    }
    decoder_pool_index = 0;
@@ -85,10 +82,7 @@ void initialize_decoder_pool()
 
 void initialize_decoder(decoder_t* decoder, uintptr_t mram_addr)
 {
-    /*decoder->ptr = seqread_seek(seqreader_buffer_pool_get(&pool),
-            (__mram_ptr void *)mram_addr, &(decoder->reader));*/
-    decoder->ptr = seqread_seek((__mram_ptr void *)mram_addr, &(decoder->reader));
-    //return decoder;
+    seek_decoder(decoder, mram_addr);
 }
 
 void decoder_pool_get(uint32_t nb_decoders, void(*next_decoder)(decoder_t*, uint32_t, void*), void* ctx)
@@ -103,7 +97,7 @@ void decoder_pool_get(uint32_t nb_decoders, void(*next_decoder)(decoder_t*, uint
             mutex_unlock(decoder_mutex);
         }
         else {
-            tasklets_sleeping &= (1 << me());
+            tasklets_sleeping |= (1 << me());
             // Note: if the stop() is executed between the mutex unlock
             // and the time another tasklet has already tried to wake it up through a resume,
             // this tasklet would never wake up. But this is prevented by the fact that the resume instruction
@@ -190,7 +184,6 @@ uint32_t decode_vint_from(decoder_t *decoder)
     return value;
 }
 
-//TODO implement decode_byte_from and decode_short_from
 uint32_t decode_byte_from(decoder_t *decoder)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;

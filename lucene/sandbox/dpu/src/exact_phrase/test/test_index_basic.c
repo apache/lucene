@@ -24,23 +24,23 @@ __mram uint8_t index_mram[217] = {
    0x1, 0x2, 0x0, 0x4, 0x2, 0x0, 0x4, 0x1, 0x2, 0x1, 0x1, 0x0, 0x2, 0x1, 0x2, 0x2, 0x2, 0x1,
    0x0};
 
-uint8_t field1_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x64, 0x31};
-term_t field1 = {field1_arr, 6, 0};
+__mram uint8_t field1_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x64, 0x31};
+term_t field1 = {0, 6};
 uint32_t field1_addr = 7;
 
-uint8_t field2_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x64, 0x32};
-term_t field2 = {field2_arr, 6, 0};
+__mram uint8_t field2_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x64, 0x32};
+term_t field2 = {0, 6};
 uint32_t field2_addr = 16;
 
-uint8_t field3_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x32, 0x64};
-term_t field3 = {field3_arr, 6, 0};
+__mram uint8_t field3_arr[6] = {0x66, 0x69, 0x65, 0x6c, 0x32, 0x64};
+term_t field3 = {0, 6};
 
-uint8_t green_arr[5] = {0x67, 0x72, 0x65, 0x65, 0x6e};
-term_t green = {green_arr, 5, 0};
+__mram uint8_t green_arr[5] = {0x67, 0x72, 0x65, 0x65, 0x6e};
+term_t green = {0, 5};
 uint32_t green_addr = 14;
 
-uint8_t orange_arr[6] = {0x6f, 0x72, 0x61, 0x6e, 0x67, 0x65};
-term_t orange = {orange_arr, 6, 0};
+__mram uint8_t orange_arr[6] = {0x6f, 0x72, 0x61, 0x6e, 0x67, 0x65};
+term_t orange = {0, 6};
 uint32_t orange_addr = 53;
 
 // read a variable length integer in MRAM
@@ -66,7 +66,7 @@ int zigZagDecode(int i) {
 
 int main() {
 
-    initialize_decoders();
+    initialize_decoder_pool();
 
     // init sequential reader to read the index
     seqreader_buffer_t buffer = seqread_alloc();
@@ -78,6 +78,9 @@ int main() {
     uintptr_t index_begin_addr = (uintptr_t)seqread_tell((void*)index_ptr, &seqread);
 
     // look for field1
+    decoder_t* decoder = decoder_pool_get_one();
+    initialize_decoder(decoder, (uintptr_t)field1_arr);
+    field1.term_decoder = decoder;
     uintptr_t field_address;
     if(get_field_address((uintptr_t)index_mram, &field1, &field_address)
             && (field_address == (index_begin_addr + block_offset + field1_addr))) {
@@ -89,6 +92,8 @@ int main() {
     // lookup for the green term postings
     uintptr_t postings_address;
     uint32_t postings_byte_size;
+    initialize_decoder(decoder, (uintptr_t)&green_arr[0]);
+    green.term_decoder = decoder;
     get_term_postings(field_address, &green, &postings_address, &postings_byte_size);
 
     // read postings
@@ -105,6 +110,8 @@ int main() {
 
 
     // look for field "field2"
+    initialize_decoder(decoder, (uintptr_t)&field2_arr[0]);
+    field2.term_decoder = decoder;
     if(get_field_address((uintptr_t)index_mram, &field2, &field_address)
                 && (field_address == (index_begin_addr + block_offset + field2_addr))) {
         printf("field2 OK\n");
@@ -113,6 +120,8 @@ int main() {
     }
 
     // lookup for the green term postings
+    initialize_decoder(decoder, (uintptr_t)&green_arr[0]);
+    green.term_decoder = decoder;
     get_term_postings(field_address, &green, &postings_address, &postings_byte_size);
 
     // read postings
@@ -128,6 +137,8 @@ int main() {
     }
 
     // lookup for the orange term postings
+    initialize_decoder(decoder, (uintptr_t)orange_arr);
+    orange.term_decoder = decoder;
     get_term_postings(field_address, &orange, &postings_address, &postings_byte_size);
 
     // read postings
@@ -144,12 +155,16 @@ int main() {
     }
 
     // look for field "field3"
+    initialize_decoder(decoder, (uintptr_t)field3_arr);
+    field3.term_decoder = decoder;
     if(!get_field_address((uintptr_t)index_mram, &field3, &field_address)) {
         printf("field3 OK\n");
     }
     else {
         printf("field3 KO: %d\n", field_address);
     }
+
+    decoder_pool_release_one(decoder);
 
     return 0;
 }

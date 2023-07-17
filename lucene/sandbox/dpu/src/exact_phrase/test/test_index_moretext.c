@@ -159,39 +159,39 @@ __mram uint8_t index_mram[2921] = {
 0x2, 0x3, 0x9, 0x3, 0x2, 0x1, 0x12, 0x2, 0xa, 0x5, 0x16, 0x17, 0x9, 0x7, 0x8, 0x0, 0x2, 0x1, 0x4, 0x0,
 0x2, 0x1, 0x6};
 
-uint8_t field_title_arr[5] = {0x74, 0x69, 0x74, 0x6c, 0x65};
-term_t field_title = { field_title_arr, 5};
+__mram uint8_t field_title_arr[5] = {0x74, 0x69, 0x74, 0x6c, 0x65};
+term_t field_title = { 0, 5};
 uint32_t title_addr = 0;
 
-uint8_t field_body_arr[4] = {0x62, 0x6f, 0x64, 0x79};
-term_t field_body = { field_body_arr, 4};
+__mram uint8_t field_body_arr[4] = {0x62, 0x6f, 0x64, 0x79};
+term_t field_body = { 0, 4};
 uint32_t body_addr = 10;
 
-uint8_t apache_arr[6] = {0x41, 0x70, 0x61, 0x63, 0x68, 0x65};
-term_t apache = { apache_arr, 6};
+__mram uint8_t apache_arr[6] = {0x41, 0x70, 0x61, 0x63, 0x68, 0x65};
+term_t apache = { 0, 6};
 uint32_t apache_addr = 0;
 uint32_t apache_size = 4;
 
-uint8_t munchen_arr[8] = {0x4d, 0xc3, 0xbc, 0x6e, 0x63, 0x68, 0x65, 0x6e};
-term_t munchen = { munchen_arr, 8};
+__mram uint8_t munchen_arr[8] = {0x4d, 0xc3, 0xbc, 0x6e, 0x63, 0x68, 0x65, 0x6e};
+term_t munchen = { 0, 8};
 uint32_t munchen_addr = 16;
 uint32_t munchen_size = 4;
 
-uint8_t conserve_arr[9] = {0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x76, 0xc3, 0xa9};
-term_t conserve = { conserve_arr, 9};
+__mram uint8_t conserve_arr[9] = {0x63, 0x6f, 0x6e, 0x73, 0x65, 0x72, 0x76, 0xc3, 0xa9};
+term_t conserve = { 0, 9};
 
-uint8_t dativ_arr[5] ={0x44, 0x61, 0x74, 0x69, 0x76};
-term_t dativ = { dativ_arr, 5};
+__mram uint8_t dativ_arr[5] ={0x44, 0x61, 0x74, 0x69, 0x76};
+term_t dativ = { 0, 5};
 uint32_t dativ_addr = 60;
 uint32_t dativ_size = 4;
 
-uint8_t wird_arr[4] = {0x77, 0x69, 0x72, 0x64};
-term_t wird = { wird_arr, 4};
+__mram uint8_t wird_arr[4] = {0x77, 0x69, 0x72, 0x64};
+term_t wird = { 0, 4};
 uint32_t wird_addr = 817;
 uint32_t wird_size = 5;
 
-uint8_t search_arr[6] = {0x73, 0x65, 0x61, 0x72, 0x63, 0x68};
-term_t search = { search_arr, 6};
+__mram uint8_t search_arr[6] = {0x73, 0x65, 0x61, 0x72, 0x63, 0x68};
+term_t search = { 0, 6};
 
 // read a variable length integer in MRAM
 int readVInt_mram(const uint8_t** data, seqreader_t* reader) {
@@ -216,8 +216,7 @@ int zigZagDecode(int i) {
 
 int main() {
 
-    // init sequential reader to read the index
-    initialize_decoders();
+    initialize_decoder_pool();
 
     // init sequential reader to read the index
     seqreader_buffer_t buffer = seqread_alloc();
@@ -229,6 +228,9 @@ int main() {
     uintptr_t index_begin_addr = (uintptr_t)seqread_tell((void*)index_ptr, &seqread);
 
     // look for title field
+    decoder_t* decoder = decoder_pool_get_one();
+    initialize_decoder(decoder, (uintptr_t)field_title_arr);
+    field_title.term_decoder = decoder;
     uintptr_t field_address;
     if(get_field_address((uintptr_t)index_mram, &field_title, &field_address)
             && (field_address == (index_begin_addr + block_offset + title_addr))) {
@@ -240,62 +242,82 @@ int main() {
     // search for the term "Apache"
     uintptr_t postings_address;
     uint32_t postings_byte_size;
+    initialize_decoder(decoder, (uintptr_t)&apache_arr[0]);
+    apache.term_decoder = decoder;
     get_term_postings(field_address, &apache, &postings_address, &postings_byte_size);
-    if(postings_address == index_begin_addr + postings_offset + apache_addr
-            && postings_byte_size == apache_size) {
-        printf("Apache OK\n");
+    // read postings
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
+    uint32_t doc_id = readVInt_mram(&index_ptr, &seqread);
+    uint32_t freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    uint32_t length = readByte_mram(&index_ptr, &seqread);
+    uint32_t pos = readVInt_mram(&index_ptr, &seqread);
+    if(doc_id == 1 && freq == 1 && pos == 0) {
+        printf("apache postings OK: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     } else {
-        printf("Apache KO: %u %u\n", postings_address, postings_byte_size);
+        printf("apache postings KO: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     }
 
     // search for the term "München"
+    initialize_decoder(decoder, (uintptr_t)&munchen_arr[0]);
+    munchen.term_decoder = decoder;
     get_term_postings(field_address, &munchen, &postings_address, &postings_byte_size);
-    if(postings_address == index_begin_addr + postings_offset + munchen_addr
-                && postings_byte_size == munchen_size) {
-        printf("München OK\n");
+    // read postings
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
+    doc_id = readVInt_mram(&index_ptr, &seqread);
+    freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    length = readByte_mram(&index_ptr, &seqread);
+    pos = readVInt_mram(&index_ptr, &seqread);
+    if(doc_id == 0 && freq == 1 && pos == 0) {
+        printf("Munchen postings OK: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     } else {
-        printf("München KO: %u %u\n", postings_address, postings_byte_size);
+        printf("Munchen postings KO: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     }
 
     // look for field "body"
+    initialize_decoder(decoder, (uintptr_t)field_body_arr);
+    field_body.term_decoder = decoder;
     if(get_field_address((uintptr_t)index_mram, &field_body, &field_address)
-                && (field_address == (index_begin_addr + block_offset + body_addr))) {
+            && (field_address == (index_begin_addr + block_offset + body_addr))) {
         printf("field body OK\n");
     } else {
         printf("field body KO: %d\n", field_address);
     }
 
     //searching for the term conserve
+    initialize_decoder(decoder, (uintptr_t)&conserve_arr[0]);
+    conserve.term_decoder = decoder;
     if(!get_term_postings(field_address, &conserve, &postings_address, &postings_byte_size)) {
-        printf("conserve OK\n");
+        printf("conserve postings OK\n");
     } else {
-        printf("conserve KO: %u %u\n", postings_address, postings_byte_size);
+        printf("conserve postings KO: postings_address:%u\n", postings_address);
     }
 
     // searching for term dativ
+    initialize_decoder(decoder, (uintptr_t)&dativ_arr[0]);
+    dativ.term_decoder = decoder;
     get_term_postings(field_address, &dativ, &postings_address, &postings_byte_size);
-    if(postings_address == index_begin_addr + postings_offset + dativ_addr
-                    && postings_byte_size == dativ_size) {
-        printf("dativ OK\n");
+    // read postings
+    index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
+    doc_id = readVInt_mram(&index_ptr, &seqread);
+    freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    length = readByte_mram(&index_ptr, &seqread);
+    pos = readVInt_mram(&index_ptr, &seqread);
+    if(doc_id == 1 && freq == 1 && pos == 1) {
+        printf("dativ postings OK: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     } else {
-        printf("dativ KO: %u %u\n", postings_address, postings_byte_size);
+        printf("dativ postings OK: doc:%d freq:%d pos:%d\n", doc_id, freq, pos);
     }
 
     //searching for term wird
+    initialize_decoder(decoder, (uintptr_t)&wird_arr[0]);
+    wird.term_decoder = decoder;
     get_term_postings(field_address, &wird, &postings_address, &postings_byte_size);
-    if(postings_address == index_begin_addr + postings_offset + wird_addr
-                        && postings_byte_size == wird_size) {
-        printf("wird OK\n");
-    } else {
-        printf("wird KO: %u %u\n", postings_address, postings_byte_size);
-    }
-
-    // read postings of term wird
+    // read postings
     index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
-    uint32_t doc_id = readVInt_mram(&index_ptr, &seqread);
-    uint32_t freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
-    uint32_t length = readByte_mram(&index_ptr, &seqread);
-    uint32_t pos = readVInt_mram(&index_ptr, &seqread);
+    doc_id = readVInt_mram(&index_ptr, &seqread);
+    freq = zigZagDecode(readVInt_mram(&index_ptr, &seqread));
+    length = readByte_mram(&index_ptr, &seqread);
+    pos = readVInt_mram(&index_ptr, &seqread);
     uint32_t pos2 = readVInt_mram(&index_ptr, &seqread) + pos;
     if(doc_id == 0 && freq == 2 && pos == 3 && pos2 == 12) {
         printf("wird postings OK: doc:%d freq:%d pos:%d pos:%d\n", doc_id, freq, pos, pos2);
@@ -304,8 +326,9 @@ int main() {
     }
 
     // searching for postings of search
+    initialize_decoder(decoder, (uintptr_t)&search_arr[0]);
+    search.term_decoder = decoder;
     get_term_postings(field_address, &search, &postings_address, &postings_byte_size);
-
     // read postings
     index_ptr = seqread_seek((__mram_ptr void*)postings_address, &seqread);
     doc_id = readVInt_mram(&index_ptr, &seqread);

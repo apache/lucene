@@ -5,7 +5,6 @@
 #include <mutex.h>
 #include <assert.h>
 #include <alloc.h>
-#include <stdio.h>
 #include <string.h>
 #include <mram_unaligned.h>
 #include "matcher.h"
@@ -33,6 +32,7 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 #ifdef TEST1
 #define TEST
 #include "../test/test1.h"
+#include <stdio.h>
 #endif
 
 static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms);
@@ -40,16 +40,16 @@ static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *match
 int main() {
 
     if(me() == 0) {
-        batch_num = 0;
         mem_reset();
+        batch_num = 0;
         initialize_decoder_pool();
 #ifdef TEST
+        // in test mode set the queries inputs correctly
         nb_queries_in_batch = test_nb_queries_in_batch;
         nb_bytes_in_batch = test_nb_bytes_in_batch;
         mram_write(test_query_batch, query_batch, ((test_nb_bytes_in_batch + 7) >> 3) << 3);
         memcpy(query_offset_in_batch, test_query_offset_in_batch, test_nb_queries_in_batch * sizeof(uint32_t));
 #endif
-
     }
     barrier_wait(&barrier);
 
@@ -65,6 +65,8 @@ int main() {
         // initialize a query parser
         query_parser_t query_parser;
         init_query_parser(&query_parser, query_batch + query_offset_in_batch[batch_num_tasklet]);
+
+        // read segment id and query type
         uint32_t segment_id;
         uint8_t query_type;
         read_segment_id(&query_parser, &segment_id);
@@ -80,6 +82,7 @@ int main() {
 #ifdef TEST
         printf("Query %d: %d terms\n", batch_num_tasklet, query_parser.nr_terms);
 #endif
+        // a null matchers means one of the term of the query is not present in the index and we can skip it
         if(matchers != 0)
             perform_did_and_pos_matching(batch_num_tasklet, matchers, query_parser.nr_terms);
 

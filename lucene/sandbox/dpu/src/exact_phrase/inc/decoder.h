@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+/**
+ * structure used to read and decode the index
+ */
 typedef struct _decoder decoder_t;
 
 /**
@@ -71,7 +74,7 @@ int decode_zigzag_from(decoder_t *decoder);
 /**
 * Jump to the target address in the decoder.
 */
-void skip_bytes_to_jump(decoder_t *decoder, uint32_t target_address);
+void seek_decoder(decoder_t *decoder, uint32_t target_address);
 
 /**
 * Get the absolute address of the current position in the decoder.

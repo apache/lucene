@@ -108,7 +108,7 @@ parse_did_t parse_did(parser_t *parser, uint32_t *did, uint32_t *freq, uint32_t 
 
 void abort_parse_did(parser_t *parser)
 {
-    skip_bytes_to_jump(parser->decoder, parser->did_parser.did_end_addr);
+    seek_decoder(parser->decoder, parser->did_parser.did_end_addr);
 }
 
 // ============================================================================
@@ -141,4 +141,4 @@ bool parse_pos(parser_t *parser, uint32_t *pos)
 
 // Aborts the parsing of positions, moving the cursor to the next
 // document or segment descriptor.
-void abort_parse_pos(parser_t *parser) { skip_bytes_to_jump(parser->decoder, parser->pos_parser.pos_end_addr); }
+void abort_parse_pos(parser_t *parser) { seek_decoder(parser->decoder, parser->pos_parser.pos_end_addr); }

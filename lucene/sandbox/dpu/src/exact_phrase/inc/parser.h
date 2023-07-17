@@ -5,13 +5,19 @@
 #include <stdint.h>
 #include "term.h"
 
+/**
+ * Structure used to parse document ids and positions from the index
+ */
+typedef struct _parser parser_t;
+
+/**
+ * Type returned by the function that parses the document id
+ */
 typedef enum {
-    DOC_INFO, // Description of a new document/positions
-    SKIP_INFO, // Starting a new segment, get the next 100th DID and the length of this segment
+    DOC_INFO,
+    SKIP_INFO, // unused
     END_OF_FRAGMENT,
 } parse_did_t;
-
-typedef struct _parser parser_t;
 
 parse_did_t parse_did(parser_t *parser, uint32_t *did, uint32_t *freq, uint32_t* len);
 void abort_parse_did(parser_t *parser);

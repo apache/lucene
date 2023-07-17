@@ -8,6 +8,9 @@
 #include "term.h"
 #include "decoder.h"
 
+/**
+ * Structure used to parse the query
+ */
 typedef struct _query_parser {
     decoder_t* decoder;
     uint32_t nr_terms;

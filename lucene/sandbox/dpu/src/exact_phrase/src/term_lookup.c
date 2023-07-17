@@ -23,11 +23,11 @@ static uint32_t postings_offset = 0;
 // compare terms, return 0 if equal, < 0 if term1 < term2, > 0 if term1 > term2
 static int compare_terms(decoder_t* decoder_term1, uint32_t term1_length,
                             decoder_t* decoder_term2, uint32_t term2_length) {
-    // terms are encoded as UTF-8, so we can compare the bytes directly
-    // perform the comparison 4B per 4B if the terms have the same alignment modulo 8
     int term1_w, term2_w;
     int offset = 0;
     /* TODO implement this optim if valuable
+    // terms are encoded as UTF-8, so we can compare the bytes directly
+    // perform the comparison 4B per 4B if the terms have the same alignment modulo 8
     if(decoder_is_aligned_with(decoder_term1, decoder_term2)) {
         // Need to be cautious of the endianness when loading as integer
         // Perform a load as big endian while the DPU is little-endian, hence using a builtin
@@ -68,10 +68,10 @@ static int compare_with_next_term(decoder_t* decoder_term1, uint32_t term1_lengt
     int cmp = compare_terms(decoder_term1, term1_length, decoder_term2, term2_length);
 
     // jump to the end of the term for further processing
-    skip_bytes_to_jump(decoder_term2, curr_term + term2_length);
+    seek_decoder(decoder_term2, curr_term + term2_length);
 
-    // reset the decoder to the searched term for next comparisons
-    skip_bytes_to_jump(decoder_term1, searched_term);
+    // reset the decoder to the searched term for next comparison
+    seek_decoder(decoder_term1, searched_term);
 
     return cmp;
 }
@@ -79,7 +79,7 @@ static int compare_with_next_term(decoder_t* decoder_term1, uint32_t term1_lengt
 static void skip_term(decoder_t* decoder) {
 
     uint32_t term_length = decode_vint_from(decoder);
-    skip_bytes_to_jump(decoder, get_absolute_address_from(decoder) + term_length);
+    seek_decoder(decoder, get_absolute_address_from(decoder) + term_length);
 }
 
 static void reset_block(block_t* block) {
@@ -153,7 +153,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             if(right_child_offset) {
                 succ_node =
                     get_absolute_address_from(decoder) + right_child_offset;
-                skip_bytes_to_jump(decoder, succ_node);
+                seek_decoder(decoder, succ_node);
             }
             else {
                 succ_node = succ_node_ancestor;
@@ -173,7 +173,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             // As this node has no successor and the tree is written in pre-order,
             // the last address is the next element after this node
             succ_node = block->term + block->term_size;
-            skip_bytes_to_jump(decoder, succ_node);
+            seek_decoder(decoder, succ_node);
             uint32_t childInfo = decode_vint_from(decoder);
             decode_vint_from(decoder);
             while((childInfo & 1) != 0) {
@@ -184,7 +184,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             addr = decode_vint_from(decoder);
         }
         else {
-            skip_bytes_to_jump(decoder, succ_node);
+            seek_decoder(decoder, succ_node);
             skip_term(decoder);
             decode_vint_from(decoder);
             addr = decode_vint_from(decoder);
@@ -243,7 +243,7 @@ bool get_term_postings(uintptr_t field_address,
     }
 
     // jump to the right block in the block list
-    skip_bytes_to_jump(decoder, index_begin_addr + block_list_offset + term_blocks[me()].block_address);
+    seek_decoder(decoder, index_begin_addr + block_list_offset + term_blocks[me()].block_address);
 
     // first check if the term seeked is the same as the first in the block
     if(cmp == 0) {
