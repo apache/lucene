@@ -99,8 +99,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
             outerWindowMin = outerWindowMax;
             continue outer;
           }
-          top = essentialQueue.top();
         }
+
+        top = essentialQueue.top();
       }
       outerWindowMin = outerWindowMax;
     }
