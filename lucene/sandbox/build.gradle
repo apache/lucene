@@ -28,7 +28,7 @@ dependencies {
 
 task compileDpu (type: Exec) {
   inputs.files('dpu/src/exact_phrase/inc/decoder.h', 'dpu/src/exact_phrase/src/matcher.h',
-          'dpu/src/exact_phrase/inc/common.h',
+          'dpu/src/exact_phrase/inc/common.h', 'dpu/src/exact_phrase/inc/query_result.h',
           'dpu/src/exact_phrase/inc/parser.h', 'dpu/src/exact_phrase/inc/query_parser.h',
           'dpu/src/exact_phrase/inc/term_lookup.h', 'dpu/src/exact_phrase/inc/term.h',
           'dpu/src/exact_phrase/src/dpu.c', 'dpu/src/exact_phrase/src/matcher.c',

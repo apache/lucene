@@ -54,8 +54,8 @@ uint32_t get_bytes_read_useful(decoder_t* decoder) { return decoder->nb_bytes_re
 #else
 #define READ_BYTE(decoder)
 #define READ_256_BYTES(decoder)
-uint32_t get_bytes_read(__attribute__((unused)) decoder_t*) { return 0; }
-uint32_t get_bytes_read_useful(__attribute__((unused)) decoder_t*) { return 0;}
+uint32_t get_bytes_read(__attribute__((unused)) decoder_t* decoder) { return 0; }
+uint32_t get_bytes_read_useful(__attribute__((unused)) decoder_t* decoder) { return 0;}
 #endif
 
 void seek_decoder(decoder_t *decoder, uint32_t target_address)

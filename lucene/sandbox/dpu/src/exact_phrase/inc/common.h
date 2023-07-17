@@ -17,6 +17,10 @@
  */
 #define DPU_RESULTS_MAX_BYTE_SIZE (1 << 20)
 /**
+ * Number of results in WRAM cache
+ */
+#define DPU_RESULTS_CACHE_SIZE (16)
+/**
  * Maximum number of terms in a query
  * TODO enforce it on the host
  */
