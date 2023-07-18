@@ -28,9 +28,8 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
@@ -72,29 +71,22 @@ class GeneratingSuggester {
     IntPredicate isSuggestible = formId -> !flagLookup.hasAnyFlag(formId, excludeFlags);
 
     boolean ignoreTitleCaseRoots = originalCase == WordCase.LOWER && !dictionary.hasLanguage("de");
-    TrigramAutomaton automaton =
-        new TrigramAutomaton(word) {
-          @Override
-          char transformChar(char c) {
-            return dictionary.caseFold(c);
-          }
-        };
+    TrigramAutomaton automaton = new TrigramAutomaton(word);
 
     processSuggestibleWords(
         Math.max(1, word.length() - MAX_ROOT_LENGTH_DIFF),
         word.length() + MAX_ROOT_LENGTH_DIFF,
-        (rootChars, formSupplier) -> {
-          if (ignoreTitleCaseRoots
-              && Character.isUpperCase(rootChars.charAt(0))
-              && WordCase.caseOf(rootChars) == WordCase.TITLE) {
+        (entry) -> {
+          if (ignoreTitleCaseRoots && entry.hasTitleCase()) {
             return;
           }
 
-          int sc = automaton.ngramScore(rootChars);
+          int sc = automaton.ngramScore(entry.lowerCaseRoot());
           if (sc == 0) {
             return; // no common characters at all, don't suggest this root
           }
 
+          CharsRef rootChars = entry.root();
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
           boolean overflow = roots.size() == MAX_ROOTS;
@@ -105,7 +97,7 @@ class GeneratingSuggester {
           speller.checkCanceled.run();
 
           String root = rootChars.toString();
-          IntsRef forms = formSupplier.get();
+          IntsRef forms = entry.forms();
           for (int i = 0; i < forms.length; i++) {
             if (isSuggestible.test(forms.ints[forms.offset + i])) {
               roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + i]), sc));
@@ -125,7 +117,7 @@ class GeneratingSuggester {
   }
 
   private void processSuggestibleWords(
-      int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+      int minLength, int maxLength, Consumer<FlyweightEntry> processor) {
     if (entryCache != null) {
       entryCache.processSuggestibleWords(minLength, maxLength, processor);
     } else {
