@@ -135,7 +135,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.dense = pointValues.getDocCount() == maxDoc;
         this.competitiveIterator =
             new CompetitiveIterator(
-                context, field, (dense == false && pruning == Pruning.SKIP_MORE));
+                context, field, (dense == false && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO));
       } else {
         this.competitiveIterator = null;
         this.enableSkipping = false;
@@ -391,7 +391,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     /**
      * in ascending sort, missing value is competitive when it is less or equal(maybe there are two
      * or more comparators) than bottom value. if there is only one comparator(See {@link
-     * Pruning#SKIP_MORE}), missing value is competitive only when it is less than bottom value.
+     * Pruning#GREATER_THAN_OR_EQUAL_TO}), missing value is competitive only when it is less than bottom value.
      * vice versa in descending sort.
      */
     protected abstract boolean isMissingValueCompetitive();

@@ -105,13 +105,13 @@ public class DoubleComparator extends NumericComparator<Double> {
     protected boolean isMissingValueCompetitive() {
       int result = Double.compare(missingValue, bottom);
       return reverse
-          ? (pruning == Pruning.SKIP_MORE ? result > 0 : result >= 0)
-          : (pruning == Pruning.SKIP_MORE ? result < 0 : result <= 0);
+          ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
+          : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
     }
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      if (pruning == Pruning.SKIP_MORE) {
+      if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
         byte[] bottomByte = new byte[Double.BYTES];
         DoublePoint.encodeDimension(bottom, bottomByte, 0);
         if (reverse == false) {

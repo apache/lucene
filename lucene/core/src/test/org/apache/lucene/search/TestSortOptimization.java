@@ -222,7 +222,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int totalHitsThreshold = 3;
 
     { // test that optimization is run when missing value setting of SortField is competitive with
-      // Puring.SKIP_MORE
+      // Puring.GREATER_THAN_OR_EQUAL_TO
       final SortField sortField = new SortField("my_field", SortField.Type.LONG);
       sortField.setMissingValue(0L); // set a competitive missing value
       final Sort sort = new Sort(sortField);
@@ -369,7 +369,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
-    { // test that sorting on a single field with equal values uses the optimization with SKIP_MORE
+    { // test that sorting on a single field with equal values uses the optimization with GREATER_THAN_OR_EQUAL_TO
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -388,7 +388,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // test that sorting on a single field with equal values and after parameter
-      // use the optimization with SKIP_MORE
+      // use the optimization with GREATER_THAN_OR_EQUAL_TO
       final int afterValue = 100;
       final int afterDocID = 10 + random().nextInt(1000);
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
@@ -407,7 +407,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     { // test that sorting on main field with equal values + another field for tie breaks doesn't
-      // use optimization with Pruning.SKIP
+      // use optimization with Pruning.GREATER_THAN
       final SortField sortField1 = new SortField("my_field1", SortField.Type.INT);
       final SortField sortField2 = new SortField("my_field2", SortField.Type.INT);
       final Sort sort = new Sort(sortField1, sortField2);

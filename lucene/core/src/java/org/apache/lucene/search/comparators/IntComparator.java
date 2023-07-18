@@ -100,13 +100,13 @@ public class IntComparator extends NumericComparator<Integer> {
     protected boolean isMissingValueCompetitive() {
       int result = Integer.compare(missingValue, bottom);
       return reverse
-          ? (pruning == Pruning.SKIP_MORE ? result > 0 : result >= 0)
-          : (pruning == Pruning.SKIP_MORE ? result < 0 : result <= 0);
+          ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
+          : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
     }
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      if (pruning == Pruning.SKIP_MORE) {
+      if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
         IntPoint.encodeDimension(reverse ? bottom + 1 : bottom - 1, packedValue, 0);
       } else {
         IntPoint.encodeDimension(bottom, packedValue, 0);

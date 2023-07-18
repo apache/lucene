@@ -24,10 +24,10 @@ public enum Pruning {
    * Allowed to skip documents that compare strictly better than the top value, or strictly worse
    * than the bottom value.
    */
-  SKIP,
+  GREATER_THAN,
   /**
    * Allowed to skip documents that compare better than the top value, or worse than or equal to the
    * bottom value.
    */
-  SKIP_MORE
+  GREATER_THAN_OR_EQUAL_TO
 }
