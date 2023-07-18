@@ -129,7 +129,7 @@ public class TestNeighborQueue extends LuceneTestCase {
         };
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     for (int i = 0; i < nodes.length; i++) {
-      queue.push(nodes[i], scores[i]);
+      queue.add(nodes[i], scores[i]);
     }
     int i = 0;
     int[] sortedNodes = new int[7];
