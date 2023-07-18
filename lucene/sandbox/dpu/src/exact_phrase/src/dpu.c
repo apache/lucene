@@ -93,15 +93,17 @@ int main() {
         did_matcher_t *matchers = setup_matchers(&query_parser, (uintptr_t)DPU_MRAM_HEAP_POINTER);
 #endif
 
+        uint32_t nr_terms = query_parser.nr_terms;
+        release_query_parser(&query_parser);
+
 #ifdef TEST
-        printf("Query %d: %d terms\n", batch_num_tasklet, query_parser.nr_terms);
+        printf("Query %d: %d terms\n", batch_num_tasklet, nr_terms);
 #endif
         // a null matchers means one of the term of the query is not present in the index and we can skip it
         if(matchers != 0)
-            perform_did_and_pos_matching(batch_num_tasklet, matchers, query_parser.nr_terms);
+            perform_did_and_pos_matching(batch_num_tasklet, matchers, nr_terms);
 
-        release_matchers(matchers, query_parser.nr_terms);
-
+        release_matchers(matchers, nr_terms);
         flush_query_buffer();
     }
 

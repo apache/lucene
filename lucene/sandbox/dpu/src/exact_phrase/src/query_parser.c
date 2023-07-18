@@ -37,3 +37,7 @@ void read_term(query_parser_t* parser, term_t* term) {
     parser->curr_ptr = get_absolute_address_from(parser->decoder) + term->size;
     term->term_decoder = parser->decoder;
 }
+
+void release_query_parser(query_parser_t* parser) {
+    decoder_pool_release_one(parser->decoder);
+}
