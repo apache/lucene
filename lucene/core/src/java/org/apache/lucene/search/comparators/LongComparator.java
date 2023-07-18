@@ -106,16 +106,17 @@ public class LongComparator extends NumericComparator<Long> {
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
-        LongPoint.encodeDimension(reverse ? bottom + 1 : bottom - 1, packedValue, 0);
-      } else {
-        LongPoint.encodeDimension(bottom, packedValue, 0);
-      }
+      LongPoint.encodeDimension(bottom, packedValue, 0);
     }
 
     @Override
     protected void encodeTop(byte[] packedValue) {
       LongPoint.encodeDimension(topValue, packedValue, 0);
+    }
+
+    @Override
+    protected boolean isBottomMinOrMax() {
+      return reverse ? bottom == Long.MIN_VALUE : bottom == Long.MAX_VALUE;
     }
   }
 }

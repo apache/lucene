@@ -137,7 +137,9 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
       comparators[i] =
           field.getComparator(
               size,
-              i == 0 ? (numComparators > 1 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO) : Pruning.NONE);
+              i == 0
+                  ? (numComparators > 1 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO)
+                  : Pruning.NONE);
     }
   }
 

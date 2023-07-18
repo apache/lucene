@@ -369,7 +369,8 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numHits = 3;
     final int totalHitsThreshold = 3;
 
-    { // test that sorting on a single field with equal values uses the optimization with GREATER_THAN_OR_EQUAL_TO
+    { // test that sorting on a single field with equal values uses the optimization with
+      // GREATER_THAN_OR_EQUAL_TO
       final SortField sortField = new SortField("my_field1", SortField.Type.INT);
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =

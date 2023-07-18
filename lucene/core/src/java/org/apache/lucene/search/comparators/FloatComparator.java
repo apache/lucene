@@ -22,7 +22,6 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * Comparator based on {@link Float#compare} for {@code numHits}. This comparator provides a
@@ -62,12 +61,9 @@ public class FloatComparator extends NumericComparator<Float> {
 
   /** Leaf comparator for {@link FloatComparator} that provides skipping functionality */
   public class FloatLeafComparator extends NumericLeafComparator {
-    private final byte[] deltaOne;
 
     public FloatLeafComparator(LeafReaderContext context) throws IOException {
       super(context);
-      deltaOne = new byte[Float.BYTES];
-      FloatPoint.encodeDimension(1f, deltaOne, 0);
     }
 
     private float getValueForDoc(int doc) throws IOException {
@@ -110,22 +106,17 @@ public class FloatComparator extends NumericComparator<Float> {
 
     @Override
     protected void encodeBottom(byte[] packedValue) {
-      if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
-        byte[] bottomByte = new byte[Float.BYTES];
-        FloatPoint.encodeDimension(bottom, bottomByte, 0);
-        if (reverse == false) {
-          NumericUtils.subtract(bytesCount, 0, bottomByte, deltaOne, packedValue);
-        } else {
-          NumericUtils.add(bytesCount, 0, bottomByte, deltaOne, packedValue);
-        }
-      } else {
-        FloatPoint.encodeDimension(bottom, packedValue, 0);
-      }
+      FloatPoint.encodeDimension(bottom, packedValue, 0);
     }
 
     @Override
     protected void encodeTop(byte[] packedValue) {
       FloatPoint.encodeDimension(topValue, packedValue, 0);
+    }
+
+    @Override
+    protected boolean isBottomMinOrMax() {
+      return reverse ? bottom == Float.MIN_VALUE : bottom == Float.MAX_VALUE;
     }
   }
 }

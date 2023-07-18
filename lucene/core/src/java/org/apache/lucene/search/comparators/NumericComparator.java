@@ -32,6 +32,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -96,6 +97,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final int maxDoc;
     private byte[] minValueAsBytes;
     private byte[] maxValueAsBytes;
+    private byte[] deltaOne;
 
     private final CompetitiveIterator competitiveIterator;
     private long iteratorCost = -1;
@@ -136,6 +138,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         this.competitiveIterator =
             new CompetitiveIterator(
                 context, field, (dense == false && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO));
+        this.deltaOne = new byte[bytesCount];
+        this.deltaOne[deltaOne.length - 1] = 1;
       } else {
         this.competitiveIterator = null;
         this.enableSkipping = false;
@@ -211,7 +215,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (reverse == false) {
         if (queueFull) { // bottom is avilable only when queue is full
           maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
-          encodeBottom(maxValueAsBytes);
+          encodeBottom();
         }
         if (topValueSet) {
           minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
@@ -220,7 +224,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       } else {
         if (queueFull) { // bottom is avilable only when queue is full
           minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
-          encodeBottom(minValueAsBytes);
+          encodeBottom();
         }
         if (topValueSet) {
           maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
@@ -318,6 +322,26 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       }
     }
 
+    /**
+     * If {@link NumericComparator#pruning} equals {@link Pruning#GREATER_THAN_OR_EQUAL_TO}, we
+     * could better tune the {@link NumericLeafComparator#maxValueAsBytes}/{@link
+     * NumericLeafComparator#minValueAsBytes}. For instance, if the sort is ascending and bottom
+     * value is 5, we will use a range on [MIN_VALUE, 4].
+     */
+    private void encodeBottom() {
+      if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && isBottomMinOrMax() == false) {
+        byte[] bottom = new byte[bytesCount];
+        encodeBottom(bottom);
+        if (reverse == false) {
+          NumericUtils.subtract(bytesCount, 0, bottom, deltaOne, maxValueAsBytes);
+        } else {
+          NumericUtils.add(bytesCount, 0, bottom, deltaOne, minValueAsBytes);
+        }
+      } else {
+        encodeBottom(reverse == false ? maxValueAsBytes : minValueAsBytes);
+      }
+    }
+
     private class CompetitiveIterator extends DocIdSetIterator {
 
       private final LeafReaderContext context;
@@ -391,13 +415,16 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     /**
      * in ascending sort, missing value is competitive when it is less or equal(maybe there are two
      * or more comparators) than bottom value. if there is only one comparator(See {@link
-     * Pruning#GREATER_THAN_OR_EQUAL_TO}), missing value is competitive only when it is less than bottom value.
-     * vice versa in descending sort.
+     * Pruning#GREATER_THAN_OR_EQUAL_TO}), missing value is competitive only when it is less than
+     * bottom value. vice versa in descending sort.
      */
     protected abstract boolean isMissingValueCompetitive();
 
     protected abstract void encodeBottom(byte[] packedValue);
 
     protected abstract void encodeTop(byte[] packedValue);
+
+    /** Check bottom value is MIN_VALUE or MAX_VALUE. */
+    protected abstract boolean isBottomMinOrMax();
   }
 }
