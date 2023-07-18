@@ -93,7 +93,10 @@ void decoder_pool_get(uint32_t nb_decoders, void(*next_decoder)(decoder_t*, uint
         mutex_lock(decoder_mutex);
         if(decoder_pool_index + nb_decoders - 1 < NB_DECODERS) {
             dec_id = decoder_pool_index;
-            decoder_pool_index += nb_decoders;
+            for(uint32_t i = 0; i < nb_decoders; ++i) {
+                next_decoder(decoders_pool[decoder_pool_index], i, ctx);
+                decoders_pool[decoder_pool_index++] = 0;
+            }
             mutex_unlock(decoder_mutex);
         }
         else {
@@ -105,9 +108,6 @@ void decoder_pool_get(uint32_t nb_decoders, void(*next_decoder)(decoder_t*, uint
             mutex_unlock(decoder_mutex);
             __stop();
         }
-    }
-    for(int i = 0; i < nb_decoders; ++i) {
-        next_decoder(decoders_pool[dec_id + i], i, ctx);
     }
 }
 
@@ -127,6 +127,7 @@ void decoder_pool_release(uint32_t nb_decoders, decoder_t*(*next_decoder)(uint32
     mutex_lock(decoder_mutex);
     assert(decoder_pool_index >= nb_decoders);
     for(int i = 0; i < nb_decoders; ++i) {
+        assert(decoders_pool[decoder_pool_index - i - 1] == 0);
         decoders_pool[decoder_pool_index - i - 1] = next_decoder(i, ctx);
     }
     decoder_pool_index-=nb_decoders;
@@ -142,7 +143,7 @@ void decoder_pool_release(uint32_t nb_decoders, decoder_t*(*next_decoder)(uint32
     mutex_unlock(decoder_mutex);
 }
 
-static decoder_t* next_decoder_release_one(uint32_t id, __attribute__((unused)) void* ctx) {
+static decoder_t* next_decoder_release_one(__attribute__((unused)) uint32_t id, void* ctx) {
     return (decoder_t*)ctx;
 }
 
@@ -198,7 +199,7 @@ uint32_t decode_byte_from(decoder_t *decoder)
 uint32_t decode_short_from(decoder_t *decoder)
 {
     uintptr_t prev_mram = decoder->reader.mram_addr;
-    uint32_t val = *(uint16_t*)(decoder->ptr);
+    uint32_t val = *(uint8_t*)(decoder->ptr) + (*((uint8_t*)(decoder->ptr) + 1) << 8);
     decoder->ptr = seqread_get(decoder->ptr, sizeof(uint16_t), &(decoder->reader));
     if (prev_mram != decoder->reader.mram_addr) {
             READ_256_BYTES(decoder);
