@@ -18,6 +18,8 @@
 package org.apache.lucene.util.hnsw;
 
 import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -48,7 +50,7 @@ public class ToParentJoinKnnResults extends KnnResults {
     }
   }
 
-  private final HashMap<Integer, IntCounter> docIdRefs;
+  private final Map<Integer, IntCounter> docIdRefs;
   private final BitSet parentBitSet;
   private final int k;
   private final IntToIntFunction vectorToOrd;
