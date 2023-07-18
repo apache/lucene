@@ -77,7 +77,7 @@ public abstract class KnnResults {
     queue.setVisitedCount(count);
   }
 
-  public final int size() {
+  public int size() {
     return queue.size();
   }
 

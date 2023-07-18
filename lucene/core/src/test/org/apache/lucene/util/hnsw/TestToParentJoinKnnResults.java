@@ -46,7 +46,6 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     ToParentJoinKnnResults results = new ToParentJoinKnnResults(7, parentBitSet, i -> i);
     for (int i = 0; i < nodes.length; i++) {
       results.collect(nodes[i], scores[i]);
-      results.ensureValidCache();
     }
     TopDocs topDocs = results.topDocs();
     int[] sortedNodes = new int[topDocs.scoreDocs.length];
@@ -61,7 +60,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
 
   public void testInsertionWithOverflow() throws IOException {
     int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2, 12, 14};
-    float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 3f, 4f, 1f, 1f};
+    float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 3f, 4f, 1f, 0.2f};
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
     ToParentJoinKnnResults results = new ToParentJoinKnnResults(5, parentBitSet, i -> i);

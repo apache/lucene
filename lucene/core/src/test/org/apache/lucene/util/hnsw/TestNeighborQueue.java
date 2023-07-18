@@ -114,6 +114,38 @@ public class TestNeighborQueue extends LuceneTestCase {
     assertEquals(maxNode, nn.topNode());
   }
 
+  public void testCollectAndProvideResultsSameIds() {
+    NeighborQueue queue = new NeighborQueue(7, false);
+    int randomNodeId = random().nextInt(10_000) + 1;
+    int[] nodes =
+        new int[] {
+          randomNodeId,
+          randomNodeId,
+          randomNodeId,
+          randomNodeId,
+          randomNodeId,
+          randomNodeId,
+          randomNodeId
+        };
+    float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
+    for (int i = 0; i < nodes.length; i++) {
+      queue.push(nodes[i], scores[i]);
+    }
+    int i = 0;
+    int[] sortedNodes = new int[7];
+    float[] sortedScores = new float[7];
+    while (i < sortedNodes.length) {
+      int node = queue.topNode();
+      float score = queue.topScore();
+      queue.pop();
+      ++i;
+      sortedNodes[sortedNodes.length - i] = node;
+      sortedScores[sortedNodes.length - i] = score;
+    }
+    assertArrayEquals(nodes, sortedNodes);
+    assertArrayEquals(new float[] {4f, 2f, 2f, 1.2f, 1f, 0.6f, 0.5f}, sortedScores, 0f);
+  }
+
   public void testInvalidArguments() {
     expectThrows(IllegalArgumentException.class, () -> new NeighborQueue(0, false));
   }

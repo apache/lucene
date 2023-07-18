@@ -55,32 +55,35 @@ public final class LongHeap {
   /**
    * Adds a value in log(size) time. Grows unbounded as needed to accommodate new values.
    *
-   * @return the index of the heap array where the node was added.
+   * @return the new 'top' element in the queue.
    */
-  public final int push(long element) {
+  public final long push(long element) {
     size++;
     if (size == heap.length) {
       heap = ArrayUtil.grow(heap, (size * 3 + 1) / 2);
     }
     heap[size] = element;
-    return upHeap(size);
+    upHeap(size);
+    return heap[1];
   }
 
   /**
    * Adds a value to an LongHeap in log(size) time. If the number of values would exceed the heap's
    * maxSize, the least value is discarded.
    *
-   * @return the heap position of the new value if it was pushed, -1 if it was not inserted
+   * @return whether the value was added (unless the heap is full, or the new value is less than the
+   *     top value)
    */
-  public int insertWithOverflow(long value) {
+  public boolean insertWithOverflow(long value) {
     if (size >= maxSize) {
       if (value < heap[1]) {
-        return -1;
+        return false;
       }
-
-      return (int) updateTop(value)[1];
+      updateTop(value);
+      return true;
     }
-    return push(value);
+    push(value);
+    return true;
   }
 
   /**
@@ -127,40 +130,12 @@ public final class LongHeap {
    * Calling this method on an empty LongHeap has no visible effect.
    *
    * @param value the new element that is less than the current top.
-   * @return the new 'top' element after shuffling the heap, the index where the value has been
-   *     saved
+   * @return the new 'top' element after shuffling the heap.
    */
-  public final long[] updateTop(long value) {
+  public final long updateTop(long value) {
     heap[1] = value;
-    int valueIndex = downHeap(1);
-    return new long[] {heap[1], valueIndex};
-  }
-
-  /**
-   * Replace the value at {@code heapIndex} of the pq with {@code value}. Should be called when an
-   * element value changes. Still log(n) worst case, but it's at least twice as fast to
-   *
-   * <pre class="prettyprint">
-   * pq.updateTop(value);
-   * </pre>
-   *
-   * instead of
-   *
-   * <pre class="prettyprint">
-   * pq.pop();
-   * pq.push(value);
-   * </pre>
-   *
-   * Calling this method on an empty LongHeap has no visible effect.
-   *
-   * @param value the new element that is less than the current top.
-   * @return the new heap index where the value has been saved.
-   */
-  public final int updateElement(int heapIndex, long value) {
-    long oldValue = heap[heapIndex];
-    heap[heapIndex] = value;
-    // Since we are a min heap, if the new value is less, we need to make sure to bubble it up
-    return oldValue >= value ? upHeap(heapIndex) : downHeap(heapIndex);
+    downHeap(1);
+    return heap[1];
   }
 
   /** Returns the number of elements currently stored in the PriorityQueue. */
@@ -168,17 +143,12 @@ public final class LongHeap {
     return size;
   }
 
-  /** Returns the number of elements currently stored in the PriorityQueue. */
-  public final int maxSize() {
-    return maxSize;
-  }
-
   /** Removes all entries from the PriorityQueue. */
   public final void clear() {
     size = 0;
   }
 
-  private int upHeap(int origPos) {
+  private void upHeap(int origPos) {
     int i = origPos;
     long value = heap[i]; // save bottom value
     int j = i >>> 1;
@@ -188,10 +158,9 @@ public final class LongHeap {
       j = j >>> 1;
     }
     heap[i] = value; // install saved value
-    return i;
   }
 
-  private int downHeap(int i) {
+  private void downHeap(int i) {
     long value = heap[i]; // save top value
     int j = i << 1; // find smaller child
     int k = j + 1;
@@ -208,7 +177,6 @@ public final class LongHeap {
       }
     }
     heap[i] = value; // install saved value
-    return i;
   }
 
   public void pushAll(LongHeap other) {

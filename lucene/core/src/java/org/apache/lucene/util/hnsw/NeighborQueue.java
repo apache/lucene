@@ -64,7 +64,7 @@ public class NeighborQueue {
   /**
    * @return the number of elements in the heap
    */
-  public final int size() {
+  public int size() {
     return heap.size();
   }
 
@@ -75,49 +75,7 @@ public class NeighborQueue {
    * @param newScore the score of the neighbor, relative to some other node
    */
   public void add(int newNode, float newScore) {
-    push(newNode, newScore);
-  }
-
-  /**
-   * @param newNode Node to push onto the heap
-   * @param newScore score related to the newNode
-   * @return The position of the value within the heap
-   */
-  protected final int push(int newNode, float newScore) {
-    return heap.push(encode(newNode, newScore));
-  }
-
-  /**
-   * @param index The heap index from which to gather the score
-   * @return The score stored at the provided index
-   */
-  protected final float getScoreAt(int index) {
-    return decodeScore(heap.get(index));
-  }
-
-  /**
-   * @param index The heap index from which to gather the nodeId
-   * @return The nodeId stored at the provided index
-   */
-  protected final int getNodeAt(int index) {
-    return decodeNodeId(heap.get(index));
-  }
-
-  /**
-   * @param index heap index to update
-   * @param nodeId the updated node id
-   * @param nodeScore the updated node score
-   * @return the position at which the node and id are stored
-   */
-  protected final int updateElement(int index, int nodeId, float nodeScore) {
-    return heap.updateElement(index, encode(nodeId, nodeScore));
-  }
-
-  /**
-   * @return is the underlying heap currently at or exceeding maxSize()
-   */
-  protected final boolean isHeapFull() {
-    return size() >= heap.maxSize();
+    heap.push(encode(newNode, newScore));
   }
 
   /**
@@ -130,10 +88,6 @@ public class NeighborQueue {
    * @param newScore the score of the neighbor, relative to some other node
    */
   public boolean insertWithOverflow(int newNode, float newScore) {
-    return insertWithOverflowWithPos(newNode, newScore) > -1;
-  }
-
-  protected int insertWithOverflowWithPos(int newNode, float newScore) {
     return heap.insertWithOverflow(encode(newNode, newScore));
   }
 
@@ -159,7 +113,7 @@ public class NeighborQueue {
    * @param score the node score
    * @return the encoded score, node ID
    */
-  protected final long encode(int node, float score) {
+  private long encode(int node, float score) {
     return order.apply(
         (((long) NumericUtils.floatToSortableInt(score)) << 32) | (0xFFFFFFFFL & ~node));
   }
@@ -177,7 +131,7 @@ public class NeighborQueue {
     return decodeNodeId(heap.pop());
   }
 
-  public final int[] nodes() {
+  public int[] nodes() {
     int size = size();
     int[] nodes = new int[size];
     for (int i = 0; i < size; i++) {
@@ -187,7 +141,7 @@ public class NeighborQueue {
   }
 
   /** Returns the top element's node id. */
-  public final int topNode() {
+  public int topNode() {
     return decodeNodeId(heap.top());
   }
 
@@ -195,29 +149,28 @@ public class NeighborQueue {
    * Returns the top element's node score. For the min heap this is the minimum score. For the max
    * heap this is the maximum score.
    */
-  public final float topScore() {
+  public float topScore() {
     return decodeScore(heap.top());
   }
 
   public void clear() {
     heap.clear();
     visitedCount = 0;
-    incomplete = false;
   }
 
-  public final int visitedCount() {
+  public int visitedCount() {
     return visitedCount;
   }
 
-  public final void setVisitedCount(int visitedCount) {
+  public void setVisitedCount(int visitedCount) {
     this.visitedCount = visitedCount;
   }
 
-  public final boolean incomplete() {
+  public boolean incomplete() {
     return incomplete;
   }
 
-  public final void markIncomplete() {
+  public void markIncomplete() {
     this.incomplete = true;
   }
 
