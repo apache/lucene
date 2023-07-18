@@ -113,26 +113,42 @@ final class MaxScoreBulkScorer extends BulkScorer {
       throws IOException {
     DisiWrapper top = essentialQueue.top();
 
-    DisiWrapper top2 = essentialQueue.top2();
-    if (top2 == null || top2.doc >= max) {
-      // single essential clause in this window, we can iterate it directly and skip the bitset.
-      // this is a common case for 2-clauses queries
-      for (int doc = top.doc; doc < max; doc = top.iterator.nextDoc()) {
-        scoreNonEssentialClauses(collector, doc, top.scorer.score());
-        if (minCompetitiveScoreUpdated) {
-          // force scorers to be partitioned again before collecting more hits
-          top.iterator.nextDoc();
-          break;
-        }
-      }
-      top.doc = top.iterator.docID();
-      essentialQueue.updateTop();
-      return;
-    }
-
     int innerWindowMin = top.doc;
     int innerWindowMax = Math.min(innerWindowMin | INNER_WINDOW_MASK, max - 1) + 1;
-    int innerWindowBase = innerWindowMin & ~INNER_WINDOW_MASK;
+
+    DisiWrapper top2 = essentialQueue.top2();
+    if (top2 == null) {
+      scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
+    } else if (top2.doc >= innerWindowMax) {
+      scoreInnerWindowSingleEssentialClause(collector, acceptDocs, Math.min(max, top2.doc));
+    } else {
+      int innerWindowBase = innerWindowMin & ~INNER_WINDOW_MASK;
+      scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, innerWindowBase, innerWindowMax);
+    }
+  }
+
+  private void scoreInnerWindowSingleEssentialClause(LeafCollector collector, Bits acceptDocs, int upTo) throws IOException {
+    DisiWrapper top = essentialQueue.top();
+
+    // single essential clause in this window, we can iterate it directly and skip the bitset.
+    // this is a common case for 2-clauses queries
+    for (int doc = top.doc; doc < upTo; doc = top.iterator.nextDoc()) {
+      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+        continue;
+      }
+      scoreNonEssentialClauses(collector, doc, top.scorer.score());
+      if (minCompetitiveScoreUpdated) {
+        // force scorers to be partitioned again before collecting more hits
+        top.iterator.nextDoc();
+        break;
+      }
+    }
+    top.doc = top.iterator.docID();
+    essentialQueue.updateTop();
+  }
+
+  private void scoreInnerWindowMultipleEssentialClauses(LeafCollector collector, Bits acceptDocs, int innerWindowBase, int innerWindowMax) throws IOException {
+    DisiWrapper top = essentialQueue.top();
 
     // Collect matches of essential clauses into a bitset
     do {
