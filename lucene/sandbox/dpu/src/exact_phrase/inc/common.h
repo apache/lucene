@@ -31,7 +31,9 @@
  * the thread handling the query will be stopped and resumed
  * when decoders are released by other tasklets
  */
-#define NB_DECODERS (150)
+#define NB_DECODERS_FOR_POSTINGS 128
+#define NB_DECODERS ((NR_TASKLETS << 1) + NB_DECODERS_FOR_POSTINGS)
+
 /**
  * Encoding for PIM phrase query type
  */
