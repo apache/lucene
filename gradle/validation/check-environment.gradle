@@ -22,7 +22,7 @@ import org.gradle.util.GradleVersion
 
 configure(rootProject) {
   ext {
-    expectedGradleVersion = '8.2'
+    expectedGradleVersion = '7.6'
   }
 
   wrapper {
