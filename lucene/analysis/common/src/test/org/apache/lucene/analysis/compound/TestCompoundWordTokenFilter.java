@@ -370,7 +370,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     HyphenationCompoundWordTokenFilter tf =
         new HyphenationCompoundWordTokenFilter(whitespaceMockTokenizer("Rindfleisch"), hyphenator);
 
-    // TODO Rindfleisch returned twice is another issue of the HyphenationCompoundTokenFilter
     assertTokenStreamContents(tf, new String[] {"Rindfleisch", "Rind", "fleisch"});
   }
 
@@ -477,8 +476,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     String input = "fußball";
     InputSource is = new InputSource(getClass().getResource("hyphenation-LUCENE-8183.xml").toExternalForm());
     HyphenationTree hyphenator = HyphenationCompoundWordTokenFilter.getHyphenationTree(is);
-    // Hyphenation hyphenation = new Hyphenation(new int[] {0, 3, 7}); // fuß ball
-    // HyphenationTree hyphenator = new MockHyphenator(Collections.singletonMap(input, hyphenation));
     CharArraySet dictionary = makeDictionary("fußball", "fuß", "ball");
 
     // test the default configuration as baseline
@@ -586,22 +583,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
       } else {
         return false;
       }
-    }
-  }
-
-  // Hyphenator that has prior knowledge of hyphenation points for terms
-  private static class MockHyphenator extends HyphenationTree {
-
-    private final Map<String, Hyphenation> hyphenations;
-
-    MockHyphenator(Map<String, Hyphenation> hyphenations) {
-      this.hyphenations = hyphenations;
-    }
-
-    @Override
-    public Hyphenation hyphenate(
-        char[] w, int offset, int len, int remainCharCount, int pushCharCount) {
-      return hyphenations.get(new String(w, offset, len));
     }
   }
 

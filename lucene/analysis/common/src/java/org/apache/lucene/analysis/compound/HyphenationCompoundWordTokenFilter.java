@@ -34,7 +34,7 @@ import org.xml.sax.InputSource;
  */
 public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterBase {
   private final HyphenationTree hyphenator;
-  private boolean noSubMatches;
+  private final boolean noSubMatches;
   private final boolean noOverlappingMatches;
   private final boolean calcSubMatches;
 
@@ -203,7 +203,6 @@ public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterB
       if (noOverlappingMatches) { // if we do not want overlapping subwords
         i = Math.max(i, consumed); // skip over consumed hyp
       }
-      int remaining = hyp.length - i;
       int start = hyp[i];
       int until = noSubMatches ? Math.max(consumed, i) : i;
       for (int j = hyp.length - 1; j > until; j--) {
