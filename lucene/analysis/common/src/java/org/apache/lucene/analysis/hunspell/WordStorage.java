@@ -19,8 +19,7 @@ package org.apache.lucene.analysis.hunspell;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -49,7 +48,7 @@ import org.apache.lucene.util.fst.IntSequenceOutputs;
  * The entries are stored in a contiguous byte array, identified by their offsets, using {@link
  * DataOutput#writeVInt} ()} VINT} format for compression.
  */
-class WordStorage {
+abstract class WordStorage {
   private static final int OFFSET_BITS = 25;
   private static final int OFFSET_MASK = (1 << OFFSET_BITS) - 1;
   private static final int COLLISION_MASK = 0x40;
@@ -91,12 +90,15 @@ class WordStorage {
    */
   private final byte[] wordData;
 
-  private WordStorage(
-      int maxEntryLength, boolean hasCustomMorphData, int[] hashTable, byte[] wordData) {
-    this.maxEntryLength = maxEntryLength;
-    this.hasCustomMorphData = hasCustomMorphData;
-    this.hashTable = hashTable;
-    this.wordData = wordData;
+  WordStorage(Builder builder) throws IOException {
+    if (builder.hashTable.length > 0) {
+      assert !builder.group.isEmpty() : "WordStorage builder should be only used once";
+      builder.flushGroup();
+    }
+    this.maxEntryLength = builder.maxEntryLength;
+    this.hasCustomMorphData = builder.hasCustomMorphData;
+    this.hashTable = builder.hashTable.length == 0 ? new int[1] : builder.hashTable;
+    this.wordData = ArrayUtil.copyOfSubArray(builder.wordData, 0, builder.dataWriter.getPosition());
   }
 
   IntsRef lookupWord(char[] word, int offset, int length) {
@@ -157,22 +159,20 @@ class WordStorage {
    * or ONLYINCOMPOUND flags). Note that the callback arguments (word and forms) are reused, so they
    * can be modified in any way, but may not be saved for later by the processor
    */
-  void processSuggestibleWords(
-      int minLength, int maxLength, BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+  void processSuggestibleWords(int minLength, int maxLength, Consumer<FlyweightEntry> processor) {
     processAllWords(minLength, maxLength, true, processor);
   }
 
   void processAllWords(
-      int minLength,
-      int maxLength,
-      boolean suggestibleOnly,
-      BiConsumer<CharsRef, Supplier<IntsRef>> processor) {
+      int minLength, int maxLength, boolean suggestibleOnly, Consumer<FlyweightEntry> processor) {
     assert minLength <= maxLength;
     maxLength = Math.min(maxEntryLength, maxLength);
 
     CharsRef chars = new CharsRef(maxLength);
     ByteArrayDataInput in = new ByteArrayDataInput(wordData);
-    var formSupplier = new LazyFormReader(in);
+
+    var entry = new MyFlyweightEntry(chars, in);
+
     for (int entryCode : hashTable) {
       int pos = entryCode & OFFSET_MASK;
       int mask = entryCode >>> OFFSET_BITS;
@@ -195,7 +195,7 @@ class WordStorage {
         }
 
         if (mightMatch) {
-          formSupplier.dataPos = in.getPosition();
+          entry.dataPos = in.getPosition();
           while (prevPos != 0 && wordStart > 0) {
             in.setPosition(prevPos);
             chars.chars[--wordStart] = (char) in.readVInt();
@@ -205,7 +205,7 @@ class WordStorage {
           if (prevPos == 0) {
             chars.offset = wordStart;
             chars.length = maxLength - wordStart;
-            processor.accept(chars, formSupplier);
+            processor.accept(entry);
           }
         }
 
@@ -422,30 +422,61 @@ class WordStorage {
       }
       return false;
     }
-
-    WordStorage build() throws IOException {
-      if (hashTable.length > 0) {
-        assert !group.isEmpty() : "build() should be only called once";
-        flushGroup();
-      }
-      byte[] trimmedData = ArrayUtil.copyOfSubArray(wordData, 0, dataWriter.getPosition());
-      int[] table = hashTable.length == 0 ? new int[1] : hashTable;
-      return new WordStorage(maxEntryLength, hasCustomMorphData, table, trimmedData);
-    }
   }
 
-  private class LazyFormReader implements Supplier<IntsRef> {
-    int dataPos;
-    private final ByteArrayDataInput in;
-    private final IntsRef forms;
+  abstract char caseFold(char c);
 
-    LazyFormReader(ByteArrayDataInput in) {
+  private class MyFlyweightEntry extends FlyweightEntry {
+    private final CharsRef chars;
+    private final ByteArrayDataInput in;
+    int dataPos;
+    private final IntsRef forms = new IntsRef();
+    private final CharSequence lower;
+
+    MyFlyweightEntry(CharsRef chars, ByteArrayDataInput in) {
+      this.chars = chars;
       this.in = in;
-      forms = new IntsRef();
+      lower =
+          new CharSequence() {
+            @Override
+            public int length() {
+              return chars.length;
+            }
+
+            @Override
+            public char charAt(int index) {
+              return caseFold(chars.chars[index + chars.offset]);
+            }
+
+            @Override
+            public CharSequence subSequence(int start, int end) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public String toString() {
+              throw new UnsupportedOperationException();
+            }
+          };
     }
 
     @Override
-    public IntsRef get() {
+    boolean hasTitleCase() {
+      return Character.isUpperCase(chars.charAt(0)) && WordCase.caseOf(chars) == WordCase.TITLE;
+    }
+
+    @Override
+    CharsRef root() {
+      return chars;
+    }
+
+    @Override
+    CharSequence lowerCaseRoot() {
+      return lower;
+    }
+
+    @Override
+    IntsRef forms() {
       in.setPosition(dataPos);
       int entryCount = in.readVInt() / (hasCustomMorphData ? 2 : 1);
       if (forms.ints.length < entryCount) {

@@ -77,6 +77,8 @@ Improvements
 
 * LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
 
+* GITHUB#12447: Hunspell: speed up the dictionary enumeration (Peter Gromov)
+
 Optimizations
 ---------------------
 
