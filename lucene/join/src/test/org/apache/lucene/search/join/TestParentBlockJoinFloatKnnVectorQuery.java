@@ -1,0 +1,317 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.lucene.search.join;
+
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.Weight;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+
+public class TestParentBlockJoinFloatKnnVectorQuery extends LuceneTestCase {
+
+  private static String encodeInts(int[] i) {
+    return Arrays.toString(i);
+  }
+
+  private static int[] decodeInts(String s) {
+    s = s.substring(1, s.length() - 1);
+    String[] ints = s.split(", ");
+    int[] r = new int[ints.length];
+    for (int i = 0; i < r.length; i++) {
+      r[i] = Integer.parseInt(ints[i]);
+    }
+    return r;
+  }
+
+  private static BitSetProducer parentFilter(IndexReader r) throws IOException {
+    // Create a filter that defines "parent" documents in the index
+    BitSetProducer parentsFilter =
+        new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+    CheckJoinIndex.check(r, parentsFilter);
+    return parentsFilter;
+  }
+
+  private Document makeParent(int[] children) {
+    Document parent = new Document();
+    parent.add(newStringField("docType", "_parent", Field.Store.NO));
+    parent.add(newStringField("id", encodeInts(children), Field.Store.YES));
+    return parent;
+  }
+
+  public void testEmptyIndex() throws IOException {
+    try (Directory indexStore = getIndexStore("field");
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      ToParentBlockJoinFloatKnnVectorQuery kvq =
+          new ToParentBlockJoinFloatKnnVectorQuery(
+              "field",
+              new float[] {1, 2},
+              null,
+              2,
+              new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent"))));
+      assertMatches(searcher, kvq, 0);
+      Query q = searcher.rewrite(kvq);
+      assertTrue(q instanceof MatchNoDocsQuery);
+    }
+  }
+
+  public void testFilterWithNoVectorMatches() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      Query filter = new TermQuery(new Term("other", "value"));
+      BitSetProducer parentFilter = parentFilter(reader);
+      ToParentBlockJoinFloatKnnVectorQuery kvq =
+          new ToParentBlockJoinFloatKnnVectorQuery(
+              "field", new float[] {1, 2}, filter, 10, parentFilter);
+      TopDocs topDocs = searcher.search(kvq, 3);
+      assertEquals(0, topDocs.totalHits.value);
+    }
+  }
+
+  public void testScoringWithMultipleChildren() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        List<Document> toAdd = new ArrayList<>();
+        for (int j = 1; j <= 5; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j}));
+          doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
+          toAdd.add(doc);
+        }
+        toAdd.add(makeParent(new int[] {1, 2, 3, 4, 5}));
+        w.addDocuments(toAdd);
+
+        toAdd = new ArrayList<>();
+        for (int j = 7; j <= 11; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j}));
+          doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
+          toAdd.add(doc);
+        }
+        toAdd.add(makeParent(new int[] {6, 7, 8, 9, 10}));
+        w.addDocuments(toAdd);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
+        ToParentBlockJoinFloatKnnVectorQuery query =
+            new ToParentBlockJoinFloatKnnVectorQuery(
+                "field", new float[] {2, 2}, null, 3, parentFilter);
+        assertScorerResults(
+            searcher,
+            query,
+            new float[] {1f, 1f / 51f},
+            new String[] {
+              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
+            });
+
+        query =
+            new ToParentBlockJoinFloatKnnVectorQuery(
+                "field", new float[] {6, 6}, null, 3, parentFilter);
+        assertScorerResults(
+            searcher,
+            query,
+            new float[] {1f / 3f, 1f / 3f},
+            new String[] {
+              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
+            });
+      }
+    }
+  }
+
+  public void testScoreCosine() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 1; j <= 5; j++) {
+          List<Document> toAdd = new ArrayList<>();
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          toAdd.add(doc);
+          toAdd.add(makeParent(new int[] {j}));
+          w.addDocuments(toAdd);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
+        ToParentBlockJoinFloatKnnVectorQuery query =
+            new ToParentBlockJoinFloatKnnVectorQuery(
+                "field", new float[] {2, 3}, null, 3, parentFilter);
+        /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
+         * normalized by (1 + x) /2.
+         */
+        float score0 =
+            (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
+
+        /* score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
+         * normalized by (1 + x) /2
+         */
+        float score1 =
+            (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
+
+        assertScorerResults(
+            searcher, query, new float[] {score0, score1}, new String[] {"[1]", "[2]"});
+      }
+    }
+  }
+
+  /** Test that when vectors are abnormally distributed among segments, we still find the top K */
+  public void testSkewedIndex() throws IOException {
+    /* We have to choose the numbers carefully here so that some segment has more than the expected
+     * number of top K documents, but no more than K documents in total (otherwise we might occasionally
+     * randomly fail to find one).
+     */
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        int r = 0;
+        for (int i = 0; i < 5; i++) {
+          for (int j = 0; j < 5; j++) {
+            List<Document> toAdd = new ArrayList<>();
+            Document doc = new Document();
+            doc.add(getKnnVectorField("field", new float[] {r, r}));
+            doc.add(newStringField("id", Integer.toString(r), Field.Store.YES));
+            toAdd.add(doc);
+            toAdd.add(makeParent(new int[] {r}));
+            w.addDocuments(toAdd);
+            ++r;
+          }
+          w.flush();
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        TopDocs results =
+            searcher.search(
+                new ToParentBlockJoinFloatKnnVectorQuery(
+                    "field", new float[] {0, 0}, null, 8, parentFilter(searcher.getIndexReader())),
+                10);
+        assertEquals(8, results.scoreDocs.length);
+        assertIdMatches(reader, "[0]", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "[7]", results.scoreDocs[7].doc);
+
+        // test some results in the middle of the sequence - also tests docid tiebreaking
+        results =
+            searcher.search(
+                new ToParentBlockJoinFloatKnnVectorQuery(
+                    "field",
+                    new float[] {10, 10},
+                    null,
+                    8,
+                    parentFilter(searcher.getIndexReader())),
+                10);
+        assertEquals(8, results.scoreDocs.length);
+        assertIdMatches(reader, "[10]", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "[6]", results.scoreDocs[7].doc);
+      }
+    }
+  }
+
+  Directory getIndexStore(String field, float[]... contents) throws IOException {
+    Directory indexStore = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
+    for (int i = 0; i < contents.length; ++i) {
+      List<Document> toAdd = new ArrayList<>();
+      Document doc = new Document();
+      doc.add(getKnnVectorField(field, contents[i]));
+      doc.add(newStringField("id", Integer.toString(i), Field.Store.YES));
+      toAdd.add(doc);
+      toAdd.add(makeParent(new int[] {i}));
+      writer.addDocuments(toAdd);
+    }
+    // Add some documents without a vector
+    for (int i = 0; i < 5; i++) {
+      List<Document> toAdd = new ArrayList<>();
+      Document doc = new Document();
+      doc.add(new StringField("other", "value", Field.Store.NO));
+      toAdd.add(doc);
+      toAdd.add(makeParent(new int[0]));
+      writer.addDocuments(toAdd);
+    }
+    writer.close();
+    return indexStore;
+  }
+
+  // @Override
+  Field getKnnVectorField(String name, float[] vector) {
+    return new KnnFloatVectorField(name, vector);
+  }
+
+  Field getKnnVectorField(
+      String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
+    return new KnnFloatVectorField(name, vector, vectorSimilarityFunction);
+  }
+
+  private void assertMatches(IndexSearcher searcher, Query q, int expectedMatches)
+      throws IOException {
+    ScoreDoc[] result = searcher.search(q, 1000).scoreDocs;
+    assertEquals(expectedMatches, result.length);
+  }
+
+  void assertIdMatches(IndexReader reader, String expectedId, int docId) throws IOException {
+    String actualId = reader.storedFields().document(docId).get("id");
+    assertEquals(expectedId, actualId);
+  }
+
+  void assertScorerResults(IndexSearcher searcher, Query query, float[] scores, String[] ids)
+      throws IOException {
+    IndexReader reader = searcher.getIndexReader();
+    Query rewritten = query.rewrite(searcher);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+    Scorer scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
+    // prior to advancing, score is undefined
+    assertEquals(-1, scorer.docID());
+    expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+    DocIdSetIterator it = scorer.iterator();
+    for (int i = 0; i < scores.length; i++) {
+      int docId = it.nextDoc();
+      assertNotEquals(NO_MORE_DOCS, docId);
+      assertEquals(scores[i], scorer.score(), 0.0001);
+      assertIdMatches(reader, ids[i], docId);
+    }
+  }
+}

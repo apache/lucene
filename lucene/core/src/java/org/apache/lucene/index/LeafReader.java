@@ -308,7 +308,8 @@ public abstract non-sealed class LeafReader extends IndexReader {
       int visitedLimit)
       throws IOException {
     throw new UnsupportedOperationException(
-        "vector reader doesn't provide KNN search with results provider");
+        this.getClass().getName()
+            + " vector reader doesn't provide KNN search with results provider");
   }
 
   /**
