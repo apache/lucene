@@ -26,9 +26,8 @@ import org.apache.lucene.util.FixedBitSet;
 final class MaxScoreBulkScorer extends BulkScorer {
 
   static final int INNER_WINDOW_SIZE = 1 << 11;
-  private static final int INNER_WINDOW_MASK = INNER_WINDOW_SIZE - 1;
 
-  private final int maxDoc;
+  private final int docBase, maxDoc;
   // All scorers, sorted by increasing max score.
   private final DisiWrapper[] allScorers;
   // These are the last scorers from `allScorers` that are "essential", ie. required for a match to
@@ -47,7 +46,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final long[] windowMatches = new long[FixedBitSet.bits2words(INNER_WINDOW_SIZE)];
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
 
-  MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {
+  MaxScoreBulkScorer(int docBase, int maxDoc, List<Scorer> scorers) throws IOException {
+    this.docBase = docBase;
     this.maxDoc = maxDoc;
     allScorers = new DisiWrapper[scorers.size()];
     int i = 0;
@@ -113,21 +113,20 @@ final class MaxScoreBulkScorer extends BulkScorer {
       throws IOException {
     DisiWrapper top = essentialQueue.top();
 
-    int innerWindowMin = top.doc;
-    int innerWindowMax = Math.min(innerWindowMin | INNER_WINDOW_MASK, max - 1) + 1;
-
     DisiWrapper top2 = essentialQueue.top2();
     if (top2 == null) {
       scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
-    } else if (top2.doc >= innerWindowMax) {
+    } else if (top2.doc - INNER_WINDOW_SIZE / 2 >= top.doc) {
+      // The first half of the window would match a single clause. Let's collect this single clause
+      // until the next doc ID of the next clause.
       scoreInnerWindowSingleEssentialClause(collector, acceptDocs, Math.min(max, top2.doc));
     } else {
-      int innerWindowBase = innerWindowMin & ~INNER_WINDOW_MASK;
-      scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, innerWindowBase, innerWindowMax);
+      scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, max);
     }
   }
 
-  private void scoreInnerWindowSingleEssentialClause(LeafCollector collector, Bits acceptDocs, int upTo) throws IOException {
+  private void scoreInnerWindowSingleEssentialClause(
+      LeafCollector collector, Bits acceptDocs, int upTo) throws IOException {
     DisiWrapper top = essentialQueue.top();
 
     // single essential clause in this window, we can iterate it directly and skip the bitset.
@@ -147,14 +146,18 @@ final class MaxScoreBulkScorer extends BulkScorer {
     essentialQueue.updateTop();
   }
 
-  private void scoreInnerWindowMultipleEssentialClauses(LeafCollector collector, Bits acceptDocs, int innerWindowBase, int innerWindowMax) throws IOException {
+  private void scoreInnerWindowMultipleEssentialClauses(
+      LeafCollector collector, Bits acceptDocs, int max) throws IOException {
     DisiWrapper top = essentialQueue.top();
+
+    int innerWindowMin = top.doc;
+    int innerWindowMax = (int) Math.min(max, (long) innerWindowMin + INNER_WINDOW_SIZE);
 
     // Collect matches of essential clauses into a bitset
     do {
       for (int doc = top.doc; doc < innerWindowMax; doc = top.iterator.nextDoc()) {
         if (acceptDocs == null || acceptDocs.get(doc)) {
-          final int i = doc & INNER_WINDOW_MASK;
+          final int i = doc - innerWindowMin;
           windowMatches[i >>> 6] |= 1L << i;
           windowScores[i] += top.scorer.score();
         }
@@ -170,7 +173,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         int ntz = Long.numberOfTrailingZeros(bits);
         bits ^= 1L << ntz;
         int index = wordIndex << 6 | ntz;
-        int doc = innerWindowBase | index;
+        int doc = innerWindowMin + index;
         double score = windowScores[index];
         windowScores[index] = 0d;
 
@@ -198,7 +201,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     // Score at least an entire inner window of docs
     windowMax =
         Math.max(
-            windowMax, (int) Math.min(Integer.MAX_VALUE, (windowMin | INNER_WINDOW_MASK) + 1L));
+            windowMax, (int) Math.min(Integer.MAX_VALUE, (long) windowMin + INNER_WINDOW_SIZE));
 
     for (DisiWrapper scorer : allScorers) {
       if (scorer.doc < windowMax) {
