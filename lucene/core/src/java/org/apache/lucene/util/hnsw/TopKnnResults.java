@@ -25,7 +25,7 @@ import org.apache.lucene.search.TotalHits;
  * TopKnnResults is a specific KnnResults. A minHeap is used to keep track of the currently
  * collected vectors allowing for efficient updates as better vectors are collected.
  */
-public class TopKnnResults implements KnnResults {
+public class TopKnnResults extends KnnResults {
 
   /** A provider used to construct a new {@link TopKnnResults} */
   public static class Provider implements KnnResultsProvider {
@@ -49,8 +49,6 @@ public class TopKnnResults implements KnnResults {
   protected final int k;
   private final IntToIntFunction vectorOrdToDocId;
   protected final NeighborQueue queue;
-  private boolean incomplete;
-  private int numVisited;
 
   /**
    * @param k the number of neighbors to collect
@@ -64,30 +62,8 @@ public class TopKnnResults implements KnnResults {
   }
 
   @Override
-  public void clear() {
+  public void doClear() {
     this.queue.clear();
-    this.incomplete = false;
-    this.numVisited = 0;
-  }
-
-  @Override
-  public boolean incomplete() {
-    return incomplete;
-  }
-
-  @Override
-  public void markIncomplete() {
-    this.incomplete = true;
-  }
-
-  @Override
-  public void setVisitedCount(int count) {
-    this.numVisited = count;
-  }
-
-  @Override
-  public int visitedCount() {
-    return numVisited;
   }
 
   @Override
@@ -134,7 +110,7 @@ public class TopKnnResults implements KnnResults {
     }
     TotalHits.Relation relation =
         incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(numVisited, relation), scoreDocs);
+    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
   @Override

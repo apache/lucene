@@ -25,36 +25,16 @@ import org.apache.lucene.search.TotalHits;
  * KnnResults is a collector for gathering kNN results and providing topDocs from the gathered
  * neighbors
  */
-public interface KnnResults {
+public abstract class KnnResults {
 
   /** KnnResults when exiting search early and returning empty top docs */
-  class EmptyKnnResults implements KnnResults {
-    private final int visitedCount;
-
+  static class EmptyKnnResults extends KnnResults {
     public EmptyKnnResults(int visitedCount) {
       this.visitedCount = visitedCount;
     }
 
     @Override
-    public void clear() {}
-
-    @Override
-    public boolean incomplete() {
-      return true;
-    }
-
-    @Override
-    public void markIncomplete() {}
-
-    @Override
-    public void setVisitedCount(int count) {
-      throw new IllegalArgumentException();
-    }
-
-    @Override
-    public int visitedCount() {
-      return visitedCount;
-    }
+    public void doClear() {}
 
     @Override
     public void collect(int vectorId, float similarity) {
@@ -83,26 +63,43 @@ public interface KnnResults {
     }
   }
 
+  protected int visitedCount;
+  private boolean incomplete;
+
+  final void clear() {
+    this.visitedCount = 0;
+    this.incomplete = false;
+    doClear();
+  }
+
   /** Clear the current results. */
-  void clear();
+  abstract void doClear();
 
   /**
    * @return is the current result set marked as incomplete?
    */
-  boolean incomplete();
+  final boolean incomplete() {
+    return incomplete;
+  }
 
   /** Mark the current result set as incomplete */
-  void markIncomplete();
+  final void markIncomplete() {
+    this.incomplete = true;
+  }
 
   /**
    * @param count set the current visited count to the provided value
    */
-  void setVisitedCount(int count);
+  final void setVisitedCount(int count) {
+    this.visitedCount = count;
+  }
 
   /**
    * @return the current visited count
    */
-  int visitedCount();
+  final int visitedCount() {
+    return visitedCount;
+  }
 
   /**
    * Collect the provided vectorId and include in the result set.
@@ -110,24 +107,24 @@ public interface KnnResults {
    * @param vectorId the vector to collect
    * @param similarity its calculated similarity
    */
-  void collect(int vectorId, float similarity);
+  abstract void collect(int vectorId, float similarity);
 
   /**
    * @param vectorId the vector to collect
    * @param similarity its calculated similarity
    * @return true if the vector is collected
    */
-  boolean collectWithOverflow(int vectorId, float similarity);
+  abstract boolean collectWithOverflow(int vectorId, float similarity);
 
   /**
    * @return Is the current result set considered full
    */
-  boolean isFull();
+  abstract boolean isFull();
 
   /**
    * @return the current minimum similarity in the collection
    */
-  float minSimilarity();
+  abstract float minSimilarity();
 
   /**
    * This drains the collected nearest kNN results and returns them in a new {@link TopDocs}
@@ -135,5 +132,5 @@ public interface KnnResults {
    *
    * @return The collected top documents
    */
-  TopDocs topDocs();
+  public abstract TopDocs topDocs();
 }

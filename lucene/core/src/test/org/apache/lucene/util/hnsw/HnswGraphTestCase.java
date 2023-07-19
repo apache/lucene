@@ -1085,9 +1085,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
     exec.shutdownNow();
     for (int i = 0; i < expects.size(); i++) {
-      KnnResults expect = expects.get(i);
-      KnnResults actual = actuals.get(i);
-      assertArrayEquals(expect.topDocs().scoreDocs, actual.topDocs().scoreDocs);
+      TopDocs expect = expects.get(i).topDocs();
+      TopDocs actual = actuals.get(i).topDocs();
+      int[] expectedDocs = new int[expect.scoreDocs.length];
+      for (int j = 0; j < expect.scoreDocs.length; j++) {
+        expectedDocs[j] = expect.scoreDocs[j].doc;
+      }
+      int[] actualDocs = new int[actual.scoreDocs.length];
+      for (int j = 0; j < actual.scoreDocs.length; j++) {
+        actualDocs[j] = actual.scoreDocs[j].doc;
+      }
+      assertArrayEquals(expectedDocs, actualDocs);
     }
   }
 

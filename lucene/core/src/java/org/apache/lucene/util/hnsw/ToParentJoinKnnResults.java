@@ -26,7 +26,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
 /** parent joining knn results, vectorIds are deduplicated according to the parent bit set. */
-public class ToParentJoinKnnResults implements KnnResults {
+public class ToParentJoinKnnResults extends KnnResults {
 
   /** provider class for creating a new {@link ToParentJoinKnnResults} */
   public static class Provider implements KnnResultsProvider {
@@ -54,8 +54,6 @@ public class ToParentJoinKnnResults implements KnnResults {
   private final int k;
   private final IntToIntFunction vectorToOrd;
   private final NodeIdCachingHeap heap;
-  private int numVisited;
-  private boolean incomplete;
 
   public ToParentJoinKnnResults(int k, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
     this.parentBitSet = parentBitSet;
@@ -114,29 +112,8 @@ public class ToParentJoinKnnResults implements KnnResults {
   }
 
   @Override
-  public void clear() {
+  public void doClear() {
     heap.clear();
-    this.incomplete = false;
-  }
-
-  @Override
-  public boolean incomplete() {
-    return incomplete;
-  }
-
-  @Override
-  public void markIncomplete() {
-    this.incomplete = true;
-  }
-
-  @Override
-  public void setVisitedCount(int count) {
-    numVisited = count;
-  }
-
-  @Override
-  public int visitedCount() {
-    return numVisited;
   }
 
   @Override
@@ -160,7 +137,7 @@ public class ToParentJoinKnnResults implements KnnResults {
 
     TotalHits.Relation relation =
         incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(numVisited, relation), scoreDocs);
+    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
   /**
@@ -266,7 +243,7 @@ public class ToParentJoinKnnResults implements KnnResults {
           updateElement(previousNodeIndex, node, score);
           return true;
         }
-        return false; // size < maxSize;
+        return false;
       }
       if (size >= maxSize) {
         if (score < heapScores[1] || (score == heapScores[1] && node > heapNodes[1])) {
@@ -306,8 +283,8 @@ public class ToParentJoinKnnResults implements KnnResults {
 
     /** Removes all entries from the PriorityQueue. */
     public final void clear() {
-      size = 0;
       nodeIdHeapIndex.clear();
+      size = 0;
       closed = false;
     }
 
