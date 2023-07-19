@@ -30,6 +30,7 @@ import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
@@ -67,8 +68,8 @@ public final class HnswGraphBuilder<T> {
   private final RandomAccessVectorValues<T> vectors;
   private final SplittableRandom random;
   private final HnswGraphSearcher<T> graphSearcher;
-  private final KnnResults entryCandidates; // for upper levels of graph search
-  private final KnnResults beamCandidates; // for levels of graph where we add the node
+  private final GraphBuilderKnnResults entryCandidates; // for upper levels of graph search
+  private final GraphBuilderKnnResults beamCandidates; // for levels of graph where we add the node
 
   final OnHeapHnswGraph hnsw;
 
@@ -149,8 +150,8 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
-    entryCandidates = new TopKnnResults(1, vectors::ordToDoc);
-    beamCandidates = new TopKnnResults(beamWidth, vectors::ordToDoc);
+    entryCandidates = new GraphBuilderKnnResults(1);
+    beamCandidates = new GraphBuilderKnnResults(beamWidth);
     this.initializedNodes = new HashSet<>();
   }
 
@@ -270,7 +271,7 @@ public final class HnswGraphBuilder<T> {
     }
 
     // for levels > nodeLevel search with topk = 1
-    KnnResults candidates = entryCandidates;
+    GraphBuilderKnnResults candidates = entryCandidates;
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates.clear();
       graphSearcher.searchLevel(
@@ -306,7 +307,8 @@ public final class HnswGraphBuilder<T> {
     return now;
   }
 
-  private void addDiverseNeighbors(int level, int node, KnnResults candidates) throws IOException {
+  private void addDiverseNeighbors(int level, int node, GraphBuilderKnnResults candidates)
+      throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
@@ -346,7 +348,7 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
-  private void popToScratch(KnnResults candidates) {
+  private void popToScratch(GraphBuilderKnnResults candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
@@ -529,5 +531,39 @@ public final class HnswGraphBuilder<T> {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  /**
+   * A restricted, specialized set of knnResults collector that can be used when building a graph.
+   *
+   * <p>Does not support TopDocs
+   */
+  public static final class GraphBuilderKnnResults extends TopKnnResults {
+    /**
+     * @param k the number of neighbors to collect
+     */
+    public GraphBuilderKnnResults(int k) {
+      super(k, i -> i);
+    }
+
+    public int size() {
+      return queue.size();
+    }
+
+    public int popNode() {
+      return queue.pop();
+    }
+
+    public int[] popUntilNearestKNodes() {
+      while (size() > k) {
+        queue.pop();
+      }
+      return queue.nodes();
+    }
+
+    @Override
+    public TopDocs topDocs() {
+      throw new IllegalArgumentException();
+    }
   }
 }

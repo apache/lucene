@@ -29,8 +29,8 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
@@ -147,7 +147,7 @@ public final class Lucene91HnswGraphBuilder {
 
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(int node, float[] value) throws IOException {
-    KnnResults candidates;
+    HnswGraphBuilder.GraphBuilderKnnResults candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
     int[] eps = new int[] {hnsw.entryNode()};
@@ -189,7 +189,8 @@ public final class Lucene91HnswGraphBuilder {
    * work better if we keep the neighbor arrays sorted. Possibly we should switch back to a heap?
    * But first we should just see if sorting makes a significant difference.
    */
-  private void addDiverseNeighbors(int level, int node, KnnResults candidates) throws IOException {
+  private void addDiverseNeighbors(
+      int level, int node, HnswGraphBuilder.GraphBuilderKnnResults candidates) throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
@@ -227,7 +228,7 @@ public final class Lucene91HnswGraphBuilder {
     }
   }
 
-  private void popToScratch(KnnResults candidates) {
+  private void popToScratch(HnswGraphBuilder.GraphBuilderKnnResults candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be

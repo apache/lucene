@@ -17,11 +17,16 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
+
 /**
- * TopKnnResults is a specific KnnResults, enforcing a minHeap is utilized for results. There is no
- * special logic other than keeping track of the topK results for kNN
+ * TopKnnResults is a specific KnnResults. A minHeap is used to keep track of the currently
+ * collected vectors allowing for efficient updates as better vectors are collected.
  */
-public class TopKnnResults extends KnnResults {
+public class TopKnnResults implements KnnResults {
+
   /** A provider used to construct a new {@link TopKnnResults} */
   public static class Provider implements KnnResultsProvider {
     private final int k;
@@ -41,15 +46,99 @@ public class TopKnnResults extends KnnResults {
     }
   }
 
-  public TopKnnResults(int k, IntToIntFunction vectorToOrd) {
-    super(k, vectorToOrd);
+  protected final int k;
+  private final IntToIntFunction vectorOrdToDocId;
+  protected final NeighborQueue queue;
+  private boolean incomplete;
+  private int numVisited;
+
+  /**
+   * @param k the number of neighbors to collect
+   * @param vectorOrdToDocId translating vector ordinals to document ids, used when building TopDocs
+   *     result
+   */
+  public TopKnnResults(int k, IntToIntFunction vectorOrdToDocId) {
+    this.k = k;
+    this.vectorOrdToDocId = vectorOrdToDocId;
+    this.queue = new NeighborQueue(k, false);
   }
 
   @Override
-  protected void doClear() {}
+  public void clear() {
+    this.queue.clear();
+    this.incomplete = false;
+    this.numVisited = 0;
+  }
+
+  @Override
+  public boolean incomplete() {
+    return incomplete;
+  }
+
+  @Override
+  public void markIncomplete() {
+    this.incomplete = true;
+  }
+
+  @Override
+  public void setVisitedCount(int count) {
+    this.numVisited = count;
+  }
+
+  @Override
+  public int visitedCount() {
+    return numVisited;
+  }
+
+  @Override
+  public void collect(int vectorId, float similarity) {
+    queue.add(vectorId, similarity);
+  }
+
+  /**
+   * If the collection is not full, adds a new node-and-score element.
+   *
+   * <p>If the collection is full, compares the score against the current top score, and replaces
+   * the top element if newScore is better than the current top score.
+   *
+   * @param vectorId the neighbor node id
+   * @param similarity the score of the neighbor, relative to some other node
+   */
+  @Override
+  public boolean collectWithOverflow(int vectorId, float similarity) {
+    return queue.insertWithOverflow(vectorId, similarity);
+  }
+
+  @Override
+  public boolean isFull() {
+    return queue.size() >= k;
+  }
+
+  @Override
+  public float minSimilarity() {
+    return queue.topScore();
+  }
+
+  @Override
+  public TopDocs topDocs() {
+    while (queue.size() > k) {
+      queue.pop();
+    }
+    int i = 0;
+    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
+    while (i < scoreDocs.length) {
+      int node = queue.topNode();
+      float score = queue.topScore();
+      queue.pop();
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorOrdToDocId.apply(node), score);
+    }
+    TotalHits.Relation relation =
+        incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(numVisited, relation), scoreDocs);
+  }
 
   @Override
   public String toString() {
-    return "TopKnnResults[" + size() + "]";
+    return "TopKnnResults[" + queue.size() + "]";
   }
 }

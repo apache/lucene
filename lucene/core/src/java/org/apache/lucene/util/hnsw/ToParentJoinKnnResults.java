@@ -22,10 +22,11 @@ import java.util.Map;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
-/** parent joining knn results, de-duplicates children nodes by their parent bit set */
-public class ToParentJoinKnnResults extends KnnResults {
+/** parent joining knn results, vectorIds are deduplicated according to the parent bit set. */
+public class ToParentJoinKnnResults implements KnnResults {
 
   /** provider class for creating a new {@link ToParentJoinKnnResults} */
   public static class Provider implements KnnResultsProvider {
@@ -49,27 +50,25 @@ public class ToParentJoinKnnResults extends KnnResults {
     }
   }
 
-  private final Map<Integer, IntCounter> docIdRefs;
   private final BitSet parentBitSet;
   private final int k;
   private final IntToIntFunction vectorToOrd;
+  private final NodeIdCachingHeap heap;
+  private int numVisited;
+  private boolean incomplete;
 
   public ToParentJoinKnnResults(int k, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
-    super(k, vectorToOrd);
-    this.docIdRefs = new HashMap<>(k < 2 ? k + 1 : (int) (k / 0.75 + 1.0));
     this.parentBitSet = parentBitSet;
     this.k = k;
     this.vectorToOrd = vectorToOrd;
-  }
-
-  @Override
-  public int size() {
-    return docIdRefs.size();
+    this.heap = new NodeIdCachingHeap(k);
   }
 
   /**
-   * Adds a new graph arc, extending the storage as needed. This variant is more expensive but it is
-   * compatible with a multi-valued scenario.
+   * Adds a new graph arc, extending the storage as needed.
+   *
+   * <p>If the provided childNodeId's parent has been previously collected and the nodeScore is less
+   * than the previously stored score, this node will not be added to the collection.
    *
    * @param childNodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
@@ -79,8 +78,7 @@ public class ToParentJoinKnnResults extends KnnResults {
     childNodeId = vectorToOrd.apply(childNodeId);
     assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
-    docIdRefs.computeIfAbsent(nodeId, k -> new IntCounter()).inc();
-    queue.add(nodeId, nodeScore);
+    heap.push(nodeId, nodeScore);
   }
 
   /**
@@ -88,6 +86,9 @@ public class ToParentJoinKnnResults extends KnnResults {
    * new node-and-score element. If the heap is full, compares the score against the current top
    * score, and replaces the top element if newScore is better than (greater than unless the heap is
    * reversed), the current top score.
+   *
+   * <p>If childNodeId's parent node has previously been collected and the provided nodeScore is
+   * less than the stored score it will not be collected.
    *
    * @param childNodeId the neighbor node id
    * @param nodeScore the score of the neighbor, relative to some other node
@@ -99,89 +100,287 @@ public class ToParentJoinKnnResults extends KnnResults {
     childNodeId = vectorToOrd.apply(childNodeId);
     assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
-    if (isFull()) {
-      final float topScore = queue.topScore();
-      if (nodeScore > topScore || (topScore == nodeScore && childNodeId < queue.topNode())) {
-        int refs = docIdRefs.computeIfAbsent(nodeId, k -> new IntCounter()).inc().count;
-        // We added a new doc! pop the old ones to only have `k`
-        while (refs == 1 && size() > k) {
-          pop();
-        }
-        queue.add(nodeId, nodeScore);
-        return true;
-      }
-      return false;
-    } else {
-      docIdRefs.computeIfAbsent(nodeId, k -> new IntCounter()).inc();
-      queue.add(nodeId, nodeScore);
-    }
-    return true;
-  }
-
-  private void pop() {
-    if (queue.size() > 0) {
-      Integer node = queue.pop();
-      popDocRef(node);
-    }
-  }
-
-  private boolean popDocRef(Integer node) {
-    return docIdRefs.compute(
-            node,
-            (n, c) -> {
-              if (c == null) {
-                return null;
-              }
-              if (c.dec().count <= 0) {
-                return null;
-              }
-              return c;
-            })
-        == null;
+    return heap.insertWithOverflow(nodeId, nodeScore);
   }
 
   @Override
-  protected void doClear() {
-    docIdRefs.clear();
+  public boolean isFull() {
+    return heap.size >= k;
+  }
+
+  @Override
+  public float minSimilarity() {
+    return heap.topScore();
+  }
+
+  @Override
+  public void clear() {
+    heap.clear();
+    this.incomplete = false;
+  }
+
+  @Override
+  public boolean incomplete() {
+    return incomplete;
+  }
+
+  @Override
+  public void markIncomplete() {
+    this.incomplete = true;
+  }
+
+  @Override
+  public void setVisitedCount(int count) {
+    numVisited = count;
+  }
+
+  @Override
+  public int visitedCount() {
+    return numVisited;
   }
 
   @Override
   public String toString() {
-    return "ToParentJoinKnnResults[" + size() + "]";
+    return "ToParentJoinKnnResults[" + heap.size + "]";
   }
 
   @Override
   public TopDocs topDocs() {
-    while (size() > k) {
-      pop();
+    while (heap.size() > k) {
+      heap.popToDrain();
     }
     int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(size(), k)];
+    ScoreDoc[] scoreDocs = new ScoreDoc[heap.size()];
     while (i < scoreDocs.length) {
-      int node = queue.topNode();
-      float score = queue.topScore();
-      queue.pop();
-      if (popDocRef(node)) {
-        scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
-      }
+      int node = heap.topNode();
+      float score = heap.topScore();
+      heap.popToDrain();
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
     }
 
     TotalHits.Relation relation =
         incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+    return new TopDocs(new TotalHits(numVisited, relation), scoreDocs);
   }
 
-  private static class IntCounter {
-    int count;
+  /**
+   * This is a minimum binary heap, inspired by {@link org.apache.lucene.util.LongHeap}. But instead
+   * of encoding and using `long` values. Node ids and scores are kept separate. Additionally, this
+   * prevents duplicate nodes from being added.
+   *
+   * <p>So, for every node added, we will update its score if the newly provided score is better.
+   * Every time we update a node's stored score, we ensure the heap's order.
+   */
+  private static class NodeIdCachingHeap {
+    private final int maxSize;
+    private int[] heapNodes;
+    private float[] heapScores;
+    private int size = 0;
 
-    IntCounter dec() {
-      --this.count;
-      return this;
+    // Used to keep track of nodeId -> positionInHeap. This way when new scores are added for a
+    // node, the heap can be
+    // updated efficiently.
+    private final Map<Integer, Integer> nodeIdHeapIndex;
+    private boolean closed = false;
+
+    public NodeIdCachingHeap(int maxSize) {
+      final int heapSize;
+      if (maxSize < 1 || maxSize >= ArrayUtil.MAX_ARRAY_LENGTH) {
+        // Throw exception to prevent confusing OOME:
+        throw new IllegalArgumentException(
+            "maxSize must be > 0 and < " + (ArrayUtil.MAX_ARRAY_LENGTH - 1) + "; got: " + maxSize);
+      }
+      // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
+      heapSize = maxSize + 1;
+      this.maxSize = maxSize;
+      this.nodeIdHeapIndex =
+          new HashMap<>(maxSize < 2 ? maxSize + 1 : (int) (maxSize / 0.75 + 1.0));
+      this.heapNodes = new int[heapSize];
+      this.heapScores = new float[heapSize];
     }
 
-    IntCounter inc() {
-      ++this.count;
-      return this;
+    public final int topNode() {
+      return heapNodes[1];
+    }
+
+    public final float topScore() {
+      return heapScores[1];
+    }
+
+    public final void push(int nodeId, float score) {
+      if (closed) {
+        throw new IllegalStateException("must call clear() before adding new elements to heap");
+      }
+      Integer previouslyStoredHeapIndex = nodeIdHeapIndex.get(nodeId);
+      if (previouslyStoredHeapIndex != null) {
+        if (score > heapScores[previouslyStoredHeapIndex]) {
+          updateElement(previouslyStoredHeapIndex, nodeId, score);
+        }
+        return;
+      }
+      pushIn(nodeId, score);
+    }
+
+    private void pushIn(int nodeId, float score) {
+      size++;
+      if (size == heapNodes.length) {
+        heapNodes = ArrayUtil.grow(heapNodes, (size * 3 + 1) / 2);
+        heapScores = ArrayUtil.grow(heapScores, (size * 3 + 1) / 2);
+      }
+      heapNodes[size] = nodeId;
+      heapScores[size] = score;
+      upHeap(size);
+    }
+
+    private void updateElement(int heapIndex, int nodeId, float score) {
+      int oldValue = heapNodes[heapIndex];
+      assert oldValue == nodeId
+          : "attempted to update heap element value but with a different node id";
+      float oldScore = heapScores[heapIndex];
+      heapNodes[heapIndex] = nodeId;
+      heapScores[heapIndex] = score;
+      // Since we are a min heap, if the new value is less, we need to make sure to bubble it up
+      if (score < oldScore) {
+        upHeap(heapIndex);
+      } else {
+        downHeap(heapIndex);
+      }
+    }
+
+    /**
+     * Adds a value to an heap in log(size) time. If the number of values would exceed the heap's
+     * maxSize, the least value is discarded.
+     *
+     * <p>If `node` already exists in the heap, this will return true if the stored score is updated
+     * OR the heap is not currently at the maxSize.
+     *
+     * @return whether the value was added or updated
+     */
+    public boolean insertWithOverflow(int node, float score) {
+      if (closed) {
+        throw new IllegalStateException("must call clear() before adding new elements to heap");
+      }
+      Integer previousNodeIndex = nodeIdHeapIndex.get(node);
+      if (previousNodeIndex != null) {
+        if (heapScores[previousNodeIndex] < score) {
+          updateElement(previousNodeIndex, node, score);
+          return true;
+        }
+        return false; // size < maxSize;
+      }
+      if (size >= maxSize) {
+        if (score < heapScores[1] || (score == heapScores[1] && node > heapNodes[1])) {
+          return false;
+        }
+        updateTop(node, score);
+        return true;
+      }
+      pushIn(node, score);
+      return true;
+    }
+
+    private void popToDrain() {
+      closed = true;
+      if (size > 0) {
+        heapNodes[1] = heapNodes[size]; // move last to first
+        heapScores[1] = heapScores[size]; // move last to first
+        size--;
+        downHeapWithoutCacheUpdate(1); // adjust heap
+      } else {
+        throw new IllegalStateException("The heap is empty");
+      }
+    }
+
+    private void updateTop(int nodeId, float score) {
+      nodeIdHeapIndex.remove(heapNodes[1]);
+      nodeIdHeapIndex.put(nodeId, 1);
+      heapNodes[1] = nodeId;
+      heapScores[1] = score;
+      downHeap(1);
+    }
+
+    /** Returns the number of elements currently stored in the PriorityQueue. */
+    public final int size() {
+      return size;
+    }
+
+    /** Removes all entries from the PriorityQueue. */
+    public final void clear() {
+      size = 0;
+      nodeIdHeapIndex.clear();
+      closed = false;
+    }
+
+    private boolean lessThan(int nodel, float scorel, int noder, float scorer) {
+      if (scorel < scorer) {
+        return true;
+      }
+      return scorel == scorer && nodel > noder;
+    }
+
+    private void upHeap(int origPos) {
+      int i = origPos;
+      int bottomNode = heapNodes[i];
+      float bottomScore = heapScores[i];
+      int j = i >>> 1;
+      while (j > 0 && lessThan(bottomNode, bottomScore, heapNodes[j], heapScores[j])) {
+        heapNodes[i] = heapNodes[j];
+        heapScores[i] = heapScores[j];
+        nodeIdHeapIndex.put(heapNodes[i], i);
+        i = j;
+        j = j >>> 1;
+      }
+      nodeIdHeapIndex.put(bottomNode, i);
+      heapNodes[i] = bottomNode;
+      heapScores[i] = bottomScore;
+    }
+
+    private int downHeap(int i) {
+      int node = heapNodes[i];
+      float score = heapScores[i];
+      int j = i << 1; // find smaller child
+      int k = j + 1;
+      if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+        j = k;
+      }
+      while (j <= size && lessThan(heapNodes[j], heapScores[j], node, score)) {
+        heapNodes[i] = heapNodes[j];
+        heapScores[i] = heapScores[j];
+        nodeIdHeapIndex.put(heapNodes[i], i);
+        i = j;
+        j = i << 1;
+        k = j + 1;
+        if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+          j = k;
+        }
+      }
+      nodeIdHeapIndex.put(node, i);
+      heapNodes[i] = node; // install saved value
+      heapScores[i] = score; // install saved value
+      return i;
+    }
+
+    private int downHeapWithoutCacheUpdate(int i) {
+      int node = heapNodes[i];
+      float score = heapScores[i];
+      int j = i << 1; // find smaller child
+      int k = j + 1;
+      if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+        j = k;
+      }
+      while (j <= size && lessThan(heapNodes[j], heapScores[j], node, score)) {
+        heapNodes[i] = heapNodes[j];
+        heapScores[i] = heapScores[j];
+        i = j;
+        j = i << 1;
+        k = j + 1;
+        if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+          j = k;
+        }
+      }
+      heapNodes[i] = node; // install saved value
+      heapScores[i] = score; // install saved value
+      return i;
     }
   }
 }

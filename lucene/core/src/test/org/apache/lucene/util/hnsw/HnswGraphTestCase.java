@@ -375,11 +375,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               Integer.MAX_VALUE);
         };
 
-    int[] nodes = nn.popUntilNearestKNodes();
-    assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
+    TopDocs topDocs = nn.topDocs();
+    assertEquals("Number of found results is not equal to [10].", 10, topDocs.scoreDocs.length);
     int sum = 0;
-    for (int node : nodes) {
-      sum += node;
+    for (ScoreDoc node : topDocs.scoreDocs) {
+      sum += node.doc;
     }
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
@@ -427,12 +427,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               acceptOrds,
               Integer.MAX_VALUE);
         };
-    int[] nodes = nn.popUntilNearestKNodes();
-    assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
+    TopDocs nodes = nn.topDocs();
+    assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
-    for (int node : nodes) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
-      sum += node;
+    for (ScoreDoc node : nodes.scoreDocs) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      sum += node.doc;
     }
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
@@ -478,10 +478,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               Integer.MAX_VALUE);
         };
 
-    int[] nodes = nn.popUntilNearestKNodes();
-    assertEquals(numAccepted, nodes.length);
-    for (int node : nodes) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+    TopDocs nodes = nn.topDocs();
+    assertEquals(numAccepted, nodes.scoreDocs.length);
+    for (ScoreDoc node : nodes.scoreDocs) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
     }
   }
 
@@ -970,9 +970,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 Integer.MAX_VALUE);
           };
 
-      while (actual.size() > topK) {
-        actual.popNode();
-      }
+      TopDocs topDocs = actual.topDocs();
       NeighborQueue expected = new NeighborQueue(topK, false);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
@@ -990,8 +988,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           }
         }
       }
-      assertEquals(topK, actual.size());
-      totalMatches += computeOverlap(actual.popUntilNearestKNodes(), expected.nodes());
+      int[] actualTopKDocs = new int[topK];
+      for (int j = 0; j < topK; j++) {
+        actualTopKDocs[j] = topDocs.scoreDocs[j].doc;
+      }
+      totalMatches += computeOverlap(actualTopKDocs, expected.nodes());
     }
     double overlap = totalMatches / (double) (100 * topK);
     System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
@@ -1086,7 +1087,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     for (int i = 0; i < expects.size(); i++) {
       KnnResults expect = expects.get(i);
       KnnResults actual = actuals.get(i);
-      assertArrayEquals(expect.popUntilNearestKNodes(), actual.popUntilNearestKNodes());
+      assertArrayEquals(expect.topDocs().scoreDocs, actual.topDocs().scoreDocs);
     }
   }
 

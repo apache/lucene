@@ -65,7 +65,8 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
     ToParentJoinKnnResults results = new ToParentJoinKnnResults(5, parentBitSet, i -> i);
     for (int i = 0; i < 5; i++) {
-      assertTrue(results.collectWithOverflow(nodes[i], scores[i]));
+      assertTrue(
+          "failed on: " + Integer.toString(i), results.collectWithOverflow(nodes[i], scores[i]));
     }
     for (int i = 5; i < nodes.length - 1; i++) {
       assertTrue(results.collectWithOverflow(nodes[i], scores[i]));

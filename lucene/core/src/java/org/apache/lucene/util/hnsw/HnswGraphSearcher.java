@@ -288,15 +288,13 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
-      return new KnnResults.EmptyKnnResults();
+      return new KnnResults.EmptyKnnResults(0);
     }
     int[] epAndVisited = graphSearcher.findBestEntryPoint(query, vectors, graph, visitedLimit);
     int numVisited = epAndVisited[1];
     int ep = epAndVisited[0];
     if (ep == -1) {
-      KnnResults results = new KnnResults.EmptyKnnResults();
-      results.setVisitedCount(numVisited);
-      return results;
+      return new KnnResults.EmptyKnnResults(numVisited);
     }
     KnnResults results = knnResultsProvider.getKnnResults(vectors::ordToDoc);
     graphSearcher.searchLevel(
@@ -319,7 +317,7 @@ public class HnswGraphSearcher<T> {
    * @param graph the graph values
    * @return a priority queue holding the closest neighbors found
    */
-  public KnnResults searchLevel(
+  public HnswGraphBuilder.GraphBuilderKnnResults searchLevel(
       // Note: this is only public because Lucene91HnswGraphBuilder needs it
       T query,
       int topK,
@@ -328,7 +326,8 @@ public class HnswGraphSearcher<T> {
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph)
       throws IOException {
-    KnnResults results = new TopKnnResults(topK, vectors::ordToDoc);
+    HnswGraphBuilder.GraphBuilderKnnResults results =
+        new HnswGraphBuilder.GraphBuilderKnnResults(topK);
     searchLevel(results, query, level, eps, vectors, graph, null, Integer.MAX_VALUE);
     return results;
   }

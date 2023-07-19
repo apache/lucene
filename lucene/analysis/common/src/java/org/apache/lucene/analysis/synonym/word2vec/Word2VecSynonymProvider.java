@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -85,11 +86,11 @@ public class Word2VecSynonymProvider {
               hnswGraph,
               null,
               Integer.MAX_VALUE);
+      TopDocs topDocs = synonyms.topDocs();
 
-      int size = synonyms.size();
-      for (int i = 0; i < size; i++) {
-        float similarity = synonyms.minSimilarity();
-        int id = synonyms.popNode();
+      for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+        float similarity = topDocs.scoreDocs[i].score;
+        int id = topDocs.scoreDocs[i].doc;
 
         BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term

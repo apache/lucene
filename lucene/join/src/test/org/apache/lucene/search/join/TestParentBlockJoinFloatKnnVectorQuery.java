@@ -54,16 +54,6 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends LuceneTestCase {
     return Arrays.toString(i);
   }
 
-  private static int[] decodeInts(String s) {
-    s = s.substring(1, s.length() - 1);
-    String[] ints = s.split(", ");
-    int[] r = new int[ints.length];
-    for (int i = 0; i < r.length; i++) {
-      r[i] = Integer.parseInt(ints[i]);
-    }
-    return r;
-  }
-
   private static BitSetProducer parentFilter(IndexReader r) throws IOException {
     // Create a filter that defines "parent" documents in the index
     BitSetProducer parentsFilter =
