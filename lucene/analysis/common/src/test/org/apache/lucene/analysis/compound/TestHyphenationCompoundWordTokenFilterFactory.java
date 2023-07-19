@@ -73,7 +73,7 @@ public class TestHyphenationCompoundWordTokenFilterFactory extends BaseTokenStre
     assertTokenStreamContents(
         stream, new String[] {"basketballkurv", "basketball", "kurv"}, new int[] {1, 0, 0});
   }
-  
+
   /**
    * Ensure the factory works with no dictionary: using hyphenation grammar only. Also change the
    * min/max subword sizes from the default. When using no dictionary, it's generally necessary to

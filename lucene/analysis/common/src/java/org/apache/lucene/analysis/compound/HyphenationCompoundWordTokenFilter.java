@@ -78,7 +78,16 @@ public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterB
       int minSubwordSize,
       int maxSubwordSize,
       boolean onlyLongestMatch) {
-    this(input, hyphenator, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch, false, false);
+    this(
+        input,
+        hyphenator,
+        dictionary,
+        minWordSize,
+        minSubwordSize,
+        maxSubwordSize,
+        onlyLongestMatch,
+        false,
+        false);
   }
 
   /**
