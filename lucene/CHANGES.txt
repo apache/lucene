@@ -17,6 +17,9 @@ New Features
 * GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
   collection has finished running on a leaf. (Adrien Grand)
 
+* LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
+  HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
+
 Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
