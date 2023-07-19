@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
