@@ -192,7 +192,7 @@ final class BooleanWeight extends Weight {
   // pkg-private for forcing use of BooleanScorer in tests
   BulkScorer optionalBulkScorer(LeafReaderContext context) throws IOException {
     if (scoreMode == ScoreMode.TOP_SCORES) {
-      if (!query.isPureDisjunction() || weightedClauses.size() > 2) {
+      if (!query.isPureDisjunction()) {
         return null;
       }
 
