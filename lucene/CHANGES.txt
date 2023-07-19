@@ -75,8 +75,6 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
-* LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
-
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration (Peter Gromov)
 
 Optimizations
@@ -133,6 +131,9 @@ New Features
 
 * GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
   collection has finished running on a leaf. (Adrien Grand)
+
+* LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
+  HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
 
 Improvements
 ---------------------
