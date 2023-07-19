@@ -95,7 +95,7 @@ public class Word2VecSynonymProvider {
         BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term
         if (!synonym.equals(term) && similarity >= minAcceptedSimilarity) {
-          result.addFirst(new TermAndBoost(synonym, similarity));
+          result.addLast(new TermAndBoost(synonym, similarity));
         }
       }
     }
