@@ -46,8 +46,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final long[] windowMatches = new long[FixedBitSet.bits2words(INNER_WINDOW_SIZE)];
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
 
-  MaxScoreBulkScorer(int docBase, int maxDoc, List<Scorer> scorers) throws IOException {
-    this.docBase = docBase;
+  MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {
     this.maxDoc = maxDoc;
     allScorers = new DisiWrapper[scorers.size()];
     int i = 0;
