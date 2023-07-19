@@ -147,6 +147,10 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12444: Faster top-level disjunctions sorted by descending score in
+  case of many terms or queries that expose suboptimal score upper bounds.
+  (Adrien Grand)
+
 * GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
