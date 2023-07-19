@@ -27,7 +27,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   static final int INNER_WINDOW_SIZE = 1 << 11;
 
-  private final int docBase, maxDoc;
+  private final int maxDoc;
   // All scorers, sorted by increasing max score.
   private final DisiWrapper[] allScorers;
   // These are the last scorers from `allScorers` that are "essential", ie. required for a match to
