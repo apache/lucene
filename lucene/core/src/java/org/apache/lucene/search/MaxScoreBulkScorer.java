@@ -215,12 +215,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private void scoreNonEssentialClauses(LeafCollector collector, int doc, double essentialScore)
       throws IOException {
     double score = essentialScore;
-    boolean possibleMatch = true;
     for (int i = firstEssentialScorer - 1; i >= 0; --i) {
       float maxPossibleScore = maxScorePropagator.scoreSumUpperBound(score + maxScoreSums[i]);
       if (maxPossibleScore < minCompetitiveScore) {
-        possibleMatch = false;
-        break;
+        // Hit is not competitive.
+        return;
       } else if (maxScoreSums[i] == 0f) {
         // Can break since scorers are sorted by ascending score.
         break;
@@ -235,10 +234,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
     }
 
-    if (possibleMatch) {
-      scorable.score = (float) score;
-      collector.collect(doc);
-    }
+    scorable.score = (float) score;
+    collector.collect(doc);
   }
 
   private boolean partitionScorers() {
