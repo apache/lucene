@@ -270,7 +270,6 @@ public class ToParentJoinKnnResults extends KnnResults {
 
     private void updateTop(int nodeId, float score) {
       nodeIdHeapIndex.remove(heapNodes[1]);
-      nodeIdHeapIndex.put(nodeId, 1);
       heapNodes[1] = nodeId;
       heapScores[1] = score;
       downHeap(1);
