@@ -186,7 +186,7 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
         values.advance(nextChild);
         currentScore = Math.max(currentScore, similarity.compare(query, values.vectorValue()));
       } while ((nextChild = acceptedChildrenIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS
-          && currentParent == parentBitSet.nextSetBit(nextChild));
+          && nextChild < currentParent);
       return currentParent;
     }
 

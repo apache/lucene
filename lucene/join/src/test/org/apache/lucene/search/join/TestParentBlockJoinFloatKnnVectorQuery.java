@@ -36,6 +36,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -142,6 +143,16 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends LuceneTestCase {
         query =
             new ToParentBlockJoinFloatKnnVectorQuery(
                 "field", new float[] {6, 6}, null, 3, parentFilter);
+        assertScorerResults(
+            searcher,
+            query,
+            new float[] {1f / 3f, 1f / 3f},
+            new String[] {
+              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
+            });
+        query =
+            new ToParentBlockJoinFloatKnnVectorQuery(
+                "field", new float[] {6, 6}, new MatchAllDocsQuery(), 20, parentFilter);
         assertScorerResults(
             searcher,
             query,
