@@ -159,6 +159,63 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     }
   }
 
+  @Override
+  public void readFloats(float[] floats, int offset, int len) throws IOException {
+    int remaining = len;
+    while (remaining > 0) {
+      int cnt = Math.min(buffer.remaining() / Float.BYTES, remaining);
+      buffer.asFloatBuffer().get(floats, offset + len - remaining, cnt);
+      buffer.position(buffer.position() + Float.BYTES * cnt);
+      remaining -= cnt;
+      if (remaining > 0) {
+        if (buffer.hasRemaining()) {
+          floats[len - remaining] = Float.intBitsToFloat(readInt());
+          --remaining;
+        } else {
+          refill();
+        }
+      }
+    }
+  }
+
+  @Override
+  public void readLongs(long[] dst, int offset, int length) throws IOException {
+    int remaining = length;
+    while (remaining > 0) {
+      int cnt = Math.min(buffer.remaining() / Long.BYTES, remaining);
+      buffer.asLongBuffer().get(dst, offset + length - remaining, cnt);
+      buffer.position(buffer.position() + Long.BYTES * cnt);
+      remaining -= cnt;
+      if (remaining > 0) {
+        if (buffer.hasRemaining()) {
+          dst[length - remaining] = readLong();
+          --remaining;
+        } else {
+          refill();
+        }
+      }
+    }
+  }
+
+  @Override
+  public void readInts(int[] dst, int offset, int length) throws IOException {
+    int remaining = length;
+    while (remaining > 0) {
+      int cnt = Math.min(buffer.remaining() / Integer.BYTES, remaining);
+      buffer.asIntBuffer().get(dst, offset + length - remaining, cnt);
+      buffer.position(buffer.position() + Integer.BYTES * cnt);
+      remaining -= cnt;
+      if (remaining > 0) {
+        if (buffer.hasRemaining()) {
+          dst[length - remaining] = readInt();
+          --remaining;
+        } else {
+          refill();
+        }
+      }
+    }
+  }
+
   // Computes an offset into the current buffer from an absolute position to read
   // `width` bytes from.  If the buffer does not contain the position, then we
   // readjust the bufferStart and refill.
