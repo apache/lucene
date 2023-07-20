@@ -351,12 +351,9 @@ public class IndexSearcher {
       } else {
         if (group == null) {
           group = new ArrayList<>();
-          group.add(ctx);
-
           groupedLeaves.add(group);
-        } else {
-          group.add(ctx);
         }
+        group.add(ctx);
 
         docSum += ctx.reader().maxDoc();
         if (group.size() >= maxSegmentsPerSlice || docSum > maxDocsPerSlice) {

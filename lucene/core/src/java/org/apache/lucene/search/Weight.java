@@ -270,23 +270,13 @@ public abstract class Weight implements SegmentCacheable {
         int currentDoc,
         int end)
         throws IOException {
-      if (twoPhase == null) {
-        while (currentDoc < end) {
-          if (acceptDocs == null || acceptDocs.get(currentDoc)) {
-            collector.collect(currentDoc);
-          }
-          currentDoc = iterator.nextDoc();
+      while (currentDoc < end) {
+        if ((acceptDocs == null || acceptDocs.get(currentDoc)) && (twoPhase == null || twoPhase.matches())) {
+          collector.collect(currentDoc);
         }
-        return currentDoc;
-      } else {
-        while (currentDoc < end) {
-          if ((acceptDocs == null || acceptDocs.get(currentDoc)) && twoPhase.matches()) {
-            collector.collect(currentDoc);
-          }
-          currentDoc = iterator.nextDoc();
-        }
-        return currentDoc;
+        currentDoc = iterator.nextDoc();
       }
+      return currentDoc;
     }
 
     /**
@@ -299,23 +289,13 @@ public abstract class Weight implements SegmentCacheable {
         TwoPhaseIterator twoPhase,
         Bits acceptDocs)
         throws IOException {
-      if (twoPhase == null) {
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
-          }
-        }
-      } else {
-        // The scorer has an approximation, so run the approximation first, then check acceptDocs,
-        // then confirm
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
-            collector.collect(doc);
-          }
+      // The scorer has an approximation, so run the approximation first, then check acceptDocs,
+      // then confirm
+      for (int doc = iterator.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = iterator.nextDoc()) {
+        if ((acceptDocs == null || acceptDocs.get(doc)) && (twoPhase == null || twoPhase.matches())) {
+          collector.collect(doc);
         }
       }
     }
