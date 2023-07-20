@@ -338,16 +338,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
       return this.searchNearestVectors(
-          field, target, new TopKnnResults.Provider(k), acceptDocs, visitedLimit);
+          field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
     }
 
     @Override
     public TopDocs searchNearestVectors(
-        String field,
-        float[] target,
-        KnnResultsProvider knnResultsProvider,
-        Bits acceptDocs,
-        int visitedLimit)
+        String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
         throws IOException {
 
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
@@ -375,24 +371,19 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      return in.searchNearestVectors(
-          field, target, knnResultsProvider, timeoutCheckingAcceptDocs, visitedLimit);
+      return in.searchNearestVectors(field, target, knnResultsProvider, timeoutCheckingAcceptDocs);
     }
 
     @Override
     public TopDocs searchNearestVectors(
         String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
       return this.searchNearestVectors(
-          field, target, new TopKnnResults.Provider(k), acceptDocs, visitedLimit);
+          field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
     }
 
     @Override
     public TopDocs searchNearestVectors(
-        String field,
-        byte[] target,
-        KnnResultsProvider knnResultsProvider,
-        Bits acceptDocs,
-        int visitedLimit)
+        String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
         throws IOException {
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
       // match all docs to allow timeout checking.
@@ -419,8 +410,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      return in.searchNearestVectors(
-          field, target, knnResultsProvider, timeoutCheckingAcceptDocs, visitedLimit);
+      return in.searchNearestVectors(field, target, knnResultsProvider, timeoutCheckingAcceptDocs);
     }
 
     private void checkAndThrowForSearchVectors() {

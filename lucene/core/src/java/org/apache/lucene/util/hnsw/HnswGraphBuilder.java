@@ -274,16 +274,14 @@ public final class HnswGraphBuilder<T> {
     GraphBuilderKnnResults candidates = entryCandidates;
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates.clear();
-      graphSearcher.searchLevel(
-          candidates, value, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
+      graphSearcher.searchLevel(candidates, value, level, eps, vectors, hnsw, null);
       eps = new int[] {candidates.popNode()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     candidates = beamCandidates;
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates.clear();
-      graphSearcher.searchLevel(
-          candidates, value, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
+      graphSearcher.searchLevel(candidates, value, level, eps, vectors, hnsw, null);
       eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
@@ -543,7 +541,7 @@ public final class HnswGraphBuilder<T> {
      * @param k the number of neighbors to collect
      */
     public GraphBuilderKnnResults(int k) {
-      super(k, i -> i);
+      super(k, Integer.MAX_VALUE, i -> i);
     }
 
     public int size() {

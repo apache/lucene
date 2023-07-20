@@ -30,9 +30,11 @@ public class TopKnnResults extends KnnResults {
   /** A provider used to construct a new {@link TopKnnResults} */
   public static class Provider implements KnnResultsProvider {
     private final int k;
+    private final int visitLimit;
 
-    public Provider(int k) {
+    public Provider(int k, int visitLimit) {
       this.k = k;
+      this.visitLimit = visitLimit;
     }
 
     @Override
@@ -41,8 +43,13 @@ public class TopKnnResults extends KnnResults {
     }
 
     @Override
+    public int visitLimit() {
+      return visitLimit;
+    }
+
+    @Override
     public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
-      return new TopKnnResults(k, vectorToOrd);
+      return new TopKnnResults(k, visitLimit, vectorToOrd);
     }
   }
 
@@ -55,7 +62,8 @@ public class TopKnnResults extends KnnResults {
    * @param vectorOrdToDocId translating vector ordinals to document ids, used when building TopDocs
    *     result
    */
-  public TopKnnResults(int k, IntToIntFunction vectorOrdToDocId) {
+  public TopKnnResults(int k, int visitLimit, IntToIntFunction vectorOrdToDocId) {
+    super(visitLimit);
     this.k = k;
     this.vectorOrdToDocId = vectorOrdToDocId;
     this.queue = new NeighborQueue(k, false);

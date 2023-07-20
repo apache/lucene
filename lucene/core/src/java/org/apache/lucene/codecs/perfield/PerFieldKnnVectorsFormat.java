@@ -280,24 +280,16 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public TopDocs search(
-        String field,
-        float[] target,
-        KnnResultsProvider knnResultsProvider,
-        Bits acceptDocs,
-        int visitedLimit)
+        String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
         throws IOException {
-      return fields.get(field).search(field, target, knnResultsProvider, acceptDocs, visitedLimit);
+      return fields.get(field).search(field, target, knnResultsProvider, acceptDocs);
     }
 
     @Override
     public TopDocs search(
-        String field,
-        byte[] target,
-        KnnResultsProvider knnResultsProvider,
-        Bits acceptDocs,
-        int visitedLimit)
+        String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
         throws IOException {
-      return fields.get(field).search(field, target, knnResultsProvider, acceptDocs, visitedLimit);
+      return fields.get(field).search(field, target, knnResultsProvider, acceptDocs);
     }
 
     @Override

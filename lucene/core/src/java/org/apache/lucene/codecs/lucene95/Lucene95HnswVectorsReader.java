@@ -272,7 +272,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       throws IOException {
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fields.get(field).size());
-    return search(field, target, new TopKnnResults.Provider(k), acceptDocs, visitedLimit);
+    return search(field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
   }
 
   @Override
@@ -280,16 +280,12 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       throws IOException {
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fields.get(field).size());
-    return search(field, target, new TopKnnResults.Provider(k), acceptDocs, visitedLimit);
+    return search(field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
   }
 
   @Override
   public TopDocs search(
-      String field,
-      float[] target,
-      KnnResultsProvider knnResultsProvider,
-      Bits acceptDocs,
-      int visitedLimit)
+      String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -309,18 +305,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            vectorValues.getAcceptOrds(acceptDocs));
     return results.topDocs();
   }
 
   @Override
   public TopDocs search(
-      String field,
-      byte[] target,
-      KnnResultsProvider knnResultsProvider,
-      Bits acceptDocs,
-      int visitedLimit)
+      String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -340,8 +331,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            vectorValues.getAcceptOrds(acceptDocs));
     return results.topDocs();
   }
 

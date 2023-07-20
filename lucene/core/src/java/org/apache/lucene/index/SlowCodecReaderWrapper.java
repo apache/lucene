@@ -187,26 +187,16 @@ public final class SlowCodecReaderWrapper {
 
       @Override
       public TopDocs search(
-          String field,
-          float[] target,
-          KnnResultsProvider knnResultsProvider,
-          Bits acceptDocs,
-          int visitedLimit)
+          String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
           throws IOException {
-        return reader.searchNearestVectors(
-            field, target, knnResultsProvider, acceptDocs, visitedLimit);
+        return reader.searchNearestVectors(field, target, knnResultsProvider, acceptDocs);
       }
 
       @Override
       public TopDocs search(
-          String field,
-          byte[] target,
-          KnnResultsProvider knnResultsProvider,
-          Bits acceptDocs,
-          int visitedLimit)
+          String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
           throws IOException {
-        return reader.searchNearestVectors(
-            field, target, knnResultsProvider, acceptDocs, visitedLimit);
+        return reader.searchNearestVectors(field, target, knnResultsProvider, acceptDocs);
       }
 
       @Override

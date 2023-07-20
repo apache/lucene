@@ -439,34 +439,24 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String fieldName,
-      float[] target,
-      KnnResultsProvider knnResultsProvider,
-      Bits acceptDocs,
-      int visitedLimit)
+      String fieldName, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectors(
-            fieldName, target, knnResultsProvider, acceptDocs, visitedLimit);
+        : reader.searchNearestVectors(fieldName, target, knnResultsProvider, acceptDocs);
   }
 
   @Override
   public TopDocs searchNearestVectors(
-      String fieldName,
-      byte[] target,
-      KnnResultsProvider knnResultsProvider,
-      Bits acceptDocs,
-      int visitedLimit)
+      String fieldName, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectors(
-            fieldName, target, knnResultsProvider, acceptDocs, visitedLimit);
+        : reader.searchNearestVectors(fieldName, target, knnResultsProvider, acceptDocs);
   }
 
   @Override

@@ -29,7 +29,8 @@ public abstract class KnnResults {
 
   /** KnnResults when exiting search early and returning empty top docs */
   static class EmptyKnnResults extends KnnResults {
-    public EmptyKnnResults(int visitedCount) {
+    public EmptyKnnResults(int visitedCount, int visitLimit) {
+      super(visitLimit);
       this.visitedCount = visitedCount;
     }
 
@@ -64,11 +65,14 @@ public abstract class KnnResults {
   }
 
   protected int visitedCount;
-  private boolean incomplete;
+  private final int visitLimit;
+
+  protected KnnResults(int visitLimit) {
+    this.visitLimit = visitLimit;
+  }
 
   final void clear() {
     this.visitedCount = 0;
-    this.incomplete = false;
     doClear();
   }
 
@@ -79,12 +83,11 @@ public abstract class KnnResults {
    * @return is the current result set marked as incomplete?
    */
   final boolean incomplete() {
-    return incomplete;
+    return visitedCount >= visitLimit;
   }
 
-  /** Mark the current result set as incomplete */
-  final void markIncomplete() {
-    this.incomplete = true;
+  final int visitLimit() {
+    return visitLimit;
   }
 
   /**
@@ -92,6 +95,11 @@ public abstract class KnnResults {
    */
   final void setVisitedCount(int count) {
     this.visitedCount = count;
+  }
+
+  final void incVisitedCount(int count) {
+    assert count > 0;
+    this.visitedCount += count;
   }
 
   /**

@@ -23,7 +23,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestTopKnnResults extends LuceneTestCase {
 
   public void testCollectAndProvideResults() {
-    TopKnnResults results = new TopKnnResults(5, i -> i);
+    TopKnnResults results = new TopKnnResults(5, Integer.MAX_VALUE, i -> i);
     int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     for (int i = 0; i < nodes.length; i++) {

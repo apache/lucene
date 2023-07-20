@@ -144,15 +144,10 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *     the vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public TopDocs search(
-      String field,
-      float[] target,
-      KnnResultsProvider knnResultsProvider,
-      Bits acceptDocs,
-      int visitedLimit)
+      String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException(
         "vector reader doesn't provide KNN search with results provider");
@@ -183,15 +178,10 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *     the vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public TopDocs search(
-      String field,
-      byte[] target,
-      KnnResultsProvider knnResultsProvider,
-      Bits acceptDocs,
-      int visitedLimit)
+      String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException(
         "vector reader doesn't provide KNN search with results provider");

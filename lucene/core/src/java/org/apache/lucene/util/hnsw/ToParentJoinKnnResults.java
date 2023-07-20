@@ -31,12 +31,18 @@ public class ToParentJoinKnnResults extends KnnResults {
   /** provider class for creating a new {@link ToParentJoinKnnResults} */
   public static class Provider implements KnnResultsProvider {
 
-    private final int k;
+    private final int k, visitLimit;
     private final BitSet parentBitSet;
 
-    public Provider(int k, BitSet parentBitSet) {
+    public Provider(int k, int visitLimit, BitSet parentBitSet) {
       this.k = k;
       this.parentBitSet = parentBitSet;
+      this.visitLimit = visitLimit;
+    }
+
+    @Override
+    public int visitLimit() {
+      return visitLimit;
     }
 
     @Override
@@ -46,7 +52,7 @@ public class ToParentJoinKnnResults extends KnnResults {
 
     @Override
     public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
-      return new ToParentJoinKnnResults(k, parentBitSet, vectorToOrd);
+      return new ToParentJoinKnnResults(k, visitLimit, parentBitSet, vectorToOrd);
     }
   }
 
@@ -55,7 +61,9 @@ public class ToParentJoinKnnResults extends KnnResults {
   private final IntToIntFunction vectorToOrd;
   private final NodeIdCachingHeap heap;
 
-  public ToParentJoinKnnResults(int k, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
+  public ToParentJoinKnnResults(
+      int k, int visitLimit, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
+    super(visitLimit);
     this.parentBitSet = parentBitSet;
     this.k = k;
     this.vectorToOrd = vectorToOrd;

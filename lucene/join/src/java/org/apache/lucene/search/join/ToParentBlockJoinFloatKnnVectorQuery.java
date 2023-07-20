@@ -120,9 +120,8 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
             .searchNearestVectors(
                 field,
                 query,
-                new ToParentJoinKnnResults.Provider(k, parentBitSet),
-                acceptDocs,
-                visitedLimit);
+                new ToParentJoinKnnResults.Provider(k, visitedLimit, parentBitSet),
+                acceptDocs);
     return results != null ? results : NO_RESULTS;
   }
 

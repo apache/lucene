@@ -73,16 +73,16 @@ public class MismatchedLeafReader extends FilterLeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, float[] target, KnnResultsProvider provider, Bits acceptDocs, int visitedLimit)
+      String field, float[] target, KnnResultsProvider provider, Bits acceptDocs)
       throws IOException {
-    return in.searchNearestVectors(field, target, provider, acceptDocs, visitedLimit);
+    return in.searchNearestVectors(field, target, provider, acceptDocs);
   }
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, byte[] target, KnnResultsProvider provider, Bits acceptDocs, int visitedLimit)
+      String field, byte[] target, KnnResultsProvider provider, Bits acceptDocs)
       throws IOException {
-    return in.searchNearestVectors(field, target, provider, acceptDocs, visitedLimit);
+    return in.searchNearestVectors(field, target, provider, acceptDocs);
   }
 
   static FieldInfos shuffleInfos(FieldInfos infos, Random random) {
