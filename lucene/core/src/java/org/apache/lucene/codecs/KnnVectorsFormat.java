@@ -80,13 +80,15 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
 
   /**
-   * Returns the maximum number of vector dimensions supported by this codec.
+   * Returns the maximum number of vector dimensions supported by this codec for the given field
+   * name
    *
    * <p>Codecs should override this method to specify the maximum number of dimensions they support.
    *
+   * @param fieldName the field name
    * @return the maximum number of vector dimensions.
    */
-  public int getMaxDimensions() {
+  public int getMaxDimensions(String fieldName) {
     return DEFAULT_MAX_DIMENSIONS;
   }
 

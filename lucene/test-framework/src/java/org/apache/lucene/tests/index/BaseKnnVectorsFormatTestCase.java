@@ -85,8 +85,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  private int getVectorsMaxDimensions() {
-    return Codec.getDefault().knnVectorsFormat().getMaxDimensions();
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }
 
   public void testFieldConstructor() {
@@ -475,11 +475,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       Document doc = new Document();
       doc.add(
           new KnnFloatVectorField(
-              "f", new float[getVectorsMaxDimensions() + 1], VectorSimilarityFunction.DOT_PRODUCT));
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
       Exception exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       assertTrue(
           exc.getMessage()
-              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions() + "]"));
+              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
 
       Document doc2 = new Document();
       doc2.add(new KnnFloatVectorField("f", new float[1], VectorSimilarityFunction.DOT_PRODUCT));
@@ -488,7 +490,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       Document doc3 = new Document();
       doc3.add(
           new KnnFloatVectorField(
-              "f", new float[getVectorsMaxDimensions() + 1], VectorSimilarityFunction.DOT_PRODUCT));
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
       exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc3));
       assertTrue(
           exc.getMessage()
@@ -498,11 +502,13 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       Document doc4 = new Document();
       doc4.add(
           new KnnFloatVectorField(
-              "f", new float[getVectorsMaxDimensions() + 1], VectorSimilarityFunction.DOT_PRODUCT));
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
       exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc4));
       assertTrue(
           exc.getMessage()
-              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions() + "]"));
+              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
     }
   }
 

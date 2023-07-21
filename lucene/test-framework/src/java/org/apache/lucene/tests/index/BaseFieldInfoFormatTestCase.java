@@ -279,7 +279,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField);
 
     for (String field : fieldNames) {
-      IndexableFieldType fieldType = randomFieldType(random());
+      IndexableFieldType fieldType = randomFieldType(random(), field);
       boolean storeTermVectors = false;
       boolean storePayloads = false;
       boolean omitNorms = false;
@@ -318,11 +318,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.close();
   }
 
-  private int getVectorsMaxDimensions() {
-    return Codec.getDefault().knnVectorsFormat().getMaxDimensions();
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }
 
-  private IndexableFieldType randomFieldType(Random r) {
+  private IndexableFieldType randomFieldType(Random r, String fieldName) {
     FieldType type = new FieldType();
 
     if (r.nextBoolean()) {
@@ -355,7 +355,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(getVectorsMaxDimensions());
+      int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());

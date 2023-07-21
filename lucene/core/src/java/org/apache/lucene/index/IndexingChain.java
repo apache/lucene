@@ -625,7 +625,7 @@ final class IndexingChain implements Accountable {
       validateMaxVectorDimension(
           pf.fieldName,
           s.vectorDimension,
-          indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions());
+          indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
     }
     FieldInfo fi =
         fieldInfos.add(
