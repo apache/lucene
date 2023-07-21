@@ -169,7 +169,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
       remaining -= cnt;
       if (remaining > 0) {
         if (buffer.hasRemaining()) {
-          floats[len - remaining] = Float.intBitsToFloat(readInt());
+          floats[offset + len - remaining] = Float.intBitsToFloat(readInt());
           --remaining;
         } else {
           refill();
@@ -188,7 +188,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
       remaining -= cnt;
       if (remaining > 0) {
         if (buffer.hasRemaining()) {
-          dst[length - remaining] = readLong();
+          dst[offset + length - remaining] = readLong();
           --remaining;
         } else {
           refill();
@@ -207,7 +207,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
       remaining -= cnt;
       if (remaining > 0) {
         if (buffer.hasRemaining()) {
-          dst[length - remaining] = readInt();
+          dst[offset + length - remaining] = readInt();
           --remaining;
         } else {
           refill();
