@@ -30,6 +30,7 @@
 package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1067,22 +1068,44 @@ public class RegExp {
   }
 
   final RegExp parseUnionExp() throws IllegalArgumentException {
-    RegExp e = parseInterExp();
-    if (match('|')) e = makeUnion(flags, e, parseUnionExp());
-    return e;
+    ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
+    do {
+      RegExp e = parseInterExp();
+      regExpStack.addFirst(e);
+    } while (match('|') == true);
+
+    RegExp result = regExpStack.removeFirst();
+    while (regExpStack.isEmpty() == false) {
+      result = makeUnion(flags, regExpStack.removeFirst(), result);
+    }
+    return result;
   }
 
   final RegExp parseInterExp() throws IllegalArgumentException {
-    RegExp e = parseConcatExp();
-    if (check(INTERSECTION) && match('&')) e = makeIntersection(flags, e, parseInterExp());
-    return e;
+    ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
+    do {
+      RegExp e = parseConcatExp();
+      regExpStack.addFirst(e);
+    } while ((check(INTERSECTION) && match('&')) == true);
+    RegExp result = regExpStack.removeFirst();
+    while (regExpStack.isEmpty() == false) {
+      result = makeIntersection(flags, regExpStack.removeFirst(), result);
+    }
+    return result;
   }
 
   final RegExp parseConcatExp() throws IllegalArgumentException {
-    RegExp e = parseRepeatExp();
-    if (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&")))
-      e = makeConcatenation(flags, e, parseConcatExp());
-    return e;
+    ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
+    do {
+      RegExp e = parseRepeatExp();
+      regExpStack.addFirst(e);
+    } while ((more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))) == true);
+
+    RegExp result = regExpStack.removeFirst();
+    while (regExpStack.isEmpty() == false) {
+      result = makeConcatenation(flags, regExpStack.removeFirst(), result);
+    }
+    return result;
   }
 
   final RegExp parseRepeatExp() throws IllegalArgumentException {
@@ -1216,7 +1239,7 @@ public class RegExp {
           if (i == 0 || i == s.length() - 1 || i != s.lastIndexOf('-'))
             throw new NumberFormatException();
           String smin = s.substring(0, i);
-          String smax = s.substring(i + 1, s.length());
+          String smax = s.substring(i + 1);
           int imin = Integer.parseInt(smin);
           int imax = Integer.parseInt(smax);
           int digits;
