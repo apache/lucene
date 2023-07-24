@@ -23,13 +23,15 @@ __host uint32_t query_offset_in_batch[DPU_MAX_BATCH_SIZE];
 /**
   Output results
   */
+__mram_noinit uint8_t results_batch[DPU_RESULTS_MAX_BYTE_SIZE];
+__mram_noinit uint8_t results_batch_sorted[DPU_RESULTS_MAX_BYTE_SIZE];
+__host uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
+
+/* Results WRAM caches */
 __dma_aligned query_buffer_elem_t results_cache[NR_TASKLETS][DPU_RESULTS_CACHE_SIZE];
 uint8_t results_cache_index[NR_TASKLETS] = {0};
 MUTEX_INIT(results_mutex);
 uint32_t results_buffer_index = 0;
-__mram_noinit uint8_t results_batch[DPU_RESULTS_MAX_BYTE_SIZE];
-__mram_noinit uint8_t results_batch_sorted[DPU_RESULTS_MAX_BYTE_SIZE];
-uint32_t results_index[DPU_MAX_BATCH_SIZE] = {0};
 
 uint32_t batch_num = 0;
 MUTEX_INIT(batch_mutex);
@@ -97,7 +99,7 @@ int main() {
         release_query_parser(&query_parser);
 
 #ifdef TEST
-        printf("Query %d: %d terms\n", batch_num_tasklet, nr_terms);
+        printf("Query %d: %d terms matchers %x\n", batch_num_tasklet, nr_terms, matchers);
 #endif
         // a null matchers means one of the term of the query is not present in the index and we can skip it
         if(matchers != 0)
@@ -161,7 +163,9 @@ static void perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *match
 #ifdef TEST
             printf("Found a result for query %d: did=%d, pos=%d\n", query_id, did, max_pos - index);
 #endif
-            goto end;
+            // switch to next position
+            if (!matchers_has_next_pos(matchers, nr_terms))
+                    goto end;
         }
         case POSITIONS_NOT_FOUND:
             break;
@@ -190,6 +194,7 @@ static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *match
             case END_OF_INDEX_TABLE:
                 return;
             case DID_FOUND: {
+                //printf("Found did %d\n", did);
                 perform_pos_matching_for_did(query_id, matchers, nr_terms, did);
             } break;
             case DID_NOT_FOUND:
@@ -211,6 +216,7 @@ static void flush_query_buffer() {
     if(mram_buffer_id * DPU_RESULTS_CACHE_SIZE * sizeof(query_buffer_elem_t) >= DPU_RESULTS_MAX_BYTE_SIZE) {
         // the size of results is exceeded, we need to send a corresponding status to the host
         //TODO
+        return;
     }
     // TODO possibly avoid writting the cache fully for the last buffer where it is not full
     mram_write(results_cache[me()],

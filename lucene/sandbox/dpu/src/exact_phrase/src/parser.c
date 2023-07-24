@@ -106,9 +106,9 @@ parse_did_t parse_did(parser_t *parser, uint32_t *did, uint32_t *freq, uint32_t 
     return DOC_INFO;
 }
 
-void abort_parse_did(parser_t *parser)
+void abort_parse_did(parser_t *parser, uint32_t current_did_len)
 {
-    seek_decoder(parser->decoder, parser->did_parser.did_end_addr);
+    seek_decoder(parser->decoder, get_absolute_address_from(parser->decoder) + current_did_len);
 }
 
 // ============================================================================

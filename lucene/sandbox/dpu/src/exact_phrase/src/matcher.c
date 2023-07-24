@@ -98,7 +98,7 @@ seek_did_t seek_did(did_matcher_t *matchers, uint32_t nr_terms, uint32_t pivot)
             } else if (did > pivot) {
                 break;
             }
-            abort_parse_did(matchers[i].parser);
+            abort_parse_did(matchers[i].parser, matchers[i].current_pos_len);
             if (!matcher_has_next_did(&matchers[i]))
                 return END_OF_INDEX_TABLE;
         }
