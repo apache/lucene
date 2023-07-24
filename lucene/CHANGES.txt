@@ -159,6 +159,8 @@ Optimizations
 
 * GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
 
+* GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
+
 Bug Fixes
 ---------------------
 
