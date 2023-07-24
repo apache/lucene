@@ -51,40 +51,20 @@ public class ToParentJoinKnnResults extends KnnResults {
     }
 
     @Override
-    public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
-      return new ToParentJoinKnnResults(k, visitLimit, parentBitSet, vectorToOrd);
+    public KnnResults getKnnResults() {
+      return new ToParentJoinKnnResults(k, visitLimit, parentBitSet);
     }
   }
 
   private final BitSet parentBitSet;
   private final int k;
-  private final IntToIntFunction vectorToOrd;
   private final NodeIdCachingHeap heap;
 
-  public ToParentJoinKnnResults(
-      int k, int visitLimit, BitSet parentBitSet, IntToIntFunction vectorToOrd) {
+  public ToParentJoinKnnResults(int k, int visitLimit, BitSet parentBitSet) {
     super(visitLimit);
     this.parentBitSet = parentBitSet;
     this.k = k;
-    this.vectorToOrd = vectorToOrd;
     this.heap = new NodeIdCachingHeap(k);
-  }
-
-  /**
-   * Adds a new graph arc, extending the storage as needed.
-   *
-   * <p>If the provided childNodeId's parent has been previously collected and the nodeScore is less
-   * than the previously stored score, this node will not be added to the collection.
-   *
-   * @param childNodeId the neighbor node id
-   * @param nodeScore the score of the neighbor, relative to some other node
-   */
-  @Override
-  public void collect(int childNodeId, float nodeScore) {
-    childNodeId = vectorToOrd.apply(childNodeId);
-    assert !parentBitSet.get(childNodeId);
-    int nodeId = parentBitSet.nextSetBit(childNodeId);
-    heap.push(nodeId, nodeScore);
   }
 
   /**
@@ -100,10 +80,7 @@ public class ToParentJoinKnnResults extends KnnResults {
    * @param nodeScore the score of the neighbor, relative to some other node
    */
   @Override
-  public boolean collectWithOverflow(int childNodeId, float nodeScore) {
-    // Parent and child nodes should be disjoint sets parent bit set should never have a child node
-    // ID present
-    childNodeId = vectorToOrd.apply(childNodeId);
+  public boolean collect(int childNodeId, float nodeScore) {
     assert !parentBitSet.get(childNodeId);
     int nodeId = parentBitSet.nextSetBit(childNodeId);
     return heap.insertWithOverflow(nodeId, nodeScore);
@@ -190,20 +167,6 @@ public class ToParentJoinKnnResults extends KnnResults {
 
     public final float topScore() {
       return heapScores[1];
-    }
-
-    public final void push(int nodeId, float score) {
-      if (closed) {
-        throw new IllegalStateException("must call clear() before adding new elements to heap");
-      }
-      Integer previouslyStoredHeapIndex = nodeIdHeapIndex.get(nodeId);
-      if (previouslyStoredHeapIndex != null) {
-        if (score > heapScores[previouslyStoredHeapIndex]) {
-          updateElement(previouslyStoredHeapIndex, nodeId, score);
-        }
-        return;
-      }
-      pushIn(nodeId, score);
     }
 
     private void pushIn(int nodeId, float score) {

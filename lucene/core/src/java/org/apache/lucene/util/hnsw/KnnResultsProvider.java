@@ -19,7 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 /** knn results provider */
 public interface KnnResultsProvider {
-  KnnResults getKnnResults(IntToIntFunction vectorToOrd);
+  KnnResults getKnnResults();
 
   int visitLimit();
 

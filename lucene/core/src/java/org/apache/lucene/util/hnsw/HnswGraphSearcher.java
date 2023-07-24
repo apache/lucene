@@ -286,7 +286,9 @@ public class HnswGraphSearcher<T> {
     if (ep == -1) {
       return new KnnResults.EmptyKnnResults(numVisited, knnResultsProvider.visitLimit());
     }
-    KnnResults results = knnResultsProvider.getKnnResults(vectors::ordToDoc);
+    KnnResults results =
+        new KnnResults.OrdinalTranslatedKnnResults(
+            knnResultsProvider.getKnnResults(), vectors::ordToDoc);
     results.incVisitedCount(numVisited);
     graphSearcher.searchLevel(results, query, 0, new int[] {ep}, vectors, graph, acceptOrds);
     return results;
@@ -434,7 +436,7 @@ public class HnswGraphSearcher<T> {
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collectWithOverflow(friendOrd, friendSimilarity) && results.isFull()) {
+            if (results.collect(friendOrd, friendSimilarity) && results.isFull()) {
               minAcceptedSimilarity = results.minSimilarity();
             }
           }

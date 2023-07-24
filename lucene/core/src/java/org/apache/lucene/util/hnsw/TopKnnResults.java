@@ -48,24 +48,21 @@ public class TopKnnResults extends KnnResults {
     }
 
     @Override
-    public KnnResults getKnnResults(IntToIntFunction vectorToOrd) {
-      return new TopKnnResults(k, visitLimit, vectorToOrd);
+    public KnnResults getKnnResults() {
+      return new TopKnnResults(k, visitLimit);
     }
   }
 
   protected final int k;
-  private final IntToIntFunction vectorOrdToDocId;
   protected final NeighborQueue queue;
 
   /**
    * @param k the number of neighbors to collect
-   * @param vectorOrdToDocId translating vector ordinals to document ids, used when building TopDocs
-   *     result
+   * @param visitLimit how many vector nodes the results are allowed to visit
    */
-  public TopKnnResults(int k, int visitLimit, IntToIntFunction vectorOrdToDocId) {
+  public TopKnnResults(int k, int visitLimit) {
     super(visitLimit);
     this.k = k;
-    this.vectorOrdToDocId = vectorOrdToDocId;
     this.queue = new NeighborQueue(k, false);
   }
 
@@ -75,21 +72,7 @@ public class TopKnnResults extends KnnResults {
   }
 
   @Override
-  public void collect(int vectorId, float similarity) {
-    queue.add(vectorId, similarity);
-  }
-
-  /**
-   * If the collection is not full, adds a new node-and-score element.
-   *
-   * <p>If the collection is full, compares the score against the current top score, and replaces
-   * the top element if newScore is better than the current top score.
-   *
-   * @param vectorId the neighbor node id
-   * @param similarity the score of the neighbor, relative to some other node
-   */
-  @Override
-  public boolean collectWithOverflow(int vectorId, float similarity) {
+  public boolean collect(int vectorId, float similarity) {
     return queue.insertWithOverflow(vectorId, similarity);
   }
 
@@ -114,7 +97,7 @@ public class TopKnnResults extends KnnResults {
       int node = queue.topNode();
       float score = queue.topScore();
       queue.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorOrdToDocId.apply(node), score);
+      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
     }
     TotalHits.Relation relation =
         incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;

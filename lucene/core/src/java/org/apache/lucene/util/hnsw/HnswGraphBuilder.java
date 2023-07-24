@@ -541,7 +541,7 @@ public final class HnswGraphBuilder<T> {
      * @param k the number of neighbors to collect
      */
     public GraphBuilderKnnResults(int k) {
-      super(k, Integer.MAX_VALUE, i -> i);
+      super(k, Integer.MAX_VALUE);
     }
 
     public int size() {

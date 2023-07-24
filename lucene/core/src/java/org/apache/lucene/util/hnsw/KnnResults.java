@@ -38,13 +38,8 @@ public abstract class KnnResults {
     public void doClear() {}
 
     @Override
-    public void collect(int vectorId, float similarity) {
+    public boolean collect(int vectorId, float similarity) {
       throw new IllegalArgumentException();
-    }
-
-    @Override
-    public boolean collectWithOverflow(int vectorId, float similarity) {
-      return false;
     }
 
     @Override
@@ -61,6 +56,49 @@ public abstract class KnnResults {
     public TopDocs topDocs() {
       TotalHits th = new TotalHits(visitedCount, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO);
       return new TopDocs(th, new ScoreDoc[0]);
+    }
+  }
+
+  static class OrdinalTranslatedKnnResults extends KnnResults {
+    private final KnnResults in;
+    private final IntToIntFunction vectorOrdinalToDocId;
+
+    OrdinalTranslatedKnnResults(KnnResults in, IntToIntFunction vectorOrdinalToDocId) {
+      super(in.visitLimit);
+      this.in = in;
+      this.vectorOrdinalToDocId = vectorOrdinalToDocId;
+    }
+
+    @Override
+    void doClear() {
+      in.clear();
+    }
+
+    @Override
+    boolean collect(int vectorId, float similarity) {
+      return in.collect(vectorOrdinalToDocId.apply(vectorId), similarity);
+    }
+
+    @Override
+    boolean isFull() {
+      return in.isFull();
+    }
+
+    @Override
+    float minSimilarity() {
+      return in.minSimilarity();
+    }
+
+    @Override
+    public TopDocs topDocs() {
+      TopDocs td = in.topDocs();
+      return new TopDocs(
+          new TotalHits(
+              visitedCount(),
+              incomplete()
+                  ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+                  : TotalHits.Relation.EQUAL_TO),
+          td.scoreDocs);
     }
   }
 
@@ -86,17 +124,6 @@ public abstract class KnnResults {
     return visitedCount >= visitLimit;
   }
 
-  final int visitLimit() {
-    return visitLimit;
-  }
-
-  /**
-   * @param count set the current visited count to the provided value
-   */
-  final void setVisitedCount(int count) {
-    this.visitedCount = count;
-  }
-
   final void incVisitedCount(int count) {
     assert count > 0;
     this.visitedCount += count;
@@ -114,15 +141,9 @@ public abstract class KnnResults {
    *
    * @param vectorId the vector to collect
    * @param similarity its calculated similarity
-   */
-  abstract void collect(int vectorId, float similarity);
-
-  /**
-   * @param vectorId the vector to collect
-   * @param similarity its calculated similarity
    * @return true if the vector is collected
    */
-  abstract boolean collectWithOverflow(int vectorId, float similarity);
+  abstract boolean collect(int vectorId, float similarity);
 
   /**
    * @return Is the current result set considered full
