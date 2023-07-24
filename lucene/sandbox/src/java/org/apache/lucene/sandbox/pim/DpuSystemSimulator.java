@@ -53,23 +53,24 @@ class DpuSystemSimulator implements PimQueriesExecutor {
             List<PimMatch> matches = pimSearcher.searchPhrase(segment, builder.build());
 
             // write the results in the results queue
-            ByteCountDataOutput countOut = new ByteCountDataOutput();
+            /*ByteCountDataOutput countOut = new ByteCountDataOutput();
             countOut.writeVInt(matches.size());
             for (PimMatch m : matches) {
                 countOut.writeVInt(m.docId);
                 countOut.writeVInt((int) m.score);
-            }
-            byte[] matchesByteArr = new byte[Math.toIntExact(countOut.getByteCount())];
+            }*/
+            //byte[] matchesByteArr = new byte[Math.toIntExact(countOut.getByteCount())];
+            byte[] matchesByteArr = new byte[Math.toIntExact(matches.size() * Integer.BYTES * 2)];
             ByteArrayDataOutput byteOut = new ByteArrayDataOutput(matchesByteArr);
-            byteOut.writeVInt(matches.size());
             for (PimMatch m : matches) {
-                byteOut.writeVInt(m.docId);
-                byteOut.writeVInt((int) m.score);
+                byteOut.writeInt(m.docId);
+                byteOut.writeInt((int) m.score);
             }
 
             resultReceiver.startResultBatch();
             try {
-                resultReceiver.addResults(queryBatch.getUniqueIdOf(q), new ByteArrayDataInput(matchesByteArr), ()->{});
+                resultReceiver.addResults(queryBatch.getUniqueIdOf(q),
+                        new DpuResultsArrayInput(new ByteArrayDataInput(matchesByteArr)), ()->{});
             } finally {
                 resultReceiver.endResultBatch();
             }
@@ -102,21 +103,21 @@ class DpuSystemSimulator implements PimQueriesExecutor {
             List<PimMatch> matches = pimSearcher.searchPhrase(segment, builder.build());
 
             // write the results in the results queue
-            ByteCountDataOutput countOut = new ByteCountDataOutput();
+            /*ByteCountDataOutput countOut = new ByteCountDataOutput();
             countOut.writeVInt(matches.size());
             for (PimMatch m : matches) {
                 countOut.writeVInt(m.docId);
                 countOut.writeVInt((int) m.score);
-            }
-            byte[] matchesByteArr = new byte[Math.toIntExact(countOut.getByteCount())];
+            }*/
+            //byte[] matchesByteArr = new byte[Math.toIntExact(countOut.getByteCount())];
+            byte[] matchesByteArr = new byte[Math.toIntExact(matches.size() * 2 * Integer.BYTES)];
             ByteArrayDataOutput byteOut = new ByteArrayDataOutput(matchesByteArr);
-            byteOut.writeVInt(matches.size());
             for (PimMatch m : matches) {
-                byteOut.writeVInt(m.docId);
-                byteOut.writeVInt((int) m.score);
+                byteOut.writeInt(m.docId);
+                byteOut.writeInt((int) m.score);
             }
 
-            queryBuffer.addResults(new ByteArrayDataInput(matchesByteArr), ()->{});
+            queryBuffer.addResults(new DpuResultsArrayInput(new ByteArrayDataInput(matchesByteArr)), ()->{});
         }
     }
 }

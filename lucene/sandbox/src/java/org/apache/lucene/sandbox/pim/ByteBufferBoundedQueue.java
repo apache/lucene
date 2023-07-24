@@ -337,6 +337,7 @@ public class ByteBufferBoundedQueue {
 
         private ByteBuffers(ByteBufferBoundedQueue buffer, int maxNbElems) {
             this.buffer = buffer.byteArray;
+            this.sliceInfos = buffer.sliceInfos;
             this.startIndex = buffer.readPointer & buffer.mask;
             int endIndex1 = buffer.readPointer;
             int index = buffer.sliceReadPointer;
@@ -367,7 +368,12 @@ public class ByteBufferBoundedQueue {
             if (index > buffer.sliceReadPointer)
                 endIndex1 = buffer.sliceInfos[(index - 1) & buffer.sliceMask].endIndex;
 
-            this.size = (endIndex1 & buffer.mask) - (buffer.readPointer & buffer.mask);
+            int endIndex1Mask = endIndex1 & buffer.mask;
+            if(endIndex1Mask >= this.startIndex)
+                this.size = endIndex1Mask - this.startIndex;
+            else {
+                this.size = buffer.byteArray.length - this.startIndex + endIndex1Mask;
+            }
             this.nbElems = nbElems;
         }
 
@@ -390,6 +396,24 @@ public class ByteBufferBoundedQueue {
          */
         final int getSize() {
             return size;
+        }
+
+        /**
+         * @param elem the index of the byte buffer in the slice.
+         * @return the size in bytes of the given element in the slice.
+         */
+        final int getSizeOf(int elem) {
+
+            int endIndex = (this.sliceInfos[this.startSliceIndex + elem].endIndex) & sliceMask;
+            int startIndex = this.startIndex;
+            if(elem != 0) {
+                startIndex = (this.sliceInfos[this.startSliceIndex + elem - 1].endIndex) & sliceMask;
+            }
+            if(endIndex >= startIndex)
+                return endIndex - startIndex;
+            else {
+                return buffer.length - startIndex + endIndex;
+            }
         }
 
         /**
@@ -416,6 +440,7 @@ public class ByteBufferBoundedQueue {
         boolean isSplitted() { return startIndex + size >= buffer.length; }
 
         private final byte[] buffer;
+        private final ByteBufferInfo[] sliceInfos;
         private final int startIndex;
         private final int startSliceIndex;
         private final int sliceMask;

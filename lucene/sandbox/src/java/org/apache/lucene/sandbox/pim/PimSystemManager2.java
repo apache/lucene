@@ -32,7 +32,7 @@ public class PimSystemManager2 implements PimSystemManager {
         static final PimSystemManager2 INSTANCE = new PimSystemManager2();
     }
 
-    private static final boolean USE_SOFTWARE_MODEL = true;
+    private static final boolean USE_SOFTWARE_MODEL = false;
 
     // TODO: Should there be a queue per query type, with a different max number of queries?
     private static final int MAX_NUM_QUERIES = 128;
@@ -86,9 +86,13 @@ public class PimSystemManager2 implements PimSystemManager {
             synchronized (this) {
                 if (!indexLoaded) {
                     pimIndexInfo = readPimIndexInfo(pimDirectory);
-                    queriesExecutor.setPimIndex(pimIndexInfo);
-                    indexLoaded = true;
-                    return true;
+                    try {
+                        queriesExecutor.setPimIndex(pimIndexInfo);
+                        indexLoaded = true;
+                        return true;
+                    } catch (DpuException e) {
+                        return false;
+                    }
                 }
             }
         }
@@ -152,7 +156,7 @@ public class PimSystemManager2 implements PimSystemManager {
             //TODO: or return null?
         }
         try {
-            DataInput results = queryBuffer.waitForResults();
+            DpuResultsReader results = queryBuffer.waitForResults();
             return getMatches(query, results, scorer);
         }
         finally {
@@ -172,25 +176,26 @@ public class PimSystemManager2 implements PimSystemManager {
     }
 
     private <QueryType extends Query & PimQuery> List<PimMatch> getMatches(QueryType query,
-                                                                           DataInput input,
+                                                                           DpuResultsReader input,
                                                                            LeafSimScorer scorer) throws IOException {
         List<PimMatch> matches = null;
-        int nbResults = input.readVInt();
-        for (int i = 0; i < nbResults; ++i) {
+        while (!input.eof()) {
+            //System.out.println("reading result");
             PimMatch m = query.readResult(input, scorer);
             if (m != null) {
                 if (matches == null) {
-                    matches = new ArrayList<>(nbResults);
+                    matches = new ArrayList<>();
                 }
                 matches.add(m);
             }
         }
+        //System.out.println("return matches of size " + matches.size());
         return matches == null ? Collections.emptyList() : matches;
     }
 
     static class QueryBuffer extends DataOutput {
 
-        final BlockingQueue<DataInput> resultQueue = new LinkedBlockingQueue<>();
+        final BlockingQueue<DpuResultsReader> resultQueue = new LinkedBlockingQueue<>();
         byte[] bytes = new byte[128];
         int length;
         private Runnable releaseResults;
@@ -204,11 +209,11 @@ public class PimSystemManager2 implements PimSystemManager {
             return new ByteArrayDataInput(bytes, 0, length);
         }
 
-        DataInput waitForResults() throws InterruptedException {
+        DpuResultsReader waitForResults() throws InterruptedException {
             return resultQueue.take();
         }
 
-        void addResults(DataInput results, Runnable releaseResults) {
+        void addResults(DpuResultsReader results, Runnable releaseResults) {
 
             this.releaseResults = releaseResults;
             resultQueue.add(results);
@@ -273,6 +278,7 @@ public class PimSystemManager2 implements PimSystemManager {
         volatile boolean stop;
 
         public void stop() {
+            //queriesExecutor.dumpDpuStream();
             stop = true;
             // Add any QueryBuffer to the queue to make sure it stops waiting if it is empty.
             queryQueue.offer(threadQueryBuffer.get());

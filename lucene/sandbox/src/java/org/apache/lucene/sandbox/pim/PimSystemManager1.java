@@ -37,7 +37,7 @@ public final class PimSystemManager1 implements PimSystemManager {
     private static final int BYTE_BUFFER_QUEUE_LOG2_BYTE_SIZE = 11;
     private static final int QUERY_BATCH_SIZE = 128;
     private static final boolean DEBUG = false;
-    private static final boolean USE_SOFTWARE_MODEL = true;
+    private static final boolean USE_SOFTWARE_MODEL = false;
 
     private volatile boolean isIndexLoaded;
     private volatile boolean isIndexBeingLoaded;
@@ -57,7 +57,7 @@ public final class PimSystemManager1 implements PimSystemManager {
 
 
     private final PimQueriesExecutor queriesExecutor;
-    private final HashMap<Integer, DataInput> queryResultsMap;
+    private final HashMap<Integer, DpuResultsReader> queryResultsMap;
     private HashSet<Integer> queryProcessedIds;
     private final ResultReceiver resultReceiver;
     private final QueryRunner queryRunner;
@@ -116,7 +116,15 @@ public final class PimSystemManager1 implements PimSystemManager {
             }
             if (loadSuccess) {
                 // the calling thread has succeeded loading the PIM Index
-                transferPimIndex();
+                try {
+                    transferPimIndex();
+                } catch (DpuException e) {
+                    synchronized (PimSystemManager1.class) {
+                        isIndexBeingLoaded = false;
+                        isIndexLoaded = false;
+                    }
+                    return false;
+                }
                 synchronized (PimSystemManager1.class) {
                     isIndexBeingLoaded = false;
                     isIndexLoaded = true;
@@ -301,7 +309,7 @@ public final class PimSystemManager1 implements PimSystemManager {
             QueryType q, int id, LeafSimScorer scorer) throws IOException {
 
         resultsLock.readLock().lock();
-        DataInput resultsReader;
+        DpuResultsReader resultsReader;
         try {
             resultsReader = queryResultsMap.get(id);
         }
@@ -371,15 +379,12 @@ public final class PimSystemManager1 implements PimSystemManager {
      * Used by method getQueryMatches
      */
     private <QueryType extends Query & PimQuery> List<PimMatch> getMatches(
-            QueryType q, DataInput input, LeafSimScorer scorer) throws IOException {
+            QueryType q, DpuResultsReader input, LeafSimScorer scorer) throws IOException {
 
         List<PimMatch> matches = new ArrayList<>();
 
-        // 1) read number of results
-        int nbResults = input.readVInt();
-
         // 2) loop and call readResult (specialized on query type, return a PimMatch)
-        for(int i = 0; i < nbResults; ++i) {
+        while(!input.eof()) {
             PimMatch m = q.readResult(input, scorer);
             if(m != null)
                 matches.add(m);
@@ -406,7 +411,7 @@ public final class PimSystemManager1 implements PimSystemManager {
     /**
      * Copy the PIM index to the PIM system
      */
-    private void transferPimIndex() {
+    private void transferPimIndex() throws IOException, DpuException {
         // TODO load index to PIM system
         // Lock the pim index to avoid it to be overwritten ?
         queriesExecutor.setPimIndex(pimIndexInfo);
@@ -522,6 +527,7 @@ public final class PimSystemManager1 implements PimSystemManager {
                 } catch (ByteBufferBoundedQueue.ParallelPeekException e) {
                     throw new RuntimeException(e);
                 } catch (DpuException e) {
+                    queriesExecutor.dumpDpuStream();
                     throw new RuntimeException(e);
                 }
             }
@@ -537,7 +543,7 @@ public final class PimSystemManager1 implements PimSystemManager {
             resultsLock.writeLock().lock();
         }
 
-        public void addResults(int queryId, DataInput results, Runnable releaseResults) {
+        public void addResults(int queryId, DpuResultsReader results, Runnable releaseResults) {
             this.releaseResults = releaseResults;
             queryResultsMap.put(queryId, results);
         }

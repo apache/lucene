@@ -77,7 +77,7 @@ public interface PimSystemManager {
 
         void startResultBatch();
 
-        void addResults(int queryId, DataInput results, Runnable onRelease);
+        void addResults(int queryId, DpuResultsReader results, Runnable onRelease);
 
         void releaseResults();
 

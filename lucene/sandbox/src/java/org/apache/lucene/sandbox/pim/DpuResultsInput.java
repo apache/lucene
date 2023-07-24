@@ -1,8 +1,6 @@
 package org.apache.lucene.sandbox.pim;
 
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BitUtil;
-
 import java.io.IOException;
 
 /**
@@ -10,33 +8,39 @@ import java.io.IOException;
  * The purpose of this class is to be able to read the results of a query
  * while abstracting out the fact that the results are scattered across the DPU results array.
  */
-public class DpuResultsInput extends DataInput {
+public class DpuResultsInput extends DpuResultsReader {
 
-    byte[][] dpuQueryResultsAddr;
-    byte[][] dpuResults;
-    int queryId;
+    final int nbDpus;
+    final byte[][] dpuQueryResultsAddr;
+    final byte[][] dpuResults;
+    final int queryId;
     int currDpuId;
     int currByteIndex;
     int byteIndexEnd;
 
-    DpuResultsInput(byte[][] dpuResults, byte[][] dpuQueryResultsAddr, int queryId) {
+    DpuResultsInput(int nbDpus, byte[][] dpuResults, byte[][] dpuQueryResultsAddr, int queryId) {
+        this.nbDpus = nbDpus;
         this.dpuResults = dpuResults;
         this.dpuQueryResultsAddr = dpuQueryResultsAddr;
         this.queryId = queryId;
-        this.currDpuId = 0;
+        this.currDpuId = -1;
+        this.byteIndexEnd = 0;
+        this.currByteIndex = 0;
     }
 
     private void nextDpu() throws IOException {
 
         this.currDpuId++;
 
-        if (currDpuId >= dpuResults.length)
+        if (this.currDpuId >= this.nbDpus)
             throw new IOException("No more DPU results");
 
-        this.currByteIndex = (int) BitUtil.VH_LE_INT.get(
-                dpuQueryResultsAddr[currDpuId], queryId * Integer.BYTES);
+        this.currByteIndex = 0;
+        if(queryId > 0)
+            this.currByteIndex = (int) BitUtil.VH_LE_INT.get(
+                    dpuQueryResultsAddr[currDpuId], (queryId - 1) * Integer.BYTES) * Integer.BYTES * 2;
         this.byteIndexEnd = (int) BitUtil.VH_LE_INT.get(
-                dpuQueryResultsAddr[currDpuId], (queryId + 1) * Integer.BYTES);
+                dpuQueryResultsAddr[currDpuId], queryId * Integer.BYTES) * Integer.BYTES * 2;
     }
 
     private boolean endOfDpuBuffer() {
@@ -77,5 +81,17 @@ public class DpuResultsInput extends DataInput {
             nextDpu();
             skipBytes(numBytes - nbBytesToSkip);
         }
+    }
+
+    @Override
+    public boolean eof() {
+        while ((this.currDpuId + 1 < this.nbDpus) && endOfDpuBuffer()) {
+            try {
+                nextDpu();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return (this.currDpuId + 1 == this.nbDpus) && endOfDpuBuffer();
     }
 }
