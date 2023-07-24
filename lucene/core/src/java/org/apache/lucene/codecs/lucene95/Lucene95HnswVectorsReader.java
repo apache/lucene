@@ -48,7 +48,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.KnnResults;
-import org.apache.lucene.util.hnsw.KnnResultsProvider;
 import org.apache.lucene.util.hnsw.TopKnnResults;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
@@ -272,7 +271,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       throws IOException {
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fields.get(field).size());
-    return search(field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
+    if (k == 0) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    }
+    return search(field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
   }
 
   @Override
@@ -280,12 +282,14 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       throws IOException {
     // bound k by total number of vectors to prevent oversizing data structures
     k = Math.min(k, fields.get(field).size());
-    return search(field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
+    if (k == 0) {
+      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    }
+    return search(field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
   }
 
   @Override
-  public TopDocs search(
-      String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -300,7 +304,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     KnnResults results =
         HnswGraphSearcher.search(
             target,
-            knnResultsProvider,
+            knnResults,
             vectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
@@ -310,8 +314,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(
-      String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -326,7 +329,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     KnnResults results =
         HnswGraphSearcher.search(
             target,
-            knnResultsProvider,
+            knnResults,
             vectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,

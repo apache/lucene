@@ -27,7 +27,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.KnnResultsProvider;
+import org.apache.lucene.util.hnsw.KnnResults;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -140,14 +140,12 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param knnResultsProvider a provider that returns a KnnResults collector and topK for gathering
-   *     the vector results
+   * @param knnResults a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public TopDocs search(
-      String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException(
         "vector reader doesn't provide KNN search with results provider");
@@ -174,14 +172,12 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param knnResultsProvider a provider that returns a KnnResults collector and topK for gathering
-   *     the vector results
+   * @param knnResults a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public TopDocs search(
-      String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException(
         "vector reader doesn't provide KNN search with results provider");

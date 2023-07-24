@@ -34,7 +34,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.KnnResultsProvider;
+import org.apache.lucene.util.hnsw.KnnResults;
 
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
 public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
@@ -166,30 +166,28 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(
-        String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+    public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
         throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
-      TopDocs hits = delegate.search(field, target, knnResultsProvider, acceptDocs);
+      TopDocs hits = delegate.search(field, target, knnResults, acceptDocs);
       assert hits != null;
-      assert hits.scoreDocs.length <= knnResultsProvider.k();
+      assert hits.scoreDocs.length <= knnResults.k();
       return hits;
     }
 
     @Override
-    public TopDocs search(
-        String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+    public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
         throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
-      TopDocs hits = delegate.search(field, target, knnResultsProvider, acceptDocs);
+      TopDocs hits = delegate.search(field, target, knnResults, acceptDocs);
       assert hits != null;
-      assert hits.scoreDocs.length <= knnResultsProvider.k();
+      assert hits.scoreDocs.length <= knnResults.k();
       return hits;
     }
 

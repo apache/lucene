@@ -27,33 +27,6 @@ import org.apache.lucene.search.TotalHits;
  */
 public class TopKnnResults extends KnnResults {
 
-  /** A provider used to construct a new {@link TopKnnResults} */
-  public static class Provider implements KnnResultsProvider {
-    private final int k;
-    private final int visitLimit;
-
-    public Provider(int k, int visitLimit) {
-      this.k = k;
-      this.visitLimit = visitLimit;
-    }
-
-    @Override
-    public int k() {
-      return k;
-    }
-
-    @Override
-    public int visitLimit() {
-      return visitLimit;
-    }
-
-    @Override
-    public KnnResults getKnnResults() {
-      return new TopKnnResults(k, visitLimit);
-    }
-  }
-
-  protected final int k;
   protected final NeighborQueue queue;
 
   /**
@@ -61,8 +34,7 @@ public class TopKnnResults extends KnnResults {
    * @param visitLimit how many vector nodes the results are allowed to visit
    */
   public TopKnnResults(int k, int visitLimit) {
-    super(visitLimit);
-    this.k = k;
+    super(k, visitLimit);
     this.queue = new NeighborQueue(k, false);
   }
 
@@ -78,7 +50,7 @@ public class TopKnnResults extends KnnResults {
 
   @Override
   public boolean isFull() {
-    return queue.size() >= k;
+    return queue.size() >= k();
   }
 
   @Override
@@ -88,7 +60,7 @@ public class TopKnnResults extends KnnResults {
 
   @Override
   public TopDocs topDocs() {
-    while (queue.size() > k) {
+    while (queue.size() > k()) {
       queue.pop();
     }
     int i = 0;

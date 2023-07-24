@@ -28,42 +28,12 @@ import org.apache.lucene.util.BitSet;
 /** parent joining knn results, vectorIds are deduplicated according to the parent bit set. */
 public class ToParentJoinKnnResults extends KnnResults {
 
-  /** provider class for creating a new {@link ToParentJoinKnnResults} */
-  public static class Provider implements KnnResultsProvider {
-
-    private final int k, visitLimit;
-    private final BitSet parentBitSet;
-
-    public Provider(int k, int visitLimit, BitSet parentBitSet) {
-      this.k = k;
-      this.parentBitSet = parentBitSet;
-      this.visitLimit = visitLimit;
-    }
-
-    @Override
-    public int visitLimit() {
-      return visitLimit;
-    }
-
-    @Override
-    public int k() {
-      return k;
-    }
-
-    @Override
-    public KnnResults getKnnResults() {
-      return new ToParentJoinKnnResults(k, visitLimit, parentBitSet);
-    }
-  }
-
   private final BitSet parentBitSet;
-  private final int k;
   private final NodeIdCachingHeap heap;
 
   public ToParentJoinKnnResults(int k, int visitLimit, BitSet parentBitSet) {
-    super(visitLimit);
+    super(k, visitLimit);
     this.parentBitSet = parentBitSet;
-    this.k = k;
     this.heap = new NodeIdCachingHeap(k);
   }
 
@@ -88,7 +58,7 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   @Override
   public boolean isFull() {
-    return heap.size >= k;
+    return heap.size >= k();
   }
 
   @Override
@@ -108,7 +78,7 @@ public class ToParentJoinKnnResults extends KnnResults {
 
   @Override
   public TopDocs topDocs() {
-    while (heap.size() > k) {
+    while (heap.size() > k()) {
       heap.popToDrain();
     }
     int i = 0;

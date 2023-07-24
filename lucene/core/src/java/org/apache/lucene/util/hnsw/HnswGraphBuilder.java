@@ -553,7 +553,7 @@ public final class HnswGraphBuilder<T> {
     }
 
     public int[] popUntilNearestKNodes() {
-      while (size() > k) {
+      while (size() > k()) {
         queue.pop();
       }
       return queue.nodes();

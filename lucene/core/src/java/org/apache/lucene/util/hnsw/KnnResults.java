@@ -29,8 +29,8 @@ public abstract class KnnResults {
 
   /** KnnResults when exiting search early and returning empty top docs */
   static class EmptyKnnResults extends KnnResults {
-    public EmptyKnnResults(int visitedCount, int visitLimit) {
-      super(visitLimit);
+    public EmptyKnnResults(int k, int visitedCount, int visitLimit) {
+      super(k, visitLimit);
       this.visitedCount = visitedCount;
     }
 
@@ -64,7 +64,7 @@ public abstract class KnnResults {
     private final IntToIntFunction vectorOrdinalToDocId;
 
     OrdinalTranslatedKnnResults(KnnResults in, IntToIntFunction vectorOrdinalToDocId) {
-      super(in.visitLimit);
+      super(in.k, in.visitLimit);
       this.in = in;
       this.vectorOrdinalToDocId = vectorOrdinalToDocId;
     }
@@ -104,9 +104,11 @@ public abstract class KnnResults {
 
   protected int visitedCount;
   private final int visitLimit;
+  private final int k;
 
-  protected KnnResults(int visitLimit) {
+  protected KnnResults(int k, int visitLimit) {
     this.visitLimit = visitLimit;
+    this.k = k;
   }
 
   final void clear() {
@@ -134,6 +136,14 @@ public abstract class KnnResults {
    */
   final int visitedCount() {
     return visitedCount;
+  }
+
+  final int visitLimit() {
+    return visitLimit;
+  }
+
+  public final int k() {
+    return k;
   }
 
   /**

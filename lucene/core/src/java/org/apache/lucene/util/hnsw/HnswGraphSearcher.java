@@ -89,7 +89,7 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     return search(
         query,
-        new TopKnnResults.Provider(topK, visitedLimit),
+        new TopKnnResults(topK, visitedLimit),
         vectors,
         vectorEncoding,
         similarityFunction,
@@ -101,7 +101,7 @@ public class HnswGraphSearcher<T> {
    * Searches HNSW graph for the nearest neighbors of a query vector.
    *
    * @param query search query vector
-   * @param knnResultsProvider supplies a collector of top knn results to be returned
+   * @param knnResults a collector of top knn results to be returned
    * @param vectors the vector values
    * @param similarityFunction the similarity function to compare vectors
    * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
@@ -112,7 +112,7 @@ public class HnswGraphSearcher<T> {
    */
   public static KnnResults search(
       float[] query,
-      KnnResultsProvider knnResultsProvider,
+      KnnResults knnResults,
       RandomAccessVectorValues<float[]> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
@@ -130,9 +130,9 @@ public class HnswGraphSearcher<T> {
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
-            new NeighborQueue(knnResultsProvider.k(), true),
+            new NeighborQueue(knnResults.k(), true),
             new SparseFixedBitSet(vectors.size()));
-    return search(query, knnResultsProvider, vectors, graph, graphSearcher, acceptOrds);
+    return search(query, knnResults, vectors, graph, graphSearcher, acceptOrds);
   }
 
   /**
@@ -157,12 +157,7 @@ public class HnswGraphSearcher<T> {
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     return search(
-        query,
-        new TopKnnResults.Provider(topK, visitedLimit),
-        vectors,
-        graph,
-        graphSearcher,
-        acceptOrds);
+        query, new TopKnnResults(topK, visitedLimit), vectors, graph, graphSearcher, acceptOrds);
   }
 
   /**
@@ -191,7 +186,7 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     return search(
         query,
-        new TopKnnResults.Provider(topK, visitedLimit),
+        new TopKnnResults(topK, visitedLimit),
         vectors,
         vectorEncoding,
         similarityFunction,
@@ -203,7 +198,7 @@ public class HnswGraphSearcher<T> {
    * Searches HNSW graph for the nearest neighbors of a query vector.
    *
    * @param query search query vector
-   * @param knnResultsProvider supplies a collector of top knn results to be returned
+   * @param knnResults a collector of top knn results to be returned
    * @param vectors the vector values
    * @param similarityFunction the similarity function to compare vectors
    * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
@@ -214,7 +209,7 @@ public class HnswGraphSearcher<T> {
    */
   public static KnnResults search(
       byte[] query,
-      KnnResultsProvider knnResultsProvider,
+      KnnResults knnResults,
       RandomAccessVectorValues<byte[]> vectors,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
@@ -232,9 +227,9 @@ public class HnswGraphSearcher<T> {
         new HnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
-            new NeighborQueue(knnResultsProvider.k(), true),
+            new NeighborQueue(knnResults.k(), true),
             new SparseFixedBitSet(vectors.size()));
-    return search(query, knnResultsProvider, vectors, graph, graphSearcher, acceptOrds);
+    return search(query, knnResults, vectors, graph, graphSearcher, acceptOrds);
   }
 
   /**
@@ -259,17 +254,12 @@ public class HnswGraphSearcher<T> {
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
     return search(
-        query,
-        new TopKnnResults.Provider(topK, visitedLimit),
-        vectors,
-        graph,
-        graphSearcher,
-        acceptOrds);
+        query, new TopKnnResults(topK, visitedLimit), vectors, graph, graphSearcher, acceptOrds);
   }
 
   private static <T> KnnResults search(
       T query,
-      KnnResultsProvider knnResultsProvider,
+      KnnResults knnResults,
       RandomAccessVectorValues<T> vectors,
       HnswGraph graph,
       HnswGraphSearcher<T> graphSearcher,
@@ -277,18 +267,16 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
-      return new KnnResults.EmptyKnnResults(0, knnResultsProvider.visitLimit());
+      return new KnnResults.EmptyKnnResults(knnResults.k(), 0, knnResults.visitLimit());
     }
     int[] epAndVisited =
-        graphSearcher.findBestEntryPoint(query, vectors, graph, knnResultsProvider.visitLimit());
+        graphSearcher.findBestEntryPoint(query, vectors, graph, knnResults.visitLimit());
     int numVisited = epAndVisited[1];
     int ep = epAndVisited[0];
     if (ep == -1) {
-      return new KnnResults.EmptyKnnResults(numVisited, knnResultsProvider.visitLimit());
+      return new KnnResults.EmptyKnnResults(knnResults.k(), numVisited, knnResults.visitLimit());
     }
-    KnnResults results =
-        new KnnResults.OrdinalTranslatedKnnResults(
-            knnResultsProvider.getKnnResults(), vectors::ordToDoc);
+    KnnResults results = new KnnResults.OrdinalTranslatedKnnResults(knnResults, vectors::ordToDoc);
     results.incVisitedCount(numVisited);
     graphSearcher.searchLevel(results, query, 0, new int[] {ep}, vectors, graph, acceptOrds);
     return results;

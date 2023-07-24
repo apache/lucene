@@ -30,7 +30,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.hnsw.KnnResultsProvider;
+import org.apache.lucene.util.hnsw.KnnResults;
 
 /**
  * An {@link LeafReader} which reads multiple, parallel indexes. Each index added must have the same
@@ -439,24 +439,22 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String fieldName, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
-      throws IOException {
+      String fieldName, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectors(fieldName, target, knnResultsProvider, acceptDocs);
+        : reader.searchNearestVectors(fieldName, target, knnResults, acceptDocs);
   }
 
   @Override
   public TopDocs searchNearestVectors(
-      String fieldName, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
-      throws IOException {
+      String fieldName, byte[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null
         ? null
-        : reader.searchNearestVectors(fieldName, target, knnResultsProvider, acceptDocs);
+        : reader.searchNearestVectors(fieldName, target, knnResults, acceptDocs);
   }
 
   @Override

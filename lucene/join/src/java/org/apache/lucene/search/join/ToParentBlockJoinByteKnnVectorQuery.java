@@ -118,7 +118,7 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
             .searchNearestVectors(
                 field,
                 query,
-                new ToParentJoinKnnResults.Provider(k, visitedLimit, parentBitSet),
+                new ToParentJoinKnnResults(k, visitedLimit, parentBitSet),
                 acceptDocs);
     return results != null ? results : NO_RESULTS;
   }

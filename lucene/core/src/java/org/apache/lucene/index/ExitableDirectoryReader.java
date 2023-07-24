@@ -25,7 +25,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.hnsw.KnnResultsProvider;
+import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.TopKnnResults;
 
 /**
@@ -338,13 +338,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     public TopDocs searchNearestVectors(
         String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
       return this.searchNearestVectors(
-          field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
+          field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
     }
 
     @Override
     public TopDocs searchNearestVectors(
-        String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
-        throws IOException {
+        String field, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
 
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
       // match all docs to allow timeout checking.
@@ -371,20 +370,19 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      return in.searchNearestVectors(field, target, knnResultsProvider, timeoutCheckingAcceptDocs);
+      return in.searchNearestVectors(field, target, knnResults, timeoutCheckingAcceptDocs);
     }
 
     @Override
     public TopDocs searchNearestVectors(
         String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
       return this.searchNearestVectors(
-          field, target, new TopKnnResults.Provider(k, visitedLimit), acceptDocs);
+          field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
     }
 
     @Override
     public TopDocs searchNearestVectors(
-        String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
-        throws IOException {
+        String field, byte[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
       // match all docs to allow timeout checking.
       final Bits updatedAcceptDocs =
@@ -410,7 +408,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
             }
           };
 
-      return in.searchNearestVectors(field, target, knnResultsProvider, timeoutCheckingAcceptDocs);
+      return in.searchNearestVectors(field, target, knnResults, timeoutCheckingAcceptDocs);
     }
 
     private void checkAndThrowForSearchVectors() {

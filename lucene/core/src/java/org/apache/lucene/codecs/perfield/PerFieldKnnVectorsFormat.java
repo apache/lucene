@@ -37,7 +37,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.KnnResultsProvider;
+import org.apache.lucene.util.hnsw.KnnResults;
 
 /**
  * Enables per field numeric vector support.
@@ -279,17 +279,15 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(
-        String field, float[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+    public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
         throws IOException {
-      return fields.get(field).search(field, target, knnResultsProvider, acceptDocs);
+      return fields.get(field).search(field, target, knnResults, acceptDocs);
     }
 
     @Override
-    public TopDocs search(
-        String field, byte[] target, KnnResultsProvider knnResultsProvider, Bits acceptDocs)
+    public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
         throws IOException {
-      return fields.get(field).search(field, target, knnResultsProvider, acceptDocs);
+      return fields.get(field).search(field, target, knnResults, acceptDocs);
     }
 
     @Override
