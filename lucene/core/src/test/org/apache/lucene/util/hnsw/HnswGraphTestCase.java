@@ -1060,7 +1060,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         case BYTE -> HnswGraphSearcher.search(
                             (byte[]) query,
                             100,
-                            (RandomAccessVectorValues<byte[]>) vectors,
+                            (RandomAccessVectorValues<byte[]>) vectors.copy(),
                             getVectorEncoding(),
                             similarityFunction,
                             hnsw,
@@ -1069,7 +1069,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         case FLOAT32 -> HnswGraphSearcher.search(
                             (float[]) query,
                             100,
-                            (RandomAccessVectorValues<float[]>) vectors,
+                            (RandomAccessVectorValues<float[]>) vectors.copy(),
                             getVectorEncoding(),
                             similarityFunction,
                             hnsw,
