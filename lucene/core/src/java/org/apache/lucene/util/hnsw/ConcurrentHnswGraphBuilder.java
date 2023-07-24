@@ -33,12 +33,14 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.GrowableBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.ThreadInterruptedException;
+import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.NeighborSimilarity;
 import org.apache.lucene.util.hnsw.ConcurrentOnHeapHnswGraph.NodeAtLevel;
 
 /**
@@ -96,21 +98,20 @@ public class ConcurrentHnswGraphBuilder<T> {
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
-   * @param vectors the vectors whose relations are represented by the graph - must provide a
+   * @param vectorValues the vectors whose relations are represented by the graph - must provide a
    *     different view over those vectors than the one used to add via addGraphNode.
    * @param M – graph fanout parameter used to calculate the maximum number of connections a node
    *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    */
   public ConcurrentHnswGraphBuilder(
-      RandomAccessVectorValues<T> vectors,
+      RandomAccessVectorValues<T> vectorValues,
       VectorEncoding vectorEncoding,
       VectorSimilarityFunction similarityFunction,
       int M,
-      int beamWidth)
-      throws IOException {
-    this.vectors = createThreadSafeVectors(vectors);
-    this.vectorsCopy = createThreadSafeVectors(vectors);
+      int beamWidth) {
+    this.vectors = createThreadSafeVectors(vectorValues);
+    this.vectorsCopy = createThreadSafeVectors(vectorValues);
     this.vectorEncoding = Objects.requireNonNull(vectorEncoding);
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (M <= 0) {
@@ -122,7 +123,38 @@ public class ConcurrentHnswGraphBuilder<T> {
     this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
-    this.hnsw = new ConcurrentOnHeapHnswGraph(M);
+
+    NeighborSimilarity similarity =
+        new NeighborSimilarity() {
+          @Override
+          public float score(int node1, int node2) {
+            try {
+              return scoreBetween(
+                  vectors.get().vectorValue(node1), vectorsCopy.get().vectorValue(node2));
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }
+
+          @Override
+          public Function<Integer, Float> scoreProvider(int node1) {
+            T v1;
+            try {
+              v1 = vectors.get().vectorValue(node1);
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+            return node2 -> {
+              try {
+                return scoreBetween(v1, vectorsCopy.get().vectorValue(node2));
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            };
+          }
+        };
+    this.hnsw = new ConcurrentOnHeapHnswGraph(M, similarity);
+
     this.graphSearcher =
         ExplicitThreadLocal.withInitial(
             () -> {
@@ -376,40 +408,34 @@ public class ConcurrentHnswGraphBuilder<T> {
     return hnsw.ramBytesUsedOneNode(nodeLevel);
   }
 
-  private void addForwardLinks(int level, int newNode, NeighborQueue candidates)
-      throws IOException {
+  private void addForwardLinks(int level, int newNode, NeighborQueue candidates) {
     NeighborArray scratch = popToScratch(candidates); // worst are first
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
-    neighbors.insertDiverse(scratch, this::scoreBetween);
+    neighbors.insertDiverse(scratch);
   }
 
   private void addForwardLinks(
       int level, int newNode, Set<NodeAtLevel> inProgress, NodeAtLevel progressMarker)
       throws IOException {
+    if (inProgress.isEmpty()) {
+      return;
+    }
+
+    T v = vectors.get().vectorValue(newNode);
     NeighborQueue candidates = new NeighborQueue(inProgress.size(), false);
     for (NodeAtLevel n : inProgress) {
       if (n.level >= level && n != progressMarker) {
-        candidates.add(n.node, scoreBetween(n.node, newNode));
+        candidates.add(n.node, scoreBetween(v, vectorsCopy.get().vectorValue(n.node)));
       }
     }
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
     NeighborArray scratch = popToScratch(candidates); // worst are first
-    neighbors.insertDiverse(scratch, this::scoreBetween);
+    neighbors.insertDiverse(scratch);
   }
 
   private void addBackLinks(int level, int newNode) throws IOException {
     ConcurrentNeighborSet neighbors = hnsw.getNeighbors(level, newNode);
-    neighbors.backlink(i -> hnsw.getNeighbors(level, i), this::scoreBetween);
-  }
-
-  private float scoreBetween(int i, int j) {
-    try {
-      T v1 = vectorsCopy.get().vectorValue(i);
-      T v2 = vectorsCopy.get().vectorValue(j);
-      return scoreBetween(v1, v2);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e); // called from closures
-    }
+    neighbors.backlink(i -> hnsw.getNeighbors(level, i));
   }
 
   protected float scoreBetween(T v1, T v2) {

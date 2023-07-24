@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.StampedLock;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.NeighborSimilarity;
 
 /**
  * An {@link HnswGraph} that offers concurrent access; for typical graphs you will get significant
@@ -51,14 +52,16 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
   // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
   private final int nsize;
   private final int nsize0;
+  private final NeighborSimilarity similarity;
 
-  ConcurrentOnHeapHnswGraph(int M) {
+  ConcurrentOnHeapHnswGraph(int M, NeighborSimilarity similarity) {
     this.entryPoint =
         new AtomicReference<>(
             new NodeAtLevel(0, -1)); // Entry node should be negative until a node is added
     this.nsize = M;
     this.nsize0 = 2 * M;
 
+    this.similarity = similarity;
     this.graphLevels = new ConcurrentHashMap<>();
     this.completions = new CompletionTracker(nsize0);
   }
@@ -87,7 +90,9 @@ public final class ConcurrentOnHeapHnswGraph extends HnswGraph implements Accoun
       }
     }
 
-    graphLevels.get(level).put(node, new ConcurrentNeighborSet(node, connectionsOnLevel(level)));
+    graphLevels
+        .get(level)
+        .put(node, new ConcurrentNeighborSet(node, connectionsOnLevel(level), similarity));
   }
 
   /** must be called after addNode once neighbors are linked in all levels. */

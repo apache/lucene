@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -523,7 +524,21 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
       }
     }
 
-    ConcurrentOnHeapHnswGraph topDownOrderReversedHnsw = new ConcurrentOnHeapHnswGraph(10);
+    ConcurrentNeighborSet.NeighborSimilarity mockSimilarity =
+        new ConcurrentNeighborSet.NeighborSimilarity() {
+          @Override
+          public float score(int a, int b) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public Function<Integer, Float> scoreProvider(int a) {
+            throw new UnsupportedOperationException();
+          }
+        };
+
+    ConcurrentOnHeapHnswGraph topDownOrderReversedHnsw =
+        new ConcurrentOnHeapHnswGraph(10, mockSimilarity);
     for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
       List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
       int currLevelNodesSize = currLevelNodes.size();
@@ -532,7 +547,8 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
       }
     }
 
-    ConcurrentOnHeapHnswGraph bottomUpOrderReversedHnsw = new ConcurrentOnHeapHnswGraph(10);
+    ConcurrentOnHeapHnswGraph bottomUpOrderReversedHnsw =
+        new ConcurrentOnHeapHnswGraph(10, mockSimilarity);
     for (int currLevel = 0; currLevel < numLevels; currLevel++) {
       List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
       int currLevelNodesSize = currLevelNodes.size();
@@ -541,7 +557,8 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
       }
     }
 
-    ConcurrentOnHeapHnswGraph topDownOrderRandomHnsw = new ConcurrentOnHeapHnswGraph(10);
+    ConcurrentOnHeapHnswGraph topDownOrderRandomHnsw =
+        new ConcurrentOnHeapHnswGraph(10, mockSimilarity);
     for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
       List<Integer> currLevelNodes = new ArrayList<>(nodesPerLevel.get(currLevel));
       Collections.shuffle(currLevelNodes, random());
@@ -550,7 +567,8 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
       }
     }
 
-    ConcurrentOnHeapHnswGraph bottomUpExpectedHnsw = new ConcurrentOnHeapHnswGraph(10);
+    ConcurrentOnHeapHnswGraph bottomUpExpectedHnsw =
+        new ConcurrentOnHeapHnswGraph(10, mockSimilarity);
     for (int currLevel = 0; currLevel < numLevels; currLevel++) {
       for (Integer currNode : nodesPerLevel.get(currLevel)) {
         bottomUpExpectedHnsw.addNode(currLevel, currNode);
@@ -806,8 +824,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
     VectorEncoding vectorEncoding = getVectorEncoding();
     random().nextLong();
     ConcurrentHnswGraphBuilder<T> builder =
-        new ConcurrentHnswGraphBuilder<>(
-            vectors.copy(), vectorEncoding, similarityFunction, M, M * 2);
+        new ConcurrentHnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, M * 2);
     AtomicLong incrementalEstimate = new AtomicLong(builder.getGraph().ramBytesUsed());
     IntStream.range(0, vectors.size())
         .forEach(
@@ -821,7 +838,10 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
             });
     ConcurrentOnHeapHnswGraph hnsw = builder.getGraph();
     long estimated = RamUsageEstimator.sizeOfObject(hnsw);
-    long actual = ramUsed(hnsw);
+    long actual =
+        ramUsed(hnsw)
+            - ramUsed(
+                vectors); // hnsw has a reference to vectors via the NeighborSimilarity instance
 
     assertEquals((double) actual, (double) estimated, (double) actual * 0.3);
     assertEquals((double) estimated, (double) incrementalEstimate.get(), (double) estimated * 0.1);

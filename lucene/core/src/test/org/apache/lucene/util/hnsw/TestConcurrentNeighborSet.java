@@ -21,14 +21,24 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.NeighborSimilarity;
 
 public class TestConcurrentNeighborSet extends LuceneTestCase {
-  private static final ConcurrentNeighborSet.NeighborSimilarity simpleScore =
-      (a, b) -> {
-        return VectorSimilarityFunction.EUCLIDEAN.compare(new float[] {a}, new float[] {b});
+  private static final NeighborSimilarity simpleScore =
+      new NeighborSimilarity() {
+        @Override
+        public float score(int a, int b) {
+          return VectorSimilarityFunction.EUCLIDEAN.compare(new float[] {a}, new float[] {b});
+        }
+
+        @Override
+        public Function<Integer, Float> scoreProvider(int a) {
+          return b -> score(a, b);
+        }
       };
 
   private static float baseScore(int neighbor) throws IOException {
@@ -36,23 +46,23 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
   }
 
   public void testInsertAndSize() throws IOException {
-    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 2);
-    neighbors.insert(1, baseScore(1), simpleScore);
-    neighbors.insert(2, baseScore(2), simpleScore);
+    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 2, simpleScore);
+    neighbors.insert(1, baseScore(1));
+    neighbors.insert(2, baseScore(2));
     assertEquals(2, neighbors.size());
 
-    neighbors.insert(3, baseScore(3), simpleScore);
+    neighbors.insert(3, baseScore(3));
     assertEquals(2, neighbors.size());
   }
 
   public void testRemoveLeastDiverseFromEnd() throws IOException {
-    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 3);
-    neighbors.insert(1, baseScore(1), simpleScore);
-    neighbors.insert(2, baseScore(2), simpleScore);
-    neighbors.insert(3, baseScore(3), simpleScore);
+    ConcurrentNeighborSet neighbors = new ConcurrentNeighborSet(0, 3, simpleScore);
+    neighbors.insert(1, baseScore(1));
+    neighbors.insert(2, baseScore(2));
+    neighbors.insert(3, baseScore(3));
     assertEquals(3, neighbors.size());
 
-    neighbors.insert(4, baseScore(4), simpleScore);
+    neighbors.insert(4, baseScore(4));
     assertEquals(3, neighbors.size());
 
     List<Integer> expectedValues = Arrays.asList(1, 2, 3);
@@ -69,9 +79,17 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     var vectors = new HnswGraphTestCase.CircularFloatVectorValues(10);
     var vectorsCopy = vectors.copy();
     var candidates = new NeighborArray(10, false);
-    ConcurrentNeighborSet.NeighborSimilarity scoreBetween =
-        (a, b) -> {
-          return similarityFunction.compare(vectors.vectorValue(a), vectorsCopy.vectorValue(b));
+    NeighborSimilarity scoreBetween =
+        new NeighborSimilarity() {
+          @Override
+          public float score(int a, int b) {
+            return similarityFunction.compare(vectors.vectorValue(a), vectorsCopy.vectorValue(b));
+          }
+
+          @Override
+          public Function<Integer, Float> scoreProvider(int a) {
+            return b -> score(a, b);
+          }
         };
     IntStream.range(0, 10)
         .filter(i -> i != 7)
@@ -81,8 +99,8 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
             });
     assert candidates.size() == 9;
 
-    var neighbors = new ConcurrentNeighborSet(0, 3);
-    neighbors.insertDiverse(candidates, scoreBetween);
+    var neighbors = new ConcurrentNeighborSet(0, 3, scoreBetween);
+    neighbors.insertDiverse(candidates);
     assertEquals(2, neighbors.size());
     assert neighbors.contains(8);
     assert neighbors.contains(6);

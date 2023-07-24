@@ -39,12 +39,15 @@ public class ConcurrentNeighborSet {
    */
   private final AtomicReference<ConcurrentNeighborArray> neighborsRef;
 
+  private final NeighborSimilarity similarity;
+
   /** the maximum number of neighbors we can store */
   private final int maxConnections;
 
-  public ConcurrentNeighborSet(int nodeId, int maxConnections) {
+  public ConcurrentNeighborSet(int nodeId, int maxConnections, NeighborSimilarity similarity) {
     this.nodeId = nodeId;
     this.maxConnections = maxConnections;
+    this.similarity = similarity;
     neighborsRef = new AtomicReference<>(new ConcurrentNeighborArray(maxConnections, true));
   }
 
@@ -54,15 +57,13 @@ public class ConcurrentNeighborSet {
     return new NeighborIterator(neighborsRef.get());
   }
 
-  public void backlink(
-      Function<Integer, ConcurrentNeighborSet> neighborhoodOf, NeighborSimilarity scoreBetween)
-      throws IOException {
+  public void backlink(Function<Integer, ConcurrentNeighborSet> neighborhoodOf) throws IOException {
     NeighborArray neighbors = neighborsRef.get();
     for (int i = 0; i < neighbors.size(); i++) {
       int nbr = neighbors.node[i];
       float nbrScore = neighbors.score[i];
       ConcurrentNeighborSet nbrNbr = neighborhoodOf.apply(nbr);
-      nbrNbr.insert(nodeId, nbrScore, scoreBetween);
+      nbrNbr.insert(nodeId, nbrScore);
     }
   }
 
@@ -100,22 +101,21 @@ public class ConcurrentNeighborSet {
    * were selected by this method, or were added as a "backlink" to a node inserted concurrently
    * that chose this one as a neighbor.
    */
-  public void insertDiverse(NeighborArray candidates, NeighborSimilarity scoreBetween) {
+  public void insertDiverse(NeighborArray candidates) {
     BitSet selected = new FixedBitSet(candidates.size());
     for (int i = candidates.size() - 1; i >= 0; i--) {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      if (isDiverse(cNode, cScore, candidates, selected, scoreBetween)) {
+      if (isDiverse(cNode, cScore, candidates, selected)) {
         selected.set(i);
       }
     }
-    insertMultiple(candidates, selected, scoreBetween);
+    insertMultiple(candidates, selected);
     // This leaves the paper's keepPrunedConnection option out; we might want to add that
     // as an option in the future.
   }
 
-  private void insertMultiple(
-      NeighborArray others, BitSet selected, NeighborSimilarity scoreBetween) {
+  private void insertMultiple(NeighborArray others, BitSet selected) {
     neighborsRef.getAndUpdate(
         current -> {
           ConcurrentNeighborArray next = current.copy();
@@ -127,7 +127,7 @@ public class ConcurrentNeighborSet {
             float score = others.score[i];
             next.insertSorted(node, score);
           }
-          enforceMaxConnLimit(next, scoreBetween);
+          enforceMaxConnLimit(next);
           return next;
         });
   }
@@ -136,26 +136,25 @@ public class ConcurrentNeighborSet {
    * Insert a new neighbor, maintaining our size cap by removing the least diverse neighbor if
    * necessary.
    */
-  public void insert(int neighborId, float score, NeighborSimilarity scoreBetween)
-      throws IOException {
+  public void insert(int neighborId, float score) throws IOException {
     assert neighborId != nodeId : "can't add self as neighbor at node " + nodeId;
     neighborsRef.getAndUpdate(
         current -> {
           ConcurrentNeighborArray next = current.copy();
           next.insertSorted(neighborId, score);
-          enforceMaxConnLimit(next, scoreBetween);
+          enforceMaxConnLimit(next);
           return next;
         });
   }
 
   // is the candidate node with the given score closer to the base node than it is to any of the
   // existing neighbors
-  private boolean isDiverse(
-      int node,
-      float score,
-      NeighborArray others,
-      BitSet selected,
-      NeighborSimilarity scoreBetween) {
+  private boolean isDiverse(int node, float score, NeighborArray others, BitSet selected) {
+    if (others.size() == 0) {
+      return true;
+    }
+
+    Function<Integer, Float> scoreProvider = similarity.scoreProvider(node);
     for (int i = others.size() - 1; i >= 0; i--) {
       if (!selected.get(i)) {
         continue;
@@ -164,17 +163,17 @@ public class ConcurrentNeighborSet {
       if (node == candidateNode) {
         break;
       }
-      if (scoreBetween.score(candidateNode, node) > score) {
+      if (scoreProvider.apply(candidateNode) > score) {
         return false;
       }
     }
     return true;
   }
 
-  private void enforceMaxConnLimit(NeighborArray neighbors, NeighborSimilarity scoreBetween) {
+  private void enforceMaxConnLimit(NeighborArray neighbors) {
     while (neighbors.size() > maxConnections) {
       try {
-        removeLeastDiverse(neighbors, scoreBetween);
+        removeLeastDiverse(neighbors);
       } catch (IOException e) {
         throw new UncheckedIOException(e); // called from closures
       }
@@ -186,20 +185,22 @@ public class ConcurrentNeighborSet {
    * all nodes e2 that are closer to the base node than e1 is. If any e2 is closer to e1 than e1 is
    * to the base node, remove e1.
    */
-  private void removeLeastDiverse(NeighborArray neighbors, NeighborSimilarity scoreBetween)
-      throws IOException {
+  private void removeLeastDiverse(NeighborArray neighbors) throws IOException {
     for (int i = neighbors.size() - 1; i >= 1; i--) {
       int e1Id = neighbors.node[i];
       float baseScore = neighbors.score[i];
+      Function<Integer, Float> scoreProvider = similarity.scoreProvider(e1Id);
+
       for (int j = i - 1; j >= 0; j--) {
         int n2Id = neighbors.node[j];
-        float n1n2Score = scoreBetween.score(e1Id, n2Id);
+        float n1n2Score = scoreProvider.apply(n2Id);
         if (n1n2Score > baseScore) {
           neighbors.removeIndex(i);
           return;
         }
       }
     }
+
     // couldn't find any "non-diverse" neighbors, so remove the one farthest from the base node
     neighbors.removeIndex(neighbors.size() - 1);
   }
@@ -215,9 +216,16 @@ public class ConcurrentNeighborSet {
     return false;
   }
 
-  @FunctionalInterface
-  interface NeighborSimilarity {
+  /** Encapsulates comparing node distances for diversity checks. */
+  public interface NeighborSimilarity {
+    /** for one-off comparisons between nodes */
     float score(int node1, int node2);
+
+    /**
+     * For when we're going to compare node1 with multiple other nodes. This allows us to skip
+     * loading node1's vector (potentially from disk) redundantly for each comparison.
+     */
+    Function<Integer, Float> scoreProvider(int node1);
   }
 
   /** A NeighborArray that knows how to copy itself and that checks for duplicate entries */
