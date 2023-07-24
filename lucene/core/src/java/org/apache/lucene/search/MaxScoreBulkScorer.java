@@ -239,7 +239,20 @@ final class MaxScoreBulkScorer extends BulkScorer {
   }
 
   private boolean partitionScorers() {
-    Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxWindowScore));
+    // Partitioning scorers is an optimization problem: the optimal set of non-essential scorers is
+    // the subset of scorers whose sum of max window scores is less than the minimum competitive
+    // score that maximizes the sum of costs.
+    // Computing the optimal solution to this problem would take O(2^num_clauses). As a first
+    // approximation, we take the first scorers sorted by max_window_score / cost whose sum of max
+    // scores is less than the minimum competitive scores. In the common case, maximum scores are
+    // inversely correlated with document frequency so this is the same as only sorting by maximum
+    // score, as described in the MAXSCORE paper and gives the optimal solution. However, this can
+    // make a difference when using custom scores (like FuzzyQuery), high query-time boosts, or
+    // scoring based on wacky weights.
+    Arrays.sort(
+        allScorers,
+        Comparator.comparingDouble(
+            scorer -> (double) scorer.maxWindowScore / Math.max(1L, scorer.cost)));
     double maxScoreSum = 0;
     for (firstEssentialScorer = 0;
         firstEssentialScorer < allScorers.length;
