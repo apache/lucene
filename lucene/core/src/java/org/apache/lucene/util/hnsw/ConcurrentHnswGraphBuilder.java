@@ -66,7 +66,7 @@ public class ConcurrentHnswGraphBuilder<T> {
 
   private final VectorSimilarityFunction similarityFunction;
   private final VectorEncoding vectorEncoding;
-  private final RandomAccessVectorValues<T> vectors;
+  private final ExplicitThreadLocal<RandomAccessVectorValues<T>> vectors;
   private final ExplicitThreadLocal<HnswGraphSearcher<T>> graphSearcher;
   private final ExplicitThreadLocal<NeighborQueue> beamCandidates;
 
@@ -78,7 +78,7 @@ public class ConcurrentHnswGraphBuilder<T> {
 
   // we need two sources of vectors in order to perform diversity check comparisons without
   // colliding
-  private final RandomAccessVectorValues<T> vectorsCopy;
+  private final ExplicitThreadLocal<RandomAccessVectorValues<T>> vectorsCopy;
 
   /** This is the "native" factory for ConcurrentHnswGraphBuilder. */
   public static <T> ConcurrentHnswGraphBuilder<T> create(
@@ -109,8 +109,8 @@ public class ConcurrentHnswGraphBuilder<T> {
       int M,
       int beamWidth)
       throws IOException {
-    this.vectors = vectors;
-    this.vectorsCopy = vectors.copy();
+    this.vectors = createThreadSafeVectors(vectors);
+    this.vectorsCopy = createThreadSafeVectors(vectors);
     this.vectorEncoding = Objects.requireNonNull(vectorEncoding);
     this.similarityFunction = Objects.requireNonNull(similarityFunction);
     if (M <= 0) {
@@ -130,7 +130,7 @@ public class ConcurrentHnswGraphBuilder<T> {
                   vectorEncoding,
                   similarityFunction,
                   new NeighborQueue(beamWidth, true),
-                  new GrowableBitSet(this.vectors.size()));
+                  new GrowableBitSet(this.vectors.get().size()));
             });
     // in scratch we store candidates in reverse order: worse candidates are first
     this.scratchNeighbors =
@@ -191,6 +191,8 @@ public class ConcurrentHnswGraphBuilder<T> {
     Set<Integer> inFlight = ConcurrentHashMap.newKeySet();
     AtomicReference<Throwable> asyncException = new AtomicReference<>(null);
 
+    ExplicitThreadLocal<RandomAccessVectorValues<T>> threadSafeVectors = createThreadSafeVectors(vectorsToAdd);
+
     for (int i = 0; i < vectorsToAdd.size(); i++) {
       final int node = i; // copy for closure
       try {
@@ -199,7 +201,7 @@ public class ConcurrentHnswGraphBuilder<T> {
         pool.submit(
             () -> {
               try {
-                addGraphNode(node, vectorsToAdd);
+                addGraphNode(node, threadSafeVectors.get());
               } catch (Throwable e) {
                 asyncException.set(e);
               } finally {
@@ -228,6 +230,16 @@ public class ConcurrentHnswGraphBuilder<T> {
           hnsw.validateEntryNode();
           return hnsw;
         });
+  }
+
+  private static <T> ExplicitThreadLocal<RandomAccessVectorValues<T>> createThreadSafeVectors(RandomAccessVectorValues<T> vectorValues) {
+    return ExplicitThreadLocal.withInitial(() -> {
+      try {
+        return vectorValues.copy();
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
   }
 
   /**
@@ -288,7 +300,7 @@ public class ConcurrentHnswGraphBuilder<T> {
       for (int level = entry.level; level > nodeLevel; level--) {
         candidates.clear();
         gs.searchLevel(
-            candidates, value, 1, level, eps, vectors, consistentView, null, Integer.MAX_VALUE);
+            candidates, value, 1, level, eps, vectors.get(), consistentView, null, Integer.MAX_VALUE);
         eps = new int[] {candidates.pop()};
       }
 
@@ -303,7 +315,7 @@ public class ConcurrentHnswGraphBuilder<T> {
             beamWidth,
             level,
             eps,
-            vectors,
+            vectors.get(),
             consistentView,
             null,
             Integer.MAX_VALUE);
@@ -381,8 +393,8 @@ public class ConcurrentHnswGraphBuilder<T> {
 
   private float scoreBetween(int i, int j) {
     try {
-      T v1 = vectorsCopy.vectorValue(i);
-      T v2 = vectorsCopy.vectorValue(j);
+      T v1 = vectorsCopy.get().vectorValue(i);
+      T v2 = vectorsCopy.get().vectorValue(j);
       return scoreBetween(v1, v2);
     } catch (IOException e) {
       throw new UncheckedIOException(e); // called from closures
