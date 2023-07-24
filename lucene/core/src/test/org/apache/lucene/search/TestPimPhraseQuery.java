@@ -11,7 +11,6 @@ import org.apache.lucene.sandbox.pim.PimConfig;
 import org.apache.lucene.sandbox.pim.PimIndexWriter;
 import org.apache.lucene.sandbox.pim.PimPhraseQuery;
 import org.apache.lucene.sandbox.pim.PimSystemManager;
-import org.apache.lucene.search.*;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;

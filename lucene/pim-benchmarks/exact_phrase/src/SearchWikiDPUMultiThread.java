@@ -49,7 +49,7 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class SearchWikiDPUMultiThread {
 
-  private static final int NB_THREADS=8;
+  private static final int NB_THREADS=16;
 
   private SearchWikiDPUMultiThread() {}
 
@@ -140,7 +140,7 @@ public class SearchWikiDPUMultiThread {
     private IndexSearcher searcher;
     private IndexReader reader;
     private String field;
-    int totalTime = 0;
+    long totalTime = 0;
     long cpuTime = 0;
     int nbReq = 0;
 
@@ -198,7 +198,7 @@ public class SearchWikiDPUMultiThread {
           long end = System.nanoTime();
           // ignore first request as its latency is not representative due to cold caches
           if (!first) {
-            totalTime += (System.nanoTime() - start);
+            totalTime += (end - start);
             cpuTime += (mbean.getProcessCpuTime() - cpuStart);
             nbReq++;
           }
