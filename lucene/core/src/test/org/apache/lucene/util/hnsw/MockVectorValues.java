@@ -62,9 +62,4 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
       return scratch;
     }
   }
-
-  @Override
-  public float[] vectorValue(int targetOrd) {
-    return denseValues[targetOrd];
-  }
 }

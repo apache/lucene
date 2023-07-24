@@ -30,6 +30,7 @@ abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues<T
   protected final int numVectors;
   protected final BytesRef binaryValue;
 
+  private long callingThreadID = -1;
   protected int pos = -1;
 
   AbstractMockVectorValues(T[] values, int dimension, T[] denseValues, int numVectors) {
@@ -54,6 +55,13 @@ abstract class AbstractMockVectorValues<T> implements RandomAccessVectorValues<T
 
   @Override
   public T vectorValue(int targetOrd) {
+    if (callingThreadID < 0) {
+      callingThreadID = Thread.currentThread().getId();
+    }
+    if (callingThreadID != Thread.currentThread().getId()) {
+      throw new RuntimeException("RandomAccessVectorValues is not thread safe, but multiple calling threads detected");
+    }
+
     return denseValues[targetOrd];
   }
 
