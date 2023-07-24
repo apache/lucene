@@ -394,7 +394,9 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
-  static <T> ConcurrentOnHeapHnswGraph buildParallel(ConcurrentHnswGraphBuilder<T> builder, RandomAccessVectorValues<T> vectors) throws IOException {
+  static <T> ConcurrentOnHeapHnswGraph buildParallel(
+      ConcurrentHnswGraphBuilder<T> builder, RandomAccessVectorValues<T> vectors)
+      throws IOException {
     ExecutorService es;
     int threadCount = Math.max(3, Runtime.getRuntime().availableProcessors());
     es =

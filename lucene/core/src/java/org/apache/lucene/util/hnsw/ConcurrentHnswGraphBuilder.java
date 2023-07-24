@@ -191,7 +191,8 @@ public class ConcurrentHnswGraphBuilder<T> {
     Set<Integer> inFlight = ConcurrentHashMap.newKeySet();
     AtomicReference<Throwable> asyncException = new AtomicReference<>(null);
 
-    ExplicitThreadLocal<RandomAccessVectorValues<T>> threadSafeVectors = createThreadSafeVectors(vectorsToAdd);
+    ExplicitThreadLocal<RandomAccessVectorValues<T>> threadSafeVectors =
+        createThreadSafeVectors(vectorsToAdd);
 
     for (int i = 0; i < vectorsToAdd.size(); i++) {
       final int node = i; // copy for closure
@@ -232,14 +233,16 @@ public class ConcurrentHnswGraphBuilder<T> {
         });
   }
 
-  private static <T> ExplicitThreadLocal<RandomAccessVectorValues<T>> createThreadSafeVectors(RandomAccessVectorValues<T> vectorValues) {
-    return ExplicitThreadLocal.withInitial(() -> {
-      try {
-        return vectorValues.copy();
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-    });
+  private static <T> ExplicitThreadLocal<RandomAccessVectorValues<T>> createThreadSafeVectors(
+      RandomAccessVectorValues<T> vectorValues) {
+    return ExplicitThreadLocal.withInitial(
+        () -> {
+          try {
+            return vectorValues.copy();
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        });
   }
 
   /**
@@ -300,7 +303,15 @@ public class ConcurrentHnswGraphBuilder<T> {
       for (int level = entry.level; level > nodeLevel; level--) {
         candidates.clear();
         gs.searchLevel(
-            candidates, value, 1, level, eps, vectors.get(), consistentView, null, Integer.MAX_VALUE);
+            candidates,
+            value,
+            1,
+            level,
+            eps,
+            vectors.get(),
+            consistentView,
+            null,
+            Integer.MAX_VALUE);
         eps = new int[] {candidates.pop()};
       }
 
