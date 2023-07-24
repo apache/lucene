@@ -77,6 +77,8 @@ allprojects {
 
         relativeProjectLinks = true
 
+        enableSearch = true
+
         // Place the documentation under the documentation directory.
         // docroot is defined in 'documentation.gradle'
         outputDir = project.docroot.toPath().resolve(project.relativeDocPath).toFile()
@@ -257,6 +259,9 @@ class RenderJavadocTask extends DefaultTask {
   boolean linksource = false
 
   @Input
+  boolean enableSearch = false
+
+  @Input
   boolean relativeProjectLinks = false
 
   @Input
@@ -321,7 +326,9 @@ class RenderJavadocTask extends DefaultTask {
     opts << [ '-encoding', 'UTF-8' ]
     opts << [ '-charset', 'UTF-8' ]
     opts << [ '-docencoding', 'UTF-8' ]
-    opts << '-noindex'
+    if (!enableSearch) {
+      opts << '-noindex'
+    }
     opts << '-author'
     opts << '-version'
     if (linksource) {
