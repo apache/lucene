@@ -160,17 +160,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public void readFloats(float[] floats, int offset, int len) throws IOException {
-    int remaining = len;
-    while (remaining > 0) {
-      int cnt = Math.min(buffer.remaining() / Float.BYTES, remaining);
-      buffer.asFloatBuffer().get(floats, offset + len - remaining, cnt);
+  public void readFloats(float[] dst, int offset, int len) throws IOException {
+    int remainingDst = len;
+    while (remainingDst > 0) {
+      int cnt = Math.min(buffer.remaining() / Float.BYTES, remainingDst);
+      buffer.asFloatBuffer().get(dst, offset + len - remainingDst, cnt);
       buffer.position(buffer.position() + Float.BYTES * cnt);
-      remaining -= cnt;
-      if (remaining > 0) {
+      remainingDst -= cnt;
+      if (remainingDst > 0) {
         if (buffer.hasRemaining()) {
-          floats[offset + len - remaining] = Float.intBitsToFloat(readInt());
-          --remaining;
+          dst[offset + len - remainingDst] = Float.intBitsToFloat(readInt());
+          --remainingDst;
         } else {
           refill();
         }
@@ -179,17 +179,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public void readLongs(long[] dst, int offset, int length) throws IOException {
-    int remaining = length;
-    while (remaining > 0) {
-      int cnt = Math.min(buffer.remaining() / Long.BYTES, remaining);
-      buffer.asLongBuffer().get(dst, offset + length - remaining, cnt);
+  public void readLongs(long[] dst, int offset, int len) throws IOException {
+    int remainingDst = len;
+    while (remainingDst > 0) {
+      int cnt = Math.min(buffer.remaining() / Long.BYTES, remainingDst);
+      buffer.asLongBuffer().get(dst, offset + len - remainingDst, cnt);
       buffer.position(buffer.position() + Long.BYTES * cnt);
-      remaining -= cnt;
-      if (remaining > 0) {
+      remainingDst -= cnt;
+      if (remainingDst > 0) {
         if (buffer.hasRemaining()) {
-          dst[offset + length - remaining] = readLong();
-          --remaining;
+          dst[offset + len - remainingDst] = readLong();
+          --remainingDst;
         } else {
           refill();
         }
@@ -198,17 +198,17 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public void readInts(int[] dst, int offset, int length) throws IOException {
-    int remaining = length;
-    while (remaining > 0) {
-      int cnt = Math.min(buffer.remaining() / Integer.BYTES, remaining);
-      buffer.asIntBuffer().get(dst, offset + length - remaining, cnt);
+  public void readInts(int[] dst, int offset, int len) throws IOException {
+    int remainingDst = len;
+    while (remainingDst > 0) {
+      int cnt = Math.min(buffer.remaining() / Integer.BYTES, remainingDst);
+      buffer.asIntBuffer().get(dst, offset + len - remainingDst, cnt);
       buffer.position(buffer.position() + Integer.BYTES * cnt);
-      remaining -= cnt;
-      if (remaining > 0) {
+      remainingDst -= cnt;
+      if (remainingDst > 0) {
         if (buffer.hasRemaining()) {
-          dst[offset + length - remaining] = readInt();
-          --remaining;
+          dst[offset + len - remainingDst] = readInt();
+          --remainingDst;
         } else {
           refill();
         }
