@@ -234,7 +234,8 @@ public class TestBufferedIndexInput extends LuceneTestCase {
               .put(byten(offset + 1))
               .put(byten(offset + 2))
               .put(byten(offset + 3));
-          assertEquals(bb.getFloat(0), floatBuffer[idx], 0f);
+          assertEquals(
+              Float.floatToRawIntBits(bb.getFloat(0)), Float.floatToRawIntBits(floatBuffer[idx]));
         }
       }
     }

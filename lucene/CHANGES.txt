@@ -84,6 +84,8 @@ Optimizations
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
+* GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
+
 Bug Fixes
 ---------------------
 
