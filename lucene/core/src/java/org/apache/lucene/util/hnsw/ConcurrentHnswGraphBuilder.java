@@ -27,9 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
@@ -40,7 +38,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.GrowableBitSet;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.hnsw.ConcurrentOnHeapHnswGraph.NodeAtLevel;
 
@@ -159,48 +156,6 @@ public class ConcurrentHnswGraphBuilder<T> {
         }
       };
     }
-  }
-
-  /**
-   * Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
-   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
-   * returned values.
-   *
-   * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
-   *     independent accessor for the vectors
-   * @param autoParallel if true, the builder will allocate one thread per core to building the
-   *     graph; if false, it will use a single thread. For more fine-grained control, use the
-   *     ExecutorService (ThreadPoolExecutor) overload.
-   */
-  public ConcurrentOnHeapHnswGraph build(
-      RandomAccessVectorValues<T> vectorsToAdd, boolean autoParallel) throws IOException {
-    ExecutorService es;
-    int threadCount;
-    if (autoParallel) {
-      threadCount = Runtime.getRuntime().availableProcessors();
-      es =
-          Executors.newFixedThreadPool(
-              threadCount, new NamedThreadFactory("Concurrent HNSW builder"));
-    } else {
-      threadCount = 1;
-      es = Executors.newSingleThreadExecutor(new NamedThreadFactory("Concurrent HNSW builder"));
-    }
-
-    Future<ConcurrentOnHeapHnswGraph> f = buildAsync(vectorsToAdd, es, threadCount);
-    try {
-      return f.get();
-    } catch (InterruptedException e) {
-      throw new ThreadInterruptedException(e);
-    } catch (ExecutionException e) {
-      throw new IOException(e);
-    } finally {
-      es.shutdown();
-    }
-  }
-
-  public ConcurrentOnHeapHnswGraph build(RandomAccessVectorValues<T> vectorsToAdd)
-      throws IOException {
-    return build(vectorsToAdd, true);
   }
 
   /**

@@ -131,7 +131,7 @@ public class TestConcurrentHnswFloatVectorGraph extends ConcurrentHnswGraphTestC
     random().nextInt();
     ConcurrentHnswGraphBuilder<float[]> builder =
         new ConcurrentHnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, 16, 100);
-    ConcurrentOnHeapHnswGraph hnsw = builder.build(vectors.copy());
+    ConcurrentOnHeapHnswGraph hnsw = buildParallel(builder, vectors);
 
     // Skip over half of the documents that are closest to the query vector
     FixedBitSet acceptOrds = new FixedBitSet(nDoc);
