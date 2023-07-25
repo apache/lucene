@@ -60,6 +60,11 @@ public class TaxonomyFacetCounts extends IntTaxonomyFacets {
   private final void count(List<MatchingDocs> matchingDocs) throws IOException {
     IntsRef scratch = new IntsRef();
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeValueCounters();
+
       OrdinalsReader.OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
       DocIdSetIterator docs = hits.bits.iterator();
 

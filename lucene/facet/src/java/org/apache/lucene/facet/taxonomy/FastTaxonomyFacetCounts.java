@@ -72,11 +72,15 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
 
   private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
       SortedNumericDocValues multiValued =
           FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
       if (multiValued == null) {
         continue;
       }
+      initializeValueCounters();
 
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
@@ -115,13 +119,14 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
   }
 
   private void countAll(IndexReader reader) throws IOException {
-    assert values != null;
     for (LeafReaderContext context : reader.leaves()) {
       SortedNumericDocValues multiValued =
           FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
       if (multiValued == null) {
         continue;
       }
+      initializeValueCounters();
+      assert values != null;
 
       Bits liveDocs = context.reader().getLiveDocs();
       NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);

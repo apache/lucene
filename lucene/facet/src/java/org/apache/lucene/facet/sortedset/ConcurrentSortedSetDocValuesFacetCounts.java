@@ -78,6 +78,13 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
   }
 
   @Override
+  boolean hasCounts() {
+    // TODO: safe to always assume there are counts, but maybe it would be more optimal to
+    // actually track if we see a count?
+    return true;
+  }
+
+  @Override
   int getCount(int ord) {
     return counts.get(ord);
   }
@@ -99,6 +106,11 @@ public class ConcurrentSortedSetDocValuesFacetCounts extends AbstractSortedSetDo
 
     @Override
     public Void call() throws IOException {
+      // If we're counting collected hits but there were none, short-circuit:
+      if (hits != null && hits.totalHits == 0) {
+        return null;
+      }
+
       SortedSetDocValues multiValues = DocValues.getSortedSet(leafReader, field);
       if (multiValues == null) {
         // nothing to count here
