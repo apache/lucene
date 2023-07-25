@@ -51,16 +51,16 @@ public class ToParentJoinKnnResults extends KnnResults {
    * score, and replaces the top element if newScore is better than (greater than unless the heap is
    * reversed), the current top score.
    *
-   * <p>If childNodeId's parent node has previously been collected and the provided nodeScore is
-   * less than the stored score it will not be collected.
+   * <p>If docId's parent node has previously been collected and the provided nodeScore is less than
+   * the stored score it will not be collected.
    *
-   * @param childNodeId the neighbor node id
+   * @param docId the neighbor docId
    * @param nodeScore the score of the neighbor, relative to some other node
    */
   @Override
-  public boolean collect(int childNodeId, float nodeScore) {
-    assert !parentBitSet.get(childNodeId);
-    int nodeId = parentBitSet.nextSetBit(childNodeId);
+  public boolean collect(int docId, float nodeScore) {
+    assert !parentBitSet.get(docId);
+    int nodeId = parentBitSet.nextSetBit(docId);
     return heap.insertWithOverflow(nodeId, nodeScore);
   }
 

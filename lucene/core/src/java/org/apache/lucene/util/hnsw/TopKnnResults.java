@@ -40,8 +40,8 @@ public class TopKnnResults extends KnnResults {
   }
 
   @Override
-  public boolean collect(int vectorId, float similarity) {
-    return queue.insertWithOverflow(vectorId, similarity);
+  public boolean collect(int docId, float similarity) {
+    return queue.insertWithOverflow(docId, similarity);
   }
 
   @Override

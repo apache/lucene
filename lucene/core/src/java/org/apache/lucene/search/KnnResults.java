@@ -60,13 +60,13 @@ public abstract class KnnResults {
   }
 
   /**
-   * Collect the provided vectorId and include in the result set.
+   * Collect the provided docId and include in the result set.
    *
-   * @param vectorId the vector to collect
+   * @param docId of the vector to collect
    * @param similarity its calculated similarity
    * @return true if the vector is collected
    */
-  public abstract boolean collect(int vectorId, float similarity);
+  public abstract boolean collect(int docId, float similarity);
 
   /**
    * @return Is the current result set considered full
