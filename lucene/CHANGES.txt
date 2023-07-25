@@ -84,6 +84,9 @@ Optimizations
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
+* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
+  to count. (Greg Miller)
+
 Bug Fixes
 ---------------------
 
@@ -160,9 +163,6 @@ Optimizations
 * GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
 
 * GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
-
-* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
-  to count. (Greg Miller)
 
 Bug Fixes
 ---------------------
