@@ -262,12 +262,13 @@ bool get_term_postings(uintptr_t field_address,
 
     // loop over remaining terms and compare the bytes to find the seeked term
     uintptr_t curr_addr = get_absolute_address_from(decoder);
-    uintptr_t last_addr = index_begin_addr + postings_offset + term_blocks[me()].block_address
+    uintptr_t last_addr = index_begin_addr + block_list_offset + term_blocks[me()].block_address
                             + term_blocks[me()].block_size;
 
     while(curr_addr < last_addr) {
 
         uint32_t term_length = decode_vint_from(decoder);
+
         // compare the searched term with the current term of the block list
         int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, term_length);
 
