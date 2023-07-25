@@ -49,7 +49,7 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class SearchWikiDPUMultiThread {
 
-  private static final int NB_THREADS=16;
+  private static final int NB_THREADS=32;
 
   private SearchWikiDPUMultiThread() {}
 
@@ -101,8 +101,8 @@ public class SearchWikiDPUMultiThread {
     System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
 
     BufferedReader in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
-    int lines = 0;
-    while (in.readLine() != null) lines++;
+    int nb_queries = 0;
+    while (in.readLine() != null) nb_queries++;
     in.close();
 
     System.out.println("Starting " + NB_THREADS + " threads for index search");
@@ -112,19 +112,28 @@ public class SearchWikiDPUMultiThread {
     for(int i = 0; i < NB_THREADS; ++i) {
       readers[i] =  Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
       searchTasks[i] = new SearchTask(i, searcher, reader, field, readers[i],
-              i * (lines / NB_THREADS),
-              i == (NB_THREADS - 1) ? lines - (lines / NB_THREADS * (NB_THREADS - 1)) : lines / NB_THREADS);
+              i * (nb_queries / NB_THREADS),
+              i == (NB_THREADS - 1) ? nb_queries - (nb_queries / NB_THREADS * (NB_THREADS - 1)) : nb_queries / NB_THREADS);
       threads[i] = new Thread(searchTasks[i]);
+    }
+
+    long start = System.nanoTime();
+    for(int i = 0; i < NB_THREADS; ++i) {
       threads[i].start();
     }
 
     for(int i = 0; i < NB_THREADS; ++i) {
       threads[i].join();
     }
+    long end = System.nanoTime();
     for(int i = 0; i < NB_THREADS; ++i) {
       System.out.println("THREAD " + i + ":");
       System.out.println(searchTasks[i].out.toString());
     }
+
+    System.out.println("Cumulative time: " + String.format("%.2f", (end - start) * 1e-6) 
+        + " ms, throughput=" + String.format("%.2f", ((double)nb_queries * 1e9 / (end - start))) 
+        + " (queries/sec)");
 
     reader.close();
     //executor.shutdown();
