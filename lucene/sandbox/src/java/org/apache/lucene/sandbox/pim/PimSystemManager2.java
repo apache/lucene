@@ -100,7 +100,7 @@ public class PimSystemManager2 implements PimSystemManager {
     }
 
     public int getNbDpus() {
-        synchronized (PimSystemManager1.class) {
+        synchronized (PimSystemManager2.class) {
             if(indexLoaded) {
                 return pimIndexInfo.getNumDpus();
             }
@@ -278,7 +278,10 @@ public class PimSystemManager2 implements PimSystemManager {
         volatile boolean stop;
 
         public void stop() {
-            //queriesExecutor.dumpDpuStream();
+
+            if(DpuConstants.DEBUG_DPU)
+                queriesExecutor.dumpDpuStream();
+
             stop = true;
             // Add any QueryBuffer to the queue to make sure it stops waiting if it is empty.
             queryQueue.offer(threadQueryBuffer.get());

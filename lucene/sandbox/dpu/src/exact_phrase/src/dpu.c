@@ -12,6 +12,8 @@
 #include "decoder.h"
 #include "query_result.h"
 
+__host uint32_t index_loaded = 0;
+
 /**
   Input queries
   */
@@ -41,9 +43,12 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 #define TEST
 #define DEBUG
 #include "../test/test1.h"
+#endif
+
+#define DEBUG
+#ifdef DEBUG
 #include <stdio.h>
 #endif
-//#define DEBUG
 
 static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms);
 static void init_results_cache(uint32_t query_id, uint32_t buffer_id);
@@ -52,6 +57,12 @@ static void flush_query_buffer();
 
 int main() {
 
+    if(!index_loaded) {
+#ifdef DEBUG
+        printf("No index loaded\n");
+#endif
+        return 0;
+    }
     if(me() == 0) {
         mem_reset();
         batch_num = 0;
@@ -101,7 +112,7 @@ int main() {
         release_query_parser(&query_parser);
 
 #ifdef DEBUG
-        printf("Query %d: %d terms matchers %x\n", batch_num_tasklet, nr_terms, matchers);
+        printf("Query %d: %d terms matchers %x\n", batch_num_tasklet, nr_terms, (uintptr_t)matchers);
 #endif
         // a null matchers means one of the term of the query is not present in the index and we can skip it
         if(matchers != 0)

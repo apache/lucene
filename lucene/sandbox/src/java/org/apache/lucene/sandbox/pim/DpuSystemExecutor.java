@@ -14,6 +14,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class DpuSystemExecutor implements PimQueriesExecutor {
     static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
@@ -28,6 +30,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     private final byte[] dpuQueryTmp = new byte[8];
     private CountDownLatch dpuResultsLatch;
     private int nbDpusInIndex;
+    private final Lock dpuPrintLock = new ReentrantLock();
 
     DpuSystemExecutor() throws DpuException {
         queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
@@ -63,6 +66,10 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         if(pimIndexInfo.getNumSegments() > 1) {
             throw new DpuException("ERROR: only one segment supported for index\n");
         }
+        byte[][] indexLoaded = new byte[DpuConstants.nrDpus][4];
+        ByteBuffer b = ByteBuffer.allocate(4);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+        b.putInt(1);
         //TODO should do it more efficiently by transfering to multiple DPUs in parallel
         for(int i = 0; i < pimIndexInfo.getNumDpus(); ++i) {
             IndexInput in = pimIndexInfo.getFileInput(0);
@@ -71,7 +78,9 @@ class DpuSystemExecutor implements PimQueriesExecutor {
             in.readBytes(data, 0, Math.toIntExact(dpuIndexSize));
             //TODO alignment on 8 bytes ?
             dpuSystem.dpus().get(i).copy(DpuConstants.dpuIndexVarName, data);
+            indexLoaded[i] = b.array();
         }
+        dpuSystem.copy(DpuConstants.dpuIndexLoadedVarName, indexLoaded);
         nbDpusInIndex = pimIndexInfo.getNumDpus();
     }
 
@@ -84,6 +93,18 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
         System.out.println(">> Launching DPUs");
         dpuSystem.async().exec(null);
+
+        if (DpuConstants.DEBUG_DPU) {
+            dpuSystem.async().call((s, i) -> {
+                try {
+                    dpuPrintLock.lock();
+                    s.log();
+                }
+                finally {
+                    dpuPrintLock.unlock();
+                }
+            });
+        }
 
         // Wait for the results array to be read before overwritting it with a new transfer
         if(dpuResultsLatch != null) {
@@ -232,6 +253,18 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
         dpuSystem.async().exec(null);
 
+        if (DpuConstants.DEBUG_DPU) {
+            dpuSystem.async().call((s, i) -> {
+                try {
+                    dpuPrintLock.lock();
+                    s.log();
+                }
+                finally {
+                    dpuPrintLock.unlock();
+                }
+            });
+        }
+
         // Wait for the results array to be read before overwriting it with a new transfer
         if(dpuResultsLatch != null) {
             dpuSystem.async().call(
@@ -309,7 +342,6 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     }
 
     public void dumpDpuStream() {
-        // TODO introduce a debug mode to read the output from DPUs
         System.out.println("Printing DPU stream");
         System.out.println(dpuStream.toString());
     }
