@@ -128,20 +128,26 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
   private void count(LongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
-    LongRange[] ranges = getLongRanges();
-
-    LongRangeCounter counter = LongRangeCounter.create(ranges, counts);
+    LongRangeCounter counter = null;
 
     int missingCount = 0;
 
     for (MatchingDocs hits : matchingDocs) {
-      LongValues fv = valueSource.getValues(hits.context, null);
-      totCount += hits.totalHits;
+      if (hits.totalHits == 0) {
+        continue;
+      }
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {
         continue;
       }
+
+      if (counter == null) {
+        counter = setupCounter();
+      }
+
+      LongValues fv = valueSource.getValues(hits.context, null);
+      totCount += hits.totalHits;
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
@@ -155,25 +161,33 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
       }
     }
 
-    missingCount += counter.finish();
-    totCount -= missingCount;
+    if (counter != null) {
+      missingCount += counter.finish();
+      totCount -= missingCount;
+    }
   }
 
   /** Counts from the provided valueSource. */
   private void count(MultiLongValuesSource valueSource, List<MatchingDocs> matchingDocs)
       throws IOException {
 
-    LongRange[] ranges = getLongRanges();
-
-    LongRangeCounter counter = LongRangeCounter.create(ranges, counts);
+    LongRangeCounter counter = null;
 
     for (MatchingDocs hits : matchingDocs) {
-      MultiLongValues multiValues = valueSource.getValues(hits.context);
+      if (hits.totalHits == 0) {
+        continue;
+      }
 
       final DocIdSetIterator it = createIterator(hits);
       if (it == null) {
         continue;
       }
+
+      if (counter == null) {
+        counter = setupCounter();
+      }
+
+      MultiLongValues multiValues = valueSource.getValues(hits.context);
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
@@ -203,8 +217,10 @@ public class LongRangeFacetCounts extends RangeFacetCounts {
       }
     }
 
-    int missingCount = counter.finish();
-    totCount -= missingCount;
+    if (counter != null) {
+      int missingCount = counter.finish();
+      totCount -= missingCount;
+    }
   }
 
   @Override
