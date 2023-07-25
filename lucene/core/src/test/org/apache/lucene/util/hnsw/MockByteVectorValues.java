@@ -22,6 +22,7 @@ import org.apache.lucene.util.ArrayUtil;
 
 class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
   private final byte[] scratch;
+  private final byte[] denseScratch;
 
   static MockByteVectorValues fromValues(byte[][] values) {
     int dimension = values[0].length;
@@ -39,6 +40,7 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
   MockByteVectorValues(byte[][] values, int dimension, byte[][] denseValues, int numVectors) {
     super(values, dimension, denseValues, numVectors);
     scratch = new byte[dimension];
+    denseScratch = new byte[dimension];
   }
 
   @Override
@@ -62,5 +64,17 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
       System.arraycopy(values[pos], 0, scratch, 0, dimension);
       return scratch;
     }
+  }
+
+  @Override
+  public byte[] vectorValue(int targetOrd) {
+    byte[] original = super.vectorValue(targetOrd);
+    if (original == null) {
+      return null;
+    }
+    // present a single vector reference to callers like the disk-backed RAVV implmentations,
+    // to catch cases where they are not making a copy
+    System.arraycopy(original, 0, denseScratch, 0, dimension);
+    return denseScratch;
   }
 }
