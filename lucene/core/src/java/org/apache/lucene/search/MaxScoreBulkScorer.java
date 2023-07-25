@@ -93,16 +93,25 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax);
+        top = essentialQueue.top();
 
         if (minCompetitiveScoreUpdated) {
           minCompetitiveScoreUpdated = false;
           if (partitionScorers() == false) {
             outerWindowMin = outerWindowMax;
             continue outer;
+          } else {
+            // Partitioning may have swapped essential and non-essential scorers, and some of the
+            // non-essential scorers may be behind the last scored doc. So let's advance to the next
+            // candidate match.
+            final int nextCandidateMatch = top.doc;
+            top = essentialQueue.top();
+            while (top.doc < nextCandidateMatch) {
+              top.doc = top.iterator.advance(nextCandidateMatch);
+              top = essentialQueue.updateTop();
+            }
           }
         }
-
-        top = essentialQueue.top();
       }
       outerWindowMin = outerWindowMax;
     }
