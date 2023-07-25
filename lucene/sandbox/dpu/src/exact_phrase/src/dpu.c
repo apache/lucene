@@ -39,9 +39,11 @@ BARRIER_INIT(barrier, NR_TASKLETS);
 
 #ifdef TEST1
 #define TEST
+#define DEBUG
 #include "../test/test1.h"
 #include <stdio.h>
 #endif
+//#define DEBUG
 
 static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *matchers, uint32_t nr_terms);
 static void init_results_cache(uint32_t query_id, uint32_t buffer_id);
@@ -98,7 +100,7 @@ int main() {
         uint32_t nr_terms = query_parser.nr_terms;
         release_query_parser(&query_parser);
 
-#ifdef TEST
+#ifdef DEBUG
         printf("Query %d: %d terms matchers %x\n", batch_num_tasklet, nr_terms, matchers);
 #endif
         // a null matchers means one of the term of the query is not present in the index and we can skip it
@@ -122,7 +124,7 @@ int main() {
 
     sort_query_results();
 
-#ifdef TEST
+#ifdef DEBUG
     barrier_wait(&barrier);
     if(me() == 0) {
        printf("\nQUERIES RESULTS:\n");
@@ -160,7 +162,7 @@ static void perform_pos_matching_for_did(uint32_t query_id, did_matcher_t *match
         switch (seek_pos(matchers, nr_terms, max_pos, index)) {
         case POSITIONS_FOUND: {
             store_query_result(query_id, did, max_pos - index);
-#ifdef TEST
+#ifdef DEBUG
             printf("Found a result for query %d: did=%d, pos=%d\n", query_id, did, max_pos - index);
 #endif
             // switch to next position
@@ -194,7 +196,9 @@ static void perform_did_and_pos_matching(uint32_t query_id, did_matcher_t *match
             case END_OF_INDEX_TABLE:
                 return;
             case DID_FOUND: {
-                //printf("Found did %d\n", did);
+#ifdef DEBUG
+                printf("Found did %d\n", did);
+#endif
                 perform_pos_matching_for_did(query_id, matchers, nr_terms, did);
             } break;
             case DID_NOT_FOUND:

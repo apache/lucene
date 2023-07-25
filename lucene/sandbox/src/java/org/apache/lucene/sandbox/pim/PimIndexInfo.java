@@ -179,7 +179,7 @@ public class PimIndexInfo implements Serializable {
      * Set the IndexInput object to point to data for the given DPU
      * @param in the IndexInput for the PIM index
      * @param dpuId the DPU id
-     * @return the next dpu address (where this DPU's index finishes)
+     * @return the size in bytes of the DPU index
      * @throws IOException
      */
     public long switchToDpu(IndexInput in, int dpuId) throws IOException {
@@ -203,8 +203,13 @@ public class PimIndexInfo implements Serializable {
             else
                 in.readVLong();
         }
+
         in.skipBytes(dpuAddr);
-        return nextDpuAddr;
+
+        if(next)
+          return in.length() - in.getFilePointer();
+        else
+          return nextDpuAddr - dpuAddr;
     }
 
     public static final String DPU_INDEX_COMPOUND_EXTENSION = "dpuc";

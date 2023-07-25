@@ -66,8 +66,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         //TODO should do it more efficiently by transfering to multiple DPUs in parallel
         for(int i = 0; i < pimIndexInfo.getNumDpus(); ++i) {
             IndexInput in = pimIndexInfo.getFileInput(0);
-            long nextDpuAddr = pimIndexInfo.switchToDpu(in, i);
-            long dpuIndexSize = nextDpuAddr - in.getFilePointer();
+            long dpuIndexSize = pimIndexInfo.switchToDpu(in, i);
             byte[] data = new byte[((Math.toIntExact(dpuIndexSize) + 7) >> 3) << 3];
             in.readBytes(data, 0, Math.toIntExact(dpuIndexSize));
             //TODO alignment on 8 bytes ?
