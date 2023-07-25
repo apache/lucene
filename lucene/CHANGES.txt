@@ -55,6 +55,9 @@ Bug Fixes
 
 * GITHUB#12423: Respect timeouts in ExitableDirectoryReader when searching with byte[] vectors (Ben Trent).
 
+* GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
+  (Greg Miller).
+
 Other
 ---------------------
 
