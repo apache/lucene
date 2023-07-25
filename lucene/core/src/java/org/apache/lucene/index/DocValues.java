@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
 /** This class contains utility methods and constants for DocValues */
@@ -59,6 +60,45 @@ public final class DocValues {
 
       @Override
       public BytesRef binaryValue() {
+        assert false;
+        return null;
+      }
+    };
+  }
+
+  /** An empty {@link DataInputDocValues} which returns no documents */
+  public static DataInputDocValues emptyDataInput() {
+    return new DataInputDocValues() {
+      private int doc = -1;
+
+      @Override
+      public int advance(int target) {
+        return doc = NO_MORE_DOCS;
+      }
+
+      @Override
+      public boolean advanceExact(int target) {
+        doc = target;
+        return false;
+      }
+
+      @Override
+      public int docID() {
+        return doc;
+      }
+
+      @Override
+      public int nextDoc() {
+        return doc = NO_MORE_DOCS;
+      }
+
+      @Override
+      public long cost() {
+        return 0;
+      }
+
+      @Override
+      public DataInput dataInputValue() {
         assert false;
         return null;
       }
@@ -256,6 +296,26 @@ public final class DocValues {
     if (dv == null) {
       checkField(reader, field, DocValuesType.BINARY);
       return emptyBinary();
+    }
+    return dv;
+  }
+
+  /**
+   * Returns DataInputDocValues for the field, or {@link #emptyDataInput()} if it has none.
+   *
+   * @return docvalues instance, or an empty instance if {@code field} does not exist in this
+   *     reader.
+   * @throws IllegalStateException if {@code field} exists, but was not indexed with docvalues.
+   * @throws IllegalStateException if {@code field} has docvalues, but the type is not {@link
+   *     DocValuesType#BINARY}.
+   * @throws IOException if an I/O error occurs.
+   */
+  public static DataInputDocValues getDataInput(LeafReader reader, String field)
+      throws IOException {
+    DataInputDocValues dv = reader.getDataInputDocValues(field);
+    if (dv == null) {
+      checkField(reader, field, DocValuesType.BINARY);
+      return emptyDataInput();
     }
     return dv;
   }

@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -129,6 +130,21 @@ class MergeReaderWrapper extends LeafReader {
       return null;
     }
     return docValues.getBinary(fi);
+  }
+
+  @Override
+  public DataInputDocValues getDataInputDocValues(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null) {
+      // Field does not exist
+      return null;
+    }
+    if (fi.getDocValuesType() != DocValuesType.BINARY) {
+      // Field was not indexed with doc values
+      return null;
+    }
+    return docValues.getDataInput(fi);
   }
 
   @Override

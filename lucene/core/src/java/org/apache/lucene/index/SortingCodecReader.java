@@ -563,6 +563,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public DataInputDocValues getDataInput(FieldInfo field) throws IOException {
+        BinaryDocValues binaryDocValues = getBinary(field);
+        return DataInputDocValues.fromBinaryDocValues(binaryDocValues);
+      }
+
+      @Override
       public SortedDocValues getSorted(FieldInfo field) throws IOException {
         SortedDocValues oldDocValues = delegate.getSorted(field);
         return new SortedDocValuesWriter.SortingSortedDocValues(

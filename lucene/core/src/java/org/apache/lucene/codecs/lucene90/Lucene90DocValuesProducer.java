@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -814,6 +816,201 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             bytesSlice.seek(startOffset);
             bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+        };
+      }
+    }
+  }
+
+  private abstract static class DenseDataInputDocValues extends DataInputDocValues {
+
+    final int maxDoc;
+    int doc = -1;
+
+    DenseDataInputDocValues(int maxDoc) {
+      this.maxDoc = maxDoc;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(doc + 1);
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return maxDoc;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= maxDoc) {
+        return doc = NO_MORE_DOCS;
+      }
+      return doc = target;
+    }
+
+    @Override
+    public boolean advanceExact(int target) throws IOException {
+      doc = target;
+      return true;
+    }
+  }
+
+  private abstract static class SparseDataInputDocValues extends DataInputDocValues {
+
+    final IndexedDISI disi;
+
+    SparseDataInputDocValues(IndexedDISI disi) {
+      this.disi = disi;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return disi.nextDoc();
+    }
+
+    @Override
+    public int docID() {
+      return disi.docID();
+    }
+
+    @Override
+    public long cost() {
+      return disi.cost();
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      return disi.advance(target);
+    }
+
+    @Override
+    public boolean advanceExact(int target) throws IOException {
+      return disi.advanceExact(target);
+    }
+  }
+
+  private static class SlicedDataInput extends DataInput {
+
+    private final IndexInput in;
+    private int length;
+
+    private int read;
+
+    SlicedDataInput(IndexInput in) {
+      this.in = in;
+    }
+
+    void init(long offset, int length) throws IOException {
+      in.seek(offset);
+      this.length = length;
+      this.read = 0;
+    }
+
+    @Override
+    public byte readByte() throws IOException {
+      if (read >= length) {
+        throw new EOFException();
+      }
+      read++;
+      return in.readByte();
+    }
+
+    @Override
+    public void readBytes(byte[] b, int offset, int len) throws IOException {
+      if (read >= length) {
+        throw new EOFException();
+      }
+      read += len;
+      in.readBytes(b, offset, len);
+    }
+
+    @Override
+    public void skipBytes(long numBytes) throws IOException {
+      if (read >= length) {
+        throw new EOFException();
+      }
+      read += numBytes;
+      in.seek(in.getFilePointer() + numBytes);
+    }
+  }
+
+  @Override
+  public DataInputDocValues getDataInput(FieldInfo field) throws IOException {
+    BinaryEntry entry = binaries.get(field.name);
+
+    if (entry.docsWithFieldOffset == -2) {
+      return DocValues.emptyDataInput();
+    }
+
+    final IndexInput bytesSlice = data.slice("fixed-binary", entry.dataOffset, entry.dataLength);
+    final SlicedDataInput dataInput = new SlicedDataInput(bytesSlice);
+    if (entry.docsWithFieldOffset == -1) {
+      // dense
+      if (entry.minLength == entry.maxLength) {
+        // fixed length
+        final int length = entry.maxLength;
+        return new DenseDataInputDocValues(maxDoc) {
+          @Override
+          public DataInput dataInputValue() throws IOException {
+            dataInput.init((long) doc * length, length);
+            return dataInput;
+          }
+        };
+      } else {
+        // variable length
+        final RandomAccessInput addressesData =
+            this.data.randomAccessSlice(entry.addressesOffset, entry.addressesLength);
+        final LongValues addresses =
+            DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData, merging);
+        return new DenseDataInputDocValues(maxDoc) {
+
+          @Override
+          public DataInput dataInputValue() throws IOException {
+            long startOffset = addresses.get(doc);
+            dataInput.init(startOffset, (int) (addresses.get(doc + 1L) - startOffset));
+            return dataInput;
+          }
+        };
+      }
+    } else {
+      // sparse
+      final IndexedDISI disi =
+          new IndexedDISI(
+              data,
+              entry.docsWithFieldOffset,
+              entry.docsWithFieldLength,
+              entry.jumpTableEntryCount,
+              entry.denseRankPower,
+              entry.numDocsWithField);
+      if (entry.minLength == entry.maxLength) {
+        // fixed length
+        final int length = entry.maxLength;
+        return new SparseDataInputDocValues(disi) {
+          @Override
+          public DataInput dataInputValue() throws IOException {
+            dataInput.init((long) disi.index() * length, length);
+            return dataInput;
+          }
+        };
+      } else {
+        // variable length
+        final RandomAccessInput addressesData =
+            this.data.randomAccessSlice(entry.addressesOffset, entry.addressesLength);
+        final LongValues addresses =
+            DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData);
+        return new SparseDataInputDocValues(disi) {
+          @Override
+          public DataInput dataInputValue() throws IOException {
+            final int index = disi.index();
+            long startOffset = addresses.get(index);
+            dataInput.init(startOffset, (int) (addresses.get(index + 1L) - startOffset));
+            return dataInput;
           }
         };
       }

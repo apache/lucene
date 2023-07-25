@@ -170,6 +170,12 @@ final class IndexingChain implements Accountable {
       }
 
       @Override
+      public DataInputDocValues getDataInputDocValues(String field) {
+        BinaryDocValues binaryDocValues = getBinaryDocValues(field);
+        return DataInputDocValues.fromBinaryDocValues(binaryDocValues);
+      }
+
+      @Override
       public SortedDocValues getSortedDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
         if (pf == null) {
@@ -868,6 +874,21 @@ final class IndexingChain implements Accountable {
                         + "]");
               }
               return DocValues.emptyBinary();
+            }
+
+            @Override
+            public DataInputDocValues getDataInputDocValues(String field) {
+              if (Objects.equals(field, fieldToValidate) && dvType != DocValuesType.BINARY) {
+                throw new IllegalArgumentException(
+                    "SortField "
+                        + sortField
+                        + " expected field ["
+                        + field
+                        + "] to be BINARY but it is ["
+                        + dvType
+                        + "]");
+              }
+              return DocValues.emptyDataInput();
             }
 
             @Override

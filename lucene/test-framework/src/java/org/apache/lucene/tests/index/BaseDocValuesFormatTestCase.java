@@ -53,6 +53,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
@@ -78,6 +79,8 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
@@ -329,6 +332,56 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
       assertEquals(hitDocID, dv.advance(hitDocID));
       BytesRef scratch = dv.binaryValue();
       assertEquals(writtenValues.get(i), scratch);
+    }
+
+    ireader.close();
+    directory.close();
+  }
+
+  public void testBinaryValuesAsDataInput() throws IOException {
+    Directory directory = newDirectory();
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory);
+    int numDocs = 1 + random().nextInt(100);
+
+    ByteBuffersDataOutput output = new ByteBuffersDataOutput();
+
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      output.reset();
+      output.writeVInt(i);
+      output.writeInt(i);
+      output.writeString(Integer.toString(i));
+      // Generate random-sized byte array with random choice of bytes in vocab range
+      BytesRef bytesRef = newBytesRef(output.toArrayCopy());
+      doc.add(newTextField("id", Integer.toString(i), Field.Store.YES));
+      doc.add(new BinaryDocValuesField("dv1", bytesRef));
+      iwriter.addDocument(doc);
+    }
+    iwriter.forceMerge(1);
+    iwriter.close();
+
+    // Now search the index:
+    IndexReader ireader =
+        maybeWrapWithMergingReader(DirectoryReader.open(directory)); // read-only=true
+    IndexSearcher isearcher = new IndexSearcher(ireader);
+    StoredFields storedFields = isearcher.storedFields();
+
+    for (int i = 0; i < numDocs; i++) {
+      String id = Integer.toString(i);
+      Query query = new TermQuery(new Term("id", id));
+      TopDocs hits = isearcher.search(query, 1);
+      assertEquals(1, hits.totalHits.value);
+      // Iterate through the results:
+      int hitDocID = hits.scoreDocs[0].doc;
+      Document hitDoc = storedFields.document(hitDocID);
+      assertEquals(id, hitDoc.get("id"));
+      assert ireader.leaves().size() == 1;
+      DataInputDocValues dv = ireader.leaves().get(0).reader().getDataInputDocValues("dv1");
+      assertEquals(hitDocID, dv.advance(hitDocID));
+      DataInput scratch = dv.dataInputValue();
+      assertEquals(i, scratch.readVInt());
+      assertEquals(i, scratch.readInt());
+      assertEquals(id, scratch.readString());
     }
 
     ireader.close();

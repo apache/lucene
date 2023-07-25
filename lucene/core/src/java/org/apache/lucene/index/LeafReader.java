@@ -175,6 +175,12 @@ public abstract non-sealed class LeafReader extends IndexReader {
   public abstract BinaryDocValues getBinaryDocValues(String field) throws IOException;
 
   /**
+   * Returns {@link DataInputDocValues} for this field, or null if no binary doc values were indexed
+   * for this field. The returned instance should only be used by a single thread.
+   */
+  public abstract DataInputDocValues getDataInputDocValues(String field) throws IOException;
+
+  /**
    * Returns {@link SortedDocValues} for this field, or null if no {@link SortedDocValues} were
    * indexed for this field. The returned instance should only be used by a single thread.
    */
