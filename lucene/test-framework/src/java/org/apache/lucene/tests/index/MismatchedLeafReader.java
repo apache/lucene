@@ -28,9 +28,9 @@ import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.KnnResults;
 
 /**
  * Shuffles field numbers around to try to trip bugs where field numbers are assumed to always be

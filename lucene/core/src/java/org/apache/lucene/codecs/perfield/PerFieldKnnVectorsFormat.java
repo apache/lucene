@@ -34,10 +34,10 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.KnnResults;
 
 /**
  * Enables per field numeric vector support.
@@ -264,18 +264,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       } else {
         return knnVectorsReader.getByteVectorValues(field);
       }
-    }
-
-    @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
-        throws IOException {
-      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
-    }
-
-    @Override
-    public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
-        throws IOException {
-      return fields.get(field).search(field, target, k, acceptDocs, visitedLimit);
     }
 
     @Override

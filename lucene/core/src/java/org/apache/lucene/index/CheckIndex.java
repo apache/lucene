@@ -80,6 +80,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.hnsw.TopKnnResults;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -2657,7 +2658,11 @@ public final class CheckIndex implements Closeable {
         TopDocs docs =
             codecReader
                 .getVectorReader()
-                .search(fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
+                .search(
+                    fieldInfo.name,
+                    values.vectorValue(),
+                    new TopKnnResults(10, Integer.MAX_VALUE),
+                    null);
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
@@ -2702,7 +2707,11 @@ public final class CheckIndex implements Closeable {
         TopDocs docs =
             codecReader
                 .getVectorReader()
-                .search(fieldInfo.name, values.vectorValue(), 10, null, Integer.MAX_VALUE);
+                .search(
+                    fieldInfo.name,
+                    values.vectorValue(),
+                    new TopKnnResults(10, Integer.MAX_VALUE),
+                    null);
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");

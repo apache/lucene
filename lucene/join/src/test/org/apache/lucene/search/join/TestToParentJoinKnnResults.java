@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;

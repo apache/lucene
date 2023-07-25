@@ -22,58 +22,32 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
-/**
- * TopKnnResults is a specific KnnResults. A minHeap is used to keep track of the currently
- * collected vectors allowing for efficient updates as better vectors are collected.
- */
-public class TopKnnResults extends KnnResults {
+/** empty knnResults when no nearest neighbors are found */
+class EmptyKnnResults extends KnnResults {
 
-  protected final NeighborQueue queue;
-
-  /**
-   * @param k the number of neighbors to collect
-   * @param visitLimit how many vector nodes the results are allowed to visit
-   */
-  public TopKnnResults(int k, int visitLimit) {
+  public EmptyKnnResults(int k, int visitedCount, int visitLimit) {
     super(k, visitLimit);
-    this.queue = new NeighborQueue(k, false);
+    this.visitedCount = visitedCount;
   }
 
   @Override
   public boolean collect(int vectorId, float similarity) {
-    return queue.insertWithOverflow(vectorId, similarity);
+    throw new IllegalArgumentException();
   }
 
   @Override
   public boolean isFull() {
-    return queue.size() >= k();
+    return true;
   }
 
   @Override
   public float minSimilarity() {
-    return queue.topScore();
+    return 0;
   }
 
   @Override
   public TopDocs topDocs() {
-    while (queue.size() > k()) {
-      queue.pop();
-    }
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
-    while (i < scoreDocs.length) {
-      int node = queue.topNode();
-      float score = queue.topScore();
-      queue.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
-    }
-    TotalHits.Relation relation =
-        incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
-  }
-
-  @Override
-  public String toString() {
-    return "TopKnnResults[" + queue.size() + "]";
+    TotalHits th = new TotalHits(visitedCount, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO);
+    return new TopDocs(th, new ScoreDoc[0]);
   }
 }

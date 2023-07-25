@@ -21,12 +21,11 @@ import java.util.Objects;
 import org.apache.lucene.index.FilterLeafReader.FilterTerms;
 import org.apache.lucene.index.FilterLeafReader.FilterTermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.hnsw.KnnResults;
-import org.apache.lucene.util.hnsw.TopKnnResults;
 
 /**
  * The {@link ExitableDirectoryReader} wraps a real index {@link DirectoryReader} and allows for a
@@ -336,13 +335,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
     @Override
     public TopDocs searchNearestVectors(
-        String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-      return this.searchNearestVectors(
-          field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
-    }
-
-    @Override
-    public TopDocs searchNearestVectors(
         String field, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
 
       // when acceptDocs is null due to no doc deleted, we will instantiate a new one that would
@@ -371,13 +363,6 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
           };
 
       return in.searchNearestVectors(field, target, knnResults, timeoutCheckingAcceptDocs);
-    }
-
-    @Override
-    public TopDocs searchNearestVectors(
-        String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-      return this.searchNearestVectors(
-          field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
     }
 
     @Override

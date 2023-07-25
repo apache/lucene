@@ -34,7 +34,6 @@ import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.ToParentJoinKnnResults;
 
 /** kNN byte vector query that joins matching children vector documents with their parent doc id. */
 public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {

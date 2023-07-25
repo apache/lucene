@@ -28,9 +28,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.KnnResults;
 
 /**
  * Wraps arbitrary readers for merging. Note that this can cause slow and memory-intensive merges.
@@ -171,18 +171,6 @@ public final class SlowCodecReaderWrapper {
       @Override
       public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return reader.getByteVectorValues(field);
-      }
-
-      @Override
-      public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
-          throws IOException {
-        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
-      }
-
-      @Override
-      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
-          throws IOException {
-        return reader.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
       }
 
       @Override

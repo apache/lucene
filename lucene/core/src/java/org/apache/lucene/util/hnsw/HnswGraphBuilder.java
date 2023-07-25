@@ -559,6 +559,11 @@ public final class HnswGraphBuilder<T> {
       return queue.nodes();
     }
 
+    public void clear() {
+      this.queue.clear();
+      this.visitedCount = 0;
+    }
+
     @Override
     public TopDocs topDocs() {
       throw new IllegalArgumentException();

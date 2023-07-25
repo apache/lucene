@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -47,8 +48,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.KnnResults;
-import org.apache.lucene.util.hnsw.TopKnnResults;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -267,33 +266,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fields.get(field).size());
-    if (k == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-    }
-    return search(field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
-  }
-
-  @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
-      throws IOException {
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fields.get(field).size());
-    if (k == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-    }
-    return search(field, target, new TopKnnResults(k, visitedLimit), acceptDocs);
-  }
-
-  @Override
   public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
-    if (fieldEntry.size() == 0) {
+    if (fieldEntry.size() == 0 || knnResults.k() == 0) {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
     if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {

@@ -28,6 +28,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;

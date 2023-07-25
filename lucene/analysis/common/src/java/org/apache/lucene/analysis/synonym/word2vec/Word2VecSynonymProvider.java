@@ -25,11 +25,11 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 
 /**

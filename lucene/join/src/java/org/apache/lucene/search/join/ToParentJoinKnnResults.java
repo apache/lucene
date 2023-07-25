@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.search.join;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -31,6 +32,13 @@ public class ToParentJoinKnnResults extends KnnResults {
   private final BitSet parentBitSet;
   private final NodeIdCachingHeap heap;
 
+  /**
+   * Create a new object for joining nearest child kNN documents with a parent bitset
+   *
+   * @param k The number of joined parent documents to collect
+   * @param visitLimit how many child vectors can be visited
+   * @param parentBitSet The leaf parent bitset
+   */
   public ToParentJoinKnnResults(int k, int visitLimit, BitSet parentBitSet) {
     super(k, visitLimit);
     this.parentBitSet = parentBitSet;
@@ -64,11 +72,6 @@ public class ToParentJoinKnnResults extends KnnResults {
   @Override
   public float minSimilarity() {
     return heap.topScore();
-  }
-
-  @Override
-  public void doClear() {
-    heap.clear();
   }
 
   @Override
@@ -176,7 +179,7 @@ public class ToParentJoinKnnResults extends KnnResults {
      */
     public boolean insertWithOverflow(int node, float score) {
       if (closed) {
-        throw new IllegalStateException("must call clear() before adding new elements to heap");
+        throw new IllegalStateException();
       }
       Integer previousNodeIndex = nodeIdHeapIndex.get(node);
       if (previousNodeIndex != null) {
@@ -219,13 +222,6 @@ public class ToParentJoinKnnResults extends KnnResults {
     /** Returns the number of elements currently stored in the PriorityQueue. */
     public final int size() {
       return size;
-    }
-
-    /** Removes all entries from the PriorityQueue. */
-    public final void clear() {
-      nodeIdHeapIndex.clear();
-      size = 0;
-      closed = false;
     }
 
     private boolean lessThan(int nodel, float scorel, int noder, float scorer) {

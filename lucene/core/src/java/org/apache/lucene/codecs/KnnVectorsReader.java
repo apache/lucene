@@ -22,12 +22,12 @@ import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.KnnResults;
 
 /** Reads vectors from an index. */
 public abstract class KnnVectorsReader implements Closeable, Accountable {
@@ -80,44 +80,13 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param k the number of docs to return
+   * @param knnResults a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
   public abstract TopDocs search(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
-
-  /**
-   * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's similarity function. The score of each document
-   * is derived from the vector similarity in a way that ensures scores are positive and that a
-   * larger score corresponds to a higher ranking.
-   *
-   * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
-   * true k closest neighbors. For large values of k (for example when k is close to the total
-   * number of documents), the search may also retrieve fewer than k documents.
-   *
-   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor, in
-   * order of their similarity to the query vector (decreasing scores). The {@link TotalHits}
-   * contains the number of documents visited during the search. If the search stopped early because
-   * it hit {@code visitedLimit}, it is indicated through the relation {@code
-   * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
-   *
-   * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
-   *
-   * @param field the vector field to search
-   * @param target the vector-valued query
-   * @param k the number of docs to return
-   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
-   *     if they are all allowed to match.
-   * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
-   */
-  public abstract TopDocs search(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException;
+      String field, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException;
 
   /**
    * Return the k nearest neighbor documents as determined by comparison of their vector values for
@@ -145,43 +114,8 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    *     if they are all allowed to match.
    * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
-      throws IOException {
-    throw new UnsupportedOperationException(
-        "vector reader doesn't provide KNN search with results provider");
-  }
-
-  /**
-   * Return the k nearest neighbor documents as determined by comparison of their vector values for
-   * this field, to the given vector, by the field's similarity function. The score of each document
-   * is derived from the vector similarity in a way that ensures scores are positive and that a
-   * larger score corresponds to a higher ranking.
-   *
-   * <p>The search is allowed to be approximate, meaning the results are not guaranteed to be the
-   * true k closest neighbors. For large values of k (for example when k is close to the total
-   * number of documents), the search may also retrieve fewer than k documents.
-   *
-   * <p>The returned {@link TopDocs} will contain a {@link ScoreDoc} for each nearest neighbor, in
-   * order of their similarity to the query vector (decreasing scores). The {@link TotalHits}
-   * contains the number of documents visited during the search. If the search stopped early because
-   * it hit {@code visitedLimit}, it is indicated through the relation {@code
-   * TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO}.
-   *
-   * <p>The behavior is undefined if the given field doesn't have KNN vectors enabled on its {@link
-   * FieldInfo}. The return value is never {@code null}.
-   *
-   * @param field the vector field to search
-   * @param target the vector-valued query
-   * @param knnResults a KnnResults collector and relevant settings for gathering vector results
-   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
-   *     if they are all allowed to match.
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
-   */
-  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
-      throws IOException {
-    throw new UnsupportedOperationException(
-        "vector reader doesn't provide KNN search with results provider");
-  }
+  public abstract TopDocs search(
+      String field, byte[] target, KnnResults knnResults, Bits acceptDocs) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

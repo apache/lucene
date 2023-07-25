@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -45,7 +46,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.KnnResults;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -225,7 +225,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -233,25 +233,22 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
 
     KnnResults results =
         HnswGraphSearcher.search(
             target,
-            k,
+            knnResults,
             vectorValues,
             VectorEncoding.FLOAT32,
             fieldEntry.similarityFunction,
             getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
+            vectorValues.getAcceptOrds(acceptDocs));
     return results.topDocs();
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }

@@ -34,6 +34,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -237,7 +238,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -245,25 +246,22 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
-
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
     // use a seed that is fixed for the index so we get reproducible results for the same query
     final SplittableRandom random = new SplittableRandom(checksumSeed);
     NeighborQueue results =
         Lucene90OnHeapHnswGraph.search(
             target,
-            k,
-            k,
+            knnResults.k(),
+            knnResults.k(),
             vectorValues,
             fieldEntry.similarityFunction,
             getGraphValues(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry),
-            visitedLimit,
+            knnResults.visitLimit(),
             random);
     int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnResults.k())];
     while (results.size() > 0) {
       int node = results.topNode();
       float minSimilarity = results.topScore();
@@ -278,7 +276,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }

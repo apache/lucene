@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -267,16 +268,16 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
-      return new KnnResults.EmptyKnnResults(knnResults.k(), 0, knnResults.visitLimit());
+      return new EmptyKnnResults(knnResults.k(), 0, knnResults.visitLimit());
     }
     int[] epAndVisited =
         graphSearcher.findBestEntryPoint(query, vectors, graph, knnResults.visitLimit());
     int numVisited = epAndVisited[1];
     int ep = epAndVisited[0];
     if (ep == -1) {
-      return new KnnResults.EmptyKnnResults(knnResults.k(), numVisited, knnResults.visitLimit());
+      return new EmptyKnnResults(knnResults.k(), numVisited, knnResults.visitLimit());
     }
-    KnnResults results = new KnnResults.OrdinalTranslatedKnnResults(knnResults, vectors::ordToDoc);
+    KnnResults results = new OrdinalTranslatedKnnResults(knnResults, vectors::ordToDoc);
     results.incVisitedCount(numVisited);
     graphSearcher.searchLevel(results, query, 0, new int[] {ep}, vectors, graph, acceptOrds);
     return results;

@@ -48,12 +48,10 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.VirtualMethod;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.hnsw.KnnResults;
 
 /** A {@link FilterLeafReader} that can be used to apply additional checks for tests. */
 public class AssertingLeafReader extends FilterLeafReader {
@@ -1548,17 +1546,5 @@ public class AssertingLeafReader extends FilterLeafReader {
   @Override
   public CacheHelper getReaderCacheHelper() {
     return in.getReaderCacheHelper();
-  }
-
-  @Override
-  public TopDocs searchNearestVectors(
-      String field, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
-    return in.searchNearestVectors(field, target, knnResults, acceptDocs);
-  }
-
-  @Override
-  public TopDocs searchNearestVectors(
-      String field, byte[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
-    return in.searchNearestVectors(field, target, knnResults, acceptDocs);
   }
 }

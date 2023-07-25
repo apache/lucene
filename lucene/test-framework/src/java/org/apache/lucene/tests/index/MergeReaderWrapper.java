@@ -40,9 +40,9 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.KnnResults;
 
 /**
  * This is a hack to make index sorting fast, with a {@link LeafReader} that always returns merge
@@ -226,18 +226,6 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
     return in.getByteVectorValues(fieldName);
-  }
-
-  @Override
-  public TopDocs searchNearestVectors(
-      String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
-  }
-
-  @Override
-  public TopDocs searchNearestVectors(
-      String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    return in.searchNearestVectors(field, target, k, acceptDocs, visitedLimit);
   }
 
   @Override
