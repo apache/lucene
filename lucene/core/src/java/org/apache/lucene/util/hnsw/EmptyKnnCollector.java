@@ -23,7 +23,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
 /** empty knnCollector when no nearest neighbors are found */
-class EmptyKnnCollector implements KnnCollector {
+final class EmptyKnnCollector implements KnnCollector {
   private final long visitedCount;
   private final long visitLimit;
   private final int k;
