@@ -34,7 +34,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -261,7 +261,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
+  public TopDocs search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -271,10 +271,10 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
 
-    KnnResults results =
+    KnnCollector results =
         HnswGraphSearcher.search(
             target,
-            knnResults,
+            knnCollector,
             vectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,
@@ -284,7 +284,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
+  public TopDocs search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -294,10 +294,10 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
 
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
 
-    KnnResults results =
+    KnnCollector results =
         HnswGraphSearcher.search(
             target,
-            knnResults,
+            knnCollector,
             vectorValues,
             fieldEntry.vectorEncoding,
             fieldEntry.similarityFunction,

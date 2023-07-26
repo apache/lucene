@@ -19,15 +19,15 @@ package org.apache.lucene.search.join;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
-/** parent joining knn results, vectorIds are deduplicated according to the parent bit set. */
-public class ToParentJoinKnnResults extends KnnResults {
+/** parent joining knn collector, vector docIds are deduplicated according to the parent bit set. */
+class ToParentJoinKnnCollector extends AbstractKnnCollector {
 
   private final BitSet parentBitSet;
   private final NodeIdCachingHeap heap;
@@ -39,7 +39,7 @@ public class ToParentJoinKnnResults extends KnnResults {
    * @param visitLimit how many child vectors can be visited
    * @param parentBitSet The leaf parent bitset
    */
-  public ToParentJoinKnnResults(int k, int visitLimit, BitSet parentBitSet) {
+  public ToParentJoinKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
     super(k, visitLimit);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);

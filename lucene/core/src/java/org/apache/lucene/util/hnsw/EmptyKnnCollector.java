@@ -17,41 +17,61 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
-/** Wraps a provided KnnResults object, translating the provided vectorId ordinal to a documentId */
-class OrdinalTranslatedKnnResults extends KnnResults {
+/** empty knnCollector when no nearest neighbors are found */
+class EmptyKnnCollector implements KnnCollector {
+  private final long visitedCount;
+  private final long visitLimit;
+  private final int k;
 
-  private final KnnResults in;
-  private final IntToIntFunction vectorOrdinalToDocId;
+  public EmptyKnnCollector(int k, long visitedCount, long visitLimit) {
+    this.k = k;
+    this.visitedCount = visitedCount;
+    this.visitLimit = visitLimit;
+  }
 
-  OrdinalTranslatedKnnResults(KnnResults in, IntToIntFunction vectorOrdinalToDocId) {
-    super(in.k(), in.visitLimit());
-    this.in = in;
-    this.vectorOrdinalToDocId = vectorOrdinalToDocId;
+  @Override
+  public boolean earlyTerminated() {
+    return true;
+  }
+
+  @Override
+  public void incVisitedCount(int count) {
+    throw new IllegalArgumentException();
+  }
+
+  @Override
+  public long visitedCount() {
+    return visitedCount;
+  }
+
+  @Override
+  public long visitLimit() {
+    return visitLimit;
+  }
+
+  @Override
+  public int k() {
+    return k;
   }
 
   @Override
   public boolean collect(int vectorId, float similarity) {
-    return in.collect(vectorOrdinalToDocId.apply(vectorId), similarity);
+    throw new IllegalArgumentException();
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    return in.minCompetitiveSimilarity();
+    return 0;
   }
 
   @Override
   public TopDocs topDocs() {
-    TopDocs td = in.topDocs();
-    return new TopDocs(
-        new TotalHits(
-            visitedCount(),
-            this.earlyTerminated()
-                ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-                : TotalHits.Relation.EQUAL_TO),
-        td.scoreDocs);
+    TotalHits th = new TotalHits(visitedCount(), TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO);
+    return new TopDocs(th, new ScoreDoc[0]);
   }
 }

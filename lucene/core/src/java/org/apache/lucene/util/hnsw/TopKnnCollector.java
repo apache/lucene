@@ -17,24 +17,24 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
 /**
- * TopKnnResults is a specific KnnResults. A minHeap is used to keep track of the currently
+ * TopKnnCollector is a specific KnnResults. A minHeap is used to keep track of the currently
  * collected vectors allowing for efficient updates as better vectors are collected.
  */
-public class TopKnnResults extends KnnResults {
+public class TopKnnCollector extends AbstractKnnCollector {
 
-  protected final NeighborQueue queue;
+  private final NeighborQueue queue;
 
   /**
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
    */
-  public TopKnnResults(int k, int visitLimit) {
+  public TopKnnCollector(int k, int visitLimit) {
     super(k, visitLimit);
     this.queue = new NeighborQueue(k, false);
   }

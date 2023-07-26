@@ -62,7 +62,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -354,7 +354,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             vectors, getVectorEncoding(), similarityFunction, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
-    KnnResults nn =
+    KnnCollector nn =
         switch (getVectorEncoding()) {
           case BYTE -> HnswGraphSearcher.search(
               (byte[]) getTargetVector(),
@@ -407,7 +407,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, nDoc);
-    KnnResults nn =
+    KnnCollector nn =
         switch (getVectorEncoding()) {
           case BYTE -> HnswGraphSearcher.search(
               (byte[]) getTargetVector(),
@@ -457,7 +457,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // Check the search finds all accepted vectors
     int numAccepted = acceptOrds.cardinality();
-    KnnResults nn =
+    KnnCollector nn =
         switch (getVectorEncoding()) {
           case FLOAT32 -> HnswGraphSearcher.search(
               (float[]) getTargetVector(),
@@ -725,7 +725,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
-    KnnResults nn =
+    KnnCollector nn =
         switch (getVectorEncoding()) {
           case FLOAT32 -> HnswGraphSearcher.search(
               (float[]) getTargetVector(),
@@ -947,7 +947,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
-      KnnResults actual;
+      KnnCollector actual;
       T query = randomVector(dim);
       actual =
           switch (getVectorEncoding()) {
@@ -1014,9 +1014,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     List<T> queries = new ArrayList<>();
-    List<KnnResults> expects = new ArrayList<>();
+    List<KnnCollector> expects = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      KnnResults expect;
+      KnnCollector expect;
       T query = randomVector(dim);
       queries.add(query);
       expect =
@@ -1046,12 +1046,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     ExecutorService exec =
         Executors.newFixedThreadPool(4, new NamedThreadFactory("onHeapHnswSearch"));
-    List<Future<KnnResults>> futures = new ArrayList<>();
+    List<Future<KnnCollector>> futures = new ArrayList<>();
     for (T query : queries) {
       futures.add(
           exec.submit(
               () -> {
-                KnnResults actual;
+                KnnCollector actual;
                 try {
                   actual =
                       switch (getVectorEncoding()) {
@@ -1080,8 +1080,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                 return actual;
               }));
     }
-    List<KnnResults> actuals = new ArrayList<>();
-    for (Future<KnnResults> future : futures) {
+    List<KnnCollector> actuals = new ArrayList<>();
+    for (Future<KnnCollector> future : futures) {
       actuals.add(future.get(10, TimeUnit.SECONDS));
     }
     exec.shutdownNow();

@@ -34,7 +34,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -238,7 +238,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
+  public TopDocs search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
@@ -252,16 +252,16 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     NeighborQueue results =
         Lucene90OnHeapHnswGraph.search(
             target,
-            knnResults.k(),
-            knnResults.k(),
+            knnCollector.k(),
+            knnCollector.k(),
             vectorValues,
             fieldEntry.similarityFunction,
             getGraphValues(fieldEntry),
             getAcceptOrds(acceptDocs, fieldEntry),
-            knnResults.visitLimit(),
+            knnCollector.visitLimit(),
             random);
     int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnResults.k())];
+    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), knnCollector.k())];
     while (results.size() > 0) {
       int node = results.topNode();
       float minSimilarity = results.topScore();
@@ -276,7 +276,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
+  public TopDocs search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }

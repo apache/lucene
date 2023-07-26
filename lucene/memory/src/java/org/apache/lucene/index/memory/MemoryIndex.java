@@ -40,7 +40,7 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
@@ -1638,13 +1638,13 @@ public class MemoryIndex {
 
     @Override
     public TopDocs searchNearestVectors(
-        String field, float[] target, KnnResults knnResults, Bits acceptDocs) {
+        String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
       return null;
     }
 
     @Override
     public TopDocs searchNearestVectors(
-        String field, byte[] target, KnnResults knnResults, Bits acceptDocs) {
+        String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
       return null;
     }
 

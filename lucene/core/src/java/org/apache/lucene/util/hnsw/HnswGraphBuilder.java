@@ -30,6 +30,7 @@ import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
@@ -68,8 +69,9 @@ public final class HnswGraphBuilder<T> {
   private final RandomAccessVectorValues<T> vectors;
   private final SplittableRandom random;
   private final HnswGraphSearcher<T> graphSearcher;
-  private final GraphBuilderKnnResults entryCandidates; // for upper levels of graph search
-  private final GraphBuilderKnnResults beamCandidates; // for levels of graph where we add the node
+  private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
+  private final GraphBuilderKnnCollector
+      beamCandidates; // for levels of graph where we add the node
 
   final OnHeapHnswGraph hnsw;
 
@@ -150,8 +152,8 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
-    entryCandidates = new GraphBuilderKnnResults(1);
-    beamCandidates = new GraphBuilderKnnResults(beamWidth);
+    entryCandidates = new GraphBuilderKnnCollector(1);
+    beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     this.initializedNodes = new HashSet<>();
   }
 
@@ -271,7 +273,7 @@ public final class HnswGraphBuilder<T> {
     }
 
     // for levels > nodeLevel search with topk = 1
-    GraphBuilderKnnResults candidates = entryCandidates;
+    GraphBuilderKnnCollector candidates = entryCandidates;
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates.clear();
       graphSearcher.searchLevel(candidates, value, level, eps, vectors, hnsw, null);
@@ -305,7 +307,7 @@ public final class HnswGraphBuilder<T> {
     return now;
   }
 
-  private void addDiverseNeighbors(int level, int node, GraphBuilderKnnResults candidates)
+  private void addDiverseNeighbors(int level, int node, GraphBuilderKnnCollector candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -346,7 +348,7 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
-  private void popToScratch(GraphBuilderKnnResults candidates) {
+  private void popToScratch(GraphBuilderKnnCollector candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
@@ -532,16 +534,20 @@ public final class HnswGraphBuilder<T> {
   }
 
   /**
-   * A restricted, specialized set of knnResults collector that can be used when building a graph.
+   * A restricted, specialized knnCollector that can be used when building a graph.
    *
    * <p>Does not support TopDocs
    */
-  public static final class GraphBuilderKnnResults extends TopKnnResults {
+  public static final class GraphBuilderKnnCollector implements KnnCollector {
+    private final NeighborQueue queue;
+    private final int k;
+    private long visitedCount;
     /**
      * @param k the number of neighbors to collect
      */
-    public GraphBuilderKnnResults(int k) {
-      super(k, Integer.MAX_VALUE);
+    public GraphBuilderKnnCollector(int k) {
+      this.queue = new NeighborQueue(k, false);
+      this.k = k;
     }
 
     public int size() {
@@ -566,6 +572,41 @@ public final class HnswGraphBuilder<T> {
     public void clear() {
       this.queue.clear();
       this.visitedCount = 0;
+    }
+
+    @Override
+    public boolean earlyTerminated() {
+      return false;
+    }
+
+    @Override
+    public void incVisitedCount(int count) {
+      this.visitedCount += count;
+    }
+
+    @Override
+    public long visitedCount() {
+      return visitedCount;
+    }
+
+    @Override
+    public long visitLimit() {
+      return Long.MAX_VALUE;
+    }
+
+    @Override
+    public int k() {
+      return k;
+    }
+
+    @Override
+    public boolean collect(int docId, float similarity) {
+      return queue.insertWithOverflow(docId, similarity);
+    }
+
+    @Override
+    public float minCompetitiveSimilarity() {
+      return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
     }
 
     @Override

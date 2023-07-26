@@ -40,7 +40,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -230,14 +230,14 @@ class MergeReaderWrapper extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
-    return in.searchNearestVectors(field, target, knnResults, acceptDocs);
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    return in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, byte[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
-    return in.searchNearestVectors(field, target, knnResults, acceptDocs);
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    return in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override

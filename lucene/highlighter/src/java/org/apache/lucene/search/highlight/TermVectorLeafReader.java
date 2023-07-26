@@ -40,7 +40,7 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
@@ -173,13 +173,13 @@ public class TermVectorLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, float[] target, KnnResults knnResults, Bits acceptDocs) {
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
     return null;
   }
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, byte[] target, KnnResults knnResults, Bits acceptDocs) {
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
     return null;
   }
 

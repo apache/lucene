@@ -18,16 +18,16 @@
 package org.apache.lucene.search;
 
 /**
- * KnnResults is a collector for gathering kNN results and providing topDocs from the gathered
- * neighbors
+ * AbstractKnnCollector is the default implementation for a knn collector used for gathering kNN
+ * results and providing topDocs from the gathered neighbors
  */
-public abstract class KnnResults {
+public abstract class AbstractKnnCollector implements KnnCollector {
 
-  protected long visitedCount;
+  private long visitedCount;
   private final long visitLimit;
   private final int k;
 
-  protected KnnResults(int k, long visitLimit) {
+  protected AbstractKnnCollector(int k, long visitLimit) {
     this.visitLimit = visitLimit;
     this.k = k;
   }
@@ -41,6 +41,7 @@ public abstract class KnnResults {
    *
    * @return is the current result set marked as incomplete?
    */
+  @Override
   public final boolean earlyTerminated() {
     return visitedCount >= visitLimit;
   }
@@ -48,6 +49,7 @@ public abstract class KnnResults {
   /**
    * @param count increments the visited vector count, must be greater than 0.
    */
+  @Override
   public final void incVisitedCount(int count) {
     assert count > 0;
     this.visitedCount += count;
@@ -56,6 +58,7 @@ public abstract class KnnResults {
   /**
    * @return the current visited vector count
    */
+  @Override
   public final long visitedCount() {
     return visitedCount;
   }
@@ -63,6 +66,7 @@ public abstract class KnnResults {
   /**
    * @return the visited vector limit
    */
+  @Override
   public final long visitLimit() {
     return visitLimit;
   }
@@ -70,6 +74,7 @@ public abstract class KnnResults {
   /**
    * @return the expected number of collected results
    */
+  @Override
   public final int k() {
     return k;
   }
@@ -81,6 +86,7 @@ public abstract class KnnResults {
    * @param similarity its calculated similarity
    * @return true if the vector is collected
    */
+  @Override
   public abstract boolean collect(int docId, float similarity);
 
   /**
@@ -93,6 +99,7 @@ public abstract class KnnResults {
    *
    * @return the current minimum competitive similarity in the collection
    */
+  @Override
   public abstract float minCompetitiveSimilarity();
 
   /**
@@ -101,5 +108,6 @@ public abstract class KnnResults {
    *
    * @return The collected top documents
    */
+  @Override
   public abstract TopDocs topDocs();
 }

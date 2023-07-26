@@ -44,7 +44,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -237,13 +237,13 @@ public class QueryUtils {
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, float[] target, KnnResults knnResults, Bits acceptDocs) {
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
         return null;
       }
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, byte[] target, KnnResults knnResults, Bits acceptDocs) {
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
         return null;
       }
 

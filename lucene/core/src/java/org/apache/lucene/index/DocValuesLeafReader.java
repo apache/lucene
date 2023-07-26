@@ -18,7 +18,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -60,13 +60,13 @@ abstract class DocValuesLeafReader extends LeafReader {
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, float[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public TopDocs searchNearestVectors(
-      String field, byte[] target, KnnResults knnResults, Bits acceptDocs) throws IOException {
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
     throw new UnsupportedOperationException();
   }
 

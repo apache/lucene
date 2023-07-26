@@ -26,7 +26,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
@@ -119,13 +119,13 @@ public class TestSegmentToThreadMapping extends LuceneTestCase {
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, float[] target, KnnResults knnResults, Bits acceptDocs) {
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
         return null;
       }
 
       @Override
       public TopDocs searchNearestVectors(
-          String field, byte[] target, KnnResults knnResults, Bits acceptDocs) {
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
         return null;
       }
 

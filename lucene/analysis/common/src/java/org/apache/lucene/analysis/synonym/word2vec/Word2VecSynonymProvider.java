@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
@@ -74,7 +74,7 @@ public class Word2VecSynonymProvider {
     LinkedList<TermAndBoost> result = new LinkedList<>();
     float[] query = word2VecModel.vectorValue(term);
     if (query != null) {
-      KnnResults synonyms =
+      KnnCollector synonyms =
           HnswGraphSearcher.search(
               query,
               // The query vector is in the model. When looking for the top-k

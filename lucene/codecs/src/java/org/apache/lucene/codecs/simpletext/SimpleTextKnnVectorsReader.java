@@ -38,7 +38,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
@@ -182,7 +182,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
+  public TopDocs search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FloatVectorValues values = getFloatVectorValues(field);
     if (target.length != values.dimension()) {
@@ -194,7 +194,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
-    HitQueue topK = new HitQueue(knnResults.k(), false);
+    HitQueue topK = new HitQueue(knnCollector.k(), false);
 
     int numVisited = 0;
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
@@ -205,7 +205,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         continue;
       }
 
-      if (numVisited >= knnResults.visitLimit()) {
+      if (numVisited >= knnCollector.visitLimit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }
@@ -223,7 +223,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
+  public TopDocs search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     ByteVectorValues values = getByteVectorValues(field);
     if (target.length != values.dimension()) {
@@ -235,7 +235,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
-    HitQueue topK = new HitQueue(knnResults.k(), false);
+    HitQueue topK = new HitQueue(knnCollector.k(), false);
 
     int numVisited = 0;
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
@@ -246,7 +246,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         continue;
       }
 
-      if (numVisited >= knnResults.visitLimit()) {
+      if (numVisited >= knnCollector.visitLimit()) {
         relation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
         break;
       }

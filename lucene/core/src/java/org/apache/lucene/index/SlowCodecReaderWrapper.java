@@ -28,7 +28,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.search.KnnResults;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
@@ -174,15 +174,16 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public TopDocs search(String field, float[] target, KnnResults knnResults, Bits acceptDocs)
+      public TopDocs search(
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
           throws IOException {
-        return reader.searchNearestVectors(field, target, knnResults, acceptDocs);
+        return reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }
 
       @Override
-      public TopDocs search(String field, byte[] target, KnnResults knnResults, Bits acceptDocs)
+      public TopDocs search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
           throws IOException {
-        return reader.searchNearestVectors(field, target, knnResults, acceptDocs);
+        return reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }
 
       @Override

@@ -27,8 +27,8 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.KnnResults;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -140,7 +140,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     for (int i = 500; i < nDoc; i++) {
       acceptOrds.set(i);
     }
-    KnnResults nn =
+    KnnCollector nn =
         HnswGraphSearcher.search(
             getTargetVector(),
             10,

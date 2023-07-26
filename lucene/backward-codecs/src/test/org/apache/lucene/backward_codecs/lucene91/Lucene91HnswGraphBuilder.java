@@ -147,7 +147,7 @@ public final class Lucene91HnswGraphBuilder {
 
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(int node, float[] value) throws IOException {
-    HnswGraphBuilder.GraphBuilderKnnResults candidates;
+    HnswGraphBuilder.GraphBuilderKnnCollector candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
     int[] eps = new int[] {hnsw.entryNode()};
@@ -190,7 +190,8 @@ public final class Lucene91HnswGraphBuilder {
    * But first we should just see if sorting makes a significant difference.
    */
   private void addDiverseNeighbors(
-      int level, int node, HnswGraphBuilder.GraphBuilderKnnResults candidates) throws IOException {
+      int level, int node, HnswGraphBuilder.GraphBuilderKnnCollector candidates)
+      throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
@@ -228,7 +229,7 @@ public final class Lucene91HnswGraphBuilder {
     }
   }
 
-  private void popToScratch(HnswGraphBuilder.GraphBuilderKnnResults candidates) {
+  private void popToScratch(HnswGraphBuilder.GraphBuilderKnnCollector candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
