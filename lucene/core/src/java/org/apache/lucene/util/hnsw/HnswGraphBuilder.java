@@ -352,7 +352,7 @@ public final class HnswGraphBuilder<T> {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float maxSimilarity = candidates.minSimilarity();
+      float maxSimilarity = candidates.minimumScore();
       scratch.addInOrder(candidates.popNode(), maxSimilarity);
     }
   }
@@ -557,6 +557,10 @@ public final class HnswGraphBuilder<T> {
         queue.pop();
       }
       return queue.nodes();
+    }
+
+    float minimumScore() {
+      return queue.topScore();
     }
 
     public void clear() {

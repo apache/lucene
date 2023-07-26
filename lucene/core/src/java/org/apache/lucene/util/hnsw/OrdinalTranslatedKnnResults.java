@@ -39,13 +39,8 @@ class OrdinalTranslatedKnnResults extends KnnResults {
   }
 
   @Override
-  public boolean isFull() {
-    return in.isFull();
-  }
-
-  @Override
-  public float minSimilarity() {
-    return in.minSimilarity();
+  public float minCompetitiveSimilarity() {
+    return in.minCompetitiveSimilarity();
   }
 
   @Override

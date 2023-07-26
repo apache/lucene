@@ -45,13 +45,8 @@ public class TopKnnResults extends KnnResults {
   }
 
   @Override
-  public boolean isFull() {
-    return queue.size() >= k();
-  }
-
-  @Override
-  public float minSimilarity() {
-    return queue.topScore();
+  public float minCompetitiveSimilarity() {
+    return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
   }
 
   @Override

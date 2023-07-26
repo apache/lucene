@@ -65,13 +65,8 @@ public class ToParentJoinKnnResults extends KnnResults {
   }
 
   @Override
-  public boolean isFull() {
-    return heap.size >= k();
-  }
-
-  @Override
-  public float minSimilarity() {
-    return heap.topScore();
+  public float minCompetitiveSimilarity() {
+    return heap.size >= k() ? heap.topScore() : Float.NEGATIVE_INFINITY;
   }
 
   @Override

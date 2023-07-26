@@ -69,14 +69,16 @@ public abstract class KnnResults {
   public abstract boolean collect(int docId, float similarity);
 
   /**
-   * @return Is the current result set considered full
+   * This method is utilized during search to ensure only competitive results are explored.
+   *
+   * <p>Consequently, if this results collector wants to collect `k` results, this should return
+   * {@link Float#NEGATIVE_INFINITY} when not full.
+   *
+   * <p>When full, the minimum score should be returned.
+   *
+   * @return the current minimum competitive similarity in the collection
    */
-  public abstract boolean isFull();
-
-  /**
-   * @return the current minimum similarity in the collection
-   */
-  public abstract float minSimilarity();
+  public abstract float minCompetitiveSimilarity();
 
   /**
    * This drains the collected nearest kNN results and returns them in a new {@link TopDocs}

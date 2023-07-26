@@ -397,10 +397,7 @@ public class HnswGraphSearcher<T> {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    float minAcceptedSimilarity = Float.NEGATIVE_INFINITY;
-    if (results.isFull()) {
-      minAcceptedSimilarity = results.minSimilarity();
-    }
+    float minAcceptedSimilarity = results.minCompetitiveSimilarity();
     while (candidates.size() > 0 && results.incomplete() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
@@ -425,8 +422,8 @@ public class HnswGraphSearcher<T> {
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collect(friendOrd, friendSimilarity) && results.isFull()) {
-              minAcceptedSimilarity = results.minSimilarity();
+            if (results.collect(friendOrd, friendSimilarity)) {
+              minAcceptedSimilarity = results.minCompetitiveSimilarity();
             }
           }
         }

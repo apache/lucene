@@ -36,12 +36,7 @@ class EmptyKnnResults extends KnnResults {
   }
 
   @Override
-  public boolean isFull() {
-    return true;
-  }
-
-  @Override
-  public float minSimilarity() {
+  public float minCompetitiveSimilarity() {
     return 0;
   }
 

@@ -234,7 +234,7 @@ public final class Lucene91HnswGraphBuilder {
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float similarity = candidates.minSimilarity();
+      float similarity = candidates.minCompetitiveSimilarity();
       scratch.add(candidates.popNode(), similarity);
     }
   }

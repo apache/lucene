@@ -33,7 +33,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     assertTrue(nn.collect(2, 0.5f));
     assertTrue(nn.collect(0, 0.2f));
     assertTrue(nn.collect(4, 1f));
-    assertEquals(0.5f, nn.minSimilarity(), 0);
+    assertEquals(0.5f, nn.minCompetitiveSimilarity(), 0);
     TopDocs topDocs = nn.topDocs();
     assertEquals(topDocs.scoreDocs[0].score, 1f, 0);
     assertEquals(topDocs.scoreDocs[1].score, 0.5f, 0);
