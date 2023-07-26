@@ -35,9 +35,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
@@ -266,53 +263,47 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
-    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-    }
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    if (fieldEntry.size() == 0
+        || knnCollector.k() == 0
+        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      return;
     }
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
-    KnnCollector results =
-        HnswGraphSearcher.search(
-            target,
-            knnCollector,
-            vectorValues,
-            fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs));
-    return results.topDocs();
+    HnswGraphSearcher.search(
+        target,
+        knnCollector,
+        vectorValues,
+        fieldEntry.vectorEncoding,
+        fieldEntry.similarityFunction,
+        getGraph(fieldEntry),
+        vectorValues.getAcceptOrds(acceptDocs));
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
-    if (fieldEntry.size() == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-    }
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    if (fieldEntry.size() == 0
+        || knnCollector.k() == 0
+        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+      return;
     }
 
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
-    KnnCollector results =
-        HnswGraphSearcher.search(
-            target,
-            knnCollector,
-            vectorValues,
-            fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs));
-    return results.topDocs();
+    HnswGraphSearcher.search(
+        target,
+        knnCollector,
+        vectorValues,
+        fieldEntry.vectorEncoding,
+        fieldEntry.similarityFunction,
+        getGraph(fieldEntry),
+        vectorValues.getAcceptOrds(acceptDocs));
   }
 
   /** Get knn graph values; used for testing */

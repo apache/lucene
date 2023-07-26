@@ -29,7 +29,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -72,15 +71,15 @@ public class MismatchedLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
+  public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
-    return in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
-  public TopDocs searchNearestVectors(
+  public void searchNearestVectors(
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
-    return in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   static FieldInfos shuffleInfos(FieldInfos infos, Random random) {

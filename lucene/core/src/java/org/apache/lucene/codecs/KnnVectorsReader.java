@@ -83,9 +83,8 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @param knnCollector a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs search(
+  public abstract void search(
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
 
   /**
@@ -112,9 +111,8 @@ public abstract class KnnVectorsReader implements Closeable, Accountable {
    * @param knnCollector a KnnResults collector and relevant settings for gathering vector results
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs search(
+  public abstract void search(
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
 
   /**

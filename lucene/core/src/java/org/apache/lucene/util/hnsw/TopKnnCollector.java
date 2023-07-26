@@ -23,7 +23,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
 /**
- * TopKnnCollector is a specific KnnResults. A minHeap is used to keep track of the currently
+ * TopKnnCollector is a specific KnnCollector. A minHeap is used to keep track of the currently
  * collected vectors allowing for efficient updates as better vectors are collected.
  */
 public final class TopKnnCollector extends AbstractKnnCollector {
@@ -71,6 +71,6 @@ public final class TopKnnCollector extends AbstractKnnCollector {
 
   @Override
   public String toString() {
-    return "TopKnnResults[" + queue.size() + "]";
+    return "TopKnnCollector[k=" + k() + ", size=" + queue.size() + "]";
   }
 }

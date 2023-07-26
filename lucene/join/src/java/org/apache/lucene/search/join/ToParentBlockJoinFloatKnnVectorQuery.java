@@ -26,6 +26,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -113,15 +114,9 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
   protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
-    TopDocs results =
-        context
-            .reader()
-            .searchNearestVectors(
-                field,
-                query,
-                new ToParentJoinKnnCollector(k, visitedLimit, parentBitSet),
-                acceptDocs);
-    return results != null ? results : NO_RESULTS;
+    KnnCollector collector = new ToParentJoinKnnCollector(k, visitedLimit, parentBitSet);
+    context.reader().searchNearestVectors(field, query, collector, acceptDocs);
+    return collector.topDocs();
   }
 
   @Override

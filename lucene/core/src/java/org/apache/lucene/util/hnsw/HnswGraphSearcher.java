@@ -76,7 +76,7 @@ public class HnswGraphSearcher<T> {
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return a priority queue holding the closest neighbors found
+   * @return a set of collected vectors holding the nearest neighbors found
    */
   public static KnnCollector search(
       float[] query,
@@ -88,14 +88,9 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    return search(
-        query,
-        new TopKnnCollector(topK, visitedLimit),
-        vectors,
-        vectorEncoding,
-        similarityFunction,
-        graph,
-        acceptOrds);
+    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
+    search(query, knnCollector, vectors, vectorEncoding, similarityFunction, graph, acceptOrds);
+    return knnCollector;
   }
 
   /**
@@ -109,9 +104,8 @@ public class HnswGraphSearcher<T> {
    *     graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
-   * @return a priority queue holding the closest neighbors found
    */
-  public static KnnCollector search(
+  public static void search(
       float[] query,
       KnnCollector knnCollector,
       RandomAccessVectorValues<float[]> vectors,
@@ -133,7 +127,7 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(knnCollector.k(), true),
             new SparseFixedBitSet(vectors.size()));
-    return search(query, knnCollector, vectors, graph, graphSearcher, acceptOrds);
+    search(query, knnCollector, vectors, graph, graphSearcher, acceptOrds);
   }
 
   /**
@@ -151,14 +145,15 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
+    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
     OnHeapHnswGraphSearcher<float[]> graphSearcher =
         new OnHeapHnswGraphSearcher<>(
             vectorEncoding,
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    return search(
-        query, new TopKnnCollector(topK, visitedLimit), vectors, graph, graphSearcher, acceptOrds);
+    search(query, knnCollector, vectors, graph, graphSearcher, acceptOrds);
+    return knnCollector;
   }
 
   /**
@@ -173,7 +168,7 @@ public class HnswGraphSearcher<T> {
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
-   * @return a priority queue holding the closest neighbors found
+   * @return a set of collected vectors holding the nearest neighbors found
    */
   public static KnnCollector search(
       byte[] query,
@@ -185,14 +180,9 @@ public class HnswGraphSearcher<T> {
       Bits acceptOrds,
       int visitedLimit)
       throws IOException {
-    return search(
-        query,
-        new TopKnnCollector(topK, visitedLimit),
-        vectors,
-        vectorEncoding,
-        similarityFunction,
-        graph,
-        acceptOrds);
+    KnnCollector collector = new TopKnnCollector(topK, visitedLimit);
+    search(query, collector, vectors, vectorEncoding, similarityFunction, graph, acceptOrds);
+    return collector;
   }
 
   /**
@@ -206,9 +196,8 @@ public class HnswGraphSearcher<T> {
    *     graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
-   * @return a priority queue holding the closest neighbors found
    */
-  public static KnnCollector search(
+  public static void search(
       byte[] query,
       KnnCollector knnCollector,
       RandomAccessVectorValues<byte[]> vectors,
@@ -230,7 +219,7 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(knnCollector.k(), true),
             new SparseFixedBitSet(vectors.size()));
-    return search(query, knnCollector, vectors, graph, graphSearcher, acceptOrds);
+    search(query, knnCollector, vectors, graph, graphSearcher, acceptOrds);
   }
 
   /**
@@ -254,11 +243,12 @@ public class HnswGraphSearcher<T> {
             similarityFunction,
             new NeighborQueue(topK, true),
             new SparseFixedBitSet(vectors.size()));
-    return search(
-        query, new TopKnnCollector(topK, visitedLimit), vectors, graph, graphSearcher, acceptOrds);
+    KnnCollector collector = new TopKnnCollector(topK, visitedLimit);
+    search(query, collector, vectors, graph, graphSearcher, acceptOrds);
+    return collector;
   }
 
-  private static <T> KnnCollector search(
+  private static <T> void search(
       T query,
       KnnCollector knnCollector,
       RandomAccessVectorValues<T> vectors,
@@ -268,19 +258,19 @@ public class HnswGraphSearcher<T> {
       throws IOException {
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
-      return new EmptyKnnCollector(knnCollector.k(), 0, knnCollector.visitLimit());
+      return;
     }
     int[] epAndVisited =
         graphSearcher.findBestEntryPoint(query, vectors, graph, knnCollector.visitLimit());
     int numVisited = epAndVisited[1];
     int ep = epAndVisited[0];
     if (ep == -1) {
-      return new EmptyKnnCollector(knnCollector.k(), numVisited, knnCollector.visitLimit());
+      knnCollector.incVisitedCount(numVisited);
+      return;
     }
     KnnCollector results = new OrdinalTranslatedKnnCollector(knnCollector, vectors::ordToDoc);
     results.incVisitedCount(numVisited);
     graphSearcher.searchLevel(results, query, 0, new int[] {ep}, vectors, graph, acceptOrds);
-    return knnCollector;
   }
 
   /**
@@ -295,7 +285,7 @@ public class HnswGraphSearcher<T> {
    * @param eps the entry points for search at this level expressed as level 0th ordinals
    * @param vectors vector values
    * @param graph the graph values
-   * @return a priority queue holding the closest neighbors found
+   * @return a set of collected vectors holding the nearest neighbors found
    */
   public HnswGraphBuilder.GraphBuilderKnnCollector searchLevel(
       // Note: this is only public because Lucene91HnswGraphBuilder needs it

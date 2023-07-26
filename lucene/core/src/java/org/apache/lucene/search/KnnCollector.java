@@ -77,7 +77,8 @@ public interface KnnCollector {
 
   /**
    * This drains the collected nearest kNN results and returns them in a new {@link TopDocs}
-   * collection, ordered by score descending
+   * collection, ordered by score descending. NOTE: This is generally a destructive action and the
+   * collector should not be used after topDocs() is called.
    *
    * @return The collected top documents
    */

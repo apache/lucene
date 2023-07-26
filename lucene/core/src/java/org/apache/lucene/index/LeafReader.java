@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.TopKnnCollector;
@@ -244,7 +245,18 @@ public abstract non-sealed class LeafReader extends IndexReader {
    */
   public final TopDocs searchNearestVectors(
       String field, float[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    return searchNearestVectors(field, target, new TopKnnCollector(k, visitedLimit), acceptDocs);
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      // The field does not exist or does not index vectors
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    k = Math.min(k, getFloatVectorValues(fi.name).size());
+    if (k == 0) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    KnnCollector collector = new TopKnnCollector(k, visitedLimit);
+    searchNearestVectors(field, target, collector, acceptDocs);
+    return collector.topDocs();
   }
 
   /**
@@ -274,7 +286,18 @@ public abstract non-sealed class LeafReader extends IndexReader {
    */
   public final TopDocs searchNearestVectors(
       String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) throws IOException {
-    return searchNearestVectors(field, target, new TopKnnCollector(k, visitedLimit), acceptDocs);
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getVectorDimension() == 0) {
+      // The field does not exist or does not index vectors
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    k = Math.min(k, getByteVectorValues(fi.name).size());
+    if (k == 0) {
+      return TopDocsCollector.EMPTY_TOPDOCS;
+    }
+    KnnCollector collector = new TopKnnCollector(k, visitedLimit);
+    searchNearestVectors(field, target, collector, acceptDocs);
+    return collector.topDocs();
   }
 
   /**
@@ -298,12 +321,11 @@ public abstract non-sealed class LeafReader extends IndexReader {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param knnCollector collector and topK for gathering the vector results
+   * @param knnCollector collector with settings for gathering the vector results.
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs searchNearestVectors(
+  public abstract void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
 
   /**
@@ -327,12 +349,11 @@ public abstract non-sealed class LeafReader extends IndexReader {
    *
    * @param field the vector field to search
    * @param target the vector-valued query
-   * @param knnCollector a collector and topK for gathering the vector results
+   * @param knnCollector collector with settings for gathering the vector results.
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
    *     if they are all allowed to match.
-   * @return the k nearest neighbor documents, along with their (similarity-specific) scores.
    */
-  public abstract TopDocs searchNearestVectors(
+  public abstract void searchNearestVectors(
       String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException;
 
   /**

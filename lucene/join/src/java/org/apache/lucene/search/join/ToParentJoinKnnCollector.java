@@ -71,7 +71,7 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
 
   @Override
   public String toString() {
-    return "ToParentJoinKnnResults[" + heap.size + "]";
+    return "ToParentJoinKnnCollector[k=" + k() + ", size=" + heap.size() + "]";
   }
 
   @Override

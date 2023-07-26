@@ -52,7 +52,6 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.SimpleCollector;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
@@ -236,16 +235,12 @@ public class QueryUtils {
       }
 
       @Override
-      public TopDocs searchNearestVectors(
-          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
-        return null;
-      }
+      public void searchNearestVectors(
+          String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
       @Override
-      public TopDocs searchNearestVectors(
-          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
-        return null;
-      }
+      public void searchNearestVectors(
+          String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
       @Override
       public FieldInfos getFieldInfos() {

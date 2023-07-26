@@ -32,82 +32,38 @@ public abstract class AbstractKnnCollector implements KnnCollector {
     this.k = k;
   }
 
-  /**
-   * If search visits too many documents, the results collector will terminate early. Usually, this
-   * is due to some restricted filter on the document set.
-   *
-   * <p>When collection is earlyTerminated, the results are not a correct representation of k
-   * nearest neighbors.
-   *
-   * @return is the current result set marked as incomplete?
-   */
   @Override
   public final boolean earlyTerminated() {
     return visitedCount >= visitLimit;
   }
 
-  /**
-   * @param count increments the visited vector count, must be greater than 0.
-   */
   @Override
   public final void incVisitedCount(int count) {
     assert count > 0;
     this.visitedCount += count;
   }
 
-  /**
-   * @return the current visited vector count
-   */
   @Override
   public final long visitedCount() {
     return visitedCount;
   }
 
-  /**
-   * @return the visited vector limit
-   */
   @Override
   public final long visitLimit() {
     return visitLimit;
   }
 
-  /**
-   * @return the expected number of collected results
-   */
   @Override
   public final int k() {
     return k;
   }
 
-  /**
-   * Collect the provided docId and include in the result set.
-   *
-   * @param docId of the vector to collect
-   * @param similarity its calculated similarity
-   * @return true if the vector is collected
-   */
   @Override
   public abstract boolean collect(int docId, float similarity);
 
-  /**
-   * This method is utilized during search to ensure only competitive results are explored.
-   *
-   * <p>Consequently, if this results collector wants to collect `k` results, this should return
-   * {@link Float#NEGATIVE_INFINITY} when not full.
-   *
-   * <p>When full, the minimum score should be returned.
-   *
-   * @return the current minimum competitive similarity in the collection
-   */
   @Override
   public abstract float minCompetitiveSimilarity();
 
-  /**
-   * This drains the collected nearest kNN results and returns them in a new {@link TopDocs}
-   * collection, ordered by score descending
-   *
-   * @return The collected top documents
-   */
   @Override
   public abstract TopDocs topDocs();
 }
