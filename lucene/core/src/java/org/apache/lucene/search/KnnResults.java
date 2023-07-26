@@ -23,38 +23,53 @@ package org.apache.lucene.search;
  */
 public abstract class KnnResults {
 
-  protected int visitedCount;
-  private final int visitLimit;
+  protected long visitedCount;
+  private final long visitLimit;
   private final int k;
 
-  protected KnnResults(int k, int visitLimit) {
+  protected KnnResults(int k, long visitLimit) {
     this.visitLimit = visitLimit;
     this.k = k;
   }
 
   /**
+   * If search visits too many documents, the results collector will terminate early. Usually, this
+   * is due to some restricted filter on the document set.
+   *
+   * <p>When collection is earlyTerminated, the results are not a correct representation of k
+   * nearest neighbors.
+   *
    * @return is the current result set marked as incomplete?
    */
-  public final boolean incomplete() {
+  public final boolean earlyTerminated() {
     return visitedCount >= visitLimit;
   }
 
+  /**
+   * @param count increments the visited vector count, must be greater than 0.
+   */
   public final void incVisitedCount(int count) {
     assert count > 0;
     this.visitedCount += count;
   }
 
   /**
-   * @return the current visited count
+   * @return the current visited vector count
    */
-  public final int visitedCount() {
+  public final long visitedCount() {
     return visitedCount;
   }
 
-  public final int visitLimit() {
+  /**
+   * @return the visited vector limit
+   */
+  public final long visitLimit() {
     return visitLimit;
   }
 
+  /**
+   * @return the expected number of collected results
+   */
   public final int k() {
     return k;
   }

@@ -747,7 +747,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
               visitedLimit);
         };
 
-    assertTrue(nn.incomplete());
+    assertTrue(nn.earlyTerminated());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
   }

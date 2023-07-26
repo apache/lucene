@@ -49,7 +49,7 @@ class OrdinalTranslatedKnnResults extends KnnResults {
     return new TopDocs(
         new TotalHits(
             visitedCount(),
-            this.incomplete()
+            this.earlyTerminated()
                 ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
                 : TotalHits.Relation.EQUAL_TO),
         td.scoreDocs);

@@ -25,7 +25,7 @@ import org.apache.lucene.search.TotalHits;
 /** empty knnResults when no nearest neighbors are found */
 class EmptyKnnResults extends KnnResults {
 
-  public EmptyKnnResults(int k, int visitedCount, int visitLimit) {
+  public EmptyKnnResults(int k, long visitedCount, long visitLimit) {
     super(k, visitLimit);
     this.visitedCount = visitedCount;
   }

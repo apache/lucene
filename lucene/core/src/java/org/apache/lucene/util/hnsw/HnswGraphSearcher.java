@@ -324,7 +324,7 @@ public class HnswGraphSearcher<T> {
    * @throws IOException When accessing the vector fails
    */
   private int[] findBestEntryPoint(
-      T query, RandomAccessVectorValues<T> vectors, HnswGraph graph, int visitLimit)
+      T query, RandomAccessVectorValues<T> vectors, HnswGraph graph, long visitLimit)
       throws IOException {
     int size = graph.size();
     int visitedCount = 1;
@@ -383,7 +383,7 @@ public class HnswGraphSearcher<T> {
 
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
-        if (results.incomplete()) {
+        if (results.earlyTerminated()) {
           break;
         }
         float score = compare(query, vectors, ep);
@@ -398,7 +398,7 @@ public class HnswGraphSearcher<T> {
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = results.minCompetitiveSimilarity();
-    while (candidates.size() > 0 && results.incomplete() == false) {
+    while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
@@ -414,7 +414,7 @@ public class HnswGraphSearcher<T> {
           continue;
         }
 
-        if (results.incomplete()) {
+        if (results.earlyTerminated()) {
           break;
         }
         float friendSimilarity = compare(query, vectors, friendOrd);

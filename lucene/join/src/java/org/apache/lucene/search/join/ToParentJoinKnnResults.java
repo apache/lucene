@@ -89,7 +89,9 @@ public class ToParentJoinKnnResults extends KnnResults {
     }
 
     TotalHits.Relation relation =
-        incomplete() ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO : TotalHits.Relation.EQUAL_TO;
+        earlyTerminated()
+            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+            : TotalHits.Relation.EQUAL_TO;
     return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
