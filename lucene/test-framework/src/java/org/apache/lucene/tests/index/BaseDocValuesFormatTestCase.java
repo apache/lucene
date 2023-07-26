@@ -80,7 +80,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDataOutput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
@@ -378,7 +377,7 @@ public abstract class BaseDocValuesFormatTestCase extends BaseIndexFileFormatTes
       assert ireader.leaves().size() == 1;
       DataInputDocValues dv = ireader.leaves().get(0).reader().getDataInputDocValues("dv1");
       assertEquals(hitDocID, dv.advance(hitDocID));
-      DataInput scratch = dv.dataInputValue();
+      DataInputDocValues.DataInputDocValue scratch = dv.dataInputValue();
       assertEquals(i, scratch.readVInt());
       assertEquals(i, scratch.readInt());
       assertEquals(id, scratch.readString());

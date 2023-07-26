@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.store.DataInput;
 
 /** Delegates all methods to a wrapped {@link DataInputDocValues}. */
 public abstract class FilterDataInputDocValues extends DataInputDocValues {
@@ -59,7 +58,7 @@ public abstract class FilterDataInputDocValues extends DataInputDocValues {
   }
 
   @Override
-  public DataInput dataInputValue() throws IOException {
+  public DataInputDocValue dataInputValue() throws IOException {
     return in.dataInputValue();
   }
 }

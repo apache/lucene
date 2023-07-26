@@ -895,12 +895,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
   }
 
-  private static class SlicedDataInput extends DataInput {
+  private static class SlicedDataInput extends DataInputDocValues.DataInputDocValue {
 
     private final IndexInput in;
     private int length;
-
-    private int read;
+    private long offset;
 
     SlicedDataInput(IndexInput in) {
       this.in = in;
@@ -909,34 +908,47 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     void init(long offset, int length) throws IOException {
       in.seek(offset);
       this.length = length;
-      this.read = 0;
+      this.offset = offset;
+    }
+
+    private void checkBounds(int numBytes) throws EOFException {
+      if (Math.toIntExact(getPosition() + numBytes) - 1 >= length) {
+        throw new EOFException();
+      }
     }
 
     @Override
     public byte readByte() throws IOException {
-      if (read >= length) {
-        throw new EOFException();
-      }
-      read++;
+      checkBounds(1);
       return in.readByte();
     }
 
     @Override
     public void readBytes(byte[] b, int offset, int len) throws IOException {
-      if (read >= length) {
-        throw new EOFException();
-      }
-      read += len;
+      checkBounds(len);
       in.readBytes(b, offset, len);
     }
 
     @Override
     public void skipBytes(long numBytes) throws IOException {
-      if (read >= length) {
+      if (numBytes >= length) {
         throw new EOFException();
       }
-      read += numBytes;
+      checkBounds((int) numBytes);
       in.seek(in.getFilePointer() + numBytes);
+    }
+
+    @Override
+    public void setPosition(int pos) throws IOException {
+      if (pos >= length) {
+        throw new EOFException();
+      }
+      in.seek(offset + pos);
+    }
+
+    @Override
+    public int getPosition() {
+      return Math.toIntExact(in.getFilePointer() - offset);
     }
   }
 
@@ -957,7 +969,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         final int length = entry.maxLength;
         return new DenseDataInputDocValues(maxDoc) {
           @Override
-          public DataInput dataInputValue() throws IOException {
+          public DataInputDocValue dataInputValue() throws IOException {
             dataInput.init((long) doc * length, length);
             return dataInput;
           }
@@ -971,7 +983,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         return new DenseDataInputDocValues(maxDoc) {
 
           @Override
-          public DataInput dataInputValue() throws IOException {
+          public DataInputDocValue dataInputValue() throws IOException {
             long startOffset = addresses.get(doc);
             dataInput.init(startOffset, (int) (addresses.get(doc + 1L) - startOffset));
             return dataInput;
@@ -993,7 +1005,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         final int length = entry.maxLength;
         return new SparseDataInputDocValues(disi) {
           @Override
-          public DataInput dataInputValue() throws IOException {
+          public DataInputDocValue dataInputValue() throws IOException {
             dataInput.init((long) disi.index() * length, length);
             return dataInput;
           }
@@ -1006,7 +1018,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             DirectMonotonicReader.getInstance(entry.addressesMeta, addressesData);
         return new SparseDataInputDocValues(disi) {
           @Override
-          public DataInput dataInputValue() throws IOException {
+          public DataInputDocValue dataInputValue() throws IOException {
             final int index = disi.index();
             long startOffset = addresses.get(index);
             dataInput.init(startOffset, (int) (addresses.get(index + 1L) - startOffset));

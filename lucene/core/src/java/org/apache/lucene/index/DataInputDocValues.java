@@ -22,26 +22,44 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
-/** A per-document numeric value. */
+/**
+ * A per-document binary value.
+ *
+ * @lucene.experimental
+ */
 public abstract class DataInputDocValues extends DocValuesIterator {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected DataInputDocValues() {}
 
   /**
-   * Returns the binary value wrapped as a {@link DataInput} for the current document ID. It is
-   * illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
+   * Returns the binary value wrapped as a {@link DataInputDocValue} for the current document ID. It
+   * is illegal to call this method after {@link #advanceExact(int)} returned {@code false}.
    *
-   * @return the binary value wrapped as a {@link DataInput}
+   * @return the binary value wrapped as a {@link DataInputDocValue}
    */
-  public abstract DataInput dataInputValue() throws IOException;
+  public abstract DataInputDocValue dataInputValue() throws IOException;
+
+  /**
+   * A {@link DataInput} view over a binary doc value which is positional aware.
+   *
+   * @lucene.experimental
+   */
+  public abstract static class DataInputDocValue extends DataInput {
+
+    /** Sets the position in this stream. */
+    public abstract void setPosition(int pos) throws IOException;
+
+    /** Returns the current position in this stream. */
+    public abstract int getPosition() throws IOException;
+  }
 
   /** Wraps a {@link BinaryDocValues} with a {@link DataInputDocValues} instance. */
   public static DataInputDocValues fromBinaryDocValues(BinaryDocValues binaryDocValues) {
     final ByteArrayDataInput dataInput = new ByteArrayDataInput();
     return new DataInputDocValues() {
       @Override
-      public DataInput dataInputValue() throws IOException {
+      public DataInputDocValue dataInputValue() throws IOException {
         BytesRef bytes = binaryDocValues.binaryValue();
         dataInput.reset(bytes.bytes, bytes.offset, bytes.length);
         return dataInput;
