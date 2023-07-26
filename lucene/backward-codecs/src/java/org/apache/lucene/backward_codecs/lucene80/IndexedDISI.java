@@ -575,7 +575,10 @@ final class IndexedDISI extends DocIdSetIterator {
             return true;
           }
         }
-        disi.exists = false;
+        disi.exists =
+            false; // in this previous version of DISI we were also setting disi.exists as false for
+        // a doc that was backwards (and were not failing on an assert). Do we want to do that for
+        // Lucene 9.x?
         return false;
       }
     },

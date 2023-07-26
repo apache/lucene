@@ -564,20 +564,22 @@ public final class IndexedDISI extends DocIdSetIterator {
         final int targetInBlock = target & 0xFFFF;
         // TODO: binary search
         if (disi.nextExistDocInBlock > targetInBlock) {
-          assert !disi.exists;
+          assert !disi.exists; // this assert statement should not exist?
+          // Why do we check the previous state of the disi and assert on it?
           return false;
         }
         if (target == disi.doc) {
-          return disi.exists;
+          return disi.exists; // cursor is exactly at the target doc
         }
         for (; disi.index < disi.nextBlockIndex; ) {
-          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          int doc = Short.toUnsignedInt(disi.slice.readShort()); // read document at cursor position
           disi.index++;
           if (doc >= targetInBlock) {
             disi.nextExistDocInBlock = doc;
             if (doc != targetInBlock) {
               disi.index--;
-              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+              disi.slice.seek(
+                  disi.slice.getFilePointer() - Short.BYTES); // cursor goes back by one doc
               break;
             }
             disi.exists = true;
@@ -674,12 +676,18 @@ public final class IndexedDISI extends DocIdSetIterator {
     /**
      * Advance to the first doc from the block that is equal to or greater than {@code target}.
      * Return true if there is such a doc and false otherwise.
+     *
+     * <p>TODO: We need better javadoc here as well.
      */
     abstract boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException;
 
     /**
      * Advance the iterator exactly to the position corresponding to the given {@code target} and
      * return whether this document exists.
+     *
+     * <p>TODO: We need better javadoc here to explain what exactly is the behavior if you were to
+     * call it with a target that is behind the current position of the cursor, if it is exactly at
+     * the position of the cursor.
      */
     abstract boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
   }

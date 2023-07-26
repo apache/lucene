@@ -250,6 +250,56 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
   }
 
+  public void testAdvanceExactFailingOnAssert() throws IOException {
+    final int B = 65536;
+    final int blockCount = 5;
+    BitSet set = new SparseFixedBitSet(blockCount * B);
+
+    // create a SPARSE bitset
+    for (int block = 0; block < blockCount; block++) {
+      for (int docID = block * B; docID < (block + 1) * B; docID += 101) {
+        set.set(docID);
+      }
+    }
+
+    try (Directory dir = newDirectory()) {
+      final int cardinality = set.cardinality();
+      final byte denseRankPower =
+          rarely() ? -1 : (byte) (random().nextInt(7) + 7); // sane + chance of disable
+      long length;
+      int jumpTableentryCount;
+      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+        jumpTableentryCount =
+            IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
+        length = out.getFilePointer();
+      }
+
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        for (int i = 0; i < set.length(); i++) {
+          IndexedDISI disi =
+              new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+          // just testing a basic advanceExact
+          assertEquals(
+              "The bit at " + i + " should be correct with advanceExact",
+              set.get(i),
+              disi.advanceExact(i));
+
+          // If the current advance succeeds, and if you try to advance on the previous non-set doc,
+          // you should ideally get an IAE error (or should get a false as a return value) not an
+          // assertion error.
+          if (set.get(i)) {
+            if (i > 0) {
+              if (set.get(i - 1)
+                  == false) { // this should ideally throw an IAE, not an assertion error
+                assertFalse(disi.advanceExact(i - 1)); // fails on the assert
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   public void testOneDoc() throws IOException {
     int maxDoc = TestUtil.nextInt(random(), 1, 100000);
     BitSet set = new SparseFixedBitSet(maxDoc);
