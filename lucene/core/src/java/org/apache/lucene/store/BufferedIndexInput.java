@@ -220,7 +220,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     }
   }
 
-
   @Override
   public void readFloats(float[] dst, int offset, int len) throws IOException {
     int remainingDst = len;
