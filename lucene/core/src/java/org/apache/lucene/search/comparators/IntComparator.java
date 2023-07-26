@@ -113,10 +113,5 @@ public class IntComparator extends NumericComparator<Integer> {
     protected void encodeTop(byte[] packedValue) {
       IntPoint.encodeDimension(topValue, packedValue, 0);
     }
-
-    @Override
-    protected boolean isBottomMinOrMax() {
-      return reverse ? bottom == Integer.MIN_VALUE : bottom == Integer.MAX_VALUE;
-    }
   }
 }

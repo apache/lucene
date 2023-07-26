@@ -113,10 +113,5 @@ public class FloatComparator extends NumericComparator<Float> {
     protected void encodeTop(byte[] packedValue) {
       FloatPoint.encodeDimension(topValue, packedValue, 0);
     }
-
-    @Override
-    protected boolean isBottomMinOrMax() {
-      return reverse ? bottom == Float.MIN_VALUE : bottom == Float.MAX_VALUE;
-    }
   }
 }

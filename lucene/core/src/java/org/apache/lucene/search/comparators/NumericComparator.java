@@ -51,23 +51,20 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
-  protected final int bytesCount; // how many bytes are used to encode this number
+  private final int bytesCount; // how many bytes are used to encode this number
   private final ByteArrayComparator bytesComparator;
 
   protected boolean topValueSet;
   protected boolean singleSort; // singleSort is true, if sort is based on a single sort field.
   protected boolean hitsThresholdReached;
   protected boolean queueFull;
-  private boolean canSkipDocuments;
-  protected final Pruning pruning;
+  protected Pruning pruning;
 
   protected NumericComparator(
       String field, T missingValue, boolean reverse, Pruning pruning, int bytesCount) {
     this.field = field;
     this.missingValue = missingValue;
     this.reverse = reverse;
-    // skipping functionality is only relevant for primary sort
-    this.canSkipDocuments = pruning != Pruning.NONE;
     this.pruning = pruning;
     this.bytesCount = bytesCount;
     this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
@@ -85,11 +82,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
   @Override
   public void disableSkipping() {
-    canSkipDocuments = false;
+    pruning = Pruning.NONE;
   }
 
   /** Leaf comparator for {@link NumericComparator} that provides skipping functionality */
   public abstract class NumericLeafComparator implements LeafFieldComparator {
+    private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
     // if skipping functionality should be enabled on this segment
@@ -97,20 +95,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final int maxDoc;
     private byte[] minValueAsBytes;
     private byte[] maxValueAsBytes;
-    private byte[] deltaOne;
 
-    private final CompetitiveIterator competitiveIterator;
+    private DocIdSetIterator competitiveIterator;
     private long iteratorCost = -1;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
     private int currentSkipInterval = MIN_SKIP_INTERVAL;
     // helps to be conservative about increasing the sampling interval
     private int tryUpdateFailCount = 0;
-    private boolean dense = false;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
+      this.context = context;
       this.docValues = getNumericDocValues(context, field);
-      this.pointValues = canSkipDocuments ? context.reader().getPointValues(field) : null;
+      this.pointValues = pruning != Pruning.NONE ? context.reader().getPointValues(field) : null;
       if (pointValues != null) {
         FieldInfo info = context.reader().getFieldInfos().fieldInfo(field);
         if (info == null || info.getPointDimensionCount() == 0) {
@@ -134,14 +131,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
-        this.dense = pointValues.getDocCount() == maxDoc;
-        this.competitiveIterator =
-            new CompetitiveIterator(
-                context, field, (dense == false && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO));
-        this.deltaOne = new byte[bytesCount];
-        this.deltaOne[deltaOne.length - 1] = 1;
+        this.competitiveIterator = DocIdSetIterator.all(maxDoc);
       } else {
-        this.competitiveIterator = null;
         this.enableSkipping = false;
         this.maxDoc = 0;
       }
@@ -204,7 +195,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if ((pointValues.getDocCount() < maxDoc) && isMissingValueCompetitive()) {
         return; // we can't filter out documents, as documents with missing values are competitive
       }
-      competitiveIterator.setDocsWithDocValue();
 
       updateCounter++;
       // Start sampling if we get called too much
@@ -213,22 +203,22 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         return;
       }
       if (reverse == false) {
-        if (queueFull) { // bottom is avilable only when queue is full
+        if (queueFull) { // bottom is available only when queue is full
           maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
           encodeBottom();
         }
         if (topValueSet) {
           minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
-          encodeTop(minValueAsBytes);
+          encodeTop();
         }
       } else {
-        if (queueFull) { // bottom is avilable only when queue is full
+        if (queueFull) { // bottom is available only when queue is full
           minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
           encodeBottom();
         }
         if (topValueSet) {
           maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
-          encodeTop(maxValueAsBytes);
+          encodeTop();
         }
       }
 
@@ -298,11 +288,16 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
         updateSkipInterval(false);
+        if (pointValues.getDocCount() < iteratorCost) {
+          // Use the set of doc with values to help drive iteration
+          competitiveIterator = getNumericDocValues(context, field);
+          iteratorCost = pointValues.getDocCount();
+        }
         return;
       }
       pointValues.intersect(visitor);
-      competitiveIterator.updateDocsWithPoint(result.build().iterator());
-      iteratorCost = competitiveIterator.docsWithPointCost();
+      competitiveIterator = result.build().iterator();
+      iteratorCost = competitiveIterator.cost();
       updateSkipInterval(true);
     }
 
@@ -329,87 +324,65 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
      * value is 5, we will use a range on [MIN_VALUE, 4].
      */
     private void encodeBottom() {
-      if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && isBottomMinOrMax() == false) {
-        byte[] bottom = new byte[bytesCount];
-        encodeBottom(bottom);
-        if (reverse == false) {
-          NumericUtils.subtract(bytesCount, 0, bottom, deltaOne, maxValueAsBytes);
-        } else {
-          NumericUtils.add(bytesCount, 0, bottom, deltaOne, minValueAsBytes);
+      if (reverse == false) {
+        encodeBottom(maxValueAsBytes);
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
+          NumericUtils.nextDown(maxValueAsBytes);
         }
       } else {
-        encodeBottom(reverse == false ? maxValueAsBytes : minValueAsBytes);
+        encodeBottom(minValueAsBytes);
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
+          NumericUtils.nextUp(minValueAsBytes);
+        }
       }
     }
 
-    private class CompetitiveIterator extends DocIdSetIterator {
-
-      private final LeafReaderContext context;
-      private final int maxDoc;
-      private final String field;
-      private int doc = -1;
-      private DocIdSetIterator docsWithDocValue;
-      private DocIdSetIterator docsWithPoint;
-      private final boolean skipWithDocValues;
-
-      CompetitiveIterator(LeafReaderContext context, String field, boolean skipWithDocValues) {
-        this.context = context;
-        this.maxDoc = context.reader().maxDoc();
-        this.field = field;
-        this.skipWithDocValues = skipWithDocValues;
-      }
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(docID() + 1);
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        if (target >= maxDoc) {
-          return doc = NO_MORE_DOCS;
-        } else if (docsWithPoint != null) {
-          assert hitsThresholdReached == true;
-          return doc = docsWithPoint.advance(target);
-        } else if (docsWithDocValue != null) {
-          assert hitsThresholdReached == true;
-          return doc = docsWithDocValue.advance(target);
-        } else {
-          return doc = target;
+    /**
+     * If {@link NumericComparator#pruning} equals {@link Pruning#GREATER_THAN_OR_EQUAL_TO}, we
+     * could better tune the {@link NumericLeafComparator#maxValueAsBytes}/{@link
+     * NumericLeafComparator#minValueAsBytes}. For instance, if the sort is ascending and top value
+     * is 3, we will use a range on [4, MAX_VALUE].
+     */
+    private void encodeTop() {
+      if (reverse == false) {
+        encodeTop(minValueAsBytes);
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
+          NumericUtils.nextUp(minValueAsBytes);
         }
-      }
-
-      @Override
-      public long cost() {
-        return context.reader().maxDoc();
-      }
-
-      private void setDocsWithDocValue() throws IOException {
-        // if dense == true, all documents have docValues, no sense to skip by docValues
-        // docsWithDocValue need only init once
-        // if missing values are always competitive, we can never skip via doc values
-        if (skipWithDocValues && docsWithDocValue == null) {
-          this.docsWithDocValue = getNumericDocValues(context, field);
+      } else {
+        encodeTop(maxValueAsBytes);
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
+          NumericUtils.nextDown(maxValueAsBytes);
         }
-      }
-
-      private void updateDocsWithPoint(DocIdSetIterator iterator) {
-        this.docsWithPoint = iterator;
-      }
-
-      private long docsWithPointCost() {
-        return docsWithPoint.cost();
       }
     }
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      return competitiveIterator;
+      if (enableSkipping == false) return null;
+      return new DocIdSetIterator() {
+        private int docID = competitiveIterator.docID();
+
+        @Override
+        public int nextDoc() throws IOException {
+          return advance(docID + 1);
+        }
+
+        @Override
+        public int docID() {
+          return docID;
+        }
+
+        @Override
+        public long cost() {
+          return competitiveIterator.cost();
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          return docID = competitiveIterator.advance(target);
+        }
+      };
     }
 
     /**
@@ -423,8 +396,5 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     protected abstract void encodeBottom(byte[] packedValue);
 
     protected abstract void encodeTop(byte[] packedValue);
-
-    /** Check bottom value is MIN_VALUE or MAX_VALUE. */
-    protected abstract boolean isBottomMinOrMax();
   }
 }

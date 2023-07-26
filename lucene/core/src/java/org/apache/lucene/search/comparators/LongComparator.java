@@ -113,10 +113,5 @@ public class LongComparator extends NumericComparator<Long> {
     protected void encodeTop(byte[] packedValue) {
       LongPoint.encodeDimension(topValue, packedValue, 0);
     }
-
-    @Override
-    protected boolean isBottomMinOrMax() {
-      return reverse ? bottom == Long.MIN_VALUE : bottom == Long.MAX_VALUE;
-    }
   }
 }

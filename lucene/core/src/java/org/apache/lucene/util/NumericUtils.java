@@ -133,6 +133,52 @@ public final class NumericUtils {
   }
 
   /**
+   * Modify in-place the given bytes to the next value of the same length that compares greater than
+   * the current value. This returns false if, and only if, the value is currently equal to the
+   * maximum possible value.
+   */
+  public static boolean nextUp(byte[] bytes) {
+    boolean isMax = true;
+    for (byte b : bytes) {
+      if (b != (byte) 0xff) {
+        isMax = false;
+        break;
+      }
+    }
+    if (isMax) return false;
+
+    for (int i = bytes.length - 1; i >= 0; --i) {
+      if (++bytes[i] != 0) {
+        break;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Modify in-place the given bytes to the previous value of the same length that compares less
+   * than the current value. This returns false if, and only if, the value is currently equal to the
+   * minimum possible value.
+   */
+  public static boolean nextDown(byte[] bytes) {
+    boolean isMin = true;
+    for (byte b : bytes) {
+      if (b != 0) {
+        isMin = false;
+        break;
+      }
+    }
+    if (isMin) return false;
+
+    for (int i = bytes.length - 1; i >= 0; --i) {
+      if (bytes[i]-- != 0) {
+        break;
+      }
+    }
+    return true;
+  }
+
+  /**
    * Encodes an integer {@code value} such that unsigned byte order comparison is consistent with
    * {@link Integer#compare(int, int)}
    *
