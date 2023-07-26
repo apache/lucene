@@ -47,6 +47,9 @@ public abstract class DataInputDocValues extends DocValuesIterator {
    */
   public abstract static class DataInputDocValue extends DataInput {
 
+    /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
+    public DataInputDocValue() {}
+
     /** Sets the position in this stream. */
     public abstract void setPosition(int pos) throws IOException;
 
