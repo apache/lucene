@@ -4,7 +4,8 @@ OUTPUT_PREFIX:=subset
 QUERIES:=./queries/requests_subset.txt
 #QUERIES:=./queries/requests_one_phrase.txt
 NB_DPUS=16
-JNI_LIB=/home/jlegriel/Work/lucene-PIM/lucene-upmem-fork/pim-lucene/lucene/sandbox/dpu
+PIM_LUCENE_DIR=/home/jlegriel/Work/lucene-PIM/lucene-upmem-fork/pim-lucene
+JNI_LIB=${PIM_LUCENE_DIR}/lucene/sandbox/dpu
  
 SHELL := /bin/bash
 
@@ -34,8 +35,8 @@ run_parallel:
 	source shell/setclasspath.sh && javac src/SearchWikiMultiThread.java && java SearchWikiMultiThread -index "${INDEX_DIRECTORY}/index_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_parallel_${OUTPUT_PREFIX}
 
 run_dpu:
-	source shell/setclasspathDPU.sh && javac src/SearchWikiDPU.java && java -Djava.library.path=${JNI_LIB} SearchWikiDPU -index "${INDEX_DIRECTORY}/index_dpu_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_dpu_${OUTPUT_PREFIX}
+	source shell/setclasspathDPU.sh && javac src/SearchWikiDPU.java && java -Djava.library.path=${JNI_LIB} -Dlucene.pim.dir=${PIM_LUCENE_DIR} SearchWikiDPU -index "${INDEX_DIRECTORY}/index_dpu_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_dpu_${OUTPUT_PREFIX}
 
 run_dpu_parallel:
-	source shell/setclasspathDPU.sh && javac src/SearchWikiDPUMultiThread.java && java -Djava.library.path=${JNI_LIB} SearchWikiDPUMultiThread -index "${INDEX_DIRECTORY}/index_dpu_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_dpu_parallel_${OUTPUT_PREFIX}
+	source shell/setclasspathDPU.sh && javac src/SearchWikiDPUMultiThread.java && java -Djava.library.path=${JNI_LIB} -Dlucene.pim.dir=${PIM_LUCENE_DIR} SearchWikiDPUMultiThread -index "${INDEX_DIRECTORY}/index_dpu_${OUTPUT_PREFIX}" -queries ${QUERIES} |&tee outputs/out_dpu_parallel_${OUTPUT_PREFIX}
 
