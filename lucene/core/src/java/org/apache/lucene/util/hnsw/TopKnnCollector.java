@@ -26,7 +26,7 @@ import org.apache.lucene.search.TotalHits;
  * TopKnnCollector is a specific KnnResults. A minHeap is used to keep track of the currently
  * collected vectors allowing for efficient updates as better vectors are collected.
  */
-final public class TopKnnCollector extends AbstractKnnCollector {
+public final class TopKnnCollector extends AbstractKnnCollector {
 
   private final NeighborQueue queue;
 
