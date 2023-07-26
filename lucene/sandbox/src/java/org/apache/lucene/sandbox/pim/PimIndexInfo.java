@@ -87,7 +87,7 @@ public class PimIndexInfo implements Serializable {
      */
     public IndexInput getFieldFileInput(IndexInput in, int dpuId) throws IOException {
 
-        switchToDpu(in, dpuId);
+        seekToDpu(in, dpuId);
         long fieldSize = in.readVLong();
         if(fieldSize == 0) {
             // empty DPU, no docs were added
@@ -107,7 +107,7 @@ public class PimIndexInfo implements Serializable {
      */
     public IndexInput getBlockTableFileInput(IndexInput in, int dpuId) throws IOException {
 
-        switchToDpu(in, dpuId);
+        seekToDpu(in, dpuId);
         long blockTableOffset = in.readVLong();
         if(blockTableOffset == 0) {
             // empty DPU, no docs were added
@@ -127,7 +127,7 @@ public class PimIndexInfo implements Serializable {
      */
     public IndexInput getBlocksFileInput(IndexInput in, int dpuId) throws IOException {
 
-        switchToDpu(in, dpuId);
+        seekToDpu(in, dpuId);
         in.readVLong();
         long blockListOffset = in.readVLong();
         if(blockListOffset == 0) {
@@ -147,7 +147,7 @@ public class PimIndexInfo implements Serializable {
      */
     public IndexInput getPostingsFileInput(IndexInput in, int dpuId) throws IOException {
 
-        switchToDpu(in, dpuId);
+        seekToDpu(in, dpuId);
         in.readVLong();
         in.readVLong();
         long postingsOffset = in.readVLong();
@@ -182,7 +182,7 @@ public class PimIndexInfo implements Serializable {
      * @return the size in bytes of the DPU index
      * @throws IOException
      */
-    public long switchToDpu(IndexInput in, int dpuId) throws IOException {
+    public long seekToDpu(IndexInput in, int dpuId) throws IOException {
 
         // seek the right place where to find the information
         in.seek(0);

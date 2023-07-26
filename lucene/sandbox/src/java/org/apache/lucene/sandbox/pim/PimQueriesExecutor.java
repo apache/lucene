@@ -7,7 +7,7 @@ import java.util.List;
 
 interface PimQueriesExecutor {
 
-    void setPimIndex(PimIndexInfo pimIndexInfo) throws IOException, DpuException;
+    void setPimIndex(PimIndexInfo pimIndexInfo) throws DpuException;
 
     void executeQueries(ByteBufferBoundedQueue.ByteBuffers queryBatch, PimSystemManager.ResultReceiver resultReceiver)
             throws IOException, DpuException;

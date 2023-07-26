@@ -3,6 +3,9 @@ package org.apache.lucene.sandbox.pim;
 import com.upmem.dpu.DpuException;
 import com.upmem.dpu.DpuSet;
 import com.upmem.dpu.DpuSystem;
+import com.upmem.dpu.DpuSymbol;
+import com.upmem.dpu.DpuProgramInfo;
+
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BitUtil;
@@ -19,8 +22,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 class DpuSystemExecutor implements PimQueriesExecutor {
     static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
+    static final int INDEX_CACHE_SIZE = 1 << 18;
     private final byte[] queryBatchBuffer;
     private final DpuSystem dpuSystem;
+    private final DpuProgramInfo dpuProgramInfo;
     private final ByteArrayOutputStream dpuStream;
     private final byte[] dpuQueryOffsetInBatch;
     private final byte[][] dpuQueryResultsAddr;
@@ -37,7 +42,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // allocate DPUs, load the program, allocate space for DPU results
         dpuStream = new ByteArrayOutputStream();
         dpuSystem = DpuSystem.allocate(DpuConstants.nrDpus, "", new PrintStream(dpuStream));
-        dpuSystem.load(DpuConstants.dpuProgramPath);
+        dpuProgramInfo = dpuSystem.load(DpuConstants.dpuProgramPath);
         dpuQueryOffsetInBatch = new byte[DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
         dpuQueryResultsAddr = new byte[dpuSystem.dpus().size()][DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
         dpuResults = new byte[dpuSystem.dpus().size()][DpuConstants.dpuResultsMaxByteSize];
@@ -56,9 +61,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     }
 
     @Override
-    public void setPimIndex(PimIndexInfo pimIndexInfo) throws IOException, DpuException {
+    public void setPimIndex(PimIndexInfo pimIndexInfo) throws DpuException {
 
-        //TODO exception
         if(pimIndexInfo.getNumDpus() > DpuConstants.nrDpus) {
             throw new DpuException("ERROR: index contains to many DPUs "
                     + pimIndexInfo.getNumDpus() + " > " + DpuConstants.nrDpus);
@@ -66,22 +70,79 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         if(pimIndexInfo.getNumSegments() > 1) {
             throw new DpuException("ERROR: only one segment supported for index\n");
         }
+
+        DpuSymbol indexSymbol = dpuProgramInfo.get(DpuConstants.dpuIndexVarName);
+
+        // parallel transfer of the index on each DPU rank
+        // loop over each DPU of the rank, read INDEX_CACHE_SIZE bytes
+        // Then transfer to the DPUs of the rank
+        // loop until all DPUs have received all their index
+        dpuSystem.async().call((DpuSet set, int rankId) -> {
+
+            if(dpuIdOffset[rankId] >= pimIndexInfo.getNumDpus())
+                return;
+
+            try {
+                byte[][] indexBuffers = new byte[set.dpus().size()][INDEX_CACHE_SIZE];
+                long[] dpuIndexPos =  new long[set.dpus().size()];
+                int cnt = 0;
+                IndexInput in = pimIndexInfo.getFileInput(0);
+                while(true) {
+                    boolean dpuActive = false;
+                    for(int i = 0; i < set.dpus().size(); ++i) {
+                        if(dpuIdOffset[rankId] + i >= pimIndexInfo.getNumDpus()) {
+                            indexBuffers[i] = null;
+                            continue;
+                        }
+                        long indexSize = pimIndexInfo.seekToDpu(in, dpuIdOffset[rankId] + i);
+                        int readSize = readIndexBufferForDpu(in, dpuIndexPos[i], indexSize, indexBuffers[i]);
+                        if(readSize == 0)
+                            indexBuffers[i] = null;
+                        else {
+                            dpuActive = true;
+                            dpuIndexPos[i] += readSize;
+                        }
+                    }
+                    if(!dpuActive) break;
+
+                    DpuSymbol sym = indexSymbol.getSymbolWithOffset(cnt * INDEX_CACHE_SIZE);
+                    set.copy(sym, indexBuffers);
+                    cnt++;
+                }
+            } catch (IOException e) {
+                throw new DpuException(e.getMessage());
+            }
+        });
+
+        // send a value to all DPU indicating whether an index
+        // was loaded in it or not (there can be more dpus allocated in the PIM system than
+        // DPUs needed by the index loaded).
         byte[][] indexLoaded = new byte[DpuConstants.nrDpus][4];
         ByteBuffer b = ByteBuffer.allocate(4);
         b.order(ByteOrder.LITTLE_ENDIAN);
         b.putInt(1);
-        //TODO should do it more efficiently by transfering to multiple DPUs in parallel
         for(int i = 0; i < pimIndexInfo.getNumDpus(); ++i) {
-            IndexInput in = pimIndexInfo.getFileInput(0);
-            long dpuIndexSize = pimIndexInfo.switchToDpu(in, i);
-            byte[] data = new byte[((Math.toIntExact(dpuIndexSize) + 7) >> 3) << 3];
-            in.readBytes(data, 0, Math.toIntExact(dpuIndexSize));
-            //TODO alignment on 8 bytes ?
-            dpuSystem.dpus().get(i).copy(DpuConstants.dpuIndexVarName, data);
             indexLoaded[i] = b.array();
         }
         dpuSystem.copy(DpuConstants.dpuIndexLoadedVarName, indexLoaded);
+
         nbDpusInIndex = pimIndexInfo.getNumDpus();
+    }
+
+    private int readIndexBufferForDpu(IndexInput in, long dpuIndexPos, long indexSize,
+                                      byte[] buffer) throws IOException {
+
+        if(buffer == null)
+            return 0;
+        if(dpuIndexPos >= indexSize)
+            return 0;
+        int readSize = INDEX_CACHE_SIZE;
+        if(readSize > (indexSize - dpuIndexPos)) {
+            readSize = Math.toIntExact(indexSize - dpuIndexPos);
+        }
+        in.skipBytes(dpuIndexPos);
+        in.readBytes(buffer, 0, readSize);
+        return readSize;
     }
 
     public void executeQueries(ByteBufferBoundedQueue.ByteBuffers queryBatch, PimSystemManager.ResultReceiver resultReceiver)
