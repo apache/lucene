@@ -300,8 +300,8 @@ public class PimIndexWriter extends IndexWriter {
                 termIndex.close();
             }
 
-            int numTerms = 0, numBlockTableBytes = 0, numBlockBytes = 0, numPostingBytes = 0;
-            int numBytesIndex = 0;
+            long numTerms = 0, numBlockTableBytes = 0, numBlockBytes = 0, numPostingBytes = 0;
+            long numBytesIndex = 0;
             long[] dpuIndexAddr = new long[pimConfig.getNumDpus()];
             long[] dpuIndexBlockTableAddr = new long[pimConfig.getNumDpus()];
             long[] dpuIndexBlockListAddr = new long[pimConfig.getNumDpus()];
@@ -385,7 +385,7 @@ public class PimIndexWriter extends IndexWriter {
                 out.writeBytes(bufferCopy, 0, bufferCopy.length);
             }
             if (in.getFilePointer() < in.length()) {
-                int length = (int) (in.length() - in.getFilePointer());
+                int length = Math.toIntExact(in.length() - in.getFilePointer());
                 in.readBytes(bufferCopy, 0, length);
                 out.writeBytes(bufferCopy, 0, length);
             }
@@ -393,10 +393,10 @@ public class PimIndexWriter extends IndexWriter {
 
         static ByteCountDataOutput outByteCount = new ByteCountDataOutput();
 
-        private static int numBytesToEncode(long value) {
+        private static int numBytesToEncode(int value) {
             try {
                 outByteCount.reset();
-                outByteCount.writeVLong(value);
+                outByteCount.writeVInt(value);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -550,7 +550,7 @@ public class PimIndexWriter extends IndexWriter {
                     posBuffer.writeVInt(deltaPos);
                     //System.out.print(" pos=" + pos);
                 }
-                long numBytesPos = posBuffer.size();
+                int numBytesPos = Math.toIntExact(posBuffer.size());
                 // The sign bit of freq defines how the offset to the next doc is encoded:
                 // freq > 0 => offset encoded on 1 byte
                 // freq < 0 => offset encoded on 2 bytes
