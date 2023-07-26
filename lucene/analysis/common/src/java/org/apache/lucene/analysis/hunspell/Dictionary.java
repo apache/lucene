@@ -1133,7 +1133,8 @@ public class Dictionary {
     Map<String, Integer> morphIndices = new HashMap<>();
 
     WordStorage.Builder builder =
-        new WordStorage.Builder(wordCount, hasCustomMorphData, flags, allNonSuggestibleFlags());
+        new WordStorage.Builder(
+            wordCount, hashFactor(), hasCustomMorphData, flags, allNonSuggestibleFlags());
 
     try (ByteSequencesReader reader =
         new ByteSequencesReader(tempDir.openChecksumInput(sorted), sorted)) {
@@ -1202,6 +1203,16 @@ public class Dictionary {
         IOUtils.deleteFilesIgnoringExceptions(tempDir, sorted);
       }
     }
+  }
+
+  /**
+   * The factor determining the size of the internal hash table used for storing the entries. The
+   * table size is {@code entry_count * hashFactor}. The default factor is 1.0. If there are too
+   * many hash collisions, the factor can be increased, resulting in faster access, but more memory
+   * usage.
+   */
+  protected static double hashFactor() {
+    return 1.0;
   }
 
   char[] allNonSuggestibleFlags() {

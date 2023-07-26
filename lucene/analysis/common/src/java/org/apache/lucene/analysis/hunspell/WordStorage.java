@@ -278,6 +278,7 @@ abstract class WordStorage {
      */
     Builder(
         int wordCount,
+        double hashFactor,
         boolean hasCustomMorphData,
         FlagEnumerator flagEnumerator,
         char[] noSuggestFlags) {
@@ -286,7 +287,7 @@ abstract class WordStorage {
       this.hasCustomMorphData = hasCustomMorphData;
       this.noSuggestFlags = noSuggestFlags;
 
-      hashTable = new int[wordCount];
+      hashTable = new int[(int) (wordCount * hashFactor)];
       wordData = new byte[wordCount * 6];
 
       dataWriter =
@@ -390,7 +391,7 @@ abstract class WordStorage {
 
       if (++chainLengths[hash] > 20) {
         throw new RuntimeException(
-            "Too many collisions, please report this to dev@lucene.apache.org");
+            "Too many collisions. Please provide a larger Dictionary#hashFactor.");
       }
 
       // write the leaf entry for the last character
