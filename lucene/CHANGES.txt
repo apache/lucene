@@ -84,6 +84,9 @@ Optimizations
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
 
+* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
+  to count. (Greg Miller)
+
 Bug Fixes
 ---------------------
 
@@ -159,6 +162,8 @@ Optimizations
 
 * GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
 
+* GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
+
 Bug Fixes
 ---------------------
 
@@ -169,6 +174,9 @@ Bug Fixes
 * GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).
 
 * GITHUB#12423: Respect timeouts in ExitableDirectoryReader when searching with byte[] vectors (Ben Trent).
+
+* GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
+  (Greg Miller).
 
 Other
 ---------------------
