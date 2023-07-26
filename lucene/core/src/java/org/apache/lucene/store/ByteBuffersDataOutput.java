@@ -547,9 +547,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     final byte[] buf =
         new byte[Math.min(byteLen, UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR * MAX_CHARS_PER_WINDOW)];
     for (int i = 0, end = s.length(); i < end; ) {
-      int step = Math.min(end - i, MAX_CHARS_PER_WINDOW);
-      // don't split a surrogate pair, since the pair together takes 2 bytes per char but have space
-      // for 3 bytes per char it's safe to encode one more char here
+      // do one fewer chars than MAX_CHARS_PER_WINDOW in case we run into an unpaired surrogate
+      // below and need to increase the step to cover the lower surrogate as well
+      int step = Math.min(end - i, MAX_CHARS_PER_WINDOW - 1);
       if (i + step < end && Character.isHighSurrogate(s.charAt(i + step - 1))) {
         step++;
       }
