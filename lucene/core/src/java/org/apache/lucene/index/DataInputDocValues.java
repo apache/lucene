@@ -60,32 +60,33 @@ public abstract class DataInputDocValues extends DocValuesIterator {
   /** Wraps a {@link BinaryDocValues} with a {@link DataInputDocValues} instance. */
   public static DataInputDocValues fromBinaryDocValues(BinaryDocValues binaryDocValues) {
     final ByteArrayDataInput dataInput = new ByteArrayDataInput();
-    final DataInputDocValue value = new DataInputDocValue() {
-      @Override
-      public void setPosition(int pos) {
-        dataInput.setPosition(pos);
-      }
+    final DataInputDocValue value =
+        new DataInputDocValue() {
+          @Override
+          public void setPosition(int pos) {
+            dataInput.setPosition(pos);
+          }
 
-      @Override
-      public int getPosition() {
-        return dataInput.getPosition();
-      }
+          @Override
+          public int getPosition() {
+            return dataInput.getPosition();
+          }
 
-      @Override
-      public byte readByte() {
-        return dataInput.readByte();
-      }
+          @Override
+          public byte readByte() {
+            return dataInput.readByte();
+          }
 
-      @Override
-      public void readBytes(byte[] b, int offset, int len) {
-         dataInput.readBytes(b, offset, len);
-      }
+          @Override
+          public void readBytes(byte[] b, int offset, int len) {
+            dataInput.readBytes(b, offset, len);
+          }
 
-      @Override
-      public void skipBytes(long numBytes) {
-        dataInput.skipBytes(numBytes);
-      }
-    };
+          @Override
+          public void skipBytes(long numBytes) {
+            dataInput.skipBytes(numBytes);
+          }
+        };
     return new DataInputDocValues() {
       @Override
       public DataInputDocValue dataInputValue() throws IOException {
