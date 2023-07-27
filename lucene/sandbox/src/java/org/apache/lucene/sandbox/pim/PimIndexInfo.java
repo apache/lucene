@@ -43,7 +43,6 @@ public class PimIndexInfo implements Serializable {
             segmentCommitName[i] = segmentCommitInfo.info.name;
             if (i < numSegments - 1) {
                 startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
-                System.out.println("startDoc of " + i + 1 + ": " + startDoc[i + 1]);
             }
         }
     }

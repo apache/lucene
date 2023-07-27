@@ -93,7 +93,7 @@ public class PimIndexWriter extends IndexWriter {
     protected void doAfterCommit() throws IOException {
 
         System.out.println("Creating PIM index...");
-
+        long start = System.nanoTime();
         SegmentInfos segmentInfos = SegmentInfos.readCommit(getDirectory(),
                 SegmentInfos.getLastCommitSegmentsFileName(getDirectory()));
         try (IndexReader indexReader = DirectoryReader.open(getDirectory())) {
@@ -130,6 +130,7 @@ public class PimIndexWriter extends IndexWriter {
             // successfully updated the PIM index, register it
             writePimIndexInfo(segmentInfos);
         }
+        System.out.printf("\nPIM index creation took %.2f secs\n", (System.nanoTime() - start) * 1e-9);
     }
 
     private void writePimIndexInfo(SegmentInfos segmentInfos) throws IOException {
