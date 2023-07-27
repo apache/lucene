@@ -116,7 +116,7 @@ final class BooleanScorer extends BulkScorer {
   final BulkScorerAndDoc[] leads;
   final HeadPriorityQueue head;
   final TailPriorityQueue tail;
-  final ScoreAndDoc scoreAndDoc = new ScoreAndDoc();
+  final Score score = new Score();
   final int minShouldMatch;
   final long cost;
 
@@ -181,12 +181,11 @@ final class BooleanScorer extends BulkScorer {
   }
 
   private void scoreDocument(LeafCollector collector, int base, int i) throws IOException {
-    final ScoreAndDoc scoreAndDoc = this.scoreAndDoc;
+    final Score score = this.score;
     final Bucket bucket = buckets[i];
     if (bucket.freq >= minShouldMatch) {
-      scoreAndDoc.score = (float) bucket.score;
+      score.score = (float) bucket.score;
       final int doc = base | i;
-      scoreAndDoc.doc = doc;
       collector.collect(doc);
     }
     bucket.freq = 0;
@@ -300,7 +299,7 @@ final class BooleanScorer extends BulkScorer {
     bulkScorer.score(collector, acceptDocs, windowMin, end);
 
     // reset the scorer that should be used for the general case
-    collector.setScorer(scoreAndDoc);
+    collector.setScorer(score);
   }
 
   private BulkScorerAndDoc scoreWindow(
@@ -332,8 +331,7 @@ final class BooleanScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
-    scoreAndDoc.doc = -1;
-    collector.setScorer(scoreAndDoc);
+    collector.setScorer(score);
 
     BulkScorerAndDoc top = advance(min);
     while (top.next < max) {

@@ -88,7 +88,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       FacetsCollector fc,
       AssociationAggregationFunction aggregationFunction)
       throws IOException {
-    super(indexFieldName, taxoReader, aggregationFunction, config);
+    super(indexFieldName, taxoReader, aggregationFunction, config, fc);
     aggregateValues(aggregationFunction, fc.getMatchingDocs());
   }
 
@@ -104,7 +104,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       AssociationAggregationFunction aggregationFunction,
       DoubleValuesSource valuesSource)
       throws IOException {
-    super(indexFieldName, taxoReader, aggregationFunction, config);
+    super(indexFieldName, taxoReader, aggregationFunction, config, fc);
     aggregateValues(aggregationFunction, fc.getMatchingDocs(), fc.getKeepScores(), valuesSource);
   }
 
@@ -134,6 +134,11 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       DoubleValuesSource valueSource)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeValueCounters();
+
       SortedNumericDocValues ordinalValues =
           DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);
       DoubleValues scores = keepScores ? scores(hits) : null;
@@ -164,6 +169,11 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits == 0) {
+        continue;
+      }
+      initializeValueCounters();
+
       BinaryDocValues dv = DocValues.getBinary(hits.context.reader(), indexFieldName);
       DocIdSetIterator it =
           ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));

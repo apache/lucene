@@ -14,23 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.analysis.hunspell;
 
-/**
- * Used by {@link BulkScorer}s that need to pass a {@link Scorable} to {@link
- * LeafCollector#setScorer}.
- */
-final class ScoreAndDoc extends Scorable {
-  float score;
-  int doc = -1;
+import org.apache.lucene.util.CharsRef;
+import org.apache.lucene.util.IntsRef;
 
-  @Override
-  public int docID() {
-    return doc;
-  }
+/** A mutable entry object used when enumerating the dictionary internally */
+abstract class FlyweightEntry {
+  abstract boolean hasTitleCase();
 
-  @Override
-  public float score() {
-    return score;
-  }
+  abstract CharsRef root();
+
+  abstract CharSequence lowerCaseRoot();
+
+  abstract IntsRef forms();
 }

@@ -40,8 +40,8 @@ import org.apache.lucene.search.LongValuesSource;
  * addition of two fields: <code>
  *    Expression expression = JavascriptCompiler.compile("f1 + f2");
  *    SimpleBindings bindings = new SimpleBindings();
- *    bindings.add(new SortField("f1", SortField.Type.LONG));
- *    bindings.add(new SortField("f2", SortField.Type.LONG));
+ *    bindings.add("f1", DoubleValuesSource.fromLongField("f1"));
+ *    bindings.add("f2", DoubleValuesSource.fromLongField("f2"));
  *    LongValuesSource valueSource = expression.getDoubleValuesSource(bindings).toLongValuesSource();
  *  </code>
  */

@@ -1189,7 +1189,12 @@ public class Dictionary {
 
       // finalize last entry
       success = true;
-      return builder.build();
+      return new WordStorage(builder) {
+        @Override
+        char caseFold(char c) {
+          return Dictionary.this.caseFold(c);
+        }
+      };
     } finally {
       if (success) {
         tempDir.deleteFile(sorted);

@@ -197,7 +197,7 @@ public final class ByteBlockPool implements Accountable {
     bufferUpto++;
 
     byteUpto = 0;
-    byteOffset += BYTE_BLOCK_SIZE;
+    byteOffset = Math.addExact(byteOffset, BYTE_BLOCK_SIZE);
   }
 
   /**

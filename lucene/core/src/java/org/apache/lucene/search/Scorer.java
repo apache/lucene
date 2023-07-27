@@ -54,6 +54,9 @@ public abstract class Scorer extends Scorable {
     return weight;
   }
 
+  /** Returns the doc ID that is currently being scored. */
+  public abstract int docID();
+
   /**
    * Return a {@link DocIdSetIterator} over matching documents.
    *
