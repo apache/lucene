@@ -75,12 +75,17 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
+* GITHUB#12447: Hunspell: speed up the dictionary enumeration (Peter Gromov)
+
 Optimizations
 ---------------------
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
+* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
+  to count. (Greg Miller)
 
 Bug Fixes
 ---------------------
@@ -130,6 +135,9 @@ New Features
 * GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
   collection has finished running on a leaf. (Adrien Grand)
 
+* LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
+  HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
+
 * GITHUB#12434: Add `KnnCollector` to `LeafReader` and `KnnVectorReader` so that custom collection of vector
   search results can be provided. The first custom collector provides `ToParentBlockJoin[Float|Byte]KnnVectorQuery`
   joining child vector documents with their parent documents. (Ben Trent)
@@ -146,6 +154,10 @@ Optimizations
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
 
+* GITHUB#12444: Faster top-level disjunctions sorted by descending score in
+  case of many terms or queries that expose suboptimal score upper bounds.
+  (Adrien Grand)
+
 * GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
 
 * GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
@@ -153,6 +165,8 @@ Optimizations
 * GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
 
 * GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
+
+* GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
 
 Bug Fixes
 ---------------------
@@ -164,6 +178,9 @@ Bug Fixes
 * GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).
 
 * GITHUB#12423: Respect timeouts in ExitableDirectoryReader when searching with byte[] vectors (Ben Trent).
+
+* GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
+  (Greg Miller).
 
 Other
 ---------------------

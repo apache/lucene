@@ -209,6 +209,104 @@ public class TestBufferedIndexInput extends LuceneTestCase {
         "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
   }
 
+  public void testReadFloats() throws IOException {
+    final int length = 1024 * 8;
+    MyBufferedIndexInput input = new MyBufferedIndexInput(length);
+    ByteBuffer bb = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final int bufferLength = 128;
+    float[] floatBuffer = new float[bufferLength];
+
+    for (int alignment = 0; alignment < Float.BYTES; alignment++) {
+      input.seek(0);
+      for (int i = 0; i < alignment; i++) {
+        input.readByte();
+      }
+      final int bulkReads = length / (bufferLength * Float.BYTES) - 1;
+      for (int i = 0; i < bulkReads; i++) {
+        int pos = alignment + i * bufferLength * Float.BYTES;
+        final int floatOffset = random().nextInt(3);
+        input.skipBytes(floatOffset * Float.BYTES);
+        input.readFloats(floatBuffer, floatOffset, bufferLength - floatOffset);
+        for (int idx = floatOffset; idx < bufferLength; idx++) {
+          final int offset = pos + idx * Float.BYTES;
+          bb.position(0)
+              .put(byten(offset))
+              .put(byten(offset + 1))
+              .put(byten(offset + 2))
+              .put(byten(offset + 3));
+          assertEquals(
+              Float.floatToRawIntBits(bb.getFloat(0)), Float.floatToRawIntBits(floatBuffer[idx]));
+        }
+      }
+    }
+  }
+
+  public void testReadInts() throws IOException {
+    final int length = 1024 * 8;
+    MyBufferedIndexInput input = new MyBufferedIndexInput(length);
+    ByteBuffer bb = ByteBuffer.allocate(Integer.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final int bufferLength = 128;
+    int[] intBuffer = new int[bufferLength];
+
+    for (int alignment = 0; alignment < Integer.BYTES; alignment++) {
+      input.seek(0);
+      for (int i = 0; i < alignment; i++) {
+        input.readByte();
+      }
+      final int bulkReads = length / (bufferLength * Integer.BYTES) - 1;
+      for (int i = 0; i < bulkReads; i++) {
+        int pos = alignment + i * bufferLength * Integer.BYTES;
+        final int intOffset = random().nextInt(3);
+        input.skipBytes(intOffset * Integer.BYTES);
+        input.readInts(intBuffer, intOffset, bufferLength - intOffset);
+        for (int idx = intOffset; idx < bufferLength; idx++) {
+          final int offset = pos + idx * Integer.BYTES;
+          bb.position(0)
+              .put(byten(offset))
+              .put(byten(offset + 1))
+              .put(byten(offset + 2))
+              .put(byten(offset + 3));
+          assertEquals(bb.getInt(0), intBuffer[idx]);
+        }
+      }
+    }
+  }
+
+  public void testReadLongs() throws IOException {
+    final int length = 1024 * 8;
+    MyBufferedIndexInput input = new MyBufferedIndexInput(length);
+    ByteBuffer bb = ByteBuffer.allocate(Long.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final int bufferLength = 128;
+    long[] longBuffer = new long[bufferLength];
+
+    for (int alignment = 0; alignment < Long.BYTES; alignment++) {
+      input.seek(0);
+      for (int i = 0; i < alignment; i++) {
+        input.readByte();
+      }
+      final int bulkReads = length / (bufferLength * Long.BYTES) - 1;
+      for (int i = 0; i < bulkReads; i++) {
+        int pos = alignment + i * bufferLength * Long.BYTES;
+        final int longOffset = random().nextInt(3);
+        input.skipBytes(longOffset * Long.BYTES);
+        input.readLongs(longBuffer, longOffset, bufferLength - longOffset);
+        for (int idx = longOffset; idx < bufferLength; idx++) {
+          final int offset = pos + idx * Long.BYTES;
+          bb.position(0)
+              .put(byten(offset))
+              .put(byten(offset + 1))
+              .put(byten(offset + 2))
+              .put(byten(offset + 3))
+              .put(byten(offset + 4))
+              .put(byten(offset + 5))
+              .put(byten(offset + 6))
+              .put(byten(offset + 7));
+          assertEquals(bb.getLong(0), longBuffer[idx]);
+        }
+      }
+    }
+  }
+
   // byten emulates a file - byten(n) returns the n'th byte in that file.
   // MyBufferedIndexInput reads this "file".
   private static byte byten(long n) {

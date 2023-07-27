@@ -51,6 +51,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -671,7 +672,15 @@ public class QueryUtils {
     query = searcher.rewrite(query);
     Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE, 1);
     for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-      final Scorer scorer = weight.scorer(context);
+      final Scorer scorer;
+      final ScorerSupplier scorerSupplier = weight.scorerSupplier(context);
+      if (scorerSupplier == null) {
+        scorer = null;
+      } else {
+        // For IndexOrDocValuesQuey, the bulk scorer will use the indexed structure query
+        // and the scorer with a lead cost of 0 will use the doc values query.
+        scorer = scorerSupplier.get(0);
+      }
       final BulkScorer bulkScorer = weight.bulkScorer(context);
       if (scorer == null && bulkScorer == null) {
         continue;
