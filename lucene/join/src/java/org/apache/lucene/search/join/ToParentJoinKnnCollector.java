@@ -76,16 +76,14 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
 
   @Override
   public TopDocs topDocs() {
+    assert heap.size() <= k() : "Tried to collect more results than the maximum number allowed";
     while (heap.size() > k()) {
       heap.popToDrain();
     }
-    int i = 0;
     ScoreDoc[] scoreDocs = new ScoreDoc[heap.size()];
-    while (i < scoreDocs.length) {
-      int node = heap.topNode();
-      float score = heap.topScore();
+    for (int i = 1; i <= scoreDocs.length; i++) {
+      scoreDocs[scoreDocs.length - i] = new ScoreDoc(heap.topNode(), heap.topScore());
       heap.popToDrain();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
     }
 
     TotalHits.Relation relation =

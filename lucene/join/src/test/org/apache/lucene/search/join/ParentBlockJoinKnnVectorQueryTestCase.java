@@ -155,6 +155,15 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
             new String[] {
               encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
             });
+
+        query =
+            getParentJoinKnnQuery(
+                "field", new float[] {6, 6}, new MatchAllDocsQuery(), 1, parentFilter);
+        assertScorerResults(
+            searcher,
+            query,
+            new float[] {1f / 3f},
+            new String[] {encodeInts(new int[] {1, 2, 3, 4, 5})});
       }
     }
   }

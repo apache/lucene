@@ -50,16 +50,11 @@ public final class TopKnnCollector extends AbstractKnnCollector {
 
   @Override
   public TopDocs topDocs() {
-    while (queue.size() > k()) {
-      queue.pop();
-    }
-    int i = 0;
+    assert queue.size() <= k() : "Tried to collect more results than the maximum number allowed";
     ScoreDoc[] scoreDocs = new ScoreDoc[queue.size()];
-    while (i < scoreDocs.length) {
-      int node = queue.topNode();
-      float score = queue.topScore();
+    for (int i = 1; i <= scoreDocs.length; i++) {
+      scoreDocs[scoreDocs.length - i] = new ScoreDoc(queue.topNode(), queue.topScore());
       queue.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(node, score);
     }
     TotalHits.Relation relation =
         earlyTerminated()
