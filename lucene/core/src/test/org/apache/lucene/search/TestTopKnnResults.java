@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.search;
 
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTopKnnResults extends LuceneTestCase {

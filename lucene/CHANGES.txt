@@ -130,6 +130,10 @@ New Features
 * GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
   collection has finished running on a leaf. (Adrien Grand)
 
+* GITHUB#12434: Add `KnnCollector` to `LeafReader` and `KnnVectorReader` so that custom collection of vector
+  search results can be provided. The first custom collector provides `ToParentBlockJoin[Float|Byte]KnnVectorQuery`
+  joining child vector documents with their parent documents. (Ben Trent)
+
 Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)

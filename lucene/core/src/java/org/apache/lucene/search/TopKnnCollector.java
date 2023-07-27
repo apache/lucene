@@ -15,16 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.util.hnsw;
+package org.apache.lucene.search;
 
-import org.apache.lucene.search.AbstractKnnCollector;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
  * TopKnnCollector is a specific KnnCollector. A minHeap is used to keep track of the currently
  * collected vectors allowing for efficient updates as better vectors are collected.
+ *
+ * @lucene.experimental
  */
 public final class TopKnnCollector extends AbstractKnnCollector {
 

@@ -20,6 +20,8 @@ package org.apache.lucene.search;
 /**
  * KnnCollector is a knn collector used for gathering kNN results and providing topDocs from the
  * gathered neighbors
+ *
+ * @lucene.experimental
  */
 public interface KnnCollector {
 
