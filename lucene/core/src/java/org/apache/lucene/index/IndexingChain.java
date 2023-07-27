@@ -621,6 +621,12 @@ final class IndexingChain implements Accountable {
       final Sort indexSort = indexWriterConfig.getIndexSort();
       validateIndexSortDVType(indexSort, pf.fieldName, s.docValuesType);
     }
+    if (s.vectorDimension != 0) {
+      validateMaxVectorDimension(
+          pf.fieldName,
+          s.vectorDimension,
+          indexWriterConfig.getCodec().knnVectorsFormat().getMaxDimensions(pf.fieldName));
+    }
     FieldInfo fi =
         fieldInfos.add(
             new FieldInfo(
@@ -828,6 +834,20 @@ final class IndexingChain implements Accountable {
               + "for a field that is not indexed (field=\""
               + name
               + "\")");
+    }
+  }
+
+  private static void validateMaxVectorDimension(
+      String fieldName, int vectorDim, int maxVectorDim) {
+    if (vectorDim > maxVectorDim) {
+      throw new IllegalArgumentException(
+          "Field ["
+              + fieldName
+              + "]"
+              + "vector's dimensions must be <= ["
+              + maxVectorDim
+              + "]; got "
+              + vectorDim);
     }
   }
 

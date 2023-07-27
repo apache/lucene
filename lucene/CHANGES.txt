@@ -11,6 +11,8 @@ API Changes
 * GITHUB#11248: IntBlockPool's SliceReader, SliceWriter, and all int slice functionality are moved out to MemoryIndex.
   (Stefan Vodita)
 
+* GITHUB#12436: Move max vector dims limit to Codec (Mayya Sharipova)
+
 New Features
 ---------------------
 
