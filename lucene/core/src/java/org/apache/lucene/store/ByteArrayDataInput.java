@@ -17,7 +17,6 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import org.apache.lucene.index.DataInputDocValues;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -26,7 +25,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * @lucene.experimental
  */
-public final class ByteArrayDataInput extends DataInputDocValues.DataInputDocValue {
+public final class ByteArrayDataInput extends DataInput {
 
   private byte[] bytes;
 
@@ -55,12 +54,10 @@ public final class ByteArrayDataInput extends DataInputDocValues.DataInputDocVal
     pos = 0;
   }
 
-  @Override
   public int getPosition() {
     return pos;
   }
 
-  @Override
   public void setPosition(int pos) {
     this.pos = pos;
   }
