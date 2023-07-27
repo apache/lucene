@@ -108,9 +108,6 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
-  /** A maximum number of vector dimensions supported by this codeс */
-  public static final int MAX_DIMENSIONS = 1024;
-
   /**
    * A maximum configurable maximum max conn.
    *
@@ -190,7 +187,7 @@ public final class Lucene95HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public int getMaxDimensions(String fieldName) {
-    return MAX_DIMENSIONS;
+    return 1024;
   }
 
   @Override
