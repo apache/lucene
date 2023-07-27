@@ -21,9 +21,9 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.search.TopKnnCollector;
 
 /**
  * {@code LeafReader} is an abstract class, providing an interface for accessing an index. Search of

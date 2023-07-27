@@ -63,6 +63,7 @@ import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -81,7 +82,6 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.search.TopKnnCollector;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
