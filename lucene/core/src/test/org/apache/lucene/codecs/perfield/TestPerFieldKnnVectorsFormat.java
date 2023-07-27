@@ -263,6 +263,11 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
       return delegate.fieldsReader(state);
     }
+
+    @Override
+    public int getMaxDimensions(String fieldName) {
+      return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
+    }
   }
 
   private static class KnnVectorsFormatMaxDims32 extends KnnVectorsFormat {
