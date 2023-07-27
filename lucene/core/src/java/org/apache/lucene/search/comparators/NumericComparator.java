@@ -346,12 +346,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private void encodeTop() {
       if (reverse == false) {
         encodeTop(minValueAsBytes);
-        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && queueFull) {
           NumericUtils.nextUp(minValueAsBytes);
         }
       } else {
         encodeTop(maxValueAsBytes);
-        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO) {
+        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && queueFull) {
           NumericUtils.nextDown(maxValueAsBytes);
         }
       }
