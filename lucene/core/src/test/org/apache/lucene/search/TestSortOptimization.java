@@ -150,11 +150,6 @@ public class TestSortOptimization extends LuceneTestCase {
   }
 
   /**
-   * test that if we skip docs only with {@link org.apache.lucene.index.NumericDocValues}, result
-   * must be equal to no optimization case
-   */
-
-  /**
    * test that even if a field is not indexed with points, optimized sort still works as expected,
    * although no optimization will be run
    */
