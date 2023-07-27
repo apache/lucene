@@ -1211,7 +1211,7 @@ public class Dictionary {
    * many hash collisions, the factor can be increased, resulting in faster access, but more memory
    * usage.
    */
-  protected static double hashFactor() {
+  protected double hashFactor() {
     return 1.0;
   }
 
