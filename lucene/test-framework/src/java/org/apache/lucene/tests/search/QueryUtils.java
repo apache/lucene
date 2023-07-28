@@ -759,6 +759,7 @@ public class QueryUtils {
           new LeafCollector() {
             @Override
             public void collect(DocIdStream stream) throws IOException {
+              // Don't use DocIdStream#count, we want to count the slow way here.
               docIdStream[0] = true;
               LeafCollector.super.collect(stream);
             }
