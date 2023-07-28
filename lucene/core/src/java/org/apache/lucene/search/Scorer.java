@@ -104,4 +104,14 @@ public abstract class Scorer extends Scorable {
    * {@link #advanceShallow(int) shallow-advanced} to included and {@code upTo} included.
    */
   public abstract float getMaxScore(int upTo) throws IOException;
+
+  /**
+   * Optional operation: set the target cost. When set to a value that is less that the iterator's
+   * {@link DocIdSetIterator#cost()}, the {@link BulkScorer} may enable rank-unsafe optimizations
+   * and trade recall in order to more efficiently identify some of the top hits. This method only
+   * makes sense on queries sorted by score. Note that this is a best effort only, you should
+   * combine it with early termination and/or timeouts if you need strict guarantees about query
+   * runtime.
+   */
+  public void setTargetCost(long cost) {}
 }

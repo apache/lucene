@@ -248,4 +248,9 @@ final class BlockMaxConjunctionScorer extends Scorer {
     }
     return children;
   }
+
+  @Override
+  public void setTargetCost(long cost) {
+    scorers[0].setTargetCost(cost);
+  }
 }
