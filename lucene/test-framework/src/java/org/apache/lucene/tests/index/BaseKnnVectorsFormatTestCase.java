@@ -496,7 +496,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc3));
       assertTrue(
           exc.getMessage()
-              .contains("Inconsistency of field data structures across documents for field [f]"));
+                  .contains("Inconsistency of field data structures across documents for field [f]")
+              || exc.getMessage()
+                  .contains(
+                      "vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
       w.flush();
 
       Document doc4 = new Document();
