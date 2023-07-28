@@ -36,6 +36,8 @@ Improvements
 * GITHUB#12499: Simplify task executor for concurrent operations by offloading concurrent operations to the
   provided executor unconditionally. (Luca Cavanna)
 
+* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
+
 Optimizations
 ---------------------
 

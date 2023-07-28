@@ -264,6 +264,7 @@ class WordStorage {
     private final List<Integer> morphDataIDs = new ArrayList<>();
     private String currentEntry = null;
     private final int wordCount;
+    private final double hashFactor;
     private final FlagEnumerator flagEnumerator;
 
     private final ByteArrayDataOutput dataWriter;
@@ -278,15 +279,17 @@ class WordStorage {
      */
     Builder(
         int wordCount,
+        double hashFactor,
         boolean hasCustomMorphData,
         FlagEnumerator flagEnumerator,
         char[] noSuggestFlags) {
       this.wordCount = wordCount;
+      this.hashFactor = hashFactor;
       this.flagEnumerator = flagEnumerator;
       this.hasCustomMorphData = hasCustomMorphData;
       this.noSuggestFlags = noSuggestFlags;
 
-      hashTable = new int[wordCount];
+      hashTable = new int[(int) (wordCount * hashFactor)];
       wordData = new byte[wordCount * 6];
 
       dataWriter =
@@ -390,7 +393,9 @@ class WordStorage {
 
       if (++chainLengths[hash] > 20) {
         throw new RuntimeException(
-            "Too many collisions, please report this to dev@lucene.apache.org");
+            "Too many collisions. "
+                + ("Try a larger Dictionary#hashFactor (now " + hashFactor + "). ")
+                + "If this doesn't help, please report this to dev@lucene.apache.org");
       }
 
       // write the leaf entry for the last character
