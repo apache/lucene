@@ -77,6 +77,8 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration (Peter Gromov)
 
+* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
+
 Optimizations
 ---------------------
 
