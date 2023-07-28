@@ -54,6 +54,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     return new AssertingKnnVectorsReader(delegate.fieldsReader(state), state.fieldInfos);
   }
 
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
+  }
+
   static class AssertingKnnVectorsWriter extends KnnVectorsWriter {
     final KnnVectorsWriter delegate;
 
