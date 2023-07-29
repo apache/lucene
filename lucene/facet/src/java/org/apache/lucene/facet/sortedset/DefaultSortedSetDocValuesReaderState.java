@@ -26,8 +26,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesType;
@@ -55,8 +53,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /** {@link IndexReader} passed to the constructor. */
   public final IndexReader reader;
 
-  private OrdinalMap ordinalMap = null;
-  private Lock ordinalMapLock = new ReentrantLock();
+  private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
 
   private final FacetsConfig config;
 
@@ -236,10 +233,14 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /** Return the memory usage of this object in bytes. Negative values are illegal. */
   @Override
   public long ramBytesUsed() {
-    ordinalMapLock.lock();
-    long ramBytesUsed = ordinalMap.ramBytesUsed();
-    ordinalMapLock.unlock();
-    return ramBytesUsed;
+    synchronized (cachedOrdMaps) {
+      long bytes = 0;
+      for (OrdinalMap map : cachedOrdMaps.values()) {
+        bytes += map.ramBytesUsed();
+      }
+
+      return bytes;
+    }
   }
 
   /**
@@ -250,15 +251,9 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
    */
   @Override
   public Collection<Accountable> getChildResources() {
-    Map<String, OrdinalMap> snapshot = new HashMap<>();
-    ordinalMapLock.lock();
-    if (ordinalMap != null) {
-      snapshot.put(field, ordinalMap);
+    synchronized (cachedOrdMaps) {
+      return Accountables.namedAccountables("DefaultSortedSetDocValuesReaderState", cachedOrdMaps);
     }
-    Collection<Accountable> resources =
-        Accountables.namedAccountables("DefaultSortedSetDocValuesReaderState", snapshot);
-    ordinalMapLock.unlock();
-    return resources;
   }
 
   @Override
@@ -269,22 +264,30 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
   /** Return top-level doc values. */
   @Override
   public SortedSetDocValues getDocValues() throws IOException {
-    ordinalMapLock.lock();
-    if (ordinalMap == null) {
-      // uncached, or not a multi dv
-      SortedSetDocValues dv = MultiDocValues.getSortedSetValues(reader, field);
-      if (dv instanceof MultiDocValues.MultiSortedSetDocValues) {
-        OrdinalMap map = ((MultiDocValues.MultiSortedSetDocValues) dv).mapping;
-        IndexReader.CacheHelper cacheHelper = reader.getReaderCacheHelper();
-        if (cacheHelper != null && map.owner == cacheHelper.getKey()) {
-          ordinalMap = map;
+    // TODO: this is dup'd from slow composite reader wrapper ... can we factor it out to share?
+    OrdinalMap map = null;
+    // TODO: why are we lazy about this?  It's better if ctor pays the cost, not first query?  Oh,
+    // but we
+    // call this method from ctor, ok.  Also, we only ever store one entry in the map (for
+    // key=field) so
+    // why are we using a map?
+    synchronized (cachedOrdMaps) {
+      map = cachedOrdMaps.get(field);
+      if (map == null) {
+        // uncached, or not a multi dv
+        SortedSetDocValues dv = MultiDocValues.getSortedSetValues(reader, field);
+        if (dv instanceof MultiDocValues.MultiSortedSetDocValues) {
+          map = ((MultiDocValues.MultiSortedSetDocValues) dv).mapping;
+          IndexReader.CacheHelper cacheHelper = reader.getReaderCacheHelper();
+          if (cacheHelper != null && map.owner == cacheHelper.getKey()) {
+            cachedOrdMaps.put(field, map);
+          }
         }
+        return dv;
       }
-      return dv;
     }
-    ordinalMapLock.unlock();
 
-    assert ordinalMap != null;
+    assert map != null;
     int size = reader.leaves().size();
     final SortedSetDocValues[] values = new SortedSetDocValues[size];
     final int[] starts = new int[size + 1];
@@ -305,7 +308,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       cost += v.cost();
     }
     starts[size] = reader.maxDoc();
-    return new MultiSortedSetDocValues(values, starts, ordinalMap, cost);
+    return new MultiSortedSetDocValues(values, starts, map, cost);
   }
 
   /** Indexed field we are reading. */
