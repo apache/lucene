@@ -84,19 +84,22 @@ public final class UTF32ToUTF8 {
         // 110yyyxx 10xxxxxx
         bytes[0].value = (6 << 5) | (code >> 6);
         bytes[0].bits = 5;
-        setRest(code, 1);
+        // clear leading 5 bit
+        setRest(code & 0x3f, 1);
         len = 2;
       } else if (code < 65536) {
         // 1110yyyy 10yyyyxx 10xxxxxx
         bytes[0].value = (14 << 4) | (code >> 12);
         bytes[0].bits = 4;
-        setRest(code, 2);
+        // clear leading 4 bit
+        setRest(code & 0xFF, 2);
         len = 3;
       } else {
         // 11110zzz 10zzyyyy 10yyyyxx 10xxxxxx
         bytes[0].value = (30 << 3) | (code >> 18);
         bytes[0].bits = 3;
-        setRest(code, 3);
+        // clear leading 3 bit
+        setRest(code & 0x3FFFF, 3);
         len = 4;
       }
     }
