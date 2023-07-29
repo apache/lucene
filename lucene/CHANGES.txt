@@ -38,6 +38,8 @@ Improvements
 
 * GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
 
+* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+
 Optimizations
 ---------------------
 
