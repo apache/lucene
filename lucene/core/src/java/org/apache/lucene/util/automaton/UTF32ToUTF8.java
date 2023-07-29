@@ -84,22 +84,19 @@ public final class UTF32ToUTF8 {
         // 110yyyxx 10xxxxxx
         bytes[0].value = (6 << 5) | (code >> 6);
         bytes[0].bits = 5;
-        // clear leading 5 bit
-        setRest(code & 0x3f, 1);
+        setRest(code, 1);
         len = 2;
       } else if (code < 65536) {
         // 1110yyyy 10yyyyxx 10xxxxxx
         bytes[0].value = (14 << 4) | (code >> 12);
         bytes[0].bits = 4;
-        // clear leading 4 bit
-        setRest(code & 0xFF, 2);
+        setRest(code, 2);
         len = 3;
       } else {
         // 11110zzz 10zzyyyy 10yyyyxx 10xxxxxx
         bytes[0].value = (30 << 3) | (code >> 18);
         bytes[0].bits = 3;
-        // clear leading 3 bit
-        setRest(code & 0x3FFFF, 3);
+        setRest(code, 3);
         len = 4;
       }
     }
@@ -241,6 +238,10 @@ public final class UTF32ToUTF8 {
         // doesn't accept certain byte sequences) -- there
         // are other cases we could optimize too:
         startCode = 194;
+      } else if (endUTF8.len == 3 && upto == 1 && endUTF8.byteAt(0) == 0xE0) {
+        startCode = 0xA0;
+      } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xf0) {
+        startCode = 0x90;
       } else {
         startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]);
       }
