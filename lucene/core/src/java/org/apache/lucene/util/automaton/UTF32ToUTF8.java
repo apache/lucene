@@ -242,7 +242,7 @@ public final class UTF32ToUTF8 {
         startCode = 0xC2;
       } else if (endUTF8.len == 3 && upto == 1 && endUTF8.byteAt(0) == 0xE0) {
         startCode = 0xA0;
-      } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xf0) {
+      } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xF0) {
         startCode = 0x90;
       } else {
         startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]);
