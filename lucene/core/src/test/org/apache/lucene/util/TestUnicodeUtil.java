@@ -191,7 +191,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
     }
   }
 
-  public void testUTF8TwoToThreeBytes() throws Exception {
+  public void testUTF8SpanMultipleBytes() throws Exception {
     Automaton.Builder b = new Automaton.Builder();
     // start state:
     int s1 = b.createState();
@@ -200,9 +200,16 @@ public class TestUnicodeUtil extends LuceneTestCase {
     int s2 = b.createState();
     b.setAccept(s2, true);
 
-    // add two single-code-point terms
+    // utf8 codepoint length is 1
+    b.addTransition(s1, s2, 0x7F);
+    // utf8 codepoint length is 2
+    b.addTransition(s1, s2, 0x80);
     b.addTransition(s1, s2, 0x7FF);
+    // utf8 codepoint length is 3
     b.addTransition(s1, s2, 0x800);
+    b.addTransition(s1, s2, 0xFFFF);
+    // utf8 codepoint length is 4
+    b.addTransition(s1, s2, 0x10000);
 
     Automaton a = b.finish();
 
@@ -212,7 +219,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
     for (IntsRef r = it.next(); r != null; r = it.next()) {
       termCount++;
     }
-    assertEquals(2, termCount);
+    assertEquals(6, termCount);
   }
 
   public void testNewString() {

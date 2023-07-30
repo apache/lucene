@@ -232,15 +232,17 @@ public final class UTF32ToUTF8 {
           endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]),
           endUTF8.byteAt(upto));
     } else {
+      // There are three special case
+      // 1. if codepoint's numBits is 5, byte start from 0xC2
+      // 2. if codepoint's len is 3  and  first byte is 0xE0. the second byte start from 0xA0
+      // 3. if codepoint's len is 4 and first byte is 0xF0, the second byte start from 0x90
+      // you could found the reference in https://www.utf8-chartable.de/unicode-utf8-table.pl
       final int startCode;
       if (endUTF8.numBits(upto) == 5) {
-        // special case -- avoid created unused edges (endUTF8
-        // doesn't accept certain byte sequences) -- there
-        // are other cases we could optimize too:
-        startCode = 194;
+        startCode = 0xC2;
       } else if (endUTF8.len == 3 && upto == 1 && endUTF8.byteAt(0) == 0xE0) {
         startCode = 0xA0;
-      } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xF0) {
+      } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xf0) {
         startCode = 0x90;
       } else {
         startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]);

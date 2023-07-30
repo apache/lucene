@@ -182,6 +182,10 @@ Bug Fixes
 * GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
   (Greg Miller).
 
+* GITHUB#2472: Fix the incorrect conversion from a Unicode (UTF-32) automaton to its UTF-8 representation.
+  This bug will only impact on end users who primarily operate in binary space. However, for those who utilize Unicode
+  encoded in UTF-8, it should not have any effect on their operations. (Tang Donghai).
+
 Other
 ---------------------
 
