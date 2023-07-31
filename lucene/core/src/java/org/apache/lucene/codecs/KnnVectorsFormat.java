@@ -141,7 +141,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
         @Override
         public int getMaxDimensions(String fieldName) {
-          return 1;
+          return 0;
         }
       };
 }
