@@ -109,7 +109,7 @@ final class BooleanScorer extends BulkScorer {
     }
   }
 
-  final Bucket[] buckets = new Bucket[SIZE];
+  final Bucket[] buckets;
   // This is basically an inlined FixedBitSet... seems to help with bound checks
   final long[] matching = new long[SET_SIZE];
 
@@ -119,6 +119,7 @@ final class BooleanScorer extends BulkScorer {
   final Score score = new Score();
   final int minShouldMatch;
   final long cost;
+  final boolean needsScores;
 
   final class OrCollector implements LeafCollector {
     Scorable scorer;
@@ -133,9 +134,13 @@ final class BooleanScorer extends BulkScorer {
       final int i = doc & MASK;
       final int idx = i >>> 6;
       matching[idx] |= 1L << i;
-      final Bucket bucket = buckets[i];
-      bucket.freq++;
-      bucket.score += scorer.score();
+      if (buckets != null) {
+        final Bucket bucket = buckets[i];
+        bucket.freq++;
+        if (needsScores) {
+          bucket.score += scorer.score();
+        }
+      }
     }
   }
 
@@ -154,19 +159,20 @@ final class BooleanScorer extends BulkScorer {
       throw new IllegalArgumentException(
           "This scorer can only be used with two scorers or more, got " + scorers.size());
     }
-    for (int i = 0; i < buckets.length; i++) {
-      buckets[i] = new Bucket();
+    if (needsScores || minShouldMatch > 1) {
+      buckets = new Bucket[SIZE];
+      for (int i = 0; i < buckets.length; i++) {
+        buckets[i] = new Bucket();
+      }
+    } else {
+      buckets = null;
     }
     this.leads = new BulkScorerAndDoc[scorers.size()];
     this.head = new HeadPriorityQueue(scorers.size() - minShouldMatch + 1);
     this.tail = new TailPriorityQueue(minShouldMatch - 1);
     this.minShouldMatch = minShouldMatch;
+    this.needsScores = needsScores;
     for (BulkScorer scorer : scorers) {
-      if (needsScores == false) {
-        // OrCollector calls score() all the time so we have to explicitly
-        // disable scoring in order to avoid decoding useless norms
-        scorer = BooleanWeight.disableScoring(scorer);
-      }
       final BulkScorerAndDoc evicted = tail.insertWithOverflow(new BulkScorerAndDoc(scorer));
       if (evicted != null) {
         head.add(evicted);
@@ -181,15 +187,19 @@ final class BooleanScorer extends BulkScorer {
   }
 
   private void scoreDocument(LeafCollector collector, int base, int i) throws IOException {
-    final Score score = this.score;
-    final Bucket bucket = buckets[i];
-    if (bucket.freq >= minShouldMatch) {
-      score.score = (float) bucket.score;
-      final int doc = base | i;
-      collector.collect(doc);
+    if (buckets != null) {
+      final Score score = this.score;
+      final Bucket bucket = buckets[i];
+      if (bucket.freq >= minShouldMatch) {
+        score.score = (float) bucket.score;
+        final int doc = base | i;
+        collector.collect(doc);
+      }
+      bucket.freq = 0;
+      bucket.score = 0;
+    } else {
+      collector.collect(base | i);
     }
-    bucket.freq = 0;
-    bucket.score = 0;
   }
 
   private void scoreMatches(LeafCollector collector, int base) throws IOException {
