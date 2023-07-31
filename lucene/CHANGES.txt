@@ -144,6 +144,9 @@ New Features
 * LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
   HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
 
+* GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
+  vector search. (Jack Mazanec, Ben Trent)
+
 Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
