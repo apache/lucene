@@ -32,7 +32,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
@@ -280,7 +279,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     var builder = INDEX_PACKAGE_ACCESS.newFieldInfosBuilder(softDeletesField);
 
     for (String field : fieldNames) {
-      IndexableFieldType fieldType = randomFieldType(random());
+      IndexableFieldType fieldType = randomFieldType(random(), field);
       boolean storeTermVectors = false;
       boolean storePayloads = false;
       boolean omitNorms = false;
@@ -319,7 +318,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     dir.close();
   }
 
-  private IndexableFieldType randomFieldType(Random r) {
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
+  }
+
+  private IndexableFieldType randomFieldType(Random r, String fieldName) {
     FieldType type = new FieldType();
 
     if (r.nextBoolean()) {
@@ -352,7 +355,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     }
 
     if (r.nextBoolean()) {
-      int dimension = 1 + r.nextInt(FloatVectorValues.MAX_DIMENSIONS);
+      int dimension = 1 + r.nextInt(getVectorsMaxDimensions(fieldName));
       VectorSimilarityFunction similarityFunction =
           RandomPicks.randomFrom(r, VectorSimilarityFunction.values());
       VectorEncoding encoding = RandomPicks.randomFrom(r, VectorEncoding.values());
