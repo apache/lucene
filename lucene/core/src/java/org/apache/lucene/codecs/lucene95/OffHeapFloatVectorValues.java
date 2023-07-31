@@ -121,11 +121,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public int ordToDoc(int ord) {
-      return ord;
-    }
-
-    @Override
     Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }

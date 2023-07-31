@@ -127,11 +127,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public int ordToDoc(int ord) {
-      return ord;
-    }
-
-    @Override
     Bits getAcceptOrds(Bits acceptDocs) {
       return acceptDocs;
     }
