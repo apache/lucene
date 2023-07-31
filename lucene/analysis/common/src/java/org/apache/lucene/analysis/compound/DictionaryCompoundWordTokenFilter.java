@@ -50,6 +50,7 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param minSubwordSize only subwords longer than this get to the output stream
    * @param maxSubwordSize only subwords shorter than this get to the output stream
    * @param onlyLongestMatch Add only the longest matching subword to the stream
+   * @param subtokenPositionIncrement set a positional increment for subtokens to 0 or 1.
    */
   public DictionaryCompoundWordTokenFilter(
       TokenStream input,
@@ -57,11 +58,16 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
       int minWordSize,
       int minSubwordSize,
       int maxSubwordSize,
-      boolean onlyLongestMatch) {
-    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
-    if (dictionary == null) {
-      throw new IllegalArgumentException("dictionary must not be null");
-    }
+      boolean onlyLongestMatch,
+      int subtokenPositionIncrement) {
+    super(
+        input,
+        dictionary,
+        minWordSize,
+        minSubwordSize,
+        maxSubwordSize,
+        onlyLongestMatch,
+        subtokenPositionIncrement);
   }
 
   @Override
