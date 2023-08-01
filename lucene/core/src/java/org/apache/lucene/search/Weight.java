@@ -265,11 +265,15 @@ public abstract class Weight implements SegmentCacheable {
 
       int doc = iterator.docID();
       if (doc < min) {
-        doc = iterator.advance(min);
+        if (doc == min - 1) {
+          doc = iterator.nextDoc();
+        } else {
+          doc = iterator.advance(min);
+        }
       }
 
       if (twoPhase == null && competitiveIterator == null) {
-        // Optimize simpler iterators with collectors that can't skip
+        // Optimize simple iterators with collectors that can't skip
         while (doc < max) {
           if (acceptDocs == null || acceptDocs.get(doc)) {
             collector.collect(doc);
