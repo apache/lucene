@@ -867,14 +867,20 @@ public class TestSortOptimization extends LuceneTestCase {
         writer.flush();
       }
     }
+    boolean reverse = random().nextBoolean();
     writer.flush();
-    seqNos.sort(Long::compare);
+    if (reverse == false) {
+      seqNos.sort(Long::compare);
+    } else {
+      seqNos.sort(Collections.reverseOrder());
+    }
     IndexReader reader = DirectoryReader.open(writer);
     writer.close();
     IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
-    SortField sortField = new SortField("seq_no", SortField.Type.LONG);
+    SortField sortField = new SortField("seq_no", SortField.Type.LONG, reverse);
     int visitedHits = 0;
     ScoreDoc after = null;
+    // test page search
     while (visitedHits < seqNos.size()) {
       int batch = 1 + random().nextInt(100);
       Query query =
@@ -891,6 +897,17 @@ public class TestSortOptimization extends LuceneTestCase {
         assertEquals(expectedSeqNo, ((Long) fieldDoc.fields[0]).intValue());
         visitedHits++;
       }
+    }
+
+    // test search
+    int numHits = 1 + random().nextInt(100);
+    CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+        TopFieldCollector.createSharedManager(new Sort(sortField), numHits, null, numHits);
+    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+    for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+      long expectedSeqNo = seqNos.get(i);
+      FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[i];
+      assertEquals(expectedSeqNo, ((Long) fieldDoc.fields[0]).intValue());
     }
     reader.close();
     dir.close();
