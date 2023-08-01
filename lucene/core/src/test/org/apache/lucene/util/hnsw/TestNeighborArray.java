@@ -210,7 +210,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(14, -1, new DummyScoringFunction(4, similarityFunction));
     int[] unchecked = neighbors.sort();
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
-    assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
+    assertNodesEqual(new int[] {11, 12, 13, 14, 15, 16, 17}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
   }
 

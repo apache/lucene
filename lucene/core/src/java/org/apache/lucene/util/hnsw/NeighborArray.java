@@ -82,7 +82,7 @@ public class NeighborArray {
       score[size] = newScore;
     } else {
       // Add the scoringFunction to the scoringContext map to be used later
-      scoringContext.put(newNode, scoringFunction);
+      scoringContext.put(size, scoringFunction);
       // Placeholder for score for now
       score[size] = -1;
     }
@@ -129,12 +129,12 @@ public class NeighborArray {
   private int insertSortedInternal() {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
     int tmpNode = node[sortedNodeSize];
-    // Now we compute all the missing score using scoringContext
-    for (Integer index : scoringContext.keySet()) {
-      score[index] = scoringContext.get(index).calculateScore();
+    // Check if we need to compute score
+    if (scoringContext.containsKey(sortedNodeSize)) {
+      score[sortedNodeSize] = scoringContext.get(sortedNodeSize).calculateScore();
+      scoringContext.remove(sortedNodeSize);
     }
-    // Reset scoringContext
-    scoringContext = new HashMap<>();
+
     float tmpScore = score[sortedNodeSize];
     int insertionPoint =
         scoresDescOrder
