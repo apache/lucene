@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util.hnsw;
 
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNeighborArray extends LuceneTestCase {
@@ -177,6 +178,52 @@ public class TestNeighborArray extends LuceneTestCase {
     assertArrayEquals(new int[] {2, 3, 5, 6}, unchecked);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors2);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors2);
+  }
+
+  public void testAddwithScoringFunction() {
+    NeighborArray neighbors = new NeighborArray(10, true);
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    neighbors.addOutOfOrder(1, -1, new DummyScoringFunction(7, similarityFunction));
+    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    neighbors.addOutOfOrder(2, -1, new DummyScoringFunction(6, similarityFunction));
+    neighbors.addOutOfOrder(5, -1, new DummyScoringFunction(3, similarityFunction));
+    neighbors.addOutOfOrder(3, -1, new DummyScoringFunction(5, similarityFunction));
+    neighbors.addOutOfOrder(7, -1, new DummyScoringFunction(1, similarityFunction));
+    neighbors.addOutOfOrder(6, -1, new DummyScoringFunction(2, similarityFunction));
+    neighbors.addOutOfOrder(4, -1, new DummyScoringFunction(4, similarityFunction));
+    int[] unchecked = neighbors.sort();
+    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
+    assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
+  }
+
+  public void testAddwithScoringFunctionLargeOrd() {
+    NeighborArray neighbors = new NeighborArray(10, true);
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
+    neighbors.addOutOfOrder(11, -1, new DummyScoringFunction(7, similarityFunction));
+    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    neighbors.addOutOfOrder(12, -1, new DummyScoringFunction(6, similarityFunction));
+    neighbors.addOutOfOrder(15, -1, new DummyScoringFunction(3, similarityFunction));
+    neighbors.addOutOfOrder(13, -1, new DummyScoringFunction(5, similarityFunction));
+    neighbors.addOutOfOrder(17, -1, new DummyScoringFunction(1, similarityFunction));
+    neighbors.addOutOfOrder(16, -1, new DummyScoringFunction(2, similarityFunction));
+    neighbors.addOutOfOrder(14, -1, new DummyScoringFunction(4, similarityFunction));
+    int[] unchecked = neighbors.sort();
+    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
+    assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
+  }
+
+  private class DummyScoringFunction extends ScoringFunction{
+    private final int _score;
+    public DummyScoringFunction(int score, VectorSimilarityFunction similarityFunction) {
+      super(similarityFunction);
+      _score = score;
+    }
+
+    public float calculateScore() {
+      return _score;
+    }
   }
 
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
