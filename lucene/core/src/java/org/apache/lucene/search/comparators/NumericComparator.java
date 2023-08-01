@@ -247,15 +247,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
               }
               if (maxValueAsBytes != null) {
                 int cmp = bytesComparator.compare(packedValue, 0, maxValueAsBytes, 0);
-                // if doc's value is too high or for single sort even equal, it is not competitive
-                // and the doc can be skipped
-                if (cmp > 0 || (singleSort && cmp == 0)) return;
+
+                if (cmp > 0) return;
               }
               if (minValueAsBytes != null) {
                 int cmp = bytesComparator.compare(packedValue, 0, minValueAsBytes, 0);
-                // if doc's value is too low or for single sort even equal, it is not competitive
-                // and the doc can be skipped
-                if (cmp < 0 || (singleSort && cmp == 0)) return;
+
+                if (cmp < 0) return;
               }
               adder.add(docID); // doc is competitive
             }
@@ -264,13 +262,15 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               if (maxValueAsBytes != null) {
                 int cmp = bytesComparator.compare(minPackedValue, 0, maxValueAsBytes, 0);
-                if (cmp > 0 || (singleSort && cmp == 0))
-                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                // 1. cmp ==0 and pruning==Pruning.GREATER_THAN_OR_EQUAL_TO : if the sort is
+                // ascending then maxValueAsBytes is bottom's next less value, so it is competitive
+                // 2. cmp ==0 and pruning==Pruning.GREATER_THAN: maxValueAsBytes equals to
+                // bottom, but there are multiple comparators, so it could be competitive
+                if (cmp > 0) return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
               if (minValueAsBytes != null) {
                 int cmp = bytesComparator.compare(maxPackedValue, 0, minValueAsBytes, 0);
-                if (cmp < 0 || (singleSort && cmp == 0))
-                  return PointValues.Relation.CELL_OUTSIDE_QUERY;
+                if (cmp < 0) return PointValues.Relation.CELL_OUTSIDE_QUERY;
               }
               if ((maxValueAsBytes != null
                       && bytesComparator.compare(maxPackedValue, 0, maxValueAsBytes, 0) > 0)
@@ -346,12 +346,14 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private void encodeTop() {
       if (reverse == false) {
         encodeTop(minValueAsBytes);
-        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && queueFull) {
+        // we could not tune the top value in page search
+        if (singleSort && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && queueFull) {
           NumericUtils.nextUp(minValueAsBytes);
         }
       } else {
         encodeTop(maxValueAsBytes);
-        if (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && queueFull) {
+        // we could not tune the top value in page search
+        if (singleSort && pruning == Pruning.GREATER_THAN_OR_EQUAL_TO && queueFull) {
           NumericUtils.nextDown(maxValueAsBytes);
         }
       }
