@@ -170,6 +170,8 @@ Optimizations
 
 * GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
 
+* GITHUB#12381: Skip docs with DocValues in NumericLeafComparator. (Lu Xugang, Adrien Grand)
+
 Bug Fixes
 ---------------------
 
