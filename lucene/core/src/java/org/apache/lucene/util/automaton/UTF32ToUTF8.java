@@ -35,12 +35,12 @@ public final class UTF32ToUTF8 {
   private static final int[] startCodes = new int[] {0, 128, 2048, 65536};
   private static final int[] endCodes = new int[] {127, 2047, 65535, 1114111};
 
-  static int[] MASKS = new int[32];
+  static int[] MASKS = new int[8];
 
   static {
     int v = 2;
-    for (int i = 0; i < 32; i++) {
-      MASKS[i] = v - 1;
+    for (int i = 0; i < 7; i++) {
+      MASKS[i + 1] = v - 1;
       v *= 2;
     }
   }
@@ -103,7 +103,7 @@ public final class UTF32ToUTF8 {
 
     private void setRest(int code, int numBytes) {
       for (int i = 0; i < numBytes; i++) {
-        bytes[numBytes - i].value = 128 | (code & MASKS[5]);
+        bytes[numBytes - i].value = 128 | (code & MASKS[6]);
         bytes[numBytes - i].bits = 6;
         code = code >> 6;
       }
@@ -206,7 +206,7 @@ public final class UTF32ToUTF8 {
           start,
           end,
           startUTF8.byteAt(upto),
-          startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto) - 1]); // type=start
+          startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto)]); // type=start
       // start.addTransition(new Transition(startUTF8.byteAt(upto), startUTF8.byteAt(upto) |
       // MASKS[startUTF8.numBits(upto)-1], end));  // type=start
     } else {
@@ -214,7 +214,7 @@ public final class UTF32ToUTF8 {
       utf8.addTransition(start, n, startUTF8.byteAt(upto));
       // start.addTransition(new Transition(startUTF8.byteAt(upto), n));  // type=start
       start(n, end, startUTF8, 1 + upto, true);
-      int endCode = startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto) - 1];
+      int endCode = startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto)];
       if (doAll && startUTF8.byteAt(upto) != endCode) {
         all(start, end, startUTF8.byteAt(upto) + 1, endCode, startUTF8.len - upto - 1);
       }
@@ -227,25 +227,24 @@ public final class UTF32ToUTF8 {
       // start.addTransition(new Transition(endUTF8.byteAt(upto) &
       // (~MASKS[endUTF8.numBits(upto)-1]), endUTF8.byteAt(upto), end));   // type=end
       utf8.addTransition(
-          start,
-          end,
-          endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]),
-          endUTF8.byteAt(upto));
+          start, end, endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto)]), endUTF8.byteAt(upto));
     } else {
-      // There are three special case
-      // 1. if codepoint's numBits is 5, byte start from 0xC2
-      // 2. if codepoint's len is 3  and  first byte is 0xE0. the second byte start from 0xA0
-      // 3. if codepoint's len is 4 and first byte is 0xF0, the second byte start from 0x90
-      // you could found the reference in https://www.utf8-chartable.de/unicode-utf8-table.pl
       final int startCode;
-      if (endUTF8.numBits(upto) == 5) {
+      if (endUTF8.len == 2) {
+        assert upto == 0; // the upto==1 case will be handled by the first if above
+        // the first length=3 UTF8 Unicode character is C2 80,
+        // so we must special case 0xC2 as the 1st byte.
         startCode = 0xC2;
       } else if (endUTF8.len == 3 && upto == 1 && endUTF8.byteAt(0) == 0xE0) {
+        // the first length=3 UTF8 Unicode character is E0 A0 80,
+        // so we must special case 0xA0 as the 2nd byte when E0 was the first byte of endUTF8.
         startCode = 0xA0;
       } else if (endUTF8.len == 4 && upto == 1 && endUTF8.byteAt(0) == 0xF0) {
+        // the first length=4 UTF8 Unicode character is F0 90 80 80,
+        // so we must special case 0x90 as the 2nd byte when F0 was the first byte of endUTF8.
         startCode = 0x90;
       } else {
-        startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto) - 1]);
+        startCode = endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto)]);
       }
       if (doAll && endUTF8.byteAt(upto) != startCode) {
         all(start, end, startCode, endUTF8.byteAt(upto) - 1, endUTF8.len - upto - 1);

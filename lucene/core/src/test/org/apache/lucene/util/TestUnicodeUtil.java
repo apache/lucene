@@ -200,16 +200,12 @@ public class TestUnicodeUtil extends LuceneTestCase {
     int s2 = b.createState();
     b.setAccept(s2, true);
 
-    // utf8 codepoint length is 1
-    b.addTransition(s1, s2, 0x7F);
-    // utf8 codepoint length is 2
-    b.addTransition(s1, s2, 0x80);
-    b.addTransition(s1, s2, 0x7FF);
-    // utf8 codepoint length is 3
-    b.addTransition(s1, s2, 0x800);
-    b.addTransition(s1, s2, 0xFFFF);
-    // utf8 codepoint length is 4
-    b.addTransition(s1, s2, 0x10000);
+    // utf8 codepoint length range from [1,2]
+    b.addTransition(s1, s2, 0x7F, 0x80);
+    // utf8 codepoint length range from [2,3]
+    b.addTransition(s1, s2, 0x7FF, 0x800);
+    // utf8 codepoint length range from [3,4]
+    b.addTransition(s1, s2, 0xFFFF, 0x10000);
 
     Automaton a = b.finish();
 
