@@ -53,7 +53,36 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
   @Override
   public DocIdSetIterator competitiveIterator() throws IOException {
-    return in.competitiveIterator();
+    final DocIdSetIterator in = this.in.competitiveIterator();
+    if (in == null) {
+      return null;
+    }
+    return new DocIdSetIterator() {
+
+      @Override
+      public int nextDoc() throws IOException {
+        assert in.docID() < max
+            : "advancing beyond the end of the scored window: docID=" + in.docID() + ", max=" + max;
+        return in.nextDoc();
+      }
+
+      @Override
+      public int docID() {
+        return in.docID();
+      }
+
+      @Override
+      public long cost() {
+        return in.cost();
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        assert target <= max
+            : "advancing beyond the end of the scored window: target=" + target + ", max=" + max;
+        return in.advance(target);
+      }
+    };
   }
 
   @Override
