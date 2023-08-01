@@ -232,7 +232,7 @@ public final class UTF32ToUTF8 {
       final int startCode;
       if (endUTF8.len == 2) {
         assert upto == 0; // the upto==1 case will be handled by the first if above
-        // the first length=3 UTF8 Unicode character is C2 80,
+        // the first length=2 UTF8 Unicode character is C2 80,
         // so we must special case 0xC2 as the 1st byte.
         startCode = 0xC2;
       } else if (endUTF8.len == 3 && upto == 1 && endUTF8.byteAt(0) == 0xE0) {
