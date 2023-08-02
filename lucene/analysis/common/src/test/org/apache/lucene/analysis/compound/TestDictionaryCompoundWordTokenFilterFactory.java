@@ -18,6 +18,8 @@ package org.apache.lucene.analysis.compound;
 
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.Arrays;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
@@ -25,6 +27,9 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests to ensure the Dictionary compound filter factory is working. */
 public class TestDictionaryCompoundWordTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
+  private static CharArraySet makeDictionary(String... dictionary) {
+    return new CharArraySet(Arrays.asList(dictionary), true);
+  }
   /** Ensure the filter actually decompounds text. */
   public void testDecompounding() throws Exception {
     Reader reader = new StringReader("I like to play softball");
@@ -35,6 +40,60 @@ public class TestDictionaryCompoundWordTokenFilterFactory extends BaseTokenStrea
             .create(stream);
     assertTokenStreamContents(
         stream, new String[] {"I", "like", "to", "play", "softball", "soft", "ball"});
+  }
+
+  /** Ensure subtoken are found in token and indexed zero * */
+  public void testDecompounderSubmatches() throws Exception {
+    CharArraySet dict = makeDictionary("ora", "orangen", "schoko", "schokolade");
+
+    DictionaryCompoundWordTokenFilter tf =
+        new DictionaryCompoundWordTokenFilter(
+            whitespaceMockTokenizer("ich will orangenschokolade haben"),
+            dict,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
+            false);
+    assertTokenStreamContents(
+        tf,
+        new String[] {"ich", "will", "ora", "orangen", "schoko", "schokolade", "haben"},
+        new int[] {1, 1, 0, 0, 0, 0, 1});
+  }
+
+  /** Ensure subtoken are found in token and only longest match is returned with same start * */
+  public void testDecompounderSubmatchesOnlyLongestMatch() throws Exception {
+    CharArraySet dict = makeDictionary("ora", "orangen", "schoko", "schokolade");
+
+    DictionaryCompoundWordTokenFilter tf =
+        new DictionaryCompoundWordTokenFilter(
+            whitespaceMockTokenizer("ich will orangenschokolade haben"),
+            dict,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
+            true);
+    assertTokenStreamContents(
+        tf,
+        new String[] {"ich", "will", "orangen", "schokolade", "haben"},
+        new int[] {1, 1, 0, 0, 1});
+  }
+
+  /** Ensure subtoken are found in token and only longest match is returned without same start * */
+  public void testDecompounderPostSubmatchesOnlyLongestMatch() throws Exception {
+    CharArraySet dict = makeDictionary("ngen", "orangen", "schoko", "schokolade");
+
+    DictionaryCompoundWordTokenFilter tf =
+        new DictionaryCompoundWordTokenFilter(
+            whitespaceMockTokenizer("ich will orangenschokolade haben"),
+            dict,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
+            CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
+            true);
+    assertTokenStreamContents(
+        tf,
+        new String[] {"ich", "will", "orangen", "schokolade", "haben"},
+        new int[] {1, 1, 0, 0, 1});
   }
 
   /** Test that bogus arguments result in exception */
