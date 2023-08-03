@@ -221,14 +221,9 @@ public final class HnswGraphBuilder<T> {
 //                case BYTE -> this.similarityFunction.compare(
 //                    binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
 //              };
-          ScoringFunction scoringFunction =
-                  switch (this.vectorEncoding) {
-                    case FLOAT32 -> new FloatVectorScoringFunction(vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor), this.similarityFunction);
-                    case BYTE -> new ByteVectorScoringFunction(binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor), this.similarityFunction);
-                  };
           // we are not sure whether the previous graph contains
           // unchecked nodes, so we have to assume they're all unchecked
-          newNeighbors.addOutOfOrder(newNeighbor, -1, scoringFunction);
+          newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
         }
       }
     }
@@ -327,7 +322,7 @@ public final class HnswGraphBuilder<T> {
       NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
       nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
       if (nbrsOfNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrsOfNbr);
+        int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
         nbrsOfNbr.removeIndex(indexToRemove);
       }
     }
@@ -409,8 +404,23 @@ public final class HnswGraphBuilder<T> {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
-    int[] uncheckedIndexes = neighbors.sort();
+  private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
+    int[] uncheckedIndexes = neighbors.sort(nbrOrd -> {
+      float[] vectorValue = null;
+      byte[] binaryValue = null;
+      switch (this.vectorEncoding) {
+        case FLOAT32 -> vectorValue = (float[]) vectors.vectorValue(nodeOrd);
+        case BYTE -> binaryValue = (byte[]) vectors.vectorValue(nodeOrd);
+      }
+      float score =
+              switch (this.vectorEncoding) {
+                case FLOAT32 -> this.similarityFunction.compare(
+                    vectorValue, (float[]) vectorsCopy.vectorValue(nbrOrd));
+                case BYTE -> this.similarityFunction.compare(
+                    binaryValue, (byte[]) vectorsCopy.vectorValue(nbrOrd));
+              };
+      return score;
+    });
     if (uncheckedIndexes == null) {
       // all nodes are checked, we will directly return the most distant one
       return neighbors.size() - 1;
