@@ -51,5 +51,3 @@ This project is currently under development.
 3. Run gradle launcher script (`gradlew`).
 
 We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at https://jdk.java.net/ and learning more about Java, before returning to this README.
-
-See [Contributing Guide](./CONTRIBUTING.md) for details.
