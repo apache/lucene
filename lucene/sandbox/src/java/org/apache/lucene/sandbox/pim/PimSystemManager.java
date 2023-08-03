@@ -29,6 +29,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.ArrayUtil;
@@ -66,6 +67,7 @@ public class PimSystemManager {
   private final QueryRunner queryRunner;
   private volatile boolean indexLoaded;
   private PimIndexInfo pimIndexInfo;
+  private PimMatchCache dpuResultsCache;
 
   private PimSystemManager() throws DpuException {
     if (USE_SOFTWARE_MODEL) {
@@ -76,6 +78,7 @@ public class PimSystemManager {
     queryQueue = new ArrayBlockingQueue<>(MAX_NUM_QUERIES);
     queryRunner = new QueryRunner();
     pimIndexInfo = null;
+    dpuResultsCache = new PimMatchCache();
     Thread t =
         new Thread(
             queryRunner, getClass().getSimpleName() + "-" + queryRunner.getClass().getSimpleName());
@@ -211,26 +214,64 @@ public class PimSystemManager {
    *
    * @param context the leafReaderContext to search
    * @param query the query to execute
+   * @param simScorer the LeafSimScorer used to score the results
    * @return A reader of matches
    */
   public <QueryType extends Query & PimQuery> DpuResultsReader search(
-      LeafReaderContext context, QueryType query)
+      LeafReaderContext context, QueryType query, LeafSimScorer simScorer)
       throws PimQueryQueueFullException, InterruptedException, IOException {
+
+    // first look if the results are in the cache
+    // Queries answered by the PIM system provide results for all the leaves of the index
+    // Hence the actual search is performed the first time this method is called, the subsequent
+    // searches for the same query in a different leaf are answered from the cache
+    boolean remove = context.ord == (pimIndexInfo.getNumSegments() - 1);
+    DpuResultsReader cacheRes = dpuResultsCache.get(query, remove);
+
+    if (cacheRes == null) {
+      // if not run the query on PIM
+      runSearchQuery(query);
+      cacheRes = dpuResultsCache.get(query, remove);
+    }
+
+    // this may happen if the cache was full and the results could not
+    // be inserted
+    if (cacheRes == null) {
+      throw new PimQueryQueueFullException();
+    }
+
+    // set the maximum doc info depending on the segment that is currently read
+    int maxDoc = Integer.MAX_VALUE;
+    if (context.ord + 1 < pimIndexInfo.getNumSegments())
+      maxDoc = pimIndexInfo.getStartDoc(context.ord + 1);
+    cacheRes.setMaxDoc(maxDoc);
+    cacheRes.setSimScorer(simScorer);
+    cacheRes.setBaseDoc(pimIndexInfo.getStartDoc(context.ord));
+
+    return cacheRes;
+  }
+
+  private <QueryType extends Query & PimQuery> void runSearchQuery(QueryType query)
+      throws PimQueryQueueFullException {
+
     assert isQuerySupported(query);
-    QueryBuffer queryBuffer = threadQueryBuffer.get().reset();
-    writeQueryToPim(query, context.ord, queryBuffer);
+    QueryBuffer queryBuffer = threadQueryBuffer.get().reset(query);
+    writeQueryToPim(query, queryBuffer);
     if (!queryQueue.offer(queryBuffer)) {
       throw new PimQueryQueueFullException();
       // TODO: or return null?
     }
 
-    return queryBuffer.waitForResults();
+    try {
+      dpuResultsCache.put(query, queryBuffer.waitForResults());
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private <QueryType extends Query & PimQuery> void writeQueryToPim(
-      QueryType query, int leafIdx, QueryBuffer queryBuffer) {
+      QueryType query, QueryBuffer queryBuffer) {
     try {
-      queryBuffer.writeVInt(leafIdx);
       queryBuffer.writeByte(
           DpuConstants.PIM_PHRASE_QUERY_TYPE); // TODO: this should depend on QueryType.
       query.writeToPim(queryBuffer);
@@ -245,9 +286,11 @@ public class PimSystemManager {
     final BlockingQueue<DpuResultsReader> resultQueue = new LinkedBlockingQueue<>();
     byte[] bytes = new byte[128];
     int length;
+    PimQuery query;
 
-    QueryBuffer reset() {
+    QueryBuffer reset(PimQuery query) {
       length = 0;
+      this.query = query;
       return this;
     }
 

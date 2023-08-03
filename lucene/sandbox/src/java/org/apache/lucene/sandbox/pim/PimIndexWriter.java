@@ -17,15 +17,18 @@
 
 package org.apache.lucene.sandbox.pim;
 
+import static org.apache.lucene.index.FieldInfos.getMergedFieldInfos;
+
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -126,30 +129,33 @@ public class PimIndexWriter extends IndexWriter {
 
     int totalDoc = segmentInfos.totalMaxDoc();
     int nbDocPerDPUSegment = (int) Math.ceil((double) (totalDoc) / pimConfig.getNumDpuSegments());
-    try (IndexReader indexReader = DirectoryReader.open(getDirectory())) {
-      List<LeafReaderContext> leaves = indexReader.leaves();
-      // Iterate on segments.
-      // There will be a different term index sub-part per segment and per DPU.
-      for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
-        LeafReaderContext leafReaderContext = leaves.get(leafIdx);
-        LeafReader reader = leafReaderContext.reader();
-        SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
-        if (DEBUG_INDEX)
-          System.out.println(
-              "segment="
-                  + new BytesRef(segmentCommitInfo.getId())
-                  + " "
-                  + segmentCommitInfo.info.name
-                  + " leafReader ord="
-                  + leafReaderContext.ord
-                  + " maxDoc="
-                  + segmentCommitInfo.info.maxDoc()
-                  + " delCount="
-                  + segmentCommitInfo.getDelCount());
-        // Create a DpuTermIndexes that will build the term index for each DPU separately.
-        try (DpuTermIndexes dpuTermIndexes =
-            new DpuTermIndexes(segmentCommitInfo, nbDocPerDPUSegment)) {
-          for (FieldInfo fieldInfo : reader.getFieldInfos()) {
+
+    // Create a DpuTermIndexes that will build the term index for each DPU separately.
+    try (DpuTermIndexes dpuTermIndexes = new DpuTermIndexes(segmentInfos, nbDocPerDPUSegment)) {
+
+      try (IndexReader indexReader = DirectoryReader.open(getDirectory())) {
+        List<LeafReaderContext> leaves = indexReader.leaves();
+
+        for (FieldInfo fieldInfo : getMergedFieldInfos(indexReader)) {
+          // Iterate on segments.
+          // There will be a different term index sub-part per segment and per DPU.
+          TermsEnum[] termsEnums = new TermsEnum[leaves.size()];
+          for (int leafIdx = 0; leafIdx < leaves.size(); leafIdx++) {
+            LeafReaderContext leafReaderContext = leaves.get(leafIdx);
+            LeafReader reader = leafReaderContext.reader();
+            /*SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
+            if (DEBUG_INDEX)
+              System.out.println(
+                  "segment="
+                      + new BytesRef(segmentCommitInfo.getId())
+                      + " "
+                      + segmentCommitInfo.info.name
+                      + " leafReader ord="
+                      + leafReaderContext.ord
+                      + " maxDoc="
+                      + segmentCommitInfo.info.maxDoc()
+                      + " delCount="
+                      + segmentCommitInfo.getDelCount());*/
             // For each field in the term index.
             // There will be a different term index sub-part per segment, per field, and per DPU.
             reader.getLiveDocs(); // TODO: remove as useless. We are going to let Core Lucene handle
@@ -159,11 +165,12 @@ public class PimIndexWriter extends IndexWriter {
               int docCount = terms.getDocCount();
               if (DEBUG_INDEX) System.out.println("  " + docCount + " docs");
               TermsEnum termsEnum = terms.iterator();
-              // Send the term enum to DpuTermIndexes.
-              // DpuTermIndexes separates the term docs according to the docId range split per DPU.
-              dpuTermIndexes.writeTerms(fieldInfo, termsEnum);
+              termsEnums[leafIdx] = termsEnum;
             }
           }
+          // Send the term enum to DpuTermIndexes.
+          // DpuTermIndexes separates the term docs according to the docId range split per DPU.
+          dpuTermIndexes.writeTerms(fieldInfo, new CompositeTermsEnum(termsEnums, segmentInfos));
         }
       }
       // successfully updated the PIM index, register it
@@ -189,9 +196,86 @@ public class PimIndexWriter extends IndexWriter {
     }
   }
 
+  /**
+   * A class used to enumerate the term enums of several index leaves in parallel. It takes as input
+   * an array of TermsEnum objects for each leaf. The next() method returns the next term in the
+   * order defined by BytesRef.compareTo method. When two or more term enums have the same term, the
+   * term is returned several times, one time for each enum in which it is present. The postings
+   * method returns the postings for the current enum, and the enum order is the one provided in the
+   * TermsEnum array in the constructor.
+   */
+  private class CompositeTermsEnum {
+
+    int startDoc[];
+    TreeSet<LeafTermsEnum> sortedEnums;
+
+    public CompositeTermsEnum(TermsEnum[] termsEnums, SegmentInfos segmentInfos)
+        throws IOException {
+      assert termsEnums.length != 0 && termsEnums.length == segmentInfos.size();
+      this.startDoc = new int[segmentInfos.size()];
+      for (int i = 0; i < startDoc.length - 1; ++i) {
+        SegmentCommitInfo segmentCommitInfo = segmentInfos.info(i);
+        startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
+      }
+      sortedEnums = new TreeSet<>();
+      for (int i = 0; i < termsEnums.length; ++i) {
+        if (termsEnums[i] != null && termsEnums[i].next() != null) {
+          sortedEnums.add(new LeafTermsEnum(termsEnums[i], i));
+        }
+      }
+    }
+
+    public BytesRef term() throws IOException {
+
+      if (sortedEnums.size() == 0) return null;
+      return sortedEnums.first().termsEnum.term();
+    }
+
+    public BytesRef next() throws IOException {
+
+      assert sortedEnums.size() > 0;
+      LeafTermsEnum te = sortedEnums.pollFirst();
+      if (te.termsEnum.next() != null) sortedEnums.add(te);
+      return term();
+    }
+
+    public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
+
+      assert sortedEnums.size() > 0;
+      return sortedEnums.first().termsEnum.postings(reuse, flags);
+    }
+
+    public int getStartDoc() {
+
+      assert sortedEnums.size() > 0;
+      return startDoc[sortedEnums.first().leaf];
+    }
+
+    private static class LeafTermsEnum implements Comparable<LeafTermsEnum> {
+      TermsEnum termsEnum;
+      int leaf;
+
+      LeafTermsEnum(TermsEnum termsEnum, int leaf) {
+        this.termsEnum = termsEnum;
+        this.leaf = leaf;
+      }
+
+      @Override
+      public int compareTo(LeafTermsEnum o) {
+        try {
+          int cmp = termsEnum.term().compareTo(o.termsEnum.term());
+          if (cmp != 0) return cmp;
+          return leaf - o.leaf;
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+
   private class DpuTermIndexes implements Closeable {
 
-    private int dpuForDoc[];
+    private HashMap<Integer, Integer> dpuForDoc;
     String commitName;
     private final DpuTermIndex[] termIndexes;
     private PostingsEnum postingsEnum;
@@ -201,14 +285,13 @@ public class PimIndexWriter extends IndexWriter {
     PriorityQueue<DpuIndexSize> dpuPrQ;
     static final int blockSize = 8;
 
-    DpuTermIndexes(SegmentCommitInfo segmentCommitInfo, int nbDocPerDpuSegment) throws IOException {
+    DpuTermIndexes(SegmentInfos segmentsInfo, int nbDocPerDpuSegment) throws IOException {
       // TODO: The num docs per DPU could be
       // 1- per field
       // 2- adapted to the doc size, but it would require to keep the doc size info
       //    at indexing time, in a new file. Then here we could target (sumDocSizes / numDpus)
       //    per DPU.
-      dpuForDoc = new int[segmentCommitInfo.info.maxDoc()];
-      Arrays.fill(dpuForDoc, -1);
+      dpuForDoc = new HashMap<>();
       termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
       this.nbDocPerDpuSegment = nbDocPerDpuSegment;
 
@@ -220,7 +303,7 @@ public class PimIndexWriter extends IndexWriter {
         System.out.println("---------");
       }
 
-      commitName = segmentCommitInfo.info.name;
+      commitName = "dpu_" + segmentsInfo.getSegmentsFileName();
 
       Set<String> fileNames = Set.of(pimDirectory.listAll());
       for (int i = 0; i < termIndexes.length; i++) {
@@ -280,26 +363,34 @@ public class PimIndexWriter extends IndexWriter {
               commitName, Integer.toString(dpuIndex), DPU_TERM_POSTINGS_INDEX_EXTENSION));
     }
 
-    void writeTerms(FieldInfo fieldInfo, TermsEnum termsEnum) throws IOException {
+    void writeTerms(FieldInfo fieldInfo, CompositeTermsEnum termsEnum) throws IOException {
 
       this.fieldInfo = fieldInfo;
       for (DpuTermIndex termIndex : termIndexes) {
         termIndex.resetForNextField();
       }
 
-      while (termsEnum.next() != null) {
+      BytesRef prevTerm = null;
+      while (termsEnum.term() != null) {
         BytesRef term = termsEnum.term();
-        for (DpuTermIndex termIndex : termIndexes) {
-          termIndex.resetForNextTerm();
+        if (prevTerm == null || prevTerm.compareTo(term) != 0) {
+          for (DpuTermIndex termIndex : termIndexes) {
+            termIndex.resetForNextTerm();
+          }
         }
+        prevTerm = BytesRef.deepCopyOf(term);
+
         postingsEnum = termsEnum.postings(postingsEnum, PostingsEnum.POSITIONS);
+        int startDoc = termsEnum.getStartDoc();
         int doc;
         while ((doc = postingsEnum.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
-          int dpuIndex = getDpuForDoc(doc);
+          int absDoc = startDoc + doc;
+          int dpuIndex = getDpuForDoc(absDoc);
           DpuTermIndex termIndex = termIndexes[dpuIndex];
           termIndex.writeTermIfAbsent(term);
-          termIndex.writeDoc(doc);
+          termIndex.writeDoc(absDoc);
         }
+        termsEnum.next();
       }
 
       for (DpuTermIndex termIndex : termIndexes) {
@@ -318,12 +409,12 @@ public class PimIndexWriter extends IndexWriter {
     }
 
     int getDpuForDoc(int doc) {
-      if (dpuForDoc[doc] < 0) {
+      if (!dpuForDoc.containsKey(doc)) {
         int dpuIndex = getDpuWithSmallerIndex();
-        dpuForDoc[doc] = dpuIndex;
+        dpuForDoc.put(doc, dpuIndex);
         addDpuIndexSize(dpuIndex, termIndexes[dpuIndex].getIndexSize());
       }
-      return dpuForDoc[doc];
+      return dpuForDoc.get(doc);
     }
 
     int getDpuWithSmallerIndex() {

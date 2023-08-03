@@ -31,7 +31,6 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -162,10 +161,17 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
   }
 
   @Override
-  public void readResult(DataInput input, LeafSimScorer scorer, PimMatch match) throws IOException {
+  public int getResultByteSize() {
+    // a PimPhraseQuery result consists of two integers, one for the docId
+    // and one for the frequency of the phrase in the doc
+    return Integer.BYTES * 2;
+  }
+
+  @Override
+  public float readResultAndScore(DpuDataInput input, int docId, LeafSimScorer scorer)
+      throws IOException {
 
     // a result for a phrase query is just a document id and a frequency as of now
-    match.docId = input.readInt();
-    match.score = scorer.score(match.docId, input.readInt());
+    return scorer.score(docId, input.readInt());
   }
 }

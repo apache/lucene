@@ -89,10 +89,7 @@ public class PimPhraseWeight extends Weight {
                 pimQuery.getField(),
                 scoreStats.scoreMode.needsScores());
         try {
-          return new PimScorer(
-              this,
-              new DpuResults(
-                  pimQuery, PimSystemManager.get().search(context, pimQuery), simScorer));
+          return new PimScorer(this, PimSystemManager.get().search(context, pimQuery, simScorer));
         } catch (
             @SuppressWarnings("unused")
             PimSystemManager.PimQueryQueueFullException e) {

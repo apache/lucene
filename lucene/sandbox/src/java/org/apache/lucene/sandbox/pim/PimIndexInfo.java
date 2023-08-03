@@ -36,7 +36,7 @@ public class PimIndexInfo {
   int numDpus;
   int numSegments;
   int numDpuSegments;
-  String[] segmentCommitName;
+  String segmentCommitName;
   int startDoc[];
 
   /**
@@ -52,16 +52,47 @@ public class PimIndexInfo {
     this.numSegments = segmentInfos.size();
     this.numDpus = nbDpus;
     this.numDpuSegments = numDpuSegments;
-    segmentCommitName = new String[numSegments];
+    segmentCommitName = segmentInfos.getSegmentsFileName();
     startDoc = new int[numSegments];
 
-    for (int i = 0; i < numSegments; ++i) {
+    for (int i = 0; i < numSegments - 1; ++i) {
       SegmentCommitInfo segmentCommitInfo = segmentInfos.info(i);
-      segmentCommitName[i] = segmentCommitInfo.info.name;
-      if (i < numSegments - 1) {
-        startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
-      }
+      startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
     }
+  }
+
+  /**
+   * get the offset for documents in the index leaf (first document id of the leaf)
+   *
+   * @param leafId the id of the leaf
+   * @return first document id of the leaf
+   */
+  public int getStartDoc(int leafId) {
+    assert leafId < numSegments;
+    return startDoc[leafId];
+  }
+
+  /**
+   * Get the leaf id for the document
+   *
+   * @param docId the document id
+   * @param leafIdxHint a hint from which to find the leaf id (helps when documents are scanned in
+   *     the leaf order
+   * @return the leaf id of the index in which this document is
+   */
+  public int getLeafId(int docId, int leafIdxHint) {
+
+    assert leafIdxHint < startDoc.length;
+    int leaf = leafIdxHint;
+    while (leaf < numSegments && docId >= startDoc[leaf]) leaf++;
+
+    if (leaf == leafIdxHint) {
+      leaf = 0;
+      while (leaf < numSegments && docId >= startDoc[leaf]) leaf++;
+    }
+
+    assert leaf > 0;
+    return leaf - 1;
   }
 
   private PimIndexInfo() {
@@ -92,14 +123,6 @@ public class PimIndexInfo {
    */
   public int getNumDpuSegments() {
     return numDpuSegments;
-  }
-
-  /**
-   * @param leafIdx segment id
-   * @return start doc ID (offset) for the segment
-   */
-  public int getStartDoc(int leafIdx) {
-    return startDoc[leafIdx];
   }
 
   /**
@@ -203,18 +226,16 @@ public class PimIndexInfo {
   }
 
   /**
-   * Get an IndexInput for the PIM index of the given segment
+   * Get an IndexInput for the PIM index
    *
-   * @param leafIdx the segment ID
    * @return the IndexInput object
    * @throws IOException if failed to open the IndexInput
    */
-  public IndexInput getFileInput(int leafIdx) throws IOException {
+  public IndexInput getFileInput() throws IOException {
 
-    if (leafIdx >= segmentCommitName.length) return null;
     String fileName =
         IndexFileNames.segmentFileName(
-            segmentCommitName[leafIdx], Integer.toString(numDpus), DPU_INDEX_COMPOUND_EXTENSION);
+            "dpu_" + segmentCommitName, Integer.toString(numDpus), DPU_INDEX_COMPOUND_EXTENSION);
     return pimDir.openInput(fileName, IOContext.DEFAULT);
   }
 
@@ -256,9 +277,8 @@ public class PimIndexInfo {
     out.writeInt(numDpus);
     out.writeInt(numSegments);
     out.writeInt(numDpuSegments);
-    for (int i = 0; i < segmentCommitName.length; ++i) {
-      out.writeString(segmentCommitName[i]);
-    }
+    out.writeString(segmentCommitName);
+
     for (int i = 0; i < startDoc.length; ++i) {
       out.writeInt(startDoc[i]);
     }
@@ -270,11 +290,9 @@ public class PimIndexInfo {
     info.numDpus = in.readInt();
     info.numSegments = in.readInt();
     info.numDpuSegments = in.readInt();
-    info.segmentCommitName = new String[info.numSegments];
     info.startDoc = new int[info.numSegments];
-    for (int i = 0; i < info.segmentCommitName.length; ++i) {
-      info.segmentCommitName[i] = in.readString();
-    }
+    info.segmentCommitName = in.readString();
+
     for (int i = 0; i < info.startDoc.length; ++i) {
       info.startDoc[i] = in.readInt();
     }

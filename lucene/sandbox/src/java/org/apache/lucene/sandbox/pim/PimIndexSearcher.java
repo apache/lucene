@@ -74,29 +74,9 @@ public class PimIndexSearcher implements Closeable {
   ArrayList<PimMatch> searchTerm(BytesRef field, BytesRef term, LeafSimScorer scorer) {
 
     ArrayList<PimMatch> results = new ArrayList<>();
-    int nbSegments = pimIndexInfo.getNumSegments();
-    for (int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
-      results.addAll(searchTerm(leafIdx, field, term, scorer));
-    }
-    return results;
-  }
-
-  /**
-   * Search a term in PIM index in a given segment
-   *
-   * @param leafIdx the segment number
-   * @param field the field to be searched
-   * @param term the term to be searched
-   * @param scorer the scorer to be used for each match
-   * @return the list of matches with document ID and score
-   */
-  ArrayList<PimMatch> searchTerm(int leafIdx, BytesRef field, BytesRef term, LeafSimScorer scorer) {
-
-    ArrayList<PimMatch> results = new ArrayList<>();
-    int finalLeafIdx = leafIdx;
     searchers.forEach(
         (s) -> {
-          s.switchToNewSegment(finalLeafIdx);
+          s.initDpuIndex();
           var matches = s.SearchTerm(field, term, scorer);
           if (matches != null) results.addAll(matches);
           try {
@@ -137,7 +117,14 @@ public class PimIndexSearcher implements Closeable {
   }
 
   /**
-   * Search a phrase in PIM index
+   * Search a phrase in PIM index in one segment
+   *
+   * @param query the PIM phrase query
+   * @param scorer the LeafSimScorer to be used to score each match
+   * @return a list of matches with doc ID and score
+   */
+  /**
+   * Search a phrase in PIM index in one segment
    *
    * @param query the PIM phrase query
    * @param scorer the LeafSimScorer to be used to score each match
@@ -146,27 +133,9 @@ public class PimIndexSearcher implements Closeable {
   ArrayList<PimMatch> searchPhrase(PimPhraseQuery query, LeafSimScorer scorer) {
 
     ArrayList<PimMatch> results = new ArrayList<>();
-    int nbSegments = pimIndexInfo.getNumSegments();
-    for (int leafIdx = 0; leafIdx < nbSegments; ++leafIdx) {
-      results.addAll(searchPhrase(leafIdx, query, scorer));
-    }
-    return results;
-  }
-
-  /**
-   * Search a phrase in PIM index in one segment
-   *
-   * @param leafIdx the segment number
-   * @param query the PIM phrase query
-   * @param scorer the LeafSimScorer to be used to score each match
-   * @return a list of matches with doc ID and score
-   */
-  ArrayList<PimMatch> searchPhrase(int leafIdx, PimPhraseQuery query, LeafSimScorer scorer) {
-
-    ArrayList<PimMatch> results = new ArrayList<>();
     searchers.forEach(
         (s) -> {
-          s.switchToNewSegment(leafIdx);
+          s.initDpuIndex();
           var matches = s.SearchPhrase(query, scorer);
           if (matches != null) results.addAll(matches);
           try {
@@ -204,34 +173,6 @@ public class PimIndexSearcher implements Closeable {
     }
   }
 
-  /**
-   * Search a phrase in PIM index in one segment without scoring In this case the score is just the
-   * frequency
-   *
-   * @param query the PIM phrase query
-   * @return a list of matches with doc ID and freq
-   */
-  ArrayList<PimMatch> searchPhrase(int leafIdx, PimPhraseQuery query) {
-
-    try {
-      return searchPhrase(
-          leafIdx,
-          query,
-          new LeafSimScorer(
-              new Similarity.SimScorer() {
-                @Override
-                public float score(float freq, long norm) {
-                  return freq;
-                }
-              },
-              null,
-              query.getField(),
-              false));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @Override
   public void close() throws IOException {
     for (DPUIndexSearcher s : searchers) {
@@ -246,7 +187,6 @@ public class PimIndexSearcher implements Closeable {
 
     final int dpuId;
     final PimIndexInfo pimIndexInfo;
-    int startDoc;
     IndexInput indexInput;
     IndexInput fieldTableInput;
     IndexInput blockTableInput;
@@ -259,14 +199,13 @@ public class PimIndexSearcher implements Closeable {
     DPUIndexSearcher(PimIndexInfo pimIndexInfo, int dpuId) {
       this.dpuId = dpuId;
       this.pimIndexInfo = pimIndexInfo;
-      this.startDoc = 0;
       this.indexInput = null;
     }
 
-    void switchToNewSegment(int leafIdx) {
+    void initDpuIndex() {
 
       try {
-        openFilesInput(pimIndexInfo, leafIdx);
+        openFilesInput(pimIndexInfo);
         // create field table
         // it may be that the DPU was assigned no docs and the fieldTableInput is null
         // in this case this searcher will always return null for searchTerm/searchPhrase
@@ -282,15 +221,14 @@ public class PimIndexSearcher implements Closeable {
       }
     }
 
-    void openFilesInput(PimIndexInfo pimIndexInfo, int leafIdx) throws IOException {
+    void openFilesInput(PimIndexInfo pimIndexInfo) throws IOException {
 
       if (indexInput != null) indexInput.close();
-      indexInput = pimIndexInfo.getFileInput(leafIdx);
+      indexInput = pimIndexInfo.getFileInput();
       if (indexInput == null) {
         fieldTableInput = null;
         return;
       }
-      startDoc = addStartDoc ? pimIndexInfo.getStartDoc(leafIdx) : 0;
       fieldTableInput = pimIndexInfo.getFieldFileInput(indexInput, dpuId);
       blockTableInput = pimIndexInfo.getBlockTableFileInput(indexInput, dpuId);
       blocksInput = pimIndexInfo.getBlocksFileInput(indexInput, dpuId);
@@ -316,7 +254,7 @@ public class PimIndexSearcher implements Closeable {
           DocumentIterator docIt = new DocumentIterator(postingsInput, termPostings[i].byteSize);
           int doc = docIt.Next();
           while (doc >= 0) {
-            results.add(new PimMatch(doc + startDoc, scorer.score(doc, docIt.getFreq())));
+            results.add(new PimMatch(doc, scorer.score(doc, docIt.getFreq())));
             doc = docIt.Next();
           }
         } catch (IOException e) {
@@ -451,8 +389,7 @@ public class PimIndexSearcher implements Closeable {
             // end looking for positions of the matching document
             // add the result if positions matches were found
             if (nbPositionsMatch > 0) {
-              results.add(
-                  new PimMatch(searchDoc + startDoc, scorer.score(searchDoc, nbPositionsMatch)));
+              results.add(new PimMatch(searchDoc, scorer.score(searchDoc, nbPositionsMatch)));
             }
           }
         } catch (IOException e) {

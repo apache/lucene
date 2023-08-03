@@ -19,7 +19,6 @@ package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
 import org.apache.lucene.search.LeafSimScorer;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
 /** Interface to be implemented by all PIM queries */
@@ -34,13 +33,21 @@ public interface PimQuery {
   public void writeToPim(DataOutput output) throws IOException;
 
   /**
-   * Reads the PIM query result, performs the scoring and set a PimMatch object This function
-   * specifies how results returned by the PIM system should be interpreted and scored.
+   * This API specifies the size in bytes of a result for this PIM query
+   *
+   * @return the number of bytes returned by the PIM system for a query result
+   */
+  int getResultByteSize();
+
+  /**
+   * Reads the PIM query result, performs the scoring and returns the score. This function specifies
+   * how results returned by the PIM system should be interpreted and scored.
    *
    * @param input the input to read the results from
+   * @param docId the document to be scored
    * @param scorer the LeafSimScorer used to score results
-   * @param match the match object to update
+   * @return the score for this docID
    * @throws IOException if failing to read results from the input
    */
-  void readResult(DataInput input, LeafSimScorer scorer, PimMatch match) throws IOException;
+  float readResultAndScore(DpuDataInput input, int docId, LeafSimScorer scorer) throws IOException;
 }

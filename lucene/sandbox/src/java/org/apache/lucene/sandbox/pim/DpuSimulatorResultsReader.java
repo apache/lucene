@@ -18,34 +18,28 @@
 package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
-import org.apache.lucene.store.ByteArrayDataInput;
+import java.util.List;
 
-/** Read the DPU results using a ByteArrayDataInput (used for the software simulator) */
-public class DpuResultsArrayInput extends DpuResultsReader {
+/** Class to read DPU results coming from the Simulator (see DpuSystemSimulator) */
+public class DpuSimulatorResultsReader extends DpuResultsReader {
 
-  private ByteArrayDataInput in;
+  private final List<PimMatch> matches;
+  private int currId;
 
-  DpuResultsArrayInput(ByteArrayDataInput in) {
-    this.in = in;
+  DpuSimulatorResultsReader(PimQuery query, List<PimMatch> matches) {
+    super(query);
+    this.matches = matches;
+    this.currId = 0;
   }
 
   @Override
-  public byte readByte() throws IOException {
-    return in.readByte();
-  }
-
-  @Override
-  public void readBytes(byte[] b, int offset, int len) throws IOException {
-    in.readBytes(b, offset, len);
-  }
-
-  @Override
-  public void skipBytes(long numBytes) throws IOException {
-    in.skipBytes(numBytes);
-  }
-
-  @Override
-  public boolean eof() {
-    return in.eof();
+  public boolean next() throws IOException {
+    if (currId >= matches.size()) return false;
+    if (matches.get(currId).docId >= maxDoc) return false;
+    match = matches.get(currId);
+    match.docId -= baseDoc;
+    match.score = simScorer.score(match.docId, match().score);
+    currId++;
+    return true;
   }
 }

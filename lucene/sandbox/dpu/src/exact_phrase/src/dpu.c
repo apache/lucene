@@ -399,7 +399,8 @@ static void lookup_postings_info_for_query(uintptr_t index, uint32_t query_id) {
     // read segment id and query type
     uint32_t segment_id;
     uint8_t query_type;
-    read_segment_id(&query_parser, &segment_id);
+    // TODO no more segment id info to be checked
+    //read_segment_id(&query_parser, &segment_id);
     read_query_type(&query_parser, &query_type);
     assert(query_type == PIM_PHRASE_QUERY_TYPE); // only PIM PHRASE QUERY TYPE supported
 

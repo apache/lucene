@@ -27,9 +27,9 @@ public class PimScorer extends Scorer {
 
   private PimMatch current;
   private float minCompetitiveScore;
-  private DpuResults dpuResults;
+  private DpuResultsReader dpuResults;
 
-  public PimScorer(Weight weight, DpuResults dpuResults) {
+  public PimScorer(Weight weight, DpuResultsReader dpuResults) {
     super(weight);
     this.dpuResults = dpuResults;
     current = PimMatch.UNSET;
@@ -54,7 +54,7 @@ public class PimScorer extends Scorer {
       }
 
       @Override
-      public int nextDoc() {
+      public int nextDoc() throws IOException {
         do {
           if (!dpuResults.next()) {
             current = PimMatch.NO_MORE_RESULTS;
@@ -66,7 +66,7 @@ public class PimScorer extends Scorer {
       }
 
       @Override
-      public int advance(int target) {
+      public int advance(int target) throws IOException {
         int docId;
         while ((docId = nextDoc()) < target) {}
         return docId;

@@ -20,10 +20,9 @@ package org.apache.lucene.sandbox.pim;
 import static org.apache.lucene.sandbox.pim.PimSystemManager.QueryBuffer;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
@@ -45,7 +44,6 @@ class DpuSystemSimulator implements PimQueriesExecutor {
       DataInput input = queryBuffer.getDataInput();
 
       // rebuild a query object for PimIndexSearcher
-      int segment = input.readVInt();
       byte type = input.readByte();
       assert type == DpuConstants.PIM_PHRASE_QUERY_TYPE;
       int fieldSz = input.readVInt();
@@ -62,16 +60,11 @@ class DpuSystemSimulator implements PimQueriesExecutor {
       }
 
       // use PimIndexSearcher to handle the query (software model)
-      List<PimMatch> matches = pimSearcher.searchPhrase(segment, builder.build());
+      List<PimMatch> matches = pimSearcher.searchPhrase(builder.build());
+      // sort the matches by docId, to ease the read on Lucene segment basis
+      matches.sort(Comparator.comparingInt(m -> m.docId));
 
-      byte[] matchesByteArr = new byte[Math.toIntExact(matches.size() * 2 * Integer.BYTES)];
-      ByteArrayDataOutput byteOut = new ByteArrayDataOutput(matchesByteArr);
-      for (PimMatch m : matches) {
-        byteOut.writeInt(m.docId);
-        byteOut.writeInt((int) m.score);
-      }
-
-      queryBuffer.addResults(new DpuResultsArrayInput(new ByteArrayDataInput(matchesByteArr)));
+      queryBuffer.addResults(new DpuSimulatorResultsReader(queryBuffer.query, matches));
     }
   }
 }

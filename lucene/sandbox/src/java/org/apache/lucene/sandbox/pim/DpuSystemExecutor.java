@@ -75,9 +75,6 @@ class DpuSystemExecutor implements PimQueriesExecutor {
               + " > "
               + DpuConstants.nrDpus);
     }
-    if (pimIndexInfo.getNumSegments() > 1) {
-      throw new DpuException("ERROR: only one segment supported for index\n");
-    }
 
     // TODO Debug further parallel load. It crashes in the jni layer of the DPU load API
     if (PARALLEL_INDEX_LOAD) {
@@ -103,7 +100,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                   }
                   long[] dpuIndexPos = new long[set.dpus().size()];
                   int cnt = 0;
-                  IndexInput in = pimIndexInfo.getFileInput(0);
+                  IndexInput in = pimIndexInfo.getFileInput();
                   while (true) {
                     boolean dpuActive = false;
                     int readSizeSet = 0;
@@ -149,7 +146,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     for (int i = 0; i < pimIndexInfo.getNumDpus(); ++i) {
 
       if (!PARALLEL_INDEX_LOAD) {
-        IndexInput in = pimIndexInfo.getFileInput(0);
+        IndexInput in = pimIndexInfo.getFileInput();
         long dpuIndexSize = pimIndexInfo.seekToDpu(in, i);
         byte[] data = new byte[((Math.toIntExact(dpuIndexSize) + 7) >> 3) << 3];
         in.readBytes(data, 0, Math.toIntExact(dpuIndexSize));
@@ -279,9 +276,16 @@ class DpuSystemExecutor implements PimQueriesExecutor {
 
     // 5) Update the results map for the client threads to read their results
     for (int q = 0, size = queryBuffers.size(); q < size; ++q) {
-      queryBuffers
-          .get(q)
-          .addResults(new DpuResultsInput(nbDpusInIndex, dpuResults, dpuQueryResultsAddr, q));
+      PimSystemManager.QueryBuffer buffer = queryBuffers.get(q);
+      buffer.addResults(
+          new DpuExecutorResultsReader(
+              buffer.query,
+              new DpuDataInput(
+                  nbDpusInIndex,
+                  dpuResults,
+                  dpuQueryResultsAddr,
+                  q,
+                  buffer.query.getResultByteSize())));
     }
   }
 
@@ -299,6 +303,16 @@ class DpuSystemExecutor implements PimQueriesExecutor {
       System.arraycopy(queryBuffer.bytes, 0, queryBatchBuffer, batchLength, queryBuffer.length);
       out.writeInt(batchLength);
       batchLength += queryBuffer.length;
+    }
+    if (batchLength > DpuConstants.dpuQueryBatchByteSize) {
+      // size is too large, the DPU cannot support this
+      // TODO should not just throw but handle this by reducing the size of the batch
+      // for instance doing two execution of DPU
+      throw new DpuException(
+          "Error: batch size too large for DPU size="
+              + batchLength
+              + " max="
+              + DpuConstants.dpuQueryBatchByteSize);
     }
     dpuSystem
         .async()
