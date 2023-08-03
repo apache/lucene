@@ -40,7 +40,7 @@ task compileDpu (type: Exec) {
     file('dpu/build').mkdirs()
   }
 
-  commandLine 'dpu-clang', '-DSTACK_SIZE_DEFAULT=512', '-DNR_TASKLETS=16', '-flto=thin',
+  commandLine 'dpu-clang', '-O3', '-DSTACK_SIZE_DEFAULT=512', '-DNR_TASKLETS=16', '-flto=thin',
           '-o', 'dpu/build/dpu_program_exact_phrase',
           '-I', 'dpu/src/exact_phrase/inc', 'dpu/src/exact_phrase/src/dpu.c',
           'dpu/src/exact_phrase/src/matcher.c', 'dpu/src/exact_phrase/src/parser.c',
