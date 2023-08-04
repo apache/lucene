@@ -532,7 +532,7 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
           }
 
           @Override
-          public Function<Integer, Float> scoreProvider(int a) {
+          public ScoreFunction scoreProvider(int a) {
             throw new UnsupportedOperationException();
           }
         };

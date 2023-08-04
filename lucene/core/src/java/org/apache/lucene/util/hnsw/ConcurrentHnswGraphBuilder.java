@@ -137,7 +137,7 @@ public class ConcurrentHnswGraphBuilder<T> {
           }
 
           @Override
-          public Function<Integer, Float> scoreProvider(int node1) {
+          public ScoreFunction scoreProvider(int node1) {
             T v1;
             try {
               v1 = vectors.get().vectorValue(node1);

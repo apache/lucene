@@ -154,7 +154,7 @@ public class ConcurrentNeighborSet {
       return true;
     }
 
-    Function<Integer, Float> scoreProvider = similarity.scoreProvider(node);
+    NeighborSimilarity.ScoreFunction scoreProvider = similarity.scoreProvider(node);
     for (int i = others.size() - 1; i >= 0; i--) {
       if (!selected.get(i)) {
         continue;
@@ -189,7 +189,7 @@ public class ConcurrentNeighborSet {
     for (int i = neighbors.size() - 1; i >= 1; i--) {
       int e1Id = neighbors.node[i];
       float baseScore = neighbors.score[i];
-      Function<Integer, Float> scoreProvider = similarity.scoreProvider(e1Id);
+      NeighborSimilarity.ScoreFunction scoreProvider = similarity.scoreProvider(e1Id);
 
       for (int j = i - 1; j >= 0; j--) {
         int n2Id = neighbors.node[j];
@@ -225,7 +225,12 @@ public class ConcurrentNeighborSet {
      * For when we're going to compare node1 with multiple other nodes. This allows us to skip
      * loading node1's vector (potentially from disk) redundantly for each comparison.
      */
-    Function<Integer, Float> scoreProvider(int node1);
+    ScoreFunction scoreProvider(int node1);
+
+    @FunctionalInterface
+    public interface ScoreFunction {
+      float apply(int node);
+    }
   }
 
   /** A NeighborArray that knows how to copy itself and that checks for duplicate entries */

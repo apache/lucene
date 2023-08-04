@@ -37,7 +37,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
         }
 
         @Override
-        public Function<Integer, Float> scoreProvider(int a) {
+        public ScoreFunction scoreProvider(int a) {
           return b -> score(a, b);
         }
       };
@@ -88,7 +88,7 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
           }
 
           @Override
-          public Function<Integer, Float> scoreProvider(int a) {
+          public ScoreFunction scoreProvider(int a) {
             return b -> score(a, b);
           }
         };
