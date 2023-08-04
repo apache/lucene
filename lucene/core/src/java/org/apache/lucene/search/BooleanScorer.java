@@ -234,35 +234,6 @@ final class BooleanScorer extends BulkScorer {
     return cost;
   }
 
-  private void scoreDocument(LeafCollector collector, int base, int i) throws IOException {
-    if (buckets != null) {
-      final Score score = this.score;
-      final Bucket bucket = buckets[i];
-      if (bucket.freq >= minShouldMatch) {
-        score.score = (float) bucket.score;
-        final int doc = base | i;
-        collector.collect(doc);
-      }
-      bucket.freq = 0;
-      bucket.score = 0;
-    } else {
-      collector.collect(base | i);
-    }
-  }
-
-  private void scoreMatches(LeafCollector collector, int base) throws IOException {
-    long[] matching = this.matching;
-    for (int idx = 0; idx < matching.length; idx++) {
-      long bits = matching[idx];
-      while (bits != 0L) {
-        int ntz = Long.numberOfTrailingZeros(bits);
-        int doc = idx << 6 | ntz;
-        scoreDocument(collector, base, doc);
-        bits ^= 1L << ntz;
-      }
-    }
-  }
-
   private void scoreWindowIntoBitSetAndReplay(
       LeafCollector collector,
       Bits acceptDocs,
