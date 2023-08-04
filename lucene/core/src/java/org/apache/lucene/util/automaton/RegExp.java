@@ -32,6 +32,7 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -1097,7 +1098,7 @@ public class RegExp {
   final RegExp iterativeParseExp(
       Supplier<RegExp> gather, BooleanSupplier stop, MakeRegexGroup reduce)
       throws IllegalArgumentException {
-    ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
+    Deque<RegExp> regExpStack = new ArrayDeque<>();
     do {
       RegExp e = gather.get();
       regExpStack.addFirst(e);
