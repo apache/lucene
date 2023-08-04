@@ -229,7 +229,7 @@ public class ConcurrentNeighborSet {
   }
 
   /** A NeighborArray that knows how to copy itself and that checks for duplicate entries */
-  private static class ConcurrentNeighborArray extends NeighborArray {
+  static class ConcurrentNeighborArray extends NeighborArray {
     public ConcurrentNeighborArray(int maxSize, boolean descOrder) {
       super(maxSize, descOrder);
     }
@@ -246,13 +246,31 @@ public class ConcurrentNeighborSet {
           scoresDescOrder
               ? descSortFindRightMostInsertionPoint(newScore, size)
               : ascSortFindRightMostInsertionPoint(newScore, size);
-      if (insertionPoint == size || node[insertionPoint] != newNode) {
+      if (!duplicateExistsNear(insertionPoint, newNode, newScore)) {
         System.arraycopy(node, insertionPoint, node, insertionPoint + 1, size - insertionPoint);
         System.arraycopy(score, insertionPoint, score, insertionPoint + 1, size - insertionPoint);
         node[insertionPoint] = newNode;
         score[insertionPoint] = newScore;
         ++size;
       }
+    }
+
+    private boolean duplicateExistsNear(int insertionPoint, int newNode, float newScore) {
+      // Check to the left
+      for (int i = insertionPoint - 1; i >= 0 && score[i] == newScore; i--) {
+        if (node[i] == newNode) {
+          return true;
+        }
+      }
+
+      // Check to the right
+      for (int i = insertionPoint; i < size && score[i] == newScore; i++) {
+        if (node[i] == newNode) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     public ConcurrentNeighborArray copy() {
