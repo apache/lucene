@@ -37,6 +37,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -1068,42 +1070,42 @@ public class RegExp {
   }
 
   final RegExp parseUnionExp() throws IllegalArgumentException {
-    ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
-    do {
-      RegExp e = parseInterExp();
-      regExpStack.addFirst(e);
-    } while (match('|') == true);
-
-    RegExp result = regExpStack.removeFirst();
-    while (regExpStack.isEmpty() == false) {
-      result = makeUnion(flags, regExpStack.removeFirst(), result);
-    }
-    return result;
+    return iterativeParseExp(this::parseInterExp, () -> match('|'), RegExp::makeUnion);
   }
 
   final RegExp parseInterExp() throws IllegalArgumentException {
-    ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
-    do {
-      RegExp e = parseConcatExp();
-      regExpStack.addFirst(e);
-    } while ((check(INTERSECTION) && match('&')) == true);
-    RegExp result = regExpStack.removeFirst();
-    while (regExpStack.isEmpty() == false) {
-      result = makeIntersection(flags, regExpStack.removeFirst(), result);
-    }
-    return result;
+    return iterativeParseExp(
+        this::parseConcatExp, () -> check(INTERSECTION) && match('&'), RegExp::makeIntersection);
   }
 
   final RegExp parseConcatExp() throws IllegalArgumentException {
+    return iterativeParseExp(
+        this::parseRepeatExp,
+        () -> (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))),
+        RegExp::makeConcatenation);
+  }
+
+  /**
+   * Custom Functional Interface for a Supplying methods with signature of RegExp(int int1, RegExp
+   * exp1, RegExp exp2)
+   */
+  @FunctionalInterface
+  private interface MakeRegexGroup {
+    RegExp get(int int1, RegExp exp1, RegExp exp2);
+  }
+
+  final RegExp iterativeParseExp(
+      Supplier<RegExp> gather, BooleanSupplier stop, MakeRegexGroup reduce)
+      throws IllegalArgumentException {
     ArrayDeque<RegExp> regExpStack = new ArrayDeque<>();
     do {
-      RegExp e = parseRepeatExp();
+      RegExp e = gather.get();
       regExpStack.addFirst(e);
-    } while ((more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))) == true);
+    } while (stop.getAsBoolean() == true);
 
     RegExp result = regExpStack.removeFirst();
     while (regExpStack.isEmpty() == false) {
-      result = makeConcatenation(flags, regExpStack.removeFirst(), result);
+      result = reduce.get(flags, regExpStack.removeFirst(), result);
     }
     return result;
   }
