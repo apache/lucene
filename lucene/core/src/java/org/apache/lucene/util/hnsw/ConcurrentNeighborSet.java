@@ -227,6 +227,9 @@ public class ConcurrentNeighborSet {
      */
     ScoreFunction scoreProvider(int node1);
 
+    /**
+     * A Function&lt;Integer, Float&gt; without the boxing
+     */
     @FunctionalInterface
     public interface ScoreFunction {
       float apply(int node);
