@@ -114,7 +114,7 @@ public class PackedLongValues extends LongValues implements Accountable {
 
   @Override
   public final long get(long index) {
-    assert index >= 0 && index < size();
+    assert index >= 0 && index < size() : index + " " + size();
     final int block = (int) (index >> pageShift);
     final int element = (int) (index & pageMask);
     return get(block, element);
