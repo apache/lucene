@@ -32,6 +32,9 @@ import org.apache.lucene.util.NamedSPILoader;
  */
 public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
+  /** The maximum number of vector dimensions */
+  public static final int DEFAULT_MAX_DIMENSIONS = 1024;
+
   /**
    * This static holder class prevents classloading deadlock by delaying init of doc values formats
    * until needed.
@@ -75,6 +78,17 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
 
   /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
   public abstract KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException;
+
+  /**
+   * Returns the maximum number of vector dimensions supported by this codec for the given field
+   * name
+   *
+   * <p>Codecs implement this method to specify the maximum number of dimensions they support.
+   *
+   * @param fieldName the field name
+   * @return the maximum number of vector dimensions.
+   */
+  public abstract int getMaxDimensions(String fieldName);
 
   /**
    * EMPTY throws an exception when written. It acts as a sentinel indicating a Codec that does not
@@ -123,6 +137,11 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
               return 0;
             }
           };
+        }
+
+        @Override
+        public int getMaxDimensions(String fieldName) {
+          return 0;
         }
       };
 }

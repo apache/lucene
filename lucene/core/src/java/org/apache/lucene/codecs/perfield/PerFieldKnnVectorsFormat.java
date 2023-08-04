@@ -80,6 +80,11 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     return new FieldsReader(state);
   }
 
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return getKnnVectorsFormatForField(fieldName).getMaxDimensions(fieldName);
+  }
+
   /**
    * Returns the numeric vector format that should be used for writing new segments of <code>field
    * </code>.

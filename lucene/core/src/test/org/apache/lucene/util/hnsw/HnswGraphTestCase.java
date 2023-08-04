@@ -232,7 +232,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         for (int i = 0; i < 10; i++) {
           // ask to explore a lot of candidates to ensure the same returned hits,
           // as graphs of 2 indices are organized differently
-          Query query = knnQuery("vector", randomVector(dim), 50);
+          Query query = knnQuery("vector", randomVector(dim), 60);
           int searchSize = 5;
           List<String> ids1 = new ArrayList<>(searchSize);
           List<Integer> docs1 = new ArrayList<>(searchSize);
