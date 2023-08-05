@@ -293,13 +293,11 @@ final class BooleanScorer extends BulkScorer {
       LeafCollector collector,
       Bits acceptDocs,
       int windowMin,
-      int windowMax,
-      int max)
+      int windowMax)
       throws IOException {
     assert tail.size() == 0;
-    final int end = Math.max(windowMax, Math.min(max, head.top().next));
 
-    bulkScorer.score(collector, acceptDocs, windowMin, end);
+    bulkScorer.score(collector, acceptDocs, windowMin, windowMax);
 
     // reset the scorer that should be used for the general case
     collector.setScorer(score);
@@ -322,7 +320,7 @@ final class BooleanScorer extends BulkScorer {
       // special case: only one scorer can match in the current window,
       // we can collect directly
       final BulkScorerAndDoc bulkScorer = leads[0];
-      scoreWindowSingleScorer(bulkScorer, collector, acceptDocs, windowMin, windowMax, max);
+      scoreWindowSingleScorer(bulkScorer, collector, acceptDocs, windowMin, Math.min(max, head.top().next));
       return head.add(bulkScorer);
     } else {
       // general case, collect through a bit set first and then replay
