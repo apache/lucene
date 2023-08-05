@@ -320,7 +320,8 @@ final class BooleanScorer extends BulkScorer {
       // special case: only one scorer can match in the current window,
       // we can collect directly
       final BulkScorerAndDoc bulkScorer = leads[0];
-      scoreWindowSingleScorer(bulkScorer, collector, acceptDocs, windowMin, Math.min(max, head.top().next));
+      scoreWindowSingleScorer(
+          bulkScorer, collector, acceptDocs, windowMin, Math.min(max, head.top().next));
       return head.add(bulkScorer);
     } else {
       // general case, collect through a bit set first and then replay
