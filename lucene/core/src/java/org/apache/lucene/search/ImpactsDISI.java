@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
@@ -32,7 +31,6 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 public final class ImpactsDISI extends DocIdSetIterator {
 
   private final DocIdSetIterator in;
-  private final ImpactsSource impactsSource;
   private final MaxScoreCache maxScoreCache;
   private float minCompetitiveScore = 0;
   private int upTo = DocIdSetIterator.NO_MORE_DOCS;
@@ -46,9 +44,12 @@ public final class ImpactsDISI extends DocIdSetIterator {
    * @param scorer scorer
    */
   public ImpactsDISI(DocIdSetIterator in, ImpactsSource impactsSource, SimScorer scorer) {
+    this(in, new MaxScoreCache(impactsSource, scorer));
+  }
+
+  ImpactsDISI(DocIdSetIterator in, MaxScoreCache maxScoreCache) {
     this.in = in;
-    this.impactsSource = impactsSource;
-    this.maxScoreCache = new MaxScoreCache(impactsSource, scorer);
+    this.maxScoreCache = maxScoreCache;
   }
 
   /**
@@ -74,9 +75,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
    * @see Scorer#advanceShallow(int)
    */
   public int advanceShallow(int target) throws IOException {
-    impactsSource.advanceShallow(target);
-    Impacts impacts = impactsSource.getImpacts();
-    return impacts.getDocIdUpTo(0);
+    return maxScoreCache.advanceShallow(target);
   }
 
   /**

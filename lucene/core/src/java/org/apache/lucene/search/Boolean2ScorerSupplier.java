@@ -84,6 +84,19 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
   }
 
   @Override
+  public void setTopLevelScoringClause() throws IOException {
+    if (subs.get(Occur.SHOULD).size() + subs.get(Occur.MUST).size() == 1) {
+      // If there is a single scoring clause, propagate the call.
+      for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+        ss.setTopLevelScoringClause();
+      }
+      for (ScorerSupplier ss : subs.get(Occur.MUST)) {
+        ss.setTopLevelScoringClause();
+      }
+    }
+  }
+
+  @Override
   public long cost() {
     if (cost == -1) {
       cost = computeCost();

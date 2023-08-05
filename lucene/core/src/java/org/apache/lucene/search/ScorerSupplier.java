@@ -42,4 +42,10 @@ public abstract class ScorerSupplier {
    * @see DocIdSetIterator#cost
    */
   public abstract long cost();
+
+  /**
+   * Inform this {@link ScorerSupplier} that its returned scorers produce scores that get passed to
+   * the collector, as opposed to partial scores that then need to get combined (e.g. summed up).
+   */
+  public void setTopLevelScoringClause() throws IOException {}
 }

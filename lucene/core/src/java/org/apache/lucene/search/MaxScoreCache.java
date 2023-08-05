@@ -48,6 +48,18 @@ final class MaxScoreCache {
     maxScoreCacheUpTo = new int[0];
   }
 
+  /**
+   * Implement the contract of {@link Scorer#advanceShallow(int)} based on the wrapped {@link
+   * ImpactsSource}.
+   *
+   * @see Scorer#advanceShallow(int)
+   */
+  public int advanceShallow(int target) throws IOException {
+    impactsSource.advanceShallow(target);
+    Impacts impacts = impactsSource.getImpacts();
+    return impacts.getDocIdUpTo(0);
+  }
+
   private void ensureCacheSize(int size) {
     if (maxScoreCache.length < size) {
       int oldLength = maxScoreCache.length;
