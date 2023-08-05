@@ -32,9 +32,7 @@ final class BooleanScorer extends BulkScorer {
 
   static final int SHIFT = 11;
   static final int SIZE = 1 << SHIFT;
-  static final int MASK = SIZE - 1;
   static final int SET_SIZE = 1 << (SHIFT - 6);
-  static final int SET_MASK = SET_SIZE - 1;
 
   static class Bucket {
     double score;
@@ -53,6 +51,7 @@ final class BooleanScorer extends BulkScorer {
     }
 
     void advance(int min) throws IOException {
+      orCollector.windowMin = min;
       score(orCollector, null, min, min);
     }
 
@@ -124,6 +123,7 @@ final class BooleanScorer extends BulkScorer {
   final boolean needsScores;
 
   final class OrCollector implements LeafCollector {
+    int windowMin;
     Scorable scorer;
 
     @Override
@@ -133,7 +133,7 @@ final class BooleanScorer extends BulkScorer {
 
     @Override
     public void collect(int doc) throws IOException {
-      final int i = doc & MASK;
+      final int i = doc - windowMin;
       final int idx = i >>> 6;
       matching[idx] |= 1L << i;
       if (buckets != null) {
@@ -150,13 +150,13 @@ final class BooleanScorer extends BulkScorer {
 
   final class DocIdStreamView extends DocIdStream {
 
-    int base;
+    int min;
 
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
       long[] matching = BooleanScorer.this.matching;
       Bucket[] buckets = BooleanScorer.this.buckets;
-      int base = this.base;
+      int min = this.min;
       for (int idx = 0; idx < matching.length; idx++) {
         long bits = matching[idx];
         while (bits != 0L) {
@@ -166,12 +166,12 @@ final class BooleanScorer extends BulkScorer {
             final Bucket bucket = buckets[indexInWindow];
             if (bucket.freq >= minShouldMatch) {
               score.score = (float) bucket.score;
-              consumer.accept(base | indexInWindow);
+              consumer.accept(min + indexInWindow);
             }
             bucket.freq = 0;
             bucket.score = 0;
           } else {
-            consumer.accept(base | (idx << 6) | ntz);
+            consumer.accept(min + ((idx << 6) | ntz));
           }
           bits ^= 1L << ntz;
         }
@@ -237,7 +237,6 @@ final class BooleanScorer extends BulkScorer {
   private void scoreWindowIntoBitSetAndReplay(
       LeafCollector collector,
       Bits acceptDocs,
-      int base,
       int min,
       int max,
       BulkScorerAndDoc[] scorers,
@@ -246,10 +245,11 @@ final class BooleanScorer extends BulkScorer {
     for (int i = 0; i < numScorers; ++i) {
       final BulkScorerAndDoc scorer = scorers[i];
       assert scorer.next < max;
+      orCollector.windowMin = min;
       scorer.score(orCollector, acceptDocs, min, max);
     }
 
-    docIdStreamView.base = base;
+    docIdStreamView.min = min;
     collector.collect(docIdStreamView);
 
     Arrays.fill(matching, 0L);
@@ -277,12 +277,7 @@ final class BooleanScorer extends BulkScorer {
   }
 
   private void scoreWindowMultipleScorers(
-      LeafCollector collector,
-      Bits acceptDocs,
-      int windowBase,
-      int windowMin,
-      int windowMax,
-      int maxFreq)
+      LeafCollector collector, Bits acceptDocs, int windowMin, int windowMax, int maxFreq)
       throws IOException {
     while (maxFreq < minShouldMatch && maxFreq + tail.size() >= minShouldMatch) {
       // a match is still possible
@@ -302,8 +297,7 @@ final class BooleanScorer extends BulkScorer {
       }
       tail.clear();
 
-      scoreWindowIntoBitSetAndReplay(
-          collector, acceptDocs, windowBase, windowMin, windowMax, leads, maxFreq);
+      scoreWindowIntoBitSetAndReplay(collector, acceptDocs, windowMin, windowMax, leads, maxFreq);
     }
 
     // Push back scorers into head and tail
@@ -320,14 +314,11 @@ final class BooleanScorer extends BulkScorer {
       LeafCollector collector,
       Bits acceptDocs,
       int windowMin,
-      int windowMax,
-      int max)
+      int windowMax)
       throws IOException {
     assert tail.size() == 0;
-    final int nextWindowBase = head.top().next & ~MASK;
-    final int end = Math.max(windowMax, Math.min(max, nextWindowBase));
 
-    bulkScorer.score(collector, acceptDocs, windowMin, end);
+    bulkScorer.score(collector, acceptDocs, windowMin, windowMax);
 
     // reset the scorer that should be used for the general case
     collector.setScorer(score);
@@ -336,9 +327,8 @@ final class BooleanScorer extends BulkScorer {
   private BulkScorerAndDoc scoreWindow(
       BulkScorerAndDoc top, LeafCollector collector, Bits acceptDocs, int min, int max)
       throws IOException {
-    final int windowBase = top.next & ~MASK; // find the window that the next match belongs to
-    final int windowMin = Math.max(min, windowBase);
-    final int windowMax = Math.min(max, windowBase + SIZE);
+    final int windowMin = Math.max(min, top.next);
+    final int windowMax = Math.min(max, windowMin + SIZE);
 
     // Fill 'leads' with all scorers from 'head' that are in the right window
     leads[0] = head.pop();
@@ -351,11 +341,12 @@ final class BooleanScorer extends BulkScorer {
       // special case: only one scorer can match in the current window,
       // we can collect directly
       final BulkScorerAndDoc bulkScorer = leads[0];
-      scoreWindowSingleScorer(bulkScorer, collector, acceptDocs, windowMin, windowMax, max);
+      scoreWindowSingleScorer(
+          bulkScorer, collector, acceptDocs, windowMin, Math.min(max, head.top().next));
       return head.add(bulkScorer);
     } else {
       // general case, collect through a bit set first and then replay
-      scoreWindowMultipleScorers(collector, acceptDocs, windowBase, windowMin, windowMax, maxFreq);
+      scoreWindowMultipleScorers(collector, acceptDocs, windowMin, windowMax, maxFreq);
       return head.top();
     }
   }
