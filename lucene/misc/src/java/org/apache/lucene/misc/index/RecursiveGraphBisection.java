@@ -52,6 +52,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CloseableThreadLocal;
@@ -78,8 +79,21 @@ import org.apache.lucene.util.packed.PackedLongValues;
  */
 public final class RecursiveGraphBisection implements Cloneable {
 
+  private static final int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Minimum required document frequency for terms to be considered.
+   */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
+
+  /**
+   * Minimum size of partitions. The algorithm will stop recursing when reaching partitions below this number of documents.
+   */
   public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
+
+  /**
+   * Default maximum number of iterations per recursion level. Higher numbers of iterations typically don't help significantly.
+   */
   public static final int DEFAULT_MAX_ITERS = 20;
 
   private final int minPartitionSize;
@@ -344,7 +358,7 @@ public final class RecursiveGraphBisection implements Cloneable {
             OfflineSorter.MAX_TEMPFILES,
             2 * Integer.BYTES,
             executor,
-            16) {
+            NUM_PROCESSORS) {
 
           @Override
           protected ByteSequencesReader getReader(ChecksumIndexInput in, String name)
@@ -360,7 +374,8 @@ public final class RecursiveGraphBisection implements Cloneable {
                 if (in.getFilePointer() >= end) {
                   return null;
                 }
-                in.readBytes(ref.bytes(), 0, 2 * Integer.BYTES);
+                // optimized read of 8 bytes
+                BitUtil.VH_LE_LONG.set(ref.bytes(), 0, in.readLong());
                 return ref.get();
               }
             };
@@ -373,7 +388,8 @@ public final class RecursiveGraphBisection implements Cloneable {
               @Override
               public void write(byte[] bytes, int off, int len) throws IOException {
                 assert len == 2 * Integer.BYTES;
-                out.writeBytes(bytes, off, len);
+                // optimized read of 8 bytes
+                out.writeLong((long) BitUtil.VH_LE_LONG.get(bytes, off));
               }
             };
           }
@@ -420,7 +436,7 @@ public final class RecursiveGraphBisection implements Cloneable {
   public static CodecReader reorder(CodecReader reader, Directory tempDir, Terms terms)
       throws IOException {
     ExecutorService executor =
-        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        Executors.newFixedThreadPool(NUM_PROCESSORS);
     try {
       return reorder(
           reader,
