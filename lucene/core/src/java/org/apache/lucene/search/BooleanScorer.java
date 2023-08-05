@@ -256,11 +256,7 @@ final class BooleanScorer extends BulkScorer {
   }
 
   private void scoreWindowMultipleScorers(
-      LeafCollector collector,
-      Bits acceptDocs,
-      int windowMin,
-      int windowMax,
-      int maxFreq)
+      LeafCollector collector, Bits acceptDocs, int windowMin, int windowMax, int maxFreq)
       throws IOException {
     while (maxFreq < minShouldMatch && maxFreq + tail.size() >= minShouldMatch) {
       // a match is still possible
@@ -280,8 +276,7 @@ final class BooleanScorer extends BulkScorer {
       }
       tail.clear();
 
-      scoreWindowIntoBitSetAndReplay(
-          collector, acceptDocs, windowMin, windowMax, leads, maxFreq);
+      scoreWindowIntoBitSetAndReplay(collector, acceptDocs, windowMin, windowMax, leads, maxFreq);
     }
 
     // Push back scorers into head and tail
