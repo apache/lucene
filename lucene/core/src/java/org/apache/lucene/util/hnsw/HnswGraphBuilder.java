@@ -30,6 +30,8 @@ import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
@@ -59,7 +61,6 @@ public final class HnswGraphBuilder<T> {
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int M; // max number of connections on upper layers
-  private final int beamWidth;
   private final double ml;
   private final NeighborArray scratch;
 
@@ -68,8 +69,9 @@ public final class HnswGraphBuilder<T> {
   private final RandomAccessVectorValues<T> vectors;
   private final SplittableRandom random;
   private final HnswGraphSearcher<T> graphSearcher;
-  private final NeighborQueue entryCandidates; // for upper levels of graph search
-  private final NeighborQueue beamCandidates; // for levels of graph where we add the node
+  private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
+  private final GraphBuilderKnnCollector
+      beamCandidates; // for levels of graph where we add the node
 
   final OnHeapHnswGraph hnsw;
 
@@ -138,7 +140,6 @@ public final class HnswGraphBuilder<T> {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = M;
-    this.beamWidth = beamWidth;
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
@@ -151,8 +152,8 @@ public final class HnswGraphBuilder<T> {
             new FixedBitSet(this.vectors.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
-    entryCandidates = new NeighborQueue(1, false);
-    beamCandidates = new NeighborQueue(beamWidth, false);
+    entryCandidates = new GraphBuilderKnnCollector(1);
+    beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     this.initializedNodes = new HashSet<>();
   }
 
@@ -283,20 +284,18 @@ public final class HnswGraphBuilder<T> {
     }
 
     // for levels > nodeLevel search with topk = 1
-    NeighborQueue candidates = entryCandidates;
+    GraphBuilderKnnCollector candidates = entryCandidates;
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates.clear();
-      graphSearcher.searchLevel(
-          candidates, value, 1, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
-      eps = new int[] {candidates.pop()};
+      graphSearcher.searchLevel(candidates, value, level, eps, vectors, hnsw, null);
+      eps = new int[] {candidates.popNode()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     candidates = beamCandidates;
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates.clear();
-      graphSearcher.searchLevel(
-          candidates, value, beamWidth, level, eps, vectors, hnsw, null, Integer.MAX_VALUE);
-      eps = candidates.nodes();
+      graphSearcher.searchLevel(candidates, value, level, eps, vectors, hnsw, null);
+      eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
@@ -319,7 +318,7 @@ public final class HnswGraphBuilder<T> {
     return now;
   }
 
-  private void addDiverseNeighbors(int level, int node, NeighborQueue candidates)
+  private void addDiverseNeighbors(int level, int node, GraphBuilderKnnCollector candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -360,14 +359,14 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
-  private void popToScratch(NeighborQueue candidates) {
+  private void popToScratch(GraphBuilderKnnCollector candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float maxSimilarity = candidates.topScore();
-      scratch.addInOrder(candidates.pop(), maxSimilarity);
+      float maxSimilarity = candidates.minimumScore();
+      scratch.addInOrder(candidates.popNode(), maxSimilarity);
     }
   }
 
@@ -549,5 +548,87 @@ public final class HnswGraphBuilder<T> {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  /**
+   * A restricted, specialized knnCollector that can be used when building a graph.
+   *
+   * <p>Does not support TopDocs
+   */
+  public static final class GraphBuilderKnnCollector implements KnnCollector {
+    private final NeighborQueue queue;
+    private final int k;
+    private long visitedCount;
+    /**
+     * @param k the number of neighbors to collect
+     */
+    public GraphBuilderKnnCollector(int k) {
+      this.queue = new NeighborQueue(k, false);
+      this.k = k;
+    }
+
+    public int size() {
+      return queue.size();
+    }
+
+    public int popNode() {
+      return queue.pop();
+    }
+
+    public int[] popUntilNearestKNodes() {
+      while (size() > k()) {
+        queue.pop();
+      }
+      return queue.nodes();
+    }
+
+    float minimumScore() {
+      return queue.topScore();
+    }
+
+    public void clear() {
+      this.queue.clear();
+      this.visitedCount = 0;
+    }
+
+    @Override
+    public boolean earlyTerminated() {
+      return false;
+    }
+
+    @Override
+    public void incVisitedCount(int count) {
+      this.visitedCount += count;
+    }
+
+    @Override
+    public long visitedCount() {
+      return visitedCount;
+    }
+
+    @Override
+    public long visitLimit() {
+      return Long.MAX_VALUE;
+    }
+
+    @Override
+    public int k() {
+      return k;
+    }
+
+    @Override
+    public boolean collect(int docId, float similarity) {
+      return queue.insertWithOverflow(docId, similarity);
+    }
+
+    @Override
+    public float minCompetitiveSimilarity() {
+      return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
+    }
+
+    @Override
+    public TopDocs topDocs() {
+      throw new IllegalArgumentException();
+    }
   }
 }

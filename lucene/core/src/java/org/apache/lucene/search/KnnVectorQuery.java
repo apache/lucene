@@ -20,7 +20,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.util.Bits;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, float[], int, Bits, int)} to perform nearest
+ * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits)} to perform nearest
  * neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first

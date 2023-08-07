@@ -26,8 +26,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
@@ -449,25 +449,25 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public TopDocs searchNearestVectors(
-      String fieldName, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void searchNearestVectors(
+      String fieldName, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null
-        ? null
-        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
+    if (reader != null) {
+      reader.searchNearestVectors(fieldName, target, knnCollector, acceptDocs);
+    }
   }
 
   @Override
-  public TopDocs searchNearestVectors(
-      String fieldName, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void searchNearestVectors(
+      String fieldName, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
-    return reader == null
-        ? null
-        : reader.searchNearestVectors(fieldName, target, k, acceptDocs, visitedLimit);
+    if (reader != null) {
+      reader.searchNearestVectors(fieldName, target, knnCollector, acceptDocs);
+    }
   }
 
   @Override

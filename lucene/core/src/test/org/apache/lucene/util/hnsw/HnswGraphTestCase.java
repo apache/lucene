@@ -61,6 +61,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
@@ -312,7 +313,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             vectors, getVectorEncoding(), similarityFunction, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // run some searches
-    final NeighborQueue nn;
+    final KnnCollector nn;
     switch (getVectorEncoding()) {
       case FLOAT32:
         nn =
@@ -341,11 +342,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       default:
         throw new IllegalArgumentException("unexpected vector encoding: " + getVectorEncoding());
     }
-    int[] nodes = nn.nodes();
-    assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
+    TopDocs topDocs = nn.topDocs();
+    assertEquals("Number of found results is not equal to [10].", 10, topDocs.scoreDocs.length);
     int sum = 0;
-    for (int node : nodes) {
-      sum += node;
+    for (ScoreDoc node : topDocs.scoreDocs) {
+      sum += node.doc;
     }
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
@@ -372,7 +373,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph hnsw = builder.build(vectors.copy());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, nDoc);
-    final NeighborQueue nn;
+    final KnnCollector nn;
     switch (getVectorEncoding()) {
       case FLOAT32:
         nn =
@@ -401,12 +402,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       default:
         throw new IllegalArgumentException("unexpected vector encoding: " + getVectorEncoding());
     }
-    int[] nodes = nn.nodes();
-    assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
+    TopDocs nodes = nn.topDocs();
+    assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
-    for (int node : nodes) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
-      sum += node;
+    for (ScoreDoc node : nodes.scoreDocs) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      sum += node.doc;
     }
     // We expect to get approximately 100% recall;
     // the lowest docIds are closest to zero; sum(0,9) = 45
@@ -430,7 +431,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // Check the search finds all accepted vectors
     int numAccepted = acceptOrds.cardinality();
-    final NeighborQueue nn;
+    final KnnCollector nn;
     switch (getVectorEncoding()) {
       case FLOAT32:
         nn =
@@ -459,10 +460,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       default:
         throw new IllegalArgumentException("unexpected vector encoding: " + getVectorEncoding());
     }
-    int[] nodes = nn.nodes();
-    assertEquals(numAccepted, nodes.length);
-    for (int node : nodes) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
+    TopDocs nodes = nn.topDocs();
+    assertEquals(numAccepted, nodes.scoreDocs.length);
+    for (ScoreDoc node : nodes.scoreDocs) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
     }
   }
 
@@ -710,7 +711,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int topK = 50;
     int visitedLimit = topK + random().nextInt(5);
-    final NeighborQueue nn;
+    final KnnCollector nn;
     switch (getVectorEncoding()) {
       case FLOAT32:
         nn =
@@ -739,7 +740,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       default:
         throw new IllegalArgumentException("unexpected vector encoding: " + getVectorEncoding());
     }
-    assertTrue(nn.incomplete());
+    assertTrue(nn.earlyTerminated());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
   }
@@ -939,7 +940,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     int totalMatches = 0;
     for (int i = 0; i < 100; i++) {
-      final NeighborQueue actual;
+      final KnnCollector actual;
       T query = randomVector(dim);
       switch (getVectorEncoding()) {
         case BYTE:
@@ -969,9 +970,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         default:
           throw new IllegalArgumentException("unexpected vector encoding: " + getVectorEncoding());
       }
-      while (actual.size() > topK) {
-        actual.pop();
-      }
+
+      TopDocs topDocs = actual.topDocs();
       NeighborQueue expected = new NeighborQueue(topK, false);
       for (int j = 0; j < size; j++) {
         if (vectors.vectorValue(j) != null && (acceptOrds == null || acceptOrds.get(j))) {
@@ -989,8 +989,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           }
         }
       }
-      assertEquals(topK, actual.size());
-      totalMatches += computeOverlap(actual.nodes(), expected.nodes());
+      int[] actualTopKDocs = new int[topK];
+      for (int j = 0; j < topK; j++) {
+        actualTopKDocs[j] = topDocs.scoreDocs[j].doc;
+      }
+      totalMatches += computeOverlap(actualTopKDocs, expected.nodes());
     }
     double overlap = totalMatches / (double) (100 * topK);
     System.out.println("overlap=" + overlap + " totalMatches=" + totalMatches);
@@ -1004,7 +1007,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int size = atLeast(100);
     int dim = atLeast(10);
     AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
-    int topK = 5;
     HnswGraphBuilder<T> builder =
         HnswGraphBuilder.create(
             vectors, getVectorEncoding(), similarityFunction, 10, 30, random().nextLong());
@@ -1012,9 +1014,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
     List<T> queries = new ArrayList<>();
-    List<NeighborQueue> expects = new ArrayList<>();
+    List<KnnCollector> expects = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      NeighborQueue expect = null;
+      KnnCollector expect = null;
       T query = randomVector(dim);
       queries.add(query);
       switch (getVectorEncoding()) {
@@ -1042,21 +1044,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                   acceptOrds,
                   Integer.MAX_VALUE);
       }
-      ;
-      while (expect.size() > topK) {
-        expect.pop();
-      }
       expects.add(expect);
     }
 
     ExecutorService exec =
         Executors.newFixedThreadPool(4, new NamedThreadFactory("onHeapHnswSearch"));
-    List<Future<NeighborQueue>> futures = new ArrayList<>();
+    List<Future<KnnCollector>> futures = new ArrayList<>();
     for (T query : queries) {
       futures.add(
           exec.submit(
               () -> {
-                NeighborQueue actual = null;
+                KnnCollector actual = null;
                 try {
 
                   switch (getVectorEncoding()) {
@@ -1084,25 +1082,29 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                               acceptOrds,
                               Integer.MAX_VALUE);
                   }
-                  ;
                 } catch (IOException ioe) {
                   throw new RuntimeException(ioe);
-                }
-                while (actual.size() > topK) {
-                  actual.pop();
                 }
                 return actual;
               }));
     }
-    List<NeighborQueue> actuals = new ArrayList<>();
-    for (Future<NeighborQueue> future : futures) {
+    List<KnnCollector> actuals = new ArrayList<>();
+    for (Future<KnnCollector> future : futures) {
       actuals.add(future.get(10, TimeUnit.SECONDS));
     }
     exec.shutdownNow();
     for (int i = 0; i < expects.size(); i++) {
-      NeighborQueue expect = expects.get(i);
-      NeighborQueue actual = actuals.get(i);
-      assertArrayEquals(expect.nodes(), actual.nodes());
+      TopDocs expect = expects.get(i).topDocs();
+      TopDocs actual = actuals.get(i).topDocs();
+      int[] expectedDocs = new int[expect.scoreDocs.length];
+      for (int j = 0; j < expect.scoreDocs.length; j++) {
+        expectedDocs[j] = expect.scoreDocs[j].doc;
+      }
+      int[] actualDocs = new int[actual.scoreDocs.length];
+      for (int j = 0; j < actual.scoreDocs.length; j++) {
+        actualDocs[j] = actual.scoreDocs[j].doc;
+      }
+      assertArrayEquals(expectedDocs, actualDocs);
     }
   }
 

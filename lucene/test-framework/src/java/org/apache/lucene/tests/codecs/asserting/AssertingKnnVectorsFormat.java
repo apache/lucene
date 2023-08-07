@@ -31,7 +31,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 
@@ -139,29 +139,23 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
-      TopDocs hits = delegate.search(field, target, k, acceptDocs, visitedLimit);
-      assert hits != null;
-      assert hits.scoreDocs.length <= k;
-      return hits;
+      delegate.search(field, target, knnCollector, acceptDocs);
     }
 
     @Override
-    public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
-      TopDocs hits = delegate.search(field, target, k, acceptDocs, visitedLimit);
-      assert hits != null;
-      assert hits.scoreDocs.length <= k;
-      return hits;
+      delegate.search(field, target, knnCollector, acceptDocs);
     }
 
     @Override
