@@ -1224,10 +1224,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   private float[] randomVector(int dim) {
     assert dim > 0;
     float[] v = new float[dim];
-    double squareSum = 0f;
+    double squareSum = 0.0;
     // keep generating until we don't get a zero-length vector
-    while (squareSum == 0f) {
-      squareSum = 0f;
+    while (squareSum == 0.0) {
+      squareSum = 0.0;
       for (int i = 0; i < dim; i++) {
         v[i] = random().nextFloat();
         squareSum += v[i] * v[i];
