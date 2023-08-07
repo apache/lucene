@@ -1222,15 +1222,23 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   private float[] randomVector(int dim) {
+    assert dim > 0;
     float[] v = new float[dim];
-    for (int i = 0; i < dim; i++) {
-      v[i] = random().nextFloat();
+    double squareSum = 0f;
+    // keep generating until we don't get a zero-length vector
+    while (squareSum == 0f) {
+      squareSum = 0f;
+      for (int i = 0; i < dim; i++) {
+        v[i] = random().nextFloat();
+        squareSum += v[i] * v[i];
+      }
     }
     VectorUtil.l2normalize(v);
     return v;
   }
 
   private byte[] randomVector8(int dim) {
+    assert dim > 0;
     float[] v = randomVector(dim);
     byte[] b = new byte[dim];
     for (int i = 0; i < dim; i++) {
