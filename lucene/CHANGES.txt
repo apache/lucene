@@ -75,7 +75,7 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
-* GITHUB#12447: Hunspell: speed up the dictionary enumeration (Peter Gromov)
+* GITHUB#12447, GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
 * GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
 
