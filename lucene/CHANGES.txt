@@ -40,6 +40,8 @@ Improvements
 
 * GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
 
+GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
 Optimizations
 ---------------------
 

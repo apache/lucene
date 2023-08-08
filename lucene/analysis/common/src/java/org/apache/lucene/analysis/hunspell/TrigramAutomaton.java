@@ -33,7 +33,7 @@ class TrigramAutomaton {
   private final CharacterRunAutomaton automaton;
   private final int[] state2Score;
   private final FixedBitSet countedSubstrings;
-  private final char minChar;
+  private final char minChar, maxChar;
 
   TrigramAutomaton(String s1) {
     Map<String, Integer> substringCounts = new HashMap<>();
@@ -42,6 +42,7 @@ class TrigramAutomaton {
     int initialState = builder.createState();
 
     minChar = (char) s1.chars().min().orElseThrow();
+    maxChar = (char) s1.chars().max().orElseThrow();
 
     for (int start = 0; start < s1.length(); start++) {
       int limit = Math.min(s1.length(), start + N);
@@ -81,7 +82,7 @@ class TrigramAutomaton {
   int ngramScore(CharsRef s2) {
     countedSubstrings.clear();
 
-    int score1 = 0, score2 = 0, score3 = 0; // scores for substrings of length 1, 2 and 3
+    int score = 0;
 
     // states of running the automaton on substrings [i-1, i) and [i-2, i)
     int state1 = -1, state2 = -1;
@@ -89,7 +90,7 @@ class TrigramAutomaton {
     int limit = s2.length + s2.offset;
     for (int i = s2.offset; i < limit; i++) {
       char c = transformChar(s2.chars[i]);
-      if (c < minChar) {
+      if (c < minChar || c > maxChar) {
         state1 = state2 = -1;
         continue;
       }
@@ -97,27 +98,20 @@ class TrigramAutomaton {
 
       int state3 = state2 <= 0 ? 0 : automaton.step(state2, c);
       if (state3 > 0) {
-        score3 += substringScore(state3, countedSubstrings);
+        score += substringScore(state3, countedSubstrings);
       }
 
       state2 = state1 <= 0 ? 0 : automaton.step(state1, c);
       if (state2 > 0) {
-        score2 += substringScore(state2, countedSubstrings);
+        score += substringScore(state2, countedSubstrings);
       }
 
       state1 = automaton.step(0, c);
       if (state1 > 0) {
-        score1 += substringScore(state1, countedSubstrings);
+        score += substringScore(state1, countedSubstrings);
       }
     }
 
-    int score = score1;
-    if (score1 >= 2) {
-      score += score2;
-      if (score2 >= 2) {
-        score += score3;
-      }
-    }
     return score;
   }
 
