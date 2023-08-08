@@ -21,6 +21,7 @@ public class PimIndexInfo implements Serializable {
     transient Directory pimDir;
     final int numDpus;
     final int numSegments;
+    final int numDpuSegments;
     final String segmentCommitName[];
     final int startDoc[];
 
@@ -30,11 +31,12 @@ public class PimIndexInfo implements Serializable {
      * @param nbDpus the number of DPUs
      * @param segmentInfos SegmentInfos of the Lucene index
      */
-    PimIndexInfo(Directory pimDir, int nbDpus, SegmentInfos segmentInfos) {
+    PimIndexInfo(Directory pimDir, int nbDpus, int numDpuSegments, SegmentInfos segmentInfos) {
 
         this.pimDir = pimDir;
         this.numSegments = segmentInfos.size();
         this.numDpus = nbDpus;
+        this.numDpuSegments = numDpuSegments;
         segmentCommitName = new String[numSegments];
         startDoc = new int[numSegments];
 
@@ -59,6 +61,13 @@ public class PimIndexInfo implements Serializable {
      */
     public int getNumSegments() {
         return numSegments;
+    }
+
+    /**
+     * @return number of DPU segments
+     */
+    public int getNumDpuSegments() {
+        return numDpuSegments;
     }
 
     /**
@@ -87,6 +96,7 @@ public class PimIndexInfo implements Serializable {
     public IndexInput getFieldFileInput(IndexInput in, int dpuId) throws IOException {
 
         seekToDpu(in, dpuId);
+        in.readByte(); // nb DPU segments
         long fieldSize = in.readVLong();
         if(fieldSize == 0) {
             // empty DPU, no docs were added
@@ -107,6 +117,7 @@ public class PimIndexInfo implements Serializable {
     public IndexInput getBlockTableFileInput(IndexInput in, int dpuId) throws IOException {
 
         seekToDpu(in, dpuId);
+        in.readByte(); // nb DPU segments
         long blockTableOffset = in.readVLong();
         if(blockTableOffset == 0) {
             // empty DPU, no docs were added
@@ -127,6 +138,7 @@ public class PimIndexInfo implements Serializable {
     public IndexInput getBlocksFileInput(IndexInput in, int dpuId) throws IOException {
 
         seekToDpu(in, dpuId);
+        in.readByte(); // nb segments
         in.readVLong();
         long blockListOffset = in.readVLong();
         if(blockListOffset == 0) {
@@ -147,6 +159,7 @@ public class PimIndexInfo implements Serializable {
     public IndexInput getPostingsFileInput(IndexInput in, int dpuId) throws IOException {
 
         seekToDpu(in, dpuId);
+        in.readByte(); // nb segments
         in.readVLong();
         in.readVLong();
         long postingsOffset = in.readVLong();

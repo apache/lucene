@@ -8,7 +8,8 @@ typedef struct _query_result {
 
 typedef struct _query_buffer_info {
     uint32_t buffer_id;
-    uint16_t buffer_size;
+    uint8_t buffer_size;
+    uint8_t segment_id;
     uint16_t query_id;
 } query_buffer_info_t;
 

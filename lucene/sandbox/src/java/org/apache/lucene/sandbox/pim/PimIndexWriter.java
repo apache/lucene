@@ -13,11 +13,13 @@ import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.PriorityQueue;
 
@@ -35,7 +37,7 @@ import java.util.Arrays;
 /**
  * Extends {@link IndexWriter} to build the term indexes for each DPU after each commit.
  * The term indexes for DPUs are split by the Lucene internal docId, so that each DPU
- * receives the term index for an exclusive range of docIds, and for each index segment.
+ * receives the term index for an exclusive set of docIds, and for each index segment.
  * <p>
  * The PIM index for one DPU consists in four parts:
  * <p>
@@ -63,6 +65,18 @@ import java.util.Arrays;
  * 4) The postings lists
  * The postings list of a term contains the list of docIDs and positions where
  * the term appears. The docIDs and positions are delta-encoded.
+ *
+ * The set of docIds assigned to a DPU are also split into a number of DPU segments specified by the PimConfig.
+ * Each DPU segment is assigned a static range of docIds of constant size.
+ * For instance, if there is a total of 1024 documents in the index, and the number of DPU segments is 8,
+ * the first DPU segment is assigned the range [0,128[, the second the range [128,256[ etc.
+ * When a docId is assigned to a particular DPU, it is put in the correct segment based on the range.
+ * For instance, if the DPU 0 is assigned docIds 8, 72, 224, 756, it will have 3 non-empty segments,
+ * the first one, the second one and the sixth one.
+ * The posting list of each term is separated in segments, and the postings information for a term
+ * contains a pointer to jump to a given segment.
+ * Using DPU segments enable different HW threads of the DPU to work
+ * on different DPU segments in parallel for a given query, improving the overall load balancing.
  */
 public class PimIndexWriter extends IndexWriter {
 
@@ -74,7 +88,8 @@ public class PimIndexWriter extends IndexWriter {
 
     private final PimConfig pimConfig;
     private final Directory pimDirectory;
-    private static final boolean enableStats = false;
+    private static final boolean ENABLE_STATS = false;
+    private static final boolean DEBUG_INDEX = false;
     private PimIndexInfo pimIndexInfo;
 
     public PimIndexWriter(Directory directory, Directory pimDirectory,
@@ -96,6 +111,9 @@ public class PimIndexWriter extends IndexWriter {
         long start = System.nanoTime();
         SegmentInfos segmentInfos = SegmentInfos.readCommit(getDirectory(),
                 SegmentInfos.getLastCommitSegmentsFileName(getDirectory()));
+
+        int totalDoc = segmentInfos.totalMaxDoc();
+        int nbDocPerDPUSegment = (int) Math.ceil((double) (totalDoc) / pimConfig.getNumDpuSegments());
         try (IndexReader indexReader = DirectoryReader.open(getDirectory())) {
             List<LeafReaderContext> leaves = indexReader.leaves();
             // Iterate on segments.
@@ -110,7 +128,7 @@ public class PimIndexWriter extends IndexWriter {
                         + " maxDoc=" + segmentCommitInfo.info.maxDoc()
                         + " delCount=" + segmentCommitInfo.getDelCount());
                 // Create a DpuTermIndexes that will build the term index for each DPU separately.
-                try (DpuTermIndexes dpuTermIndexes = new DpuTermIndexes(segmentCommitInfo, reader.getFieldInfos().size())) {
+                try (DpuTermIndexes dpuTermIndexes = new DpuTermIndexes(segmentCommitInfo, nbDocPerDPUSegment)) {
                     for (FieldInfo fieldInfo : reader.getFieldInfos()) {
                         // For each field in the term index.
                         // There will be a different term index sub-part per segment, per field, and per DPU.
@@ -128,14 +146,14 @@ public class PimIndexWriter extends IndexWriter {
                 }
             }
             // successfully updated the PIM index, register it
-            writePimIndexInfo(segmentInfos);
+            writePimIndexInfo(segmentInfos, pimConfig.getNumDpuSegments());
         }
         System.out.printf("\nPIM index creation took %.2f secs\n", (System.nanoTime() - start) * 1e-9);
     }
 
-    private void writePimIndexInfo(SegmentInfos segmentInfos) throws IOException {
+    private void writePimIndexInfo(SegmentInfos segmentInfos, int numDpuSegments) throws IOException {
 
-        pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, segmentInfos);
+        pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, numDpuSegments, segmentInfos);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ObjectOutputStream objectOutputStream
                 = new ObjectOutputStream(baos);
@@ -159,10 +177,11 @@ public class PimIndexWriter extends IndexWriter {
         private PostingsEnum postingsEnum;
         private final ByteBuffersDataOutput posBuffer;
         private FieldInfo fieldInfo;
+        private final int nbDocPerDpuSegment;
         PriorityQueue<DpuIndexSize> dpuPrQ;
         static final int blockSize = 8;
 
-        DpuTermIndexes(SegmentCommitInfo segmentCommitInfo, int numFields) throws IOException {
+        DpuTermIndexes(SegmentCommitInfo segmentCommitInfo, int nbDocPerDpuSegment) throws IOException {
             //TODO: The num docs per DPU could be
             // 1- per field
             // 2- adapted to the doc size, but it would require to keep the doc size info
@@ -171,6 +190,7 @@ public class PimIndexWriter extends IndexWriter {
             dpuForDoc = new int[segmentCommitInfo.info.maxDoc()];
             Arrays.fill(dpuForDoc, -1);
             termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
+            this.nbDocPerDpuSegment = nbDocPerDpuSegment;
 
             System.out.println("Directory " + getDirectory() + " --------------");
             for (String fileNames : getDirectory().listAll()) {
@@ -187,7 +207,7 @@ public class PimIndexWriter extends IndexWriter {
                         createIndexOutput(DPU_TERM_BLOCK_TABLE_INDEX_EXTENSION, i, fileNames),
                         createIndexOutput(DPU_TERM_BLOCK_INDEX_EXTENSION, i, fileNames),
                         createIndexOutput(DPU_TERM_POSTINGS_INDEX_EXTENSION, i, fileNames),
-                        numFields, blockSize);
+                        blockSize);
             }
             posBuffer = ByteBuffersDataOutput.newResettableInstance();
 
@@ -238,11 +258,9 @@ public class PimIndexWriter extends IndexWriter {
             for (DpuTermIndex termIndex : termIndexes) {
                 termIndex.resetForNextField();
             }
-            System.out.println("  field " + fieldInfo.name);
 
             while (termsEnum.next() != null) {
                 BytesRef term = termsEnum.term();
-                //System.out.println("   " + term.utf8ToString());
                 for (DpuTermIndex termIndex : termIndexes) {
                     termIndex.resetForNextTerm();
                 }
@@ -310,7 +328,7 @@ public class PimIndexWriter extends IndexWriter {
             dpuIndexAddr[0] = 0;
 
             for (DpuTermIndex termIndex : termIndexes) {
-                if (enableStats) {
+                if (ENABLE_STATS) {
                     numTerms += termIndex.numTerms;
                     numBlockTableBytes += termIndex.getInfo().blockTableSize;
                     numBlockBytes += termIndex.getInfo().blockListSize;
@@ -328,7 +346,8 @@ public class PimIndexWriter extends IndexWriter {
                             + termIndex.getInfo().totalSize
                             + new ByteCountDataOutput(dpuIndexBlockTableAddr[i]).getByteCount()
                             + new ByteCountDataOutput(dpuIndexBlockListAddr[i]).getByteCount()
-                            + new ByteCountDataOutput(dpuIndexPostingsAddr[i]).getByteCount();
+                            + new ByteCountDataOutput(dpuIndexPostingsAddr[i]).getByteCount()
+                            + 1;    // byte specifiying the number of segments
             }
 
             // merge all DPU indexes into one compound file
@@ -343,6 +362,8 @@ public class PimIndexWriter extends IndexWriter {
             for (int i = 0; i < pimConfig.getNumDpus(); ++i) {
                 // write offset to each section
                 assert compoundOutput.getFilePointer() == dpuIndexAddr[i] + offset;
+                compoundOutput.writeByte((byte) (Integer.BYTES * 8 -
+                        Integer.numberOfLeadingZeros(pimConfig.getNumDpuSegments() - 1)));
                 compoundOutput.writeVLong(dpuIndexBlockTableAddr[i]);
                 compoundOutput.writeVLong(dpuIndexBlockListAddr[i]);
                 compoundOutput.writeVLong(dpuIndexPostingsAddr[i]);
@@ -362,7 +383,28 @@ public class PimIndexWriter extends IndexWriter {
             }
             compoundOutput.close();
 
-            if (enableStats) {
+            if (DEBUG_INDEX) {
+                IndexInput in = createIndexInput(DPU_INDEX_COMPOUND_EXTENSION,
+                        pimConfig.getNumDpus());
+                // skip number of DPUs and offsets
+                in.readVInt();
+                in.readVLong();
+                System.out.println("\n------------ FULL PIM INDEX -------------");
+                System.out.printf("[%d]=", in.length() - in.getFilePointer());
+                while (in.getFilePointer() < in.length()) {
+                    System.out.printf("0x%x", in.readByte());
+                    if (in.getFilePointer() + 1 < in.length())
+                        System.out.print(", ");
+                    else
+                        System.out.println();
+                    if ((in.getFilePointer() % 20) == 0)
+                        System.out.println();
+                }
+                in.close();
+            }
+
+
+            if (ENABLE_STATS) {
                 ByteArrayOutputStream statsOut = new ByteArrayOutputStream();
                 PrintWriter p = new PrintWriter(statsOut, true);
                 p.println("\n------------ FULL PIM INDEX STATS -------------");
@@ -421,6 +463,8 @@ public class PimIndexWriter extends IndexWriter {
             int doc;
             long numTerms;
             long lastTermPostingAddress;
+            int nbDpuSegmentsWritten;
+            final ByteBuffersDataOutput segmentSkipBuffer;
             /**
              * number of terms stored in one block of the index.
              * each block is scanned linearly for searching a term.
@@ -439,7 +483,7 @@ public class PimIndexWriter extends IndexWriter {
             DpuTermIndex(int dpuIndex,
                          IndexOutput fieldTableOutput, IndexOutput blockTablesOutput,
                          IndexOutput blocksOutput, IndexOutput postingsOutput,
-                         int numFields, int blockCapacity) {
+                         int blockCapacity) {
                 this.dpuIndex = dpuIndex;
                 this.fieldList = new ArrayList<>();
                 this.fieldWritten = false;
@@ -447,6 +491,8 @@ public class PimIndexWriter extends IndexWriter {
                 this.doc = 0;
                 this.numTerms = 0;
                 this.lastTermPostingAddress = -1L;
+                this.nbDpuSegmentsWritten = 0;
+                this.segmentSkipBuffer = ByteBuffersDataOutput.newResettableInstance();
                 this.blockCapacity = blockCapacity;
                 this.currBlockSz = 0;
                 this.blockList = new ArrayList<>();
@@ -454,7 +500,7 @@ public class PimIndexWriter extends IndexWriter {
                 this.blocksTableOutput = blockTablesOutput;
                 this.blocksOutput = blocksOutput;
                 this.postingsOutput = postingsOutput;
-                if (enableStats) {
+                if (ENABLE_STATS) {
                     this.statsOut = new ByteArrayOutputStream();
                 }
                 this.info = null;
@@ -464,6 +510,7 @@ public class PimIndexWriter extends IndexWriter {
 
                 fieldWritten = false;
                 lastTermPostingAddress = -1L;
+                nbDpuSegmentsWritten = 0;
             }
 
             void resetForNextTerm() {
@@ -478,9 +525,9 @@ public class PimIndexWriter extends IndexWriter {
                 if (currBlockSz != 0) {
                     if (!termWritten) {
 
-                        // write byte size of the last term postings (if any)
-                        if (this.lastTermPostingAddress >= 0)
-                            blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+                        // write byte size of the last term's last segment postings (if any)
+                        // and write the segment skip info
+                        finishDpuSegmentsInfo();
                         this.lastTermPostingAddress = postingsOutput.getFilePointer();
 
                         // first check if the current block exceeds its capacity
@@ -501,7 +548,6 @@ public class PimIndexWriter extends IndexWriter {
 
                         // write pointer to the posting list for this term (in posting file)
                         blocksOutput.writeVLong(postingsOutput.getFilePointer());
-
                         currBlockSz++;
                     }
                 } else {
@@ -516,9 +562,9 @@ public class PimIndexWriter extends IndexWriter {
                     termWritten = true;
                     currBlockSz++;
 
-                    // write byte size of the postings of the previous term (if any)
-                    if (this.lastTermPostingAddress >= 0)
-                        blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+                    // write byte size of the last term's last segment postings (if any)
+                    // and write the segment skip info
+                    finishDpuSegmentsInfo();
                     this.lastTermPostingAddress = postingsOutput.getFilePointer();
 
                     // write pointer to the posting list for this term (in posting file)
@@ -526,14 +572,39 @@ public class PimIndexWriter extends IndexWriter {
                 }
 
                 if (!fieldWritten) {
-                    //System.out.println("Add field:" + fieldInfo.name + " to field table addr:" +  blocksTableOutput.getFilePointer());
                     fieldList.add(new BytesRefToDataBlockTreeMap.Block(new BytesRef(fieldInfo.getName()),
                             blocksTableOutput.getFilePointer()));
                     fieldWritten = true;
                 }
             }
 
+            private int getDpuSegment(int doc) {
+                return doc / nbDocPerDpuSegment;
+            }
+
             void writeDoc(int doc) throws IOException {
+
+                int lastDocDpuSegment = getDpuSegment(this.doc);
+                int newDocDpuSegment = getDpuSegment(doc);
+
+                if (lastDocDpuSegment != newDocDpuSegment) {
+                    // should have already written a term when reaching here
+                    assert (this.lastTermPostingAddress >= 0);
+                    segmentSkipBuffer.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+                    this.lastTermPostingAddress = postingsOutput.getFilePointer();
+                    nbDpuSegmentsWritten++;
+                    lastDocDpuSegment++;
+
+                    // write size of zero for all segments that were skipped
+                    while (lastDocDpuSegment != newDocDpuSegment) {
+                        segmentSkipBuffer.writeVLong(0);
+                        lastDocDpuSegment++;
+                        nbDpuSegmentsWritten++;
+                    }
+
+                    // write the new doc without delta encoding
+                    this.doc = 0;
+                }
                 int deltaDoc = doc - this.doc;
                 assert deltaDoc > 0 || doc == 0 && deltaDoc == 0;
                 postingsOutput.writeVInt(deltaDoc);
@@ -578,6 +649,21 @@ public class PimIndexWriter extends IndexWriter {
                 //System.out.println();
             }
 
+            void finishDpuSegmentsInfo() throws IOException {
+                if (this.lastTermPostingAddress >= 0) {
+                    segmentSkipBuffer.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
+                    nbDpuSegmentsWritten++;
+                    for (int i = nbDpuSegmentsWritten; i < pimConfig.getNumDpuSegments(); i++)
+                        segmentSkipBuffer.writeVLong(0);
+                    blocksOutput.writeVLong(segmentSkipBuffer.size());
+                    segmentSkipBuffer.copyTo(blocksOutput);
+                    ByteBuffersDataInput in = segmentSkipBuffer.toDataInput();
+
+                    segmentSkipBuffer.reset();
+                    nbDpuSegmentsWritten = 0;
+                }
+            }
+
             void writeBlockTable() throws IOException {
 
                 if (blockList.size() == 0)
@@ -587,7 +673,7 @@ public class PimIndexWriter extends IndexWriter {
                         new BytesRefToDataBlockTreeMap.BlockList(blockList, blocksOutput.getFilePointer()));
                 table.write(blocksTableOutput);
 
-                if (enableStats) {
+                if (ENABLE_STATS) {
 
                     PrintWriter p = new PrintWriter(statsOut, true);
 
@@ -619,7 +705,7 @@ public class PimIndexWriter extends IndexWriter {
                         new BytesRefToDataBlockTreeMap.BlockList(fieldList, blocksTableOutput.getFilePointer()));
                 table.write(fieldTableOutput);
 
-                if (enableStats) {
+                if (ENABLE_STATS) {
                     PrintWriter p = new PrintWriter(statsOut, true);
                     p.println("#fields               : " + fieldList.size());
                     p.println("#bytes field table    : " + fieldTableOutput.getFilePointer());
@@ -631,11 +717,8 @@ public class PimIndexWriter extends IndexWriter {
                 // at the end of a field,
                 // write the block table
                 try {
-                    // write byte size of the postings of the last term (if any)
-                    if (this.lastTermPostingAddress >= 0)
-                        blocksOutput.writeVLong(postingsOutput.getFilePointer() - this.lastTermPostingAddress);
-
-                    //System.out.println("Block table dpu:" + dpuIndex + " field:" + fieldInfo.name);
+                    // write byte size of the postings of the last term (if any) and write the segment skip info
+                    finishDpuSegmentsInfo();
                     writeBlockTable();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -646,7 +729,7 @@ public class PimIndexWriter extends IndexWriter {
 
                 //System.out.println("Writing field table dpu:" + dpuIndex + " nb fields " + fieldList.size());
                 writeFieldTable();
-                if (enableStats) {
+                if (ENABLE_STATS) {
                     PrintWriter p = new PrintWriter(statsOut, true);
                     p.println("\n#TOTAL DPU" + dpuIndex);
                     p.println("#terms for DPU        : " + numTerms);
@@ -669,6 +752,7 @@ public class PimIndexWriter extends IndexWriter {
                 long blockListSize;
                 long postingsSize;
                 long totalSize;
+
                 IndexInfo(DpuTermIndex termIndex) {
                     this.fieldTableSize = termIndex.fieldTableOutput.getFilePointer();
                     this.blockTableSize = termIndex.blocksTableOutput.getFilePointer();
@@ -679,7 +763,9 @@ public class PimIndexWriter extends IndexWriter {
                 }
             }
 
-            IndexInfo getInfo() { return info; }
+            IndexInfo getInfo() {
+                return info;
+            }
 
             private long getIndexSize() {
                 return fieldTableOutput.getFilePointer() +

@@ -32,7 +32,7 @@ public class PimSystemManager2 implements PimSystemManager {
         static final PimSystemManager2 INSTANCE = new PimSystemManager2();
     }
 
-    private static final boolean USE_SOFTWARE_MODEL = false;
+    private static final boolean USE_SOFTWARE_MODEL = true;
 
     // TODO: Should there be a queue per query type, with a different max number of queries?
     private static final int MAX_NUM_QUERIES = 128;

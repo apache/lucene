@@ -1,7 +1,6 @@
 #include <defs.h>
 
 #include "parser.h"
-#include "term_lookup.h"
 
 typedef struct _did_matcher {
     parser_t *parser;
@@ -18,36 +17,19 @@ static did_matcher_t matchers[NR_TASKLETS][MAX_NR_TERMS];
 // =============================================================================
 // INIT MATCHERS FUNCTIONS
 // =============================================================================
-did_matcher_t *setup_matchers(query_parser_t* query_parser, uintptr_t index)
+did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings)
 {
-    // lookup the field block table address, if not found return 0
-    // do it only once for all the terms
-    uintptr_t field_address;
-    term_t term;
-    read_field(query_parser, &term);
-    if(!get_field_address(index, &term, &field_address))
-        return 0;
-
-    // setup the postings parser for each term
-    did_matcher_t *tasklet_matchers = matchers[me()];
-    uint32_t nr_terms;
-    read_nr_terms(query_parser, &nr_terms);
-    if(nr_terms > NB_DECODERS_FOR_POSTINGS) {
-        // it is not possible to handle the query as it requires
-        // a larger number of decoders than the total in the pool
-        // TODO error handling back to the host
-        return 0;
-    }
     allocate_parsers(nr_terms);
+    did_matcher_t* tasklet_matchers = matchers[me()];
     for (int each_term = 0; each_term < nr_terms; each_term++) {
         did_matcher_t *matcher = &tasklet_matchers[each_term];
-        read_term(query_parser, &term);
-        matcher->parser = setup_parser(field_address, &term, each_term);
-        if(matcher->parser == 0) {
-            // if the parser is null, this means the term was not found in the index
+        if(postings[each_term].size == 0) {
+            // this means there are no postings for this term for this segment
             release_parsers(nr_terms);
             return 0;
         }
+        matcher->parser = setup_parser(each_term, postings[each_term].addr,
+                                        postings[each_term].size);
     }
     return tasklet_matchers;
 }

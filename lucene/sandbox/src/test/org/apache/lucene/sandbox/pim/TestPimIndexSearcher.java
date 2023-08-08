@@ -129,7 +129,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     public void testTermMoreText() throws Exception {
 
         initDirectories();
-        PimConfig pimConfig = new PimConfig();
+        PimConfig pimConfig = new PimConfig(2, 2);
         PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
 
         System.out.println("\nTEST PIM INDEX SEARCH (MORE TEXT)");
@@ -214,7 +214,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     public void testPhraseMoreText() throws Exception {
 
         initDirectories();
-        PimConfig pimConfig = new PimConfig();
+        PimConfig pimConfig = new PimConfig(2, 2);
         PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
 
         System.out.println("\nTEST PIM INDEX SEARCH (PHRASE MORE TEXT)");
@@ -304,7 +304,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     public void testPimPhraseQuery() throws Exception {
 
         initDirectories();
-        PimConfig pimConfig = new PimConfig();
+        PimConfig pimConfig = new PimConfig(2, 4);
         PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
 
         // load the index to PIM system

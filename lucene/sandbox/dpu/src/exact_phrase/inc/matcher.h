@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "query_parser.h"
+#include "postings_util.h"
 
 /**
  * structure used to match document id and positions of different terms in the phrase
@@ -11,10 +12,10 @@
 typedef struct _did_matcher did_matcher_t;
 
 /**
- * Setup matchers for a given query. Internally lookup the posting addresses
- * and initialize one decoder per term at the posting address
+ * Setup matchers to decode the posting addresses and sizes passed as input for each term
+ * initialize one decoder per term at the posting address
  */
-did_matcher_t *setup_matchers(query_parser_t* query_parser, uintptr_t index);
+did_matcher_t *setup_matchers(uint32_t nr_terms, postings_info_t *postings);
 /**
  * Releases the matchers. Internally releases the decoders used by the matchers
  */

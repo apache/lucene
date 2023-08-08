@@ -27,7 +27,7 @@ bool parse_pos(parser_t *parser, uint32_t *pos);
 void abort_parse_pos(parser_t *parser);
 
 void allocate_parsers(uint32_t nr_terms);
-parser_t *setup_parser(uintptr_t field_block_address, const term_t* term, uint32_t id);
+parser_t *setup_parser(uint32_t term_id, uintptr_t postings_address, uint32_t byte_size);
 void release_parsers(uint32_t nr_terms);
 
 #endif /* PARSER_H_ */

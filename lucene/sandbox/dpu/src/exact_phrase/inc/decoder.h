@@ -77,6 +77,11 @@ int decode_zigzag_from(decoder_t *decoder);
 void seek_decoder(decoder_t *decoder, uint32_t target_address);
 
 /**
+* Skip nb_bytes from the decoder.
+*/
+void skip_bytes_decoder(decoder_t *decoder, uint32_t nb_bytes);
+
+/**
 * Get the absolute address of the current position in the decoder.
 */
 unsigned int get_absolute_address_from(decoder_t *decoder);

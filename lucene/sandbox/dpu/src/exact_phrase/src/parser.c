@@ -38,14 +38,8 @@ static parser_t* initialize_parser(uintptr_t mram_addr, uint32_t byte_size, uint
     return parser;
 }
 
-parser_t* setup_parser(uintptr_t field_block_address, const term_t* term, uint32_t term_id)
+parser_t* setup_parser(uint32_t term_id, uintptr_t postings_address, uint32_t byte_size)
 {
-    uint32_t byte_size = 0;
-    uintptr_t postings_address = 0;
-
-    if(!get_term_postings(field_block_address, term, &postings_address, &byte_size))
-        return 0;
-
     return initialize_parser(postings_address, byte_size, term_id);
 }
 

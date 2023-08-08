@@ -19,6 +19,7 @@ static uintptr_t index_begin_addr = 0;
 static uint32_t block_table_offset = 0;
 static uint32_t block_list_offset = 0;
 static uint32_t postings_offset = 0;
+static uint32_t nr_segments = 0;
 
 // compare terms, return 0 if equal, < 0 if term1 < term2, > 0 if term1 > term2
 static int compare_terms(decoder_t* decoder_term1, int32_t term1_length,
@@ -202,6 +203,7 @@ bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_ad
     initialize_decoder(decoder, index);
 
     // read index offsets
+    nr_segments = 1 << decode_byte_from(decoder);
     block_table_offset = decode_vint_from(decoder);
     block_list_offset = decode_vint_from(decoder);
     postings_offset = decode_vint_from(decoder);
@@ -224,15 +226,25 @@ bool get_field_address(uintptr_t index, const term_t* field, uintptr_t* field_ad
     return true;
 }
 
+static void decode_postings_address_foreach_segment(decoder_t* decoder,
+                                                    uint32_t offset,
+                                                    postings_info_t* postings_for_segments) {
+    int addr = offset + decode_vint_from(decoder);
+    decode_vint_from(decoder); // ignore skip info
+    for(int i = 0; i < nr_segments; ++i) {
+        postings_for_segments[i].addr = addr;
+        postings_for_segments[i].size = decode_vint_from(decoder);
+        addr += postings_for_segments[i].size;
+    }
+}
+
 bool get_term_postings(uintptr_t field_address,
-                        const term_t* term, uintptr_t* postings_address,
-                        uint32_t* postings_byte_size) {
+                        const term_t* term,
+                        postings_info_t* postings_for_segments) {
 
     // get a decoder from the pool
     decoder_t* decoder = decoder_pool_get_one();
     initialize_decoder(decoder, field_address);
-    *postings_address = 0;
-    *postings_byte_size = 0;
     bool res = false;
 
     // search for the term in the block table
@@ -247,18 +259,17 @@ bool get_term_postings(uintptr_t field_address,
 
     // first check if the term seeked is the same as the first in the block
     if(cmp == 0) {
-        // the term is the first in the block, return the mram address to postings
-        uint32_t address = decode_vint_from(decoder);
-        uint32_t size = decode_vint_from(decoder);
-        *postings_address = index_begin_addr + postings_offset + address;
-        *postings_byte_size = size;
+        // the term is the first in the block, decode the mram address to postings for each segment
+        decode_postings_address_foreach_segment(decoder,
+                                    index_begin_addr + postings_offset, postings_for_segments);
         res = true;
         goto end;
     }
 
-    // ignore first term postings address and size
-    decode_vint_from(decoder);
-    decode_vint_from(decoder);
+    // ignore first term postings address and segment info
+    uint32_t addr = decode_vint_from(decoder);
+    uint32_t skip = decode_vint_from(decoder);
+    skip_bytes_decoder(decoder, skip);
 
     // loop over remaining terms and compare the bytes to find the seeked term
     uintptr_t curr_addr = get_absolute_address_from(decoder);
@@ -272,13 +283,10 @@ bool get_term_postings(uintptr_t field_address,
         // compare the searched term with the current term of the block list
         int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, term_length);
 
-        uint32_t address = decode_vint_from(decoder);
-        uint32_t size = decode_vint_from(decoder);
-
         if(cmp == 0) {
-            // term found, set the mram address to postings
-            *postings_address = index_begin_addr + postings_offset + address;
-            *postings_byte_size = size;
+            // term found, decode the mram address to postings for each segment
+            decode_postings_address_foreach_segment(decoder,
+                                               index_begin_addr + postings_offset, postings_for_segments);
             res = true;
             goto end;
         }
@@ -286,6 +294,12 @@ bool get_term_postings(uintptr_t field_address,
             // term is larger than the seeked term, term not found
             goto end;
         }
+
+        //skip postings address
+        decode_vint_from(decoder);
+        // where to jump for the next term (skip segment info for this term)
+        uint32_t skip = decode_vint_from(decoder);
+        skip_bytes_decoder(decoder, skip);
         curr_addr = get_absolute_address_from(decoder);
     }
 
@@ -293,3 +307,4 @@ end:
     decoder_pool_release_one(decoder);
     return res;
 }
+

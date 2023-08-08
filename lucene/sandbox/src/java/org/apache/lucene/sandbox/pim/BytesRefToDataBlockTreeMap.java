@@ -91,7 +91,7 @@ public class BytesRefToDataBlockTreeMap {
 
     /**
      * class BlockList
-     * Use to represent of list of consecutive blocks
+     * Used to represent of list of consecutive blocks
      * The start address of a block is the end address of the
      * previous block in the list, and the additional member
      * 'lastBlockEndAddress' specifies the end address of the

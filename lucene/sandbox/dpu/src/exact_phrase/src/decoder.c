@@ -159,6 +159,12 @@ unsigned int get_absolute_address_from(decoder_t *decoder)
     return (unsigned int)seqread_tell(decoder->ptr, &(decoder->reader));
 }
 
+void skip_bytes_decoder(decoder_t *decoder, uint32_t nb_bytes)
+{
+    uint32_t curr_addr = get_absolute_address_from(decoder);
+    seek_decoder(decoder, curr_addr + nb_bytes);
+}
+
 // Fetches a variable-length integer value from a parsed buffer.
 // Returns the decoded value.
 uint32_t decode_vint_from(decoder_t *decoder)

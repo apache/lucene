@@ -5,7 +5,7 @@
  * Maximum number of queries in a batch
  * TODO enforce it on the host
  */
-#define DPU_MAX_BATCH_SIZE 256
+#define DPU_MAX_BATCH_SIZE 128
 /**
  * Maximum size in bytes of a batch of queries
  * TODO enforce it on the host
@@ -25,6 +25,11 @@
  * TODO enforce it on the host
  */
 #define MAX_NR_TERMS 32
+/**
+ * Maximum number of segments in postings
+ * TODO enforce it on the host
+ */
+#define MAX_NR_SEGMENTS 32
 /**
  * Number of decoders allocated at init in the decoder pool
  * When not enough decoders are available left in the pool,
