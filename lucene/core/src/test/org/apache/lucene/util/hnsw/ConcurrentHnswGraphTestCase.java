@@ -523,8 +523,8 @@ abstract class ConcurrentHnswGraphTestCase<T> extends LuceneTestCase {
       }
     }
 
-    ConcurrentNeighborSet.NeighborSimilarity mockSimilarity =
-        new ConcurrentNeighborSet.NeighborSimilarity() {
+    NeighborSimilarity mockSimilarity =
+        new NeighborSimilarity() {
           @Override
           public float score(int a, int b) {
             throw new UnsupportedOperationException();

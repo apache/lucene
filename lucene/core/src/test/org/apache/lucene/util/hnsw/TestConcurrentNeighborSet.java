@@ -25,7 +25,6 @@ import java.util.stream.IntStream;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.ConcurrentNeighborArray;
-import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.NeighborSimilarity;
 
 public class TestConcurrentNeighborSet extends LuceneTestCase {
   private static final NeighborSimilarity simpleScore =

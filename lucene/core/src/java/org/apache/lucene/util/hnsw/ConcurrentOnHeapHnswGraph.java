@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.StampedLock;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.ConcurrentNeighborSet.NeighborSimilarity;
 
 /**
  * An {@link HnswGraph} that offers concurrent access; for typical graphs you will get significant

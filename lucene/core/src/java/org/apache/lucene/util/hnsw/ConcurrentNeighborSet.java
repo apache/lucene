@@ -216,26 +216,6 @@ public class ConcurrentNeighborSet {
     return false;
   }
 
-  /** Encapsulates comparing node distances for diversity checks. */
-  public interface NeighborSimilarity {
-    /** for one-off comparisons between nodes */
-    float score(int node1, int node2);
-
-    /**
-     * For when we're going to compare node1 with multiple other nodes. This allows us to skip
-     * loading node1's vector (potentially from disk) redundantly for each comparison.
-     */
-    ScoreFunction scoreProvider(int node1);
-
-    /**
-     * A Function&lt;Integer, Float&gt; without the boxing
-     */
-    @FunctionalInterface
-    public interface ScoreFunction {
-      float apply(int node);
-    }
-  }
-
   /** A NeighborArray that knows how to copy itself and that checks for duplicate entries */
   static class ConcurrentNeighborArray extends NeighborArray {
     public ConcurrentNeighborArray(int maxSize, boolean descOrder) {
