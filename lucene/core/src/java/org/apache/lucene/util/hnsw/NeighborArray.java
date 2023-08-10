@@ -129,7 +129,7 @@ public class NeighborArray {
     insertSortedInternal();
   }
 
-  protected void growArrays() {
+  protected final void growArrays() {
     node = ArrayUtil.grow(node);
     score = ArrayUtil.growExact(score, node.length);
   }
@@ -175,7 +175,7 @@ public class NeighborArray {
     return "NeighborArray[" + size + "]";
   }
 
-  protected int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
+  protected final int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
     int insertionPoint = Arrays.binarySearch(score, 0, bound, newScore);
     if (insertionPoint >= 0) {
       // find the right most position with the same score
@@ -189,7 +189,7 @@ public class NeighborArray {
     return insertionPoint;
   }
 
-  protected int descSortFindRightMostInsertionPoint(float newScore, int bound) {
+  protected final int descSortFindRightMostInsertionPoint(float newScore, int bound) {
     int start = 0;
     int end = bound - 1;
     while (start <= end) {
