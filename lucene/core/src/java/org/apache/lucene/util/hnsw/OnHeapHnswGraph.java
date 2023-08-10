@@ -188,15 +188,17 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     long REF_BYTES = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
     long neighborArrayBytes0 =
-        (long) nsize0 * (Integer.BYTES + Float.BYTES)
+        (long) nsize0 * (Integer.BYTES + Float.BYTES) // int[] and float[] array contents
+            + AH_BYTES * 2 // int[] and float[] array contents
+            + REF_BYTES // the object reference
+            + Integer.BYTES * 2 // size and sortedNodeSize
+            + 1; // boolean scoresDescOrder
+    long neighborArrayBytes = // same as level 0 but with nsize instead of nsize0
+        (long) nsize * (Integer.BYTES + Float.BYTES)
             + AH_BYTES * 2
             + REF_BYTES
-            + Integer.BYTES * 2;
-    long neighborArrayBytes =
-        (long) nsize * (Integer.BYTES + Float.BYTES)
-            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + REF_BYTES * 2
-            + Integer.BYTES * 3;
+            + Integer.BYTES * 2
+            + 1;
     long total = 0;
 
     // a hashmap Node contains an int hash and a Node reference, as well as K and V references.
