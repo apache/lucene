@@ -224,7 +224,7 @@ public class ConcurrentHnswGraphBuilder<T> {
     ExplicitThreadLocal<RandomAccessVectorValues<T>> threadSafeVectors =
         createThreadSafeVectors(vectorsToAdd);
 
-    for (int i = 0; i < vectorsToAdd.size(); i++) {
+    for (int i = 0; i < vectorsToAdd.size() && asyncException.get() == null; i++) {
       final int node = i; // copy for closure
       try {
         semaphore.acquire();
