@@ -97,7 +97,6 @@ public final class Lucene91OnHeapHnswGraph extends HnswGraph {
    * @param level level to add a node on
    * @param node the node to add, represented as an ordinal on the level 0.
    */
-  @Override
   public void addNode(int level, int node) {
     if (level > 0) {
       // if the new node introduces a new level, add more levels to the graph,

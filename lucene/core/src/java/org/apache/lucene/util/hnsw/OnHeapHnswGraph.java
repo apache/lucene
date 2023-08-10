@@ -92,7 +92,20 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return graphLevel0.size(); // all nodes are located on the 0th level
   }
 
-  @Override
+  /**
+   * Add node on the given level with an empty set of neighbors.
+   *
+   * <p>Nodes can be inserted out of order, but it requires that the nodes preceded by the node
+   * inserted out of order are eventually added.
+   *
+   * <p>Actually populating the neighbors, and establishing bidirectional links, is the
+   * responsibility of the caller.
+   *
+   * <p>It is also the responsibility of the caller to ensure that each node is only added once.
+   *
+   * @param level level to add a node on
+   * @param node the node to add, represented as an ordinal on the level 0.
+   */
   public void addNode(int level, int node) {
     if (entryNode == -1) {
       entryNode = node;

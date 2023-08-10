@@ -124,24 +124,6 @@ public abstract class HnswGraph {
       };
 
   /**
-   * Add node on the given level with an empty set of neighbors.
-   *
-   * <p>Nodes can be inserted out of order, but it requires that the nodes preceded by the node
-   * inserted out of order are eventually added.
-   *
-   * <p>Actually populating the neighbors, and establishing bidirectional links, is the
-   * responsibility of the caller.
-   *
-   * <p>It is also the responsibility of the caller to ensure that each node is only added once.
-   *
-   * @param level level to add a node on
-   * @param node the node to add, represented as an ordinal on the level 0.
-   */
-  public void addNode(int level, int node) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
    * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
    * number of nodes to be iterated over. The nodes are NOT guaranteed to be presented in any
    * particular order.
