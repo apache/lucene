@@ -17,24 +17,18 @@
 
 package org.apache.lucene.util.hnsw;
 
-/**
- * Encapsulates comparing node distances for diversity checks.
- */
+/** Encapsulates comparing node distances for diversity checks. */
 public interface NeighborSimilarity {
-  /**
-   * for one-off comparisons between nodes
-   */
+  /** for one-off comparisons between nodes */
   float score(int node1, int node2);
 
   /**
-   * For when we're going to compare node1 with multiple other nodes. This allows us to skip
-   * loading node1's vector (potentially from disk) redundantly for each comparison.
+   * For when we're going to compare node1 with multiple other nodes. This allows us to skip loading
+   * node1's vector (potentially from disk) redundantly for each comparison.
    */
   ScoreFunction scoreProvider(int node1);
 
-  /**
-   * A Function&lt;Integer, Float&gt; without the boxing
-   */
+  /** A Function&lt;Integer, Float&gt; without the boxing */
   @FunctionalInterface
   interface ScoreFunction {
     float apply(int node);

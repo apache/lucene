@@ -114,7 +114,8 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     cna.insertSorted(1, 10.0f); // This is a duplicate and should be ignored
     cna.insertSorted(3, 8.0f); // This is also a duplicate
     assertArrayEquals(new int[] {1, 2, 3}, ArrayUtil.copyOfSubArray(cna.node(), 0, cna.size()));
-    assertArrayEquals(new float[] {10.0f, 9.0f, 8.0f}, ArrayUtil.copyOfSubArray(cna.score, 0, cna.size()), 0.01f);
+    assertArrayEquals(
+        new float[] {10.0f, 9.0f, 8.0f}, ArrayUtil.copyOfSubArray(cna.score, 0, cna.size()), 0.01f);
   }
 
   public void testNoDuplicatesAscOrder() {
@@ -125,7 +126,8 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     cna.insertSorted(1, 8.0f); // This is a duplicate and should be ignored
     cna.insertSorted(3, 10.0f); // This is also a duplicate
     assertArrayEquals(new int[] {1, 2, 3}, ArrayUtil.copyOfSubArray(cna.node(), 0, cna.size()));
-    assertArrayEquals(new float[] {8.0f, 9.0f, 10.0f}, ArrayUtil.copyOfSubArray(cna.score, 0, cna.size()), 0.01f);
+    assertArrayEquals(
+        new float[] {8.0f, 9.0f, 10.0f}, ArrayUtil.copyOfSubArray(cna.score, 0, cna.size()), 0.01f);
   }
 
   public void testNoDuplicatesSameScores() {
@@ -137,6 +139,8 @@ public class TestConcurrentNeighborSet extends LuceneTestCase {
     cna.insertSorted(3, 10.0f); // This is also a duplicate
     assertArrayEquals(new int[] {1, 2, 3}, ArrayUtil.copyOfSubArray(cna.node(), 0, cna.size()));
     assertArrayEquals(
-        new float[] {10.0f, 10.0f, 10.0f}, ArrayUtil.copyOfSubArray(cna.score, 0, cna.size()), 0.01f);
+        new float[] {10.0f, 10.0f, 10.0f},
+        ArrayUtil.copyOfSubArray(cna.score, 0, cna.size()),
+        0.01f);
   }
 }

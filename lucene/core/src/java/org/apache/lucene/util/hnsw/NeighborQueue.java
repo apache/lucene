@@ -131,9 +131,7 @@ public class NeighborQueue {
     return decodeNodeId(heap.pop());
   }
 
-  /**
-   * Returns a copy of the internal nodes array.  Not sorted by score!
-   */
+  /** Returns a copy of the internal nodes array. Not sorted by score! */
   public int[] nodes() {
     int size = size();
     int[] nodes = new int[size];
