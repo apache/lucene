@@ -226,18 +226,11 @@ public class IndexSearcher {
    * @lucene.experimental
    */
   public IndexSearcher(IndexReaderContext context, Executor executor) {
-    this(context, executor, getSliceExecutionControlPlane(executor));
-  }
-
-  // Package private for testing
-  IndexSearcher(IndexReaderContext context, Executor executor, TaskExecutor taskExecutor) {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
-    assert (taskExecutor == null) == (executor == null);
-
     reader = context.reader();
     this.executor = executor;
-    this.taskExecutor = taskExecutor;
+    this.taskExecutor = executor == null ? null : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
     leafSlicesSupplier =
@@ -1000,19 +993,6 @@ public class IndexSearcher {
           "Query contains too many nested clauses; maxClauseCount is set to "
               + IndexSearcher.getMaxClauseCount());
     }
-  }
-
-  /** Return the SliceExecutionControlPlane instance to be used for this IndexSearcher instance */
-  private static TaskExecutor getSliceExecutionControlPlane(Executor executor) {
-    if (executor == null) {
-      return null;
-    }
-
-    if (executor instanceof ThreadPoolExecutor) {
-      return new QueueSizeBasedExecutor((ThreadPoolExecutor) executor);
-    }
-
-    return new TaskExecutor(executor);
   }
 
   /**
