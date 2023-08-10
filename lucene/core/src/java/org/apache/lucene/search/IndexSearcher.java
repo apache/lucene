@@ -27,7 +27,6 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;

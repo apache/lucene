@@ -39,7 +39,8 @@ class TaskExecutor {
   }
 
   /**
-   * Execute all the tasks provided as an argument, wait for them to complete and return the obtained results.
+   * Execute all the tasks provided as an argument, wait for them to complete and return the
+   * obtained results.
    *
    * @param tasks the tasks to execute
    * @return a list containing the results from the tasks execution
