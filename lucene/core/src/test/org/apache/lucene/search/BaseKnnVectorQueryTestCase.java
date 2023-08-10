@@ -792,6 +792,15 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertEquals(expectedId, actualId);
   }
 
+  void assertDocScoreQueryToString(Query query) {
+    String queryString = query.toString("ignored");
+    // The string should contain matching docIds and their score.
+    // Since a forceMerge could occur in this test, we must not assert that a specific doc_id is
+    // matched
+    // But that instead the string format is expected and that the score is 1.0
+    assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[1.0,...]"));
+  }
+
   /**
    * A version of {@link AbstractKnnVectorQuery} that throws an error when an exact search is run.
    * This allows us to check what search strategy is being used.
