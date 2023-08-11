@@ -75,7 +75,7 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
-* GITHUB#12447: Hunspell: speed up the dictionary enumeration (Peter Gromov)
+* GITHUB#12447, GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
 * GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
 
@@ -143,6 +143,10 @@ New Features
 
 * LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
   HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
+
+* GITHUB#12434: Add `KnnCollector` to `LeafReader` and `KnnVectorReader` so that custom collection of vector
+  search results can be provided. The first custom collector provides `ToParentBlockJoin[Float|Byte]KnnVectorQuery`
+  joining child vector documents with their parent documents. (Ben Trent)
 
 Improvements
 ---------------------

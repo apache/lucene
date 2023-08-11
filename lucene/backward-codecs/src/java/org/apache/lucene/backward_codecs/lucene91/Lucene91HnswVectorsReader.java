@@ -35,9 +35,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
@@ -46,7 +44,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
@@ -229,47 +226,28 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+      return;
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
 
-    NeighborQueue results =
-        HnswGraphSearcher.search(
-            target,
-            k,
-            vectorValues,
-            VectorEncoding.FLOAT32,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            getAcceptOrds(acceptDocs, fieldEntry),
-            visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float minSimilarity = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(fieldEntry.ordToDoc(node), minSimilarity);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+    HnswGraphSearcher.search(
+        target,
+        knnCollector,
+        vectorValues,
+        VectorEncoding.FLOAT32,
+        fieldEntry.similarityFunction,
+        getGraph(fieldEntry),
+        getAcceptOrds(acceptDocs, fieldEntry));
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }

@@ -152,6 +152,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testFindFewer() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, 0}, 2);
+      assertMatches(searcher, kvq, 2);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertEquals(scoreDocs.length, 2);
+      assertIdMatches(reader, "id2", scoreDocs[0]);
+      assertIdMatches(reader, "id0", scoreDocs[1]);
+    }
+  }
+
   public void testSearchBoost() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
@@ -776,6 +790,15 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       throws IOException {
     String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
+  }
+
+  void assertDocScoreQueryToString(Query query) {
+    String queryString = query.toString("ignored");
+    // The string should contain matching docIds and their score.
+    // Since a forceMerge could occur in this test, we must not assert that a specific doc_id is
+    // matched
+    // But that instead the string format is expected and that the score is 1.0
+    assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[1.0,...]"));
   }
 
   /**
