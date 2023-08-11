@@ -786,6 +786,10 @@ public class QueryUtils {
         continue;
       }
       scorer = weight.bulkScorer(context);
+      if (scorer == null) {
+        assertEquals(0, expectedCount[0]);
+        continue;
+      }
       int[] actualCount = {0};
       scorer.score(
           new LeafCollector() {
