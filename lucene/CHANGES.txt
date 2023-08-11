@@ -52,6 +52,8 @@ Optimizations
 
 * GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
 
+* GITHUB#12415: Optimized counts on disjunctive queries. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 

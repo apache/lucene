@@ -59,6 +59,11 @@ public class TotalHitCountCollector implements Collector {
       public void collect(int doc) throws IOException {
         totalHits++;
       }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        totalHits += stream.count();
+      }
     };
   }
 }

@@ -109,6 +109,8 @@ final class BooleanScorer extends BulkScorer {
     }
   }
 
+  // One bucket per doc ID in the window, non-null if scores are needed or if frequencies need to be
+  // counted
   final Bucket[] buckets;
   // This is basically an inlined FixedBitSet... seems to help with bound checks
   final long[] matching = new long[SET_SIZE];
@@ -145,6 +147,56 @@ final class BooleanScorer extends BulkScorer {
   }
 
   final OrCollector orCollector = new OrCollector();
+
+  final class DocIdStreamView extends DocIdStream {
+
+    int base;
+
+    @Override
+    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+      long[] matching = BooleanScorer.this.matching;
+      Bucket[] buckets = BooleanScorer.this.buckets;
+      int base = this.base;
+      for (int idx = 0; idx < matching.length; idx++) {
+        long bits = matching[idx];
+        while (bits != 0L) {
+          int ntz = Long.numberOfTrailingZeros(bits);
+          if (buckets != null) {
+            final int indexInWindow = (idx << 6) | ntz;
+            final Bucket bucket = buckets[indexInWindow];
+            if (bucket.freq >= minShouldMatch) {
+              final int doc = base | indexInWindow;
+              scoreAndDoc.doc = doc;
+              scoreAndDoc.score = (float) bucket.score;
+              consumer.accept(doc);
+            }
+            bucket.freq = 0;
+            bucket.score = 0;
+          } else {
+            final int doc = base | (idx << 6) | ntz;
+            scoreAndDoc.doc = doc;
+            consumer.accept(doc);
+          }
+          bits ^= 1L << ntz;
+        }
+      }
+    }
+
+    @Override
+    public int count() throws IOException {
+      if (minShouldMatch > 1) {
+        // We can't just count bits in that case
+        return super.count();
+      }
+      int count = 0;
+      for (long l : matching) {
+        count += Long.bitCount(l);
+      }
+      return count;
+    }
+  }
+
+  private final DocIdStreamView docIdStreamView = new DocIdStreamView();
 
   BooleanScorer(
       BooleanWeight weight,
@@ -186,38 +238,6 @@ final class BooleanScorer extends BulkScorer {
     return cost;
   }
 
-  private void scoreDocument(LeafCollector collector, int base, int i) throws IOException {
-    final ScoreAndDoc scoreAndDoc = this.scoreAndDoc;
-    if (buckets != null) {
-      final Bucket bucket = buckets[i];
-      if (bucket.freq >= minShouldMatch) {
-        scoreAndDoc.score = (float) bucket.score;
-        final int doc = base | i;
-        scoreAndDoc.doc = doc;
-        collector.collect(doc);
-      }
-      bucket.freq = 0;
-      bucket.score = 0;
-    } else {
-      final int doc = base | i;
-      scoreAndDoc.doc = doc;
-      collector.collect(doc);
-    }
-  }
-
-  private void scoreMatches(LeafCollector collector, int base) throws IOException {
-    long[] matching = this.matching;
-    for (int idx = 0; idx < matching.length; idx++) {
-      long bits = matching[idx];
-      while (bits != 0L) {
-        int ntz = Long.numberOfTrailingZeros(bits);
-        int doc = idx << 6 | ntz;
-        scoreDocument(collector, base, doc);
-        bits ^= 1L << ntz;
-      }
-    }
-  }
-
   private void scoreWindowIntoBitSetAndReplay(
       LeafCollector collector,
       Bits acceptDocs,
@@ -233,7 +253,9 @@ final class BooleanScorer extends BulkScorer {
       scorer.score(orCollector, acceptDocs, min, max);
     }
 
-    scoreMatches(collector, base);
+    docIdStreamView.base = base;
+    collector.collect(docIdStreamView);
+
     Arrays.fill(matching, 0L);
   }
 

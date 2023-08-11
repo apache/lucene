@@ -213,6 +213,7 @@ public class MultiCollector implements Collector {
       }
     }
 
+    // NOTE: not propagating collect(DocIdStream) since DocIdStreams may only be consumed once.
     @Override
     public void collect(int doc) throws IOException {
       for (int i = 0; i < collectors.length; i++) {

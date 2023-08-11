@@ -44,6 +44,7 @@ import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.LeafCollector;
@@ -137,6 +138,7 @@ public class QueryUtils {
         checkFirstSkipTo(q1, s);
         checkSkipTo(q1, s);
         checkBulkScorerSkipTo(random, q1, s);
+        checkCount(q1, s);
         if (wrap) {
           check(random, q1, wrapUnderlyingReader(random, s, -1), false);
           check(random, q1, wrapUnderlyingReader(random, s, 0), false);
@@ -750,6 +752,73 @@ public class QueryUtils {
           break;
         }
       }
+    }
+  }
+
+  /**
+   * Check that counting hits through {@link DocIdStream#count()} yield the same result as counting
+   * naively.
+   */
+  public static void checkCount(Query query, final IndexSearcher searcher) throws IOException {
+    query = searcher.rewrite(query);
+    Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      BulkScorer scorer = weight.bulkScorer(context);
+      if (scorer == null) {
+        continue;
+      }
+      int[] expectedCount = {0};
+      boolean[] docIdStream = {false};
+      scorer.score(
+          new LeafCollector() {
+            @Override
+            public void collect(DocIdStream stream) throws IOException {
+              // Don't use DocIdStream#count, we want to count the slow way here.
+              docIdStream[0] = true;
+              LeafCollector.super.collect(stream);
+            }
+
+            @Override
+            public void collect(int doc) throws IOException {
+              expectedCount[0]++;
+            }
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {}
+          },
+          context.reader().getLiveDocs(),
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
+      if (docIdStream[0] == false) {
+        // Don't spend cycles running the query one more time, it doesn't use the DocIdStream
+        // optimization.
+        continue;
+      }
+      scorer = weight.bulkScorer(context);
+      if (scorer == null) {
+        assertEquals(0, expectedCount[0]);
+        continue;
+      }
+      int[] actualCount = {0};
+      scorer.score(
+          new LeafCollector() {
+            @Override
+            public void collect(DocIdStream stream) throws IOException {
+              actualCount[0] += stream.count();
+            }
+
+            @Override
+            public void collect(int doc) throws IOException {
+              actualCount[0]++;
+            }
+
+            @Override
+            public void setScorer(Scorable scorer) throws IOException {}
+          },
+          context.reader().getLiveDocs(),
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
+      assertEquals(expectedCount[0], actualCount[0]);
     }
   }
 }
