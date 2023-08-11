@@ -150,13 +150,13 @@ final class BooleanScorer extends BulkScorer {
 
   final class DocIdStreamView extends DocIdStream {
 
-    int min;
+    int base;
 
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
       long[] matching = BooleanScorer.this.matching;
       Bucket[] buckets = BooleanScorer.this.buckets;
-      int min = this.min;
+      int base = this.base;
       for (int idx = 0; idx < matching.length; idx++) {
         long bits = matching[idx];
         while (bits != 0L) {
@@ -166,12 +166,12 @@ final class BooleanScorer extends BulkScorer {
             final Bucket bucket = buckets[indexInWindow];
             if (bucket.freq >= minShouldMatch) {
               score.score = (float) bucket.score;
-              consumer.accept(min + indexInWindow);
+              consumer.accept(base | indexInWindow);
             }
             bucket.freq = 0;
             bucket.score = 0;
           } else {
-            consumer.accept(min + ((idx << 6) | ntz));
+            consumer.accept(base | (idx << 6) | ntz);
           }
           bits ^= 1L << ntz;
         }
@@ -249,7 +249,7 @@ final class BooleanScorer extends BulkScorer {
       scorer.score(orCollector, acceptDocs, min, max);
     }
 
-    docIdStreamView.min = min;
+    docIdStreamView.base = base;
     collector.collect(docIdStreamView);
 
     Arrays.fill(matching, 0L);
