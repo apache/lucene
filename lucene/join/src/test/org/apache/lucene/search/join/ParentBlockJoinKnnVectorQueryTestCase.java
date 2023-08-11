@@ -88,6 +88,78 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testIndexWithNoVectorsNorParents() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        // Add some documents without a vector
+        for (int i = 0; i < 5; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("other", "value", Field.Store.NO));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Create parent filter directly, tests use "check" to verify parentIds exist. Production
+        // may not
+        // verify we handle it gracefully
+        BitSetProducer parentFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
+        TopDocs topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+
+        // Test with match_all filter and large k to test exact search
+        query =
+            getParentJoinKnnQuery(
+                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+        topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
+  public void testIndexWithNoParents() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int i = 0; i < 3; ++i) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {2, 2}));
+          doc.add(newStringField("id", Integer.toString(i), Field.Store.YES));
+          w.addDocument(doc);
+        }
+        // Add some documents without a vector
+        for (int i = 0; i < 5; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("other", "value", Field.Store.NO));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Create parent filter directly, tests use "check" to verify parentIds exist. Production
+        // may not
+        // verify we handle it gracefully
+        BitSetProducer parentFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
+        TopDocs topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+
+        // Test with match_all filter and large k to test exact search
+        query =
+            getParentJoinKnnQuery(
+                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+        topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
   public void testFilterWithNoVectorMatches() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
