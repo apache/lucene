@@ -548,7 +548,9 @@ final class WANDScorer extends Scorer {
   public float getMaxScore(int upTo) throws IOException {
     double maxScoreSum = 0;
     for (Scorer scorer : allScorers) {
-      maxScoreSum += scorer.getMaxScore(upTo);
+      if (scorer.docID() <= upTo) {
+        maxScoreSum += scorer.getMaxScore(upTo);
+      }
     }
     return (float) MathUtil.sumUpperBound(maxScoreSum, allScorers.length);
   }
