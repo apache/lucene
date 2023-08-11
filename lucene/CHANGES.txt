@@ -91,8 +91,6 @@ Optimizations
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)
 
-* GITHUB#12415: Optimized counts on disjunctive queries. (Adrien Grand)
-
 Bug Fixes
 ---------------------
 
@@ -175,6 +173,8 @@ Optimizations
 * GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
 
 * GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
+
+* GITHUB#12415: Optimized counts on disjunctive queries. (Adrien Grand)
 
 Bug Fixes
 ---------------------
