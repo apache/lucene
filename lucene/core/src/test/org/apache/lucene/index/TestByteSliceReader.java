@@ -20,6 +20,7 @@ import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ByteBlockPool;
+import org.apache.lucene.util.ByteSlicePool;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -36,11 +37,12 @@ public class TestByteSliceReader extends LuceneTestCase {
 
     BLOCK_POOL = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     BLOCK_POOL.nextBuffer();
+    ByteSlicePool slicePool = new ByteSlicePool(BLOCK_POOL);
     byte[] buffer = BLOCK_POOL.buffer;
-    int upto = TermsHashPerField.newSlice(BLOCK_POOL, TermsHashPerField.FIRST_LEVEL_SIZE, 0);
+    int upto = slicePool.newSlice(ByteSlicePool.FIRST_LEVEL_SIZE);
     for (byte randomByte : RANDOM_DATA) {
       if ((buffer[upto] & 16) != 0) {
-        upto = TermsHashPerField.allocSlice(BLOCK_POOL, buffer, upto);
+        upto = slicePool.allocSlice(buffer, upto);
         buffer = BLOCK_POOL.buffer;
       }
       buffer[upto++] = randomByte;
