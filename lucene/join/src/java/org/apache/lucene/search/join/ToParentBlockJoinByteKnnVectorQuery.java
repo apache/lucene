@@ -75,6 +75,9 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
       return null;
     }
     BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
     ParentBlockJoinByteVectorScorer vectorScorer =
         new ParentBlockJoinByteVectorScorer(
             context.reader().getByteVectorValues(field),
@@ -112,6 +115,9 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
   protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
     KnnCollector collector = new ToParentJoinKnnCollector(k, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
