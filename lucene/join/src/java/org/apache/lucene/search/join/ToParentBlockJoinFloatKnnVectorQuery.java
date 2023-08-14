@@ -77,6 +77,9 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
       return null;
     }
     BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
     ParentBlockJoinFloatVectorScorer vectorScorer =
         new ParentBlockJoinFloatVectorScorer(
             context.reader().getFloatVectorValues(field),
@@ -114,6 +117,9 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
   protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
     KnnCollector collector = new ToParentJoinKnnCollector(k, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
