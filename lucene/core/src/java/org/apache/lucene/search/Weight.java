@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -228,32 +227,16 @@ public abstract class Weight implements SegmentCacheable {
       collector.setScorer(scorer);
       DocIdSetIterator scorerIterator = twoPhase == null ? iterator : twoPhase.approximation();
       DocIdSetIterator competitiveIterator = collector.competitiveIterator();
-      DocIdSetIterator filteredIterator;
-      if (competitiveIterator == null) {
-        filteredIterator = scorerIterator;
-      } else {
-        // Wrap CompetitiveIterator and ScorerIterator start with (i.e., calling nextDoc()) the last
-        // visited docID because ConjunctionDISI might have advanced to it in the previous
-        // scoreRange, but we didn't process due to the range limit of scoreRange.
-        if (scorerIterator.docID() != -1) {
-          scorerIterator = new StartDISIWrapper(scorerIterator);
-        }
-        if (competitiveIterator.docID() != -1) {
-          competitiveIterator = new StartDISIWrapper(competitiveIterator);
-        }
-        // filter scorerIterator to keep only competitive docs as defined by collector
-        filteredIterator =
-            ConjunctionUtils.intersectIterators(Arrays.asList(scorerIterator, competitiveIterator));
-      }
-      if (filteredIterator.docID() == -1 && min == 0 && max == DocIdSetIterator.NO_MORE_DOCS) {
-        scoreAll(collector, filteredIterator, twoPhase, acceptDocs);
+
+      if (competitiveIterator == null
+          && scorerIterator.docID() == -1
+          && min == 0
+          && max == DocIdSetIterator.NO_MORE_DOCS) {
+        scoreAll(collector, scorerIterator, twoPhase, acceptDocs);
         return DocIdSetIterator.NO_MORE_DOCS;
       } else {
-        int doc = filteredIterator.docID();
-        if (doc < min) {
-          doc = filteredIterator.advance(min);
-        }
-        return scoreRange(collector, filteredIterator, twoPhase, acceptDocs, doc, max);
+        return scoreRange(
+            collector, scorerIterator, twoPhase, competitiveIterator, acceptDocs, min, max);
       }
     }
 
@@ -266,27 +249,59 @@ public abstract class Weight implements SegmentCacheable {
         LeafCollector collector,
         DocIdSetIterator iterator,
         TwoPhaseIterator twoPhase,
+        DocIdSetIterator competitiveIterator,
         Bits acceptDocs,
-        int currentDoc,
-        int end)
+        int min,
+        int max)
         throws IOException {
-      if (twoPhase == null) {
-        while (currentDoc < end) {
-          if (acceptDocs == null || acceptDocs.get(currentDoc)) {
-            collector.collect(currentDoc);
-          }
-          currentDoc = iterator.nextDoc();
+
+      if (competitiveIterator != null) {
+        if (competitiveIterator.docID() > min) {
+          min = competitiveIterator.docID();
+          // The competitive iterator may not match any docs in the range.
+          min = Math.min(min, max);
         }
-        return currentDoc;
-      } else {
-        while (currentDoc < end) {
-          if ((acceptDocs == null || acceptDocs.get(currentDoc)) && twoPhase.matches()) {
-            collector.collect(currentDoc);
-          }
-          currentDoc = iterator.nextDoc();
-        }
-        return currentDoc;
       }
+
+      int doc = iterator.docID();
+      if (doc < min) {
+        if (doc == min - 1) {
+          doc = iterator.nextDoc();
+        } else {
+          doc = iterator.advance(min);
+        }
+      }
+
+      if (twoPhase == null && competitiveIterator == null) {
+        // Optimize simple iterators with collectors that can't skip
+        while (doc < max) {
+          if (acceptDocs == null || acceptDocs.get(doc)) {
+            collector.collect(doc);
+          }
+          doc = iterator.nextDoc();
+        }
+      } else {
+        while (doc < max) {
+          if (competitiveIterator != null) {
+            assert competitiveIterator.docID() <= doc;
+            if (competitiveIterator.docID() < doc) {
+              competitiveIterator.advance(doc);
+            }
+            if (competitiveIterator.docID() != doc) {
+              doc = iterator.advance(competitiveIterator.docID());
+              continue;
+            }
+          }
+
+          if ((acceptDocs == null || acceptDocs.get(doc))
+              && (twoPhase == null || twoPhase.matches())) {
+            collector.collect(doc);
+          }
+          doc = iterator.nextDoc();
+        }
+      }
+
+      return doc;
     }
 
     /**
@@ -318,41 +333,6 @@ public abstract class Weight implements SegmentCacheable {
           }
         }
       }
-    }
-  }
-
-  /** Wraps an internal docIdSetIterator for it to start with the last visited docID */
-  private static class StartDISIWrapper extends DocIdSetIterator {
-    private final DocIdSetIterator in;
-    private final int startDocID;
-    private int docID = -1;
-
-    StartDISIWrapper(DocIdSetIterator in) {
-      this.in = in;
-      this.startDocID = in.docID();
-    }
-
-    @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docID + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target <= startDocID) {
-        return docID = startDocID;
-      }
-      return docID = in.advance(target);
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
     }
   }
 }
