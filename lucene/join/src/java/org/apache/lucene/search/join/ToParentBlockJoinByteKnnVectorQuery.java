@@ -36,7 +36,10 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
-/** kNN byte vector query that joins matching children vector documents with their parent doc id. */
+/**
+ * kNN byte vector query that joins matching children vector documents with their parent doc id. The
+ * top documents returned are the child document ids and the calculated scores.
+ */
 public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
@@ -87,12 +90,11 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
             fi.getVectorSimilarityFunction());
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = vectorScorer.nextParent()) != DocIdSetIterator.NO_MORE_DOCS) {
+    while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;
-        topDoc.doc = doc;
+        topDoc.doc = vectorScorer.bestChild();
         topDoc = queue.updateTop();
       }
     }
@@ -154,6 +156,7 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
     private final DocIdSetIterator acceptedChildrenIterator;
     private final BitSet parentBitSet;
     private int currentParent = -1;
+    private int bestChild = -1;
     private float currentScore = Float.NEGATIVE_INFINITY;
 
     protected ParentBlockJoinByteVectorScorer(
@@ -169,6 +172,10 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
       this.parentBitSet = parentBitSet;
     }
 
+    public int bestChild() {
+      return bestChild;
+    }
+
     public int nextParent() throws IOException {
       int nextChild = acceptedChildrenIterator.docID();
       if (nextChild == -1) {
@@ -182,7 +189,11 @@ public class ToParentBlockJoinByteKnnVectorQuery extends KnnByteVectorQuery {
       currentParent = parentBitSet.nextSetBit(nextChild);
       do {
         values.advance(nextChild);
-        currentScore = Math.max(currentScore, similarity.compare(query, values.vectorValue()));
+        float score = similarity.compare(query, values.vectorValue());
+        if (score > currentScore) {
+          bestChild = nextChild;
+          currentScore = score;
+        }
       } while ((nextChild = acceptedChildrenIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS
           && nextChild < currentParent);
       return currentParent;

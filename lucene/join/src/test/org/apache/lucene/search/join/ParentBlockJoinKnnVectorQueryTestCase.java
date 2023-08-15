@@ -201,41 +201,21 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
         Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
-        assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f, 1f / 51f},
-            new String[] {
-              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
-            });
+        assertScorerResults(searcher, query, new float[] {1f, 1f / 51f}, new String[] {"2", "7"});
 
         query = getParentJoinKnnQuery("field", new float[] {6, 6}, null, 3, parentFilter);
         assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f / 3f, 1f / 3f},
-            new String[] {
-              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
-            });
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"});
         query =
             getParentJoinKnnQuery(
                 "field", new float[] {6, 6}, new MatchAllDocsQuery(), 20, parentFilter);
         assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f / 3f, 1f / 3f},
-            new String[] {
-              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
-            });
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"});
 
         query =
             getParentJoinKnnQuery(
                 "field", new float[] {6, 6}, new MatchAllDocsQuery(), 1, parentFilter);
-        assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f / 3f},
-            new String[] {encodeInts(new int[] {1, 2, 3, 4, 5})});
+        assertScorerResults(searcher, query, new float[] {1f / 3f}, new String[] {"5"});
       }
     }
   }
@@ -271,8 +251,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     "field", new float[] {0, 0}, null, 8, parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "[0]", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "[7]", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "0", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "7", results.scoreDocs[7].doc);
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results =
@@ -285,8 +265,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "[10]", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "[6]", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "10", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "6", results.scoreDocs[7].doc);
       }
     }
   }

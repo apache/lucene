@@ -18,7 +18,10 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -55,7 +58,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
       sortedNodes[i] = topDocs.scoreDocs[i].doc;
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
-    assertArrayEquals(new int[] {3, 9, 12, 6}, sortedNodes);
+    assertArrayEquals(new int[] {2, 7, 10, 4}, sortedNodes);
     assertArrayEquals(new float[] {4f, 2f, 1.2f, 1f}, sortedScores, 0f);
   }
 
@@ -77,8 +80,33 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
       sortedNodes[i] = topDocs.scoreDocs[i].doc;
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
-    assertArrayEquals(new int[] {3, 11, 9, 6, 13}, sortedNodes);
+    assertArrayEquals(new int[] {2, 10, 7, 4, 12}, sortedNodes);
     assertArrayEquals(new float[] {4f, 3f, 2f, 1f, 1f}, sortedScores, 0f);
+  }
+
+  public void testRandomInsertionsWithOverflow() throws IOException {
+    int[] parents = new int[100];
+    List<Integer> children = new ArrayList<>();
+    List<Float> childrenScores = new ArrayList<>();
+    int previousParent = -1;
+    int nextParent = random().nextInt(50) + 2;
+    for (int i = 0; i < 100; i++) {
+      for (int j = previousParent + 1; j < nextParent; j++) {
+        children.add(j);
+        childrenScores.add(random().nextFloat());
+      }
+      parents[i] = nextParent;
+      previousParent = nextParent;
+      nextParent = random().nextInt(50) + 2 + previousParent;
+    }
+    Collections.shuffle(children, random());
+    BitSet parentBitSet =
+        BitSet.of(new IntArrayDocIdSetIterator(parents, parents.length), nextParent + 1);
+    ToParentJoinKnnCollector results =
+        new ToParentJoinKnnCollector(20, Integer.MAX_VALUE, parentBitSet);
+    for (int i = 0; i < children.size(); i++) {
+      results.collect(children.get(i), childrenScores.get(i));
+    }
   }
 
   static class IntArrayDocIdSetIterator extends DocIdSetIterator {

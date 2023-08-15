@@ -60,8 +60,8 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
   @Override
   public boolean collect(int docId, float nodeScore) {
     assert !parentBitSet.get(docId);
-    int nodeId = parentBitSet.nextSetBit(docId);
-    return heap.insertWithOverflow(nodeId, nodeScore);
+    int parentNode = parentBitSet.nextSetBit(docId);
+    return heap.insertWithOverflow(docId, parentNode, nodeScore);
   }
 
   @Override
@@ -103,8 +103,7 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
    */
   private static class NodeIdCachingHeap {
     private final int maxSize;
-    private int[] heapNodes;
-    private float[] heapScores;
+    private ParentChildScore[] heapNodes;
     private int size = 0;
 
     // Used to keep track of nodeId -> positionInHeap. This way when new scores are added for a
@@ -125,36 +124,32 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
       this.maxSize = maxSize;
       this.nodeIdHeapIndex =
           new HashMap<>(maxSize < 2 ? maxSize + 1 : (int) (maxSize / 0.75 + 1.0));
-      this.heapNodes = new int[heapSize];
-      this.heapScores = new float[heapSize];
+      this.heapNodes = new ParentChildScore[heapSize];
     }
 
     public final int topNode() {
-      return heapNodes[1];
+      return heapNodes[1].child;
     }
 
     public final float topScore() {
-      return heapScores[1];
+      return heapNodes[1].score;
     }
 
-    private void pushIn(int nodeId, float score) {
+    private void pushIn(int nodeId, int parentId, float score) {
       size++;
       if (size == heapNodes.length) {
         heapNodes = ArrayUtil.grow(heapNodes, (size * 3 + 1) / 2);
-        heapScores = ArrayUtil.grow(heapScores, (size * 3 + 1) / 2);
       }
-      heapNodes[size] = nodeId;
-      heapScores[size] = score;
+      heapNodes[size] = new ParentChildScore(nodeId, parentId, score);
       upHeap(size);
     }
 
-    private void updateElement(int heapIndex, int nodeId, float score) {
-      int oldValue = heapNodes[heapIndex];
-      assert oldValue == nodeId
+    private void updateElement(int heapIndex, int nodeId, int parentId, float score) {
+      ParentChildScore oldValue = heapNodes[heapIndex];
+      assert oldValue.parent == parentId
           : "attempted to update heap element value but with a different node id";
-      float oldScore = heapScores[heapIndex];
-      heapNodes[heapIndex] = nodeId;
-      heapScores[heapIndex] = score;
+      float oldScore = heapNodes[heapIndex].score;
+      heapNodes[heapIndex] = new ParentChildScore(nodeId, parentId, score);
       // Since we are a min heap, if the new value is less, we need to make sure to bubble it up
       if (score < oldScore) {
         upHeap(heapIndex);
@@ -172,26 +167,27 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
      *
      * @return whether the value was added or updated
      */
-    public boolean insertWithOverflow(int node, float score) {
+    public boolean insertWithOverflow(int node, int parentNode, float score) {
       if (closed) {
         throw new IllegalStateException();
       }
-      Integer previousNodeIndex = nodeIdHeapIndex.get(node);
+      Integer previousNodeIndex = nodeIdHeapIndex.get(parentNode);
       if (previousNodeIndex != null) {
-        if (heapScores[previousNodeIndex] < score) {
-          updateElement(previousNodeIndex, node, score);
+        if (heapNodes[previousNodeIndex].score < score) {
+          updateElement(previousNodeIndex, node, parentNode, score);
           return true;
         }
         return false;
       }
       if (size >= maxSize) {
-        if (score < heapScores[1] || (score == heapScores[1] && node > heapNodes[1])) {
+        if (score < heapNodes[1].score
+            || (score == heapNodes[1].score && node > heapNodes[1].child)) {
           return false;
         }
-        updateTop(node, score);
+        updateTop(node, parentNode, score);
         return true;
       }
-      pushIn(node, score);
+      pushIn(node, parentNode, score);
       return true;
     }
 
@@ -199,7 +195,6 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
       closed = true;
       if (size > 0) {
         heapNodes[1] = heapNodes[size]; // move last to first
-        heapScores[1] = heapScores[size]; // move last to first
         size--;
         downHeapWithoutCacheUpdate(1); // adjust heap
       } else {
@@ -207,10 +202,9 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
       }
     }
 
-    private void updateTop(int nodeId, float score) {
-      nodeIdHeapIndex.remove(heapNodes[1]);
-      heapNodes[1] = nodeId;
-      heapScores[1] = score;
+    private void updateTop(int nodeId, int parentId, float score) {
+      nodeIdHeapIndex.remove(heapNodes[1].parent);
+      heapNodes[1] = new ParentChildScore(nodeId, parentId, score);
       downHeap(1);
     }
 
@@ -219,76 +213,82 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
       return size;
     }
 
-    private boolean lessThan(int nodel, float scorel, int noder, float scorer) {
-      if (scorel < scorer) {
-        return true;
-      }
-      return scorel == scorer && nodel > noder;
-    }
-
     private void upHeap(int origPos) {
       int i = origPos;
-      int bottomNode = heapNodes[i];
-      float bottomScore = heapScores[i];
+      ParentChildScore bottomNode = heapNodes[i];
       int j = i >>> 1;
-      while (j > 0 && lessThan(bottomNode, bottomScore, heapNodes[j], heapScores[j])) {
+      while (j > 0 && bottomNode.compareTo(heapNodes[j]) < 0) {
         heapNodes[i] = heapNodes[j];
-        heapScores[i] = heapScores[j];
-        nodeIdHeapIndex.put(heapNodes[i], i);
+        nodeIdHeapIndex.put(heapNodes[i].parent, i);
         i = j;
         j = j >>> 1;
       }
-      nodeIdHeapIndex.put(bottomNode, i);
+      nodeIdHeapIndex.put(bottomNode.parent, i);
       heapNodes[i] = bottomNode;
-      heapScores[i] = bottomScore;
     }
 
     private int downHeap(int i) {
-      int node = heapNodes[i];
-      float score = heapScores[i];
+      ParentChildScore node = heapNodes[i];
       int j = i << 1; // find smaller child
       int k = j + 1;
-      if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+      if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
         j = k;
       }
-      while (j <= size && lessThan(heapNodes[j], heapScores[j], node, score)) {
+      while (j <= size && heapNodes[j].compareTo(node) < 0) {
         heapNodes[i] = heapNodes[j];
-        heapScores[i] = heapScores[j];
-        nodeIdHeapIndex.put(heapNodes[i], i);
+        nodeIdHeapIndex.put(heapNodes[i].parent, i);
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+        if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
           j = k;
         }
       }
-      nodeIdHeapIndex.put(node, i);
+      nodeIdHeapIndex.put(node.parent, i);
       heapNodes[i] = node; // install saved value
-      heapScores[i] = score; // install saved value
       return i;
     }
 
     private int downHeapWithoutCacheUpdate(int i) {
-      int node = heapNodes[i];
-      float score = heapScores[i];
+      ParentChildScore node = heapNodes[i];
       int j = i << 1; // find smaller child
       int k = j + 1;
-      if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+      if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
         j = k;
       }
-      while (j <= size && lessThan(heapNodes[j], heapScores[j], node, score)) {
+      while (j <= size && heapNodes[j].compareTo(node) < 0) {
         heapNodes[i] = heapNodes[j];
-        heapScores[i] = heapScores[j];
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && lessThan(heapNodes[k], heapScores[k], heapNodes[j], heapScores[j])) {
+        if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
           j = k;
         }
       }
       heapNodes[i] = node; // install saved value
-      heapScores[i] = score; // install saved value
       return i;
+    }
+  }
+
+  /** Keeps track of child node, parent node, and the stored score. */
+  private static class ParentChildScore implements Comparable<ParentChildScore> {
+    private final int parent, child;
+    private final float score;
+
+    ParentChildScore(int child, int parent, float score) {
+      this.child = child;
+      this.parent = parent;
+      this.score = score;
+    }
+
+    @Override
+    public int compareTo(ParentChildScore o) {
+      int fc = Float.compare(score, o.score);
+      if (fc == 0) {
+        // lower numbers are the tiebreakers, lower ids are preferred.
+        return Integer.compare(o.child, child);
+      }
+      return fc;
     }
   }
 }
