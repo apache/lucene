@@ -154,15 +154,12 @@ public final class UTF32ToUTF8 {
 
         // Single value leading edge
         utf8.addTransition(start, n, startUTF8.byteAt(upto));
-        // start.addTransition(new Transition(startUTF8.byteAt(upto), n));  // type=single
 
         // Recurse for the rest
         build(n, end, startUTF8, endUTF8, 1 + upto);
       }
     } else if (startUTF8.len == endUTF8.len) {
       if (upto == startUTF8.len - 1) {
-        // start.addTransition(new Transition(startUTF8.byteAt(upto), endUTF8.byteAt(upto), end));
-        //      // type=startend
         utf8.addTransition(start, end, startUTF8.byteAt(upto), endUTF8.byteAt(upto));
       } else {
         start(start, end, startUTF8, upto, false);
@@ -207,12 +204,9 @@ public final class UTF32ToUTF8 {
           end,
           startUTF8.byteAt(upto),
           startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto)]); // type=start
-      // start.addTransition(new Transition(startUTF8.byteAt(upto), startUTF8.byteAt(upto) |
-      // MASKS[startUTF8.numBits(upto)-1], end));  // type=start
     } else {
       int n = utf8.createState();
       utf8.addTransition(start, n, startUTF8.byteAt(upto));
-      // start.addTransition(new Transition(startUTF8.byteAt(upto), n));  // type=start
       start(n, end, startUTF8, 1 + upto, true);
       int endCode = startUTF8.byteAt(upto) | MASKS[startUTF8.numBits(upto)];
       if (doAll && startUTF8.byteAt(upto) != endCode) {
@@ -224,12 +218,12 @@ public final class UTF32ToUTF8 {
   private void end(int start, int end, UTF8Sequence endUTF8, int upto, boolean doAll) {
     if (upto == endUTF8.len - 1) {
       // Done recursing
-      // start.addTransition(new Transition(endUTF8.byteAt(upto) &
-      // (~MASKS[endUTF8.numBits(upto)-1]), endUTF8.byteAt(upto), end));   // type=end
       utf8.addTransition(
           start, end, endUTF8.byteAt(upto) & (~MASKS[endUTF8.numBits(upto)]), endUTF8.byteAt(upto));
     } else {
       final int startCode;
+      // GH-ISSUE#12472: UTF-8 special case for the different start byte of the different
+      // length=2,3,4
       if (endUTF8.len == 2) {
         assert upto == 0; // the upto==1 case will be handled by the first if above
         // the first length=2 UTF8 Unicode character is C2 80,
@@ -250,7 +244,6 @@ public final class UTF32ToUTF8 {
         all(start, end, startCode, endUTF8.byteAt(upto) - 1, endUTF8.len - upto - 1);
       }
       int n = utf8.createState();
-      // start.addTransition(new Transition(endUTF8.byteAt(upto), n));  // type=end
       utf8.addTransition(start, n, endUTF8.byteAt(upto));
       end(n, end, endUTF8, 1 + upto, true);
     }
@@ -258,20 +251,16 @@ public final class UTF32ToUTF8 {
 
   private void all(int start, int end, int startCode, int endCode, int left) {
     if (left == 0) {
-      // start.addTransition(new Transition(startCode, endCode, end));  // type=all
       utf8.addTransition(start, end, startCode, endCode);
     } else {
       int lastN = utf8.createState();
-      // start.addTransition(new Transition(startCode, endCode, lastN));  // type=all
       utf8.addTransition(start, lastN, startCode, endCode);
       while (left > 1) {
         int n = utf8.createState();
-        // lastN.addTransition(new Transition(128, 191, n));  // type=all*
         utf8.addTransition(lastN, n, 128, 191); // type=all*
         left--;
         lastN = n;
       }
-      // lastN.addTransition(new Transition(128, 191, end)); // type = all*
       utf8.addTransition(lastN, end, 128, 191); // type = all*
     }
   }

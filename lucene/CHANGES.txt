@@ -183,8 +183,8 @@ Bug Fixes
   (Greg Miller).
 
 * GITHUB#2472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
-  user impact except in the very unusual possible use-case of searching a non-UTF-8 (fully binary terms) inverted
-  field using Unicode search terms. (Tang Donghai).
+  impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
+  scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
 
 Other
 ---------------------
