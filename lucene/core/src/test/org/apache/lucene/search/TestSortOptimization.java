@@ -887,7 +887,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     final int numDocs = atLeast(10000);
-    for (int i = 0; i < numDocs; ++i) {
+    for (int i = 1; i <= numDocs; ++i) {
       final Document doc = new Document();
       final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
       doc.add(new KeywordField("my_field", value, Field.Store.NO));
