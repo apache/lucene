@@ -148,6 +148,9 @@ New Features
   search results can be provided. The first custom collector provides `ToParentBlockJoin[Float|Byte]KnnVectorQuery`
   joining child vector documents with their parent documents. (Ben Trent)
 
+* GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
+  vector search. (Jack Mazanec, Ben Trent)
+
 Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)

@@ -165,6 +165,17 @@ public final class VectorUtil {
   }
 
   /**
+   * @param vectorDotProductSimilarity the raw similarity between two vectors
+   * @return A scaled score preventing negative scores for maximum-inner-product
+   */
+  public static float scaleMaxInnerProductScore(float vectorDotProductSimilarity) {
+    if (vectorDotProductSimilarity < 0) {
+      return 1 / (1 + -1 * vectorDotProductSimilarity);
+    }
+    return vectorDotProductSimilarity + 1;
+  }
+
+  /**
    * Checks if a float vector only has finite components.
    *
    * @param v bytes containing a vector
