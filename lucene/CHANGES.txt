@@ -193,6 +193,10 @@ Bug Fixes
 * GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
   (Greg Miller).
 
+* GITHUB#2472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
+  impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
+  scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
+
 Other
 ---------------------
 
