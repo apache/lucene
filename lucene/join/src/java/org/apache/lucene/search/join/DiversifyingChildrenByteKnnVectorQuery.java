@@ -19,15 +19,15 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.HitQueue;
+import org.apache.lucene.search.KnnByteVectorQuery;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -37,19 +37,28 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 /**
- * kNN float vector query that joins matching children vector documents with their parent doc id.
- * The top documents returned are the child document ids and the calculated scores.
+ * kNN byte vector query that joins matching children vector documents with their parent doc id. The
+ * top documents returned are the child document ids and the calculated scores. Here is how to use
+ * this in conjunction with {@link ToParentBlockJoinQuery}.
+ *
+ * <pre class="prettyprint">
+ *   Query knnQuery = new DiversifyingChildrenByteKnnVectorQuery(fieldName, queryVector, ...);
+ *   // Rewrite executes kNN search and collects nearest children docIds and their scores
+ *   Query rewrittenKnnQuery = searcher.rewrite(knnQuery);
+ *   // Join the scored children docs with their parents and score the parents
+ *   Query childrenToParents = new ToParentBlockJoinQuery(rewrittenKnnQuery, parentsFilter, ScoreMode.MAX);
+ * </pre>
  */
-public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
+public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
   private final BitSetProducer parentsFilter;
   private final Query childFilter;
   private final int k;
-  private final float[] query;
+  private final byte[] query;
 
   /**
-   * Create a ToParentBlockJoinFloatVectorQuery.
+   * Create a ToParentBlockJoinByteVectorQuery.
    *
    * @param field the query field
    * @param query the vector query
@@ -57,8 +66,8 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
    * @param k how many parent documents to return given the matching children
    * @param parentsFilter Filter identifying the parent documents.
    */
-  public ToParentBlockJoinFloatKnnVectorQuery(
-      String field, float[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
+  public DiversifyingChildrenByteKnnVectorQuery(
+      String field, byte[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
     super(field, query, k, childFilter);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
@@ -74,16 +83,16 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
       // The field does not exist or does not index vectors
       return NO_RESULTS;
     }
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
       return null;
     }
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
-    ParentBlockJoinFloatVectorScorer vectorScorer =
-        new ParentBlockJoinFloatVectorScorer(
-            context.reader().getFloatVectorValues(field),
+    ParentBlockJoinByteVectorScorer vectorScorer =
+        new ParentBlockJoinByteVectorScorer(
+            context.reader().getByteVectorValues(field),
             acceptIterator,
             parentBitSet,
             query,
@@ -120,7 +129,8 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
-    KnnCollector collector = new ToParentJoinKnnCollector(k, visitedLimit, parentBitSet);
+    KnnCollector collector =
+        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }
@@ -135,7 +145,7 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    ToParentBlockJoinFloatKnnVectorQuery that = (ToParentBlockJoinFloatKnnVectorQuery) o;
+    DiversifyingChildrenByteKnnVectorQuery that = (DiversifyingChildrenByteKnnVectorQuery) o;
     return k == that.k
         && Objects.equals(parentsFilter, that.parentsFilter)
         && Objects.equals(childFilter, that.childFilter)
@@ -149,9 +159,9 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
     return result;
   }
 
-  private static class ParentBlockJoinFloatVectorScorer {
-    private final float[] query;
-    private final FloatVectorValues values;
+  private static class ParentBlockJoinByteVectorScorer {
+    private final byte[] query;
+    private final ByteVectorValues values;
     private final VectorSimilarityFunction similarity;
     private final DocIdSetIterator acceptedChildrenIterator;
     private final BitSet parentBitSet;
@@ -159,11 +169,11 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
     private int bestChild = -1;
     private float currentScore = Float.NEGATIVE_INFINITY;
 
-    protected ParentBlockJoinFloatVectorScorer(
-        FloatVectorValues values,
+    protected ParentBlockJoinByteVectorScorer(
+        ByteVectorValues values,
         DocIdSetIterator acceptedChildrenIterator,
         BitSet parentBitSet,
-        float[] query,
+        byte[] query,
         VectorSimilarityFunction similarity) {
       this.query = query;
       this.values = values;

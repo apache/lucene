@@ -272,8 +272,8 @@ public class TestBlockJoin extends LuceneTestCase {
         new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
     CheckJoinIndex.check(r, parentsFilter);
 
-    ToParentBlockJoinFloatKnnVectorQuery childKnnJoin =
-        new ToParentBlockJoinFloatKnnVectorQuery(
+    DiversifyingChildrenFloatKnnVectorQuery childKnnJoin =
+        new DiversifyingChildrenFloatKnnVectorQuery(
             "vector", new float[] {4f, 4f, 4f}, null, 3, parentsFilter);
 
     TopDocs topDocs = s.search(childKnnJoin, 5);

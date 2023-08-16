@@ -26,8 +26,11 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
-/** parent joining knn collector, vector docIds are deduplicated according to the parent bit set. */
-class ToParentJoinKnnCollector extends AbstractKnnCollector {
+/**
+ * This collects the nearest children vectors. Diversifying the results over the provided parent
+ * filter. This means the nearest children vectors are returned, but only one per parent
+ */
+class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
 
   private final BitSet parentBitSet;
   private final NodeIdCachingHeap heap;
@@ -39,7 +42,7 @@ class ToParentJoinKnnCollector extends AbstractKnnCollector {
    * @param visitLimit how many child vectors can be visited
    * @param parentBitSet The leaf parent bitset
    */
-  public ToParentJoinKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
+  public DiversifyingNearestChildrenKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
     super(k, visitLimit);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);
