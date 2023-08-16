@@ -380,6 +380,29 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testScoreMIP() throws IOException {
+    try (Directory indexStore =
+            getIndexStore(
+                "field",
+                VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+                new float[] {0, 1},
+                new float[] {1, 2},
+                new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, -1}, 10);
+      assertMatches(searcher, kvq, 3);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertIdMatches(reader, "id2", scoreDocs[0]);
+      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertIdMatches(reader, "id1", scoreDocs[2]);
+
+      assertEquals(1.0, scoreDocs[0].score, 1e-7);
+      assertEquals(1 / 2f, scoreDocs[1].score, 1e-7);
+      assertEquals(1 / 3f, scoreDocs[2].score, 1e-7);
+    }
+  }
+
   public void testExplain() throws IOException {
     try (Directory d = newDirectory()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
@@ -773,11 +796,21 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   Directory getIndexStore(String field, float[]... contents) throws IOException {
+    return getIndexStore(field, VectorSimilarityFunction.EUCLIDEAN, contents);
+  }
+
+  /**
+   * Creates a new directory and adds documents with the given vectors with similarity as kNN vector
+   * fields
+   */
+  Directory getIndexStore(
+      String field, VectorSimilarityFunction vectorSimilarityFunction, float[]... contents)
+      throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
-      doc.add(getKnnVectorField(field, contents[i]));
+      doc.add(getKnnVectorField(field, contents[i], vectorSimilarityFunction));
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
     }
