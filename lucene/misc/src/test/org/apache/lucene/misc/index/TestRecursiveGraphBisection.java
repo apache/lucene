@@ -16,8 +16,9 @@
  */
 package org.apache.lucene.misc.index;
 
-import java.io.IOException;
+import static org.apache.lucene.misc.index.RecursiveGraphBisection.fastLog2;
 
+import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -169,5 +170,17 @@ public class TestRecursiveGraphBisection extends LuceneTestCase {
     reader.close();
     w.close();
     dir.close();
+  }
+
+  public void testFastLog2() {
+    // Test powers of 2
+    for (int i = 0; i < 31; ++i) {
+      assertEquals(i, fastLog2(1 << i), 0f);
+    }
+
+    // Test non powers of 2
+    for (int i = 3; i < 100_000; ++i) {
+      assertEquals("" + i, (float) (Math.log(i) / Math.log(2)), fastLog2(i), 0.01f);
+    }
   }
 }

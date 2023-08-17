@@ -81,18 +81,18 @@ public final class RecursiveGraphBisection implements Cloneable {
 
   private static final int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
 
-  /**
-   * Minimum required document frequency for terms to be considered.
-   */
+  /** Minimum required document frequency for terms to be considered. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
 
   /**
-   * Minimum size of partitions. The algorithm will stop recursing when reaching partitions below this number of documents.
+   * Minimum size of partitions. The algorithm will stop recursing when reaching partitions below
+   * this number of documents.
    */
   public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
 
   /**
-   * Default maximum number of iterations per recursion level. Higher numbers of iterations typically don't help significantly.
+   * Default maximum number of iterations per recursion level. Higher numbers of iterations
+   * typically don't help significantly.
    */
   public static final int DEFAULT_MAX_ITERS = 20;
 
@@ -230,7 +230,6 @@ public final class RecursiveGraphBisection implements Cloneable {
     private final TermsEnum iterator;
     private final IndexedTerms indexedTerms;
     private final int[] dfCache;
-    private final float[] log2DfCache;
     private IntsRef docIDs;
     private PostingsEnum postings; // for reuse
 
@@ -238,36 +237,24 @@ public final class RecursiveGraphBisection implements Cloneable {
       this.iterator = iterator;
       this.indexedTerms = indexedTerms;
       dfCache = new int[indexedTerms.numTerms()];
-      log2DfCache = new float[dfCache.length];
     }
 
     void reset(IntsRef docIDs) {
       this.docIDs = docIDs;
       Arrays.fill(dfCache, -1);
-      Arrays.fill(log2DfCache, -1);
     }
 
     void increment(int termID) throws IOException {
       assert dfCache[termID] >= 0;
       ++dfCache[termID];
-      log2DfCache[termID] = -1;
     }
 
     void decrement(int termID) throws IOException {
       assert dfCache[termID] > 0;
       --dfCache[termID];
-      log2DfCache[termID] = -1;
     }
 
-    float log2DocFreq(int termID) throws IOException {
-      float log2DocFreq = log2DfCache[termID];
-      if (log2DocFreq == -1) {
-        log2DocFreq = log2DfCache[termID] = (float) log2(docFreq(termID));
-      }
-      return log2DocFreq;
-    }
-
-    private int docFreq(int termID) throws IOException {
+    int docFreq(int termID) throws IOException {
       int docFreq = dfCache[termID];
       if (docFreq == -1) {
         docFreq = dfCache[termID] = computeDocFreq(termID);
@@ -435,8 +422,7 @@ public final class RecursiveGraphBisection implements Cloneable {
   /** Same as the other reorder method with sensible default values. */
   public static CodecReader reorder(CodecReader reader, Directory tempDir, Terms terms)
       throws IOException {
-    ExecutorService executor =
-        Executors.newFixedThreadPool(NUM_PROCESSORS);
+    ExecutorService executor = Executors.newFixedThreadPool(NUM_PROCESSORS);
     try {
       return reorder(
           reader,
@@ -494,7 +480,9 @@ public final class RecursiveGraphBisection implements Cloneable {
     return SortingCodecReader.wrap(reader, docMap, null);
   }
 
-  /** Compute a permutation of the doc ID space that reduces log gaps between consecutive postings. */
+  /**
+   * Compute a permutation of the doc ID space that reduces log gaps between consecutive postings.
+   */
   private static int[] computePermutation(
       Directory dir,
       int maxDoc,
@@ -734,15 +722,9 @@ public final class RecursiveGraphBisection implements Cloneable {
     for (int termID = forwardIndex.nextTerm(); termID != -1L; termID = forwardIndex.nextTerm()) {
       // This uses the simpler estimator proposed by Mackenzie et al in "Tradeoff Options for
       // Bipartite Graph Partitioning"
-      bias += docFreqs2.log2DocFreq(termID) - docFreqs1.log2DocFreq(termID);
+      bias += fastLog2(docFreqs2.docFreq(termID)) - fastLog2(docFreqs1.docFreq(termID));
     }
     return (float) bias;
-  }
-
-  private static final double LOG_2 = Math.log(2);
-
-  private static final double log2(double d) {
-    return Math.log(d) / LOG_2;
   }
 
   private static void swap(
@@ -758,7 +740,8 @@ public final class RecursiveGraphBisection implements Cloneable {
     int leftDoc = docs[left];
     int rightDoc = docs[right];
 
-    // Now update the cache, this makes things much faster than invalidating it and having to recompute doc freqs on the next iteration.
+    // Now update the cache, this makes things much faster than invalidating it and having to
+    // recompute doc freqs on the next iteration.
     forwardIndex.seek(leftDoc);
     for (int term = forwardIndex.nextTerm(); term != -1; term = forwardIndex.nextTerm()) {
       leftDocFreqs.decrement(term);
@@ -783,5 +766,35 @@ public final class RecursiveGraphBisection implements Cloneable {
       }
     }
     return true;
+  }
+
+  private static final float[] LOG2_TABLE = new float[256];
+
+  static {
+    LOG2_TABLE[0] = 1f;
+    // float that has the biased exponent of 1f and zeros for sign and mantissa bits
+    final int one = Float.floatToIntBits(1f);
+    for (int i = 0; i < 256; ++i) {
+      float f = Float.intBitsToFloat(one | (i << (23 - 8)));
+      LOG2_TABLE[i] = (float) (Math.log(f) / Math.log(2));
+    }
+  }
+
+  /** An approximate log() function in base 2 which trades accuracy for much better performance. */
+  static final float fastLog2(int i) {
+    if (i > 0) {
+      // floorLog2 would be the exponent in the float representation of i
+      int floorLog2 = 31 - Integer.numberOfLeadingZeros(i);
+      // tableIndex would be the first 8 mantissa bits in the float representation of i, excluding
+      // the implicit bit
+      int tableIndex = i << (32 - floorLog2) >>> (32 - 8);
+      // i = 1.tableIndex * 2 ^ floorLog2
+      // log(i) = log2(1.tableIndex) + floorLog2
+      return floorLog2 + LOG2_TABLE[tableIndex];
+    } else if (i == 0) {
+      return Float.NEGATIVE_INFINITY;
+    } else {
+      throw new IllegalArgumentException("Log of negative number: " + i);
+    }
   }
 }
