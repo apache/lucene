@@ -36,6 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -1170,22 +1172,39 @@ public class RegExp {
   }
 
   final RegExp parseUnionExp() throws IllegalArgumentException {
-    RegExp e = parseInterExp();
-    if (match('|')) e = makeUnion(flags, e, parseUnionExp());
-    return e;
+    return iterativeParseExp(this::parseInterExp, () -> match('|'), RegExp::makeUnion);
   }
 
   final RegExp parseInterExp() throws IllegalArgumentException {
-    RegExp e = parseConcatExp();
-    if (check(INTERSECTION) && match('&')) e = makeIntersection(flags, e, parseInterExp());
-    return e;
+    return iterativeParseExp(
+        this::parseConcatExp, () -> check(INTERSECTION) && match('&'), RegExp::makeIntersection);
   }
 
   final RegExp parseConcatExp() throws IllegalArgumentException {
-    RegExp e = parseRepeatExp();
-    if (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&")))
-      e = makeConcatenation(flags, e, parseConcatExp());
-    return e;
+    return iterativeParseExp(
+        this::parseRepeatExp,
+        () -> (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))),
+        RegExp::makeConcatenation);
+  }
+
+  /**
+   * Custom Functional Interface for a Supplying methods with signature of RegExp(int int1, RegExp
+   * exp1, RegExp exp2)
+   */
+  @FunctionalInterface
+  private interface MakeRegexGroup {
+    RegExp get(int int1, RegExp exp1, RegExp exp2);
+  }
+
+  final RegExp iterativeParseExp(
+      Supplier<RegExp> gather, BooleanSupplier stop, MakeRegexGroup associativeReduce)
+      throws IllegalArgumentException {
+    RegExp result = gather.get();
+    while (stop.getAsBoolean() == true) {
+      RegExp e = gather.get();
+      result = associativeReduce.get(flags, result, e);
+    }
+    return result;
   }
 
   final RegExp parseRepeatExp() throws IllegalArgumentException {
@@ -1320,7 +1339,7 @@ public class RegExp {
           if (i == 0 || i == s.length() - 1 || i != s.lastIndexOf('-'))
             throw new NumberFormatException();
           String smin = s.substring(0, i);
-          String smax = s.substring(i + 1, s.length());
+          String smax = s.substring(i + 1);
           int imin = Integer.parseInt(smin);
           int imax = Integer.parseInt(smax);
           int digits;

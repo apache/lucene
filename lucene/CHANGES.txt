@@ -62,6 +62,8 @@ Bug Fixes
 
 * GITHUB#9660: Throw an ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
 
+* GITHUB#11537: Fix stack overflow in RegExp for long strings by reducing recursion. (Jakub Slowinski)
+
 * GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
 
 * GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).

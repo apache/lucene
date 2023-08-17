@@ -283,4 +283,8 @@ public class TestRegExp extends LuceneTestCase {
     }
     return regexPattern;
   }
+
+  public void testRegExpNoStackOverflow() {
+    new RegExp("(a)|".repeat(50000) + "(a)");
+  }
 }
