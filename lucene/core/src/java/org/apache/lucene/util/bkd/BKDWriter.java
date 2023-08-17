@@ -104,7 +104,6 @@ public class BKDWriter implements Closeable {
 
   final byte[] scratchDiff;
   final byte[] scratch1;
-  final byte[] scratch2;
   final BytesRef scratchBytesRef1 = new BytesRef();
   final BytesRef scratchBytesRef2 = new BytesRef();
   final int[] commonPrefixLengths;
@@ -157,7 +156,6 @@ public class BKDWriter implements Closeable {
 
     scratchDiff = new byte[config.bytesPerDim];
     scratch1 = new byte[config.packedBytesLength];
-    scratch2 = new byte[config.packedBytesLength];
     commonPrefixLengths = new int[config.numDims];
 
     minPackedValue = new byte[config.packedIndexBytesLength];
