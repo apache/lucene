@@ -206,6 +206,9 @@ Other
 * GITHUB#12410: Refactor vectorization support (split provider from implementation classes).
   (Uwe Schindler, Chris Hegarty)
 
+* GITHUB#12428: Replace consecutive close() calls and close() calls with null checks with IOUtils.close().
+  (Shubham Chaudhary)
+
 ======================== Lucene 9.7.0 =======================
 
 API Changes
