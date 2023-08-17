@@ -74,8 +74,6 @@ import org.apache.lucene.util.ThreadInterruptedException;
  */
 public final class RecursiveGraphBisection implements Cloneable {
 
-  private static final int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
-
   /** Minimum required document frequency for terms to be considered. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
 
@@ -252,7 +250,7 @@ public final class RecursiveGraphBisection implements Cloneable {
             OfflineSorter.MAX_TEMPFILES,
             2 * Integer.BYTES,
             executor,
-            NUM_PROCESSORS) {
+            Runtime.getRuntime().availableProcessors()) {
 
           @Override
           protected ByteSequencesReader getReader(ChecksumIndexInput in, String name)
@@ -326,7 +324,8 @@ public final class RecursiveGraphBisection implements Cloneable {
   /** Same as the other reorder method with sensible default values. */
   public static CodecReader reorder(CodecReader reader, Directory tempDir, Terms terms)
       throws IOException {
-    ExecutorService executor = Executors.newFixedThreadPool(NUM_PROCESSORS);
+    ExecutorService executor =
+        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     try {
       return reorder(
           reader,
