@@ -79,8 +79,7 @@ public class TestIndexSearcher extends LuceneTestCase {
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   // should not throw exception
@@ -180,8 +179,7 @@ public class TestIndexSearcher extends LuceneTestCase {
       }
       reader.close();
     }
-    w.close();
-    dir.close();
+    IOUtils.close(w, dir);
   }
 
   public void testGetQueryCache() throws IOException {

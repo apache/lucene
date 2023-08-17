@@ -39,6 +39,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Shows simple usage of dynamic range faceting. */
 public class RangeFacetsExample implements Closeable {
@@ -139,8 +140,7 @@ public class RangeFacetsExample implements Closeable {
 
   @Override
   public void close() throws IOException {
-    searcher.getIndexReader().close();
-    indexDir.close();
+    IOUtils.close(searcher.getIndexReader(), indexDir);
   }
 
   /** Runs the search and drill-down examples and prints the results. */
