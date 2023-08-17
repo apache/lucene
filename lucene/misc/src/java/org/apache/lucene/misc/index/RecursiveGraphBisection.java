@@ -24,7 +24,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,17 +53,13 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.OfflineSorter;
 import org.apache.lucene.util.OfflineSorter.BufferSize;
 import org.apache.lucene.util.ThreadInterruptedException;
-import org.apache.lucene.util.packed.PackedInts;
-import org.apache.lucene.util.packed.PackedLongValues;
 
 /**
  * Implementation of recursive graph bisection, an approach to doc ID assignment that aims at
@@ -98,33 +93,20 @@ public final class RecursiveGraphBisection implements Cloneable {
 
   private final int minPartitionSize;
   private final int maxIters;
-  private final Terms terms;
+  private final int numTerms;
   private final ForwardIndex forwardIndex;
-  private final IndexedTerms indexedTerms;
-  private final DocFreqCache leftDocFreqs;
-  private final DocFreqCache rightDocFreqs;
+  private final DocFreqs leftDocFreqs;
+  private final DocFreqs rightDocFreqs;
   private final float[] biases;
 
   private RecursiveGraphBisection(
-      int minPartitionSize,
-      int maxIters,
-      Terms terms,
-      ForwardIndex forwardIndex,
-      IndexedTerms indexedTerms,
-      float[] biases) {
+      int minPartitionSize, int maxIters, int numTerms, ForwardIndex forwardIndex, float[] biases) {
     this.minPartitionSize = minPartitionSize;
     this.maxIters = maxIters;
-    this.terms = terms;
+    this.numTerms = numTerms;
     this.forwardIndex = forwardIndex;
-    this.indexedTerms = indexedTerms;
-    TermsEnum iterator;
-    try {
-      iterator = terms.iterator();
-    } catch (IOException e) {
-      throw new UnsupportedOperationException(e);
-    }
-    this.leftDocFreqs = new DocFreqCache(iterator, indexedTerms);
-    this.rightDocFreqs = new DocFreqCache(iterator, indexedTerms);
+    this.leftDocFreqs = new DocFreqs(numTerms, forwardIndex);
+    this.rightDocFreqs = new DocFreqs(numTerms, forwardIndex);
     this.biases = biases;
   }
 
@@ -132,7 +114,7 @@ public final class RecursiveGraphBisection implements Cloneable {
   public RecursiveGraphBisection clone() {
     // No need to clone biases since each clone will manage its own slice of the biases array
     return new RecursiveGraphBisection(
-        minPartitionSize, maxIters, terms, forwardIndex.clone(), indexedTerms.clone(), biases);
+        minPartitionSize, maxIters, numTerms, forwardIndex.clone(), biases);
   }
 
   /**
@@ -141,22 +123,22 @@ public final class RecursiveGraphBisection implements Cloneable {
    */
   private static final class ForwardIndex implements Cloneable, Closeable {
 
-    private final LongValues startOffsets;
+    private final long[] startOffsets;
     private final IndexInput terms;
     private final int maxTerm;
 
     private long endOffset = -1;
     private int prevTerm;
 
-    ForwardIndex(LongValues startIndexes, IndexInput terms, int maxTerm) {
+    ForwardIndex(long[] startIndexes, IndexInput terms, int maxTerm) {
       this.startOffsets = startIndexes;
       this.terms = terms;
       this.maxTerm = maxTerm;
     }
 
     void seek(int docID) throws IOException {
-      final long startOffset = startOffsets.get(docID);
-      endOffset = startOffsets.get(docID + 1);
+      final long startOffset = startOffsets[docID];
+      endOffset = startOffsets[docID + 1];
       terms.seek(startOffset);
       prevTerm = 0;
     }
@@ -184,64 +166,32 @@ public final class RecursiveGraphBisection implements Cloneable {
     }
   }
 
-  private static class IndexedTerms implements Cloneable, Closeable {
+  private static class DocFreqs {
 
-    private final LongValues startIndexes;
-    private final IndexInput termBytes;
-    private final TermState[] states;
-    private final BytesRefBuilder bytes = new BytesRefBuilder();
-
-    IndexedTerms(LongValues startIndexes, IndexInput termBytes, TermState[] states) {
-      this.startIndexes = startIndexes;
-      this.termBytes = termBytes;
-      this.states = states;
-    }
-
-    int numTerms() {
-      return states.length;
-    }
-
-    void seek(TermsEnum iterator, int termID) throws IOException {
-      Objects.checkIndex(termID, states.length);
-      final long startOffset = startIndexes.get(termID);
-      final long endOffset = startIndexes.get(termID + 1);
-      final int length = Math.toIntExact(endOffset - startOffset);
-      termBytes.seek(startOffset);
-      bytes.grow(length);
-      termBytes.readBytes(bytes.bytes(), 0, length);
-      bytes.setLength(length);
-      iterator.seekExact(bytes.get(), states[Math.toIntExact(termID)]);
-      assert iterator.term().equals(bytes.get());
-    }
-
-    @Override
-    public IndexedTerms clone() {
-      return new IndexedTerms(startIndexes, termBytes.clone(), states);
-    }
-
-    @Override
-    public void close() throws IOException {
-      termBytes.close();
-    }
-  }
-
-  private static class DocFreqCache {
-
-    private final TermsEnum iterator;
-    private final IndexedTerms indexedTerms;
+    private final ForwardIndex forwardIndex;
     private final int[] dfCache;
-    private IntsRef docIDs;
-    private PostingsEnum postings; // for reuse
 
-    DocFreqCache(TermsEnum iterator, IndexedTerms indexedTerms) {
-      this.iterator = iterator;
-      this.indexedTerms = indexedTerms;
-      dfCache = new int[indexedTerms.numTerms()];
+    DocFreqs(int numTerms, ForwardIndex forwardIndex) {
+      this.forwardIndex = forwardIndex;
+      dfCache = new int[numTerms];
     }
 
     void reset(IntsRef docIDs) {
-      this.docIDs = docIDs;
-      Arrays.fill(dfCache, -1);
+      // And otherwise using the forward index
+      Arrays.fill(dfCache, 0);
+      try {
+        for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ++i) {
+          final int doc = docIDs.ints[i];
+          forwardIndex.seek(doc);
+          for (int termID = forwardIndex.nextTerm();
+              termID != -1;
+              termID = forwardIndex.nextTerm()) {
+            dfCache[termID]++;
+          }
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
     }
 
     void increment(int termID) throws IOException {
@@ -255,81 +205,38 @@ public final class RecursiveGraphBisection implements Cloneable {
     }
 
     int docFreq(int termID) throws IOException {
-      int docFreq = dfCache[termID];
-      if (docFreq == -1) {
-        docFreq = dfCache[termID] = computeDocFreq(termID);
-      }
-      return docFreq;
-    }
-
-    private int computeDocFreq(int termID) throws IOException {
-      indexedTerms.seek(iterator, termID);
-      postings = iterator.postings(postings, PostingsEnum.NONE);
-      int docIDsIndex = docIDs.offset;
-      final int docIDsEnd = docIDs.offset + docIDs.length;
-      int docFreq = 0;
-      for (int doc = postings.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
-        if (docIDsIndex >= docIDsEnd) {
-          assert docIDsIndex == docIDsEnd;
-          break;
-        } else if (doc == docIDs.ints[docIDsIndex]) {
-          ++docFreq;
-          doc = postings.nextDoc();
-          ++docIDsIndex;
-        } else if (doc < docIDs.ints[docIDsIndex]) {
-          doc = postings.advance(docIDs.ints[docIDsIndex]);
-        } else {
-          docIDsIndex = Arrays.binarySearch(docIDs.ints, docIDsIndex, docIDsEnd, doc);
-          if (docIDsIndex < 0) {
-            docIDsIndex = -1 - docIDsIndex;
-          }
-        }
-      }
-      return docFreq;
+      return dfCache[termID];
     }
   }
 
-  private static IndexedTerms buildIndexedTerms(
+  private static int writePostings(
       Terms terms, int minDocFreq, Directory tempDir, DataOutput postingsOut) throws IOException {
-    String tempTermBytesFileName = null;
-    PackedLongValues.Builder startOffsetsBuilder =
-        PackedLongValues.monotonicBuilder(1 << 10, PackedInts.DEFAULT);
+    int numTerms = 0;
     List<TermState> termStates = new ArrayList<>();
-    try (IndexOutput termBytesOut = tempDir.createTempOutput("terms", "", IOContext.DEFAULT)) {
-      tempTermBytesFileName = termBytesOut.getName();
-      TermsEnum iterator = terms.iterator();
-      int numTerms = 0;
-      startOffsetsBuilder.add(termBytesOut.getFilePointer());
-      PostingsEnum postings = null;
-      for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-        if (iterator.docFreq() < minDocFreq) {
-          continue;
-        }
-        if (termStates.size() >= ArrayUtil.MAX_ARRAY_LENGTH) {
-          throw new IllegalArgumentException(
-              "Cannot perform recursive graph bisection on more than "
-                  + ArrayUtil.MAX_ARRAY_LENGTH
-                  + " terms");
-        }
-        final int termID = numTerms++;
-        termBytesOut.writeBytes(term.bytes, term.offset, term.length);
-        startOffsetsBuilder.add(termBytesOut.getFilePointer());
-        termStates.add(iterator.termState());
-        postings = iterator.postings(postings, PostingsEnum.NONE);
-        for (int doc = postings.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = postings.nextDoc()) {
-          // reverse bytes so that byte order matches natural order
-          postingsOut.writeInt(Integer.reverseBytes(doc));
-          postingsOut.writeInt(Integer.reverseBytes(termID));
-        }
+    TermsEnum iterator = terms.iterator();
+    PostingsEnum postings = null;
+    for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
+      if (iterator.docFreq() < minDocFreq) {
+        continue;
       }
-      CodecUtil.writeFooter(termBytesOut);
+      if (termStates.size() >= ArrayUtil.MAX_ARRAY_LENGTH) {
+        throw new IllegalArgumentException(
+            "Cannot perform recursive graph bisection on more than "
+                + ArrayUtil.MAX_ARRAY_LENGTH
+                + " terms");
+      }
+      final int termID = numTerms++;
+      termStates.add(iterator.termState());
+      postings = iterator.postings(postings, PostingsEnum.NONE);
+      for (int doc = postings.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = postings.nextDoc()) {
+        // reverse bytes so that byte order matches natural order
+        postingsOut.writeInt(Integer.reverseBytes(doc));
+        postingsOut.writeInt(Integer.reverseBytes(termID));
+      }
     }
-    PackedLongValues startOffsets = startOffsetsBuilder.build();
-    TermState[] termStatesArray = termStates.toArray(TermState[]::new);
-    IndexInput termBytesIn = tempDir.openInput(tempTermBytesFileName, IOContext.READ);
-    return new IndexedTerms(startOffsets, termBytesIn, termStatesArray);
+    return numTerms;
   }
 
   private static ForwardIndex buildForwardIndex(
@@ -382,22 +289,21 @@ public final class RecursiveGraphBisection implements Cloneable {
           }
         }.sort(postingsFileName);
 
-    PackedLongValues.Builder startOffsetsBuilder =
-        PackedLongValues.monotonicBuilder(1 << 10, PackedInts.DEFAULT);
+    final long[] startOffsets = new long[maxDoc + 1];
     String termIDsFileName;
+    int prevDoc = -1;
     try (IndexInput sortedPostings = tempDir.openInput(sortedPostingsFile, IOContext.READONCE);
         IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT)) {
       termIDsFileName = termIDs.getName();
       final long end = sortedPostings.length() - CodecUtil.footerLength();
-      int prevDoc = -1;
       int prevTermID = 0;
       while (sortedPostings.getFilePointer() < end) {
         final int doc = Integer.reverseBytes(sortedPostings.readInt());
         final int termID = Integer.reverseBytes(sortedPostings.readInt());
         if (doc != prevDoc) {
           assert doc > prevDoc;
-          for (int d = prevDoc; d < doc; ++d) {
-            startOffsetsBuilder.add(termIDs.getFilePointer());
+          for (int d = prevDoc + 1; d <= doc; ++d) {
+            startOffsets[d] = termIDs.getFilePointer();
           }
           prevDoc = doc;
           prevTermID = 0;
@@ -407,14 +313,12 @@ public final class RecursiveGraphBisection implements Cloneable {
         termIDs.writeVInt(termID - prevTermID);
         prevTermID = termID;
       }
-      while (startOffsetsBuilder.size() < maxDoc) {
-        startOffsetsBuilder.add(termIDs.getFilePointer());
+      for (int d = prevDoc + 1; d <= maxDoc; ++d) {
+        startOffsets[d] = termIDs.getFilePointer();
       }
-      startOffsetsBuilder.add(termIDs.getFilePointer());
       CodecUtil.writeFooter(termIDs);
     }
 
-    PackedLongValues startOffsets = startOffsetsBuilder.build();
     IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.READ);
     return new ForwardIndex(startOffsets, termIDsInput, maxTerm);
   }
@@ -511,18 +415,16 @@ public final class RecursiveGraphBisection implements Cloneable {
           }
         };
 
-    IndexedTerms indexedTerms = null;
     ForwardIndex forwardIndex = null;
     IndexOutput postingsOutput = null;
     boolean success = false;
     try {
       postingsOutput = tempDir.createTempOutput("postings", "", IOContext.DEFAULT);
-      indexedTerms = buildIndexedTerms(terms, minDocFreq, tempDir, postingsOutput);
+      int numTerms = writePostings(terms, minDocFreq, tempDir, postingsOutput);
       CodecUtil.writeFooter(postingsOutput);
       postingsOutput.close();
       forwardIndex =
-          buildForwardIndex(
-              tempDir, postingsOutput.getName(), maxDoc, indexedTerms.numTerms(), executor);
+          buildForwardIndex(tempDir, postingsOutput.getName(), maxDoc, numTerms, executor);
       tempDir.deleteFile(postingsOutput.getName());
       postingsOutput = null;
 
@@ -535,18 +437,12 @@ public final class RecursiveGraphBisection implements Cloneable {
           new CloseableThreadLocal<>()) {
         Queue<Future<?>> futures = new ConcurrentLinkedQueue<>();
         final ForwardIndex finalForwardIndex = forwardIndex;
-        final IndexedTerms finalIndexedTerms = indexedTerms;
         final CountDownLatch latch = new CountDownLatch(1);
         executor.submit(
             () -> {
               RecursiveGraphBisection rgb =
                   new RecursiveGraphBisection(
-                      minPartitionSize,
-                      maxIters,
-                      terms,
-                      finalForwardIndex,
-                      finalIndexedTerms,
-                      new float[maxDoc]);
+                      minPartitionSize, maxIters, numTerms, finalForwardIndex, new float[maxDoc]);
               threadLocal.set(rgb);
               rgb.recurse(
                   new IntsRef(sortedDocs, 0, sortedDocs.length), executor, futures, threadLocal);
@@ -571,7 +467,7 @@ public final class RecursiveGraphBisection implements Cloneable {
       if (success == false) {
         IOUtils.closeWhileHandlingException(postingsOutput);
       }
-      IOUtils.close(indexedTerms, forwardIndex);
+      IOUtils.close(forwardIndex);
       for (String file : tempFiles) {
         dir.deleteFile(file);
       }
@@ -632,8 +528,8 @@ public final class RecursiveGraphBisection implements Cloneable {
       ForwardIndex forwardIndex,
       IntsRef left,
       IntsRef right,
-      DocFreqCache leftDocFreqs,
-      DocFreqCache rightDocFreqs,
+      DocFreqs leftDocFreqs,
+      DocFreqs rightDocFreqs,
       float[] biases,
       int iter)
       throws IOException {
@@ -715,7 +611,7 @@ public final class RecursiveGraphBisection implements Cloneable {
    * otherwise.
    */
   private static float computeBias(
-      int docID, ForwardIndex forwardIndex, DocFreqCache docFreqs1, DocFreqCache docFreqs2)
+      int docID, ForwardIndex forwardIndex, DocFreqs docFreqs1, DocFreqs docFreqs2)
       throws IOException {
     forwardIndex.seek(docID);
     double bias = 0;
@@ -732,8 +628,8 @@ public final class RecursiveGraphBisection implements Cloneable {
       int left,
       int right,
       ForwardIndex forwardIndex,
-      DocFreqCache leftDocFreqs,
-      DocFreqCache rightDocFreqs)
+      DocFreqs leftDocFreqs,
+      DocFreqs rightDocFreqs)
       throws IOException {
     assert left < right;
 
