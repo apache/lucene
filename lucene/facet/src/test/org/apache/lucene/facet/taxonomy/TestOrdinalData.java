@@ -28,7 +28,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyIndexReader;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.ReindexingEnrichedDirectoryTaxonomyWriter;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
@@ -49,7 +49,7 @@ import org.junit.Before;
 
 public class TestOrdinalData extends FacetTestCase {
   Directory taxoDir;
-  DirectoryTaxonomyIndexReader taxoReader;
+  DirectoryTaxonomyReader taxoReader;
   IndexReader taxoIndexReader;
   ReindexingEnrichedDirectoryTaxonomyWriter taxoWriter;
 
@@ -114,7 +114,7 @@ public class TestOrdinalData extends FacetTestCase {
     IOUtils.close(indexWriter, indexDir);
     taxoWriter.commit();
 
-    taxoReader = new DirectoryTaxonomyIndexReader(taxoDir);
+    taxoReader = new DirectoryTaxonomyReader(taxoDir);
     taxoIndexReader = taxoReader.getInternalIndexReader();
   }
 
@@ -134,7 +134,6 @@ public class TestOrdinalData extends FacetTestCase {
     assertEquals(9, taxoIndexReader.maxDoc());
     for (LeafReaderContext ctx : taxoIndexReader.leaves()) {
       LeafReader leafReader = ctx.reader();
-      BinaryDocValues fullPaths = leafReader.getBinaryDocValues(taxoReader.getFullPathFieldName());
       NumericDocValues scores = leafReader.getNumericDocValues("score");
       if (scores == null) {
         continue;
@@ -143,15 +142,10 @@ public class TestOrdinalData extends FacetTestCase {
         if (scores.advanceExact(ord) == false) {
           continue;
         }
-        if (fullPaths.advanceExact(ord) == false) {
-          throw new IOException("All taxonomy docs should have a full path");
-        }
-
-        String[] pathComponents =
-            fullPaths.binaryValue().utf8ToString().split(String.valueOf(FacetsConfig.DELIM_CHAR));
-        Long score = labelToScore.get(pathComponents[pathComponents.length - 1]);
+        FacetLabel label = taxoReader.getPath(ctx.docBase + ord);
+        Long score = labelToScore.get(label.components[label.length - 1]);
         if (score == null) {
-          throw new IOException("Unexpected score for " + Arrays.toString(pathComponents));
+          throw new IOException("Unexpected score for " + Arrays.toString(label.components));
         }
         assertEquals((long) score, scores.longValue());
       }
@@ -180,7 +174,7 @@ public class TestOrdinalData extends FacetTestCase {
   public void testReindex() throws IOException {
     taxoWriter.reindexWithNewOrdinalData(new OrdinalDataAppender(new HashMap<>()));
     taxoReader.close();
-    taxoReader = new DirectoryTaxonomyIndexReader(taxoDir);
+    taxoReader = new DirectoryTaxonomyReader(taxoDir);
     taxoIndexReader = taxoReader.getInternalIndexReader();
 
     IndexSearcher taxoSearcher = newSearcher(taxoIndexReader);

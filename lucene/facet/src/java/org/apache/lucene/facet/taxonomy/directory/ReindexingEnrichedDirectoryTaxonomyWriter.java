@@ -60,27 +60,18 @@ public class ReindexingEnrichedDirectoryTaxonomyWriter extends DirectoryTaxonomy
   private List<FacetLabel> recordPathsInOrder(Directory d) throws IOException {
     List<FacetLabel> paths = new ArrayList<>();
 
-    DirectoryTaxonomyIndexReader taxoReader = new DirectoryTaxonomyIndexReader(d);
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(d);
     IndexReader taxoIndexReader = taxoReader.getInternalIndexReader();
 
     for (LeafReaderContext ctx : taxoIndexReader.leaves()) {
       LeafReader leafReader = ctx.reader();
-      BinaryDocValues fullPaths = leafReader.getBinaryDocValues(taxoReader.getFullPathFieldName());
-
-      for (int ord = 0; ord < leafReader.maxDoc(); ord++) {
-        if (fullPaths.advanceExact(ord) == false) {
-          throw new IOException("All taxonomy docs should have a full path");
-        }
-
-        String[] pathComponents =
-            fullPaths.binaryValue().utf8ToString().split(String.valueOf(FacetsConfig.DELIM_CHAR));
-        FacetLabel label;
-        if (pathComponents[0].isEmpty()) {
-          label = new FacetLabel();
-        } else {
-          label = new FacetLabel(pathComponents);
-        }
-        paths.add(label);
+      int[] ordinals = new int[leafReader.maxDoc()];
+      for (int i = 0; i < ordinals.length; i++) {
+        ordinals[i] = ctx.docBase + i;
+      }
+      FacetLabel[] labels = taxoReader.getBulkPath(ordinals);
+      for (FacetLabel label : labels) {
+          paths.add(label);
       }
     }
 
