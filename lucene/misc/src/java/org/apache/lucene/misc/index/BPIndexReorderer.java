@@ -368,6 +368,13 @@ public final class BPIndexReorderer {
       if (terms == null) {
         continue;
       }
+      if (terms.size() != -1) {
+        // Skip ID-like fields that have many terms where none is of interest
+        final long maxPossibleDocFreq = 1 + terms.getSumDocFreq() - terms.size();
+        if (maxPossibleDocFreq < minDocFreq) {
+          continue;
+        }
+      }
       TermsEnum iterator = terms.iterator();
       PostingsEnum postings = null;
       for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
