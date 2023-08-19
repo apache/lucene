@@ -19,11 +19,10 @@ package org.apache.lucene.misc.index;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,16 +30,16 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.SortingCodecReader;
-import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -52,20 +51,23 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.OfflineSorter;
 import org.apache.lucene.util.OfflineSorter.BufferSize;
+import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
- * Implementation of recursive graph bisection, an approach to doc ID assignment that aims at
- * reducing the gap between consecutive postings.
+ * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
+ * often abbreviated BP, an approach to doc ID assignment that aims at reducing the sum of the log
+ * gap between consecutive postings.
  *
  * <p>This algorithm was initially described by Dhulipala et al. in "Compressing graphs and inverted
  * indexes with recursive graph bisection". This implementation takes advantage of some
@@ -74,7 +76,16 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *
  * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms) memory per thread.
  */
-public final class RecursiveGraphBisection implements Cloneable {
+public final class BPIndexReorderer {
+
+  /** Exception that is thrown when not enough RAM is available. */
+  public static class NotEnoughRAMException extends RuntimeException {
+    NotEnoughRAMException(String message) {
+      super(message);
+    }
+  }
+
+  private static final int TERM_IDS_BLOCK_SIZE = 17;
 
   /** Minimum required document frequency for terms to be considered. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
@@ -91,30 +102,196 @@ public final class RecursiveGraphBisection implements Cloneable {
    */
   public static final int DEFAULT_MAX_ITERS = 20;
 
-  private final int minPartitionSize;
-  private final int maxIters;
-  private final int numTerms;
-  private final ForwardIndex forwardIndex;
-  private final int[] leftDocFreqs;
-  private final int[] rightDocFreqs;
-  private final float[] biases;
+  /** Default RAM budget. Consider raising it when working on large indexes. */
+  public static final int DEFAULT_RAM_BUDGET_MB = 64;
 
-  private RecursiveGraphBisection(
-      int minPartitionSize, int maxIters, int numTerms, ForwardIndex forwardIndex, float[] biases) {
-    this.minPartitionSize = minPartitionSize;
-    this.maxIters = maxIters;
-    this.numTerms = numTerms;
-    this.forwardIndex = forwardIndex;
-    this.leftDocFreqs = new int[numTerms];
-    this.rightDocFreqs = new int[numTerms];
-    this.biases = biases;
+  private int minDocFreq;
+  private int minPartitionSize;
+  private int maxIters;
+  private ExecutorService executorService;
+  private int concurrency;
+  private double ramBudgetMB;
+  private Set<String> fields;
+
+  /** Constructor. */
+  public BPIndexReorderer() {
+    setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
+    setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
+    setMaxIters(DEFAULT_MAX_ITERS);
+    setExecutorService(new SameThreadExecutorService(), 1);
+    setRAMBudgetMB(DEFAULT_RAM_BUDGET_MB);
+    setFields(null);
   }
 
-  @Override
-  public RecursiveGraphBisection clone() {
-    // No need to clone biases since each clone will manage its own slice of the biases array
-    return new RecursiveGraphBisection(
-        minPartitionSize, maxIters, numTerms, forwardIndex.clone(), biases);
+  /** Set the minimum document frequency for terms to be considered. */
+  public void setMinDocFreq(int minDocFreq) {
+    if (minDocFreq < 1) {
+      throw new IllegalArgumentException("minDocFreq must be at least 1, got " + minDocFreq);
+    }
+    this.minDocFreq = minDocFreq;
+  }
+
+  /** Set the minimum partition size, when the algorithm stops recursing. */
+  public void setMinPartitionSize(int minPartitionSize) {
+    if (minPartitionSize < 1) {
+      throw new IllegalArgumentException(
+          "minPartitionSize must be at least 1, got " + minPartitionSize);
+    }
+    this.minPartitionSize = minPartitionSize;
+  }
+
+  /** Set the maximum number of iterations on each recursion level. */
+  public void setMaxIters(int maxIters) {
+    if (maxIters < 1) {
+      throw new IllegalArgumentException("maxIters must be at least 1, got " + maxIters);
+    }
+    this.maxIters = maxIters;
+  }
+
+  /**
+   * Set the {@link ExecutorService} to run graph partitioning concurrently. {@code concurrency}
+   * must indicate the concurrency of the {@link ExecutorService}.
+   */
+  public void setExecutorService(ExecutorService executorService, int concurrency) {
+    if (executorService == null) {
+      throw new IllegalArgumentException("The executor service must be non-null");
+    }
+    if (concurrency < 1) {
+      throw new IllegalArgumentException("concurrency must be at least 1, got " + concurrency);
+    }
+    this.executorService = executorService;
+    this.concurrency = concurrency;
+  }
+
+  /**
+   * Set the amount of RAM that graph partitioning is allowed to use. More RAM allows running
+   * faster. If not enough RAM is provided, reordering will not happen.
+   */
+  public void setRAMBudgetMB(double ramBudgetMB) {
+    this.ramBudgetMB = ramBudgetMB;
+  }
+
+  /**
+   * Sets the fields to use to perform partitioning. A {@code null} value indicates that all indexed
+   * fields should be used.
+   */
+  public void setFields(Set<String> fields) {
+    this.fields = fields == null ? null : new HashSet<>(fields);
+  }
+
+  private class RecursionHelper implements Cloneable {
+
+    private final int numTerms;
+    private final ForwardIndex forwardIndex;
+    private final int[] leftDocFreqs;
+    private final int[] rightDocFreqs;
+    private final float[] biases;
+
+    private RecursionHelper(int numTerms, ForwardIndex forwardIndex, float[] biases) {
+      this.numTerms = numTerms;
+      this.forwardIndex = forwardIndex;
+      this.leftDocFreqs = new int[numTerms];
+      this.rightDocFreqs = new int[numTerms];
+      this.biases = biases;
+    }
+
+    @Override
+    public RecursionHelper clone() {
+      // No need to clone biases since each clone will manage its own slice of the biases array
+      return new RecursionHelper(numTerms, forwardIndex.clone(), biases);
+    }
+
+    private void initLeftDocFreqs(IntsRef docs) {
+      try {
+        Arrays.fill(leftDocFreqs, 0);
+        for (int i = docs.offset, end = docs.offset + docs.length; i < end; ++i) {
+          final int doc = docs.ints[i];
+          forwardIndex.seek(doc);
+          for (int termID = forwardIndex.nextTerm();
+              termID != -1;
+              termID = forwardIndex.nextTerm()) {
+            ++leftDocFreqs[termID];
+          }
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+
+    /**
+     * Update doc freqs. {@code leftDocFreqs} must initially contain doc freqs across left and
+     * right, and {@code rightDocFreqs} must be empty.
+     */
+    private void updateDocFreqs(IntsRef rightDocs, int[] leftDocFreqs, int[] rightDocFreqs) {
+      try {
+        for (int i = rightDocs.offset, end = rightDocs.offset + rightDocs.length; i < end; ++i) {
+          final int doc = rightDocs.ints[i];
+          forwardIndex.seek(doc);
+          for (int termID = forwardIndex.nextTerm();
+              termID != -1;
+              termID = forwardIndex.nextTerm()) {
+            --leftDocFreqs[termID];
+            assert leftDocFreqs[termID] >= 0;
+            ++rightDocFreqs[termID];
+          }
+        }
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+
+    /**
+     * Helper method to control recursion of {@link BPIndexReorderer#computePermutation(CodecReader,
+     * Set, Directory)}.
+     */
+    private void recurse(
+        IntsRef docIDs,
+        ExecutorService executor,
+        Collection<Future<?>> futures,
+        CloseableThreadLocal<RecursionHelper> threadLocal) {
+      int leftSize = docIDs.length / 2;
+      int rightSize = docIDs.length - leftSize;
+      IntsRef left = new IntsRef(docIDs.ints, docIDs.offset, leftSize);
+      IntsRef right = new IntsRef(docIDs.ints, docIDs.offset + leftSize, rightSize);
+
+      if (left.length < minPartitionSize) {
+        return;
+      }
+
+      Arrays.fill(rightDocFreqs, 0);
+      updateDocFreqs(right, leftDocFreqs, rightDocFreqs);
+
+      for (int iter = 0; iter < maxIters; ++iter) {
+        boolean moved;
+        try {
+          moved = shuffle(forwardIndex, left, right, leftDocFreqs, rightDocFreqs, biases, iter);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+        if (moved == false) {
+          break;
+        }
+      }
+
+      Runnable recurseRight =
+          () -> {
+            RecursionHelper rgb = threadLocal.get();
+            if (rgb == null) {
+              rgb = clone();
+              threadLocal.set(rgb);
+            }
+            Arrays.fill(rgb.leftDocFreqs, 0);
+            rgb.initLeftDocFreqs(right);
+            rgb.recurse(right, executor, futures, threadLocal);
+          };
+
+      Future<?> rightFuture = tryEnqueue(executor, recurseRight);
+      recurse(left, executor, futures, threadLocal);
+      if (rightFuture == null) {
+        rightFuture = executor.submit(recurseRight);
+      }
+      futures.add(rightFuture);
+    }
   }
 
   /**
@@ -123,24 +300,31 @@ public final class RecursiveGraphBisection implements Cloneable {
    */
   private static final class ForwardIndex implements Cloneable, Closeable {
 
-    private final long[] startOffsets;
-    private final IndexInput terms;
+    private final RandomAccessInput startOffsets;
+    private final IndexInput startOffsetsInput, terms;
     private final int maxTerm;
 
     private long endOffset = -1;
-    private final int[] buffer = new int[17];
+    private final int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
     private int bufferOffset;
     private int bufferLen;
 
-    ForwardIndex(long[] startIndexes, IndexInput terms, int maxTerm) {
-      this.startOffsets = startIndexes;
+    ForwardIndex(IndexInput startOffsetsInput, IndexInput terms, int maxTerm) {
+      this.startOffsetsInput = startOffsetsInput;
+      try {
+        this.startOffsets =
+            startOffsetsInput.randomAccessSlice(
+                0, startOffsetsInput.length() - CodecUtil.footerLength());
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
       this.terms = terms;
       this.maxTerm = maxTerm;
     }
 
     void seek(int docID) throws IOException {
-      final long startOffset = startOffsets[docID];
-      endOffset = startOffsets[docID + 1];
+      final long startOffset = startOffsets.readLong((long) docID * Long.BYTES);
+      endOffset = startOffsets.readLong((docID + 1L) * Long.BYTES);
       terms.seek(startOffset);
       bufferOffset = bufferLen = 0;
     }
@@ -160,60 +344,86 @@ public final class RecursiveGraphBisection implements Cloneable {
 
     @Override
     public ForwardIndex clone() {
-      return new ForwardIndex(startOffsets, terms.clone(), maxTerm);
+      return new ForwardIndex(startOffsetsInput.clone(), terms.clone(), maxTerm);
     }
 
     @Override
     public void close() throws IOException {
-      terms.close();
+      IOUtils.close(startOffsetsInput, terms);
     }
   }
 
-  private static int writePostings(
-      Terms terms, int minDocFreq, Directory tempDir, DataOutput postingsOut) throws IOException {
+  private int writePostings(
+      CodecReader reader, Set<String> fields, Directory tempDir, DataOutput postingsOut)
+      throws IOException {
+    final int maxNumTerms =
+        (int)
+            ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxDoc()))
+                / concurrency
+                / termRAMRequirementsPerThreadPerTerm());
+
     int numTerms = 0;
-    List<TermState> termStates = new ArrayList<>();
-    TermsEnum iterator = terms.iterator();
-    PostingsEnum postings = null;
-    for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-      if (iterator.docFreq() < minDocFreq) {
+    for (String field : fields) {
+      Terms terms = reader.terms(field);
+      if (terms == null) {
         continue;
       }
-      if (termStates.size() >= ArrayUtil.MAX_ARRAY_LENGTH) {
-        throw new IllegalArgumentException(
-            "Cannot perform recursive graph bisection on more than "
-                + ArrayUtil.MAX_ARRAY_LENGTH
-                + " terms");
-      }
-      final int termID = numTerms++;
-      termStates.add(iterator.termState());
-      postings = iterator.postings(postings, PostingsEnum.NONE);
-      for (int doc = postings.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = postings.nextDoc()) {
-        // reverse bytes so that byte order matches natural order
-        postingsOut.writeInt(Integer.reverseBytes(doc));
-        postingsOut.writeInt(Integer.reverseBytes(termID));
+      TermsEnum iterator = terms.iterator();
+      PostingsEnum postings = null;
+      for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
+        if (iterator.docFreq() < minDocFreq) {
+          continue;
+        }
+        if (numTerms >= ArrayUtil.MAX_ARRAY_LENGTH) {
+          throw new IllegalArgumentException(
+              "Cannot perform recursive graph bisection on more than "
+                  + ArrayUtil.MAX_ARRAY_LENGTH
+                  + " terms");
+        } else if (numTerms >= maxNumTerms) {
+          throw new NotEnoughRAMException(
+              "Too many terms are matching given the RAM budget of "
+                  + ramBudgetMB
+                  + "MB. Consider raising the RAM budget, raising the minimum doc frequency, or decreasing concurrency");
+        }
+        final int termID = numTerms++;
+        postings = iterator.postings(postings, PostingsEnum.NONE);
+        for (int doc = postings.nextDoc();
+            doc != DocIdSetIterator.NO_MORE_DOCS;
+            doc = postings.nextDoc()) {
+          // reverse bytes so that byte order matches natural order
+          postingsOut.writeInt(Integer.reverseBytes(doc));
+          postingsOut.writeInt(Integer.reverseBytes(termID));
+        }
       }
     }
     return numTerms;
   }
 
-  private static ForwardIndex buildForwardIndex(
-      Directory tempDir, String postingsFileName, int maxDoc, int maxTerm, ExecutorService executor)
-      throws IOException {
-    // TODO: what are some good parameters here?
-    long start = System.currentTimeMillis();
+  private ForwardIndex buildForwardIndex(
+      Directory tempDir, String postingsFileName, int maxDoc, int maxTerm) throws IOException {
     String sortedPostingsFile =
         new OfflineSorter(
             tempDir,
             "forward-index",
-            (a, b) -> ArrayUtil.compareUnsigned8(a.bytes, a.offset, b.bytes, b.offset),
-            BufferSize.megabytes(16),
+            // Implement BytesRefComparator to make OfflineSorter use radix sort
+            new BytesRefComparator(2 * Integer.BYTES) {
+              @Override
+              protected int byteAt(BytesRef ref, int i) {
+                return ref.bytes[ref.offset + i] & 0xFF;
+              }
+
+              @Override
+              public int compare(BytesRef o1, BytesRef o2) {
+                assert o1.length == 2 * Integer.BYTES;
+                assert o2.length == 2 * Integer.BYTES;
+                return ArrayUtil.compareUnsigned8(o1.bytes, o1.offset, o2.bytes, o2.offset);
+              }
+            },
+            BufferSize.megabytes((long) (ramBudgetMB / concurrency)),
             OfflineSorter.MAX_TEMPFILES,
             2 * Integer.BYTES,
-            executor,
-            Runtime.getRuntime().availableProcessors()) {
+            executorService,
+            concurrency) {
 
           @Override
           protected ByteSequencesReader getReader(ChecksumIndexInput in, String name)
@@ -230,7 +440,7 @@ public final class RecursiveGraphBisection implements Cloneable {
                   return null;
                 }
                 // optimized read of 8 bytes
-                BitUtil.VH_LE_LONG.set(ref.bytes(), 0, in.readLong());
+                in.readBytes(ref.bytes(), 0, 2 * Integer.BYTES);
                 return ref.get();
               }
             };
@@ -244,21 +454,23 @@ public final class RecursiveGraphBisection implements Cloneable {
               public void write(byte[] bytes, int off, int len) throws IOException {
                 assert len == 2 * Integer.BYTES;
                 // optimized read of 8 bytes
-                out.writeLong((long) BitUtil.VH_LE_LONG.get(bytes, off));
+                out.writeBytes(bytes, off, len);
               }
             };
           }
         }.sort(postingsFileName);
-    System.out.println("Sort postings: " + (System.currentTimeMillis() - start));
 
-    final long[] startOffsets = new long[maxDoc + 1];
     String termIDsFileName;
+    String startOffsetsFileName;
     int prevDoc = -1;
     try (IndexInput sortedPostings = tempDir.openInput(sortedPostingsFile, IOContext.READONCE);
-        IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT)) {
+        IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT);
+        IndexOutput startOffsets =
+            tempDir.createTempOutput("start-offsets", "", IOContext.DEFAULT)) {
       termIDsFileName = termIDs.getName();
+      startOffsetsFileName = startOffsets.getName();
       final long end = sortedPostings.length() - CodecUtil.footerLength();
-      int[] buffer = new int[17];
+      int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
       int bufferLen = 0;
       while (sortedPostings.getFilePointer() < end) {
         final int doc = Integer.reverseBytes(sortedPostings.readInt());
@@ -271,7 +483,7 @@ public final class RecursiveGraphBisection implements Cloneable {
 
           assert doc > prevDoc;
           for (int d = prevDoc + 1; d <= doc; ++d) {
-            startOffsets[d] = termIDs.getFilePointer();
+            startOffsets.writeLong(termIDs.getFilePointer());
           }
           prevDoc = doc;
         }
@@ -286,32 +498,15 @@ public final class RecursiveGraphBisection implements Cloneable {
         writeMonotonicInts(buffer, bufferLen, termIDs);
       }
       for (int d = prevDoc + 1; d <= maxDoc; ++d) {
-        startOffsets[d] = termIDs.getFilePointer();
+        startOffsets.writeLong(termIDs.getFilePointer());
       }
       CodecUtil.writeFooter(termIDs);
+      CodecUtil.writeFooter(startOffsets);
     }
 
     IndexInput termIDsInput = tempDir.openInput(termIDsFileName, IOContext.READ);
+    IndexInput startOffsets = tempDir.openInput(startOffsetsFileName, IOContext.READ);
     return new ForwardIndex(startOffsets, termIDsInput, maxTerm);
-  }
-
-  /** Same as the other reorder method with sensible default values. */
-  public static CodecReader reorder(CodecReader reader, Directory tempDir, Terms terms)
-      throws IOException {
-    ExecutorService executor =
-        Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
-    try {
-      return reorder(
-          reader,
-          tempDir,
-          terms,
-          DEFAULT_MIN_DOC_FREQ,
-          DEFAULT_MIN_PARTITION_SIZE,
-          DEFAULT_MAX_ITERS,
-          executor);
-    } finally {
-      executor.shutdown();
-    }
   }
 
   /**
@@ -319,19 +514,31 @@ public final class RecursiveGraphBisection implements Cloneable {
    * consecutive documents in postings, which usually helps improve space efficiency and query
    * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
    * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * @throws NotEnoughRAMException if not enough RAM is provided
    */
-  public static CodecReader reorder(
-      CodecReader reader,
-      Directory tempDir,
-      Terms terms,
-      int minDocFreq,
-      int minPartitionSize,
-      int maxIters,
-      ExecutorService executor)
-      throws IOException {
-    int[] newToOld =
-        computePermutation(
-            tempDir, reader.maxDoc(), terms, minDocFreq, minPartitionSize, maxIters, executor);
+  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
+
+    if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
+      throw new NotEnoughRAMException(
+          "At least "
+              + Math.ceil(docRAMRequirements(reader.maxDoc()) / 1024. / 1024.)
+              + "MB of RAM are required to hold metadata about documents in RAM, but current RAM budget is "
+              + ramBudgetMB
+              + "MB");
+    }
+
+    Set<String> fields = this.fields;
+    if (fields == null) {
+      fields = new HashSet<>();
+      for (FieldInfo fi : reader.getFieldInfos()) {
+        if (fi.getIndexOptions() != IndexOptions.NONE) {
+          fields.add(fi.name);
+        }
+      }
+    }
+
+    int[] newToOld = computePermutation(reader, fields, tempDir);
     int[] oldToNew = new int[newToOld.length];
     for (int i = 0; i < newToOld.length; ++i) {
       oldToNew[newToOld[i]] = i;
@@ -360,14 +567,7 @@ public final class RecursiveGraphBisection implements Cloneable {
   /**
    * Compute a permutation of the doc ID space that reduces log gaps between consecutive postings.
    */
-  private static int[] computePermutation(
-      Directory dir,
-      int maxDoc,
-      Terms terms,
-      int minDocFreq,
-      int minPartitionSize,
-      int maxIters,
-      ExecutorService executor)
+  private int[] computePermutation(CodecReader reader, Set<String> fields, Directory dir)
       throws IOException {
 
     final Set<String> tempFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -388,16 +588,16 @@ public final class RecursiveGraphBisection implements Cloneable {
           }
         };
 
+    final int maxDoc = reader.maxDoc();
     ForwardIndex forwardIndex = null;
     IndexOutput postingsOutput = null;
     boolean success = false;
     try {
       postingsOutput = tempDir.createTempOutput("postings", "", IOContext.DEFAULT);
-      int numTerms = writePostings(terms, minDocFreq, tempDir, postingsOutput);
+      int numTerms = writePostings(reader, fields, tempDir, postingsOutput);
       CodecUtil.writeFooter(postingsOutput);
       postingsOutput.close();
-      forwardIndex =
-          buildForwardIndex(tempDir, postingsOutput.getName(), maxDoc, numTerms, executor);
+      forwardIndex = buildForwardIndex(tempDir, postingsOutput.getName(), maxDoc, numTerms);
       tempDir.deleteFile(postingsOutput.getName());
       postingsOutput = null;
 
@@ -406,21 +606,19 @@ public final class RecursiveGraphBisection implements Cloneable {
         sortedDocs[i] = i;
       }
 
-      try (CloseableThreadLocal<RecursiveGraphBisection> threadLocal =
-          new CloseableThreadLocal<>()) {
+      try (CloseableThreadLocal<RecursionHelper> threadLocal = new CloseableThreadLocal<>()) {
         Queue<Future<?>> futures = new ConcurrentLinkedQueue<>();
         final ForwardIndex finalForwardIndex = forwardIndex;
         final CountDownLatch latch = new CountDownLatch(1);
-        executor.submit(
+        executorService.submit(
             () -> {
               try {
-                RecursiveGraphBisection rgb =
-                    new RecursiveGraphBisection(
-                        minPartitionSize, maxIters, numTerms, finalForwardIndex, new float[maxDoc]);
+                RecursionHelper rgb =
+                    new RecursionHelper(numTerms, finalForwardIndex, new float[maxDoc]);
                 threadLocal.set(rgb);
                 IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
                 rgb.initLeftDocFreqs(docs);
-                rgb.recurse(docs, executor, futures, threadLocal);
+                rgb.recurse(docs, executorService, futures, threadLocal);
               } finally {
                 latch.countDown();
               }
@@ -451,60 +649,7 @@ public final class RecursiveGraphBisection implements Cloneable {
     }
   }
 
-  /**
-   * Helper method to control recursion on {@link #computePermutation(Directory, int, Terms, int,
-   * int, int, ExecutorService)}.
-   */
-  private void recurse(
-      IntsRef docIDs,
-      ExecutorService executor,
-      Collection<Future<?>> futures,
-      CloseableThreadLocal<RecursiveGraphBisection> threadLocal) {
-    int leftSize = docIDs.length / 2;
-    int rightSize = docIDs.length - leftSize;
-    IntsRef left = new IntsRef(docIDs.ints, docIDs.offset, leftSize);
-    IntsRef right = new IntsRef(docIDs.ints, docIDs.offset + leftSize, rightSize);
-
-    if (left.length < minPartitionSize) {
-      return;
-    }
-
-    Arrays.fill(rightDocFreqs, 0);
-    updateDocFreqs(right, leftDocFreqs, rightDocFreqs);
-
-    for (int iter = 0; iter < maxIters; ++iter) {
-      boolean moved;
-      try {
-        moved = shuffle(forwardIndex, left, right, leftDocFreqs, rightDocFreqs, biases, iter);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-      if (moved == false) {
-        break;
-      }
-    }
-
-    Runnable recurseRight =
-        () -> {
-          RecursiveGraphBisection rgb = threadLocal.get();
-          if (rgb == null) {
-            rgb = clone();
-            threadLocal.set(rgb);
-          }
-          Arrays.fill(rgb.leftDocFreqs, 0);
-          rgb.initLeftDocFreqs(right);
-          rgb.recurse(right, executor, futures, threadLocal);
-        };
-
-    Future<?> rightFuture = tryEnqueue(executor, recurseRight);
-    recurse(left, executor, futures, threadLocal);
-    if (rightFuture == null) {
-      rightFuture = executor.submit(recurseRight);
-    }
-    futures.add(rightFuture);
-  }
-
-  private Future<?> tryEnqueue(ExecutorService executor, Runnable runnable) {
+  private static Future<?> tryEnqueue(ExecutorService executor, Runnable runnable) {
     final AtomicBoolean queued = new AtomicBoolean(true);
     final AtomicBoolean mayRunInSameThread = new AtomicBoolean(false);
     Thread currentThread = Thread.currentThread();
@@ -522,41 +667,6 @@ public final class RecursiveGraphBisection implements Cloneable {
       return null;
     } else {
       return future;
-    }
-  }
-
-  /**
-   * Update doc freqs. {@code leftDocFreqs} must initially contain doc freqs across left and right,
-   * and {@code rightDocFreqs} must be empty.
-   */
-  private void updateDocFreqs(IntsRef rightDocs, int[] leftDocFreqs, int[] rightDocFreqs) {
-    try {
-      for (int i = rightDocs.offset, end = rightDocs.offset + rightDocs.length; i < end; ++i) {
-        final int doc = rightDocs.ints[i];
-        forwardIndex.seek(doc);
-        for (int termID = forwardIndex.nextTerm(); termID != -1; termID = forwardIndex.nextTerm()) {
-          --leftDocFreqs[termID];
-          assert leftDocFreqs[termID] >= 0;
-          ++rightDocFreqs[termID];
-        }
-      }
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
-  private void initLeftDocFreqs(IntsRef docs) {
-    try {
-      Arrays.fill(leftDocFreqs, 0);
-      for (int i = docs.offset, end = docs.offset + docs.length; i < end; ++i) {
-        final int doc = docs.ints[i];
-        forwardIndex.seek(doc);
-        for (int termID = forwardIndex.nextTerm(); termID != -1; termID = forwardIndex.nextTerm()) {
-          ++leftDocFreqs[termID];
-        }
-      }
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
     }
   }
 
@@ -708,6 +818,18 @@ public final class RecursiveGraphBisection implements Cloneable {
     return true;
   }
 
+  private static long docRAMRequirements(int maxDoc) {
+    // We need one int per doc for the doc map, plus one float to store the bias associated with
+    // this doc.
+    return 2L * Integer.BYTES * maxDoc;
+  }
+
+  private static long termRAMRequirementsPerThreadPerTerm() {
+    // Each thread needs two ints per term, one for left document frequencies, and one for right
+    // document frequencies
+    return 2L * Integer.BYTES;
+  }
+
   private static final float[] LOG2_TABLE = new float[256];
 
   static {
@@ -739,9 +861,13 @@ public final class RecursiveGraphBisection implements Cloneable {
   // on 16 bits
   // The decoding logic should auto-vectorize.
 
+  /**
+   * Simple bit packing that focuses on the common / efficient case when term IDs can be encoded on
+   * 16 bits.
+   */
   static void writeMonotonicInts(int[] ints, int len, DataOutput out) throws IOException {
     assert len > 0;
-    assert len <= 17;
+    assert len <= TERM_IDS_BLOCK_SIZE;
 
     if (len >= 3 && ints[len - 1] - ints[0] <= 0xFFFF) {
       for (int i = 1; i < len; ++i) {
@@ -764,6 +890,10 @@ public final class RecursiveGraphBisection implements Cloneable {
     }
   }
 
+  /**
+   * Decoding logic for {@link #writeMonotonicInts(int[], int, DataOutput)}. It should get
+   * auto-vectorized.
+   */
   static int readMonotonicInts(DataInput in, int[] ints) throws IOException {
     int token = in.readByte() & 0xFF;
     int len = token >>> 1;

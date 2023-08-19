@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.misc.index;
 
-import static org.apache.lucene.misc.index.RecursiveGraphBisection.fastLog2;
+import static org.apache.lucene.misc.index.BPIndexReorderer.fastLog2;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -36,9 +36,8 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.SameThreadExecutorService;
 
-public class TestRecursiveGraphBisection extends LuceneTestCase {
+public class TestBPIndexReorderer extends LuceneTestCase {
 
   public void testSingleTerm() throws IOException {
     Directory dir = newDirectory();
@@ -89,9 +88,11 @@ public class TestRecursiveGraphBisection extends LuceneTestCase {
     LeafReader leafRealer = getOnlyLeafReader(reader);
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
-    CodecReader reordered =
-        RecursiveGraphBisection.reorder(
-            codecReader, dir, codecReader.terms("body"), 2, 1, 10, new SameThreadExecutorService());
+    BPIndexReorderer reorderer = new BPIndexReorderer();
+    reorderer.setMinDocFreq(2);
+    reorderer.setMinPartitionSize(1);
+    reorderer.setMaxIters(10);
+    CodecReader reordered = reorderer.reorder(codecReader, dir);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
@@ -157,9 +158,11 @@ public class TestRecursiveGraphBisection extends LuceneTestCase {
     LeafReader leafRealer = getOnlyLeafReader(reader);
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
-    CodecReader reordered =
-        RecursiveGraphBisection.reorder(
-            codecReader, dir, codecReader.terms("body"), 2, 1, 10, new SameThreadExecutorService());
+    BPIndexReorderer reorderer = new BPIndexReorderer();
+    reorderer.setMinDocFreq(2);
+    reorderer.setMinPartitionSize(1);
+    reorderer.setMaxIters(10);
+    CodecReader reordered = reorderer.reorder(codecReader, dir);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
@@ -222,10 +225,10 @@ public class TestRecursiveGraphBisection extends LuceneTestCase {
   private void doTestReadWriteInts(int[] ints, int len) throws IOException {
     byte[] outBytes = new byte[len * Integer.BYTES + 1];
     ByteArrayDataOutput out = new ByteArrayDataOutput(outBytes);
-    RecursiveGraphBisection.writeMonotonicInts(ArrayUtil.copyOfSubArray(ints, 0, len), len, out);
+    BPIndexReorderer.writeMonotonicInts(ArrayUtil.copyOfSubArray(ints, 0, len), len, out);
     ByteArrayDataInput in = new ByteArrayDataInput(outBytes, 0, out.getPosition());
     int[] restored = new int[17];
-    final int restoredLen = RecursiveGraphBisection.readMonotonicInts(in, restored);
+    final int restoredLen = BPIndexReorderer.readMonotonicInts(in, restored);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(ints, 0, len), ArrayUtil.copyOfSubArray(restored, 0, restoredLen));
   }
