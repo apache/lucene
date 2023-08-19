@@ -610,14 +610,18 @@ public final class RecursiveGraphBisection implements Cloneable {
    * otherwise.
    */
   private static float computeBias(
-      int docID, ForwardIndex forwardIndex, DocFreqs docFreqs1, DocFreqs docFreqs2)
+      int docID, ForwardIndex forwardIndex, DocFreqs leftDocFreqs, DocFreqs rightDocFreqs)
       throws IOException {
     forwardIndex.seek(docID);
     double bias = 0;
     for (int termID = forwardIndex.nextTerm(); termID != -1L; termID = forwardIndex.nextTerm()) {
       // This uses the simpler estimator proposed by Mackenzie et al in "Tradeoff Options for
       // Bipartite Graph Partitioning"
-      bias += fastLog2(docFreqs2.docFreq(termID)) - fastLog2(docFreqs1.docFreq(termID));
+      final int leftDocFreq = leftDocFreqs.docFreq(termID);
+      final int rightDocFreq = rightDocFreqs.docFreq(termID);
+      bias +=
+          (rightDocFreq == 0 ? 0 : fastLog2(rightDocFreq))
+              - (leftDocFreq == 0 ? 0 : fastLog2(leftDocFreq));
     }
     return (float) bias;
   }
