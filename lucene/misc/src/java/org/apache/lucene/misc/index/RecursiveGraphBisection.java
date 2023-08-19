@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.IndexWriter;
@@ -93,8 +94,8 @@ public final class RecursiveGraphBisection implements Cloneable {
   private final int maxIters;
   private final int numTerms;
   private final ForwardIndex forwardIndex;
-  private final DocFreqs leftDocFreqs;
-  private final DocFreqs rightDocFreqs;
+  private final int[] leftDocFreqs;
+  private final int[] rightDocFreqs;
   private final float[] biases;
 
   private RecursiveGraphBisection(
@@ -103,8 +104,8 @@ public final class RecursiveGraphBisection implements Cloneable {
     this.maxIters = maxIters;
     this.numTerms = numTerms;
     this.forwardIndex = forwardIndex;
-    this.leftDocFreqs = new DocFreqs(numTerms, forwardIndex);
-    this.rightDocFreqs = new DocFreqs(numTerms, forwardIndex);
+    this.leftDocFreqs = new int[numTerms];
+    this.rightDocFreqs = new int[numTerms];
     this.biases = biases;
   }
 
@@ -164,49 +165,6 @@ public final class RecursiveGraphBisection implements Cloneable {
     }
   }
 
-  private static class DocFreqs {
-
-    private final ForwardIndex forwardIndex;
-    private final int[] dfCache;
-
-    DocFreqs(int numTerms, ForwardIndex forwardIndex) {
-      this.forwardIndex = forwardIndex;
-      dfCache = new int[numTerms];
-    }
-
-    void reset(IntsRef docIDs) {
-      // And otherwise using the forward index
-      Arrays.fill(dfCache, 0);
-      try {
-        for (int i = docIDs.offset, end = docIDs.offset + docIDs.length; i < end; ++i) {
-          final int doc = docIDs.ints[i];
-          forwardIndex.seek(doc);
-          for (int termID = forwardIndex.nextTerm();
-              termID != -1;
-              termID = forwardIndex.nextTerm()) {
-            dfCache[termID]++;
-          }
-        }
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-    }
-
-    void increment(int termID) throws IOException {
-      assert dfCache[termID] >= 0;
-      ++dfCache[termID];
-    }
-
-    void decrement(int termID) throws IOException {
-      assert dfCache[termID] > 0;
-      --dfCache[termID];
-    }
-
-    int docFreq(int termID) throws IOException {
-      return dfCache[termID];
-    }
-  }
-
   private static int writePostings(
       Terms terms, int minDocFreq, Directory tempDir, DataOutput postingsOut) throws IOException {
     int numTerms = 0;
@@ -241,6 +199,7 @@ public final class RecursiveGraphBisection implements Cloneable {
       Directory tempDir, String postingsFileName, int maxDoc, int maxTerm, ExecutorService executor)
       throws IOException {
     // TODO: what are some good parameters here?
+    long start = System.currentTimeMillis();
     String sortedPostingsFile =
         new OfflineSorter(
             tempDir,
@@ -286,6 +245,7 @@ public final class RecursiveGraphBisection implements Cloneable {
             };
           }
         }.sort(postingsFileName);
+    System.out.println("Sort postings: " + (System.currentTimeMillis() - start));
 
     final long[] startOffsets = new long[maxDoc + 1];
     String termIDsFileName;
@@ -325,7 +285,7 @@ public final class RecursiveGraphBisection implements Cloneable {
   public static CodecReader reorder(CodecReader reader, Directory tempDir, Terms terms)
       throws IOException {
     ExecutorService executor =
-        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        Executors.newWorkStealingPool(Runtime.getRuntime().availableProcessors());
     try {
       return reorder(
           reader,
@@ -439,13 +399,17 @@ public final class RecursiveGraphBisection implements Cloneable {
         final CountDownLatch latch = new CountDownLatch(1);
         executor.submit(
             () -> {
-              RecursiveGraphBisection rgb =
-                  new RecursiveGraphBisection(
-                      minPartitionSize, maxIters, numTerms, finalForwardIndex, new float[maxDoc]);
-              threadLocal.set(rgb);
-              rgb.recurse(
-                  new IntsRef(sortedDocs, 0, sortedDocs.length), executor, futures, threadLocal);
-              latch.countDown();
+              try {
+                RecursiveGraphBisection rgb =
+                    new RecursiveGraphBisection(
+                        minPartitionSize, maxIters, numTerms, finalForwardIndex, new float[maxDoc]);
+                threadLocal.set(rgb);
+                IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
+                rgb.initLeftDocFreqs(docs);
+                rgb.recurse(docs, executor, futures, threadLocal);
+              } finally {
+                latch.countDown();
+              }
             });
 
         try {
@@ -491,8 +455,8 @@ public final class RecursiveGraphBisection implements Cloneable {
       return;
     }
 
-    leftDocFreqs.reset(left);
-    rightDocFreqs.reset(right);
+    Arrays.fill(rightDocFreqs, 0);
+    updateDocFreqs(right, leftDocFreqs, rightDocFreqs);
 
     for (int iter = 0; iter < maxIters; ++iter) {
       boolean moved;
@@ -506,17 +470,80 @@ public final class RecursiveGraphBisection implements Cloneable {
       }
     }
 
+    Runnable recurseRight =
+        () -> {
+          RecursiveGraphBisection rgb = threadLocal.get();
+          if (rgb == null) {
+            rgb = clone();
+            threadLocal.set(rgb);
+          }
+          Arrays.fill(rgb.leftDocFreqs, 0);
+          rgb.initLeftDocFreqs(right);
+          rgb.recurse(right, executor, futures, threadLocal);
+        };
+
+    Future<?> rightFuture = tryEnqueue(executor, recurseRight);
     recurse(left, executor, futures, threadLocal);
-    futures.add(
+    if (rightFuture == null) {
+      rightFuture = executor.submit(recurseRight);
+    }
+    futures.add(rightFuture);
+  }
+
+  private Future<?> tryEnqueue(ExecutorService executor, Runnable runnable) {
+    final AtomicBoolean queued = new AtomicBoolean(true);
+    final AtomicBoolean mayRunInSameThread = new AtomicBoolean(false);
+    Thread currentThread = Thread.currentThread();
+    Future<?> future =
         executor.submit(
             () -> {
-              RecursiveGraphBisection rgb = threadLocal.get();
-              if (rgb == null) {
-                rgb = clone();
-                threadLocal.set(rgb);
+              if (Thread.currentThread() == currentThread && mayRunInSameThread.get() == false) {
+                queued.set(false);
+              } else {
+                runnable.run();
               }
-              rgb.recurse(right, executor, futures, threadLocal);
-            }));
+            });
+    mayRunInSameThread.set(true);
+    if (queued.get() == false) {
+      return null;
+    } else {
+      return future;
+    }
+  }
+
+  /**
+   * Update doc freqs. {@code leftDocFreqs} must initially contain doc freqs across left and right,
+   * and {@code rightDocFreqs} must be empty.
+   */
+  private void updateDocFreqs(IntsRef rightDocs, int[] leftDocFreqs, int[] rightDocFreqs) {
+    try {
+      for (int i = rightDocs.offset, end = rightDocs.offset + rightDocs.length; i < end; ++i) {
+        final int doc = rightDocs.ints[i];
+        forwardIndex.seek(doc);
+        for (int termID = forwardIndex.nextTerm(); termID != -1; termID = forwardIndex.nextTerm()) {
+          --leftDocFreqs[termID];
+          assert leftDocFreqs[termID] >= 0;
+          ++rightDocFreqs[termID];
+        }
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private void initLeftDocFreqs(IntsRef docs) {
+    try {
+      Arrays.fill(leftDocFreqs, 0);
+      for (int i = docs.offset, end = docs.offset + docs.length; i < end; ++i) {
+        final int doc = docs.ints[i];
+        forwardIndex.seek(doc);
+        for (int termID = forwardIndex.nextTerm(); termID != -1; termID = forwardIndex.nextTerm()) {
+          ++leftDocFreqs[termID];
+        }
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   /**
@@ -527,8 +554,8 @@ public final class RecursiveGraphBisection implements Cloneable {
       ForwardIndex forwardIndex,
       IntsRef left,
       IntsRef right,
-      DocFreqs leftDocFreqs,
-      DocFreqs rightDocFreqs,
+      int[] leftDocFreqs,
+      int[] rightDocFreqs,
       float[] biases,
       int iter)
       throws IOException {
@@ -610,15 +637,15 @@ public final class RecursiveGraphBisection implements Cloneable {
    * otherwise.
    */
   private static float computeBias(
-      int docID, ForwardIndex forwardIndex, DocFreqs leftDocFreqs, DocFreqs rightDocFreqs)
+      int docID, ForwardIndex forwardIndex, int[] leftDocFreqs, int[] rightDocFreqs)
       throws IOException {
     forwardIndex.seek(docID);
     double bias = 0;
     for (int termID = forwardIndex.nextTerm(); termID != -1L; termID = forwardIndex.nextTerm()) {
       // This uses the simpler estimator proposed by Mackenzie et al in "Tradeoff Options for
       // Bipartite Graph Partitioning"
-      final int leftDocFreq = leftDocFreqs.docFreq(termID);
-      final int rightDocFreq = rightDocFreqs.docFreq(termID);
+      final int leftDocFreq = leftDocFreqs[termID];
+      final int rightDocFreq = rightDocFreqs[termID];
       bias +=
           (rightDocFreq == 0 ? 0 : fastLog2(rightDocFreq))
               - (leftDocFreq == 0 ? 0 : fastLog2(leftDocFreq));
@@ -631,8 +658,8 @@ public final class RecursiveGraphBisection implements Cloneable {
       int left,
       int right,
       ForwardIndex forwardIndex,
-      DocFreqs leftDocFreqs,
-      DocFreqs rightDocFreqs)
+      int[] leftDocFreqs,
+      int[] rightDocFreqs)
       throws IOException {
     assert left < right;
 
@@ -643,14 +670,14 @@ public final class RecursiveGraphBisection implements Cloneable {
     // recompute doc freqs on the next iteration.
     forwardIndex.seek(leftDoc);
     for (int term = forwardIndex.nextTerm(); term != -1; term = forwardIndex.nextTerm()) {
-      leftDocFreqs.decrement(term);
-      rightDocFreqs.increment(term);
+      --leftDocFreqs[term];
+      ++rightDocFreqs[term];
     }
 
     forwardIndex.seek(rightDoc);
     for (int term = forwardIndex.nextTerm(); term != -1; term = forwardIndex.nextTerm()) {
-      leftDocFreqs.increment(term);
-      rightDocFreqs.decrement(term);
+      ++leftDocFreqs[term];
+      --rightDocFreqs[term];
     }
 
     docs[left] = rightDoc;
@@ -681,19 +708,16 @@ public final class RecursiveGraphBisection implements Cloneable {
 
   /** An approximate log() function in base 2 which trades accuracy for much better performance. */
   static final float fastLog2(int i) {
-    if (i > 0) {
-      // floorLog2 would be the exponent in the float representation of i
-      int floorLog2 = 31 - Integer.numberOfLeadingZeros(i);
-      // tableIndex would be the first 8 mantissa bits in the float representation of i, excluding
-      // the implicit bit
-      int tableIndex = i << (32 - floorLog2) >>> (32 - 8);
-      // i = 1.tableIndex * 2 ^ floorLog2
-      // log(i) = log2(1.tableIndex) + floorLog2
-      return floorLog2 + LOG2_TABLE[tableIndex];
-    } else if (i == 0) {
-      return Float.NEGATIVE_INFINITY;
-    } else {
-      throw new IllegalArgumentException("Log of negative number: " + i);
-    }
+    assert i > 0 : "Cannot compute log of i=" + i;
+    // floorLog2 would be the exponent in the float representation of i
+    int floorLog2 = 31 - Integer.numberOfLeadingZeros(i);
+    // tableIndex would be the first 8 mantissa bits in the float representation of i, excluding
+    // the implicit bit
+    // the left shift clears the high bit, which is implicit in the float representation
+    // the right shift moves the 8 higher mantissa bits to the lower 8 bits
+    int tableIndex = i << (32 - floorLog2) >>> (32 - 8);
+    // i = 1.tableIndex * 2 ^ floorLog2
+    // log(i) = log2(1.tableIndex) + floorLog2
+    return floorLog2 + LOG2_TABLE[tableIndex];
   }
 }
