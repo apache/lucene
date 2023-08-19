@@ -19,6 +19,7 @@ package org.apache.lucene.misc.index;
 import static org.apache.lucene.misc.index.RecursiveGraphBisection.fastLog2;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -30,8 +31,11 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 
 public class TestRecursiveGraphBisection extends LuceneTestCase {
@@ -182,5 +186,47 @@ public class TestRecursiveGraphBisection extends LuceneTestCase {
     for (int i = 3; i < 100_000; ++i) {
       assertEquals("" + i, (float) (Math.log(i) / Math.log(2)), fastLog2(i), 0.01f);
     }
+  }
+
+  public void testReadWriteInts() throws IOException {
+    int[] ints = new int[17];
+
+    for (int len = 1; len <= 17; ++len) {
+      // random
+      for (int i = 0; i < len; ++i) {
+        ints[i] = random().nextInt(Integer.MAX_VALUE);
+      }
+      Arrays.sort(ints, 0, len);
+      doTestReadWriteInts(ints, len);
+
+      // incremental
+      for (int i = 0; i < len; ++i) {
+        ints[i] = i;
+      }
+      doTestReadWriteInts(ints, len);
+
+      // incremental with offset
+      for (int i = 0; i < len; ++i) {
+        ints[i] = 100_000 + i;
+      }
+      doTestReadWriteInts(ints, len);
+
+      // irregular deltas
+      for (int i = 0; i < len; ++i) {
+        ints[i] = 100_000 + (i * 31) & 0x07;
+      }
+      doTestReadWriteInts(ints, len);
+    }
+  }
+
+  private void doTestReadWriteInts(int[] ints, int len) throws IOException {
+    byte[] outBytes = new byte[len * Integer.BYTES + 1];
+    ByteArrayDataOutput out = new ByteArrayDataOutput(outBytes);
+    RecursiveGraphBisection.writeMonotonicInts(ArrayUtil.copyOfSubArray(ints, 0, len), len, out);
+    ByteArrayDataInput in = new ByteArrayDataInput(outBytes, 0, out.getPosition());
+    int[] restored = new int[17];
+    final int restoredLen = RecursiveGraphBisection.readMonotonicInts(in, restored);
+    assertArrayEquals(
+        ArrayUtil.copyOfSubArray(ints, 0, len), ArrayUtil.copyOfSubArray(restored, 0, restoredLen));
   }
 }

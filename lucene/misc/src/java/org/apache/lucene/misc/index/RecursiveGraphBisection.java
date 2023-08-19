@@ -45,6 +45,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -127,7 +128,9 @@ public final class RecursiveGraphBisection implements Cloneable {
     private final int maxTerm;
 
     private long endOffset = -1;
-    private int prevTerm;
+    private final int[] buffer = new int[17];
+    private int bufferOffset;
+    private int bufferLen;
 
     ForwardIndex(long[] startIndexes, IndexInput terms, int maxTerm) {
       this.startOffsets = startIndexes;
@@ -139,19 +142,20 @@ public final class RecursiveGraphBisection implements Cloneable {
       final long startOffset = startOffsets[docID];
       endOffset = startOffsets[docID + 1];
       terms.seek(startOffset);
-      prevTerm = 0;
+      bufferOffset = bufferLen = 0;
     }
 
     int nextTerm() throws IOException {
-      if (terms.getFilePointer() >= endOffset) {
+      if (bufferOffset < bufferLen) {
+        return buffer[bufferOffset++];
+      } else if (terms.getFilePointer() >= endOffset) {
         assert terms.getFilePointer() == endOffset;
         return -1;
+      } else {
+        bufferLen = readMonotonicInts(terms, buffer);
+        bufferOffset = 1;
+        return buffer[0];
       }
-      int term = prevTerm + terms.readVInt();
-      assert terms.getFilePointer() <= endOffset;
-      assert term < maxTerm : term + " " + maxTerm + " " + prevTerm;
-      prevTerm = term;
-      return term;
     }
 
     @Override
@@ -254,22 +258,32 @@ public final class RecursiveGraphBisection implements Cloneable {
         IndexOutput termIDs = tempDir.createTempOutput("term-ids", "", IOContext.DEFAULT)) {
       termIDsFileName = termIDs.getName();
       final long end = sortedPostings.length() - CodecUtil.footerLength();
-      int prevTermID = 0;
+      int[] buffer = new int[17];
+      int bufferLen = 0;
       while (sortedPostings.getFilePointer() < end) {
         final int doc = Integer.reverseBytes(sortedPostings.readInt());
         final int termID = Integer.reverseBytes(sortedPostings.readInt());
         if (doc != prevDoc) {
+          if (bufferLen != 0) {
+            writeMonotonicInts(buffer, bufferLen, termIDs);
+            bufferLen = 0;
+          }
+
           assert doc > prevDoc;
           for (int d = prevDoc + 1; d <= doc; ++d) {
             startOffsets[d] = termIDs.getFilePointer();
           }
           prevDoc = doc;
-          prevTermID = 0;
         }
-        assert termID >= prevTermID : prevTermID + " " + termID;
         assert termID < maxTerm : termID + " " + maxTerm;
-        termIDs.writeVInt(termID - prevTermID);
-        prevTermID = termID;
+        if (bufferLen == buffer.length) {
+          writeMonotonicInts(buffer, bufferLen, termIDs);
+          bufferLen = 0;
+        }
+        buffer[bufferLen++] = termID;
+      }
+      if (bufferLen != 0) {
+        writeMonotonicInts(buffer, bufferLen, termIDs);
       }
       for (int d = prevDoc + 1; d <= maxDoc; ++d) {
         startOffsets[d] = termIDs.getFilePointer();
@@ -719,5 +733,56 @@ public final class RecursiveGraphBisection implements Cloneable {
     // i = 1.tableIndex * 2 ^ floorLog2
     // log(i) = log2(1.tableIndex) + floorLog2
     return floorLog2 + LOG2_TABLE[tableIndex];
+  }
+
+  // Simplified bit packing that focuses on the common / efficient case when term IDs can be encoded
+  // on 16 bits
+  // The decoding logic should auto-vectorize.
+
+  static void writeMonotonicInts(int[] ints, int len, DataOutput out) throws IOException {
+    assert len > 0;
+    assert len <= 17;
+
+    if (len >= 3 && ints[len - 1] - ints[0] <= 0xFFFF) {
+      for (int i = 1; i < len; ++i) {
+        ints[i] -= ints[0];
+      }
+      final int numPacked = (len - 1) / 2;
+      final int encodedLen = 1 + len / 2;
+      for (int i = 0; i < numPacked; ++i) {
+        ints[1 + i] |= ints[encodedLen + i] << 16;
+      }
+      out.writeByte((byte) ((len << 1) | 1));
+      for (int i = 0; i < encodedLen; ++i) {
+        out.writeInt(ints[i]);
+      }
+    } else {
+      out.writeByte((byte) (len << 1));
+      for (int i = 0; i < len; ++i) {
+        out.writeInt(ints[i]);
+      }
+    }
+  }
+
+  static int readMonotonicInts(DataInput in, int[] ints) throws IOException {
+    int token = in.readByte() & 0xFF;
+    int len = token >>> 1;
+    boolean packed = (token & 1) != 0;
+
+    if (packed) {
+      final int encodedLen = 1 + len / 2;
+      in.readInts(ints, 0, encodedLen);
+      final int numPacked = (len - 1) / 2;
+      for (int i = 0; i < numPacked; ++i) {
+        ints[encodedLen + i] = ints[1 + i] >>> 16;
+        ints[1 + i] &= 0xFFFF;
+      }
+      for (int i = 1; i < len; ++i) {
+        ints[i] += ints[0];
+      }
+    } else {
+      in.readInts(ints, 0, len);
+    }
+    return len;
   }
 }
