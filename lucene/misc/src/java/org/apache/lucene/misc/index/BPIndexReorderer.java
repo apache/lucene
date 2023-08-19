@@ -385,7 +385,7 @@ public final class BPIndexReorderer {
           throw new IllegalArgumentException(
               "Cannot perform recursive graph bisection on more than "
                   + ArrayUtil.MAX_ARRAY_LENGTH
-                  + " terms");
+                  + " terms, the maximum array length");
         } else if (numTerms >= maxNumTerms) {
           throw new NotEnoughRAMException(
               "Too many terms are matching given the RAM budget of "
