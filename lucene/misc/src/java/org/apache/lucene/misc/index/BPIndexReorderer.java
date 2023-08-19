@@ -87,22 +87,22 @@ public final class BPIndexReorderer {
 
   private static final int TERM_IDS_BLOCK_SIZE = 17;
 
-  /** Minimum required document frequency for terms to be considered. */
+  /** Minimum required document frequency for terms to be considered: 4,096. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
 
   /**
    * Minimum size of partitions. The algorithm will stop recursing when reaching partitions below
-   * this number of documents.
+   * this number of documents: 32.
    */
   public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
 
   /**
-   * Default maximum number of iterations per recursion level. Higher numbers of iterations
+   * Default maximum number of iterations per recursion level: 20. Higher numbers of iterations
    * typically don't help significantly.
    */
   public static final int DEFAULT_MAX_ITERS = 20;
 
-  /** Default RAM budget. Consider raising it when working on large indexes. */
+  /** Default RAM budget: 64MB. Consider raising it when working on large indexes. */
   public static final int DEFAULT_RAM_BUDGET_MB = 64;
 
   private int minDocFreq;
