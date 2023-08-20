@@ -20,6 +20,7 @@ import static org.apache.lucene.misc.index.BPIndexReorderer.fastLog2;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.ForkJoinPool;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -35,11 +36,26 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 
 public class TestBPIndexReorderer extends LuceneTestCase {
 
   public void testSingleTerm() throws IOException {
+    doTestSingleTerm(null, 1);
+  }
+
+  public void testSingleTermWithForkJoinPool() throws IOException {
+    int concurrency = TestUtil.nextInt(random(), 1, 8);
+    ForkJoinPool pool = new ForkJoinPool(concurrency);
+    try {
+      doTestSingleTerm(pool, concurrency);
+    } finally {
+      pool.shutdown();
+    }
+  }
+
+  public void doTestSingleTerm(ForkJoinPool pool, int parallelism) throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(
@@ -89,6 +105,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
     BPIndexReorderer reorderer = new BPIndexReorderer();
+    reorderer.setForkJoinPool(pool, parallelism);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
