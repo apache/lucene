@@ -21,15 +21,14 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.CodecUtil;
@@ -47,11 +46,11 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefComparator;
@@ -74,7 +73,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * optimizations suggested by Mackenzie et al. in "Tradeoff Options for Bipartite Graph
  * Partitioning".
  *
- * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms) memory per thread.
+ * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms * numThreads) memory.
  */
 public final class BPIndexReorderer {
 
@@ -85,6 +84,7 @@ public final class BPIndexReorderer {
     }
   }
 
+  /** Block size for terms in the forward index */
   private static final int TERM_IDS_BLOCK_SIZE = 17;
 
   /** Minimum required document frequency for terms to be considered: 4,096. */
@@ -149,8 +149,9 @@ public final class BPIndexReorderer {
   }
 
   /**
-   * Set the {@link ExecutorService} to run graph partitioning concurrently. {@code concurrency}
-   * must indicate the concurrency of the {@link ExecutorService}.
+   * Set the {@link ExecutorService} to run graph partitioning concurrently, typically a {@link
+   * Executors#newWorkStealingPool(int) work-stealing pool}. {@code concurrency}must indicate the
+   * concurrency of the {@link ExecutorService}.
    */
   public void setExecutorService(ExecutorService executorService, int concurrency) {
     if (executorService == null) {
@@ -576,36 +577,19 @@ public final class BPIndexReorderer {
    */
   private int[] computePermutation(CodecReader reader, Set<String> fields, Directory dir)
       throws IOException {
-
-    final Set<String> tempFiles = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    Directory tempDir =
-        new FilterDirectory(dir) {
-          @Override
-          public IndexOutput createTempOutput(String prefix, String suffix, IOContext context)
-              throws IOException {
-            IndexOutput out = super.createTempOutput(prefix, suffix, context);
-            tempFiles.add(out.getName());
-            return out;
-          }
-
-          @Override
-          public void deleteFile(String name) throws IOException {
-            super.deleteFile(name);
-            tempFiles.remove(name);
-          }
-        };
+    TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
     final int maxDoc = reader.maxDoc();
     ForwardIndex forwardIndex = null;
     IndexOutput postingsOutput = null;
     boolean success = false;
     try {
-      postingsOutput = tempDir.createTempOutput("postings", "", IOContext.DEFAULT);
-      int numTerms = writePostings(reader, fields, tempDir, postingsOutput);
+      postingsOutput = trackingDir.createTempOutput("postings", "", IOContext.DEFAULT);
+      int numTerms = writePostings(reader, fields, trackingDir, postingsOutput);
       CodecUtil.writeFooter(postingsOutput);
       postingsOutput.close();
-      forwardIndex = buildForwardIndex(tempDir, postingsOutput.getName(), maxDoc, numTerms);
-      tempDir.deleteFile(postingsOutput.getName());
+      forwardIndex = buildForwardIndex(trackingDir, postingsOutput.getName(), maxDoc, numTerms);
+      trackingDir.deleteFile(postingsOutput.getName());
       postingsOutput = null;
 
       int[] sortedDocs = new int[maxDoc];
@@ -646,12 +630,12 @@ public final class BPIndexReorderer {
       success = true;
       return sortedDocs;
     } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(postingsOutput);
-      }
-      IOUtils.close(forwardIndex);
-      for (String file : tempFiles) {
-        dir.deleteFile(file);
+      if (success) {
+        IOUtils.close(forwardIndex);
+        IOUtils.deleteFiles(trackingDir, trackingDir.getCreatedFiles());
+      } else {
+        IOUtils.closeWhileHandlingException(postingsOutput, forwardIndex);
+        IOUtils.deleteFilesIgnoringExceptions(trackingDir, trackingDir.getCreatedFiles());
       }
     }
   }
