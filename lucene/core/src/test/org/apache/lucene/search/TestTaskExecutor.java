@@ -27,7 +27,9 @@ import org.apache.lucene.util.NamedThreadFactory;
 public class TestTaskExecutor extends LuceneTestCase {
 
   public void testUnwrapExceptions() {
-    ExecutorService executorService = Executors.newFixedThreadPool(1, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
+    ExecutorService executorService =
+        Executors.newFixedThreadPool(
+            1, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
     try {
       TaskExecutor taskExecutor = new TaskExecutor(executorService);
       {
