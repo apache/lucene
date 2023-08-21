@@ -24,7 +24,6 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -39,21 +38,17 @@ class TaskExecutor {
     this.executor = Objects.requireNonNull(executor, "Executor is null");
   }
 
+  /**
+   * Execute all the tasks provided as an argument, wait for them to complete and return the
+   * obtained results.
+   *
+   * @param tasks the tasks to execute
+   * @return a list containing the results from the tasks execution
+   * @param <T> the return type of the task execution
+   */
   final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) {
-    int i = 0;
     for (Runnable task : tasks) {
-      if (shouldExecuteOnCallerThread(i, tasks.size())) {
-        task.run();
-      } else {
-        try {
-          executor.execute(task);
-        } catch (
-            @SuppressWarnings("unused")
-            RejectedExecutionException e) {
-          task.run();
-        }
-      }
-      ++i;
+      executor.execute(task);
     }
     final List<T> results = new ArrayList<>();
     for (Future<T> future : tasks) {
@@ -66,10 +61,5 @@ class TaskExecutor {
       }
     }
     return results;
-  }
-
-  boolean shouldExecuteOnCallerThread(int index, int numTasks) {
-    // Execute last task on caller thread
-    return index == numTasks - 1;
   }
 }

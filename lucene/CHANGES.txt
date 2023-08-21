@@ -155,6 +155,9 @@ Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
 
+* GITHUB#12499: Simplify task executor for concurrent operations by offloading concurrent operations to the
+  provided executor unconditionally. (Luca Cavanna)
+
 Optimizations
 ---------------------
 
