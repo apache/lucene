@@ -149,6 +149,19 @@ public class TestDictionary extends LuceneTestCase {
         expectThrows(ParseException.class, () -> loadDictionary("broken.aff", "simple.dic"));
     assertTrue(expected.getMessage().startsWith("Invalid syntax"));
     assertEquals(24, expected.getErrorOffset());
+
+    List<String> names =
+        List.of(
+            "broken_missingAffRule.aff",
+            "broken_extraAffRule.aff",
+            "broken_extraAffRule_last.aff",
+            "broken_extraAffRule_beforeAnother.aff",
+            "broken_mismatchedAffix.aff");
+
+    for (String name : names) {
+      String msg = "Expected ParseException on " + name;
+      expectThrows(ParseException.class, msg, () -> loadDictionary(name, "simple.dic"));
+    }
   }
 
   public void testUsingFlagsBeforeFlagDirective() throws IOException, ParseException {
@@ -166,12 +179,13 @@ public class TestDictionary extends LuceneTestCase {
   }
 
   public void testForgivableErrors() throws Exception {
-    Dictionary dictionary = loadDictionary("forgivable-errors.aff", "forgivable-errors.dic");
+    Dictionary dictionary =
+        loadForgivingDictionary("forgivable-errors.aff", "forgivable-errors.dic");
     assertEquals(1, dictionary.repTable.size());
     assertEquals(2, dictionary.compoundMax);
 
-    loadDictionary("forgivable-errors-long.aff", "single-word.dic");
-    loadDictionary("forgivable-errors-num.aff", "single-word.dic");
+    loadForgivingDictionary("forgivable-errors-long.aff", "single-word.dic");
+    loadForgivingDictionary("forgivable-errors-num.aff", "single-word.dic");
   }
 
   private Dictionary loadDictionary(String aff, String dic) throws IOException, ParseException {
@@ -179,6 +193,20 @@ public class TestDictionary extends LuceneTestCase {
         InputStream dicStream = getClass().getResourceAsStream(dic);
         Directory tempDir = getDirectory()) {
       return new Dictionary(tempDir, "dictionary", affixStream, dicStream);
+    }
+  }
+
+  private Dictionary loadForgivingDictionary(String aff, String dic)
+      throws IOException, ParseException {
+    try (InputStream affixStream = getClass().getResourceAsStream(aff);
+        InputStream dicStream = getClass().getResourceAsStream(dic);
+        Directory tempDir = getDirectory()) {
+      return new Dictionary(tempDir, "dictionary", affixStream, dicStream) {
+        @Override
+        protected boolean tolerateAffixRuleCountMismatches() {
+          return true;
+        }
+      };
     }
   }
 

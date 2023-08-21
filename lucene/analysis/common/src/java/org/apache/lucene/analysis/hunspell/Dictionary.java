@@ -676,14 +676,26 @@ public class Dictionary {
     } catch (
         @SuppressWarnings("unused")
         NumberFormatException e) {
-      return;
+      if (tolerateAffixRuleCountMismatches()) {
+        return;
+      }
+      throw new ParseException("Affix rule header expected; got " + header, reader.getLineNumber());
     }
     affixData = ArrayUtil.grow(affixData, currentAffix * 4 + numLines * 4);
 
     for (int i = 0; i < numLines; i++) {
       String line = reader.readLine();
+      if (line == null) {
+        throw new ParseException("Premature end of rules for " + header, reader.getLineNumber());
+      }
+
       // from the manpage: PFX flag stripping prefix [condition [morphological_fields...]]
       String[] ruleArgs = splitBySpace(reader, line, 4, Integer.MAX_VALUE);
+
+      if (!ruleArgs[1].equals(args[1])) {
+        throw new ParseException(
+            "Affix rule mismatch. Header: " + header + "; rule: " + line, reader.getLineNumber());
+      }
 
       char flag = flagParsingStrategy.parseFlag(ruleArgs[1]);
       String strip = ruleArgs[2].equals("0") ? "" : ruleArgs[2];
@@ -1133,7 +1145,8 @@ public class Dictionary {
     Map<String, Integer> morphIndices = new HashMap<>();
 
     WordStorage.Builder builder =
-        new WordStorage.Builder(wordCount, hasCustomMorphData, flags, allNonSuggestibleFlags());
+        new WordStorage.Builder(
+            wordCount, hashFactor(), hasCustomMorphData, flags, allNonSuggestibleFlags());
 
     try (ByteSequencesReader reader =
         new ByteSequencesReader(tempDir.openChecksumInput(sorted), sorted)) {
@@ -1202,6 +1215,24 @@ public class Dictionary {
         IOUtils.deleteFilesIgnoringExceptions(tempDir, sorted);
       }
     }
+  }
+
+  /**
+   * The factor determining the size of the internal hash table used for storing the entries. The
+   * table size is {@code entry_count * hashFactor}. The default factor is 1.0. If there are too
+   * many hash collisions, the factor can be increased, resulting in faster access, but more memory
+   * usage.
+   */
+  protected double hashFactor() {
+    return 1.0;
+  }
+
+  /**
+   * Whether incorrect PFX/SFX rule counts should be silently ignored. False by default: a {@link
+   * ParseException} will happen.
+   */
+  protected boolean tolerateAffixRuleCountMismatches() {
+    return false;
   }
 
   char[] allNonSuggestibleFlags() {

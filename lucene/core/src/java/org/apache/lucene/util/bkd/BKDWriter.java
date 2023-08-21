@@ -546,37 +546,7 @@ public class BKDWriter implements Closeable {
     scratchBytesRef1.length = config.bytesPerDim;
     scratchBytesRef1.bytes = splitPackedValues;
 
-    BKDTreeLeafNodes leafNodes =
-        new BKDTreeLeafNodes() {
-          @Override
-          public long getLeafLP(int index) {
-            return leafBlockFPs[index];
-          }
-
-          @Override
-          public BytesRef getSplitValue(int index) {
-            scratchBytesRef1.offset = index * config.bytesPerDim;
-            return scratchBytesRef1;
-          }
-
-          @Override
-          public int getSplitDimension(int index) {
-            return splitDimensionValues[index] & 0xff;
-          }
-
-          @Override
-          public int numLeaves() {
-            return leafBlockFPs.length;
-          }
-        };
-
-    return () -> {
-      try {
-        writeIndex(metaOut, indexOut, config.maxPointsInLeafNode, leafNodes, dataStartFP);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-    };
+    return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
   }
 
   /* In the 1D case, we can simply sort points in ascending order and use the
@@ -830,12 +800,9 @@ public class BKDWriter implements Closeable {
       scratchBytesRef1.bytes = leafValues;
 
       final IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
-            @Override
-            public BytesRef apply(int i) {
-              scratchBytesRef1.offset = config.packedBytesLength * i;
-              return scratchBytesRef1;
-            }
+          i -> {
+            scratchBytesRef1.offset = config.packedBytesLength * i;
+            return scratchBytesRef1;
           };
       assert valuesInOrderAndBounds(
           config,
@@ -999,6 +966,15 @@ public class BKDWriter implements Closeable {
 
     scratchBytesRef1.bytes = splitPackedValues;
     scratchBytesRef1.length = config.bytesPerDim;
+    return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
+  }
+
+  private Runnable makeWriter(
+      IndexOutput metaOut,
+      IndexOutput indexOut,
+      byte[] splitDimensionValues,
+      long[] leafBlockFPs,
+      long dataStartFP) {
     BKDTreeLeafNodes leafNodes =
         new BKDTreeLeafNodes() {
           @Override
@@ -1717,12 +1693,9 @@ public class BKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
-            @Override
-            public BytesRef apply(int i) {
-              reader.getValue(from + i, scratchBytesRef1);
-              return scratchBytesRef1;
-            }
+          i -> {
+            reader.getValue(from + i, scratchBytesRef1);
+            return scratchBytesRef1;
           };
       assert valuesInOrderAndBounds(
           config, count, sortedDim, minPackedValue, maxPackedValue, packedValues, docIDs, 0);
@@ -1973,19 +1946,7 @@ public class BKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
-            final BytesRef scratch = new BytesRef();
-
-            {
-              scratch.length = config.packedBytesLength;
-            }
-
-            @Override
-            public BytesRef apply(int i) {
-              PointValue value = heapSource.getPackedValueSlice(from + i);
-              return value.packedValue();
-            }
-          };
+          i -> heapSource.getPackedValueSlice(from + i).packedValue();
       assert valuesInOrderAndBounds(
           config, count, sortedDim, minPackedValue, maxPackedValue, packedValues, docIDs, 0);
       writeLeafBlockPackedValues(

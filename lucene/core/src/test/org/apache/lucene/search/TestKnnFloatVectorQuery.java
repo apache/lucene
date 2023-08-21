@@ -75,8 +75,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
       assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
 
-      Query rewritten = query.rewrite(newSearcher(reader));
-      assertEquals("DocAndScoreQuery[0,...][1.0,...]", rewritten.toString("ignored"));
+      assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
     }
   }
 
