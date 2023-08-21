@@ -95,9 +95,10 @@ public class TestBlockJoin extends LuceneTestCase {
     return job;
   }
 
-  private Document makeVector(String vectorField, float[] value) {
+  private Document makeVector(String vectorField, String childsParent, float[] value) {
     Document vectorDoc = new Document();
     vectorDoc.add(new KnnFloatVectorField(vectorField, value));
+    vectorDoc.add(newStringField("my_parent_id", childsParent, Store.YES));
     return vectorDoc;
   }
 
@@ -251,14 +252,14 @@ public class TestBlockJoin extends LuceneTestCase {
 
     final List<Document> docs = new ArrayList<>();
 
-    docs.add(makeVector("vector", new float[] {1f, 2f, 3f}));
-    docs.add(makeVector("vector", new float[] {3f, 3f, 3f}));
+    docs.add(makeVector("vector", "parent1", new float[] {1f, 2f, 3f}));
+    docs.add(makeVector("vector", "parent1", new float[] {3f, 3f, 3f}));
     docs.add(makeParent("parent1"));
     w.addDocuments(docs);
 
     docs.clear();
-    docs.add(makeVector("vector", new float[] {0f, 0f, 1f}));
-    docs.add(makeVector("vector", new float[] {1f, 1f, 1f}));
+    docs.add(makeVector("vector", "parent2", new float[] {0f, 0f, 1f}));
+    docs.add(makeVector("vector", "parent2", new float[] {1f, 1f, 1f}));
     docs.add(makeParent("parent2"));
     w.addDocuments(docs);
 
@@ -271,21 +272,21 @@ public class TestBlockJoin extends LuceneTestCase {
         new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
     CheckJoinIndex.check(r, parentsFilter);
 
-    ToParentBlockJoinFloatKnnVectorQuery childKnnJoin =
-        new ToParentBlockJoinFloatKnnVectorQuery(
+    DiversifyingChildrenFloatKnnVectorQuery childKnnJoin =
+        new DiversifyingChildrenFloatKnnVectorQuery(
             "vector", new float[] {4f, 4f, 4f}, null, 3, parentsFilter);
 
     TopDocs topDocs = s.search(childKnnJoin, 5);
     assertEquals(2, topDocs.totalHits.value);
-    Document parentDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
-    assertEquals("parent1", parentDoc.get("parent_id"));
+    Document childDoc = s.storedFields().document(topDocs.scoreDocs[0].doc);
+    assertEquals("parent1", childDoc.get("my_parent_id"));
     assertEquals(
         topDocs.scoreDocs[0].score,
         VectorSimilarityFunction.EUCLIDEAN.compare(
             new float[] {4f, 4f, 4f}, new float[] {3f, 3f, 3f}),
         1e-7);
-    parentDoc = s.storedFields().document(topDocs.scoreDocs[1].doc);
-    assertEquals("parent2", parentDoc.get("parent_id"));
+    childDoc = s.storedFields().document(topDocs.scoreDocs[1].doc);
+    assertEquals("parent2", childDoc.get("my_parent_id"));
     r.close();
     dir.close();
   }

@@ -88,6 +88,78 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testIndexWithNoVectorsNorParents() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        // Add some documents without a vector
+        for (int i = 0; i < 5; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("other", "value", Field.Store.NO));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Create parent filter directly, tests use "check" to verify parentIds exist. Production
+        // may not
+        // verify we handle it gracefully
+        BitSetProducer parentFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
+        TopDocs topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+
+        // Test with match_all filter and large k to test exact search
+        query =
+            getParentJoinKnnQuery(
+                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+        topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
+  public void testIndexWithNoParents() throws IOException {
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int i = 0; i < 3; ++i) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {2, 2}));
+          doc.add(newStringField("id", Integer.toString(i), Field.Store.YES));
+          w.addDocument(doc);
+        }
+        // Add some documents without a vector
+        for (int i = 0; i < 5; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("other", "value", Field.Store.NO));
+          w.addDocument(doc);
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Create parent filter directly, tests use "check" to verify parentIds exist. Production
+        // may not
+        // verify we handle it gracefully
+        BitSetProducer parentFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+        Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
+        TopDocs topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+
+        // Test with match_all filter and large k to test exact search
+        query =
+            getParentJoinKnnQuery(
+                "field", new float[] {2, 2}, new MatchAllDocsQuery(), 10, parentFilter);
+        topDocs = searcher.search(query, 3);
+        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.scoreDocs.length);
+      }
+    }
+  }
+
   public void testFilterWithNoVectorMatches() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
@@ -129,41 +201,21 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
         Query query = getParentJoinKnnQuery("field", new float[] {2, 2}, null, 3, parentFilter);
-        assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f, 1f / 51f},
-            new String[] {
-              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
-            });
+        assertScorerResults(searcher, query, new float[] {1f, 1f / 51f}, new String[] {"2", "7"});
 
         query = getParentJoinKnnQuery("field", new float[] {6, 6}, null, 3, parentFilter);
         assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f / 3f, 1f / 3f},
-            new String[] {
-              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
-            });
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"});
         query =
             getParentJoinKnnQuery(
                 "field", new float[] {6, 6}, new MatchAllDocsQuery(), 20, parentFilter);
         assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f / 3f, 1f / 3f},
-            new String[] {
-              encodeInts(new int[] {1, 2, 3, 4, 5}), encodeInts(new int[] {6, 7, 8, 9, 10})
-            });
+            searcher, query, new float[] {1f / 3f, 1f / 3f}, new String[] {"5", "7"});
 
         query =
             getParentJoinKnnQuery(
                 "field", new float[] {6, 6}, new MatchAllDocsQuery(), 1, parentFilter);
-        assertScorerResults(
-            searcher,
-            query,
-            new float[] {1f / 3f},
-            new String[] {encodeInts(new int[] {1, 2, 3, 4, 5})});
+        assertScorerResults(searcher, query, new float[] {1f / 3f}, new String[] {"5"});
       }
     }
   }
@@ -199,8 +251,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     "field", new float[] {0, 0}, null, 8, parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "[0]", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "[7]", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "0", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "7", results.scoreDocs[7].doc);
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results =
@@ -213,8 +265,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
                     parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "[10]", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "[6]", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "10", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "6", results.scoreDocs[7].doc);
       }
     }
   }

@@ -38,8 +38,18 @@ import org.apache.lucene.util.Bits;
 
 /**
  * kNN float vector query that joins matching children vector documents with their parent doc id.
+ * The top documents returned are the child document ids and the calculated scores. Here is how to
+ * use this in conjunction with {@link ToParentBlockJoinQuery}.
+ *
+ * <pre class="prettyprint">
+ *   Query knnQuery = new DiversifyingChildrenFloatKnnVectorQuery(fieldName, queryVector, ...);
+ *   // Rewrite executes kNN search and collects nearest children docIds and their scores
+ *   Query rewrittenKnnQuery = searcher.rewrite(knnQuery);
+ *   // Join the scored children docs with their parents and score the parents
+ *   Query childrenToParents = new ToParentBlockJoinQuery(rewrittenKnnQuery, parentsFilter, ScoreMode.MAX);
+ * </pre>
  */
-public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
+public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
   private final BitSetProducer parentsFilter;
@@ -56,7 +66,7 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
    * @param k how many parent documents to return given the matching children
    * @param parentsFilter Filter identifying the parent documents.
    */
-  public ToParentBlockJoinFloatKnnVectorQuery(
+  public DiversifyingChildrenFloatKnnVectorQuery(
       String field, float[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
     super(field, query, k, childFilter);
     this.childFilter = childFilter;
@@ -77,8 +87,11 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
       return null;
     }
     BitSet parentBitSet = parentsFilter.getBitSet(context);
-    ParentBlockJoinFloatVectorScorer vectorScorer =
-        new ParentBlockJoinFloatVectorScorer(
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
+    DiversifyingChildrenFloatVectorScorer vectorScorer =
+        new DiversifyingChildrenFloatVectorScorer(
             context.reader().getFloatVectorValues(field),
             acceptIterator,
             parentBitSet,
@@ -86,12 +99,11 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
             fi.getVectorSimilarityFunction());
     HitQueue queue = new HitQueue(k, true);
     ScoreDoc topDoc = queue.top();
-    int doc;
-    while ((doc = vectorScorer.nextParent()) != DocIdSetIterator.NO_MORE_DOCS) {
+    while (vectorScorer.nextParent() != DocIdSetIterator.NO_MORE_DOCS) {
       float score = vectorScorer.score();
       if (score > topDoc.score) {
         topDoc.score = score;
-        topDoc.doc = doc;
+        topDoc.doc = vectorScorer.bestChild();
         topDoc = queue.updateTop();
       }
     }
@@ -114,7 +126,11 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
   protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
-    KnnCollector collector = new ToParentJoinKnnCollector(k, visitedLimit, parentBitSet);
+    if (parentBitSet == null) {
+      return NO_RESULTS;
+    }
+    KnnCollector collector =
+        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }
@@ -129,7 +145,7 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    ToParentBlockJoinFloatKnnVectorQuery that = (ToParentBlockJoinFloatKnnVectorQuery) o;
+    DiversifyingChildrenFloatKnnVectorQuery that = (DiversifyingChildrenFloatKnnVectorQuery) o;
     return k == that.k
         && Objects.equals(parentsFilter, that.parentsFilter)
         && Objects.equals(childFilter, that.childFilter)
@@ -143,16 +159,17 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
     return result;
   }
 
-  private static class ParentBlockJoinFloatVectorScorer {
+  private static class DiversifyingChildrenFloatVectorScorer {
     private final float[] query;
     private final FloatVectorValues values;
     private final VectorSimilarityFunction similarity;
     private final DocIdSetIterator acceptedChildrenIterator;
     private final BitSet parentBitSet;
     private int currentParent = -1;
+    private int bestChild = -1;
     private float currentScore = Float.NEGATIVE_INFINITY;
 
-    protected ParentBlockJoinFloatVectorScorer(
+    protected DiversifyingChildrenFloatVectorScorer(
         FloatVectorValues values,
         DocIdSetIterator acceptedChildrenIterator,
         BitSet parentBitSet,
@@ -163,6 +180,10 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
       this.similarity = similarity;
       this.acceptedChildrenIterator = acceptedChildrenIterator;
       this.parentBitSet = parentBitSet;
+    }
+
+    public int bestChild() {
+      return bestChild;
     }
 
     public int nextParent() throws IOException {
@@ -178,7 +199,11 @@ public class ToParentBlockJoinFloatKnnVectorQuery extends KnnFloatVectorQuery {
       currentParent = parentBitSet.nextSetBit(nextChild);
       do {
         values.advance(nextChild);
-        currentScore = Math.max(currentScore, similarity.compare(query, values.vectorValue()));
+        float score = similarity.compare(query, values.vectorValue());
+        if (score > currentScore) {
+          bestChild = nextChild;
+          currentScore = score;
+        }
       } while ((nextChild = acceptedChildrenIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS
           && nextChild < currentParent);
       return currentParent;

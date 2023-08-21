@@ -303,10 +303,8 @@ public class EnwikiContentSource extends ContentSource {
   public void close() throws IOException {
     synchronized (EnwikiContentSource.this) {
       parser.stop();
-      if (is != null) {
-        is.close();
-        is = null;
-      }
+      IOUtils.close(is);
+      is = null;
     }
   }
 

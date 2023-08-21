@@ -18,7 +18,10 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -29,7 +32,8 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
   public void testNeighborsProduct() throws IOException {
     // make sure we have the sign correct
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {1, 3, 5}, 3), 6);
-    ToParentJoinKnnCollector nn = new ToParentJoinKnnCollector(2, Integer.MAX_VALUE, parentBitSet);
+    DiversifyingNearestChildrenKnnCollector nn =
+        new DiversifyingNearestChildrenKnnCollector(2, Integer.MAX_VALUE, parentBitSet);
     assertTrue(nn.collect(2, 0.5f));
     assertTrue(nn.collect(0, 0.2f));
     assertTrue(nn.collect(4, 1f));
@@ -43,8 +47,8 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     int[] nodes = new int[] {4, 1, 5, 7, 8, 10, 2};
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
-    ToParentJoinKnnCollector results =
-        new ToParentJoinKnnCollector(7, Integer.MAX_VALUE, parentBitSet);
+    DiversifyingNearestChildrenKnnCollector results =
+        new DiversifyingNearestChildrenKnnCollector(7, Integer.MAX_VALUE, parentBitSet);
     for (int i = 0; i < nodes.length; i++) {
       results.collect(nodes[i], scores[i]);
     }
@@ -55,7 +59,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
       sortedNodes[i] = topDocs.scoreDocs[i].doc;
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
-    assertArrayEquals(new int[] {3, 9, 12, 6}, sortedNodes);
+    assertArrayEquals(new int[] {2, 7, 10, 4}, sortedNodes);
     assertArrayEquals(new float[] {4f, 2f, 1.2f, 1f}, sortedScores, 0f);
   }
 
@@ -64,8 +68,8 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 3f, 4f, 1f, 0.2f};
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
-    ToParentJoinKnnCollector results =
-        new ToParentJoinKnnCollector(5, Integer.MAX_VALUE, parentBitSet);
+    DiversifyingNearestChildrenKnnCollector results =
+        new DiversifyingNearestChildrenKnnCollector(5, Integer.MAX_VALUE, parentBitSet);
     for (int i = 0; i < nodes.length - 1; i++) {
       results.collect(nodes[i], scores[i]);
     }
@@ -77,8 +81,33 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
       sortedNodes[i] = topDocs.scoreDocs[i].doc;
       sortedScores[i] = topDocs.scoreDocs[i].score;
     }
-    assertArrayEquals(new int[] {3, 11, 9, 6, 13}, sortedNodes);
+    assertArrayEquals(new int[] {2, 10, 7, 4, 12}, sortedNodes);
     assertArrayEquals(new float[] {4f, 3f, 2f, 1f, 1f}, sortedScores, 0f);
+  }
+
+  public void testRandomInsertionsWithOverflow() throws IOException {
+    int[] parents = new int[100];
+    List<Integer> children = new ArrayList<>();
+    List<Float> childrenScores = new ArrayList<>();
+    int previousParent = -1;
+    int nextParent = random().nextInt(50) + 2;
+    for (int i = 0; i < 100; i++) {
+      for (int j = previousParent + 1; j < nextParent; j++) {
+        children.add(j);
+        childrenScores.add(random().nextFloat());
+      }
+      parents[i] = nextParent;
+      previousParent = nextParent;
+      nextParent = random().nextInt(50) + 2 + previousParent;
+    }
+    Collections.shuffle(children, random());
+    BitSet parentBitSet =
+        BitSet.of(new IntArrayDocIdSetIterator(parents, parents.length), nextParent + 1);
+    DiversifyingNearestChildrenKnnCollector results =
+        new DiversifyingNearestChildrenKnnCollector(20, Integer.MAX_VALUE, parentBitSet);
+    for (int i = 0; i < children.size(); i++) {
+      results.collect(children.get(i), childrenScores.get(i));
+    }
   }
 
   static class IntArrayDocIdSetIterator extends DocIdSetIterator {
