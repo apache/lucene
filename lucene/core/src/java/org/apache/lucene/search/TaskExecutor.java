@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -46,7 +47,7 @@ class TaskExecutor {
    * @return a list containing the results from the tasks execution
    * @param <T> the return type of the task execution
    */
-  final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) {
+  final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) throws IOException {
     for (Runnable task : tasks) {
       executor.execute(task);
     }
@@ -57,6 +58,12 @@ class TaskExecutor {
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
+        if (e.getCause() instanceof IOException ioException) {
+          throw ioException;
+        }
+        if (e.getCause() instanceof RuntimeException runtimeException) {
+          throw runtimeException;
+        }
         throw new RuntimeException(e.getCause());
       }
     }

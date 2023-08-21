@@ -108,7 +108,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor) {
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
+      throws IOException {
     List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
     for (LeafReaderContext context : leafReaderContexts) {
       tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
