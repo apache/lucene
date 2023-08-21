@@ -912,7 +912,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     private void checkBounds(int numBytes) throws EOFException {
-      if (Math.toIntExact(getPosition() + numBytes) - 1 >= length) {
+      if (Math.toIntExact(getPosition() + numBytes) > length) {
         throw new EOFException();
       }
     }
