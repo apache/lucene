@@ -27,6 +27,11 @@ import org.apache.lucene.util.ArrayUtil;
 /** Writes system dictionary entries */
 class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
   private static final int IPADIC_ID_LIMIT = 8192;
+
+  // E.g.: unidic-cwj-3.1.1-full:   15388
+  // E.g.: unidic-cwj-202302_full:  18859
+  private static final int UNIDIC_ID_LIMIT = 18859;
+
   private final DictionaryBuilder.DictionaryFormat format;
 
   TokenInfoDictionaryEntryWriter(DictionaryBuilder.DictionaryFormat format, int size) {
@@ -131,12 +136,7 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       flags |= TokenInfoMorphData.HAS_PRONUNCIATION;
     }
 
-    if (leftId != rightId) {
-      throw new IllegalArgumentException("rightId != leftId: " + rightId + " " + leftId);
-    }
-    if (leftId >= IPADIC_ID_LIMIT) {
-      throw new IllegalArgumentException("leftId >= " + IPADIC_ID_LIMIT + ": " + leftId);
-    }
+    validateLeftRightIdsWithThrow(leftId, rightId);
     // add pos mapping
     int toFill = 1 + leftId - posDict.size();
     for (int i = 0; i < toFill; i++) {
@@ -194,6 +194,20 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     }
 
     return buffer.position();
+  }
+
+  private void validateLeftRightIdsWithThrow(short leftId, short rightId) {
+    if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && leftId != rightId) {
+      throw new IllegalArgumentException("IpaDic rightId != leftId: " + rightId + " " + leftId);
+    }
+
+    if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && leftId >= IPADIC_ID_LIMIT) {
+      throw new IllegalArgumentException("IpaDic leftId >= " + IPADIC_ID_LIMIT + ": " + leftId);
+    }
+
+    if (this.format == DictionaryBuilder.DictionaryFormat.UNIDIC && leftId >= UNIDIC_ID_LIMIT) {
+      throw new IllegalArgumentException("UniDic leftId >= " + UNIDIC_ID_LIMIT + ": " + leftId);
+    }
   }
 
   private boolean isKatakana(String s) {
