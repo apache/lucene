@@ -26,7 +26,7 @@ import org.apache.lucene.util.ArrayUtil;
 
 /** Writes system dictionary entries */
 class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
-  private static final int ID_LIMIT = 8192;
+  private static final int IPADIC_ID_LIMIT = 8192;
   private final DictionaryBuilder.DictionaryFormat format;
 
   TokenInfoDictionaryEntryWriter(DictionaryBuilder.DictionaryFormat format, int size) {
@@ -119,8 +119,8 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     if (leftId != rightId) {
       throw new IllegalArgumentException("rightId != leftId: " + rightId + " " + leftId);
     }
-    if (leftId >= ID_LIMIT) {
-      throw new IllegalArgumentException("leftId >= " + ID_LIMIT + ": " + leftId);
+    if (leftId >= IPADIC_ID_LIMIT) {
+      throw new IllegalArgumentException("leftId >= " + IPADIC_ID_LIMIT + ": " + leftId);
     }
     // add pos mapping
     int toFill = 1 + leftId - posDict.size();
