@@ -51,7 +51,7 @@ class UnknownDictionaryBuilder {
 
   private UnknownDictionaryWriter readDictionaryFile(Path path, String encoding)
       throws IOException {
-    UnknownDictionaryWriter dictionary = new UnknownDictionaryWriter(5 * 1024 * 1024);
+    UnknownDictionaryWriter dictionary = new UnknownDictionaryWriter(format, 5 * 1024 * 1024);
 
     List<String[]> lines = new ArrayList<>();
     try (Reader reader = Files.newBufferedReader(path, Charset.forName(encoding));

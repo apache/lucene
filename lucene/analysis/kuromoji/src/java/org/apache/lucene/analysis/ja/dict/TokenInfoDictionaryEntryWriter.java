@@ -27,9 +27,11 @@ import org.apache.lucene.util.ArrayUtil;
 /** Writes system dictionary entries */
 class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
   private static final int ID_LIMIT = 8192;
+  private final DictionaryBuilder.DictionaryFormat format;
 
-  TokenInfoDictionaryEntryWriter(int size) {
+  TokenInfoDictionaryEntryWriter(DictionaryBuilder.DictionaryFormat format, int size) {
     super(size);
+    this.format = format;
   }
 
   /**

@@ -62,7 +62,7 @@ class TokenInfoDictionaryBuilder {
   }
 
   private TokenInfoDictionaryWriter buildDictionary(List<Path> csvFiles) throws IOException {
-    TokenInfoDictionaryWriter dictionary = new TokenInfoDictionaryWriter(10 * 1024 * 1024);
+    TokenInfoDictionaryWriter dictionary = new TokenInfoDictionaryWriter(format, 10 * 1024 * 1024);
     Charset cs = Charset.forName(encoding);
     // all lines in the file
     List<String[]> lines = new ArrayList<>(400000);
