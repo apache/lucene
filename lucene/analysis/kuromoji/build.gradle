@@ -16,6 +16,7 @@
  */
 
 apply plugin: 'java-library'
+apply plugin: 'application'
 
 description = 'Japanese Morphological Analyzer'
 
@@ -24,4 +25,9 @@ dependencies {
   moduleApi project(':lucene:analysis:common')
 
   moduleTestImplementation project(':lucene:test-framework')
+}
+
+application {
+  mainModule = 'org.apache.lucene.analysis.kuromoji' // name defined in module-info.java
+  mainClass = 'org.apache.lucene.analysis.ja.dict.DictionaryBuilder'
 }
