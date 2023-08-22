@@ -72,10 +72,7 @@ class TokenInfoDictionaryBuilder {
         while ((line = reader.readLine()) != null) {
           String[] entry = CSVUtil.parse(line);
 
-          if (entry.length < 13) {
-            throw new IllegalArgumentException(
-                "Entry in CSV is not valid (13 field values expected): " + line);
-          }
+          validateEntryLengthWithThrow(line, entry);
 
           lines.add(formatEntry(entry));
 
@@ -128,6 +125,16 @@ class TokenInfoDictionaryBuilder {
     }
     dictionary.setFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     return dictionary;
+  }
+
+  private void validateEntryLengthWithThrow(final String line, String[] entry) {
+    if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && entry.length < 13) {
+      throw new IllegalArgumentException(
+          "Entry in CSV is not valid (13 field values expected): " + line);
+    } else if (this.format == DictionaryBuilder.DictionaryFormat.UNIDIC && entry.length < 21) {
+      throw new IllegalArgumentException(
+          "Entry in CSV is not valid (21 field values expected): " + line);
+    }
   }
 
   /*
