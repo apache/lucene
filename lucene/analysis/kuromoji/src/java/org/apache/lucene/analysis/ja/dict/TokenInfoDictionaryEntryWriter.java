@@ -154,8 +154,16 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
     buffer.putShort(wordCost);
 
     if ((flags & TokenInfoMorphData.HAS_BASEFORM) != 0) {
-      if (baseForm.length() >= 16) {
-        throw new IllegalArgumentException("Length of base form " + baseForm + " is >= 16");
+      if (this.format == DictionaryBuilder.DictionaryFormat.IPADIC && baseForm.length() >= 16) {
+        throw new IllegalArgumentException(
+            "IPADIC base form length " + baseForm.length() + " is >= 16");
+      }
+
+      // Added the following check because when trying to build unidic-cwj-3.1.1-full,
+      // the base form length was greater than 16, thus, the original check was failing.
+      if (this.format == DictionaryBuilder.DictionaryFormat.UNIDIC && baseForm.length() >= 35) {
+        throw new IllegalArgumentException(
+            "UNIDIC base form length " + baseForm.length() + " is >= 35");
       }
       int shared = sharedPrefix(entry[0], baseForm);
       int suffix = baseForm.length() - shared;
