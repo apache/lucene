@@ -157,9 +157,10 @@ class TokenInfoDictionaryBuilder {
    * 3   - word cost
    * 4-9 - pos
    * 10  - base form reading
-   * 11  - base form
+   * 11  - lexeme - not used
    * 12  - surface form
    * 13  - surface reading
+   * 14  - orthographic form
    */
 
   private String[] formatEntry(String[] features) {
@@ -177,7 +178,7 @@ class TokenInfoDictionaryBuilder {
       features2[7] = features[7];
       features2[8] = features[8];
       features2[9] = features[9];
-      features2[10] = features[11];
+      features2[10] = features[14];
 
       // If the surface reading is non-existent, use surface form for reading and pronunciation.
       // This happens with punctuation in UniDic and there are possibly other cases as well
