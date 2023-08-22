@@ -25,7 +25,7 @@ import java.util.Locale;
  * Tool to build dictionaries. Usage:
  *
  * <pre>
- *    java -cp [lucene classpath] org.apache.lucene.analysis.ja.util.DictionaryBuilder \
+ *    java -cp [lucene classpath] org.apache.lucene.analysis.ja.dict.DictionaryBuilder \
  *          ${inputDir} ${outputDir} ${encoding} ${normalizeEntry}
  * </pre>
  *
