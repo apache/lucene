@@ -49,6 +49,21 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
    * 11  - reading
    * 12  - pronounciation
    * </pre>
+   *
+   * <p>unidic features
+   *
+   * <pre>
+   * 0   - surface
+   * 1   - left cost
+   * 2   - right cost
+   * 3   - word cost
+   * 4-9 - pos
+   * 10  - base form reading
+   * 11  - lexeme - not used
+   * 12  - surface form
+   * 13  - surface reading
+   * 14  - orthographic form
+   * </pre>
    */
   @Override
   protected int putEntry(String[] entry) {
