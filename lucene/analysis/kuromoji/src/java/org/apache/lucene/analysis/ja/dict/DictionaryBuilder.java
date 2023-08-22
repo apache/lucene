@@ -66,7 +66,7 @@ public class DictionaryBuilder {
         .build(inputDir)
         .write(outputDir);
 
-    new UnknownDictionaryBuilder(encoding).build(inputDir).write(outputDir);
+    new UnknownDictionaryBuilder(format, encoding).build(inputDir).write(outputDir);
 
     ConnectionCostsBuilder.build(inputDir.resolve("matrix.def"))
         .write(outputDir, DictionaryConstants.CONN_COSTS_HEADER, DictionaryConstants.VERSION);

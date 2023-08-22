@@ -30,9 +30,11 @@ import org.apache.lucene.analysis.util.CSVUtil;
 class UnknownDictionaryBuilder {
   private static final String NGRAM_DICTIONARY_ENTRY = "NGRAM,5,5,-32768,記号,一般,*,*,*,*,*,*,*";
 
+  private final DictionaryBuilder.DictionaryFormat format;
   private final String encoding;
 
-  UnknownDictionaryBuilder(String encoding) {
+  UnknownDictionaryBuilder(DictionaryBuilder.DictionaryFormat format, String encoding) {
+    this.format = format;
     this.encoding = encoding;
   }
 
@@ -60,11 +62,8 @@ class UnknownDictionaryBuilder {
       String line;
       while ((line = lineReader.readLine()) != null) {
         // note: unk.def only has 10 fields, it simplifies the writer to just append empty reading
-        // and pronunciation,
-        // even though the unknown dictionary returns hardcoded null here.
-        final String[] parsed =
-            CSVUtil.parse(line + ",*,*"); // Probably we don't need to validate entry
-        lines.add(parsed);
+        // and pronunciation, even though the unknown dictionary returns hardcoded null here.
+        lines.add(parseCSVLine(line));
       }
     }
 
@@ -76,6 +75,14 @@ class UnknownDictionaryBuilder {
     }
 
     return dictionary;
+  }
+
+  private String[] parseCSVLine(final String line) {
+    if (this.format == DictionaryBuilder.DictionaryFormat.UNIDIC) {
+      return CSVUtil.parse(line + ",*,*,*"); // UniDic needs one more column
+    } else {
+      return CSVUtil.parse(line + ",*,*"); // Probably we don't need to validate entry
+    }
   }
 
   private void readCharacterDefinition(Path path, UnknownDictionaryWriter dictionary)
