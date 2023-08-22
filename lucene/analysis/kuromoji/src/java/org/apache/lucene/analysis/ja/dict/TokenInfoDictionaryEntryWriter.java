@@ -143,11 +143,6 @@ class TokenInfoDictionaryEntryWriter extends DictionaryEntryWriter {
       posDict.add(null);
     }
 
-    String existing = posDict.get(leftId);
-    if (existing != null && existing.equals(fullPOSData) == false) {
-      // TODO: test me
-      throw new IllegalArgumentException("Multiple entries found for leftID=" + leftId);
-    }
     posDict.set(leftId, fullPOSData);
 
     buffer.putShort((short) (leftId << 3 | flags));
