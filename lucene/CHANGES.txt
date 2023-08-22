@@ -214,6 +214,8 @@ Other
 * GITHUB#12428: Replace consecutive close() calls and close() calls with null checks with IOUtils.close().
   (Shubham Chaudhary)
 
+* GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
+
 ======================== Lucene 9.7.0 =======================
 
 API Changes
