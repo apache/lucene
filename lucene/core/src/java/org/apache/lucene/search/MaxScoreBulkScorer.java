@@ -30,6 +30,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final int maxDoc;
   // All scorers, sorted by increasing max score.
   private final DisiWrapper[] allScorers;
+  private final DisiWrapper[] scratch;
   // These are the last scorers from `allScorers` that are "essential", ie. required for a match to
   // have a competitive score.
   private final DisiPriorityQueue essentialQueue;
@@ -49,6 +50,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {
     this.maxDoc = maxDoc;
     allScorers = new DisiWrapper[scorers.size()];
+    scratch = new DisiWrapper[allScorers.length];
     int i = 0;
     long cost = 0;
     for (Scorer scorer : scorers) {
@@ -91,16 +93,25 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax);
+        top = essentialQueue.top();
 
         if (minCompetitiveScoreUpdated) {
           minCompetitiveScoreUpdated = false;
           if (partitionScorers() == false) {
             outerWindowMin = outerWindowMax;
             continue outer;
+          } else {
+            // Partitioning may have swapped essential and non-essential scorers, and some of the
+            // non-essential scorers may be behind the last scored doc. So let's advance to the next
+            // candidate match.
+            final int nextCandidateMatch = top.doc;
+            top = essentialQueue.top();
+            while (top.doc < nextCandidateMatch) {
+              top.doc = top.iterator.advance(nextCandidateMatch);
+              top = essentialQueue.updateTop();
+            }
           }
         }
-
-        top = essentialQueue.top();
       }
       outerWindowMin = outerWindowMax;
     }
@@ -220,9 +231,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       if (maxPossibleScore < minCompetitiveScore) {
         // Hit is not competitive.
         return;
-      } else if (maxScoreSums[i] == 0f) {
-        // Can break since scorers are sorted by ascending score.
-        break;
       }
 
       DisiWrapper scorer = allScorers[i];
@@ -239,19 +247,38 @@ final class MaxScoreBulkScorer extends BulkScorer {
   }
 
   private boolean partitionScorers() {
-    Arrays.sort(allScorers, Comparator.comparingDouble(scorer -> scorer.maxWindowScore));
+    // Partitioning scorers is an optimization problem: the optimal set of non-essential scorers is
+    // the subset of scorers whose sum of max window scores is less than the minimum competitive
+    // score that maximizes the sum of costs.
+    // Computing the optimal solution to this problem would take O(2^num_clauses). As a first
+    // approximation, we take the first scorers sorted by max_window_score / cost whose sum of max
+    // scores is less than the minimum competitive scores. In the common case, maximum scores are
+    // inversely correlated with document frequency so this is the same as only sorting by maximum
+    // score, as described in the MAXSCORE paper and gives the optimal solution. However, this can
+    // make a difference when using custom scores (like FuzzyQuery), high query-time boosts, or
+    // scoring based on wacky weights.
+    System.arraycopy(allScorers, 0, scratch, 0, allScorers.length);
+    Arrays.sort(
+        scratch,
+        Comparator.comparingDouble(
+            scorer -> (double) scorer.maxWindowScore / Math.max(1L, scorer.cost)));
     double maxScoreSum = 0;
-    for (firstEssentialScorer = 0;
-        firstEssentialScorer < allScorers.length;
-        ++firstEssentialScorer) {
-      maxScoreSum += allScorers[firstEssentialScorer].maxWindowScore;
-      maxScoreSums[firstEssentialScorer] = maxScoreSum;
+    firstEssentialScorer = 0;
+    for (int i = 0; i < allScorers.length; ++i) {
+      final DisiWrapper w = scratch[i];
+      double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
       float maxScoreSumFloat =
-          MaxScoreSumPropagator.scoreSumUpperBound(maxScoreSum, firstEssentialScorer + 1);
-      if (maxScoreSumFloat >= minCompetitiveScore) {
-        break;
+          MaxScoreSumPropagator.scoreSumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
+      if (maxScoreSumFloat < minCompetitiveScore) {
+        maxScoreSum = newMaxScoreSum;
+        allScorers[firstEssentialScorer] = w;
+        maxScoreSums[firstEssentialScorer] = maxScoreSum;
+        firstEssentialScorer++;
+      } else {
+        allScorers[allScorers.length - 1 - (i - firstEssentialScorer)] = w;
       }
     }
+
     if (firstEssentialScorer == allScorers.length) {
       return false;
     }
