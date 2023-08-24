@@ -16,15 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -42,6 +40,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.hamcrest.Matchers;
 import org.junit.Test;
 
 public class TestIndexSearcher extends LuceneTestCase {
@@ -267,7 +266,127 @@ public class TestIndexSearcher extends LuceneTestCase {
             return slices.toArray(new LeafSlice[0]);
           }
         };
-    searcher.search(new MatchAllDocsQuery(), 10);
-    assertEquals(leaves.size(), numExecutions.get());
+    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), 10);
+    assertTrue(topDocs.totalHits.value > 0);
+    if (leaves.size() <= 1) {
+      assertEquals(0, numExecutions.get());
+    } else {
+      assertEquals(leaves.size(), numExecutions.get());
+    }
+  }
+
+  /**
+   * Tests that when IndexerSearcher runs concurrent searches on multiple slices if any Exception is
+   * thrown by one of the slice tasks, it will not return until all tasks have completed.
+   *
+   * <p>Without a larger refactoring of the Lucene IndexSearcher and/or TaskExecutor there isn't a
+   * clean deterministic way to test this. This test is probabilistic using short timeouts in the
+   * tasks that do not throw an Exception.
+   */
+  public void testMultipleSegmentsOnTheExecutorWithException() {
+    List<LeafReaderContext> leaves = reader.leaves();
+    int fixedThreads = leaves.size() == 1 ? 1 : leaves.size() / 2;
+
+    ExecutorService fixedThreadPoolExecutor =
+        Executors.newFixedThreadPool(fixedThreads, new NamedThreadFactory("concurrent-slices"));
+
+    IndexSearcher searcher =
+        new IndexSearcher(reader, fixedThreadPoolExecutor) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            ArrayList<LeafSlice> slices = new ArrayList<>();
+            for (LeafReaderContext ctx : leaves) {
+              slices.add(new LeafSlice(Arrays.asList(ctx)));
+            }
+            return slices.toArray(new LeafSlice[0]);
+          }
+        };
+
+    try {
+      AtomicInteger callsToScorer = new AtomicInteger(0);
+      int numExceptions = leaves.size() == 1 ? 1 : RandomizedTest.randomIntBetween(1, 2);
+      MatchAllOrThrowExceptionQuery query =
+          new MatchAllOrThrowExceptionQuery(numExceptions, callsToScorer);
+      RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
+      assertEquals(leaves.size(), callsToScorer.get());
+      assertThat(
+          exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
+    } finally {
+      TestUtil.shutdownExecutorService(fixedThreadPoolExecutor);
+    }
+  }
+
+  private static class MatchAllOrThrowExceptionQuery extends Query {
+
+    private final AtomicInteger numExceptionsToThrow;
+    private final Query delegate;
+    private final AtomicInteger callsToScorer;
+
+    /**
+     * Throws an Exception out of the {@code scorer} method the first {@code numExceptions} times it
+     * is called. Otherwise, it delegates all calls to the MatchAllDocsQuery.
+     *
+     * @param numExceptions number of exceptions to throw from scorer method
+     */
+    public MatchAllOrThrowExceptionQuery(int numExceptions, AtomicInteger callsToScorer) {
+      this.numExceptionsToThrow = new AtomicInteger(numExceptions);
+      this.callsToScorer = callsToScorer;
+      this.delegate = new MatchAllDocsQuery();
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      Weight matchAllWeight = delegate.createWeight(searcher, scoreMode, boost);
+
+      return new Weight(delegate) {
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return matchAllWeight.isCacheable(ctx);
+        }
+
+        @Override
+        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+          return matchAllWeight.explain(context, doc);
+        }
+
+        @Override
+        public Scorer scorer(LeafReaderContext context) throws IOException {
+          if (numExceptionsToThrow.getAndDecrement() > 0) {
+            callsToScorer.getAndIncrement();
+            throw new RuntimeException("MatchAllOrThrowExceptionQuery Exception");
+          } else {
+            // A small sleep will allow the task with the Exception to be thrown
+            // and if TaskExecutor.invokeAll does not wait until all tasks have
+            // finished, then the callsToScorer counter will not match the total
+            // number of tasks (in most cases, since there is a race condition
+            // that makes it probabilistic.)
+            RandomizedTest.sleep(25);
+            callsToScorer.getAndIncrement();
+          }
+          return matchAllWeight.scorer(context);
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      delegate.visit(visitor);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "MatchAllOrThrowExceptionQuery";
+    }
+
+    @Override
+    public int hashCode() {
+      return delegate.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return other == this;
+    }
   }
 }

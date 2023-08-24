@@ -56,7 +56,8 @@ public final class TaskExecutor {
 
   /**
    * Execute all the callables provided as an argument, wait for them to complete and return the
-   * obtained results.
+   * obtained results. If an exception is thrown by more than one task, the subsequent ones
+   * will be added as suppressed exceptions to the first one that was caught.
    *
    * @param callables the callables to execute
    * @return a list containing the results from the tasks execution
@@ -74,15 +75,20 @@ public final class TaskExecutor {
         executor.execute(task);
       }
     }
+
+    RuntimeException exc = null;
     final List<T> results = new ArrayList<>();
     for (Future<T> future : tasks) {
       try {
         results.add(future.get());
       } catch (InterruptedException e) {
-        throw new ThreadInterruptedException(e);
+        exc = new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
-        throw IOUtils.rethrowAlways(e.getCause());
+        exc = new RuntimeException(e.getCause());
       }
+    }
+    if (exc != null) {
+      throw IOUtils.rethrowAlways(exc);
     }
     return results;
   }
