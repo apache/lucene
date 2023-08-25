@@ -21,9 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -71,7 +69,7 @@ public class ReindexingEnrichedDirectoryTaxonomyWriter extends DirectoryTaxonomy
       }
       FacetLabel[] labels = taxoReader.getBulkPath(ordinals);
       for (FacetLabel label : labels) {
-          paths.add(label);
+        paths.add(label);
       }
     }
 
