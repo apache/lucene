@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 class DpuSystemExecutor implements PimQueriesExecutor {
     static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
     static final int INDEX_CACHE_SIZE = 1 << 18;
+    static final boolean PARALLEL_INDEX_LOAD = false;
     private final byte[] queryBatchBuffer;
     private final DpuSystem dpuSystem;
     private final DpuProgramInfo dpuProgramInfo;
@@ -61,7 +62,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     }
 
     @Override
-    public void setPimIndex(PimIndexInfo pimIndexInfo) throws DpuException {
+    public void setPimIndex(PimIndexInfo pimIndexInfo) throws DpuException, IOException {
 
         if(pimIndexInfo.getNumDpus() > DpuConstants.nrDpus) {
             throw new DpuException("ERROR: index contains to many DPUs "
@@ -71,48 +72,52 @@ class DpuSystemExecutor implements PimQueriesExecutor {
             throw new DpuException("ERROR: only one segment supported for index\n");
         }
 
-        DpuSymbol indexSymbol = dpuProgramInfo.get(DpuConstants.dpuIndexVarName);
+        //TODO Debug further parallel load. It crashes in the jni layer of the DPU load API
+        if(PARALLEL_INDEX_LOAD) {
 
-        // parallel transfer of the index on each DPU rank
-        // loop over each DPU of the rank, read INDEX_CACHE_SIZE bytes
-        // Then transfer to the DPUs of the rank
-        // loop until all DPUs have received all their index
-        dpuSystem.async().call((DpuSet set, int rankId) -> {
+          DpuSymbol indexSymbol = dpuProgramInfo.get(DpuConstants.dpuIndexVarName);
+
+          // parallel transfer of the index on each DPU rank
+          // loop over each DPU of the rank, read INDEX_CACHE_SIZE bytes
+          // Then transfer to the DPUs of the rank
+          // loop until all DPUs have received all their index
+          dpuSystem.async().call((DpuSet set, int rankId) -> {
 
             if(dpuIdOffset[rankId] >= pimIndexInfo.getNumDpus())
-                return;
+              return;
 
             try {
-                byte[][] indexBuffers = new byte[set.dpus().size()][INDEX_CACHE_SIZE];
-                long[] dpuIndexPos =  new long[set.dpus().size()];
-                int cnt = 0;
-                IndexInput in = pimIndexInfo.getFileInput(0);
-                while(true) {
-                    boolean dpuActive = false;
-                    for(int i = 0; i < set.dpus().size(); ++i) {
-                        if(dpuIdOffset[rankId] + i >= pimIndexInfo.getNumDpus()) {
-                            indexBuffers[i] = null;
-                            continue;
-                        }
-                        long indexSize = pimIndexInfo.seekToDpu(in, dpuIdOffset[rankId] + i);
-                        int readSize = readIndexBufferForDpu(in, dpuIndexPos[i], indexSize, indexBuffers[i]);
-                        if(readSize == 0)
-                            indexBuffers[i] = null;
-                        else {
-                            dpuActive = true;
-                            dpuIndexPos[i] += readSize;
-                        }
-                    }
-                    if(!dpuActive) break;
-
-                    DpuSymbol sym = indexSymbol.getSymbolWithOffset(cnt * INDEX_CACHE_SIZE);
-                    set.copy(sym, indexBuffers);
-                    cnt++;
+              byte[][] indexBuffers = new byte[set.dpus().size()][INDEX_CACHE_SIZE];
+              long[] dpuIndexPos =  new long[set.dpus().size()];
+              int cnt = 0;
+              IndexInput in = pimIndexInfo.getFileInput(0);
+              while(true) {
+                boolean dpuActive = false;
+                for(int i = 0; i < set.dpus().size(); ++i) {
+                  if(dpuIdOffset[rankId] + i >= pimIndexInfo.getNumDpus()) {
+                    indexBuffers[i] = null;
+                    continue;
+                  }
+                  long indexSize = pimIndexInfo.seekToDpu(in, dpuIdOffset[rankId] + i);
+                  int readSize = readIndexBufferForDpu(in, dpuIndexPos[i], indexSize, indexBuffers[i]);
+                  if(readSize == 0)
+                    indexBuffers[i] = null;
+                  else {
+                    dpuActive = true;
+                    dpuIndexPos[i] += readSize;
+                  }
                 }
+                if(!dpuActive) break;
+
+                DpuSymbol sym = indexSymbol.getSymbolWithOffset(cnt * INDEX_CACHE_SIZE);
+                set.copy(sym, indexBuffers);
+                cnt++;
+              }
             } catch (IOException e) {
-                throw new DpuException(e.getMessage());
+              throw new DpuException(e.getMessage());
             }
-        });
+          });
+        }
 
         // send a value to all DPU indicating whether an index
         // was loaded in it or not (there can be more dpus allocated in the PIM system than
@@ -122,7 +127,17 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         b.order(ByteOrder.LITTLE_ENDIAN);
         b.putInt(1);
         for(int i = 0; i < pimIndexInfo.getNumDpus(); ++i) {
-            indexLoaded[i] = b.array();
+
+          if(!PARALLEL_INDEX_LOAD) {
+            IndexInput in = pimIndexInfo.getFileInput(0);
+            long dpuIndexSize = pimIndexInfo.seekToDpu(in, i);
+            byte[] data = new byte[((Math.toIntExact(dpuIndexSize) + 7) >> 3) << 3];                                                                                
+            in.readBytes(data, 0, Math.toIntExact(dpuIndexSize));
+            //TODO alignment on 8 bytes ?
+            dpuSystem.dpus().get(i).copy(DpuConstants.dpuIndexVarName, data);
+          }
+
+          indexLoaded[i] = b.array();
         }
         dpuSystem.copy(DpuConstants.dpuIndexLoadedVarName, indexLoaded);
 

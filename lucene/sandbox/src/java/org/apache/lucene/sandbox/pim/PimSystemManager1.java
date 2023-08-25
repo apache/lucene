@@ -411,7 +411,7 @@ public final class PimSystemManager1 implements PimSystemManager {
     /**
      * Copy the PIM index to the PIM system
      */
-    private void transferPimIndex() throws DpuException {
+    private void transferPimIndex() throws DpuException, IOException {
         // TODO load index to PIM system
         // Lock the pim index to avoid it to be overwritten ?
         queriesExecutor.setPimIndex(pimIndexInfo);
