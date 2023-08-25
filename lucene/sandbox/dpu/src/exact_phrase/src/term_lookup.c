@@ -21,8 +21,8 @@ static uint32_t block_list_offset = 0;
 static uint32_t postings_offset = 0;
 
 // compare terms, return 0 if equal, < 0 if term1 < term2, > 0 if term1 > term2
-static int compare_terms(decoder_t* decoder_term1, uint32_t term1_length,
-                            decoder_t* decoder_term2, uint32_t term2_length) {
+static int compare_terms(decoder_t* decoder_term1, int32_t term1_length,
+                            decoder_t* decoder_term2, int32_t term2_length) {
     int term1_w, term2_w;
     int offset = 0;
     /* TODO implement this optim if valuable
