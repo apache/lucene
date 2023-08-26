@@ -1,80 +1,71 @@
 package org.apache.lucene.util;
 
+import org.apache.lucene.index.VectorSimilarityFunction;
+
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 
 public interface ScalarQuantizedVectorSimilarity {
+  static float scoreCorrectiveOffset(VectorSimilarityFunction sim, byte[] quantizedVector, float alpha, float scalarOffset) {
+    if (sim == VectorSimilarityFunction.EUCLIDEAN) {
+      return 0f;
+    }
+    int sum = 0;
+    for (byte b : quantizedVector) {
+      sum += b;
+    }
+    return sum * alpha * scalarOffset;
+  }
 
-  float score(byte[] storedVector, float vectorOffset);
+  static ScalarQuantizedVectorSimilarity fromVectorSimilarity(VectorSimilarityFunction sim, float constMultiplier) {
+    return switch (sim) {
+      case EUCLIDEAN -> new Euclidean(constMultiplier);
+      case COSINE, DOT_PRODUCT -> new DotProduct(constMultiplier);
+      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(constMultiplier);
+    };
+  }
 
-  float offset(byte[] quantizedVector, ScalarQuantizer scalarQuantizer);
+  float score(byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset);
 
   class Euclidean implements ScalarQuantizedVectorSimilarity {
-    private final byte[] quantizedVector;
     private final float constMultiplier;
 
-    public Euclidean(float[] queryVector, ScalarQuantizer scalarQuantizer) {
-      this.quantizedVector = scalarQuantizer.quantize(queryVector);
-      this.constMultiplier = scalarQuantizer.getAlpha() * scalarQuantizer.getAlpha();
+    public Euclidean(float constMultiplier) {
+      this.constMultiplier = constMultiplier;
     }
 
     @Override
-    public float score(byte[] storedVector, float unused) {
-      int squareDistance = VectorUtil.squareDistance(storedVector, quantizedVector);
+    public float score(byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset) {
+      int squareDistance = VectorUtil.squareDistance(storedVector, queryVector);
       float adjustedDistance = squareDistance * constMultiplier;
       return 1 / (1f + adjustedDistance);
-    }
-
-    @Override
-    public float offset(byte[] quantizedVector, ScalarQuantizer scalarQuantizer) {
-      return 0f;
     }
   }
 
   class DotProduct implements ScalarQuantizedVectorSimilarity {
-    protected final byte[] quantizedVector;
-    protected final float vectorOffset;
-    protected final float constMultiplier;
+    private final float constMultiplier;
 
-    public DotProduct(float[] queryVector, ScalarQuantizer scalarQuantizer) {
-      this.quantizedVector = scalarQuantizer.quantize(queryVector);
-      this.vectorOffset = offset(quantizedVector, scalarQuantizer);
-      this.constMultiplier = scalarQuantizer.getAlpha() * scalarQuantizer.getAlpha();
+    public DotProduct(float constMultiplier) {
+      this.constMultiplier = constMultiplier;
     }
 
     @Override
-    public float score(byte[] storedVector, float vectorOffset) {
-      int dotProduct = VectorUtil.dotProduct(storedVector, quantizedVector);
-      float adjustedDistance = dotProduct * constMultiplier + this.vectorOffset + vectorOffset;
+    public float score(byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
+      int dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return (1 + adjustedDistance) / 2;
     }
-
-    @Override
-    public float offset(byte[] quantizedVector, ScalarQuantizer scalarQuantizer) {
-      int sum = 0;
-      for (byte b : quantizedVector) {
-        sum += b;
-      }
-      return sum * scalarQuantizer.getAlpha() * scalarQuantizer.getOffset();
-    }
   }
 
-  class Cosine extends DotProduct {
-    public Cosine(float[] queryVector, ScalarQuantizer scalarQuantizer) {
-      super(
-          VectorUtil.l2normalize(ArrayUtil.copyOfSubArray(queryVector, 0, queryVector.length)),
-          scalarQuantizer);
-    }
-  }
-
-  class MaximumInnerProduct extends DotProduct {
-    public MaximumInnerProduct(float[] queryVector, ScalarQuantizer scalarQuantizer) {
-      super(queryVector, scalarQuantizer);
+  class MaximumInnerProduct implements ScalarQuantizedVectorSimilarity {
+    private final float constMultiplier;
+    public MaximumInnerProduct(float constMultiplier) {
+      this.constMultiplier = constMultiplier;
     }
 
     @Override
-    public float score(byte[] storedVector, float vectorOffset) {
-      int dotProduct = VectorUtil.dotProduct(storedVector, quantizedVector);
-      float adjustedDistance = dotProduct * constMultiplier + this.vectorOffset + vectorOffset;
+    public float score(byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
+      int dotProduct = VectorUtil.dotProduct(storedVector, queryVector);
+      float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return scaleMaxInnerProductScore(adjustedDistance);
     }
   }

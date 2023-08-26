@@ -4,6 +4,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
@@ -14,18 +16,37 @@ public class ScalarQuantizer {
 
   private final float alpha;
   private final float offset;
+  private final float[] quantiles;
 
-  public ScalarQuantizer(float alpha, float offset) {
-    this.alpha = alpha;
-    this.offset = offset;
+  public ScalarQuantizer(float[] quantiles) {
+    assert quantiles.length == 2;
+    assert quantiles[1] >= quantiles[0];
+    this.quantiles = quantiles;
+    this.alpha = (quantiles[1] - quantiles[0]) / 127f;
+    this.offset = quantiles[0];
   }
 
-  byte[] quantize(float[] vector) {
+  public byte[] quantize(float[] vector) {
     byte[] q = new byte[vector.length];
     for (int i = 0; i < vector.length; i++) {
       q[i] = (byte) Math.max(-128f, Math.min((vector[i] - offset) / alpha, 127f));
     }
     return q;
+  }
+
+  public void quantizeTo(float[] vector, byte[] output) {
+    assert vector.length == output.length;
+    for (int i = 0; i < vector.length; i++) {
+      output[i] = (byte) Math.max(-128f, Math.min((vector[i] - offset) / alpha, 127f));
+    }
+  }
+
+  public float getLowerQuantile() {
+    return quantiles[0];
+  }
+
+  public float getUpperQuantile() {
+    return quantiles[1];
   }
 
   public float getAlpha() {
@@ -40,56 +61,55 @@ public class ScalarQuantizer {
     return offset * offset * dim;
   }
 
-  public static class Builder {
-    private final FloatVectorValues floatVectorValues;
-    private final int quantile;
-    private final Random random = new Random(42);
-
-    public Builder(FloatVectorValues floatVectorValues, int quantile) {
-      this.floatVectorValues = floatVectorValues;
-      this.quantile = quantile;
+  private static final Random random = new Random(42);
+  public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, int quantile) throws IOException {
+    if (floatVectorValues.size() == 0) {
+      return new ScalarQuantizer(new float[]{0f, 0f});
     }
-
-    ScalarQuantizer build(int dim) throws IOException {
-      if (quantile == 100) {
-        float min = Float.POSITIVE_INFINITY;
-        float max = Float.NEGATIVE_INFINITY;
-        while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-          for (float v : floatVectorValues.vectorValue()) {
-            if (v < min) {
-              min = v;
-            }
-            if (v > max) {
-              max = v;
-            }
-          }
+    if (quantile == 100) {
+      float min = Float.POSITIVE_INFINITY;
+      float max = Float.NEGATIVE_INFINITY;
+      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
+        for (float v : floatVectorValues.vectorValue()) {
+          min = Math.min(min, v);
+          max = Math.max(max, v);
         }
-        return new ScalarQuantizer((max - min) / 127f, min);
       }
-      int numFloatVecs = floatVectorValues.size();
-      int numVecs = Math.min(floatVectorValues.size(), SCALAR_QUANTIZATION_SAMPLE_SIZE);
-      float[] values = new float[numVecs * dim];
-      int[] vectorsToTake = IntStream.range(0, numVecs).toArray();
-      int curIndex = numVecs + 1;
-      while (curIndex < numFloatVecs) {
-        int j = random.nextInt(curIndex);
-        if (j < vectorsToTake.length) {
-          vectorsToTake[j] = curIndex;
-        }
-        curIndex++;
-      }
-      Arrays.sort(vectorsToTake);
+      return new ScalarQuantizer(new float[]{min, max});
+    }
+    int dim = floatVectorValues.dimension();
+    if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
       int copyOffset = 0;
-      for (int i : vectorsToTake) {
-        int docId = floatVectorValues.advance(i);
-        assert docId != NO_MORE_DOCS;
+      float[] values = new float[floatVectorValues.size()];
+      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
         float[] floatVector = floatVectorValues.vectorValue();
         System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
         copyOffset += dim;
       }
-      float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
-      return new ScalarQuantizer((upperAndLower[1] - upperAndLower[0]) / 127f, upperAndLower[0]);
+      return new ScalarQuantizer(getUpperAndLowerQuantile(values, quantile));
     }
+    int numFloatVecs = floatVectorValues.size();
+    // Reservoir sample the vector ordinals we want to read
+    float[] values = new float[SCALAR_QUANTIZATION_SAMPLE_SIZE * dim];
+    int[] vectorsToTake = IntStream.range(0, SCALAR_QUANTIZATION_SAMPLE_SIZE).toArray();
+    int curIndex = SCALAR_QUANTIZATION_SAMPLE_SIZE + 1;
+    while (curIndex < numFloatVecs) {
+      int j = random.nextInt(curIndex);
+      if (j < vectorsToTake.length) {
+        vectorsToTake[j] = curIndex;
+      }
+      curIndex++;
+    }
+    Arrays.sort(vectorsToTake);
+    int copyOffset = 0;
+    for (int i : vectorsToTake) {
+      int docId = floatVectorValues.advance(i);
+      assert docId != NO_MORE_DOCS;
+      float[] floatVector = floatVectorValues.vectorValue();
+      System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
+      copyOffset += dim;
+    }
+    return new ScalarQuantizer(getUpperAndLowerQuantile(values, quantile));
   }
 
   /**

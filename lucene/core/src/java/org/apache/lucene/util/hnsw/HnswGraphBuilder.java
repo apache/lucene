@@ -28,6 +28,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.lucene.codecs.lucene98.VectorScorer;
+import org.apache.lucene.codecs.lucene98.VectorScorerSupplier;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -90,6 +93,17 @@ public final class HnswGraphBuilder<T> {
       int beamWidth,
       long seed)
       throws IOException {
+    return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
+  }
+
+  public static HnswGraphBuilder<float[]> create(
+          VectorScorerSupplier scorerSupplier,
+          VectorEncoding vectorEncoding,
+          VectorSimilarityFunction similarityFunction,
+          int M,
+          int beamWidth,
+          long seed)
+          throws IOException {
     return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
   }
 
@@ -244,6 +258,19 @@ public final class HnswGraphBuilder<T> {
     }
   }
 
+  private void addVectors(VectorScorerSupplier vectorsToAdd) throws IOException {
+    long start = System.nanoTime(), t = start;
+    for (int node = 0; node < vectorsToAdd.numVectors(); node++) {
+      if (initializedNodes.contains(node)) {
+        continue;
+      }
+      addGraphNode(node, vectorsToAdd);
+      if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
+        t = printGraphBuildStatus(node, start, t);
+      }
+    }
+  }
+
   /** Set info-stream to output debugging information * */
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
@@ -284,6 +311,43 @@ public final class HnswGraphBuilder<T> {
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates.clear();
       graphSearcher.searchLevel(candidates, value, level, eps, vectors, hnsw, null);
+      eps = candidates.popUntilNearestKNodes();
+      hnsw.addNode(level, node);
+      addDiverseNeighbors(level, node, candidates);
+    }
+  }
+
+  public void addGraphNode(int node, VectorScorerSupplier vectorScorerSupplier) throws IOException {
+    final int nodeLevel = getRandomGraphLevel(ml, random);
+    int curMaxLevel = hnsw.numLevels() - 1;
+
+    // If entrynode is -1, then this should finish without adding neighbors
+    if (hnsw.entryNode() == -1) {
+      for (int level = nodeLevel; level >= 0; level--) {
+        hnsw.addNode(level, node);
+      }
+      return;
+    }
+    int[] eps = new int[] {hnsw.entryNode()};
+
+    // if a node introduces new levels to the graph, add this new node on new levels
+    for (int level = nodeLevel; level > curMaxLevel; level--) {
+      hnsw.addNode(level, node);
+    }
+    VectorScorer vectorScorer = vectorScorerSupplier.vectorScorer(node);
+
+    // for levels > nodeLevel search with topk = 1
+    GraphBuilderKnnCollector candidates = entryCandidates;
+    for (int level = curMaxLevel; level > nodeLevel; level--) {
+      candidates.clear();
+      graphSearcher.searchLevel(candidates, vectorScorer, vectorScorerSupplier.numVectors(), level, eps, hnsw, null);
+      eps = new int[] {candidates.popNode()};
+    }
+    // for levels <= nodeLevel search with topk = beamWidth, and add connections
+    candidates = beamCandidates;
+    for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
+      candidates.clear();
+      graphSearcher.searchLevel(candidates, vectorScorer, vectorScorerSupplier.numVectors(), level, eps, hnsw, null);
       eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
