@@ -17,9 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.ImpactsSource;
-import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * {@link DocIdSetIterator} that skips non-competitive docs thanks to the indexed impacts. Call
@@ -39,17 +36,17 @@ public final class ImpactsDISI extends DocIdSetIterator {
   /**
    * Sole constructor.
    *
-   * @param in wrapped iterator
-   * @param impactsSource source of impacts
-   * @param scorer scorer
+   * @param in the iterator, typically an ImpactsEnum
+   * @param maxScoreCache the cache of maximum scores, typically computed from the same ImpactsEnum
    */
-  public ImpactsDISI(DocIdSetIterator in, ImpactsSource impactsSource, SimScorer scorer) {
-    this(in, new MaxScoreCache(impactsSource, scorer));
-  }
-
-  ImpactsDISI(DocIdSetIterator in, MaxScoreCache maxScoreCache) {
+  public ImpactsDISI(DocIdSetIterator in, MaxScoreCache maxScoreCache) {
     this.in = in;
     this.maxScoreCache = maxScoreCache;
+  }
+
+  /** Get the {@link MaxScoreCache}. */
+  public MaxScoreCache getMaxScoreCache() {
+    return maxScoreCache;
   }
 
   /**
@@ -68,26 +65,6 @@ public final class ImpactsDISI extends DocIdSetIterator {
     }
   }
 
-  /**
-   * Implement the contract of {@link Scorer#advanceShallow(int)} based on the wrapped {@link
-   * ImpactsEnum}.
-   *
-   * @see Scorer#advanceShallow(int)
-   */
-  public int advanceShallow(int target) throws IOException {
-    return maxScoreCache.advanceShallow(target);
-  }
-
-  /**
-   * Implement the contract of {@link Scorer#getMaxScore(int)} based on the wrapped {@link
-   * ImpactsEnum} and {@link Scorer}.
-   *
-   * @see Scorer#getMaxScore(int)
-   */
-  public float getMaxScore(int upTo) throws IOException {
-    return maxScoreCache.getMaxScore(upTo);
-  }
-
   private int advanceTarget(int target) throws IOException {
     if (target <= upTo) {
       // we are still in the current block, which is considered competitive
@@ -95,7 +72,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
       return target;
     }
 
-    upTo = advanceShallow(target);
+    upTo = maxScoreCache.advanceShallow(target);
     maxScore = maxScoreCache.getMaxScoreForLevelZero();
 
     while (true) {
@@ -117,7 +94,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
       } else {
         target = skipUpTo + 1;
       }
-      upTo = advanceShallow(target);
+      upTo = maxScoreCache.advanceShallow(target);
       maxScore = maxScoreCache.getMaxScoreForLevelZero();
     }
   }
