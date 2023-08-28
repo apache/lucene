@@ -32,7 +32,8 @@ abstract class DisjunctionScorer extends Scorer {
   private final BlockMaxDISI blockMaxApprox;
   private final TwoPhase twoPhase;
 
-  protected DisjunctionScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
+  protected DisjunctionScorer(
+      Weight weight, List<Scorer> subScorers, ScoreMode scoreMode, boolean topLevelScoringClause)
       throws IOException {
     super(weight);
     if (subScorers.size() <= 1) {
@@ -44,7 +45,7 @@ abstract class DisjunctionScorer extends Scorer {
       this.subScorers.add(w);
     }
     this.needsScores = scoreMode != ScoreMode.COMPLETE_NO_SCORES;
-    if (scoreMode == ScoreMode.TOP_SCORES) {
+    if (scoreMode == ScoreMode.TOP_SCORES && topLevelScoringClause) {
       for (Scorer scorer : subScorers) {
         scorer.advanceShallow(0);
       }

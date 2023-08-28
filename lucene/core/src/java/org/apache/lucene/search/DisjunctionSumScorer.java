@@ -30,7 +30,7 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
    */
   DisjunctionSumScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
       throws IOException {
-    super(weight, subScorers, scoreMode);
+    super(weight, subScorers, scoreMode, false);
   }
 
   @Override

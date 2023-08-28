@@ -40,11 +40,17 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
    * @param tieBreakerMultiplier Multiplier applied to non-maximum-scoring subqueries for a document
    *     as they are summed into the result.
    * @param subScorers The sub scorers this Scorer should iterate on
+   * @param topLevelScoringClause Whether this clause is the top-level scoring clause, see {@link
+   *     ScorerSupplier#setTopLevelScoringClause()}
    */
   DisjunctionMaxScorer(
-      Weight weight, float tieBreakerMultiplier, List<Scorer> subScorers, ScoreMode scoreMode)
+      Weight weight,
+      float tieBreakerMultiplier,
+      List<Scorer> subScorers,
+      ScoreMode scoreMode,
+      boolean topLevelScoringClause)
       throws IOException {
-    super(weight, subScorers, scoreMode);
+    super(weight, subScorers, scoreMode, topLevelScoringClause);
     this.subScorers = subScorers;
     this.tieBreakerMultiplier = tieBreakerMultiplier;
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
@@ -108,7 +114,10 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
 
   @Override
   public void setMinCompetitiveScore(float minScore) throws IOException {
-    getBlockMaxApprox().setMinCompetitiveScore(minScore);
+    BlockMaxDISI blockMaxApprox = getBlockMaxApprox();
+    if (blockMaxApprox != null) {
+      blockMaxApprox.setMinCompetitiveScore(minScore);
+    }
     disjunctionBlockPropagator.setMinCompetitiveScore(minScore);
     if (tieBreakerMultiplier == 0) {
       // TODO: we could even remove some scorers from the priority queue?
