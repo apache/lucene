@@ -17,7 +17,9 @@
 package org.apache.lucene.tests.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -40,6 +42,11 @@ class AssertingLeafCollector extends FilterLeafCollector {
   @Override
   public void setScorer(Scorable scorer) throws IOException {
     super.setScorer(AssertingScorable.wrap(scorer));
+  }
+
+  @Override
+  public void collect(DocIdStream stream) throws IOException {
+    in.collect(new AssertingDocIdStream(stream));
   }
 
   @Override
@@ -90,5 +97,37 @@ class AssertingLeafCollector extends FilterLeafCollector {
     assert finishCalled == false;
     finishCalled = true;
     super.finish();
+  }
+
+  private class AssertingDocIdStream extends DocIdStream {
+
+    private final DocIdStream stream;
+    private boolean consumed;
+
+    AssertingDocIdStream(DocIdStream stream) {
+      this.stream = stream;
+    }
+
+    @Override
+    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+      assert consumed == false : "A terminal operation has already been called";
+      stream.forEach(
+          doc -> {
+            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+            assert doc >= min : "Out of range: " + doc + " < " + min;
+            assert doc < max : "Out of range: " + doc + " >= " + max;
+            consumer.accept(doc);
+            lastCollected = doc;
+          });
+      consumed = true;
+    }
+
+    @Override
+    public int count() throws IOException {
+      assert consumed == false : "A terminal operation has already been called";
+      int count = stream.count();
+      consumed = true;
+      return count;
+    }
   }
 }

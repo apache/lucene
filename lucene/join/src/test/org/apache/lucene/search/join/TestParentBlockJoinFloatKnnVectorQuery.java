@@ -43,7 +43,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
       Query childFilter,
       int k,
       BitSetProducer parentBitSet) {
-    return new ToParentBlockJoinFloatKnnVectorQuery(
+    return new DiversifyingChildrenFloatKnnVectorQuery(
         fieldName, queryVector, childFilter, k, parentBitSet);
   }
 
@@ -54,6 +54,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();
           doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
+          doc.add(newStringField("id", Integer.toString(j), Field.Store.YES));
           toAdd.add(doc);
           toAdd.add(makeParent(new int[] {j}));
           w.addDocuments(toAdd);
@@ -63,8 +64,8 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         assertEquals(1, reader.leaves().size());
         IndexSearcher searcher = new IndexSearcher(reader);
         BitSetProducer parentFilter = parentFilter(searcher.getIndexReader());
-        ToParentBlockJoinFloatKnnVectorQuery query =
-            new ToParentBlockJoinFloatKnnVectorQuery(
+        DiversifyingChildrenFloatKnnVectorQuery query =
+            new DiversifyingChildrenFloatKnnVectorQuery(
                 "field", new float[] {2, 3}, null, 3, parentFilter);
         /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
          * normalized by (1 + x) /2.
@@ -78,8 +79,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         float score1 =
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
-        assertScorerResults(
-            searcher, query, new float[] {score0, score1}, new String[] {"[1]", "[2]"});
+        assertScorerResults(searcher, query, new float[] {score0, score1}, new String[] {"1", "2"});
       }
     }
   }

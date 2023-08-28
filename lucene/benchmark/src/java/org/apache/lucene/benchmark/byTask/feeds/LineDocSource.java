@@ -204,9 +204,7 @@ public class LineDocSource extends ContentSource {
 
   private synchronized void openFile() {
     try {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
       InputStream is = StreamUtils.inputStream(file);
       reader = new BufferedReader(new InputStreamReader(is, encoding), StreamUtils.BUFFER_SIZE);
       if (skipHeaderLine) {
@@ -219,10 +217,8 @@ public class LineDocSource extends ContentSource {
 
   @Override
   public void close() throws IOException {
-    if (reader != null) {
-      reader.close();
-      reader = null;
-    }
+    IOUtils.close(reader);
+    reader = null;
   }
 
   @Override

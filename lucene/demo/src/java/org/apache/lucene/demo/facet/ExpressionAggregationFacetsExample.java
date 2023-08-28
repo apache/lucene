@@ -45,6 +45,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Shows facets aggregation by an expression. */
 public class ExpressionAggregationFacetsExample {
@@ -77,8 +78,7 @@ public class ExpressionAggregationFacetsExample {
     doc.add(new FacetField("A", "C"));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
-    indexWriter.close();
-    taxoWriter.close();
+    IOUtils.close(indexWriter, taxoWriter);
   }
 
   /** User runs a query and aggregates facets. */
@@ -114,8 +114,7 @@ public class ExpressionAggregationFacetsExample {
             expr.getDoubleValuesSource(bindings));
     FacetResult result = facets.getTopChildren(10, "A");
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return result;
   }
