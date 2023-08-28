@@ -191,6 +191,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
       if (supplier == null) {
         return null;
       }
+      supplier.setTopLevelScoringClause();
       return supplier.get(Long.MAX_VALUE);
     }
 
