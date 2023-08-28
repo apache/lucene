@@ -57,7 +57,9 @@ import org.apache.lucene.util.OfflineSorter.BufferSize;
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
  * often abbreviated BP, an approach to doc ID assignment that aims at reducing the sum of the log
- * gap between consecutive postings.
+ * gap between consecutive postings. While originally targeted at reducing the size of postings,
+ * this algorithm has been observed to also speed up queries significantly by clustering documents
+ * that have similar sets of terms together.
  *
  * <p>This algorithm was initially described by Dhulipala et al. in "Compressing graphs and inverted
  * indexes with recursive graph bisection". This implementation takes advantage of some
@@ -70,7 +72,7 @@ public final class BPIndexReorderer {
 
   /** Exception that is thrown when not enough RAM is available. */
   public static class NotEnoughRAMException extends RuntimeException {
-    NotEnoughRAMException(String message) {
+    private NotEnoughRAMException(String message) {
       super(message);
     }
   }
@@ -93,13 +95,10 @@ public final class BPIndexReorderer {
    */
   public static final int DEFAULT_MAX_ITERS = 20;
 
-  /** Default RAM budget: 64MB. Consider raising it when working on large indexes. */
-  public static final int DEFAULT_RAM_BUDGET_MB = 64;
-
   private int minDocFreq;
   private int minPartitionSize;
   private int maxIters;
-  private ForkJoinPool forJoinPool;
+  private ForkJoinPool forkJoinPool;
   private int concurrency;
   private double ramBudgetMB;
   private Set<String> fields;
@@ -110,11 +109,11 @@ public final class BPIndexReorderer {
     setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
     setMaxIters(DEFAULT_MAX_ITERS);
     setForkJoinPool(null, 1);
-    setRAMBudgetMB(DEFAULT_RAM_BUDGET_MB);
+    setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
     setFields(null);
   }
 
-  /** Set the minimum document frequency for terms to be considered. */
+  /** Set the minimum document frequency for terms to be considered, 4096 by default. */
   public void setMinDocFreq(int minDocFreq) {
     if (minDocFreq < 1) {
       throw new IllegalArgumentException("minDocFreq must be at least 1, got " + minDocFreq);
@@ -122,7 +121,7 @@ public final class BPIndexReorderer {
     this.minDocFreq = minDocFreq;
   }
 
-  /** Set the minimum partition size, when the algorithm stops recursing. */
+  /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
   public void setMinPartitionSize(int minPartitionSize) {
     if (minPartitionSize < 1) {
       throw new IllegalArgumentException(
@@ -131,7 +130,11 @@ public final class BPIndexReorderer {
     this.minPartitionSize = minPartitionSize;
   }
 
-  /** Set the maximum number of iterations on each recursion level. */
+  /**
+   * Set the maximum number of iterations on each recursion level, 20 by default. Experiments
+   * suggests that values above 20 do not help much. However, values below 20 can be used to trade
+   * effectiveness for faster reordering.
+   */
   public void setMaxIters(int maxIters) {
     if (maxIters < 1) {
       throw new IllegalArgumentException("maxIters must be at least 1, got " + maxIters);
@@ -146,17 +149,22 @@ public final class BPIndexReorderer {
    * <p>NOTE: A value of {@code null} and a concurrency of {@code 1} can be used to run in the
    * current thread, which is the default.
    */
-  public void setForkJoinPool(ForkJoinPool forJoinPool, int concurrency) {
+  public void setForkJoinPool(ForkJoinPool forkJoinPool, int concurrency) {
     if (concurrency < 1) {
       throw new IllegalArgumentException("concurrency must be at least 1, got " + concurrency);
     }
-    this.forJoinPool = forJoinPool;
+    if (forkJoinPool == null && concurrency != 1) {
+      throw new IllegalArgumentException(
+          "Concurrency must be set to 1 when running in the current thread");
+    }
+    this.forkJoinPool = forkJoinPool;
     this.concurrency = concurrency;
   }
 
   /**
    * Set the amount of RAM that graph partitioning is allowed to use. More RAM allows running
-   * faster. If not enough RAM is provided, reordering will not happen.
+   * faster. If not enough RAM is provided, a {@link NotEnoughRAMException} will be thrown. This is
+   * 10% of the total heap size by default.
    */
   public void setRAMBudgetMB(double ramBudgetMB) {
     this.ramBudgetMB = ramBudgetMB;
@@ -167,7 +175,7 @@ public final class BPIndexReorderer {
    * fields should be used.
    */
   public void setFields(Set<String> fields) {
-    this.fields = fields == null ? null : new HashSet<>(fields);
+    this.fields = fields == null ? null : Set.copyOf(fields);
   }
 
   private static class PerThreadState {
@@ -188,12 +196,17 @@ public final class BPIndexReorderer {
     private final IntsRef docIDs;
     private final float[] gains;
     private final CloseableThreadLocal<PerThreadState> threadLocal;
+    private final boolean sort;
 
     IndexReorderingTask(
-        IntsRef docIDs, float[] gains, CloseableThreadLocal<PerThreadState> threadLocal) {
+        IntsRef docIDs,
+        float[] gains,
+        CloseableThreadLocal<PerThreadState> threadLocal,
+        boolean sort) {
       this.docIDs = docIDs;
       this.gains = gains;
       this.threadLocal = threadLocal;
+      this.sort = sort;
     }
 
     private static void computeDocFreqs(IntsRef docs, ForwardIndex forwardIndex, int[] docFreqs) {
@@ -215,7 +228,11 @@ public final class BPIndexReorderer {
 
     @Override
     protected void compute() {
-      assert sorted(docIDs);
+      if (sort) {
+        Arrays.sort(docIDs.ints, docIDs.offset, docIDs.offset + docIDs.length);
+      } else {
+        assert sorted(docIDs);
+      }
 
       int leftSize = docIDs.length / 2;
       if (leftSize < minPartitionSize) {
@@ -248,13 +265,10 @@ public final class BPIndexReorderer {
         }
       }
 
-      Arrays.sort(left.ints, left.offset, left.offset + left.length);
-      Arrays.sort(right.ints, right.offset, right.offset + right.length);
-
       // It is fine for all tasks to share the same docs / gains array since they all work on
       // different slices of the array at a given point in time.
-      IndexReorderingTask leftTask = new IndexReorderingTask(left, gains, threadLocal);
-      IndexReorderingTask rightTask = new IndexReorderingTask(right, gains, threadLocal);
+      IndexReorderingTask leftTask = new IndexReorderingTask(left, gains, threadLocal, true);
+      IndexReorderingTask rightTask = new IndexReorderingTask(right, gains, threadLocal, true);
 
       if (shouldFork()) {
         invokeAll(leftTask, rightTask);
@@ -265,8 +279,14 @@ public final class BPIndexReorderer {
     }
 
     private boolean shouldFork() {
-      // See javadocs of #getSurplusQueuedTaskCount
-      return forJoinPool != null && getSurplusQueuedTaskCount() <= 3;
+      // Fork tasks if this worker doesn't have more queued work than other workers
+      // See javadocs of #getSurplusQueuedTaskCount for more details
+      return forkJoinPool != null && getSurplusQueuedTaskCount() <= 3;
+    }
+
+    private boolean shouldForkInnerTask() {
+      // Only fork inner tasks if tasks are getting stolen
+      return forkJoinPool != null && getQueuedTaskCount() <= 3;
     }
 
     /**
@@ -306,7 +326,7 @@ public final class BPIndexReorderer {
               rightDocFreqs,
               leftDocFreqs,
               threadLocal);
-      if (shouldFork()) {
+      if (shouldForkInnerTask()) {
         invokeAll(leftGainsTask, rightGainsTask);
       } else {
         leftGainsTask.compute();
@@ -436,7 +456,7 @@ public final class BPIndexReorderer {
 
     @Override
     protected void compute() {
-      if (to - from > 1 && forJoinPool != null && getSurplusQueuedTaskCount() <= 3) {
+      if (to - from > 1 && forkJoinPool != null && getQueuedTaskCount() <= 3) {
         final int mid = (from + to) >>> 1;
         invokeAll(
             new ComputeGainsTask(docs, gains, from, mid, fromDocFreqs, toDocFreqs, threadLocal),
@@ -610,7 +630,7 @@ public final class BPIndexReorderer {
             BufferSize.megabytes((long) (ramBudgetMB / concurrency)),
             OfflineSorter.MAX_TEMPFILES,
             2 * Integer.BYTES,
-            forJoinPool,
+            forkJoinPool,
             concurrency) {
 
           @Override
@@ -786,9 +806,10 @@ public final class BPIndexReorderer {
             }
           }) {
         IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        IndexReorderingTask task = new IndexReorderingTask(docs, new float[maxDoc], threadLocal);
-        if (forJoinPool != null) {
-          forJoinPool.execute(task);
+        IndexReorderingTask task =
+            new IndexReorderingTask(docs, new float[maxDoc], threadLocal, false);
+        if (forkJoinPool != null) {
+          forkJoinPool.execute(task);
           task.join();
         } else {
           task.compute();
