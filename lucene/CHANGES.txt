@@ -99,6 +99,8 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
+* LUCENE-12521: Sort After returning in-correct result when missing values are competitive
+
 Other
 ---------------------
 

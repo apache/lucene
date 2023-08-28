@@ -239,6 +239,23 @@ public class TestSortOptimization extends LuceneTestCase {
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value, numDocs);
     }
 
+    { // test that optimization is not run when missing value setting of SortField is competitive
+      // with after
+      final long afterValue = Long.MAX_VALUE;
+      final int afterDocID = 10 + random().nextInt(1000);
+      FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Long[] {afterValue});
+      final SortField sortField = new SortField("my_field", SortField.Type.LONG);
+      sortField.setMissingValue(Long.MAX_VALUE); // set a NON competitive missing value
+      final Sort sort = new Sort(sortField);
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+          TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
+      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), manager);
+      assertEquals(topDocs.scoreDocs.length, numHits);
+      assertEquals(
+          topDocs.totalHits.value,
+          numDocs); // assert that all documents were collected => optimization was not run
+    }
+
     reader.close();
     dir.close();
   }
