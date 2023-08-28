@@ -61,7 +61,7 @@ class AssertingWeight extends FilterWeight {
     if (random.nextBoolean()) {
       final Scorer inScorer = in.scorer(context);
       assert inScorer == null || inScorer.docID() == -1;
-      return AssertingScorer.wrap(new Random(random.nextLong()), inScorer, scoreMode, true);
+      return AssertingScorer.wrap(new Random(random.nextLong()), inScorer, scoreMode, false);
     } else {
       final ScorerSupplier scorerSupplier = scorerSupplier(context);
       if (scorerSupplier == null) {
