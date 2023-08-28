@@ -308,6 +308,7 @@ public class TestIndexSearcher extends LuceneTestCase {
       MatchAllOrThrowExceptionQuery query =
           new MatchAllOrThrowExceptionQuery(numExceptions, callsToScorer);
       RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
+      // if the TaskExecutor didn't wait for all tasks to finish, this assert would frequently fail
       assertEquals(leaves.size(), callsToScorer.get());
       assertThat(
           exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
@@ -327,6 +328,8 @@ public class TestIndexSearcher extends LuceneTestCase {
      * is called. Otherwise, it delegates all calls to the MatchAllDocsQuery.
      *
      * @param numExceptions number of exceptions to throw from scorer method
+     * @param callsToScorer where to record the number of times the {@code scorer}
+     *                      method has been called
      */
     public MatchAllOrThrowExceptionQuery(int numExceptions, AtomicInteger callsToScorer) {
       this.numExceptionsToThrow = new AtomicInteger(numExceptions);
@@ -356,11 +359,11 @@ public class TestIndexSearcher extends LuceneTestCase {
             callsToScorer.getAndIncrement();
             throw new RuntimeException("MatchAllOrThrowExceptionQuery Exception");
           } else {
-            // A small sleep will allow the task with the Exception to be thrown
-            // and if TaskExecutor.invokeAll does not wait until all tasks have
-            // finished, then the callsToScorer counter will not match the total
-            // number of tasks (in most cases, since there is a race condition
-            // that makes it probabilistic.)
+            // A small sleep before incrementing the callsToScorer counter allows
+            // the task with the Exception to be thrown and if TaskExecutor.invokeAll
+            // does not wait until all tasks have finished, then the callsToScorer
+            // counter will not match the total number of tasks (or rather usually will
+            // not match, since there is a race condition that makes it probabilistic).
             RandomizedTest.sleep(25);
             callsToScorer.getAndIncrement();
           }
