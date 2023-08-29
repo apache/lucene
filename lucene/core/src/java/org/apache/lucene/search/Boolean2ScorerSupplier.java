@@ -128,7 +128,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
     // pure conjunction
     if (subs.get(Occur.SHOULD).isEmpty()) {
       return excl(
-          req(subs.get(Occur.FILTER), subs.get(Occur.MUST), leadCost, true),
+          req(subs.get(Occur.FILTER), subs.get(Occur.MUST), leadCost, topLevelScoringClause),
           subs.get(Occur.MUST_NOT),
           leadCost);
     }
@@ -136,7 +136,7 @@ final class Boolean2ScorerSupplier extends ScorerSupplier {
     // pure disjunction
     if (subs.get(Occur.FILTER).isEmpty() && subs.get(Occur.MUST).isEmpty()) {
       return excl(
-          opt(subs.get(Occur.SHOULD), minShouldMatch, scoreMode, leadCost, true),
+          opt(subs.get(Occur.SHOULD), minShouldMatch, scoreMode, leadCost, topLevelScoringClause),
           subs.get(Occur.MUST_NOT),
           leadCost);
     }
