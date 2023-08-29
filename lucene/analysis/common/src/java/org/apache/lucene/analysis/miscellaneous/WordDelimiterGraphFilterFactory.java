@@ -45,7 +45,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             preserveOriginal="0" splitOnNumerics="1" splitOnCaseChange="1"
  *             catenateWords="0" catenateNumbers="0" catenateAll="0"
  *             generateWordParts="1" generateNumberParts="1" stemEnglishPossessive="1"
- *             types="wdfftypes.txt" ignoreKeywords="1" /&gt;
+ *             types="wdfftypes.txt" ignoreKeywords="0" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  *
