@@ -80,6 +80,9 @@ public final class BPIndexReorderer {
   /** Block size for terms in the forward index */
   private static final int TERM_IDS_BLOCK_SIZE = 17;
 
+  /** Minimum problem size that will result in tasks being splitted. */
+  private static final int FORK_THRESHOLD = 8192;
+
   /** Minimum required document frequency for terms to be considered: 4,096. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
 
@@ -191,22 +194,47 @@ public final class BPIndexReorderer {
     }
   }
 
-  private class IndexReorderingTask extends RecursiveAction {
+  private abstract class BaseRecursiveAction extends RecursiveAction {
+
+    protected final int depth;
+
+    BaseRecursiveAction(int depth) {
+      this.depth = depth;
+    }
+
+    protected final boolean shouldFork(int problemSize, int totalProblemSize) {
+      if (forkJoinPool == null) {
+        return false;
+      }
+      if (getSurplusQueuedTaskCount() > 3) {
+        // Fork tasks if this worker doesn't have more queued work than other workers
+        // See javadocs of #getSurplusQueuedTaskCount for more details
+        return false;
+      }
+      if (problemSize == totalProblemSize) {
+        // Sometimes fork regardless of the problem size to make sure that unit tests also exercise
+        // forking
+        return true;
+      }
+      return problemSize > FORK_THRESHOLD;
+    }
+  }
+
+  private class IndexReorderingTask extends BaseRecursiveAction {
 
     private final IntsRef docIDs;
     private final float[] gains;
     private final CloseableThreadLocal<PerThreadState> threadLocal;
-    private final boolean sort;
 
     IndexReorderingTask(
         IntsRef docIDs,
         float[] gains,
         CloseableThreadLocal<PerThreadState> threadLocal,
-        boolean sort) {
+        int depth) {
+      super(depth);
       this.docIDs = docIDs;
       this.gains = gains;
       this.threadLocal = threadLocal;
-      this.sort = sort;
     }
 
     private static void computeDocFreqs(IntsRef docs, ForwardIndex forwardIndex, int[] docFreqs) {
@@ -215,10 +243,13 @@ public final class BPIndexReorderer {
         for (int i = docs.offset, end = docs.offset + docs.length; i < end; ++i) {
           final int doc = docs.ints[i];
           forwardIndex.seek(doc);
-          for (int termID = forwardIndex.nextTerm();
-              termID != -1;
-              termID = forwardIndex.nextTerm()) {
-            ++docFreqs[termID];
+          for (IntsRef terms = forwardIndex.nextTerms();
+              terms.length != 0;
+              terms = forwardIndex.nextTerms()) {
+            for (int j = 0; j < terms.length; ++j) {
+              final int termID = terms.ints[terms.offset + j];
+              ++docFreqs[termID];
+            }
           }
         }
       } catch (IOException e) {
@@ -228,7 +259,7 @@ public final class BPIndexReorderer {
 
     @Override
     protected void compute() {
-      if (sort) {
+      if (depth > 0) {
         Arrays.sort(docIDs.ints, docIDs.offset, docIDs.offset + docIDs.length);
       } else {
         assert sorted(docIDs);
@@ -267,26 +298,15 @@ public final class BPIndexReorderer {
 
       // It is fine for all tasks to share the same docs / gains array since they all work on
       // different slices of the array at a given point in time.
-      IndexReorderingTask leftTask = new IndexReorderingTask(left, gains, threadLocal, true);
-      IndexReorderingTask rightTask = new IndexReorderingTask(right, gains, threadLocal, true);
+      IndexReorderingTask leftTask = new IndexReorderingTask(left, gains, threadLocal, depth + 1);
+      IndexReorderingTask rightTask = new IndexReorderingTask(right, gains, threadLocal, depth + 1);
 
-      if (shouldFork()) {
+      if (shouldFork(docIDs.length, docIDs.ints.length)) {
         invokeAll(leftTask, rightTask);
       } else {
         leftTask.compute();
         rightTask.compute();
       }
-    }
-
-    private boolean shouldFork() {
-      // Fork tasks if this worker doesn't have more queued work than other workers
-      // See javadocs of #getSurplusQueuedTaskCount for more details
-      return forkJoinPool != null && getSurplusQueuedTaskCount() <= 3;
-    }
-
-    private boolean shouldForkInnerTask() {
-      // Only fork inner tasks if tasks are getting stolen
-      return forkJoinPool != null && getQueuedTaskCount() <= 3;
     }
 
     /**
@@ -316,7 +336,8 @@ public final class BPIndexReorderer {
               left.offset + left.length,
               leftDocFreqs,
               rightDocFreqs,
-              threadLocal);
+              threadLocal,
+              depth);
       ComputeGainsTask rightGainsTask =
           new ComputeGainsTask(
               right.ints,
@@ -325,51 +346,61 @@ public final class BPIndexReorderer {
               right.offset + right.length,
               rightDocFreqs,
               leftDocFreqs,
-              threadLocal);
-      if (shouldForkInnerTask()) {
+              threadLocal,
+              depth);
+      if (shouldFork(docIDs.length, docIDs.ints.length)) {
         invokeAll(leftGainsTask, rightGainsTask);
       } else {
         leftGainsTask.compute();
         rightGainsTask.compute();
       }
 
-      IntroSorter byDescendingGainSorter =
-          new IntroSorter() {
+      class ByDescendingGainSorter extends IntroSorter {
 
-            int pivotDoc;
-            float pivotGain;
+        int pivotDoc;
+        float pivotGain;
 
-            @Override
-            protected void setPivot(int i) {
-              pivotDoc = left.ints[i];
-              pivotGain = gains[i];
-            }
+        @Override
+        protected void setPivot(int i) {
+          pivotDoc = left.ints[i];
+          pivotGain = gains[i];
+        }
 
-            @Override
-            protected int comparePivot(int j) {
-              // Compare in reverse order to get a descending sort
-              int cmp = Float.compare(gains[j], pivotGain);
-              if (cmp == 0) {
-                // Tie break on the doc ID to preserve doc ID ordering as much as possible
-                cmp = pivotDoc - left.ints[j];
-              }
-              return cmp;
-            }
+        @Override
+        protected int comparePivot(int j) {
+          // Compare in reverse order to get a descending sort
+          int cmp = Float.compare(gains[j], pivotGain);
+          if (cmp == 0) {
+            // Tie break on the doc ID to preserve doc ID ordering as much as possible
+            cmp = pivotDoc - left.ints[j];
+          }
+          return cmp;
+        }
 
-            @Override
-            protected void swap(int i, int j) {
-              int tmpDoc = left.ints[i];
-              left.ints[i] = left.ints[j];
-              left.ints[j] = tmpDoc;
+        @Override
+        protected void swap(int i, int j) {
+          int tmpDoc = left.ints[i];
+          left.ints[i] = left.ints[j];
+          left.ints[j] = tmpDoc;
 
-              float tmpGain = gains[i];
-              gains[i] = gains[j];
-              gains[j] = tmpGain;
-            }
-          };
+          float tmpGain = gains[i];
+          gains[i] = gains[j];
+          gains[j] = tmpGain;
+        }
+      }
 
-      byDescendingGainSorter.sort(left.offset, left.offset + left.length);
-      byDescendingGainSorter.sort(right.offset, right.offset + right.length);
+      Runnable leftSorter =
+          () -> new ByDescendingGainSorter().sort(left.offset, left.offset + left.length);
+      Runnable rightSorter =
+          () -> new ByDescendingGainSorter().sort(right.offset, right.offset + right.length);
+
+      if (shouldFork(docIDs.length, docIDs.ints.length)) {
+        // TODO: run it on more than 2 threads at most
+        invokeAll(adapt(leftSorter), adapt(rightSorter));
+      } else {
+        leftSorter.run();
+        rightSorter.run();
+      }
 
       // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
       // Bipartite Graph Partitioning" by comparing the gain against `iter` rather than zero.
@@ -411,15 +442,25 @@ public final class BPIndexReorderer {
       // Now update the cache, this makes things much faster than invalidating it and having to
       // recompute doc freqs on the next iteration.
       forwardIndex.seek(leftDoc);
-      for (int term = forwardIndex.nextTerm(); term != -1; term = forwardIndex.nextTerm()) {
-        --leftDocFreqs[term];
-        ++rightDocFreqs[term];
+      for (IntsRef terms = forwardIndex.nextTerms();
+          terms.length != 0;
+          terms = forwardIndex.nextTerms()) {
+        for (int i = 0; i < terms.length; ++i) {
+          final int termID = terms.ints[terms.offset + i];
+          --leftDocFreqs[termID];
+          ++rightDocFreqs[termID];
+        }
       }
 
       forwardIndex.seek(rightDoc);
-      for (int term = forwardIndex.nextTerm(); term != -1; term = forwardIndex.nextTerm()) {
-        ++leftDocFreqs[term];
-        --rightDocFreqs[term];
+      for (IntsRef terms = forwardIndex.nextTerms();
+          terms.length != 0;
+          terms = forwardIndex.nextTerms()) {
+        for (int i = 0; i < terms.length; ++i) {
+          final int termID = terms.ints[terms.offset + i];
+          --leftDocFreqs[termID];
+          ++rightDocFreqs[termID];
+        }
       }
 
       docs[left] = rightDoc;
@@ -427,7 +468,7 @@ public final class BPIndexReorderer {
     }
   }
 
-  private class ComputeGainsTask extends RecursiveAction {
+  private class ComputeGainsTask extends BaseRecursiveAction {
 
     private final int[] docs;
     private final float[] gains;
@@ -444,7 +485,9 @@ public final class BPIndexReorderer {
         int to,
         int[] fromDocFreqs,
         int[] toDocFreqs,
-        CloseableThreadLocal<PerThreadState> threadLocal) {
+        CloseableThreadLocal<PerThreadState> threadLocal,
+        int depth) {
+      super(depth);
       this.docs = docs;
       this.gains = gains;
       this.from = from;
@@ -456,11 +499,14 @@ public final class BPIndexReorderer {
 
     @Override
     protected void compute() {
-      if (to - from > 1 && forkJoinPool != null && getQueuedTaskCount() <= 3) {
+      final int problemSize = to - from;
+      if (problemSize > 1 && shouldFork(problemSize, docs.length)) {
         final int mid = (from + to) >>> 1;
         invokeAll(
-            new ComputeGainsTask(docs, gains, from, mid, fromDocFreqs, toDocFreqs, threadLocal),
-            new ComputeGainsTask(docs, gains, mid, to, fromDocFreqs, toDocFreqs, threadLocal));
+            new ComputeGainsTask(
+                docs, gains, from, mid, fromDocFreqs, toDocFreqs, threadLocal, depth),
+            new ComputeGainsTask(
+                docs, gains, mid, to, fromDocFreqs, toDocFreqs, threadLocal, depth));
       } else {
         ForwardIndex forwardIndex = threadLocal.get().forwardIndex;
         try {
@@ -478,18 +524,21 @@ public final class BPIndexReorderer {
      * otherwise.
      */
     private static float computeGain(
-        int docID, ForwardIndex forwardIndex, int[] leftDocFreqs, int[] rightDocFreqs)
+        int docID, ForwardIndex forwardIndex, int[] fromDocFreqs, int[] toDocFreqs)
         throws IOException {
       forwardIndex.seek(docID);
       double gain = 0;
-      for (int termID = forwardIndex.nextTerm(); termID != -1L; termID = forwardIndex.nextTerm()) {
-        // This uses the simpler estimator proposed by Mackenzie et al in "Tradeoff Options for
-        // Bipartite Graph Partitioning"
-        final int leftDocFreq = leftDocFreqs[termID];
-        final int rightDocFreq = rightDocFreqs[termID];
-        gain +=
-            (rightDocFreq == 0 ? 0 : fastLog2(rightDocFreq))
-                - (leftDocFreq == 0 ? 0 : fastLog2(leftDocFreq));
+      for (IntsRef terms = forwardIndex.nextTerms();
+          terms.length != 0;
+          terms = forwardIndex.nextTerms()) {
+        for (int i = 0; i < terms.length; ++i) {
+          final int termID = terms.ints[terms.offset + i];
+          final int fromDocFreq = fromDocFreqs[termID];
+          final int toDocFreq = toDocFreqs[termID];
+          gain +=
+              (toDocFreq == 0 ? 0 : fastLog2(toDocFreq))
+                  - (fromDocFreq == 0 ? 0 : fastLog2(fromDocFreq));
+        }
       }
       return (float) gain;
     }
@@ -507,8 +556,7 @@ public final class BPIndexReorderer {
 
     private long endOffset = -1;
     private final int[] buffer = new int[TERM_IDS_BLOCK_SIZE];
-    private int bufferOffset;
-    private int bufferLen;
+    private final IntsRef bufferRef = new IntsRef(buffer, 0, 0);
 
     ForwardIndex(IndexInput startOffsetsInput, IndexInput terms, int maxTerm) {
       this.startOffsetsInput = startOffsetsInput;
@@ -527,20 +575,16 @@ public final class BPIndexReorderer {
       final long startOffset = startOffsets.readLong((long) docID * Long.BYTES);
       endOffset = startOffsets.readLong((docID + 1L) * Long.BYTES);
       terms.seek(startOffset);
-      bufferOffset = bufferLen = 0;
     }
 
-    int nextTerm() throws IOException {
-      if (bufferOffset < bufferLen) {
-        return buffer[bufferOffset++];
-      } else if (terms.getFilePointer() >= endOffset) {
+    IntsRef nextTerms() throws IOException {
+      if (terms.getFilePointer() >= endOffset) {
         assert terms.getFilePointer() == endOffset;
-        return -1;
+        bufferRef.length = 0;
       } else {
-        bufferLen = readMonotonicInts(terms, buffer);
-        bufferOffset = 1;
-        return buffer[0];
+        bufferRef.length = readMonotonicInts(terms, buffer);
       }
+      return bufferRef;
     }
 
     @Override
@@ -806,8 +850,7 @@ public final class BPIndexReorderer {
             }
           }) {
         IntsRef docs = new IntsRef(sortedDocs, 0, sortedDocs.length);
-        IndexReorderingTask task =
-            new IndexReorderingTask(docs, new float[maxDoc], threadLocal, false);
+        IndexReorderingTask task = new IndexReorderingTask(docs, new float[maxDoc], threadLocal, 0);
         if (forkJoinPool != null) {
           forkJoinPool.execute(task);
           task.join();
