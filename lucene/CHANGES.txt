@@ -151,6 +151,8 @@ New Features
 * GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
   vector search. (Jack Mazanec, Ben Trent)
 
+* GITHUB#12525: `WordDelimiterGraphFilterFactory` now supports the `ignoreKeywords` flag (Thomas De Craemer)
+
 Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
