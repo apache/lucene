@@ -35,6 +35,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
+  protected int lastOrd = -1;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
@@ -60,13 +61,17 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   @Override
   public byte[] vectorValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
+    if (lastOrd != targetOrd) {
+      readValue(targetOrd);
+      lastOrd = targetOrd;
+    }
     return binaryValue;
   }
 
   private void readValue(int targetOrd) throws IOException {
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+    lastOrd = targetOrd;
   }
 
   static OffHeapByteVectorValues load(
@@ -97,9 +102,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
-      return binaryValue;
+      return vectorValue(doc);
     }
 
     @Override
@@ -164,9 +167,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize, false);
-      return binaryValue;
+      return vectorValue(disi.index());
     }
 
     @Override

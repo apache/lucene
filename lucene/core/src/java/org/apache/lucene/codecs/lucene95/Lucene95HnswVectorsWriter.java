@@ -41,12 +41,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.*;
-import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.*;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
-import org.apache.lucene.util.hnsw.NeighborArray;
-import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -438,7 +434,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                HnswGraphBuilder<byte[]> hnswGraphBuilder =
+                HnswGraphBuilder hnswGraphBuilder =
                     createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.copy());
@@ -450,7 +446,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                HnswGraphBuilder<float[]> hnswGraphBuilder =
+                HnswGraphBuilder hnswGraphBuilder =
                     createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.copy());
@@ -482,20 +478,22 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private <T> HnswGraphBuilder<T> createHnswGraphBuilder(
+  @SuppressWarnings("unchecked")
+  private HnswGraphBuilder createHnswGraphBuilder(
       MergeState mergeState,
       FieldInfo fieldInfo,
-      RandomAccessVectorValues<T> floatVectorValues,
+      RandomAccessVectorValues<?> vectors,
       int initializerIndex)
       throws IOException {
+    RandomVectorScorerProvider scorerProvider =
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE -> RandomVectorScorerProvider.createBytes(
+              (RandomAccessVectorValues<byte[]>) vectors, fieldInfo.getVectorSimilarityFunction());
+          case FLOAT32 -> RandomVectorScorerProvider.createFloats(
+              (RandomAccessVectorValues<float[]>) vectors, fieldInfo.getVectorSimilarityFunction());
+        };
     if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(
-          floatVectorValues,
-          fieldInfo.getVectorEncoding(),
-          fieldInfo.getVectorSimilarityFunction(),
-          M,
-          beamWidth,
-          HnswGraphBuilder.randSeed);
+      return HnswGraphBuilder.create(scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed);
     }
 
     HnswGraph initializerGraph =
@@ -503,14 +501,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     Map<Integer, Integer> ordinalMapper =
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
     return HnswGraphBuilder.create(
-        floatVectorValues,
-        fieldInfo.getVectorEncoding(),
-        fieldInfo.getVectorSimilarityFunction(),
-        M,
-        beamWidth,
-        HnswGraphBuilder.randSeed,
-        initializerGraph,
-        ordinalMapper);
+        scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
   }
 
   private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
@@ -868,7 +859,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
-    private final HnswGraphBuilder<T> hnswGraphBuilder;
+    private final RAVectorValues<T> raVectors;
+    private final HnswGraphBuilder hnswGraphBuilder;
 
     private int lastDocID = -1;
     private int node = 0;
@@ -892,20 +884,25 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       };
     }
 
+    @SuppressWarnings("unchecked")
     FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
+      raVectors = new RAVectorValues<>(vectors, dim);
+      RandomVectorScorerProvider scorerProvider =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE -> RandomVectorScorerProvider.createBytes(
+                (RandomAccessVectorValues<byte[]>) raVectors,
+                fieldInfo.getVectorSimilarityFunction());
+            case FLOAT32 -> RandomVectorScorerProvider.createFloats(
+                (RandomAccessVectorValues<float[]>) raVectors,
+                fieldInfo.getVectorSimilarityFunction());
+          };
       hnswGraphBuilder =
-          HnswGraphBuilder.create(
-              new RAVectorValues<>(vectors, dim),
-              fieldInfo.getVectorEncoding(),
-              fieldInfo.getVectorSimilarityFunction(),
-              M,
-              beamWidth,
-              HnswGraphBuilder.randSeed);
+          HnswGraphBuilder.create(scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
     }
 
@@ -920,7 +917,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       assert docID > lastDocID;
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
-      hnswGraphBuilder.addGraphNode(node, vectorValue);
+      hnswGraphBuilder.addGraphNode(node);
       node++;
       lastDocID = docID;
     }
