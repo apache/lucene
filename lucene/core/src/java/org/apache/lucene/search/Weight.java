@@ -197,6 +197,16 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
+   * Return an estimation of the score of the k-th top hit of this query. This is used to bootstrap
+   * the minimum competitive score that is used to dynamically prune low-scoring hits. The
+   * estimation may be lower than the actual score of the k-th top hit but must never be greater, or
+   * hits would be incorrect. The default implementation returns 0.
+   */
+  public float getScoreLowerBoundAtRank(int k) throws IOException {
+    return 0f;
+  }
+
+  /**
    * Just wraps a Scorer and performs top scoring using it.
    *
    * @lucene.internal

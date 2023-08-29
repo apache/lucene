@@ -26,6 +26,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.PriorityQueue;
 
 /** Expert: the Weight for BooleanQuery, used to normalize, score and explain these queries. */
 final class BooleanWeight extends Weight {
@@ -46,6 +47,8 @@ final class BooleanWeight extends Weight {
 
   final ArrayList<WeightedBooleanClause> weightedClauses;
   final ScoreMode scoreMode;
+  // nocommit: avoid holding a strong reference to the IndexSearcher from the Weight
+  final IndexSearcher searcher;
 
   BooleanWeight(BooleanQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
@@ -53,6 +56,7 @@ final class BooleanWeight extends Weight {
     this.query = query;
     this.scoreMode = scoreMode;
     this.similarity = searcher.getSimilarity();
+    this.searcher = searcher;
     weightedClauses = new ArrayList<>();
     for (BooleanClause c : query) {
       Weight w =
@@ -550,5 +554,92 @@ final class BooleanWeight extends Weight {
     }
 
     return new Boolean2ScorerSupplier(this, scorers, scoreMode, minShouldMatch);
+  }
+
+  @Override
+  public float getScoreLowerBoundAtRank(int k) throws IOException {
+    if (query.isPureDisjunction() == false) {
+      return super.getScoreLowerBoundAtRank(k);
+    }
+
+    // Idea: Compute the k-th score when only using clauses that have evaluated less than k matches
+    // so far to drive iteration
+
+    PriorityQueue<ScorerWrapper> essentialClauses =
+        new PriorityQueue<ScorerWrapper>(weightedClauses.size()) {
+          @Override
+          protected boolean lessThan(ScorerWrapper a, ScorerWrapper b) {
+            return a.doc < b.doc;
+          }
+        };
+
+    PriorityQueue<Float> scorePQ =
+        new PriorityQueue<Float>(k) {
+          @Override
+          protected boolean lessThan(Float a, Float b) {
+            return a < b;
+          }
+        };
+
+    for (WeightedBooleanClause clause : weightedClauses) {
+      assert clause.clause.getOccur() == Occur.SHOULD;
+      Weight weight = clause.weight;
+      // TODO: look at all leaves?
+      Scorer scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
+      if (scorer != null) {
+        ScorerWrapper sw = new ScorerWrapper(scorer);
+        sw.doc = sw.iterator.nextDoc();
+        essentialClauses.add(sw);
+      }
+    }
+
+    List<ScorerWrapper> otherClauses = new ArrayList<>();
+
+    ScorerWrapper top = essentialClauses.top();
+    while (essentialClauses.size() > 0) {
+
+      int doc = top.doc;
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        break;
+      }
+
+      double score = 0;
+      do {
+        score += top.scorer.score();
+        top.doc = top.iterator.nextDoc();
+        if (++top.evaluatedCount >= k) {
+          otherClauses.add(top);
+          essentialClauses.pop();
+          top = essentialClauses.top();
+        } else {
+          top = essentialClauses.updateTop();
+        }
+      } while (top != null && top.doc == doc);
+
+      for (ScorerWrapper sw : otherClauses) {
+        if (sw.doc < doc) {
+          sw.doc = sw.iterator.advance(doc);
+        }
+        if (sw.doc == doc) {
+          score += sw.scorer.score();
+        }
+      }
+
+      scorePQ.insertWithOverflow((float) score);
+    }
+
+    return scorePQ.size() < k ? 0f : scorePQ.top();
+  }
+
+  private static class ScorerWrapper {
+    final Scorer scorer;
+    final DocIdSetIterator iterator;
+    int doc = -1;
+    int evaluatedCount;
+
+    ScorerWrapper(Scorer scorer) {
+      this.scorer = scorer;
+      this.iterator = scorer.iterator();
+    }
   }
 }

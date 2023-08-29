@@ -286,6 +286,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   final HitsThresholdChecker hitsThresholdChecker;
   final MaxScoreAccumulator minScoreAcc;
   float minCompetitiveScore;
+  boolean bootstrappedMinCompetitiveScore;
+  Weight weight;
 
   // prevents instantiation
   TopScoreDocCollector(
@@ -336,6 +338,16 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     if (hitsThresholdChecker.isThresholdReached()
         && pqTop != null
         && pqTop.score != Float.NEGATIVE_INFINITY) { // -Infinity is the score of sentinels
+
+      if (bootstrappedMinCompetitiveScore == false) {
+        if (weight != null) {
+          // nocommit: this is wrong when `after` is not null
+          minCompetitiveScore = weight.getScoreLowerBoundAtRank(pq.size());
+          scorer.setMinCompetitiveScore(minCompetitiveScore);
+        }
+        bootstrappedMinCompetitiveScore = true;
+      }
+
       // since we tie-break on doc id and collect in doc id order, we can require
       // the next float
       float localMinScore = Math.nextUp(pqTop.score);
@@ -351,5 +363,10 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         }
       }
     }
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    this.weight = weight;
   }
 }
