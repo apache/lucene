@@ -328,8 +328,8 @@ public class TestIndexSearcher extends LuceneTestCase {
      * is called. Otherwise, it delegates all calls to the MatchAllDocsQuery.
      *
      * @param numExceptions number of exceptions to throw from scorer method
-     * @param callsToScorer where to record the number of times the {@code scorer}
-     *                      method has been called
+     * @param callsToScorer where to record the number of times the {@code scorer} method has been
+     *     called
      */
     public MatchAllOrThrowExceptionQuery(int numExceptions, AtomicInteger callsToScorer) {
       this.numExceptionsToThrow = new AtomicInteger(numExceptions);
