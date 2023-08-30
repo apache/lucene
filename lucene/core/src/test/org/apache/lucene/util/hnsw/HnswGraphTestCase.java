@@ -110,7 +110,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   abstract T getTargetVector();
 
   @SuppressWarnings("unchecked")
-  protected RandomVectorScorerProvider buildScorerProvider(RandomAccessVectorValues<T> vectors) throws IOException {
+  protected RandomVectorScorerProvider buildScorerProvider(RandomAccessVectorValues<T> vectors)
+      throws IOException {
     return switch (getVectorEncoding()) {
       case BYTE -> RandomVectorScorerProvider.createBytes(
           (RandomAccessVectorValues<byte[]>) vectors, similarityFunction);

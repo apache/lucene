@@ -112,7 +112,8 @@ public final class HnswGraphBuilder {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = M;
-    this.scorerProvider = Objects.requireNonNull(scorerProvider, "scorer provider must not be null");
+    this.scorerProvider =
+        Objects.requireNonNull(scorerProvider, "scorer provider must not be null");
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
@@ -255,8 +256,7 @@ public final class HnswGraphBuilder {
     return now;
   }
 
-  private void addDiverseNeighbors(
-      int level, int node, GraphBuilderKnnCollector candidates)
+  private void addDiverseNeighbors(int level, int node, GraphBuilderKnnCollector candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -283,10 +283,7 @@ public final class HnswGraphBuilder {
   }
 
   private void selectAndLinkDiverse(
-      NeighborArray neighbors,
-      NeighborArray candidates,
-      int maxConnOnLevel)
-      throws IOException {
+      NeighborArray neighbors, NeighborArray candidates, int maxConnOnLevel) throws IOException {
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
@@ -318,8 +315,7 @@ public final class HnswGraphBuilder {
    * @param neighbors the neighbors selected so far
    * @return whether the candidate is diverse given the existing neighbors
    */
-  private boolean diversityCheck(
-      int candidate, float score, NeighborArray neighbors)
+  private boolean diversityCheck(int candidate, float score, NeighborArray neighbors)
       throws IOException {
     RandomVectorScorer scorer = scorerProvider.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
@@ -335,8 +331,7 @@ public final class HnswGraphBuilder {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(NeighborArray neighbors)
-      throws IOException {
+  private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
     int[] uncheckedIndexes = neighbors.sort();
     if (uncheckedIndexes == null) {
       // all nodes are checked, we will directly return the most distant one
@@ -359,10 +354,7 @@ public final class HnswGraphBuilder {
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex,
-      NeighborArray neighbors,
-      int[] uncheckedIndexes,
-      int uncheckedCursor)
+      int candidateIndex, NeighborArray neighbors, int[] uncheckedIndexes, int uncheckedCursor)
       throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
     RandomVectorScorer scorer = scorerProvider.scorer(neighbors.node[candidateIndex]);
@@ -380,8 +372,7 @@ public final class HnswGraphBuilder {
       // inserted) unchecked nodes
       assert candidateIndex > uncheckedIndexes[uncheckedCursor];
       for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity =
-            scorer.score(neighbors.node[uncheckedIndexes[i]]);
+        float neighborSimilarity = scorer.score(neighbors.node[uncheckedIndexes[i]]);
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;

@@ -20,10 +20,7 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
-/**
- * A {@link RandomVectorScorer} for scoring random nodes in batches
- * against an abstract query.
- */
+/** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
 public interface RandomVectorScorer {
   /**
    * Returns the score between the query and the provided node.
@@ -36,10 +33,10 @@ public interface RandomVectorScorer {
   /**
    * Creates a default scorer for float vectors.
    *
-   * WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers.
-   *          Avoid using it after calling this function. If you plan to use it again
-   *          outside the returned {@link RandomVectorScorer}, think about passing
-   *          a copied version ({@link RandomAccessVectorValues#copy}).
+   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
+   * using it after calling this function. If you plan to use it again outside the returned {@link
+   * RandomVectorScorer}, think about passing a copied version ({@link
+   * RandomAccessVectorValues#copy}).
    *
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to score vectors
@@ -62,10 +59,10 @@ public interface RandomVectorScorer {
   /**
    * Creates a default scorer for byte vectors.
    *
-   * WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers.
-   *          Avoid using it after calling this function. If you plan to use it again
-   *          outside the returned {@link RandomVectorScorer}, think about passing
-   *          a copied version ({@link RandomAccessVectorValues#copy}).
+   * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
+   * using it after calling this function. If you plan to use it again outside the returned {@link
+   * RandomVectorScorer}, think about passing a copied version ({@link
+   * RandomAccessVectorValues#copy}).
    *
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to use to score vectors
