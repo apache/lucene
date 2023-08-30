@@ -245,7 +245,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final int afterDocID = 10 + random().nextInt(1000);
       FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Long[] {afterValue});
       final SortField sortField = new SortField("my_field", SortField.Type.LONG);
-      sortField.setMissingValue(Long.MAX_VALUE); // set a NON competitive missing value
+      sortField.setMissingValue(Long.MAX_VALUE); // set a competitive missing value
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
           TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
@@ -262,7 +262,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final int afterDocID = 10 + random().nextInt(1000);
       FieldDoc after = new FieldDoc(afterDocID, Float.NaN, new Long[] {afterValue});
       final SortField sortField = new SortField("my_field", SortField.Type.LONG, true);
-      sortField.setMissingValue(Long.MAX_VALUE); // set a NON competitive missing value
+      sortField.setMissingValue(Long.MAX_VALUE); // set a competitive missing value
       final Sort sort = new Sort(sortField);
       CollectorManager<TopFieldCollector, TopFieldDocs> manager =
           TopFieldCollector.createSharedManager(sort, numHits, after, totalHitsThreshold);
