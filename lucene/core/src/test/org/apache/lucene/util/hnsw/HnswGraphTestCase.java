@@ -692,7 +692,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     assertTrue(nn.visitedCount() <= visitedLimit);
   }
 
-  public void testHnswGraphBuilderInvalid() {
+  public void testHnswGraphBuilderInvalid() throws IOException {
     RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectorValues(1, 1));
     // M must be > 0
     expectThrows(

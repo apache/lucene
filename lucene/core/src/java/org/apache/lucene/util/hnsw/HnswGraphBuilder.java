@@ -18,15 +18,10 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
-import static java.lang.Math.max;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.SplittableRandom;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
@@ -112,6 +107,7 @@ public final class HnswGraphBuilder {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = M;
+    this.scorerProvider = Objects.requireNonNull(scorerProvider, "scorer provider must not be null");
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
@@ -124,7 +120,6 @@ public final class HnswGraphBuilder {
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     this.initializedNodes = new HashSet<>();
-    this.scorerProvider = scorerProvider;
   }
 
   /**
