@@ -47,10 +47,10 @@ public interface RandomVectorScorerProvider {
       final VectorSimilarityFunction similarityFunction)
       throws IOException {
     final RandomAccessVectorValues<float[]> vectorsCopy = vectors.copy();
-    return ord ->
+    return queryOrd ->
         (RandomVectorScorer)
-            node ->
-                similarityFunction.compare(vectors.vectorValue(ord), vectorsCopy.vectorValue(ord));
+            cand ->
+                similarityFunction.compare(vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
   }
 
   /**
@@ -69,9 +69,9 @@ public interface RandomVectorScorerProvider {
       final VectorSimilarityFunction similarityFunction)
       throws IOException {
     final RandomAccessVectorValues<byte[]> vectorsCopy = vectors.copy();
-    return ord ->
+    return queryOrd ->
         (RandomVectorScorer)
-            node ->
-                similarityFunction.compare(vectors.vectorValue(ord), vectorsCopy.vectorValue(ord));
+            cand ->
+                similarityFunction.compare(vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
   }
 }
