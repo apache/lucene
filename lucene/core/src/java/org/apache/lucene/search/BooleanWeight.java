@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
@@ -561,8 +562,13 @@ final class BooleanWeight extends Weight {
     if (query.isPureDisjunction() == false) {
       return super.getScoreLowerBoundAtRank(k);
     }
+    if (k > 1000) {
+      // Very high values of `k` force the scorer to evaluate many hits anyway, so precomputing a
+      // good lower bound of the k-th score is unlikely to help
+      return super.getScoreLowerBoundAtRank(k);
+    }
 
-    // Idea: Compute the k-th score when only using clauses that have evaluated less than k matches
+    // Idea: Compute the k-th score when only using clauses that have evaluated less than 2k matches
     // so far to drive iteration
 
     PriorityQueue<ScorerWrapper> essentialClauses =
@@ -584,30 +590,52 @@ final class BooleanWeight extends Weight {
     for (WeightedBooleanClause clause : weightedClauses) {
       assert clause.clause.getOccur() == Occur.SHOULD;
       Weight weight = clause.weight;
-      // TODO: look at all leaves?
-      Scorer scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
-      if (scorer != null) {
-        ScorerWrapper sw = new ScorerWrapper(scorer);
-        sw.doc = sw.iterator.nextDoc();
-        essentialClauses.add(sw);
-      }
+      ScorerWrapper sw = new ScorerWrapper(weight);
+      essentialClauses.add(sw);
     }
 
+    Iterator<LeafReaderContext> contextIterator = searcher.getIndexReader().leaves().iterator();
     List<ScorerWrapper> otherClauses = new ArrayList<>();
-
     ScorerWrapper top = essentialClauses.top();
+    Bits liveDocs = null;
+    main:
     while (essentialClauses.size() > 0) {
 
       int doc = top.doc;
-      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        break;
+      while (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        if (contextIterator.hasNext()) {
+          LeafReaderContext context = contextIterator.next();
+          liveDocs = context.reader().getLiveDocs();
+          for (ScorerWrapper sw : essentialClauses) {
+            sw.setLeafReaderContext(context);
+          }
+          for (ScorerWrapper sw : otherClauses) {
+            sw.setLeafReaderContext(context);
+          }
+        } else {
+          break main;
+        }
+
+        while (top.doc == -1) {
+          top.doc = top.iterator.nextDoc();
+          top = essentialClauses.updateTop();
+        }
+
+        doc = top.doc;
+      }
+
+      if (liveDocs != null && liveDocs.get(doc) == false) {
+        do {
+          top.doc = top.iterator.nextDoc();
+          top = essentialClauses.updateTop();
+        } while (top.doc == doc);
       }
 
       double score = 0;
       do {
         score += top.scorer.score();
         top.doc = top.iterator.nextDoc();
-        if (++top.evaluatedCount >= k) {
+        if (++top.evaluatedCount >= 2 * k) {
           otherClauses.add(top);
           essentialClauses.pop();
           top = essentialClauses.top();
@@ -632,14 +660,24 @@ final class BooleanWeight extends Weight {
   }
 
   private static class ScorerWrapper {
-    final Scorer scorer;
-    final DocIdSetIterator iterator;
-    int doc = -1;
+    private final Weight weight;
+    Scorer scorer;
+    DocIdSetIterator iterator;
+    int doc = DocIdSetIterator.NO_MORE_DOCS;
     int evaluatedCount;
 
-    ScorerWrapper(Scorer scorer) {
-      this.scorer = scorer;
-      this.iterator = scorer.iterator();
+    ScorerWrapper(Weight weight) throws IOException {
+      this.weight = weight;
+    }
+
+    void setLeafReaderContext(LeafReaderContext context) throws IOException {
+      scorer = weight.scorer(context);
+      if (scorer == null) {
+        iterator = DocIdSetIterator.empty();
+      } else {
+        iterator = scorer.iterator();
+      }
+      doc = -1;
     }
   }
 }
