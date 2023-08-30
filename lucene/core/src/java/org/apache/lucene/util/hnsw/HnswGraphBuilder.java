@@ -21,7 +21,12 @@ import static java.lang.Math.log;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
