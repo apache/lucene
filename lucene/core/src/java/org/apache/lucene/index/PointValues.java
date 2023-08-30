@@ -318,6 +318,17 @@ public abstract class PointValues {
     }
 
     /**
+     * Similar to {@link IntersectVisitor#visit(DocIdSetIterator, byte[])} but return a match state.
+     */
+    default int visitWithState(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        visit(docID, packedValue);
+      }
+      return -1;
+    }
+
+    /**
      * Called for non-leaf cells to test how the cell relates to the query, to determine how to
      * further recurse down the tree.
      */

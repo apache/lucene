@@ -832,9 +832,16 @@ public class BKDReader extends PointValues {
         }
 
         if (compressedDim == -2) {
-          // low cardinality values
-          visitSparseRawDocValues(
-              commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+          // low cardinality values.
+          // early terminate if packed value greater than upper point.
+          if (config.numDims == 1) {
+            visitSparseRawDocValuesEarlyTerminate(
+                    commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+          } else {
+            // todo, early terminate if packed value greater than upper point on sorted dim.
+            visitSparseRawDocValues(
+                    commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+          }
         } else {
           // high cardinality
           visitCompressedDocValues(
@@ -885,6 +892,30 @@ public class BKDReader extends PointValues {
       if (i != count) {
         throw new CorruptIndexException(
             "Sub blocks do not add up to the expected count: " + count + " != " + i, in);
+      }
+    }
+
+    // read cardinality and point, terminate when packedValue greater than upper point.
+    private void visitSparseRawDocValuesEarlyTerminate(
+        int[] commonPrefixLengths,
+        byte[] scratchPackedValue,
+        IndexInput in,
+        BKDReaderDocIDSetIterator scratchIterator,
+        int count,
+        PointValues.IntersectVisitor visitor)
+        throws IOException {
+      int i;
+      for (i = 0; i < count; ) {
+        int length = in.readVInt();
+        for (int dim = 0; dim < config.numDims; dim++) {
+          int prefix = commonPrefixLengths[dim];
+          in.readBytes(
+              scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
+        }
+        scratchIterator.reset(i, length);
+        int visitState = visitor.visitWithState(scratchIterator, scratchPackedValue);
+        if (visitState == 2) break;
+        i += length;
       }
     }
 

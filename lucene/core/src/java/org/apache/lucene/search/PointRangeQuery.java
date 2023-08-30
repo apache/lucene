@@ -141,6 +141,21 @@ public abstract class PointRangeQuery extends Query {
         return true;
       }
 
+      private int matchesWithState(byte[] packedValue) {
+        for (int dim = 0; dim < numDims; dim++) {
+          int offset = dim * bytesPerDim;
+          if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+            // Doc's value is too low, in this dimension
+            return 1;
+          }
+          if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+            // Doc's value is too high, in this dimension
+            return 2;
+          }
+        }
+        return 0;
+      }
+
       private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
 
         boolean crosses = false;
@@ -197,6 +212,15 @@ public abstract class PointRangeQuery extends Query {
             if (matches(packedValue)) {
               adder.add(iterator);
             }
+          }
+
+          @Override
+          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+            int matchState = matchesWithState(packedValue);
+            if (matchState == 0) {
+              adder.add(iterator);
+            }
+            return matchState;
           }
 
           @Override
