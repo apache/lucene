@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static java.lang.Math.max;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -127,18 +128,15 @@ public final class HnswGraphBuilder {
   }
 
   /**
-   * Reads all the vectors from two copies of a {@link RandomAccessVectorValues}. Providing two
-   * copies enables efficient retrieval without extra data copying, while avoiding collision of the
-   * returned values.
+   * Adds all nodes to the graph up to the provided {@code maxOrd}.
    *
-   * @param vectorsToAdd the vectors for which to build a nearest neighbors graph. Must be an
-   *     independent accessor for the vectors
+   * @param maxOrd The maximum ordinal of the nodes to be added.
    */
-  public OnHeapHnswGraph build(RandomAccessVectorValues<?> vectorsToAdd) throws IOException {
+  public OnHeapHnswGraph build(int maxOrd) throws IOException {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(HNSW_COMPONENT, "build graph from " + vectorsToAdd.size() + " vectors");
+      infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
-    addVectors(vectorsToAdd);
+    addVectors(maxOrd);
     return hnsw;
   }
 
@@ -175,7 +173,7 @@ public final class HnswGraphBuilder {
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          float score = scorer.symmetricScore(newOrd, newNeighbor);
+          float score = scorer.score(newNeighbor);
           // we are not sure whether the previous graph contains
           // unchecked nodes, so we have to assume they're all unchecked
           newNeighbors.addOutOfOrder(newNeighbor, score);
@@ -193,9 +191,9 @@ public final class HnswGraphBuilder {
     return hnsw;
   }
 
-  private void addVectors(RandomAccessVectorValues<?> vectorsToAdd) throws IOException {
+  private void addVectors(int maxOrd) throws IOException {
     long start = System.nanoTime(), t = start;
-    for (int node = 0; node < vectorsToAdd.size(); node++) {
+    for (int node = 0; node < maxOrd; node++) {
       if (initializedNodes.contains(node)) {
         continue;
       }
@@ -209,9 +207,6 @@ public final class HnswGraphBuilder {
   /** Inserts a doc with vector value to the graph */
   public void addGraphNode(int node) throws IOException {
     RandomVectorScorer scorer = scorerProvider.scorer(node);
-    if (initializedNodes.contains(node)) {
-      return;
-    }
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
 
@@ -243,7 +238,7 @@ public final class HnswGraphBuilder {
       graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
       eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
-      addDiverseNeighbors(level, node, scorer, candidates);
+      addDiverseNeighbors(level, node, candidates);
     }
   }
 
@@ -261,7 +256,7 @@ public final class HnswGraphBuilder {
   }
 
   private void addDiverseNeighbors(
-      int level, int node, RandomVectorScorer scorer, GraphBuilderKnnCollector candidates)
+      int level, int node, GraphBuilderKnnCollector candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -271,7 +266,7 @@ public final class HnswGraphBuilder {
     assert neighbors.size() == 0; // new node
     popToScratch(candidates);
     int maxConnOnLevel = level == 0 ? M * 2 : M;
-    selectAndLinkDiverse(scorer, neighbors, scratch, maxConnOnLevel);
+    selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -281,14 +276,13 @@ public final class HnswGraphBuilder {
       NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
       nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
       if (nbrsOfNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(scorer, nbrsOfNbr);
+        int indexToRemove = findWorstNonDiverse(nbrsOfNbr);
         nbrsOfNbr.removeIndex(indexToRemove);
       }
     }
   }
 
   private void selectAndLinkDiverse(
-      RandomVectorScorer scorer,
       NeighborArray neighbors,
       NeighborArray candidates,
       int maxConnOnLevel)
@@ -300,7 +294,7 @@ public final class HnswGraphBuilder {
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
       assert cNode < hnsw.size();
-      if (diversityCheck(scorer, cNode, cScore, neighbors)) {
+      if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }
     }
@@ -325,10 +319,11 @@ public final class HnswGraphBuilder {
    * @return whether the candidate is diverse given the existing neighbors
    */
   private boolean diversityCheck(
-      RandomVectorScorer scorer, int candidate, float score, NeighborArray neighbors)
+      int candidate, float score, NeighborArray neighbors)
       throws IOException {
+    RandomVectorScorer scorer = scorerProvider.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.symmetricScore(candidate, neighbors.node[i]);
+      float neighborSimilarity = scorer.score(neighbors.node[i]);
       if (neighborSimilarity >= score) {
         return false;
       }
@@ -340,7 +335,7 @@ public final class HnswGraphBuilder {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(RandomVectorScorer scorer, NeighborArray neighbors)
+  private int findWorstNonDiverse(NeighborArray neighbors)
       throws IOException {
     int[] uncheckedIndexes = neighbors.sort();
     if (uncheckedIndexes == null) {
@@ -353,7 +348,7 @@ public final class HnswGraphBuilder {
         // no unchecked node left
         break;
       }
-      if (isWorstNonDiverse(scorer, i, neighbors, uncheckedIndexes, uncheckedCursor)) {
+      if (isWorstNonDiverse(i, neighbors, uncheckedIndexes, uncheckedCursor)) {
         return i;
       }
       if (i == uncheckedIndexes[uncheckedCursor]) {
@@ -364,18 +359,17 @@ public final class HnswGraphBuilder {
   }
 
   private boolean isWorstNonDiverse(
-      RandomVectorScorer scorer,
       int candidateIndex,
       NeighborArray neighbors,
       int[] uncheckedIndexes,
       int uncheckedCursor)
       throws IOException {
-    int candidateNode = neighbors.node[candidateIndex];
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
+    RandomVectorScorer scorer = scorerProvider.scorer(neighbors.node[candidateIndex]);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
       // the candidate itself is unchecked
       for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.symmetricScore(candidateNode, neighbors.node[i]);
+        float neighborSimilarity = scorer.score(neighbors.node[i]);
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;
@@ -387,7 +381,7 @@ public final class HnswGraphBuilder {
       assert candidateIndex > uncheckedIndexes[uncheckedCursor];
       for (int i = uncheckedCursor; i >= 0; i--) {
         float neighborSimilarity =
-            scorer.symmetricScore(candidateNode, neighbors.node[uncheckedIndexes[i]]);
+            scorer.score(neighbors.node[uncheckedIndexes[i]]);
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;

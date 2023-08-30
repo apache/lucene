@@ -437,7 +437,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 HnswGraphBuilder hnswGraphBuilder =
                     createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
+                yield hnswGraphBuilder.build(vectorValues.size());
               }
               case FLOAT32 -> {
                 OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
@@ -449,7 +449,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 HnswGraphBuilder hnswGraphBuilder =
                     createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
+                yield hnswGraphBuilder.build(vectorValues.size());
               }
             };
         vectorIndexNodeOffsets = writeGraph(graph);

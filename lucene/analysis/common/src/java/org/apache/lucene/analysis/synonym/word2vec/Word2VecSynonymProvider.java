@@ -53,7 +53,7 @@ public class Word2VecSynonymProvider {
     HnswGraphBuilder builder =
         HnswGraphBuilder.create(
             scorerProvider, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, HnswGraphBuilder.randSeed);
-    this.hnswGraph = builder.build(word2VecModel.copy());
+    this.hnswGraph = builder.build(word2VecModel.size());
   }
 
   public List<TermAndBoost> getSynonyms(
