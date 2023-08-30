@@ -38,8 +38,8 @@ public interface RandomVectorScorer {
    *
    * @warning The {@link RandomAccessVectorValues} given can contain stateful buffers.
    *          Avoid using it after calling this function. If you plan to use it again
-   *          outside of the returned {@link RandomVectorScorer},
-   *          think about passing a copied version ({@link RandomAccessVectorValues#copy}).
+   *          outside of the returned {@link RandomVectorScorer}, think about passing
+   *          a copied version ({@link RandomAccessVectorValues#copy}).
    *
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to score vectors
@@ -61,6 +61,11 @@ public interface RandomVectorScorer {
 
   /**
    * Creates a default scorer for byte vectors.
+   *
+   * @warning The {@link RandomAccessVectorValues} given can contain stateful buffers.
+   *          Avoid using it after calling this function. If you plan to use it again
+   *          outside of the returned {@link RandomVectorScorer}, think about passing
+   *          a copied version ({@link RandomAccessVectorValues#copy}).
    *
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to use to score vectors
