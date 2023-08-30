@@ -50,7 +50,8 @@ public interface RandomVectorScorerProvider {
     return queryOrd ->
         (RandomVectorScorer)
             cand ->
-                similarityFunction.compare(vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+                similarityFunction.compare(
+                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
   }
 
   /**
@@ -72,6 +73,7 @@ public interface RandomVectorScorerProvider {
     return queryOrd ->
         (RandomVectorScorer)
             cand ->
-                similarityFunction.compare(vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+                similarityFunction.compare(
+                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
   }
 }
