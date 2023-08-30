@@ -53,7 +53,9 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    float[] queryCopy = new float[query.length];
+    System.arraycopy(query, 0, queryCopy, 0, query.length);
+    return node -> similarityFunction.compare(queryCopy, vectors.vectorValue(node));
   }
 
   /**
@@ -79,6 +81,8 @@ public interface RandomVectorScorer {
               + " differs from field dimension: "
               + vectors.dimension());
     }
-    return node -> similarityFunction.compare(query, vectors.vectorValue(node));
+    byte[] queryCopy = new byte[query.length];
+    System.arraycopy(query, 0, queryCopy, 0, query.length);
+    return node -> similarityFunction.compare(queryCopy, vectors.vectorValue(node));
   }
 }
