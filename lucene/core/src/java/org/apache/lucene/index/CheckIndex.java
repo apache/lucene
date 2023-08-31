@@ -611,14 +611,18 @@ public final class CheckIndex implements Closeable {
       return result;
     }
 
-    // https://github.com/apache/lucene/issues/7820: also attempt to open any older commit points (segments_N), which will catch certain
-    // corruption like missing _N.si files for segments not also referenced by the newest commit point (which was already loaded,
-    // successfully, above).  Note that we do not do a deeper check of segments referenced ONLY by these older commit points, because such
-    // corruption would not prevent a new IndexWriter from opening on the newest commit point.  but it is still corruption, e.g. a reader
-    // opened on those old commit points can hit corruption exceptions which we (still) will not detect here.  progress not perfection!
+    // https://github.com/apache/lucene/issues/7820: also attempt to open any older commit
+    // points (segments_N), which will catch certain corruption like missing _N.si files
+    // for segments not also referenced by the newest commit point (which was already
+    // loaded, successfully, above).  Note that we do not do a deeper check of segments
+    // referenced ONLY by these older commit points, because such corruption would not
+    // prevent a new IndexWriter from opening on the newest commit point.  but it is still
+    // corruption, e.g. a reader opened on those old commit points can hit corruption
+    // exceptions which we (still) will not detect here.  progress not perfection!
 
     for (String fileName : files) {
-      if (fileName.startsWith(IndexFileNames.SEGMENTS) && fileName.equals(lastSegmentsFile) == false) {
+      if (fileName.startsWith(IndexFileNames.SEGMENTS)
+          && fileName.equals(lastSegmentsFile) == false) {
         try {
           // Do not use SegmentInfos.read(Directory) since the spooky
           // retrying it does is not necessary here (we hold the write lock):
@@ -628,7 +632,11 @@ public final class CheckIndex implements Closeable {
           if (failFast) {
             throw IOUtils.rethrowAlways(t);
           }
-          msg(infoStream, "ERROR: could not read old (not latest) commit point segments file \"" + fileName + "\" in directory");
+          msg(
+              infoStream,
+              "ERROR: could not read old (not latest) commit point segments file \""
+                  + fileName
+                  + "\" in directory");
           result.missingSegments = true;
           if (infoStream != null) t.printStackTrace(infoStream);
           return result;
@@ -855,9 +863,9 @@ public final class CheckIndex implements Closeable {
       msg(
           infoStream,
           "ERROR: Next segment name counter "
-          + sis.counter
-          + " is not greater than max segment name "
-          + result.maxSegmentName);
+              + sis.counter
+              + " is not greater than max segment name "
+              + result.maxSegmentName);
     }
 
     if (result.clean) {
