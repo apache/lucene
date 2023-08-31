@@ -230,8 +230,10 @@ public class TestCheckIndex extends BaseTestCheckIndex {
       // NO
     }
 
+    @Override
     public void onInit(List<? extends IndexCommit> commits) {}
 
+    @Override
     public void onCommit(List<? extends IndexCommit> commits) {}
   }
 
