@@ -17,7 +17,6 @@
 
 package org.apache.lucene.tests.util;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
@@ -1965,9 +1964,9 @@ public abstract class LuceneTestCase extends Assert {
             .addClosedListener(cacheKey -> TestUtil.shutdownExecutorService(ex));
       }
       IndexSearcher ret;
+      int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
+      int maxSegmentsPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(10);
       if (wrapWithAssertions) {
-        int maxDocPerSlice = 1 + random.nextInt(1000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(10);
         if (random.nextBoolean()) {
           ret =
               new AssertingIndexSearcher(random, r, ex) {
@@ -1985,9 +1984,7 @@ public abstract class LuceneTestCase extends Assert {
                 }
               };
         }
-      } else if (frequently()) {
-        int maxDocPerSlice = 1 + random.nextInt(1000);
-        int maxSegmentsPerSlice = 1 + random.nextInt(10);
+      } else {
         ret =
             new IndexSearcher(r, ex) {
               @Override
@@ -1995,9 +1992,6 @@ public abstract class LuceneTestCase extends Assert {
                 return slices(leaves, maxDocPerSlice, maxSegmentsPerSlice);
               }
             };
-      } else {
-        ret =
-            random.nextBoolean() ? new IndexSearcher(r, ex) : new IndexSearcher(r.getContext(), ex);
       }
       ret.setSimilarity(classEnvRule.similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);

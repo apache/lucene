@@ -164,7 +164,7 @@ final class BooleanWeight extends Weight {
           throws IOException {
         final LeafCollector noScoreCollector =
             new LeafCollector() {
-              ScoreAndDoc fake = new ScoreAndDoc();
+              Score fake = new Score();
 
               @Override
               public void setScorer(Scorable scorer) throws IOException {
@@ -173,7 +173,6 @@ final class BooleanWeight extends Weight {
 
               @Override
               public void collect(int doc) throws IOException {
-                fake.doc = doc;
                 collector.collect(doc);
               }
             };
@@ -192,7 +191,7 @@ final class BooleanWeight extends Weight {
   // pkg-private for forcing use of BooleanScorer in tests
   BulkScorer optionalBulkScorer(LeafReaderContext context) throws IOException {
     if (scoreMode == ScoreMode.TOP_SCORES) {
-      if (!query.isPureDisjunction() || weightedClauses.size() > 2) {
+      if (!query.isPureDisjunction()) {
         return null;
       }
 
@@ -218,34 +217,7 @@ final class BooleanWeight extends Weight {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
       }
 
-      return new BulkScorer() {
-        final Scorer bmmScorer = new BlockMaxMaxscoreScorer(BooleanWeight.this, optionalScorers);
-        final DocIdSetIterator iterator = bmmScorer.iterator();
-
-        @Override
-        public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-            throws IOException {
-          collector.setScorer(bmmScorer);
-
-          int doc = bmmScorer.docID();
-          if (doc < min) {
-            doc = iterator.advance(min);
-          }
-          while (doc < max) {
-            if (acceptDocs == null || acceptDocs.get(doc)) {
-              collector.collect(doc);
-            }
-
-            doc = iterator.nextDoc();
-          }
-          return doc;
-        }
-
-        @Override
-        public long cost() {
-          return iterator.cost();
-        }
-      };
+      return new MaxScoreBulkScorer(context.reader().maxDoc(), optionalScorers);
     }
 
     List<BulkScorer> optional = new ArrayList<BulkScorer>();

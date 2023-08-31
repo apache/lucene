@@ -48,6 +48,7 @@ import org.apache.lucene.tests.util.English;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -89,8 +90,7 @@ public class TestPayloadCheckQuery extends LuceneTestCase {
 
   @AfterClass
   public static void afterClass() throws Exception {
-    reader.close();
-    directory.close();
+    IOUtils.close(reader, directory);
     searcher = null;
     reader = null;
     directory = null;

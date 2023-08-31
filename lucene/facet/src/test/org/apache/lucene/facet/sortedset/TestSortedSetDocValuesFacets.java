@@ -17,6 +17,7 @@
 package org.apache.lucene.facet.sortedset;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -25,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Stack;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -1683,13 +1683,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               // Dfs through top children
               for (FacetResult dimResult : actualAllDims) {
                 if (config.getDimConfig(dimResult.dim).hierarchical) {
-                  Stack<String[]> stack = new Stack<>();
+                  ArrayDeque<String[]> stack = new ArrayDeque<>();
                   for (LabelAndValue labelAndValue : dimResult.labelValues) {
                     String[] path = new String[1];
                     path[0] = labelAndValue.label;
                     stack.add(path);
                   }
-                  while (stack.empty() == false) {
+                  while (stack.isEmpty() == false) {
                     String[] currPath = stack.pop();
                     FacetResult expectedResult =
                         getFacetResultForPath(expected, dimResult.dim, currPath);

@@ -14,7 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
+package org.apache.lucene.analysis.synonym.word2vec;
+
+import org.apache.lucene.util.BytesRef;
 
 /** Wraps a term and boost */
 public class TermAndBoost {

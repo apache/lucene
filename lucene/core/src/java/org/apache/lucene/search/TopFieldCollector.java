@@ -195,21 +195,30 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       minCompetitiveScore = 0f;
       docBase = context.docBase;
 
-      return new TopFieldLeafCollector(queue, sort, context) {
+      LeafCollector collector =
+          new TopFieldLeafCollector(queue, sort, context) {
 
-        @Override
-        public void collect(int doc) throws IOException {
-          countHit(doc);
-          if (queueFull) {
-            if (thresholdCheck(doc)) {
-              return;
+            @Override
+            public void collect(int doc) throws IOException {
+              countHit(doc);
+              if (queueFull) {
+                if (thresholdCheck(doc)) {
+                  return;
+                }
+                collectCompetitiveHit(doc);
+              } else {
+                collectAnyHit(doc, totalHits);
+              }
             }
-            collectCompetitiveHit(doc);
-          } else {
-            collectAnyHit(doc, totalHits);
-          }
-        }
-      };
+          };
+
+      if (needsScores) {
+        // score-based comparators may need to call score() multiple times, e.g. once for the
+        // comparison, and once to copy the score into the priority queue
+        collector = ScoreCachingWrappingScorer.wrap(collector);
+      }
+
+      return collector;
     }
   }
 
@@ -251,34 +260,43 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       docBase = context.docBase;
       final int afterDoc = after.doc - docBase;
 
-      return new TopFieldLeafCollector(queue, sort, context) {
+      LeafCollector collector =
+          new TopFieldLeafCollector(queue, sort, context) {
 
-        @Override
-        public void collect(int doc) throws IOException {
-          countHit(doc);
-          if (queueFull) {
-            if (thresholdCheck(doc)) {
-              return;
+            @Override
+            public void collect(int doc) throws IOException {
+              countHit(doc);
+              if (queueFull) {
+                if (thresholdCheck(doc)) {
+                  return;
+                }
+              }
+              final int topCmp = reverseMul * comparator.compareTop(doc);
+              if (topCmp > 0 || (topCmp == 0 && doc <= afterDoc)) {
+                // Already collected on a previous page
+                if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
+                  // check if totalHitsThreshold is reached and we can update competitive score
+                  // necessary to account for possible update to global min competitive score
+                  updateMinCompetitiveScore(scorer);
+                }
+                return;
+              }
+              if (queueFull) {
+                collectCompetitiveHit(doc);
+              } else {
+                collectedHits++;
+                collectAnyHit(doc, collectedHits);
+              }
             }
-          }
-          final int topCmp = reverseMul * comparator.compareTop(doc);
-          if (topCmp > 0 || (topCmp == 0 && doc <= afterDoc)) {
-            // Already collected on a previous page
-            if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
-              // check if totalHitsThreshold is reached and we can update competitive score
-              // necessary to account for possible update to global min competitive score
-              updateMinCompetitiveScore(scorer);
-            }
-            return;
-          }
-          if (queueFull) {
-            collectCompetitiveHit(doc);
-          } else {
-            collectedHits++;
-            collectAnyHit(doc, collectedHits);
-          }
-        }
-      };
+          };
+
+      if (needsScores) {
+        // score-based comparators may need to call score() multiple times, e.g. once for the
+        // comparison, and once to copy the score into the priority queue
+        collector = ScoreCachingWrappingScorer.wrap(collector);
+      }
+
+      return collector;
     }
   }
 

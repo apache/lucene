@@ -830,7 +830,6 @@ public class TestValueSources extends LuceneTestCase {
         return new FloatDocValues(this) {
           @Override
           public float floatVal(int doc) throws IOException {
-            assertEquals(doc, scorer.docID());
             return scorer.score();
           }
         };
