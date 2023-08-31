@@ -434,8 +434,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
+                RandomVectorScorerProvider scorerProvider =
+                    RandomVectorScorerProvider.createBytes(
+                        vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerProvider, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -446,8 +449,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
+                RandomVectorScorerProvider scorerProvider =
+                    RandomVectorScorerProvider.createFloats(
+                        vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerProvider, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -478,20 +484,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private HnswGraphBuilder createHnswGraphBuilder(
       MergeState mergeState,
       FieldInfo fieldInfo,
-      RandomAccessVectorValues<?> vectors,
+      RandomVectorScorerProvider scorerProvider,
       int initializerIndex)
       throws IOException {
-    RandomVectorScorerProvider scorerProvider =
-        switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> RandomVectorScorerProvider.createBytes(
-              (RandomAccessVectorValues<byte[]>) vectors, fieldInfo.getVectorSimilarityFunction());
-          case FLOAT32 -> RandomVectorScorerProvider.createFloats(
-              (RandomAccessVectorValues<float[]>) vectors, fieldInfo.getVectorSimilarityFunction());
-        };
     if (initializerIndex == -1) {
       return HnswGraphBuilder.create(scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed);
     }
