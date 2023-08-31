@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import java.util.List;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -254,10 +255,14 @@ public class TestCheckIndex extends BaseTestCheckIndex {
   // on the index will fail since IndexWriter loads all commit points on init
   public void testPriorBrokenCommitPoint() throws Exception {
 
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig()
-      .setMergePolicy(NoMergePolicy.INSTANCE)
-      .setIndexDeletionPolicy(DeleteNothingIndexDeletionPolicy.INSTANCE);
+    try (MockDirectoryWrapper dir = newMockDirectory()) {
+
+      // disable this normally useful test infra feature since this test intentionally leaves broken indices:
+      dir.setCheckIndexOnClose(false);
+      
+      IndexWriterConfig iwc = new IndexWriterConfig()
+        .setMergePolicy(NoMergePolicy.INSTANCE)
+        .setIndexDeletionPolicy(DeleteNothingIndexDeletionPolicy.INSTANCE);
     
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
 
@@ -280,13 +285,18 @@ public class TestCheckIndex extends BaseTestCheckIndex {
         assertTrue(slowFileExists(dir, "_1.si"));
       }
 
-      CheckIndex.Status checkIndexStatus = TestUtil.checkIndex(dir);
-      assertTrue(checkIndexStatus.clean);
+      try (CheckIndex checkers = new CheckIndex(dir)) {
+        CheckIndex.Status checkIndexStatus = checkers.checkIndex();
+        assertTrue(checkIndexStatus.clean);
+      }
 
-      // now corrupt segment 0, which is referenced by only the first commit point
+      // now corrupt segment 0, which is referenced by only the first commit point, by removing its .si file (_0.si)
       dir.deleteFile("_0.si");
 
-      checkIndexStatus = TestUtil.checkIndex(dir);
-      assertFalse(checkIndexStatus.clean);
+      try (CheckIndex checkers = new CheckIndex(dir)) {
+        CheckIndex.Status checkIndexStatus = checkers.checkIndex();
+        assertFalse(checkIndexStatus.clean);
+      }
+    }
   }
 }
