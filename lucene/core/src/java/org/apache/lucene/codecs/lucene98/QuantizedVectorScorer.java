@@ -9,7 +9,7 @@ import org.apache.lucene.util.VectorUtil;
 public interface QuantizedVectorScorer extends VectorScorer {
 
     static QuantizedVectorScorer fromFieldEntry(
-            Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry,
+            Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry,
             OffHeapQuantizedByteVectorValues values,
             float[] query
     ) {

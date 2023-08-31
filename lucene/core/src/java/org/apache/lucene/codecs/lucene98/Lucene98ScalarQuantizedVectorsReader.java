@@ -55,19 +55,16 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
  *
  * @lucene.experimental
  */
-public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
+public final class Lucene98ScalarQuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene98QuantizedHnswVectorsFormat.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene98ScalarQuantizedVectorsFormat.class);
 
-  private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput quantizedVectorData;
-  private final IndexInput vectorIndex;
 
-  Lucene98QuantizedHnswVectorsReader(SegmentReadState state) throws IOException {
-    this.fieldInfos = state.fieldInfos;
+  Lucene98ScalarQuantizedVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -75,20 +72,14 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
           openDataInput(
               state,
               versionMeta,
-              Lucene98QuantizedHnswVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene98QuantizedHnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
-      vectorIndex =
-          openDataInput(
-              state,
-              versionMeta,
-              Lucene98QuantizedHnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene98QuantizedHnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+              Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME);
       quantizedVectorData =
               openDataInput(
                       state,
                       versionMeta,
-                      Lucene98QuantizedHnswVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
-                      Lucene98QuantizedHnswVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
+                      Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
+                      Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -100,7 +91,7 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene98QuantizedHnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene98ScalarQuantizedVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -108,9 +99,9 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene98QuantizedHnswVectorsFormat.META_CODEC_NAME,
-                Lucene98QuantizedHnswVectorsFormat.VERSION_START,
-                Lucene98QuantizedHnswVectorsFormat.VERSION_CURRENT,
+                Lucene98ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene98ScalarQuantizedVectorsFormat.VERSION_START,
+                Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -135,8 +126,8 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene98QuantizedHnswVectorsFormat.VERSION_START,
-              Lucene98QuantizedHnswVectorsFormat.VERSION_CURRENT,
+              Lucene98ScalarQuantizedVectorsFormat.VERSION_START,
+              Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -242,7 +233,7 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
 
   @Override
   public long ramBytesUsed() {
-    return Lucene98QuantizedHnswVectorsReader.SHALLOW_SIZE
+    return Lucene98ScalarQuantizedVectorsReader.SHALLOW_SIZE
         + RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
   }
@@ -251,7 +242,6 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(vectorData);
     CodecUtil.checksumEntireFile(quantizedVectorData);
-    CodecUtil.checksumEntireFile(vectorIndex);
   }
 
   QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
@@ -282,16 +272,12 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapQuantizedByteVectorValues vectorValues = OffHeapQuantizedByteVectorValues.load(fieldEntry, vectorData);
-
+    QuantizedVectorScorer scorer = QuantizedVectorScorer.fromFieldEntry(fieldEntry, vectorValues, target);
     KnnCollector results = new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc);
-    HnswGraphSearcher.search(
-        QuantizedVectorScorer.fromFieldEntry(fieldEntry, vectorValues, target),
-        vectorValues.size,
-        results,
-        fieldEntry.vectorEncoding,
-        fieldEntry.similarityFunction,
-        getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+    //Search the vectors
+    for (int ord = 0; ord < vectorValues.size(); ord++) {
+      results.collect(ord, scorer.score(ord));
+    }
   }
 
   @Override
@@ -305,27 +291,9 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
     return new float[] {fieldEntry.lowerQuantile, fieldEntry.upperQuantile};
   }
 
-  /** Get knn graph values; used for testing */
-  public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
-    }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
-      return getGraph(entry);
-    } else {
-      return HnswGraph.EMPTY;
-    }
-  }
-
-  private HnswGraph getGraph(FieldEntry entry) throws IOException {
-    return new OffHeapHnswGraph(entry, vectorIndex);
-  }
-
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, vectorIndex);
+    IOUtils.close(vectorData, quantizedVectorData);
   }
 
   static class FieldEntry implements Accountable {
@@ -339,8 +307,6 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
     final long quantizedVectorDataLength;
     final long vectorIndexOffset;
     final long vectorIndexLength;
-    final int M;
-    final int numLevels;
     final int dimension;
     final int size;
 
@@ -348,12 +314,6 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
     final float lowerQuantile;
     final float upperQuantile;
     final ScalarQuantizer scalarQuantizer;
-    final int[][] nodesByLevel;
-    // for each level the start offsets in vectorIndex file from where to read neighbours
-    final DirectMonotonicReader.Meta offsetsMeta;
-    final long offsetsOffset;
-    final int offsetsBlockShift;
-    final long offsetsLength;
 
     // the following four variables used to read docIds encoded by IndexDISI
     // special values of docsWithFieldOffset are -1 and -2
@@ -408,36 +368,6 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
         meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
         addressesLength = input.readLong();
       }
-
-      // read nodes by level
-      M = input.readVInt();
-      numLevels = input.readVInt();
-      nodesByLevel = new int[numLevels][];
-      long numberOfOffsets = 0;
-      for (int level = 0; level < numLevels; level++) {
-        if (level > 0) {
-          int numNodesOnLevel = input.readVInt();
-          numberOfOffsets += numNodesOnLevel;
-          nodesByLevel[level] = new int[numNodesOnLevel];
-          nodesByLevel[level][0] = input.readVInt();
-          for (int i = 1; i < numNodesOnLevel; i++) {
-            nodesByLevel[level][i] = nodesByLevel[level][i - 1] + input.readVInt();
-          }
-        } else {
-          numberOfOffsets += size;
-        }
-      }
-      if (numberOfOffsets > 0) {
-        offsetsOffset = input.readLong();
-        offsetsBlockShift = input.readVInt();
-        offsetsMeta = DirectMonotonicReader.loadMeta(input, numberOfOffsets, offsetsBlockShift);
-        offsetsLength = input.readLong();
-      } else {
-        offsetsOffset = 0;
-        offsetsBlockShift = 0;
-        offsetsMeta = null;
-        offsetsLength = 0;
-      }
     }
 
     int size() {
@@ -447,101 +377,8 @@ public final class Lucene98QuantizedHnswVectorsReader extends KnnVectorsReader {
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE
-          + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(meta)
-          + RamUsageEstimator.sizeOf(offsetsMeta);
+          + RamUsageEstimator.sizeOf(meta);
     }
   }
 
-  /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
-
-    final IndexInput dataIn;
-    final int[][] nodesByLevel;
-    final int numLevels;
-    final int entryNode;
-    final int size;
-    int arcCount;
-    int arcUpTo;
-    int arc;
-    private final DirectMonotonicReader graphLevelNodeOffsets;
-    private final long[] graphLevelNodeIndexOffsets;
-    // Allocated to be M*2 to track the current neighbors being explored
-    private final int[] currentNeighborsBuffer;
-
-    OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
-      this.dataIn =
-          vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
-      this.nodesByLevel = entry.nodesByLevel;
-      this.numLevels = entry.numLevels;
-      this.entryNode = numLevels > 1 ? nodesByLevel[numLevels - 1][0] : 0;
-      this.size = entry.size();
-      final RandomAccessInput addressesData =
-          vectorIndex.randomAccessSlice(entry.offsetsOffset, entry.offsetsLength);
-      this.graphLevelNodeOffsets =
-          DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
-      this.currentNeighborsBuffer = new int[entry.M * 2];
-      graphLevelNodeIndexOffsets = new long[numLevels];
-      graphLevelNodeIndexOffsets[0] = 0;
-      for (int i = 1; i < numLevels; i++) {
-        // nodesByLevel is `null` for the zeroth level as we know its size
-        int nodeCount = nodesByLevel[i - 1] == null ? size : nodesByLevel[i - 1].length;
-        graphLevelNodeIndexOffsets[i] = graphLevelNodeIndexOffsets[i - 1] + nodeCount;
-      }
-    }
-
-    @Override
-    public void seek(int level, int targetOrd) throws IOException {
-      int targetIndex =
-          level == 0
-              ? targetOrd
-              : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
-      assert targetIndex >= 0;
-      // unsafe; no bounds checking
-      dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
-      arcCount = dataIn.readVInt();
-      if (arcCount > 0) {
-        currentNeighborsBuffer[0] = dataIn.readVInt();
-        for (int i = 1; i < arcCount; i++) {
-          currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
-        }
-      }
-      arc = -1;
-      arcUpTo = 0;
-    }
-
-    @Override
-    public int size() {
-      return size;
-    }
-
-    @Override
-    public int nextNeighbor() throws IOException {
-      if (arcUpTo >= arcCount) {
-        return NO_MORE_DOCS;
-      }
-      arc = currentNeighborsBuffer[arcUpTo];
-      ++arcUpTo;
-      return arc;
-    }
-
-    @Override
-    public int numLevels() throws IOException {
-      return numLevels;
-    }
-
-    @Override
-    public int entryNode() throws IOException {
-      return entryNode;
-    }
-
-    @Override
-    public NodesIterator getNodesOnLevel(int level) {
-      if (level == 0) {
-        return new ArrayNodesIterator(size());
-      } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
-      }
-    }
-  }
 }

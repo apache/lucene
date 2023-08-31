@@ -64,7 +64,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   }
 
   static OffHeapFloatVectorValues load(
-          Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+          Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2
         || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
@@ -132,10 +132,10 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry;
+    private final Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry,
+        Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry,
         IndexInput dataIn,
         IndexInput slice,
         int byteSize)

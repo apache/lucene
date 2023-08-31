@@ -18,12 +18,9 @@
 package org.apache.lucene.codecs.lucene98;
 
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
@@ -79,7 +76,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   }
 
   static OffHeapQuantizedByteVectorValues load(
-          Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+          Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
@@ -146,10 +143,10 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry;
+    private final Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene98QuantizedHnswVectorsReader.FieldEntry fieldEntry,
+        Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry,
         IndexInput dataIn,
         IndexInput slice)
         throws IOException {

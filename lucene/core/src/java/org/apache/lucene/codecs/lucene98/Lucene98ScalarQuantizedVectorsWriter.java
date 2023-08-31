@@ -61,8 +61,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 
-import static org.apache.lucene.codecs.lucene98.Lucene98QuantizedHnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
@@ -70,75 +71,59 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
  *
  * @lucene.experimental
  */
-public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene98ScalarQuantizedVectorsWriter {
 
   private final static float REQUANTIZATION_ERROR_RATE = 1e-5f;
   private final SegmentWriteState segmentWriteState;
-  private final IndexOutput meta, vectorData, quantizedVectorData, vectorIndex;
-  private final int M;
-  private final int beamWidth;
+  private final IndexOutput meta, vectorData, quantizedVectorData;
   private final int quantile;
 
   private final List<FieldWriter> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene98QuantizedHnswVectorsWriter(SegmentWriteState state, int M, int beamWidth, int quantile) throws IOException {
-    this.M = M;
-    this.beamWidth = beamWidth;
+  Lucene98ScalarQuantizedVectorsWriter(SegmentWriteState state, int quantile) throws IOException {
     this.quantile = quantile;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene98QuantizedHnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene98ScalarQuantizedVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene98QuantizedHnswVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String quantizedVectorDataFileName =
             IndexFileNames.segmentFileName(
                     state.segmentInfo.name,
                     state.segmentSuffix,
-                    Lucene98QuantizedHnswVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION);
+                    Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION);
 
-    String indexDataFileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name,
-            state.segmentSuffix,
-            Lucene98QuantizedHnswVectorsFormat.VECTOR_INDEX_EXTENSION);
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
       quantizedVectorData = state.directory.createOutput(quantizedVectorDataFileName, state.context);
-      vectorIndex = state.directory.createOutput(indexDataFileName, state.context);
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene98QuantizedHnswVectorsFormat.META_CODEC_NAME,
-          Lucene98QuantizedHnswVectorsFormat.VERSION_CURRENT,
+          Lucene98ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+          Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene98QuantizedHnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene98QuantizedHnswVectorsFormat.VERSION_CURRENT,
+          Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
               quantizedVectorData,
-              Lucene98QuantizedHnswVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME,
-              Lucene98QuantizedHnswVectorsFormat.VERSION_CURRENT,
+              Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
-      CodecUtil.writeIndexHeader(
-          vectorIndex,
-          Lucene98QuantizedHnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene98QuantizedHnswVectorsFormat.VERSION_CURRENT,
-          state.segmentInfo.getId(),
-          state.segmentSuffix);
       success = true;
     } finally {
       if (success == false) {
@@ -152,8 +137,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException("Only float32 vector fields are supported");
     }
-    FieldWriter newField =
-        FieldWriter.create(fieldInfo, M, beamWidth, quantile, segmentWriteState.infoStream);
+    FieldWriter newField = FieldWriter.create(fieldInfo, quantile);
     fields.add(newField);
     return newField;
   }
@@ -183,8 +167,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     }
     if (vectorData != null) {
       CodecUtil.writeFooter(vectorData);
-      CodecUtil.writeFooter(quantizedVectorData);
-      CodecUtil.writeFooter(vectorIndex);
     }
   }
 
@@ -208,12 +190,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     writeQuantizedVectors(fieldData);
     long quantizedVectorDataLength = quantizedVectorData.getFilePointer() - quantizedVectorDataOffset;
 
-    // write graph
-    long vectorIndexOffset = vectorIndex.getFilePointer();
-    OnHeapHnswGraph graph = fieldData.getGraph();
-    int[][] graphLevelNodeOffsets = writeGraph(graph);
-    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
@@ -221,13 +197,9 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
         vectorDataLength,
         quantizedVectorDataOffset,
         quantizedVectorDataLength,
-        vectorIndexOffset,
-        vectorIndexLength,
         fieldData.minQuantile,
         fieldData.maxQuantile,
-        fieldData.docsWithField,
-        graph,
-        graphLevelNodeOffsets);
+        fieldData.docsWithField);
   }
 
   private void writeFloat32Vectors(FieldWriter fieldData) throws IOException {
@@ -244,7 +216,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     for (float[] v : fieldData.floatVectors) {
       byte[] vector = scalarQuantizer.quantize(v);
       quantizedVectorData.writeBytes(vector, vector.length);
-      float offsetCorrection = fieldData.calculateVectorOffsetCorrection(vector, scalarQuantizer);
+      float offsetCorrection = scalarQuantizer.calculateVectorOffset(vector, fieldData.vectorSimilarityFunction);
       quantizedVectorData.writeInt(Float.floatToIntBits(offsetCorrection));
     }
   }
@@ -281,13 +253,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     long quantizedVectorDataOffset = writeSortedQuantizedVectors(fieldData, ordMap);
     long quantizedVectorLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
 
-    // write graph
-    long vectorIndexOffset = vectorIndex.getFilePointer();
-    OnHeapHnswGraph graph = fieldData.getGraph();
-    int[][] graphLevelNodeOffsets = graph == null ? new int[0][] : new int[graph.numLevels()][];
-    HnswGraph mockGraph = reconstructAndWriteGraph(graph, ordMap, oldOrdMap, graphLevelNodeOffsets);
-    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-
     writeMeta(
         fieldData.fieldInfo,
         maxDoc,
@@ -295,13 +260,9 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
         vectorDataLength,
         quantizedVectorDataOffset,
         quantizedVectorLength,
-        vectorIndexOffset,
-        vectorIndexLength,
         fieldData.minQuantile,
         fieldData.maxQuantile,
-        newDocsWithField,
-        mockGraph,
-        graphLevelNodeOffsets);
+        newDocsWithField);
   }
 
   private long writeSortedFloat32Vectors(FieldWriter fieldData, int[] ordMap)
@@ -324,118 +285,10 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       float[] v = fieldData.floatVectors.get(ordinal);
       byte[] vector = scalarQuantizer.quantize(v);
       quantizedVectorData.writeBytes(vector, vector.length);
-      float offsetCorrection = fieldData.calculateVectorOffsetCorrection(vector, scalarQuantizer);
+      float offsetCorrection = scalarQuantizer.calculateVectorOffset(vector, fieldData.vectorSimilarityFunction);
       quantizedVectorData.writeInt(Float.floatToIntBits(offsetCorrection));
     }
     return vectorDataOffset;
-  }
-
-  /**
-   * Reconstructs the graph given the old and new node ids.
-   *
-   * <p>Additionally, the graph node connections are written to the vectorIndex.
-   *
-   * @param graph The current on heap graph
-   * @param newToOldMap the new node ids indexed to the old node ids
-   * @param oldToNewMap the old node ids indexed to the new node ids
-   * @param levelNodeOffsets where to place the new offsets for the nodes in the vector index.
-   * @return The graph
-   * @throws IOException if writing to vectorIndex fails
-   */
-  private HnswGraph reconstructAndWriteGraph(
-      OnHeapHnswGraph graph, int[] newToOldMap, int[] oldToNewMap, int[][] levelNodeOffsets)
-      throws IOException {
-    if (graph == null) return null;
-
-    List<int[]> nodesByLevel = new ArrayList<>(graph.numLevels());
-    nodesByLevel.add(null);
-
-    int maxOrd = graph.size();
-    NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
-    levelNodeOffsets[0] = new int[nodesOnLevel0.size()];
-    while (nodesOnLevel0.hasNext()) {
-      int node = nodesOnLevel0.nextInt();
-      NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
-      long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxOrd);
-      levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
-    }
-
-    for (int level = 1; level < graph.numLevels(); level++) {
-      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-      int[] newNodes = new int[nodesOnLevel.size()];
-      for (int n = 0; nodesOnLevel.hasNext(); n++) {
-        newNodes[n] = oldToNewMap[nodesOnLevel.nextInt()];
-      }
-      Arrays.sort(newNodes);
-      nodesByLevel.add(newNodes);
-      levelNodeOffsets[level] = new int[newNodes.length];
-      int nodeOffsetIndex = 0;
-      for (int node : newNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
-        long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxOrd);
-        levelNodeOffsets[level][nodeOffsetIndex++] =
-            Math.toIntExact(vectorIndex.getFilePointer() - offset);
-      }
-    }
-    return new HnswGraph() {
-      @Override
-      public int nextNeighbor() {
-        throw new UnsupportedOperationException("Not supported on a mock graph");
-      }
-
-      @Override
-      public void seek(int level, int target) {
-        throw new UnsupportedOperationException("Not supported on a mock graph");
-      }
-
-      @Override
-      public int size() {
-        return graph.size();
-      }
-
-      @Override
-      public int numLevels() {
-        return graph.numLevels();
-      }
-
-      @Override
-      public int entryNode() {
-        throw new UnsupportedOperationException("Not supported on a mock graph");
-      }
-
-      @Override
-      public NodesIterator getNodesOnLevel(int level) {
-        if (level == 0) {
-          return graph.getNodesOnLevel(0);
-        } else {
-          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
-        }
-      }
-    };
-  }
-
-  private void reconstructAndWriteNeigbours(NeighborArray neighbors, int[] oldToNewMap, int maxOrd)
-      throws IOException {
-    int size = neighbors.size();
-    vectorIndex.writeVInt(size);
-
-    // Destructively modify; it's ok we are discarding it after this
-    int[] nnodes = neighbors.node();
-    for (int i = 0; i < size; i++) {
-      nnodes[i] = oldToNewMap[nnodes[i]];
-    }
-    Arrays.sort(nnodes, 0, size);
-    // Now that we have sorted, do delta encoding to minimize the required bits to store the
-    // information
-    for (int i = size - 1; i > 0; --i) {
-      assert nnodes[i] < maxOrd : "node too large: " + nnodes[i] + ">=" + maxOrd;
-      nnodes[i] -= nnodes[i - 1];
-    }
-    for (int i = 0; i < size; i++) {
-      vectorIndex.writeVInt(nnodes[i]);
-    }
   }
 
   @Override
@@ -464,7 +317,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
       final long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-      final long vectorIndexOffset = vectorIndex.getFilePointer();
       int byteSize = fieldInfo.getVectorDimension() * VectorEncoding.FLOAT32.byteSize;
       OffHeapFloatVectorValues.DenseOffHeapVectorValues floatVectorValues =
               new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
@@ -509,55 +361,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       quantizedVectorData.copyBytes(quantizedVectorDataInput, quantizedVectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(quantizedVectorDataInput);
       final long quantizedVectorDataLength = quantizedVectorDataInput.getFilePointer() - quantizedVectorDataOffset;
-      OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues offHeapQuantizedByteVectorValues =
-              new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                      fieldInfo.getVectorDimension(),
-                      docsWithField.cardinality(),
-                      quantizedVectorDataInput);
 
-      // build the graph using the temporary vector data
-      // we use Lucene98HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
-      // doesn't need to know docIds
-      // TODO: separate random access vector values from DocIdSetIterator?
-      OnHeapHnswGraph graph = null;
-      int[][] vectorIndexNodeOffsets = null;
-      if (docsWithField.cardinality() != 0) {
-        // build graph
-        int initializerIndex = selectGraphForInitialization(mergeState, fieldInfo);
-        HnswGraphBuilder<byte[]> hnswGraphBuilder =
-                createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
-        hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-        yield hnswGraphBuilder.build(vectorValues.copy());
-        graph =
-            switch (fieldInfo.getVectorEncoding()) {
-              case BYTE -> {
-                OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues vectorValues =
-                    new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        vectorDataInput,
-                        byteSize);
-                HnswGraphBuilder<byte[]> hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
-              }
-              case FLOAT32 -> {
-                OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
-                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        vectorDataInput,
-                        byteSize);
-                HnswGraphBuilder<float[]> hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, vectorValues, initializerIndex);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
-              }
-            };
-        vectorIndexNodeOffsets = writeGraph(graph);
-      }
-      long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
@@ -565,13 +369,9 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
           vectorDataLength,
           quantizedVectorDataOffset,
           quantizedVectorDataLength,
-          vectorIndexOffset,
-          vectorIndexLength,
           minMaxQuantiles[0],
           minMaxQuantiles[1],
-          docsWithField,
-          graph,
-          vectorIndexNodeOffsets);
+          docsWithField);
       success = true;
     } finally {
       IOUtils.close(vectorDataInput, quantizedVectorDataInput);
@@ -586,35 +386,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private HnswGraphBuilder<float[]> createHnswGraphBuilder(
-      MergeState mergeState,
-      FieldInfo fieldInfo,
-      VectorScorerSupplier vectorScorerSupplier,
-      int initializerIndex)
-      throws IOException {
-    if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(
-              vectorScorerSupplier,
-          fieldInfo.getVectorEncoding(),
-          M,
-          beamWidth,
-          HnswGraphBuilder.randSeed);
-    }
-
-    HnswGraph initializerGraph =
-        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]);
-    Map<Integer, Integer> ordinalMapper =
-        getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
-    return HnswGraphBuilder.create(
-            vectorScorerSupplier,
-        fieldInfo.getVectorEncoding(),
-        M,
-        beamWidth,
-        HnswGraphBuilder.randSeed,
-        initializerGraph,
-        ordinalMapper);
-  }
-
   private RequantizationState requiresReQuantization(MergeState mergeState, FieldInfo fieldInfo) {
     float[] minQuantiles = new float[mergeState.liveDocs.length];
     float[] maxQuantiles = new float[mergeState.liveDocs.length];
@@ -627,7 +398,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
               instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
         currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
       }
-      if (currKnnVectorsReader instanceof Lucene98QuantizedHnswVectorsReader reader) {
+      if (currKnnVectorsReader instanceof Lucene98ScalarQuantizedVectorsReader reader) {
         float[] minAndMaxQuantiles = reader.getQuantiles(fieldInfo.name);
         minQuantiles[i] = minAndMaxQuantiles[0];
         maxQuantiles[i] = minAndMaxQuantiles[1];
@@ -651,74 +422,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       }
     }
     return new RequantizationState(minQuantile, maxQuantile, false);
-  }
-
-  private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
-      throws IOException {
-    // Find the KnnVectorReader with the most docs that meets the following criteria:
-    //  1. Does not contain any deleted docs
-    //  2. Is a Lucene95HnswVectorsReader/PerFieldKnnVectorReader
-    // If no readers exist that meet this criteria, return -1. If they do, return their index in
-    // merge state
-    int maxCandidateVectorCount = 0;
-    int initializerIndex = -1;
-
-    for (int i = 0; i < mergeState.liveDocs.length; i++) {
-      KnnVectorsReader currKnnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (mergeState.knnVectorsReaders[i]
-          instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-        currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
-      }
-
-      if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader instanceof Lucene98QuantizedHnswVectorsReader candidateReader)) {
-        continue;
-      }
-
-      int candidateVectorCount = 0;
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> {
-          ByteVectorValues byteVectorValues = candidateReader.getByteVectorValues(fieldInfo.name);
-          if (byteVectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = byteVectorValues.size();
-        }
-        case FLOAT32 -> {
-          FloatVectorValues vectorValues = candidateReader.getFloatVectorValues(fieldInfo.name);
-          if (vectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = vectorValues.size();
-        }
-      }
-
-      if (candidateVectorCount > maxCandidateVectorCount) {
-        maxCandidateVectorCount = candidateVectorCount;
-        initializerIndex = i;
-      }
-    }
-    return initializerIndex;
-  }
-
-  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
-      throws IOException {
-    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
-        && perFieldReader.getFieldReader(fieldName)
-            instanceof Lucene98QuantizedHnswVectorsReader fieldReader) {
-      return fieldReader.getGraph(fieldName);
-    }
-
-    if (knnVectorsReader instanceof Lucene98QuantizedHnswVectorsReader) {
-      return ((Lucene98QuantizedHnswVectorsReader) knnVectorsReader).getGraph(fieldName);
-    }
-
-    // We should not reach here because knnVectorsReader's type is checked in
-    // selectGraphForInitialization
-    throw new IllegalArgumentException(
-        "Invalid KnnVectorsReader type for field: "
-            + fieldName
-            + ". Must be Lucene95HnswVectorsReader or newer");
   }
 
   private Map<Integer, Integer> getOldToNewOrdinalMap(
@@ -793,54 +496,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     return true;
   }
 
-  /**
-   * @param graph Write the graph in a compressed format
-   * @return The non-cumulative offsets for the nodes. Should be used to create cumulative offsets.
-   * @throws IOException if writing to vectorIndex fails
-   */
-  private int[][] writeGraph(OnHeapHnswGraph graph) throws IOException {
-    if (graph == null) return new int[0][0];
-    // write vectors' neighbours on each level into the vectorIndex file
-    int countOnLevel0 = graph.size();
-    int[][] offsets = new int[graph.numLevels()][];
-    for (int level = 0; level < graph.numLevels(); level++) {
-      int[] sortedNodes = getSortedNodes(graph.getNodesOnLevel(level));
-      offsets[level] = new int[sortedNodes.length];
-      int nodeOffsetId = 0;
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
-        int size = neighbors.size();
-        // Write size in VInt as the neighbors list is typically small
-        long offsetStart = vectorIndex.getFilePointer();
-        vectorIndex.writeVInt(size);
-        // Destructively modify; it's ok we are discarding it after this
-        int[] nnodes = neighbors.node();
-        Arrays.sort(nnodes, 0, size);
-        // Now that we have sorted, do delta encoding to minimize the required bits to store the
-        // information
-        for (int i = size - 1; i > 0; --i) {
-          assert nnodes[i] < countOnLevel0 : "node too large: " + nnodes[i] + ">=" + countOnLevel0;
-          nnodes[i] -= nnodes[i - 1];
-        }
-        for (int i = 0; i < size; i++) {
-          vectorIndex.writeVInt(nnodes[i]);
-        }
-        offsets[level][nodeOffsetId++] =
-            Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
-      }
-    }
-    return offsets;
-  }
-
-  public static int[] getSortedNodes(NodesIterator nodesOnLevel) {
-    int[] sortedNodes = new int[nodesOnLevel.size()];
-    for (int n = 0; nodesOnLevel.hasNext(); n++) {
-      sortedNodes[n] = nodesOnLevel.nextInt();
-    }
-    Arrays.sort(sortedNodes);
-    return sortedNodes;
-  }
-
   private void writeMeta(
       FieldInfo field,
       int maxDoc,
@@ -848,13 +503,9 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       long vectorDataLength,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
-      long vectorIndexOffset,
-      long vectorIndexLength,
       float lowerQuantile,
       float upperQuantile,
-      DocsWithFieldSet docsWithField,
-      HnswGraph graph,
-      int[][] graphLevelNodeOffsets)
+      DocsWithFieldSet docsWithField)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
@@ -863,8 +514,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(quantizedVectorDataOffset);
     meta.writeVLong(quantizedVectorDataLength);
-    meta.writeVLong(vectorIndexOffset);
-    meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
     meta.writeInt(Float.floatToIntBits(lowerQuantile));
     meta.writeInt(Float.floatToIntBits(upperQuantile));
@@ -908,50 +557,6 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       ordToDocWriter.finish();
       meta.writeLong(vectorData.getFilePointer() - start);
     }
-
-    meta.writeVInt(M);
-    // write graph nodes on each level
-    if (graph == null) {
-      meta.writeVInt(0);
-    } else {
-      meta.writeVInt(graph.numLevels());
-      long valueCount = 0;
-      for (int level = 0; level < graph.numLevels(); level++) {
-        NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-        valueCount += nodesOnLevel.size();
-        if (level > 0) {
-          int[] nol = new int[nodesOnLevel.size()];
-          int numberConsumed = nodesOnLevel.consume(nol);
-          Arrays.sort(nol);
-          assert numberConsumed == nodesOnLevel.size();
-          meta.writeVInt(nol.length); // number of nodes on a level
-          for (int i = nodesOnLevel.size() - 1; i > 0; --i) {
-            nol[i] -= nol[i - 1];
-          }
-          for (int n : nol) {
-            assert n >= 0 : "delta encoding for nodes failed; expected nodes to be sorted";
-            meta.writeVInt(n);
-          }
-        } else {
-          assert nodesOnLevel.size() == count : "Level 0 expects to have all nodes";
-        }
-      }
-      long start = vectorIndex.getFilePointer();
-      meta.writeLong(start);
-      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-      final DirectMonotonicWriter memoryOffsetsWriter =
-          DirectMonotonicWriter.getInstance(
-              meta, vectorIndex, valueCount, DIRECT_MONOTONIC_BLOCK_SHIFT);
-      long cumulativeOffsetSum = 0;
-      for (int[] levelOffsets : graphLevelNodeOffsets) {
-        for (int v : levelOffsets) {
-          memoryOffsetsWriter.add(cumulativeOffsetSum);
-          cumulativeOffsetSum += v;
-        }
-      }
-      memoryOffsetsWriter.finish();
-      meta.writeLong(vectorIndex.getFilePointer() - start);
-    }
   }
 
   /**
@@ -991,7 +596,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorData, vectorIndex);
+    IOUtils.close(meta, vectorData, quantizedVectorData);
   }
 
   private static class FieldWriter extends KnnFieldVectorsWriter<float[]> {
@@ -999,51 +604,32 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<float[]> floatVectors;
-    private final HnswGraphBuilder<float[]> hnswGraphBuilder;
     private final boolean normalize;
     private final int quantile;
     private float minQuantile = Float.POSITIVE_INFINITY;
     private float maxQuantile = Float.NEGATIVE_INFINITY;
+    private final VectorSimilarityFunction vectorSimilarityFunction;
 
     private int lastDocID = -1;
     private int node = 0;
 
-    static FieldWriter create(FieldInfo fieldInfo, int M, int beamWidth, int quantile, InfoStream infoStream)
+    static FieldWriter create(FieldInfo fieldInfo, int quantile)
         throws IOException {
       return new FieldWriter(
               fieldInfo,
-              M,
-              beamWidth,
               quantile,
-              fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE,
-              infoStream
+              fieldInfo.getVectorSimilarityFunction()
       );
     }
 
-    FieldWriter(
-            FieldInfo fieldInfo,
-            int M,
-            int beamWidth,
-            int quantile,
-            boolean normalize,
-            InfoStream infoStream
-    )
-        throws IOException {
+    FieldWriter(FieldInfo fieldInfo, int quantile, VectorSimilarityFunction vectorSimilarityFunction) {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.quantile = quantile;
-      this.normalize = normalize;
+      this.normalize = vectorSimilarityFunction == VectorSimilarityFunction.COSINE;
       this.docsWithField = new DocsWithFieldSet();
-      floatVectors = new ArrayList<>();
-      hnswGraphBuilder =
-          HnswGraphBuilder.create(
-              new RAVectorValues(floatVectors, dim),
-              fieldInfo.getVectorEncoding(),
-              fieldInfo.getVectorSimilarityFunction(),
-              M,
-              beamWidth,
-              HnswGraphBuilder.randSeed);
-      hnswGraphBuilder.setInfoStream(infoStream);
+      this.floatVectors = new ArrayList<>();
+      this.vectorSimilarityFunction = vectorSimilarityFunction;
     }
 
     @Override
@@ -1068,19 +654,9 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
           maxQuantile = Math.max(v, maxQuantile);
         }
       }
-
       floatVectors.add(copy);
-      hnswGraphBuilder.addGraphNode(node, vectorValue);
       node++;
       lastDocID = docID;
-    }
-
-    OnHeapHnswGraph getGraph() {
-      if (floatVectors.size() > 0) {
-        return hnswGraphBuilder.getGraph();
-      } else {
-        return null;
-      }
     }
 
     private ScalarQuantizer createQuantizer() throws IOException {
@@ -1091,70 +667,18 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-
-
     @Override
     public long ramBytesUsed() {
       if (floatVectors.size() == 0) return 0;
       return docsWithField.ramBytesUsed()
+              + Integer.BYTES
           + (long) floatVectors.size()
-              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + (long) floatVectors.size()
-              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + (long) floatVectors.size()
-              * fieldInfo.getVectorDimension()
-              * fieldInfo.getVectorEncoding().byteSize
-          + hnswGraphBuilder.getGraph().ramBytesUsed();
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER);
     }
 
     @Override
     public float[] copyValue(float[] value) {
       return ArrayUtil.copyOfSubArray(value, 0, dim);
-    }
-  }
-
-  private float calculateVectorOffsetCorrection(
-          byte[] quantizedVector,
-          ScalarQuantizer scalarQuantizer,
-          VectorSimilarityFunction vectorSimilarityFunction
-  ) {
-    if (vectorSimilarityFunction != VectorSimilarityFunction.EUCLIDEAN) {
-      int sum = 0;
-      for (byte b : quantizedVector) {
-        sum += b;
-      }
-      return sum * scalarQuantizer.getAlpha() * scalarQuantizer.getOffset();
-    }
-    return 0f;
-  }
-
-  private static class RAVectorValues implements RandomAccessVectorValues<float[]> {
-    private final List<float[]> vectors;
-    private final int dim;
-
-    RAVectorValues(List<float[]> vectors, int dim) {
-      this.vectors = vectors;
-      this.dim = dim;
-    }
-
-    @Override
-    public int size() {
-      return vectors.size();
-    }
-
-    @Override
-    public int dimension() {
-      return dim;
-    }
-
-    @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
-      return vectors.get(targetOrd);
-    }
-
-    @Override
-    public RAVectorValues copy() throws IOException {
-      return this;
     }
   }
 
@@ -1248,7 +772,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
           if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldKnnVectorsFormat) {
             knnVectorsReader = perFieldKnnVectorsFormat.getFieldReader(fieldInfo.name);
           }
-          if (knnVectorsReader instanceof Lucene98QuantizedHnswVectorsReader reader) {
+          if (knnVectorsReader instanceof Lucene98ScalarQuantizedVectorsReader reader) {
             subs.add(new QuantizedByteVectorValueSub(mergeState.docMaps[i], reader.getQuantizedVectorValues(fieldInfo.name)));
           } else if (knnVectorsReader != null){
             throw new UnsupportedOperationException(
@@ -1322,6 +846,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
       private final FloatVectorValues values;
       private final ScalarQuantizer quantizer;
       private final byte[] quantizedVector;
+      private float offsetValue = 0f;
 
       private final VectorSimilarityFunction vectorSimilarityFunction;
 
@@ -1334,7 +859,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
 
       @Override
       float getScoreCorrectionConstant() {
-        return calculateVectorOffsetCorrection(quantizedVector, quantizer, vectorSimilarityFunction);
+        return offsetValue;
       }
 
       @Override
@@ -1362,6 +887,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
         int doc = values.nextDoc();
         if (doc != NO_MORE_DOCS) {
           quantizer.quantizeTo(values.vectorValue(), quantizedVector);
+          offsetValue = quantizer.calculateVectorOffset(quantizedVector, vectorSimilarityFunction);
         }
         return doc;
       }
@@ -1371,6 +897,7 @@ public final class Lucene98QuantizedHnswVectorsWriter extends KnnVectorsWriter {
         int doc = values.advance(target);
         if (doc != NO_MORE_DOCS) {
           quantizer.quantizeTo(values.vectorValue(), quantizedVector);
+          offsetValue = quantizer.calculateVectorOffset(quantizedVector, vectorSimilarityFunction);
         }
         return doc;
       }

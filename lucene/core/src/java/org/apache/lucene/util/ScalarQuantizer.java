@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 
 public class ScalarQuantizer {
 
@@ -32,6 +33,17 @@ public class ScalarQuantizer {
       q[i] = (byte) Math.max(-128f, Math.min((vector[i] - offset) / alpha, 127f));
     }
     return q;
+  }
+
+  public float calculateVectorOffset(byte[] vector, VectorSimilarityFunction similarityFunction) {
+    if (similarityFunction != VectorSimilarityFunction.EUCLIDEAN) {
+      int sum = 0;
+      for (byte b : vector) {
+        sum += b;
+      }
+      return sum * getAlpha() * getOffset();
+    }
+    return 0f;
   }
 
   public void quantizeTo(float[] vector, byte[] output) {
