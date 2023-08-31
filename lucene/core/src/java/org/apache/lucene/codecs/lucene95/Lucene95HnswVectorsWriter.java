@@ -888,7 +888,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RAVectorValues<T> raVectors;raVectors = new RAVectorValues<>(vectors, dim);
+      RAVectorValues<T> raVectors = new RAVectorValues<>(vectors, dim);
       RandomVectorScorerProvider scorerProvider =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> RandomVectorScorerProvider.createBytes(
