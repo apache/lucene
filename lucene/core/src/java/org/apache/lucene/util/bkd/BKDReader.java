@@ -836,11 +836,11 @@ public class BKDReader extends PointValues {
           // early terminate if packed value greater than upper point.
           if (config.numDims == 1) {
             visitSparseRawDocValuesEarlyTerminate(
-                    commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+                commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
           } else {
             // todo, early terminate if packed value greater than upper point on sorted dim.
             visitSparseRawDocValues(
-                    commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+                commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
           }
         } else {
           // high cardinality

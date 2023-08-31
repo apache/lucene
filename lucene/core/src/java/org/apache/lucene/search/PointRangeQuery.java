@@ -215,7 +215,8 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue)
+              throws IOException {
             int matchState = matchesWithState(packedValue);
             if (matchState == 0) {
               adder.add(iterator);
