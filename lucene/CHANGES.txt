@@ -78,7 +78,7 @@ Optimizations
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
 
-* GITHUB##12371: enable lazy computation of similarity score during initializeFromGraph
+* GITHUB##12371: enable lazy computation of similarity score during initializeFromGraph (Jack Wang)
 
 Bug Fixes
 ---------------------
