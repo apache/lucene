@@ -857,7 +857,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
-    private final RAVectorValues<T> raVectors;
     private final HnswGraphBuilder hnswGraphBuilder;
 
     private int lastDocID = -1;
@@ -889,7 +888,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      raVectors = new RAVectorValues<>(vectors, dim);
+      RAVectorValues<T> raVectors;raVectors = new RAVectorValues<>(vectors, dim);
       RandomVectorScorerProvider scorerProvider =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> RandomVectorScorerProvider.createBytes(
