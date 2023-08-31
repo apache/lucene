@@ -20,9 +20,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
+import java.util.List;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnFloatVectorField;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
@@ -217,5 +220,73 @@ public class TestCheckIndex extends BaseTestCheckIndex {
     }
     VectorUtil.l2normalize(v);
     return v;
+  }
+
+  //import org.apache.lucene.analysis.standard.StandardAnalyzer;
+  //import org.apache.lucene.codecs.lucene410.Lucene410Codec;
+  //import org.apache.lucene.document.Document;
+  //import org.apache.lucene.document.Field.Store;
+  //import org.apache.lucene.document.IntField;
+  //import org.apache.lucene.index.CheckIndex;
+  //import org.apache.lucene.index.IndexWriter;
+  //import org.apache.lucene.index.IndexWriterConfig;
+  //import org.apache.lucene.index.NoMergePolicy;
+  //import org.apache.lucene.store.FSDirectory;
+  //import org.apache.lucene.util.Version;
+
+  // Never deletes any commit points!  Do not use in production!!
+  private static class DeleteNothingIndexDeletionPolicy extends IndexDeletionPolicy {
+
+    public static final IndexDeletionPolicy INSTANCE = new DeleteNothingIndexDeletionPolicy();
+    
+    private DeleteNothingIndexDeletionPolicy() {
+      // NO
+    }
+    public void onInit(List<? extends IndexCommit> commits) {
+    }
+
+    public void onCommit(List<? extends IndexCommit> commits) {
+    }
+  }
+
+  // https://github.com/apache/lucene/issues/7820 -- when the most recent commit point in the index is OK, but
+  // older commit points are broken, CheckIndex fails to detect and correct that, while opening an IndexWriter
+  // on the index will fail since IndexWriter loads all commit points on init
+  public void testPriorBrokenCommitPoint() throws Exception {
+
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig()
+      .setMergePolicy(NoMergePolicy.INSTANCE)
+      .setIndexDeletionPolicy(DeleteNothingIndexDeletionPolicy.INSTANCE);
+    
+      try (IndexWriter iw = new IndexWriter(dir, iwc)) {
+
+        // create first segment, and commit point referencing only segment 0
+        Document doc = new Document();
+        doc.add(new StringField("id", "a", Field.Store.NO));
+        iw.addDocument(doc);
+        iw.commit();
+
+        // NOTE: we are (illegally) relying on precise file naming here -- if Codec or IW's behaviour changes, this may need fixing:
+        assertTrue(slowFileExists(dir, "_0.si"));
+
+        // create second segment, and another commit point referencing only segment 1
+        doc.add(new StringField("id", "a", Field.Store.NO));
+        iw.updateDocument(new Term("id", "a"), doc);
+        iw.commit();
+
+        // NOTE: we are (illegally) relying on precise file naming here -- if Codec or IW's behaviour changes, this may need fixing:
+        assertTrue(slowFileExists(dir, "_0.si"));
+        assertTrue(slowFileExists(dir, "_1.si"));
+      }
+
+      CheckIndex.Status checkIndexStatus = TestUtil.checkIndex(dir);
+      assertTrue(checkIndexStatus.clean);
+
+      // now corrupt segment 0, which is referenced by only the first commit point
+      dir.deleteFile("_0.si");
+
+      checkIndexStatus = TestUtil.checkIndex(dir);
+      assertFalse(checkIndexStatus.clean);
   }
 }
