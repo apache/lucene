@@ -28,9 +28,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 
-import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
@@ -188,8 +186,6 @@ public final class HnswGraphBuilder<T> {
   private void initializeFromGraph(
       HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
     assert hnsw.size() == 0;
-    float[] vectorValue = null;
-    byte[] binaryValue = null;
     for (int level = 0; level < initializerGraph.numLevels(); level++) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
@@ -203,24 +199,12 @@ public final class HnswGraphBuilder<T> {
           initializedNodes.add(newOrd);
         }
 
-        switch (this.vectorEncoding) {
-          case FLOAT32 -> vectorValue = (float[]) vectors.vectorValue(newOrd);
-          case BYTE -> binaryValue = (byte[]) vectors.vectorValue(newOrd);
-        }
-
         NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
         initializerGraph.seek(level, oldOrd);
         for (int oldNeighbor = initializerGraph.nextNeighbor();
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-//          float score =
-//              switch (this.vectorEncoding) {
-//                case FLOAT32 -> this.similarityFunction.compare(
-//                    vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor));
-//                case BYTE -> this.similarityFunction.compare(
-//                    binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
-//              };
           // we are not sure whether the previous graph contains
           // unchecked nodes, so we have to assume they're all unchecked
           newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
@@ -405,19 +389,21 @@ public final class HnswGraphBuilder<T> {
    * neighbours
    */
   private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
+    float[] vectorValue = null;
+    byte[] binaryValue = null;
+    switch (this.vectorEncoding) {
+      case FLOAT32 -> vectorValue = (float[]) vectors.vectorValue(nodeOrd);
+      case BYTE -> binaryValue = (byte[]) vectors.vectorValue(nodeOrd);
+    }
+    float[] finalVectorValue = vectorValue;
+    byte[] finalBinaryValue = binaryValue;
     int[] uncheckedIndexes = neighbors.sort(nbrOrd -> {
-      float[] vectorValue = null;
-      byte[] binaryValue = null;
-      switch (this.vectorEncoding) {
-        case FLOAT32 -> vectorValue = (float[]) vectors.vectorValue(nodeOrd);
-        case BYTE -> binaryValue = (byte[]) vectors.vectorValue(nodeOrd);
-      }
       float score =
               switch (this.vectorEncoding) {
                 case FLOAT32 -> this.similarityFunction.compare(
-                    vectorValue, (float[]) vectorsCopy.vectorValue(nbrOrd));
+                        finalVectorValue, (float[]) vectorsCopy.vectorValue(nbrOrd));
                 case BYTE -> this.similarityFunction.compare(
-                    binaryValue, (byte[]) vectorsCopy.vectorValue(nbrOrd));
+                        finalBinaryValue, (byte[]) vectorsCopy.vectorValue(nbrOrd));
               };
       return score;
     });

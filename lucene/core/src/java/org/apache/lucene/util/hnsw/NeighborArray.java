@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import org.apache.lucene.util.ArrayUtil;
 
@@ -118,7 +117,6 @@ public class NeighborArray {
 
     if (Float.isNaN(tmpScore)){
       tmpScore = scoringFunction.computeScore(tmpNode);
-      System.out.println("Node: " + tmpNode + "   Score: " + tmpScore);
     }
 
     int insertionPoint =
@@ -207,7 +205,17 @@ public class NeighborArray {
     return start;
   }
 
+  /**
+   * ScoringFunction is a lambda function created in HnswGraphBuilder to allow for lazy computation of distance score.
+   */
   interface ScoringFunction {
+    /**
+     * Computes the distance score between the given node ID and the root node of this NeighborArray.
+     *
+     * @param nodeId The ID of the node for which to compute the distance score.
+     * @return The distance score as a float value.
+     * @throws IOException If an I/O error occurs during computation.
+     */
     float computeScore(int nodeId) throws IOException;
   }
 }
