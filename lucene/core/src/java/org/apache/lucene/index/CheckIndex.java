@@ -838,7 +838,7 @@ public final class CheckIndex implements Closeable {
 
     if (0 == result.numBadSegments) {
       result.clean = true;
-    } else
+    } else {
       msg(
           infoStream,
           "WARNING: "
@@ -846,16 +846,18 @@ public final class CheckIndex implements Closeable {
               + " broken segments (containing "
               + result.totLoseDocCount
               + " documents) detected");
+    }
 
-    if (!(result.validCounter = (result.maxSegmentName < sis.counter))) {
+    result.validCounter = result.maxSegmentName < sis.counter;
+    if (result.validCounter == false) {
       result.clean = false;
       result.newSegments.counter = result.maxSegmentName + 1;
       msg(
           infoStream,
           "ERROR: Next segment name counter "
-              + sis.counter
-              + " is not greater than max segment name "
-              + result.maxSegmentName);
+          + sis.counter
+          + " is not greater than max segment name "
+          + result.maxSegmentName);
     }
 
     if (result.clean) {
@@ -946,7 +948,7 @@ public final class CheckIndex implements Closeable {
         msg(infoStream, "    diagnostics = " + diagnostics);
       }
 
-      if (!info.hasDeletions()) {
+      if (info.hasDeletions() == false) {
         msg(infoStream, "    no deletions");
         segInfoStat.hasDeletions = false;
       } else {
@@ -1238,7 +1240,7 @@ public final class CheckIndex implements Closeable {
         if (liveDocs != null) {
           // it's ok for it to be non-null here, as long as none are set right?
           for (int j = 0; j < liveDocs.length(); j++) {
-            if (!liveDocs.get(j)) {
+            if (liveDocs.get(j) == false) {
               throw new CheckIndexException(
                   "liveDocs mismatch: info says no deletions but doc " + j + " is deleted.");
             }
@@ -1475,7 +1477,7 @@ public final class CheckIndex implements Closeable {
                 + hasFreqs);
       }
 
-      if (!isVectors) {
+      if (isVectors == false) {
         final boolean expectedHasPositions =
             fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
         if (hasPositions != expectedHasPositions) {
@@ -1835,7 +1837,7 @@ public final class CheckIndex implements Closeable {
                   // free-for-all before?
                   // but for offsets in the postings lists these checks are fine: they were always
                   // enforced by IndexWriter
-                  if (!isVectors) {
+                  if (isVectors == false) {
                     if (startOffset < 0) {
                       throw new CheckIndexException(
                           "term "
@@ -3685,7 +3687,7 @@ public final class CheckIndex implements Closeable {
 
               // Make sure FieldInfo thinks this field is vector'd:
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-              if (!fieldInfo.hasVectors()) {
+              if (fieldInfo.hasVectors() == false) {
                 throw new CheckIndexException(
                     "docID="
                         + j
@@ -3721,7 +3723,7 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if (!postingsTermsEnum.seekExact(term)) {
+                  if (postingsTermsEnum.seekExact(term) == false) {
                     throw new CheckIndexException(
                         "vector term="
                             + term
@@ -3877,7 +3879,7 @@ public final class CheckIndex implements Closeable {
                                       + " but postings does not.");
                             }
                             BytesRef postingsPayload = postingsDocs.getPayload();
-                            if (!payload.equals(postingsPayload)) {
+                            if (payload.equals(postingsPayload) == false) {
                               throw new CheckIndexException(
                                   "vector term="
                                       + term
@@ -4036,9 +4038,10 @@ public final class CheckIndex implements Closeable {
       return 1;
     }
 
-    if (!assertsOn())
+    if (assertsOn() == false) {
       System.out.println(
           "\nNOTE: testing will be more thorough if you run java with '-ea:org.apache.lucene...', so assertions are enabled");
+    }
 
     System.out.println("\nOpening index @ " + opts.indexPath + "\n");
     Directory directory = null;
