@@ -17,6 +17,7 @@
 #ifdef PERF_MESURE
 #include <perfcounter.h>
 #include <stdio.h>
+uint64_t total_cycles = 0;
 #endif
 
 __host uint32_t index_loaded = 0;
@@ -90,8 +91,8 @@ int main() {
         mem_reset();
 
 #ifdef PERF_MESURE
+        perfcounter_config(COUNT_CYCLES, true);
         printf("Number of queries: %d\n", nb_queries_in_batch);
-        perfcounter_config(COUNT_CYCLES, false);
 #endif
         batch_num = 0;
         results_buffer_index = 0;
@@ -217,7 +218,11 @@ int main() {
 #endif
 
 #ifdef PERF_MESURE
-    printf("Nb cycles %lu\n", perfcounter_get());
+    barrier_wait(&barrier);
+    if(me() == 0) {
+      total_cycles += perfcounter_get();
+      printf("Nb cycles=%lu total=%lu\n", perfcounter_get(), total_cycles);
+    }
 #endif
     return 0;
 }
