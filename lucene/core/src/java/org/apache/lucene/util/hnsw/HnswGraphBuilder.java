@@ -190,8 +190,6 @@ public final class HnswGraphBuilder<T> {
   private void initializeFromGraph(
       HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
     assert hnsw.size() == 0;
-    float[] vectorValue = null;
-    byte[] binaryValue = null;
     for (int level = 0; level < initializerGraph.numLevels(); level++) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
@@ -205,38 +203,14 @@ public final class HnswGraphBuilder<T> {
           initializedNodes.add(newOrd);
         }
 
-        switch (this.vectorEncoding) {
-          case FLOAT32:
-            vectorValue = (float[]) vectors.vectorValue(newOrd);
-            break;
-          case BYTE:
-            binaryValue = (byte[]) vectors.vectorValue(newOrd);
-            break;
-        }
-
         NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
         initializerGraph.seek(level, oldOrd);
         for (int oldNeighbor = initializerGraph.nextNeighbor();
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          float score;
-          switch (this.vectorEncoding) {
-            case FLOAT32:
-            default:
-              score =
-                  this.similarityFunction.compare(
-                      vectorValue, (float[]) vectorsCopy.vectorValue(newNeighbor));
-              break;
-            case BYTE:
-              score =
-                  this.similarityFunction.compare(
-                      binaryValue, (byte[]) vectorsCopy.vectorValue(newNeighbor));
-              break;
-          }
-          // we are not sure whether the previous graph contains
-          // unchecked nodes, so we have to assume they're all unchecked
-          newNeighbors.addOutOfOrder(newNeighbor, score);
+          // we will compute these scores later when we need to pop out the non-diverse nodes
+          newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
         }
       }
     }
@@ -338,7 +312,7 @@ public final class HnswGraphBuilder<T> {
       NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
       nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
       if (nbrsOfNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrsOfNbr);
+        int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
         nbrsOfNbr.removeIndex(indexToRemove);
       }
     }
@@ -423,8 +397,39 @@ public final class HnswGraphBuilder<T> {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
-    int[] uncheckedIndexes = neighbors.sort();
+  private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
+    float[] vectorValue = null;
+    byte[] binaryValue = null;
+    switch (this.vectorEncoding) {
+      case FLOAT32:
+        vectorValue = (float[]) vectors.vectorValue(nodeOrd);
+        break;
+      case BYTE:
+        binaryValue = (byte[]) vectors.vectorValue(nodeOrd);
+        break;
+    }
+    float[] finalVectorValue = vectorValue;
+    byte[] finalBinaryValue = binaryValue;
+    int[] uncheckedIndexes =
+        neighbors.sort(
+            nbrOrd -> {
+              float score;
+              switch (this.vectorEncoding) {
+                case FLOAT32:
+                  score =
+                      this.similarityFunction.compare(
+                          finalVectorValue, (float[]) vectorsCopy.vectorValue(nbrOrd));
+                  break;
+                default:
+                case BYTE:
+                  score =
+                      this.similarityFunction.compare(
+                          finalBinaryValue, (byte[]) vectorsCopy.vectorValue(nbrOrd));
+                  break;
+              }
+              ;
+              return score;
+            });
     if (uncheckedIndexes == null) {
       // all nodes are checked, we will directly return the most distant one
       return neighbors.size() - 1;
