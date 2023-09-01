@@ -19,7 +19,6 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -96,7 +95,8 @@ public class NeighborArray {
     int[] uncheckedIndexes = new int[size - sortedNodeSize];
     int count = 0;
     while (sortedNodeSize != size) {
-      uncheckedIndexes[count] = insertSortedInternal(scoringFunction); // sortedNodeSize is increased inside
+      uncheckedIndexes[count] =
+          insertSortedInternal(scoringFunction); // sortedNodeSize is increased inside
       for (int i = 0; i < count; i++) {
         if (uncheckedIndexes[i] >= uncheckedIndexes[count]) {
           // the previous inserted nodes has been shifted
@@ -115,7 +115,7 @@ public class NeighborArray {
     int tmpNode = node[sortedNodeSize];
     float tmpScore = score[sortedNodeSize];
 
-    if (Float.isNaN(tmpScore)){
+    if (Float.isNaN(tmpScore)) {
       tmpScore = scoringFunction.computeScore(tmpNode);
     }
 
@@ -206,11 +206,13 @@ public class NeighborArray {
   }
 
   /**
-   * ScoringFunction is a lambda function created in HnswGraphBuilder to allow for lazy computation of distance score.
+   * ScoringFunction is a lambda function created in HnswGraphBuilder to allow for lazy computation
+   * of distance score.
    */
   interface ScoringFunction {
     /**
-     * Computes the distance score between the given node ID and the root node of this NeighborArray.
+     * Computes the distance score between the given node ID and the root node of this
+     * NeighborArray.
      *
      * @param nodeId The ID of the node for which to compute the distance score.
      * @return The distance score as a float value.

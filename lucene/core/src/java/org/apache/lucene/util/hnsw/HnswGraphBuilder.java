@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -404,16 +403,18 @@ public final class HnswGraphBuilder<T> {
     }
     float[] finalVectorValue = vectorValue;
     byte[] finalBinaryValue = binaryValue;
-    int[] uncheckedIndexes = neighbors.sort(nbrOrd -> {
-      float score =
-              switch (this.vectorEncoding) {
-                case FLOAT32 -> this.similarityFunction.compare(
+    int[] uncheckedIndexes =
+        neighbors.sort(
+            nbrOrd -> {
+              float score =
+                  switch (this.vectorEncoding) {
+                    case FLOAT32 -> this.similarityFunction.compare(
                         finalVectorValue, (float[]) vectorsCopy.vectorValue(nbrOrd));
-                case BYTE -> this.similarityFunction.compare(
+                    case BYTE -> this.similarityFunction.compare(
                         finalBinaryValue, (byte[]) vectorsCopy.vectorValue(nbrOrd));
-              };
-      return score;
-    });
+                  };
+              return score;
+            });
     if (uncheckedIndexes == null) {
       // all nodes are checked, we will directly return the most distant one
       return neighbors.size() - 1;
