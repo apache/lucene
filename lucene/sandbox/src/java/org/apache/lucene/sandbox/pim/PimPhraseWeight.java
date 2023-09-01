@@ -61,7 +61,9 @@ public class PimPhraseWeight extends Weight {
         // if the PIM system is ready to answer queries for this context use it
         if (PimSystemManager.get().isReady(context) && PimSystemManager.get().isQuerySupported(getQuery())) {
 
-            System.out.println(">> Query is offloaded to PIM system for segment " + context.ord);
+            System.out.println(">> Query is offloaded to PIM system " +
+                    (PimSystemManager.USE_SOFTWARE_MODEL ? "simulator" : "hardware") +
+                    " for segment " + context.ord);
             PimPhraseQuery pimQuery = (PimPhraseQuery) getQuery();
             LeafSimScorer simScorer =
                     new LeafSimScorer(scoreStats.similarity.scorer(scoreStats.boost,

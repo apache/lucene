@@ -37,7 +37,6 @@ public final class PimSystemManager1 implements PimSystemManager {
     private static final int BYTE_BUFFER_QUEUE_LOG2_BYTE_SIZE = 11;
     private static final int QUERY_BATCH_SIZE = 128;
     private static final boolean DEBUG = false;
-    private static final boolean USE_SOFTWARE_MODEL = false;
 
     private volatile boolean isIndexLoaded;
     private volatile boolean isIndexBeingLoaded;

@@ -14,6 +14,12 @@ import java.util.List;
  */
 public interface PimSystemManager {
 
+    /**
+     * Variable to control the backend used for queries
+     * It can be the software simulator on CPU or the real PIM HW
+     */
+    boolean USE_SOFTWARE_MODEL = true;
+
     static PimSystemManager get() {
         return PimSystemManager2.get();
     }
@@ -51,7 +57,7 @@ public interface PimSystemManager {
      * @return number of dpus used by the index if an index is currently loaded
      * in the PIM system and zero otherwise
      */
-    public int getNbDpus();
+    int getNbDpus();
 
     void shutDown();
 
