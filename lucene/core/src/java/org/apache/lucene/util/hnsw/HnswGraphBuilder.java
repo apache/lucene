@@ -205,8 +205,7 @@ public final class HnswGraphBuilder<T> {
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          // we are not sure whether the previous graph contains
-          // unchecked nodes, so we have to assume they're all unchecked
+          // we will compute these scores later when we need to pop out the non-diverse nodes
           newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
         }
       }
