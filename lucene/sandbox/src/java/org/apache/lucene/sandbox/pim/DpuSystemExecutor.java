@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Arrays;
 
 class DpuSystemExecutor implements PimQueriesExecutor {
     static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
@@ -29,9 +30,9 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     private final DpuProgramInfo dpuProgramInfo;
     private final ByteArrayOutputStream dpuStream;
     private final byte[] dpuQueryOffsetInBatch;
-    private final byte[][] dpuQueryResultsAddr;
-    private final byte[][] dpuResults;
-    private final byte[][][] dpuResultsPerRank;
+    private final ByteBuffer[] dpuQueryResultsAddr;
+    private final ByteBuffer[] dpuResults;
+    private final ByteBuffer[][] dpuResultsPerRank;
     private final int[] dpuIdOffset;
     private final byte[] dpuQueryTmp = new byte[8];
     private CountDownLatch dpuResultsLatch;
@@ -45,13 +46,20 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         dpuSystem = DpuSystem.allocate(DpuConstants.nrDpus, "", new PrintStream(dpuStream));
         dpuProgramInfo = dpuSystem.load(DpuConstants.dpuProgramPath);
         dpuQueryOffsetInBatch = new byte[DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
-        dpuQueryResultsAddr = new byte[dpuSystem.dpus().size()][DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
-        dpuResults = new byte[dpuSystem.dpus().size()][DpuConstants.dpuResultsMaxByteSize];
-        dpuResultsPerRank = new byte[dpuSystem.ranks().size()][][];
+        dpuQueryResultsAddr = new ByteBuffer[dpuSystem.dpus().size()];
+        dpuResults = new ByteBuffer[dpuSystem.dpus().size()];
+        for(int i = 0; i < dpuSystem.dpus().size(); ++i) {
+          dpuQueryResultsAddr[i] =
+            ByteBuffer.allocateDirect(DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES);
+          dpuQueryResultsAddr[i].order(ByteOrder.LITTLE_ENDIAN);
+          dpuResults[i] = ByteBuffer.allocateDirect(DpuConstants.dpuResultsMaxByteSize);
+          dpuResults[i].order(ByteOrder.LITTLE_ENDIAN);
+        }
+        dpuResultsPerRank = new ByteBuffer[dpuSystem.ranks().size()][];
         dpuIdOffset = new int[dpuSystem.dpus().size()];
         int cnt = 0;
         for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
-            dpuResultsPerRank[i] = new byte[dpuSystem.ranks().get(i).dpus().size()][];
+            dpuResultsPerRank[i] = new ByteBuffer[dpuSystem.ranks().get(i).dpus().size()];
             dpuIdOffset[i] = cnt;
             for (int j = 0; j < dpuSystem.ranks().get(i).dpus().size(); ++j) {
                 dpuResultsPerRank[i][j] = dpuResults[cnt++];
@@ -209,14 +217,13 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                     // find the max byte size of results for DPUs in this rank
                     int resultsSize = 0;
                     for (int i = 0; i < set.dpus().size(); ++i) {
-                        int dpuResultsSize = (int) BitUtil.VH_LE_INT.get(
-                                dpuQueryResultsAddr[dpuIdOffset[rankId] + i], lastQueryIndex);
+                        int dpuResultsSize = dpuQueryResultsAddr[dpuIdOffset[rankId] + i].getInt(lastQueryIndex);
                         if (dpuResultsSize > resultsSize)
                             resultsSize = dpuResultsSize;
                     }
                     // perform the transfer for this rank
                     set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
-                            resultsSize * Integer.BYTES * 2);
+                        resultsSize * Integer.BYTES * 2);
                 }
         );
 
@@ -370,15 +377,14 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                     // find the max byte size of results for DPUs in this rank
                     int resultsSize = 0;
                     for (int i = 0; i < set.dpus().size(); ++i) {
-                        int dpuResultsSize = (int) BitUtil.VH_LE_INT.get(
-                                dpuQueryResultsAddr[dpuIdOffset[rankId] + i], lastQueryIndex);
+                        int dpuResultsSize = dpuQueryResultsAddr[dpuIdOffset[rankId] + i].getInt(lastQueryIndex);
                         if (dpuResultsSize > resultsSize)
                             resultsSize = dpuResultsSize;
                     }
 
                     // perform the transfer for this rank
                     set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
-                            resultsSize * Integer.BYTES * 2);
+                        resultsSize * Integer.BYTES * 2);
                 }
         );
 

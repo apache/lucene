@@ -2,6 +2,7 @@ package org.apache.lucene.sandbox.pim;
 
 import org.apache.lucene.util.BitUtil;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Class to read the results of a query from the DPU results array
@@ -11,14 +12,14 @@ import java.io.IOException;
 public class DpuResultsInput extends DpuResultsReader {
 
     final int nbDpus;
-    final byte[][] dpuQueryResultsAddr;
-    final byte[][] dpuResults;
+    final ByteBuffer[] dpuQueryResultsAddr;
+    final ByteBuffer[] dpuResults;
     final int queryId;
     int currDpuId;
     int currByteIndex;
     int byteIndexEnd;
 
-    DpuResultsInput(int nbDpus, byte[][] dpuResults, byte[][] dpuQueryResultsAddr, int queryId) {
+    DpuResultsInput(int nbDpus, ByteBuffer[] dpuResults, ByteBuffer[] dpuQueryResultsAddr, int queryId) {
         this.nbDpus = nbDpus;
         this.dpuResults = dpuResults;
         this.dpuQueryResultsAddr = dpuQueryResultsAddr;
@@ -37,10 +38,11 @@ public class DpuResultsInput extends DpuResultsReader {
 
         this.currByteIndex = 0;
         if(queryId > 0)
-            this.currByteIndex = (int) BitUtil.VH_LE_INT.get(
-                    dpuQueryResultsAddr[currDpuId], (queryId - 1) * Integer.BYTES) * Integer.BYTES * 2;
-        this.byteIndexEnd = (int) BitUtil.VH_LE_INT.get(
-                dpuQueryResultsAddr[currDpuId], queryId * Integer.BYTES) * Integer.BYTES * 2;
+          this.currByteIndex =
+            dpuQueryResultsAddr[currDpuId].getInt((queryId - 1) * Integer.BYTES) * Integer.BYTES * 2;
+
+        this.byteIndexEnd =
+          dpuQueryResultsAddr[currDpuId].getInt(queryId * Integer.BYTES) * Integer.BYTES * 2;
     }
 
     private boolean endOfDpuBuffer() {
@@ -51,7 +53,7 @@ public class DpuResultsInput extends DpuResultsReader {
     public byte readByte() throws IOException {
         while (endOfDpuBuffer())
             nextDpu();
-        return dpuResults[currDpuId][currByteIndex++];
+        return dpuResults[currDpuId].get(currByteIndex++);
     }
 
     @Override
