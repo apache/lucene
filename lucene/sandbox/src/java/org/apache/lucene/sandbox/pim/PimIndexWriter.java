@@ -657,7 +657,6 @@ public class PimIndexWriter extends IndexWriter {
                         segmentSkipBuffer.writeVLong(0);
                     blocksOutput.writeVLong(segmentSkipBuffer.size());
                     segmentSkipBuffer.copyTo(blocksOutput);
-                    ByteBuffersDataInput in = segmentSkipBuffer.toDataInput();
 
                     segmentSkipBuffer.reset();
                     nbDpuSegmentsWritten = 0;
