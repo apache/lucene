@@ -98,6 +98,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
     uintptr_t succ_node = 0;
     uintptr_t succ_node_ancestor = 0;
     int found_cmp = 0;
+    uint8_t succ_left_most = 0;
 
     while (1) {
 
@@ -109,7 +110,7 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
         int cmp = compare_with_next_term(term->term_decoder, term->size, decoder, block_term_length);
 
         // read child info and address
-        uint32_t childInfo = decode_vint_from(decoder);
+        uint32_t child_info = decode_vint_from(decoder);
         uint32_t address = decode_vint_from(decoder);
 
         if(cmp == 0) {
@@ -120,22 +121,24 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             found_cmp = 0;
 
             // update successor node
-            // if there is a right child this is the successor
+            // if there is a right child the successor is its left-most child
             // Otherwise this is the first ancestor for which the searched term is in the left subtree
-            int right_child_offset = childInfo >> 2;
+            int right_child_offset = child_info >> 2;
             if(right_child_offset) {
                 succ_node = get_absolute_address_from(decoder) + right_child_offset;
+                succ_left_most = 1;
             }
             else {
                 succ_node = succ_node_ancestor;
+                succ_left_most = 0;
             }
             break;
         }
         else if(cmp < 0) {
             // searched term is smaller than current term, go to left child
             // the left child is simply the next node in the block table
-            uint8_t hasLeftChild = (childInfo & 1) != 0;
-            if(!hasLeftChild) {
+            uint8_t has_left_child = (child_info & 1) != 0;
+            if(!has_left_child) {
                 // the left child is the next node in the byte array
                 // If no left child, we are done
                 break;
@@ -150,14 +153,16 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             block->block_address = address;
             found_cmp = cmp;
 
-            int right_child_offset = childInfo >> 2;
+            int right_child_offset = child_info >> 2;
             if(right_child_offset) {
                 succ_node =
                     get_absolute_address_from(decoder) + right_child_offset;
                 seek_decoder(decoder, succ_node);
+                succ_left_most = 1;
             }
             else {
                 succ_node = succ_node_ancestor;
+                succ_left_most = 0;
                 // no right child, we are done
                 break;
             }
@@ -175,11 +180,11 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
             // the last address is the next element after this node
             succ_node = block->term + block->term_size;
             seek_decoder(decoder, succ_node);
-            uint32_t childInfo = decode_vint_from(decoder);
+            uint32_t child_info = decode_vint_from(decoder);
             decode_vint_from(decoder);
-            while((childInfo & 1) != 0) {
+            while((child_info & 1) != 0) {
                 skip_term(decoder);
-                childInfo = decode_vint_from(decoder);
+                child_info = decode_vint_from(decoder);
                 decode_vint_from(decoder);
             }
             addr = decode_vint_from(decoder);
@@ -187,8 +192,18 @@ static int lookup_term_block(decoder_t* decoder, const term_t* term, block_t* bl
         else {
             seek_decoder(decoder, succ_node);
             skip_term(decoder);
-            decode_vint_from(decoder);
+            uint32_t child_info = decode_vint_from(decoder);
             addr = decode_vint_from(decoder);
+            // when the stored successor is not an ancestor but a right child
+            // of the found node, traverse the tree towards the left-most child 
+            // to find the true successor
+            if(succ_left_most != 0) {
+              while(child_info & 1) {
+                skip_term(decoder);
+                child_info = decode_vint_from(decoder);
+                addr = decode_vint_from(decoder);
+              }
+            }
         }
         block->block_size = addr - block->block_address;
     }
