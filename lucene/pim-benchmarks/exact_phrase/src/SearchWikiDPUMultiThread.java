@@ -71,7 +71,7 @@ public class SearchWikiDPUMultiThread {
     String queries = null;
     int repeat = 0;
     String queryString = null;
-    int totalTime = 0;
+    long totalTime = 0;
     long cpuTime = 0;
 
     for (int i = 0; i < args.length; i++) {
@@ -96,7 +96,8 @@ public class SearchWikiDPUMultiThread {
     IndexSearcher searcher = new IndexSearcher(reader);
 
     // load PIM index from PIM directory
-    PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu")));
+    if(!PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu"))))
+      System.out.println("WARNING: failed to load PIM index");
 
     System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
 

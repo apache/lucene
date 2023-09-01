@@ -76,7 +76,7 @@ public class SearchWiki {
         String queries = null;
         int repeat = 0;
         String queryString = null;
-        int totalTime = 0;
+        long totalTime = 0;
         long cpuTime = 0;
 
         for (int i = 0; i < args.length; i++) {
