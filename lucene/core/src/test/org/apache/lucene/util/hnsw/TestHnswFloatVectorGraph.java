@@ -27,8 +27,11 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
@@ -137,7 +140,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     for (int i = 500; i < nDoc; i++) {
       acceptOrds.set(i);
     }
-    NeighborQueue nn =
+    KnnCollector nn =
         HnswGraphSearcher.search(
             getTargetVector(),
             10,
@@ -148,12 +151,12 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
             acceptOrds,
             Integer.MAX_VALUE);
 
-    int[] nodes = nn.nodes();
-    assertEquals("Number of found results is not equal to [10].", 10, nodes.length);
+    TopDocs nodes = nn.topDocs();
+    assertEquals("Number of found results is not equal to [10].", 10, nodes.scoreDocs.length);
     int sum = 0;
-    for (int node : nodes) {
-      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node));
-      sum += node;
+    for (ScoreDoc node : nodes.scoreDocs) {
+      assertTrue("the results include a deleted document: " + node, acceptOrds.get(node.doc));
+      sum += node.doc;
     }
     // We still expect to get reasonable recall. The lowest non-skipped docIds
     // are closest to the query vector: sum(500,509) = 5045

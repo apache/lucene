@@ -41,6 +41,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -190,22 +191,16 @@ public class BlockTermsReader extends FieldsProducer {
   public void close() throws IOException {
     try {
       try {
-        if (indexReader != null) {
-          indexReader.close();
-        }
+        IOUtils.close(indexReader);
       } finally {
         // null so if an app hangs on to us (ie, we are not
         // GCable, despite being closed) we still free most
         // ram
         indexReader = null;
-        if (in != null) {
-          in.close();
-        }
+        IOUtils.close(in);
       }
     } finally {
-      if (postingsReader != null) {
-        postingsReader.close();
-      }
+      IOUtils.close(postingsReader);
     }
   }
 

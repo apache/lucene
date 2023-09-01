@@ -25,11 +25,11 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TermAndBoost;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 
 /**
@@ -74,7 +74,7 @@ public class Word2VecSynonymProvider {
     LinkedList<TermAndBoost> result = new LinkedList<>();
     float[] query = word2VecModel.vectorValue(term);
     if (query != null) {
-      NeighborQueue synonyms =
+      KnnCollector synonyms =
           HnswGraphSearcher.search(
               query,
               // The query vector is in the model. When looking for the top-k
@@ -86,16 +86,16 @@ public class Word2VecSynonymProvider {
               hnswGraph,
               null,
               Integer.MAX_VALUE);
+      TopDocs topDocs = synonyms.topDocs();
 
-      int size = synonyms.size();
-      for (int i = 0; i < size; i++) {
-        float similarity = synonyms.topScore();
-        int id = synonyms.pop();
+      for (int i = 0; i < topDocs.scoreDocs.length; i++) {
+        float similarity = topDocs.scoreDocs[i].score;
+        int id = topDocs.scoreDocs[i].doc;
 
         BytesRef synonym = word2VecModel.termValue(id);
         // We remove the original query term
         if (!synonym.equals(term) && similarity >= minAcceptedSimilarity) {
-          result.addFirst(new TermAndBoost(synonym, similarity));
+          result.addLast(new TermAndBoost(synonym, similarity));
         }
       }
     }

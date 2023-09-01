@@ -93,11 +93,6 @@ public abstract class ValueSource {
     }
 
     @Override
-    public int docID() {
-      return docId;
-    }
-
-    @Override
     public float score() throws IOException {
       // ensure we calculate the score at most once
       if (scoresDocId != docId) {
