@@ -17,7 +17,6 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 import java.io.IOException;
