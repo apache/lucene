@@ -305,6 +305,12 @@ public abstract class PointValues {
      */
     void visit(int docID, byte[] packedValue) throws IOException;
 
+    /** Similar to {@link IntersectVisitor#visit(int, byte[])} but return a match state. */
+    default int visitWithState(int docID, byte[] packedValue) throws IOException {
+      visit(docID, packedValue);
+      return -1;
+    }
+
     /**
      * Similar to {@link IntersectVisitor#visit(int, byte[])} but in this case the packedValue can
      * have more than one docID associated to it. The provided iterator should not escape the scope
