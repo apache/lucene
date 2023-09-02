@@ -264,10 +264,31 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
+          public int visitWithState(int docID, byte[] packedValue) {
+            int matchState = matchesWithState(packedValue);
+            //            leave all greater docs to one batch.
+            if (matchState == 1) {
+              visit(docID);
+            }
+            return matchState;
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue) == false) {
               visit(iterator);
             }
+          }
+
+          @Override
+          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue)
+              throws IOException {
+            int matchState = matchesWithState(packedValue);
+            //            leave all greater docs to one batch.
+            if (matchState == 1) {
+              visit(iterator);
+            }
+            return matchState;
           }
 
           @Override
@@ -284,6 +305,11 @@ public abstract class PointRangeQuery extends Query {
               default:
                 return relation;
             }
+          }
+
+          @Override
+          public boolean isInverse() {
+            return true;
           }
         };
       }

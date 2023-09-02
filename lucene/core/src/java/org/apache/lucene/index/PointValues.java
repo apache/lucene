@@ -281,6 +281,12 @@ public abstract class PointValues {
    * @lucene.experimental
    */
   public interface IntersectVisitor {
+
+    /** return true if this is an inverse visitor. */
+    default boolean isInverse() {
+      return false;
+    }
+
     /**
      * Called for all documents in a leaf cell that's fully contained by the query. The consumer
      * should blindly accept the docID.
