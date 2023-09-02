@@ -103,7 +103,6 @@ public class LockStressTest {
     System.out.println(
         "Connecting to server " + addr + " and registering as client " + myID + "...");
     try (Socket socket = new Socket()) {
-      socket.setReuseAddress(true);
       socket.connect(addr, 500);
       final OutputStream out = socket.getOutputStream();
       final InputStream in = socket.getInputStream();
