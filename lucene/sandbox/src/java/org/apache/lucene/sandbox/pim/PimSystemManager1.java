@@ -7,14 +7,11 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.DataInput;
 
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.locks.Condition;
@@ -214,11 +211,10 @@ public final class PimSystemManager1 implements PimSystemManager {
      *
      * @param context the leafReaderContext to search
      * @param query   the query to execute
-     * @param scorer  the scorer to use to score the results
-     * @return the list of matches
+     * @return A reader of matches
      */
-    public <QueryType extends Query & PimQuery>  List<PimMatch> search(LeafReaderContext context,
-                                              QueryType query, LeafSimScorer scorer) throws PimQueryQueueFullException {
+    public <QueryType extends Query & PimQuery>  DpuResultsReader search(LeafReaderContext context,
+                                              QueryType query) throws PimQueryQueueFullException {
 
         if (!isQuerySupported(query))
             return null;
@@ -265,7 +261,7 @@ public final class PimSystemManager1 implements PimSystemManager {
                 System.out.println("Reading result");
 
             // results are available
-            return getQueryMatches(query, id, scorer);
+            return getQueryMatches(id);
 
         } catch (ByteBufferBoundedQueue.InsufficientSpaceInQueueException e) {
             // not enough capacity in queue
@@ -297,15 +293,12 @@ public final class PimSystemManager1 implements PimSystemManager {
     /**
      * Returns the results of a query by interpreting data returned by the PIM system and
      * creating a list of PimMatch objects.
-     * @param q the query
      * @param id the id of the query (specific to this PimManager)
-     * @param scorer the scorer to be used to score results obtained from the PIM system
-     * @return the list of matches for this query
+     * @return A reader for the matches for this query
      * @param <QueryType> a type that is both a Query and a PimQuery
      * @throws IOException
      */
-    private <QueryType extends Query & PimQuery> List<PimMatch> getQueryMatches(
-            QueryType q, int id, LeafSimScorer scorer) throws IOException {
+    private <QueryType extends Query & PimQuery> DpuResultsReader getQueryMatches(int id) throws IOException {
 
         resultsLock.readLock().lock();
         DpuResultsReader resultsReader;
@@ -317,8 +310,6 @@ public final class PimSystemManager1 implements PimSystemManager {
         }
         assert resultsReader != null;
 
-        List<PimMatch> matches = getMatches(q, resultsReader, scorer);
-
         // remove the results reader from the map
         resultsLock.writeLock().lock();
         try {
@@ -327,10 +318,9 @@ public final class PimSystemManager1 implements PimSystemManager {
         finally {
             resultsLock.writeLock().unlock();
         }
-        resultReceiver.releaseResults();
         unregisterQueryId(id);
 
-        return matches;
+        return resultsReader;
     }
 
     /**
@@ -371,24 +361,6 @@ public final class PimSystemManager1 implements PimSystemManager {
         } finally {
             queryIdsLock.unlock();
         }
-    }
-
-
-    /**
-     * Used by method getQueryMatches
-     */
-    private <QueryType extends Query & PimQuery> List<PimMatch> getMatches(
-            QueryType q, DpuResultsReader input, LeafSimScorer scorer) throws IOException {
-
-        List<PimMatch> matches = new ArrayList<>();
-
-        // 2) loop and call readResult (specialized on query type, return a PimMatch)
-        while(!input.eof()) {
-            PimMatch m = q.readResult(input, scorer);
-            if(m != null)
-                matches.add(m);
-        }
-        return matches;
     }
 
     /**
@@ -536,19 +508,12 @@ public final class PimSystemManager1 implements PimSystemManager {
 
     class ResultReceiverImpl implements ResultReceiver {
 
-        Runnable releaseResults;
-
         public void startResultBatch() {
             resultsLock.writeLock().lock();
         }
 
-        public void addResults(int queryId, DpuResultsReader results, Runnable releaseResults) {
-            this.releaseResults = releaseResults;
+        public void addResults(int queryId, DpuResultsReader results) {
             queryResultsMap.put(queryId, results);
-        }
-
-        public void releaseResults() {
-            releaseResults.run();
         }
 
         public void endResultBatch() {

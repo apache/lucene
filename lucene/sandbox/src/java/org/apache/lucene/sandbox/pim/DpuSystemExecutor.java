@@ -8,7 +8,6 @@ import com.upmem.dpu.DpuProgramInfo;
 
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.BitUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.Arrays;
 
 class DpuSystemExecutor implements PimQueriesExecutor {
     static final int QUERY_BATCH_BUFFER_CAPACITY = 1 << 11;
@@ -30,12 +28,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     private final DpuProgramInfo dpuProgramInfo;
     private final ByteArrayOutputStream dpuStream;
     private final byte[] dpuQueryOffsetInBatch;
-    private final ByteBuffer[] dpuQueryResultsAddr;
-    private final ByteBuffer[] dpuResults;
-    private final ByteBuffer[][] dpuResultsPerRank;
     private final int[] dpuIdOffset;
     private final byte[] dpuQueryTmp = new byte[8];
-    private CountDownLatch dpuResultsLatch;
     private int nbDpusInIndex;
     private final Lock dpuPrintLock = new ReentrantLock();
 
@@ -46,26 +40,12 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         dpuSystem = DpuSystem.allocate(DpuConstants.nrDpus, "", new PrintStream(dpuStream));
         dpuProgramInfo = dpuSystem.load(DpuConstants.dpuProgramPath);
         dpuQueryOffsetInBatch = new byte[DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
-        dpuQueryResultsAddr = new ByteBuffer[dpuSystem.dpus().size()];
-        dpuResults = new ByteBuffer[dpuSystem.dpus().size()];
-        for(int i = 0; i < dpuSystem.dpus().size(); ++i) {
-          dpuQueryResultsAddr[i] =
-            ByteBuffer.allocateDirect(DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES);
-          dpuQueryResultsAddr[i].order(ByteOrder.LITTLE_ENDIAN);
-          dpuResults[i] = ByteBuffer.allocateDirect(DpuConstants.dpuResultsMaxByteSize);
-          dpuResults[i].order(ByteOrder.LITTLE_ENDIAN);
-        }
-        dpuResultsPerRank = new ByteBuffer[dpuSystem.ranks().size()][];
         dpuIdOffset = new int[dpuSystem.dpus().size()];
         int cnt = 0;
         for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
-            dpuResultsPerRank[i] = new ByteBuffer[dpuSystem.ranks().get(i).dpus().size()];
             dpuIdOffset[i] = cnt;
-            for (int j = 0; j < dpuSystem.ranks().get(i).dpus().size(); ++j) {
-                dpuResultsPerRank[i][j] = dpuResults[cnt++];
-            }
+            cnt += dpuSystem.ranks().get(i).dpus().size();
         }
-        dpuResultsLatch = null;
         nbDpusInIndex = 0;
     }
 
@@ -190,21 +170,14 @@ class DpuSystemExecutor implements PimQueriesExecutor {
             });
         }
 
-        // Wait for the results array to be read before overwritting it with a new transfer
-        if(dpuResultsLatch != null) {
-            dpuSystem.async().call(
-                    (DpuSet set, int rankId) -> {
-                        try {
-                            dpuResultsLatch.await();
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-        }
-
         // 3) results transfer from DPUs to CPU
         // first get the meta-data (index of query results in results array for each DPU)
         // This meta-data has one integer per query in the batch
+        ByteBuffer[] dpuQueryResultsAddr = new ByteBuffer[dpuSystem.dpus().size()];
+        for(int i = 0; i < dpuQueryResultsAddr.length; ++i) {
+            dpuQueryResultsAddr[i] = ByteBuffer.allocateDirect(AlignTo8(queryBatch.getNbElems() * Integer.BYTES));
+            dpuQueryResultsAddr[i].order(ByteOrder.LITTLE_ENDIAN);
+        }
         dpuSystem.async().copy(dpuQueryResultsAddr, DpuConstants.dpuResultsIndexVarName,
                 AlignTo8(queryBatch.getNbElems() * Integer.BYTES));
 
@@ -212,6 +185,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // use a callback to transfer a minimal number of results per rank
         assert queryBatch.getNbElems() != 0;
         final int lastQueryIndex = (queryBatch.getNbElems() - 1) * Integer.BYTES;
+        ByteBuffer[] dpuResults = new ByteBuffer[dpuSystem.dpus().size()];
+        ByteBuffer[][] dpuResultsPerRank = new ByteBuffer[dpuSystem.ranks().size()][];
         dpuSystem.async().call(
                 (DpuSet set, int rankId) -> {
                     // find the max byte size of results for DPUs in this rank
@@ -222,11 +197,21 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                             resultsSize = dpuResultsSize;
                     }
                     assert resultsSize >= 0;
+                    if(resultsSize == 0)
+                      return;
+
+                    // allocate the memory to transfer results
+                    dpuResultsPerRank[rankId] = new ByteBuffer[set.dpus().size()];
+                    for (int i = 0; i < set.dpus().size(); ++i) {
+                        dpuResults[dpuIdOffset[rankId] + i] =
+                                ByteBuffer.allocateDirect(resultsSize * Integer.BYTES * 2);
+                        dpuResults[dpuIdOffset[rankId] + i].order(ByteOrder.LITTLE_ENDIAN);
+                        dpuResultsPerRank[rankId][i] = dpuResults[dpuIdOffset[rankId] + i];
+                    }
 
                     // perform the transfer for this rank
-                    if(resultsSize > 0)
-                      set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
-                          resultsSize * Integer.BYTES * 2);
+                    set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
+                        resultsSize * Integer.BYTES * 2);
                 }
         );
 
@@ -234,15 +219,11 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         dpuSystem.async().sync();
 
         // 5) Update the results map for the client threads to read their results
-        dpuResultsLatch = new CountDownLatch(queryBatch.getNbElems());
         resultReceiver.startResultBatch();
         try {
             for (int q = 0; q < queryBatch.getNbElems(); ++q) {
                 resultReceiver.addResults(queryBatch.getUniqueIdOf(q),
-                        new DpuResultsInput(nbDpusInIndex, dpuResults, dpuQueryResultsAddr, q),
-                        () -> {
-                            dpuResultsLatch.countDown();
-                        });
+                        new DpuResultsInput(nbDpusInIndex, dpuResults, dpuQueryResultsAddr, q));
             }
         } finally {
             resultReceiver.endResultBatch();
@@ -351,22 +332,14 @@ class DpuSystemExecutor implements PimQueriesExecutor {
             });
         }
 
-        // Wait for the results array to be read before overwriting it with a new transfer
-        if(dpuResultsLatch != null) {
-            dpuSystem.async().call(
-                    (DpuSet set, int rankId) -> {
-                        //System.out.println("Callback latch");
-                        try {
-                            dpuResultsLatch.await();
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-        }
-
         // 3) results transfer from DPUs to CPU
         // first get the meta-data (index of query results in results array for each DPU)
         // This meta-data has one integer per query in the batch
+        ByteBuffer[] dpuQueryResultsAddr = new ByteBuffer[dpuSystem.dpus().size()];
+        for(int i = 0; i < dpuQueryResultsAddr.length; ++i) {
+            dpuQueryResultsAddr[i] = ByteBuffer.allocateDirect(AlignTo8(queryBuffers.size() * Integer.BYTES));
+            dpuQueryResultsAddr[i].order(ByteOrder.LITTLE_ENDIAN);
+        }
         dpuSystem.async().copy(dpuQueryResultsAddr, DpuConstants.dpuResultsIndexVarName,
                 AlignTo8(queryBuffers.size() * Integer.BYTES));
 
@@ -374,7 +347,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         // use a callback to transfer a minimal number of results per rank
         assert queryBuffers.size() != 0;
         final int lastQueryIndex = (queryBuffers.size() - 1) * Integer.BYTES;
-
+        ByteBuffer[] dpuResults = new ByteBuffer[dpuSystem.dpus().size()];
+        ByteBuffer[][] dpuResultsPerRank = new ByteBuffer[dpuSystem.ranks().size()][];
         dpuSystem.async().call(
                 (DpuSet set, int rankId) -> {
                     // find the max byte size of results for DPUs in this rank
@@ -385,11 +359,21 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                             resultsSize = dpuResultsSize;
                     }
                     assert resultsSize >= 0;
+                    if(resultsSize == 0)
+                      return;
+
+                    // allocate the memory to transfer results
+                    dpuResultsPerRank[rankId] = new ByteBuffer[set.dpus().size()];
+                    for (int i = 0; i < set.dpus().size(); ++i) {
+                        dpuResults[dpuIdOffset[rankId] + i] =
+                                ByteBuffer.allocateDirect(resultsSize * Integer.BYTES * 2);
+                        dpuResults[dpuIdOffset[rankId] + i].order(ByteOrder.LITTLE_ENDIAN);
+                        dpuResultsPerRank[rankId][i] = dpuResults[dpuIdOffset[rankId] + i];
+                    }
 
                     // perform the transfer for this rank
-                    if(resultsSize > 0)
-                      set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
-                          resultsSize * Integer.BYTES * 2);
+                    set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
+                        resultsSize * Integer.BYTES * 2);
                 }
         );
 
@@ -397,12 +381,8 @@ class DpuSystemExecutor implements PimQueriesExecutor {
         dpuSystem.async().sync();
 
         // 5) Update the results map for the client threads to read their results
-        dpuResultsLatch = new CountDownLatch(queryBuffers.size());
         for (int q = 0, size = queryBuffers.size(); q < size; ++q) {
-            queryBuffers.get(q).addResults(new DpuResultsInput(nbDpusInIndex, dpuResults, dpuQueryResultsAddr, q),
-                    () -> {
-                        dpuResultsLatch.countDown();
-                    });
+            queryBuffers.get(q).addResults(new DpuResultsInput(nbDpusInIndex, dpuResults, dpuQueryResultsAddr, q));
         }
     }
 

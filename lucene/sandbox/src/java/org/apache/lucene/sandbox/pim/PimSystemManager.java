@@ -61,9 +61,8 @@ public interface PimSystemManager {
 
     void shutDown();
 
-    <QueryType extends Query & PimQuery> List<PimMatch> search(LeafReaderContext context,
-                                                               QueryType query,
-                                                               LeafSimScorer scorer)
+    <QueryType extends Query & PimQuery> DpuResultsReader search(LeafReaderContext context,
+                                                               QueryType query)
             throws PimQueryQueueFullException, InterruptedException, IOException;
 
     /**
@@ -83,9 +82,7 @@ public interface PimSystemManager {
 
         void startResultBatch();
 
-        void addResults(int queryId, DpuResultsReader results, Runnable onRelease);
-
-        void releaseResults();
+        void addResults(int queryId, DpuResultsReader results);
 
         void endResultBatch();
     }

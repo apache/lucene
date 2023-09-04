@@ -5,21 +5,19 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Scorer for PIM
  */
 public class PimScorer extends Scorer {
 
-  private final List<PimMatch> matches;
-  private int index;
   private PimMatch current;
   private float minCompetitiveScore;
+  private DpuResults dpuResults;
 
-  public PimScorer(Weight weight, List<PimMatch> matches) {
+  public PimScorer(Weight weight, DpuResults dpuResults) {
     super(weight);
-    this.matches = matches;
+    this.dpuResults = dpuResults;
     current = PimMatch.UNSET;
   }
 
@@ -44,11 +42,11 @@ public class PimScorer extends Scorer {
       @Override
       public int nextDoc() {
         do {
-          if (index >= matches.size()) {
+          if (!dpuResults.next()) {
             current = PimMatch.NO_MORE_RESULTS;
             break;
           }
-          current = matches.get(index++);
+          current = dpuResults.match();
         } while (current.score < minCompetitiveScore);
         return current.docId;
       }

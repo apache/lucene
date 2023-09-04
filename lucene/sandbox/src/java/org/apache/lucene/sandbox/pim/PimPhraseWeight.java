@@ -34,7 +34,7 @@ public class PimPhraseWeight extends Weight {
 
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
-        return new PimScorer(this, matchPhrase(context));
+        return matchPhrase(context);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class PimPhraseWeight extends Weight {
         return true;
     }
 
-    private List<PimMatch> matchPhrase(LeafReaderContext context) throws IOException {
+    private Scorer matchPhrase(LeafReaderContext context) throws IOException {
 
         //The score can be computed in the DPUs, but it needs to store the table doc->norm (see LeafSimScorer.getNormValue())
         // this table can be an array: n bits per norm value, with n determined based on [min,max] value.
@@ -65,13 +65,14 @@ public class PimPhraseWeight extends Weight {
                     (PimSystemManager.USE_SOFTWARE_MODEL ? "simulator" : "hardware") +
                     " for segment " + context.ord);
             PimPhraseQuery pimQuery = (PimPhraseQuery) getQuery();
-            LeafSimScorer simScorer =
+           LeafSimScorer simScorer =
                     new LeafSimScorer(scoreStats.similarity.scorer(scoreStats.boost,
                             scoreStats.collectionStats, scoreStats.termStats),
                             context.reader(), pimQuery.getField(), scoreStats.scoreMode.needsScores());
-            try {
-                return PimSystemManager.get().search(context, pimQuery, simScorer);
-            } catch (PimSystemManager.PimQueryQueueFullException e) {
+           try {
+                return new PimScorer(this, new DpuResults(pimQuery,
+                        PimSystemManager.get().search(context, pimQuery), simScorer));
+           } catch (PimSystemManager.PimQueryQueueFullException e) {
                 // PimSystemManager queue is full, handle the query on CPU
                 return matchWithPhraseQuery(context);
                 //for testing fail if this happens
@@ -79,37 +80,17 @@ public class PimPhraseWeight extends Weight {
                 //throw new RuntimeException();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return Collections.emptyList();
+                return null;
             }
         } else {
             return matchWithPhraseQuery(context);
         }
     }
 
-    private List<PimMatch> matchWithPhraseQuery(LeafReaderContext context) throws IOException {
+    private Scorer matchWithPhraseQuery(LeafReaderContext context) throws IOException {
         PhraseQuery query = buildPhraseQuery();
         Weight weight = query.createWeight(scoreStats.searcher, scoreStats.scoreMode, scoreStats.boost);
-        BulkScorer bulkScorer = weight.bulkScorer(context);
-        if (bulkScorer == null) {
-            return Collections.emptyList();
-        }
-        List<PimMatch> matches = new ArrayList<>();
-        LeafCollector collector = new LeafCollector() {
-
-            Scorable scorer;
-
-            @Override
-            public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-            }
-
-            @Override
-            public void collect(int doc) throws IOException {
-                matches.add(new PimMatch(doc, scorer.score()));
-            }
-        };
-        bulkScorer.score(collector, null);
-        return matches;
+        return weight.scorer(context);
     }
 
     private PhraseQuery buildPhraseQuery() {

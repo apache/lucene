@@ -2,7 +2,6 @@ package org.apache.lucene.sandbox.pim;
 
 import com.upmem.dpu.DpuException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.*;
 import org.apache.lucene.util.ArrayUtil;
@@ -13,7 +12,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -142,9 +140,8 @@ public class PimSystemManager2 implements PimSystemManager {
     }
 
     @Override
-    public <QueryType extends Query & PimQuery> List<PimMatch> search(LeafReaderContext context,
-                                                                      QueryType query,
-                                                                      LeafSimScorer scorer)
+    public <QueryType extends Query & PimQuery> DpuResultsReader search(LeafReaderContext context,
+                                                                      QueryType query)
             throws PimQueryQueueFullException, InterruptedException, IOException {
         assert isQuerySupported(query);
         QueryBuffer queryBuffer = threadQueryBuffer.get().reset();
@@ -153,13 +150,8 @@ public class PimSystemManager2 implements PimSystemManager {
             throw new PimQueryQueueFullException();
             //TODO: or return null?
         }
-        try {
-            DpuResultsReader results = queryBuffer.waitForResults();
-            return getMatches(query, results, scorer);
-        }
-        finally {
-            queryBuffer.releaseResults();
-        }
+
+        return queryBuffer.waitForResults();
     }
 
     private <QueryType extends Query & PimQuery> void writeQueryToPim(QueryType query, int leafIdx, QueryBuffer queryBuffer) {
@@ -173,30 +165,11 @@ public class PimSystemManager2 implements PimSystemManager {
         }
     }
 
-    private <QueryType extends Query & PimQuery> List<PimMatch> getMatches(QueryType query,
-                                                                           DpuResultsReader input,
-                                                                           LeafSimScorer scorer) throws IOException {
-        List<PimMatch> matches = null;
-        while (!input.eof()) {
-            //System.out.println("reading result");
-            PimMatch m = query.readResult(input, scorer);
-            if (m != null) {
-                if (matches == null) {
-                    matches = new ArrayList<>();
-                }
-                matches.add(m);
-            }
-        }
-        //System.out.println("return matches of size " + matches.size());
-        return matches == null ? Collections.emptyList() : matches;
-    }
-
     static class QueryBuffer extends DataOutput {
 
         final BlockingQueue<DpuResultsReader> resultQueue = new LinkedBlockingQueue<>();
         byte[] bytes = new byte[128];
         int length;
-        private Runnable releaseResults;
 
         QueryBuffer reset() {
             length = 0;
@@ -211,14 +184,9 @@ public class PimSystemManager2 implements PimSystemManager {
             return resultQueue.take();
         }
 
-        void addResults(DpuResultsReader results, Runnable releaseResults) {
+        void addResults(DpuResultsReader results) {
 
-            this.releaseResults = releaseResults;
             resultQueue.add(results);
-        }
-
-        void releaseResults() {
-            releaseResults.run();
         }
 
         @Override
