@@ -206,6 +206,8 @@ Bug Fixes
   impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
   scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
 
+* LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
+
 Other
 ---------------------
 
