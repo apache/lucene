@@ -57,6 +57,15 @@ public class DpuResultsInput extends DpuResultsReader {
     }
 
     @Override
+    public int readInt() throws IOException {
+        while (endOfDpuBuffer())
+            nextDpu();
+        int val = dpuResults[currDpuId].getInt(currByteIndex);
+        currByteIndex+=4;
+        return val;
+    }
+
+    @Override
     public void readBytes(byte[] b, int offset, int len) throws IOException {
 
         if (len <= (byteIndexEnd - currByteIndex)) {
