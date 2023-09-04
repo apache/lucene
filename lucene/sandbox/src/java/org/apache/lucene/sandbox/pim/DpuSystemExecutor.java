@@ -221,9 +221,12 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                         if (dpuResultsSize > resultsSize)
                             resultsSize = dpuResultsSize;
                     }
+                    assert resultsSize >= 0;
+
                     // perform the transfer for this rank
-                    set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
-                        resultsSize * Integer.BYTES * 2);
+                    if(resultsSize > 0)
+                      set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
+                          resultsSize * Integer.BYTES * 2);
                 }
         );
 
@@ -381,10 +384,12 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                         if (dpuResultsSize > resultsSize)
                             resultsSize = dpuResultsSize;
                     }
+                    assert resultsSize >= 0;
 
                     // perform the transfer for this rank
-                    set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
-                        resultsSize * Integer.BYTES * 2);
+                    if(resultsSize > 0)
+                      set.copy(dpuResultsPerRank[rankId], DpuConstants.dpuResultsBatchVarName,
+                          resultsSize * Integer.BYTES * 2);
                 }
         );
 
