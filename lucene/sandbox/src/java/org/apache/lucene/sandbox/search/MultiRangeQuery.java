@@ -158,9 +158,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   /**

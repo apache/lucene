@@ -80,9 +80,7 @@ public abstract class AbstractPrefixTreeQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(fieldName)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   @Override

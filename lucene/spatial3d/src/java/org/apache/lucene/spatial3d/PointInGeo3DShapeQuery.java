@@ -59,9 +59,7 @@ final class PointInGeo3DShapeQuery extends Query implements Accountable {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   @Override

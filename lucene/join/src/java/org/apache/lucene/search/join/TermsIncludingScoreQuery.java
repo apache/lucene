@@ -96,9 +96,7 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(toField)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   @Override

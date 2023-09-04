@@ -66,9 +66,7 @@ final class XYPointInGeometryQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result, Component2D tree) {

@@ -136,9 +136,7 @@ abstract class SpatialQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   protected boolean queryIsCacheable(LeafReaderContext ctx) {

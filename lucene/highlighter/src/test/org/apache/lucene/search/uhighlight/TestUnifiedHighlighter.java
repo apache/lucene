@@ -1627,9 +1627,7 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
                   // some unknown leaf.
                   @Override
                   public void visit(QueryVisitor visitor) {
-                    if (visitor.acceptField(body.name())) {
-                      visitor.visitLeaf(this);
-                    }
+                    visitor.visitLeaf(this);
                   }
 
                   @Override

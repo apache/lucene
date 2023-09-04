@@ -83,9 +83,7 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-    }
+    visitor.visitLeaf(this);
   }
 
   @Override

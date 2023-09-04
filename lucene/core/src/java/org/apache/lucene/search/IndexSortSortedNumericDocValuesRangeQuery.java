@@ -111,10 +111,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
-      visitor.visitLeaf(this);
-      fallbackQuery.visit(visitor);
-    }
+    visitor.visitLeaf(this);
+    fallbackQuery.visit(visitor);
   }
 
   @Override
