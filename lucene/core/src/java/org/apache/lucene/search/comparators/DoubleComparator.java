@@ -96,9 +96,13 @@ public class DoubleComparator extends NumericComparator<Double> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Double.compare(missingValue, bottom);
-      return reverse ? (result >= 0) : (result <= 0);
+    protected int compareMissingValueWithBottomValue() {
+      return Double.compare(missingValue, bottom);
+    }
+
+    @Override
+    protected int compareMissingValueWithTopValue() {
+      return Double.compare(missingValue, topValue);
     }
 
     @Override
