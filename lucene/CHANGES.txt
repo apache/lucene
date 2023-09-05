@@ -182,6 +182,10 @@ Optimizations
 
 * GITHUB#12415: Optimized counts on disjunctive queries. (Adrien Grand)
 
+* GITHUB#12518: Use panama vector API to speed up l2norm calculations (Ben Trent)
+
+* GITHUB##12371: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
+
 Bug Fixes
 ---------------------
 
@@ -202,6 +206,8 @@ Bug Fixes
   impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
   scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
 
+* LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
+
 Other
 ---------------------
 
@@ -213,6 +219,8 @@ Other
 
 * GITHUB#12428: Replace consecutive close() calls and close() calls with null checks with IOUtils.close().
   (Shubham Chaudhary)
+
+* GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
 
 ======================== Lucene 9.7.0 =======================
 
