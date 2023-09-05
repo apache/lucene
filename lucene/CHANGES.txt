@@ -64,6 +64,11 @@ Optimizations
 
 * GITHUB##12371: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
 
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12516: Unwrap and throw execution exceptions cause when performing concurrent search (Luca Cavanna)
+
 Bug Fixes
 ---------------------
 

@@ -224,10 +224,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 10);
       IllegalArgumentException e =
-          expectThrows(
-              RuntimeException.class,
-              IllegalArgumentException.class,
-              () -> searcher.search(kvq, 10));
+          expectThrows(IllegalArgumentException.class, () -> searcher.search(kvq, 10));
       assertEquals("vector query dimension: 1 differs from field dimension: 2", e.getMessage());
     }
   }
@@ -569,7 +566,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(9, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
-              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -584,7 +580,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(5, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
-              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -612,7 +607,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
           Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
           expectThrows(
-              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -785,7 +779,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
         Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
         expectThrows(
-            RuntimeException.class,
             UnsupportedOperationException.class,
             () ->
                 searcher.search(

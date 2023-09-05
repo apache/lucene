@@ -95,20 +95,17 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) {
-    try {
-      TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
-      for (LeafReaderContext ctx : leafReaderContexts) {
-        perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
-      }
-      return perLeafResults;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) throws IOException {
+    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+    for (LeafReaderContext ctx : leafReaderContexts) {
+      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
     }
+    return perLeafResults;
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor) {
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
+      throws IOException {
     List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
     for (LeafReaderContext context : leafReaderContexts) {
       tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
