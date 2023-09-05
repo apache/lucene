@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.RunnableFuture;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -58,16 +59,7 @@ class TaskExecutor {
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
-        if (e.getCause() instanceof Error error) {
-          throw error;
-        }
-        if (e.getCause() instanceof IOException ioException) {
-          throw ioException;
-        }
-        if (e.getCause() instanceof RuntimeException runtimeException) {
-          throw runtimeException;
-        }
-        throw new RuntimeException(e.getCause());
+        throw IOUtils.rethrowAlways(e.getCause());
       }
     }
     return results;
