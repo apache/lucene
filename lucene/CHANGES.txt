@@ -189,7 +189,7 @@ Optimizations
 Changes in runtime behavior
 ---------------------
 
-* GITHUB#12516: Unwrap and rethrow execution exceptions cause when performing concurrent search
+* GITHUB#12516: Unwrap and throw execution exceptions cause when performing concurrent search
 
 Bug Fixes
 ---------------------
