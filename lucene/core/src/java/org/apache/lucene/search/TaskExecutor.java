@@ -58,6 +58,9 @@ class TaskExecutor {
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
+        if (e.getCause() instanceof Error error) {
+          throw error;
+        }
         if (e.getCause() instanceof IOException ioException) {
           throw ioException;
         }

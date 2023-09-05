@@ -23,53 +23,76 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public class TestTaskExecutor extends LuceneTestCase {
 
-  public void testUnwrapExceptions() {
-    ExecutorService executorService =
+  private static ExecutorService executorService;
+
+  @BeforeClass
+  public static void createExecutor() {
+    executorService =
         Executors.newFixedThreadPool(
             1, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
-    try {
-      TaskExecutor taskExecutor = new TaskExecutor(executorService);
-      {
-        FutureTask<?> task =
-            new FutureTask<>(
-                () -> {
-                  throw new IOException("io exception");
-                });
-        IOException ioException =
-            expectThrows(
-                IOException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
-        assertEquals("io exception", ioException.getMessage());
-      }
-      {
-        FutureTask<?> task =
-            new FutureTask<>(
-                () -> {
-                  throw new RuntimeException("runtime");
-                });
-        RuntimeException runtimeException =
-            expectThrows(
-                RuntimeException.class,
-                () -> taskExecutor.invokeAll(Collections.singletonList(task)));
-        assertEquals("runtime", runtimeException.getMessage());
-        assertNull(runtimeException.getCause());
-      }
-      {
-        FutureTask<?> task =
-            new FutureTask<>(
-                () -> {
-                  throw new Exception("exc");
-                });
-        RuntimeException runtimeException =
-            expectThrows(
-                RuntimeException.class,
-                () -> taskExecutor.invokeAll(Collections.singletonList(task)));
-        assertEquals("exc", runtimeException.getCause().getMessage());
-      }
-    } finally {
-      executorService.shutdown();
-    }
+  }
+
+  @AfterClass
+  public static void shutdownExecutor() {
+    executorService.shutdown();
+  }
+
+  public void testUnwrapIOExceptionFromExecutionException() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    FutureTask<?> task =
+        new FutureTask<>(
+            () -> {
+              throw new IOException("io exception");
+            });
+    IOException ioException =
+        expectThrows(
+            IOException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+    assertEquals("io exception", ioException.getMessage());
+  }
+
+  public void testUnwrapRuntimeExceptionFromExecutionException() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    FutureTask<?> task =
+        new FutureTask<>(
+            () -> {
+              throw new RuntimeException("runtime");
+            });
+    RuntimeException runtimeException =
+        expectThrows(
+            RuntimeException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+    assertEquals("runtime", runtimeException.getMessage());
+    assertNull(runtimeException.getCause());
+  }
+
+  public void testUnwrapErrorFromExecutionException() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    FutureTask<?> task =
+        new FutureTask<>(
+            () -> {
+              throw new OutOfMemoryError("oom");
+            });
+    OutOfMemoryError outOfMemoryError =
+        expectThrows(
+            OutOfMemoryError.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+    assertEquals("oom", outOfMemoryError.getMessage());
+    assertNull(outOfMemoryError.getCause());
+  }
+
+  public void testUnwrappedExceptions() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    FutureTask<?> task =
+        new FutureTask<>(
+            () -> {
+              throw new Exception("exc");
+            });
+    RuntimeException runtimeException =
+        expectThrows(
+            RuntimeException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+    assertEquals("exc", runtimeException.getCause().getMessage());
   }
 }
