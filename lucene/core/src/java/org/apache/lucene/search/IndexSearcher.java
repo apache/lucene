@@ -690,7 +690,7 @@ public class IndexSearcher {
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
-    if (leafSlices == null || leafSlices.length <= 1) {
+    if (leafSlices == null || leafSlices.length == 0) {
       search(leafContexts, weight, firstCollector);
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
