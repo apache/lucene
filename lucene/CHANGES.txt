@@ -69,7 +69,13 @@ Changes in runtime behavior
 
 * GITHUB#12516: Unwrap and throw execution exceptions cause when performing concurrent search (Luca Cavanna)
 
-* GITHUB#12515: Offload sequential search execution to the executor that's optionally provided to the IndexSearcher (Luca Cavanna)
+* GITHUB#12498: Offload concurrent search execution to the executor that's optionally provided to the IndexSearcher.
+  Tasks are no longer executed on the caller thread when rejected or if the executor queue goes above a predefined
+  threshold. Adaptive behaviour as well as a saturation policy can be incorporated in the provided executor instead.
+  (Luca Cavanna)
+
+* GITHUB#12515: Offload sequential search execution to the executor that's optionally provided to the IndexSearcher
+  (Luca Cavanna)
 
 Bug Fixes
 ---------------------
