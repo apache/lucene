@@ -189,6 +189,8 @@ Optimizations
 Changes in runtime behavior
 ---------------------
 
+* GITHUB#12516: Unwrap and throw execution exceptions cause when performing concurrent search (Luca Cavanna)
+
 * GITHUB#12515: Offload sequential search execution to the executor that's optionally provided to the IndexSearcher (Luca Cavanna)
 
 Bug Fixes
