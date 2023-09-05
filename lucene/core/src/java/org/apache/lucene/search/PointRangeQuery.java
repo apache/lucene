@@ -141,16 +141,27 @@ public abstract class PointRangeQuery extends Query {
         return true;
       }
 
-      private int matchesWithState(byte[] packedValue) {
+      private int matchesWithState(byte[] packedValue, int sortedDim) {
+        int offset = sortedDim * bytesPerDim;
+        if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
+          // Doc's value is too low, in sorted dimension
+          return 1;
+        }
+        if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
+          // Doc's value is too high, in sorted dimension, early terminate.
+          return 2;
+        }
+
         for (int dim = 0; dim < numDims; dim++) {
-          int offset = dim * bytesPerDim;
+          if (dim == sortedDim) continue;
+          offset = dim * bytesPerDim;
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
-            // Doc's value is too low, in this dimension
+            // Doc's value is too low, in non sorted dimension
             return 1;
           }
           if (comparator.compare(packedValue, offset, upperPoint, offset) > 0) {
-            // Doc's value is too high, in this dimension
-            return 2;
+            // Doc's value is too high, in non sorted dimension
+            return 3;
           }
         }
         return 0;
@@ -208,8 +219,8 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public int visitWithState(int docID, byte[] packedValue) {
-            int matchState = matchesWithState(packedValue);
+          public int visitWithState(int docID, byte[] packedValue, int sortedDim) {
+            int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == 0) {
               visit(docID);
             }
@@ -224,9 +235,9 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue)
+          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
               throws IOException {
-            int matchState = matchesWithState(packedValue);
+            int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == 0) {
               adder.add(iterator);
             }
@@ -264,10 +275,10 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public int visitWithState(int docID, byte[] packedValue) {
-            int matchState = matchesWithState(packedValue);
+          public int visitWithState(int docID, byte[] packedValue, int sortedDim) {
+            int matchState = matchesWithState(packedValue, sortedDim);
             //            leave all greater docs to one batch.
-            if (matchState == 1) {
+            if (matchState == 1 || matchState == 3) {
               visit(docID);
             }
             return matchState;
@@ -281,11 +292,11 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue)
+          public int visitWithState(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
               throws IOException {
-            int matchState = matchesWithState(packedValue);
+            int matchState = matchesWithState(packedValue, sortedDim);
             //            leave all greater docs to one batch.
-            if (matchState == 1) {
+            if (matchState == 1 || matchState == 3) {
               visit(iterator);
             }
             return matchState;

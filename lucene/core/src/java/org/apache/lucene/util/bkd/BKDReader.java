@@ -795,6 +795,10 @@ public class BKDReader extends PointValues {
 
       readCommonPrefixes(commonPrefixLengths, scratchDataPackedValue, in);
       int compressedDim = readCompressedDim(in);
+      int sortedDim = compressedDim;
+      if (sortedDim == -2) {
+        sortedDim = in.readByte();
+      }
       if (compressedDim == -1) {
         // all values are the same
         visitor.grow(count);
@@ -833,38 +837,24 @@ public class BKDReader extends PointValues {
 
         if (compressedDim == -2) {
           // low cardinality values.
-          // early terminate if packed value greater than upper point.
-          if (config.numDims == 1) {
-            visitSparseRawDocValuesEarlyTerminate(
-                commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
-          } else {
-            // todo, early terminate if packed value greater than upper point on sorted dim.
-            visitSparseRawDocValues(
-                commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
-          }
+          visitSparseRawDocValuesEarlyTerminate(
+              commonPrefixLengths,
+              scratchDataPackedValue,
+              in,
+              scratchIterator,
+              count,
+              visitor,
+              sortedDim);
         } else {
           // high cardinality
-          // early terminate if packed value greater than upper point.
-          if (config.numDims == 1) {
-            visitCompressedDocValuesEarlyTerminate(
-                commonPrefixLengths,
-                scratchDataPackedValue,
-                in,
-                scratchIterator,
-                count,
-                visitor,
-                compressedDim);
-          } else {
-            // todo, early terminate if packed value greater than upper point on sorted dim.
-            visitCompressedDocValues(
-                commonPrefixLengths,
-                scratchDataPackedValue,
-                in,
-                scratchIterator,
-                count,
-                visitor,
-                compressedDim);
-          }
+          visitCompressedDocValuesEarlyTerminate(
+              commonPrefixLengths,
+              scratchDataPackedValue,
+              in,
+              scratchIterator,
+              count,
+              visitor,
+              compressedDim);
         }
       }
     }
@@ -881,41 +871,15 @@ public class BKDReader extends PointValues {
       }
     }
 
-    // read cardinality and point
-    private void visitSparseRawDocValues(
-        int[] commonPrefixLengths,
-        byte[] scratchPackedValue,
-        IndexInput in,
-        BKDReaderDocIDSetIterator scratchIterator,
-        int count,
-        PointValues.IntersectVisitor visitor)
-        throws IOException {
-      int i;
-      for (i = 0; i < count; ) {
-        int length = in.readVInt();
-        for (int dim = 0; dim < config.numDims; dim++) {
-          int prefix = commonPrefixLengths[dim];
-          in.readBytes(
-              scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
-        }
-        scratchIterator.reset(i, length);
-        visitor.visit(scratchIterator, scratchPackedValue);
-        i += length;
-      }
-      if (i != count) {
-        throw new CorruptIndexException(
-            "Sub blocks do not add up to the expected count: " + count + " != " + i, in);
-      }
-    }
-
-    // read cardinality and point, terminate when packedValue greater than upper point.
+    // early terminate if packed value greater than upper point in sorted dimension.
     private void visitSparseRawDocValuesEarlyTerminate(
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor)
+        PointValues.IntersectVisitor visitor,
+        int sortedDim)
         throws IOException {
       int i;
       for (i = 0; i < count; ) {
@@ -926,7 +890,7 @@ public class BKDReader extends PointValues {
               scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
         }
         scratchIterator.reset(i, length);
-        int visitState = visitor.visitWithState(scratchIterator, scratchPackedValue);
+        int visitState = visitor.visitWithState(scratchIterator, scratchPackedValue, sortedDim);
         if (visitState == 2) {
           if (visitor.isInverse()) {
             scratchIterator.reset(i, count - i);
@@ -983,6 +947,7 @@ public class BKDReader extends PointValues {
       }
     }
 
+    // early terminate if packed value greater than upper point in sorted dimension.
     private void visitCompressedDocValuesEarlyTerminate(
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
@@ -1009,7 +974,9 @@ public class BKDReader extends PointValues {
                 scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
           }
           int offset = i + j;
-          visitState = visitor.visitWithState(scratchIterator.docIDs[offset], scratchPackedValue);
+          visitState =
+              visitor.visitWithState(
+                  scratchIterator.docIDs[offset], scratchPackedValue, compressedDim);
           if (visitState == 2) {
             if (visitor.isInverse()) {
               scratchIterator.reset(offset, count - offset);

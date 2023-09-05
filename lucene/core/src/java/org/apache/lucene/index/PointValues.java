@@ -312,7 +312,7 @@ public abstract class PointValues {
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /** Similar to {@link IntersectVisitor#visit(int, byte[])} but return a match state. */
-    default int visitWithState(int docID, byte[] packedValue) throws IOException {
+    default int visitWithState(int docID, byte[] packedValue, int sortedDim) throws IOException {
       visit(docID, packedValue);
       return -1;
     }
@@ -332,7 +332,8 @@ public abstract class PointValues {
     /**
      * Similar to {@link IntersectVisitor#visit(DocIdSetIterator, byte[])} but return a match state.
      */
-    default int visitWithState(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+    default int visitWithState(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
+        throws IOException {
       int docID;
       while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         visit(docID, packedValue);
