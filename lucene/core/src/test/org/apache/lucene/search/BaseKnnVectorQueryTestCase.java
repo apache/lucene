@@ -533,15 +533,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
               UnsupportedOperationException.class,
-              () -> {
-                try {
+              () ->
                   searcher.search(
                       getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
-                      numDocs);
-                } catch (Exception e) {
-                  throw e;
-                }
-              });
+                      numDocs));
 
           // Test a restrictive filter and check we use exact search
           Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
