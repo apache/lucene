@@ -106,11 +106,8 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double squareSum = 0.0f;
+    double squareSum = IMPL.dotProduct(v, v);
     int dim = v.length;
-    for (float x : v) {
-      squareSum += x * x;
-    }
     if (squareSum == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
