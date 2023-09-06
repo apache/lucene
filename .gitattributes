@@ -4,3 +4,8 @@ versions.props text eol=lf
 
 # Gradle files are always in LF.
 *.gradle          text eol=lf
+
+#Do not expand the datasets files in github diff
+lucene/pim-benchmarks/exact_phrase/datasets/wiki_small/* linguist-generated=true
+lucene/pim-benchmarks/exact_phrase/datasets/wiki_subset/* linguist-generated=true
+lucene/pim-benchmarks/exact_phrase/datasets/wiki_subset/*/* linguist-generated=true
