@@ -1,6 +1,0 @@
-#REDIRECT [[List of Tenchi Muyo! characters#Mihoshi Kuramitsu]]
-
-{{Redirect category shell|
-{{R from fictional character|Tenchi Muyo!}}
-{{R to section}}
-}}

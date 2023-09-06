@@ -1,1 +1,0 @@
-#redirect [[Achim Müller]] {{R from title without diacritics}}

@@ -1,3 +1,0 @@
-{{Cat more|Wikipedia:WikiProject Rivers}}
-{{Category class | topic=River | class=NA }}
-{{CatAutoTOC}}

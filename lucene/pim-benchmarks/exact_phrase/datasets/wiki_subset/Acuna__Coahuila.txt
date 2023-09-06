@@ -1,1 +1,0 @@
-#redirect [[Ciudad Acuña]] {{R from title without diacritics}}

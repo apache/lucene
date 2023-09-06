@@ -1,7 +1,0 @@
-{{Don't edit this line {{{machine code|}}}
-|rank=ichnogenus
-|link=Diplocraterion
-|parent=Ichnos
-|extinct=yes
-|refs=<!--Shown on this page only; don't include <ref> tags -->
-}}

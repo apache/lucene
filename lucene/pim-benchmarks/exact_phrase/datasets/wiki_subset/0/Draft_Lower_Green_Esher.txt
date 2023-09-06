@@ -1,5 +1,0 @@
-#REDIRECT [[Lower Green, Esher]]
-
-{{Redirect category shell|
-{{R from move}}
-}}

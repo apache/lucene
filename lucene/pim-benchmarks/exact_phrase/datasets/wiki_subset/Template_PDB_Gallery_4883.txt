@@ -1,6 +1,0 @@
-<gallery class=nochecker widths=180 heights=180 style="line-height:130%">
-File:PDB_1yk0_EBI.png|'''1yk0''': structure of natriuretic peptide receptor-C complexed with atrial natriuretic peptide
-File:PDB_1jdp_EBI.jpg|'''1jdp''': Crystal Structure of Hormone/Receptor Complex
-File:PDB_1yk1_EBI.png|'''1yk1''': structure of natriuretic peptide receptor-C complexed with brain natriuretic peptide
-File:PDB_1jdn_EBI.jpg|'''1jdn''': Crystal Structure of Hormone Receptor
-</gallery>

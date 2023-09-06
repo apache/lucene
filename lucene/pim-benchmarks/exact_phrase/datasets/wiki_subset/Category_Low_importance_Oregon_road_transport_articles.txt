@@ -1,5 +1,0 @@
-{{Cat more|Wikipedia:WikiProject Oregon State Highways}}
-{{Category importance|topic=Oregon road transport|importance=Low}}
-{{CatAutoTOC}}
-
-[[Category:Low-importance articles|Oregon road transport articles]]

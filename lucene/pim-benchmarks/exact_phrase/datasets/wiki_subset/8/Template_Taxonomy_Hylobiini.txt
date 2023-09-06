@@ -1,6 +1,0 @@
-{{Don't edit this line {{{machine code|}}}
-|rank=tribus
-|link=Hylobiini
-|parent=Molytinae
-|refs=http://eol.org/pages/3363405/overview
-}}

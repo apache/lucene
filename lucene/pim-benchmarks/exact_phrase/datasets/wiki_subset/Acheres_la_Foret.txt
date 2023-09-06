@@ -1,1 +1,0 @@
-#redirect [[Achères-la-Forêt]] {{R from title without diacritics}}

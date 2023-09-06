@@ -1,5 +1,0 @@
-{{Cat more|Wikipedia:WikiProject Pennsylvania State Highways}}
-{{Category importance|topic=Pennsylvania road transport|importance=High}}
-{{CatAutoTOC}}
-
-[[Category:High-importance articles|Pennsylvania road transport articles]]

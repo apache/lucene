@@ -1,5 +1,0 @@
-{{Cat more|Wikipedia:WikiProject Eurovision}}
-{{Category class|topic=Eurovision|class=A}}
-{{CatAutoTOC}}
-
-[[Category:A-Class articles|Eurovision articles]]

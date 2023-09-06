@@ -1,6 +1,0 @@
-{{Don't edit this line {{{machine code|}}}
-|rank=subtribus
-|link=Endaseina
-|parent=Phygadeuontini
-|refs=http://eol.org/pages/12066502/overview
-}}

@@ -1,5 +1,0 @@
-{{Cat more|Wikipedia:WikiProject Washington State Highways}}
-{{Category importance|topic=Washington road transport|importance=Low}}
-{{CatAutoTOC}}
-
-[[Category:Low-importance articles|Washington road transport articles]]

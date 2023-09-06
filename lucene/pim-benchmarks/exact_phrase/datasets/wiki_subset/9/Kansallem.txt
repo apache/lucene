@@ -1,8 +1,0 @@
-'''Kansalem''' ([[Konkani]]: कांसाळें) is a [[Goa]]n percussion instrument.<ref>{{Cite book|url=https://books.google.com/books?id=2QYYjT8-0BIC|title=Goa: A Daughter's Story|last=Couto|first=Maria|date=2005|publisher=Penguin Books India|year=|isbn=9780143033431|location=|pages=275|language=en}}</ref> It is a large [[copper]], [[bronze]] or [[brass]] cymbal or gong.<ref>Borkar, Thali, Ghanekar. Rajhauns New Generation Konkani English Dictionary.</ref> It is an [[idiophone]], that is, the entire instrument vibrates to produce sound. The instrument's name may have come from the word ''kans'', meaning 'bronze'.
-
-== References & Notes ==
-<references />{{Traditional Goan musical instruments}}
-{{percussion-instrument-stub}}
-
-[[Category:Traditional Goan musical instruments]]
-[[Category:Idiophones]]

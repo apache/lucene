@@ -1,5 +1,0 @@
-{{cat more|Wikipedia:WikiProject Eurovision}}
-{{Category class|topic=Eurovision|class=stub}}
-{{CatAutoTOC}}
-
-[[Category:Stub-Class articles|Eurovision articles]]

@@ -1,5 +1,0 @@
-#REDIRECT [[Henry Kirwa]]
-
-{{Redirect category shell|
-{{R from move}}
-}}

@@ -1,5 +1,0 @@
-#REDIRECT [[Trioceros hoehnelii]]
-
-{{Redirect category shell|1=
-{{R to scientific name|reptile}}
-}}

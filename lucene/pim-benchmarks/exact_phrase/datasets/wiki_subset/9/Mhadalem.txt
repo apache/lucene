@@ -1,8 +1,0 @@
-'''Mhadalem''' ([[Konkani]]: म्हादळें) is a [[Goa]]n percussion instrument.<ref>{{Cite book|url=https://books.google.com/books?id=2QYYjT8-0BIC|title=Goa: A Daughter's Story|last=Couto|first=Maria|date=2005|publisher=Penguin Books India|year=|isbn=9780143033431|location=|pages=275|language=en}}</ref> It is a baked clay cylinder covered with [[monitor lizard]] skin at both ends.<ref>{{Cite web|url=https://www.goaholidayhomes.com/information/percussion-instruments-of-goa.html|title=Percussion Instruments of Goa, Information on Percussion Instruments of Goa, About Instruments of Goa|website=www.goaholidayhomes.com|access-date=2019-04-06}}</ref> The mhadalem is in danger of dying out and being lost as its use is declining. It has to some extent been replaced by the [[pakhavaj]].<ref>{{Cite book|url=https://books.google.com/books?id=fmefAAAAMAAJ|title=Wind of fire: the music and musicians of Goa|last=Sá|first=Mário Cabral e|date=1997|publisher=Promilla & Co.|year=|isbn=9788185002194|location=|pages=127|language=en}}</ref> Since the ''gar'' or monitor lizard whose skin is used as the membrane of the drum is endangered and cannot be hunted, goat skin is sometimes used instead as the membrane, as is happening with the [[ghumot]].<ref>https://timesofindia.indiatimes.com/city/goa/She-goat-skin-gets-a-thumbs-up/articleshow/40861279.cms</ref>
-
-== References and Notes ==
-<references />{{Traditional Goan musical instruments}}
-{{percussion-instrument-stub}}
-
-[[Category:Traditional Goan musical instruments]]
-[[Category:Membranophones]]

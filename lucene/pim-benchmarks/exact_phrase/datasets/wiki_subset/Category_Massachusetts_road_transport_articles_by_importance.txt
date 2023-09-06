@@ -1,7 +1,0 @@
-{{Cat more|Wikipedia:WikiProject Massachusetts state highways}}
-:''See also: {{c|Massachusetts road transport articles by quality}}.''
-{{Articles by Importance|topic=Massachusetts road transport}}
-{{CatAutoTOC}}
-
-[[Category:U.S. state road transport articles by importance]]
-[[Category:Wikipedia 1.0 assessments]]

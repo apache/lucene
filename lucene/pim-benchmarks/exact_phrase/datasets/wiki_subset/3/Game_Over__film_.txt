@@ -1,5 +1,0 @@
-#REDIRECT [[Game Over (disambiguation)]]
-
-{{Rcat shell|
-{{R from incomplete disambiguation}}
-}}

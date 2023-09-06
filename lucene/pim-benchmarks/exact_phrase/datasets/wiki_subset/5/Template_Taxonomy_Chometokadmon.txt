@@ -1,7 +1,0 @@
-{{Don't edit this line {{{machine code|}}}
-|rank=genus
-|link=Chometokadmon
-|parent=Anguimorpha
-|extinct=true
-|refs=<!--Shown on this page only; don't include <ref> tags -->
-}}

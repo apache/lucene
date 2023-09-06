@@ -1,6 +1,0 @@
-#REDIRECT [[List of Disney's Hercules characters#Hades]]
-
-{{Rcat shell|
-{{R from fictional character|Disney animated}}
-{{R to section}}
-}}
