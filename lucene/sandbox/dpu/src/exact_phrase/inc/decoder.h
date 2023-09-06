@@ -69,8 +69,6 @@ unsigned int decode_short_from(decoder_t *decoder);
 */
 int decode_zigzag_from(decoder_t *decoder);
 
-//int decode_int_big_endian_from(decoder_t* decoder);
-
 /**
 * Jump to the target address in the decoder.
 */
@@ -85,7 +83,5 @@ void skip_bytes_decoder(decoder_t *decoder, uint32_t nb_bytes);
 * Get the absolute address of the current position in the decoder.
 */
 unsigned int get_absolute_address_from(decoder_t *decoder);
-
-//bool decoder_is_aligned_with(decoder_t* decoder, const uint8_t* term);
 
 #endif /* DECODER_H_ */

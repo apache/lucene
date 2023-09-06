@@ -318,11 +318,8 @@ public class PimIndexSearcher implements Closeable {
       for (int i = 0; i < termPostingBlocks.length; ++i) {
         termPostingBlocks[i] = getTermPostings(field, query.getTerms()[i].bytes());
         if (termPostingBlocks[i] == null) {
-          // System.out.println("DPU " + dpuId + " null postings term " + i);
           return null;
         }
-        /*System.out.println("DPU " + dpuId + " postings term " + i + " addr=" + termPostingBlocks[i][0].block.address +
-        " size=" + termPostingBlocks[i][0].byteSize);*/
 
         // create multiple readers of the postings file
         // in order to read the postings of phrase terms in parallel
@@ -363,9 +360,6 @@ public class PimIndexSearcher implements Closeable {
               for (int i = 0; i < termPostings.length; ++i) {
                 if (currDoc[i] != searchDoc) {
                   currDoc[i] = docIt[i].Next(searchDoc);
-                  /* if(dpuId == 0) {
-                      System.out.println("term " + i + " segment " + s + " nextDoc " + currDoc[i]);
-                  }*/
                   if (currDoc[i] < 0) {
                     // no more docs to check, we are done
                     endDocs = true;
@@ -446,7 +440,6 @@ public class PimIndexSearcher implements Closeable {
           throw new RuntimeException(e);
         }
       }
-      // System.out.println("Dpu" + dpuId + " return " + results.size() + " results");
       return results;
     }
 

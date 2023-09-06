@@ -218,17 +218,3 @@ int decode_zigzag_from(decoder_t *decoder)
     uint32_t i = decode_vint_from(decoder);
     return ((i >> 1) ^ -((int)i & 1));
 }
-
-/*
-int decode_int_big_endian_from(decoder_t* decoder) {
-
-    int res;
-   __builtin_lw_erri("!big", res, decoder->ptr, "0");
-    decoder->ptr = seqread_get(decoder->ptr, sizeof(int), &(decoder->reader));
-    return res;
-}
-
-bool decoder_is_aligned_with(decoder_t* decoder, const uint8_t* term) {
-    return (((uintptr_t)term) & 7) == (((uintptr_t)(decoder->ptr) & 7));
-}
-*/

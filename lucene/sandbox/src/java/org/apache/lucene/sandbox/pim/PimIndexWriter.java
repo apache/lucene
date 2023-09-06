@@ -319,15 +319,12 @@ public class PimIndexWriter extends IndexWriter {
 
     @Override
     public void close() throws IOException {
-      // TODO: group all the DPU term index files for one segment in a single compound file.
-      // TODO: for each DPU, at the beginning, write the mapping fieldName -> pointer
-      // TODO: for each field of a DPU, write the 7 or 15 terms and their offset to jump fast
-      // when searching alphabetically for a specific term.
 
       for (DpuTermIndex termIndex : termIndexes) {
         termIndex.close();
       }
 
+      // On close, merge all DPU indexes into one compound file
       long numTerms = 0, numBlockTableBytes = 0, numBlockBytes = 0, numPostingBytes = 0;
       long numBytesIndex = 0;
       long[] dpuIndexAddr = new long[pimConfig.getNumDpus()];
@@ -360,7 +357,6 @@ public class PimIndexWriter extends IndexWriter {
                   + 1; // byte specifiying the number of segments
       }
 
-      // merge all DPU indexes into one compound file
       Set<String> fileNames = Set.of(pimDirectory.listAll());
       IndexOutput compoundOutput =
           createIndexOutput(DPU_INDEX_COMPOUND_EXTENSION, pimConfig.getNumDpus(), fileNames);
