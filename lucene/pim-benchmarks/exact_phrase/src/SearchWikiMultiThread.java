@@ -42,7 +42,7 @@ import org.apache.lucene.store.FSDirectory;
 
 /**
  * Search program based on Lucene's demo example.
- * Search are done using the PIM system and multiple threads
+ * Search are done using the CPU and multiple threads
  * are using a single IndexSearcher to execute phrase queries in parallel.
  */
 public class SearchWikiMultiThread {
@@ -57,8 +57,8 @@ public class SearchWikiMultiThread {
 
   public static void main(String[] args) throws Exception {
     String usage =
-        "Usage:\tjava org.apache.lucene.demo.SearchWikiMultithread [-index dir] [-field f] [-queries file] [-query string] " +
-                "\n";
+        "Usage:\tjava SearchWikiMultithread [-index dir] [-field f] [-queries file]\n";
+
     if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
       System.out.println(usage);
       System.exit(0);
@@ -67,9 +67,6 @@ public class SearchWikiMultiThread {
     String index = "index";
     String field = "contents";
     String queries = null;
-    int repeat = 0;
-    String queryString = null;
-    long totalTime = 0;
     long cpuTime = 0;
 
     for (int i = 0; i < args.length; i++) {
@@ -82,20 +79,15 @@ public class SearchWikiMultiThread {
       } else if ("-queries".equals(args[i])) {
         queries = args[i + 1];
         i++;
-      } else if ("-query".equals(args[i])) {
-        queryString = args[i + 1];
-        i++;
       }
     }
 
     IndexReader reader = DirectoryReader.open(MMapDirectory.open(Paths.get(index)));
-    //ExecutorService executor = Executors.newFixedThreadPool(40);
-    //IndexSearcher searcher = new IndexSearcher(reader, executor);
     IndexSearcher searcher = new IndexSearcher(reader);
 
     BufferedReader in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
-    int lines = 0;
-    while (in.readLine() != null) lines++;
+    int nb_queries = 0;
+    while (in.readLine() != null) nb_queries++;
     in.close();
 
     System.out.println("Starting " + NB_THREADS + " threads for index search");
@@ -105,22 +97,30 @@ public class SearchWikiMultiThread {
     for(int i = 0; i < NB_THREADS; ++i) {
       readers[i] =  Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
       searchTasks[i] = new SearchTask(i, searcher, reader, field, readers[i],
-              i * (lines / NB_THREADS),
-              i == (NB_THREADS - 1) ? lines - (lines / NB_THREADS * (NB_THREADS - 1)) : lines / NB_THREADS);
+              i * (nb_queries / NB_THREADS),
+              i == (NB_THREADS - 1) ? nb_queries - (nb_queries / NB_THREADS * (NB_THREADS - 1)) : nb_queries / NB_THREADS);
       threads[i] = new Thread(searchTasks[i]);
+    }
+
+    long start = System.nanoTime();
+    for(int i = 0; i < NB_THREADS; ++i) {
       threads[i].start();
     }
 
     for(int i = 0; i < NB_THREADS; ++i) {
       threads[i].join();
     }
+    long end = System.nanoTime();
     for(int i = 0; i < NB_THREADS; ++i) {
       System.out.println("THREAD " + i + ":");
       System.out.println(searchTasks[i].out.toString());
     }
 
+    System.out.println("Cumulative time: " + String.format("%.2f", (end - start) * 1e-6) 
+        + " ms, throughput=" + String.format("%.2f", ((double)nb_queries * 1e9 / (end - start))) 
+        + " (queries/sec)");
+
     reader.close();
-    //executor.shutdown();
   }
 
   private static class SearchTask implements Runnable {
@@ -132,7 +132,7 @@ public class SearchWikiMultiThread {
     private IndexSearcher searcher;
     private IndexReader reader;
     private String field;
-    int totalTime = 0;
+    long totalTime = 0;
     long cpuTime = 0;
     int nbReq = 0;
 
@@ -158,7 +158,6 @@ public class SearchWikiMultiThread {
     @Override
     public void run() {
 
-      boolean first = true;
       try {
         for (int l = 0; l < nbLines; ++l) {
 
@@ -188,12 +187,9 @@ public class SearchWikiMultiThread {
           // TODO try 10/100/1000
           TopDocs results = searcher.search(query, 100);
           long end = System.nanoTime();
-          // ignore first request as its latency is not representative due to cold caches
-          if (!first) {
-            totalTime += (System.nanoTime() - start);
-            cpuTime += (mbean.getProcessCpuTime() - cpuStart);
-            nbReq++;
-          }
+          totalTime += (System.nanoTime() - start);
+          cpuTime += (mbean.getProcessCpuTime() - cpuStart);
+          nbReq++;
           out.writeBytes(new String("Time: " + String.format("%.2f", (System.nanoTime() - start) * 1e-6) + "ms" + "\n").getBytes());
           int numTotalHits = Math.toIntExact(results.totalHits.value);
           out.writeBytes(new String(numTotalHits + " total matching documents" + "\n").getBytes());
@@ -218,7 +214,6 @@ public class SearchWikiMultiThread {
               out.writeBytes(new String((i + 1) + ". " + "No path for this document" + "\n").getBytes());
             }
           }
-          first = false;
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

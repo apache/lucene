@@ -59,8 +59,7 @@ public class SearchWikiDPUMultiThread {
 
   public static void main(String[] args) throws Exception {
     String usage =
-        "Usage:\tjava org.apache.lucene.demo.SearchWikiDPU [-index dir] [-field f] [-queries file] [-query string] " +
-                "\n\nSee http://lucene.apache.org/core/4_1_0/demo/ for details.";
+        "Usage:\tjava SearchWikiDPUMultiThread [-index dir] [-field f] [-queries file]\n";
     if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
       System.out.println(usage);
       System.exit(0);
@@ -69,9 +68,6 @@ public class SearchWikiDPUMultiThread {
     String index = "index";
     String field = "contents";
     String queries = null;
-    int repeat = 0;
-    String queryString = null;
-    long totalTime = 0;
     long cpuTime = 0;
 
     for (int i = 0; i < args.length; i++) {
@@ -84,15 +80,10 @@ public class SearchWikiDPUMultiThread {
       } else if ("-queries".equals(args[i])) {
         queries = args[i + 1];
         i++;
-      } else if ("-query".equals(args[i])) {
-        queryString = args[i + 1];
-        i++;
       }
     }
 
     IndexReader reader = DirectoryReader.open(MMapDirectory.open(Paths.get(index)));
-    //ExecutorService executor = Executors.newFixedThreadPool(40);
-    //IndexSearcher searcher = new IndexSearcher(reader, executor);
     IndexSearcher searcher = new IndexSearcher(reader);
 
     // load PIM index from PIM directory
@@ -137,7 +128,6 @@ public class SearchWikiDPUMultiThread {
         + " (queries/sec)");
 
     reader.close();
-    //executor.shutdown();
     PimSystemManager.get().shutDown();
   }
 
@@ -176,7 +166,6 @@ public class SearchWikiDPUMultiThread {
     @Override
     public void run() {
 
-      boolean first = true;
       try {
         for (int l = 0; l < nbLines; ++l) {
 
@@ -206,12 +195,9 @@ public class SearchWikiDPUMultiThread {
           // TODO try 10/100/1000
           TopDocs results = searcher.search(query, 100);
           long end = System.nanoTime();
-          // ignore first request as its latency is not representative due to cold caches
-          if (!first) {
-            totalTime += (end - start);
-            cpuTime += (mbean.getProcessCpuTime() - cpuStart);
-            nbReq++;
-          }
+          totalTime += (end - start);
+          cpuTime += (mbean.getProcessCpuTime() - cpuStart);
+          nbReq++;
           out.writeBytes(new String("Time: " + String.format("%.2f", (System.nanoTime() - start) * 1e-6) + "ms" + "\n").getBytes());
           int numTotalHits = Math.toIntExact(results.totalHits.value);
           out.writeBytes(new String(numTotalHits + " total matching documents" + "\n").getBytes());
@@ -236,7 +222,6 @@ public class SearchWikiDPUMultiThread {
               out.writeBytes(new String((i + 1) + ". " + "No path for this document" + "\n").getBytes());
             }
           }
-          first = false;
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

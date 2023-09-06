@@ -61,13 +61,9 @@ public class SearchWikiDPU {
             (com.sun.management.OperatingSystemMXBean)
                     ManagementFactory.getOperatingSystemMXBean();
 
-    /**
-     * Simple command-line based search demo.
-     */
     public static void main(String[] args) throws Exception {
         String usage =
-                "Usage:\tjava org.apache.lucene.demo.SearchWikiDPU [-index dir] [-field f] [-queries file] " +
-                        "[-query string] \n\nSee http://lucene.apache.org/core/4_1_0/demo/ for details.";
+                "Usage:\tjava SearchWikiDPU [-index dir] [-field f] [-queries file]\n";
         if (args.length > 0 && ("-h".equals(args[0]) || "-help".equals(args[0]))) {
             System.out.println(usage);
             System.exit(0);
@@ -76,8 +72,6 @@ public class SearchWikiDPU {
         String index = "index";
         String field = "contents";
         String queries = null;
-        int repeat = 0;
-        String queryString = null;
         long totalTime = 0;
         long cpuTime = 0;
 
@@ -91,15 +85,10 @@ public class SearchWikiDPU {
             } else if ("-queries".equals(args[i])) {
                 queries = args[i + 1];
                 i++;
-            } else if ("-query".equals(args[i])) {
-                queryString = args[i + 1];
-                i++;
             }
         }
 
         IndexReader reader = DirectoryReader.open(MMapDirectory.open(Paths.get(index)));
-        //ExecutorService executor = Executors.newFixedThreadPool(40);
-        //IndexSearcher searcher = new IndexSearcher(reader, executor);
         IndexSearcher searcher = new IndexSearcher(reader);
 
         // load PIM index from PIM directory
@@ -111,17 +100,15 @@ public class SearchWikiDPU {
         if (queries != null) {
             in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
         } else {
-            in = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+            System.out.println(usage);
+            System.exit(0);
         }
 
         boolean first = true;
         int nbReq = 0;
         while (true) {
-            if (queries == null && queryString == null) { // prompt the user
-                System.out.println("Enter query: ");
-            }
 
-            String line = queryString != null ? queryString : in.readLine();
+            String line = in.readLine();
 
             if (line == null || line.length() == -1) {
                 break;
@@ -174,15 +161,12 @@ public class SearchWikiDPU {
                     System.out.println((i + 1) + ". " + "No path for this document");
                 }
             }
-
-            if (queryString != null) {
-                break;
-            }
             first = false;
         }
+
         reader.close();
-        //executor.shutdown();
         PimSystemManager.get().shutDown();
+
         System.out.println("Total time: " + String.format("%.2f", totalTime * 1e-6)
                 + " ms" + ", CPU Time: " + (double) cpuTime / 1e6 + " ms" + ", Nb req.: " + nbReq);
     }
