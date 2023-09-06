@@ -1,16 +1,13 @@
 package org.apache.lucene.sandbox.pim;
 
+import java.io.IOException;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.Bits;
 
-import java.io.IOException;
-
-/**
- * Bulk scorer for PIM
- */
+/** Bulk scorer for PIM */
 public class PimBulkScorer extends BulkScorer {
 
   private final Scorer scorer;

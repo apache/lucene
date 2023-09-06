@@ -1,14 +1,11 @@
 package org.apache.lucene.sandbox.pim;
 
+import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 
-import java.io.IOException;
-
-/**
- * Scorer for PIM
- */
+/** Scorer for PIM */
 public class PimScorer extends Scorer {
 
   private PimMatch current;
@@ -54,8 +51,7 @@ public class PimScorer extends Scorer {
       @Override
       public int advance(int target) {
         int docId;
-        while ((docId = nextDoc()) < target) {
-        }
+        while ((docId = nextDoc()) < target) {}
         return docId;
       }
 
@@ -73,6 +69,6 @@ public class PimScorer extends Scorer {
 
   @Override
   public float getMaxScore(int upTo) {
-    throw new UnsupportedOperationException();//TODO
+    throw new UnsupportedOperationException(); // TODO
   }
 }

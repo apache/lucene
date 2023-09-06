@@ -1,37 +1,34 @@
 package org.apache.lucene.sandbox.pim;
 
+import java.io.IOException;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-import java.io.IOException;
-
 /**
  * PIM {@link PhraseQuery}.
- * <p>
- * Supports only {@link BM25Similarity}. If another similarity is required by the
- * {@link IndexSearcher}, then this query is rewritten to a regular {@link PhraseQuery}.
+ *
+ * <p>Supports only {@link BM25Similarity}. If another similarity is required by the {@link
+ * IndexSearcher}, then this query is rewritten to a regular {@link PhraseQuery}.
  */
 public class PimPhraseQuery extends PhraseQuery implements PimQuery {
 
-  /**
-   * PIM phrase query builder
-   */
+  /** PIM phrase query builder */
   public static class Builder extends PhraseQuery.Builder {
 
     @Override
@@ -61,10 +58,8 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
   public Query rewrite(IndexSearcher searcher) throws IOException {
     Query query = super.rewrite(searcher);
     if (query instanceof PhraseQuery pq) {
-      if (!(searcher.getSimilarity() instanceof BM25Similarity)
-              || (pq.getSlop() != 0)) {
-        PhraseQuery.Builder builder = new PhraseQuery.Builder()
-          .setSlop(pq.getSlop());
+      if (!(searcher.getSimilarity() instanceof BM25Similarity) || (pq.getSlop() != 0)) {
+        PhraseQuery.Builder builder = new PhraseQuery.Builder().setSlop(pq.getSlop());
         for (int i = 0; i < pq.getTerms().length; i++) {
           builder.add(pq.getTerms()[i], pq.getPositions()[i]);
         }
@@ -78,25 +73,26 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
 
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-    throws IOException {
+      throws IOException {
     if (getPositions().length < 2) {
       throw new IllegalStateException(
-        "PhraseWeight does not support less than 2 terms, call rewrite first");
+          "PhraseWeight does not support less than 2 terms, call rewrite first");
     } else if (getPositions()[0] != 0) {
       throw new IllegalStateException(
-        "PhraseWeight requires that the first position is 0, call rewrite first");
+          "PhraseWeight requires that the first position is 0, call rewrite first");
     } else if (!(searcher.getSimilarity() instanceof BM25Similarity)) {
       throw new IllegalStateException(
-        getClass().getSimpleName() + " supports only " + BM25Similarity.class.getSimpleName()
-          + ", call rewrite first");
+          getClass().getSimpleName()
+              + " supports only "
+              + BM25Similarity.class.getSimpleName()
+              + ", call rewrite first");
     }
     PimPhraseScoreStats scoreStats = buildScoreStats(searcher, scoreMode, boost);
-    return scoreStats == null ? noMatchWeight()
-      : new PimPhraseWeight(this, scoreStats);
+    return scoreStats == null ? noMatchWeight() : new PimPhraseWeight(this, scoreStats);
   }
 
-  private PimPhraseScoreStats buildScoreStats(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-    throws IOException {
+  private PimPhraseScoreStats buildScoreStats(
+      IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
     IndexReaderContext context = searcher.getTopReaderContext();
     TermStatistics[] termStats = new TermStatistics[getTerms().length];
     int termUpTo = 0;
@@ -104,8 +100,7 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
       if (scoreMode.needsScores()) {
         TermStates ts = TermStates.build(context, term, true);
         if (ts.docFreq() > 0) {
-          termStats[termUpTo++] =
-            searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
+          termStats[termUpTo++] = searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
         }
       }
     }
@@ -113,12 +108,12 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
       return null; // No terms at all, no score.
     }
     return new PimPhraseScoreStats(
-      searcher,
-      searcher.getSimilarity(),
-      scoreMode,
-      boost,
-      searcher.collectionStatistics(getField()),
-      ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+        searcher,
+        searcher.getSimilarity(),
+        scoreMode,
+        boost,
+        searcher.collectionStatistics(getField()),
+        ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
   }
 
   private Weight noMatchWeight() {
@@ -145,7 +140,7 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
     // write number of terms
     output.writeVInt(getTerms().length);
     // write terms
-    for(Term t : getTerms()) {
+    for (Term t : getTerms()) {
       output.writeVInt(t.bytes().length);
       output.writeBytes(t.bytes().bytes, t.bytes().offset, t.bytes().length);
     }

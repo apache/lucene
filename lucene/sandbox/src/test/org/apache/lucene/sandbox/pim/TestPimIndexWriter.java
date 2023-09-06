@@ -21,9 +21,7 @@ import org.apache.lucene.util.BytesRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-/**
- * Tests {@link PimPhraseQuery}.
- */
+/** Tests {@link PimPhraseQuery}. */
 public class TestPimIndexWriter extends LuceneTestCase {
 
   private static Directory directory;
@@ -56,8 +54,8 @@ public class TestPimIndexWriter extends LuceneTestCase {
 
   public void testSingleFieldFewDocuments() throws Exception {
     PimConfig pimConfig = new PimConfig();
-    IndexWriterConfig indexWriterConfig = new IndexWriterConfig(getAnalyzer())
-      .setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig indexWriterConfig =
+        new IndexWriterConfig(getAnalyzer()).setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new PimIndexWriter(directory, pimDirectory, indexWriterConfig, pimConfig);
 
     Document doc = new Document();
@@ -103,12 +101,11 @@ public class TestPimIndexWriter extends LuceneTestCase {
   }
 
   private Analyzer getAnalyzer() {
-    return
-      new Analyzer() {
-        @Override
-        public TokenStreamComponents createComponents(String fieldName) {
-          return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
-        }
-      };
+    return new Analyzer() {
+      @Override
+      public TokenStreamComponents createComponents(String fieldName) {
+        return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+      }
+    };
   }
 }

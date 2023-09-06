@@ -1,11 +1,9 @@
 package org.apache.lucene.sandbox.pim;
 
-import org.apache.lucene.search.DocIdSetIterator;
 import java.util.Objects;
+import org.apache.lucene.search.DocIdSetIterator;
 
-/**
- * Class representing the match information returned from the PIM system to the CPU
- */
+/** Class representing the match information returned from the PIM system to the CPU */
 public class PimMatch {
 
   public static final PimMatch UNSET = new PimMatch(-1, 0f);
@@ -35,5 +33,3 @@ public class PimMatch {
     return Objects.hash(docId, score);
   }
 }
-
-

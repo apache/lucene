@@ -15,9 +15,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-/**
- * Tests {@link PimPhraseQuery}.
- */
+/** Tests {@link PimPhraseQuery}. */
 public class TestPimPhraseQuery extends LuceneTestCase {
 
   private static IndexSearcher searcher;
@@ -29,24 +27,24 @@ public class TestPimPhraseQuery extends LuceneTestCase {
   public static void beforeClass() throws Exception {
     directory = newDirectory();
     Analyzer analyzer =
-      new Analyzer() {
-        @Override
-        public TokenStreamComponents createComponents(String fieldName) {
-          return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
-        }
+        new Analyzer() {
+          @Override
+          public TokenStreamComponents createComponents(String fieldName) {
+            return new TokenStreamComponents(new MockTokenizer(MockTokenizer.WHITESPACE, false));
+          }
 
-        @Override
-        public int getPositionIncrementGap(String fieldName) {
-          return 100;
-        }
-      };
+          @Override
+          public int getPositionIncrementGap(String fieldName) {
+            return 100;
+          }
+        };
     RandomIndexWriter writer = new RandomIndexWriter(random(), directory, analyzer);
 
     Document doc = new Document();
     doc.add(newTextField("field", "one two three four five", Field.Store.YES));
     doc.add(newTextField("repeated", "this is a repeated field - first part", Field.Store.YES));
     Field repeatedField =
-      newTextField("repeated", "second part of a repeated field", Field.Store.YES);
+        newTextField("repeated", "second part of a repeated field", Field.Store.YES);
     doc.add(repeatedField);
     doc.add(newTextField("palindrome", "one two three two one", Field.Store.YES));
     writer.addDocument(doc);

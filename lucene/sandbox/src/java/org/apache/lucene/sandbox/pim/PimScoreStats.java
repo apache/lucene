@@ -5,9 +5,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.similarities.Similarity;
 
-/**
- * score statistics for PIM
- */
+/** score statistics for PIM */
 public class PimScoreStats {
 
   public final IndexSearcher searcher;
@@ -16,11 +14,12 @@ public class PimScoreStats {
   public final float boost;
   public final CollectionStatistics collectionStats;
 
-  public PimScoreStats(IndexSearcher searcher,
-                       Similarity similarity,
-                       ScoreMode scoreMode,
-                       float boost,
-                       CollectionStatistics collectionStats) {
+  public PimScoreStats(
+      IndexSearcher searcher,
+      Similarity similarity,
+      ScoreMode scoreMode,
+      float boost,
+      CollectionStatistics collectionStats) {
     this.searcher = searcher;
     this.similarity = similarity;
     this.scoreMode = scoreMode;
