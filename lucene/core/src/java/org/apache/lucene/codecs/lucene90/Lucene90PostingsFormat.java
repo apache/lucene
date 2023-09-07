@@ -457,7 +457,7 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
      * ForUtil#BLOCK_SIZE} positions; otherwise -1
      *
      * <p>One might think to use total term frequency to track how many positions are left to read
-     * as we decode the blocks, and decode the last block differently when num_left_positions <
+     * as we decode the blocks, and decode the last block differently when num_left_positions &lt;
      * BLOCK_SIZE. Unfortunately this won't work since the tracking will be messed up when we skip
      * blocks as the skipper will only tell us new position offset (start of block) and number of
      * positions to skip for that block, without telling us how many positions it has skipped.
