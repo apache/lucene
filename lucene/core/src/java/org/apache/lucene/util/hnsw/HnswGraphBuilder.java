@@ -169,15 +169,12 @@ public final class HnswGraphBuilder {
 
         NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
         initializerGraph.seek(level, oldOrd);
-        RandomVectorScorer scorer = scorerProvider.scorer(newOrd);
         for (int oldNeighbor = initializerGraph.nextNeighbor();
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
           int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          float score = scorer.score(newNeighbor);
-          // we are not sure whether the previous graph contains
-          // unchecked nodes, so we have to assume they're all unchecked
-          newNeighbors.addOutOfOrder(newNeighbor, score);
+          // we will compute these scores later when we need to pop out the non-diverse nodes
+          newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
         }
       }
     }
@@ -276,7 +273,7 @@ public final class HnswGraphBuilder {
       NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
       nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
       if (nbrsOfNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrsOfNbr);
+        int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
         nbrsOfNbr.removeIndex(indexToRemove);
       }
     }
@@ -331,8 +328,9 @@ public final class HnswGraphBuilder {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(NeighborArray neighbors) throws IOException {
-    int[] uncheckedIndexes = neighbors.sort();
+  private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
+    RandomVectorScorer scorer = scorerProvider.scorer(nodeOrd);
+    int[] uncheckedIndexes = neighbors.sort(scorer);
     if (uncheckedIndexes == null) {
       // all nodes are checked, we will directly return the most distant one
       return neighbors.size() - 1;
