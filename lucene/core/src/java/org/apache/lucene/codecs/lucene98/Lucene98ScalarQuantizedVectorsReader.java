@@ -17,9 +17,11 @@
 
 package org.apache.lucene.codecs.lucene98;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -28,58 +30,38 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.ScalarQuantizer;
-import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 /**
- * Reads vectors from the index segments along with index data structures supporting KNN search.
+ * Reads Scalar Quantized vectors from the index segments along with index data structures.
  *
  * @lucene.experimental
  */
-public final class Lucene98ScalarQuantizedVectorsReader {
+public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Accountable {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene98ScalarQuantizedVectorsFormat.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
-  private final IndexInput vectorData;
   private final IndexInput quantizedVectorData;
 
   Lucene98ScalarQuantizedVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
-      vectorData =
+      quantizedVectorData =
           openDataInput(
               state,
               versionMeta,
-              Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene98ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME);
-      quantizedVectorData =
-              openDataInput(
-                      state,
-                      versionMeta,
-                      Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
-                      Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
+              Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
+              Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -91,7 +73,9 @@ public final class Lucene98ScalarQuantizedVectorsReader {
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene98ScalarQuantizedVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name,
+            state.segmentSuffix,
+            Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -174,36 +158,21 @@ public final class Lucene98ScalarQuantizedVectorsReader {
               + fieldEntry.dimension);
     }
 
-    long rawVectorBytes = Math.multiplyExact((long) dimension, Float.BYTES);
     // int8 quantized and calculated stored offset.
     long quantizedVectorBytes = dimension + Float.BYTES;
-    long numRawVectorBytes = Math.multiplyExact(rawVectorBytes, fieldEntry.size);
     long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
-    if (numRawVectorBytes != fieldEntry.vectorDataLength) {
+    if (numQuantizedVectorBytes != fieldEntry.quantizedVectorDataLength) {
       throw new IllegalStateException(
-          "Vector data length "
-              + fieldEntry.vectorDataLength
+          "Quantized vector data length "
+              + fieldEntry.quantizedVectorDataLength
               + " not matching size="
               + fieldEntry.size
               + " * dim="
               + dimension
               + " * byteSize="
-              + rawVectorBytes
+              + quantizedVectorBytes
               + " = "
-              + numRawVectorBytes);
-    }
-    if (numRawVectorBytes != fieldEntry.quantizedVectorDataLength) {
-      throw new IllegalStateException(
-              "Quantized vector data length "
-                      + fieldEntry.quantizedVectorDataLength
-                      + " not matching size="
-                      + fieldEntry.size
-                      + " * dim="
-                      + dimension
-                      + " * byteSize="
-                      + quantizedVectorBytes
-                      + " = "
-                      + numQuantizedVectorBytes);
+              + numQuantizedVectorBytes);
     }
   }
 
@@ -238,52 +207,37 @@ public final class Lucene98ScalarQuantizedVectorsReader {
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
   }
 
-  @Override
   public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(vectorData);
     CodecUtil.checksumEntireFile(quantizedVectorData);
   }
 
-  QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
+    OffHeapQuantizedByteVectorValues vectorValues =
+        OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
+    final ScalarQuantizer scalarQuantizer = fieldEntry.scalarQuantizer;
+    // TODO transform byte quantized back into float[] as iterated
+    return null;
+  }
+
+  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+
+    if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      return null;
+    }
+
     return OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+  public VectorScorer getQuantizedVectorScorer(String field, float[] target) throws IOException {
+    RandomAccessQuantizedByteVectorValues values =
+        (OffHeapQuantizedByteVectorValues) getQuantizedVectorValues(field);
     FieldEntry fieldEntry = fields.get(field);
-    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
-  }
-
-  @Override
-  public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    throw new IllegalArgumentException("codec=Lucene98QuantizedHnswVectorsFormat on supports float vectors");
-  }
-
-  @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return;
+    if (values == null || fieldEntry == null) {
+      return null;
     }
-
-    OffHeapQuantizedByteVectorValues vectorValues = OffHeapQuantizedByteVectorValues.load(fieldEntry, vectorData);
-    QuantizedVectorScorer scorer = QuantizedVectorScorer.fromFieldEntry(fieldEntry, vectorValues, target);
-    KnnCollector results = new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc);
-    //Search the vectors
-    for (int ord = 0; ord < vectorValues.size(); ord++) {
-      results.collect(ord, scorer.score(ord));
-    }
-  }
-
-  @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
-      throws IOException {
-    // not supported currently
+    return QuantizedVectorScorer.fromFieldEntry(fieldEntry, values, target);
   }
 
   public float[] getQuantiles(String field) {
@@ -293,7 +247,7 @@ public final class Lucene98ScalarQuantizedVectorsReader {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, quantizedVectorData);
+    IOUtils.close(quantizedVectorData);
   }
 
   static class FieldEntry implements Accountable {
@@ -301,12 +255,8 @@ public final class Lucene98ScalarQuantizedVectorsReader {
         RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
     final VectorSimilarityFunction similarityFunction;
     final VectorEncoding vectorEncoding;
-    final long vectorDataOffset;
-    final long vectorDataLength;
     final long quantizedVectorDataOffset;
     final long quantizedVectorDataLength;
-    final long vectorIndexOffset;
-    final long vectorIndexLength;
     final int dimension;
     final int size;
 
@@ -339,12 +289,8 @@ public final class Lucene98ScalarQuantizedVectorsReader {
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;
-      vectorDataOffset = input.readVLong();
-      vectorDataLength = input.readVLong();
       quantizedVectorDataOffset = input.readVLong();
       quantizedVectorDataLength = input.readVLong();
-      vectorIndexOffset = input.readVLong();
-      vectorIndexLength = input.readVLong();
       dimension = input.readVInt();
       lowerQuantile = Float.intBitsToFloat(input.readInt());
       upperQuantile = Float.intBitsToFloat(input.readInt());
@@ -376,9 +322,7 @@ public final class Lucene98ScalarQuantizedVectorsReader {
 
     @Override
     public long ramBytesUsed() {
-      return SHALLOW_SIZE
-          + RamUsageEstimator.sizeOf(meta);
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
     }
   }
-
 }

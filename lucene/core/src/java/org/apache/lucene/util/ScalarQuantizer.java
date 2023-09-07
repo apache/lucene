@@ -4,8 +4,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
@@ -74,9 +72,11 @@ public class ScalarQuantizer {
   }
 
   private static final Random random = new Random(42);
-  public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, int quantile) throws IOException {
+
+  public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, int quantile)
+      throws IOException {
     if (floatVectorValues.size() == 0) {
-      return new ScalarQuantizer(new float[]{0f, 0f});
+      return new ScalarQuantizer(new float[] {0f, 0f});
     }
     if (quantile == 100) {
       float min = Float.POSITIVE_INFINITY;
@@ -87,7 +87,7 @@ public class ScalarQuantizer {
           max = Math.max(max, v);
         }
       }
-      return new ScalarQuantizer(new float[]{min, max});
+      return new ScalarQuantizer(new float[] {min, max});
     }
     int dim = floatVectorValues.dimension();
     if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {

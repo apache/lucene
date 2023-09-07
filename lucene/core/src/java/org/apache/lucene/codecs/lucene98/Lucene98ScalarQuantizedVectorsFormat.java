@@ -17,40 +17,32 @@
 
 package org.apache.lucene.codecs.lucene98;
 
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import java.io.IOException;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.hnsw.HnswGraph;
-
-import java.io.IOException;
 
 /**
+ * Format supporting vector quantization, storage, and retrieval
  *
  * @lucene.experimental
  */
 public final class Lucene98ScalarQuantizedVectorsFormat {
 
+  static final String NAME = "Lucene98ScalarQuantizedFormat";
+
   static final String META_CODEC_NAME = "Lucene98ScalarQuantizedVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene98ScalarQuantizedVectorsFormatData";
-  static final String QUANTIZED_VECTOR_DATA_CODEC_NAME = "Lucene98ScalarQuantizedVectorsFormatQuantizedData";
+
+  static final String QUANTIZED_VECTOR_DATA_CODEC_NAME = "Lucene98ScalarQuantizedVectorsData";
   static final String QUANTIZED_VECTOR_DATA_EXTENSION = "veq";
+  static final String QUANTIZED_VECTOR_META_EXTENSION = "vemq";
 
   public static final int VERSION_START = 0;
   public static final int VERSION_CURRENT = VERSION_START;
 
-  /**
-   * The minimum quantile
-   */
+  /** The minimum quantile */
   private static final int MINIMUM_QUANTILE = 90;
 
-  /**
-   * The maximum quantile
-   */
+  /** The maximum quantile */
   private static final int MAXIMUM_QUANTILE = 100;
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
@@ -60,8 +52,8 @@ public final class Lucene98ScalarQuantizedVectorsFormat {
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   /**
-   * Controls the quantile used to scalar quantize the vectors
-   * {@link Lucene98ScalarQuantizedVectorsFormat#DEFAULT_QUANTILE}.
+   * Controls the quantile used to scalar quantize the vectors {@link
+   * Lucene98ScalarQuantizedVectorsFormat#DEFAULT_QUANTILE}.
    */
   private final int quantile;
 
@@ -76,35 +68,30 @@ public final class Lucene98ScalarQuantizedVectorsFormat {
    * @param quantile the quantile for scalar quantizing the vectors
    */
   public Lucene98ScalarQuantizedVectorsFormat(int quantile) {
-    super("Lucene98QuantizedHnswVectorsFormat");
     if (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE) {
       throw new IllegalArgumentException(
-          "quantile must be between " + MINIMUM_QUANTILE + " and " + MAXIMUM_QUANTILE
+          "quantile must be between "
+              + MINIMUM_QUANTILE
+              + " and "
+              + MAXIMUM_QUANTILE
               + "; quantile="
               + quantile);
     }
     this.quantile = quantile;
   }
 
-  @Override
-  public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+  public Lucene98ScalarQuantizedVectorsWriter quantizationWriter(SegmentWriteState state)
+      throws IOException {
     return new Lucene98ScalarQuantizedVectorsWriter(state, quantile);
   }
 
-  @Override
-  public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+  public Lucene98ScalarQuantizedVectorsReader quantizationReader(SegmentReadState state)
+      throws IOException {
     return new Lucene98ScalarQuantizedVectorsReader(state);
   }
 
   @Override
-  public int getMaxDimensions(String fieldName) {
-    return 1024;
-  }
-
-  @Override
   public String toString() {
-    return "Lucene98ScalarQuantizedVectorsFormat(name=Lucene98ScalarQuantizedVectorsFormat, quantile="
-        + quantile
-        + ")";
+    return NAME + "(name=" + NAME + ", quantile=" + quantile + ")";
   }
 }

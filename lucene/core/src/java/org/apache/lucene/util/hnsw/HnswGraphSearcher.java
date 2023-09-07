@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-
 import org.apache.lucene.codecs.lucene98.VectorScorer;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -134,23 +133,22 @@ public class HnswGraphSearcher<T> {
   }
 
   public static void search(
-          VectorScorer vectorScorer,
-          int numVectors,
-          KnnCollector knnCollector,
-          VectorEncoding vectorEncoding,
-          VectorSimilarityFunction similarityFunction,
-          HnswGraph graph,
-          Bits acceptOrds)
-          throws IOException {
+      VectorScorer vectorScorer,
+      int numVectors,
+      KnnCollector knnCollector,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      HnswGraph graph,
+      Bits acceptOrds)
+      throws IOException {
     HnswGraphSearcher<float[]> graphSearcher =
-            new HnswGraphSearcher<>(
-                    vectorEncoding,
-                    similarityFunction,
-                    new NeighborQueue(knnCollector.k(), true),
-                    new SparseFixedBitSet(numVectors));
+        new HnswGraphSearcher<>(
+            vectorEncoding,
+            similarityFunction,
+            new NeighborQueue(knnCollector.k(), true),
+            new SparseFixedBitSet(numVectors));
     search(vectorScorer, numVectors, knnCollector, graph, graphSearcher, acceptOrds);
   }
-
 
   /**
    * Search {@link OnHeapHnswGraph}, this method is thread safe, for parameters please refer to
@@ -271,19 +269,19 @@ public class HnswGraphSearcher<T> {
   }
 
   private static void search(
-          VectorScorer query,
-          int numVectors,
-          KnnCollector knnCollector,
-          HnswGraph graph,
-          HnswGraphSearcher<float[]> graphSearcher,
-          Bits acceptOrds)
-          throws IOException {
+      VectorScorer query,
+      int numVectors,
+      KnnCollector knnCollector,
+      HnswGraph graph,
+      HnswGraphSearcher<float[]> graphSearcher,
+      Bits acceptOrds)
+      throws IOException {
     int initialEp = graph.entryNode();
     if (initialEp == -1) {
       return;
     }
     int[] epAndVisited =
-            graphSearcher.findBestEntryPoint(query, numVectors, graph, knnCollector.visitLimit());
+        graphSearcher.findBestEntryPoint(query, numVectors, graph, knnCollector.visitLimit());
     int numVisited = epAndVisited[1];
     int ep = epAndVisited[0];
     if (ep == -1) {
@@ -291,7 +289,8 @@ public class HnswGraphSearcher<T> {
       return;
     }
     knnCollector.incVisitedCount(numVisited);
-    graphSearcher.searchLevel(knnCollector, query, numVectors, 0, new int[] {ep}, graph, acceptOrds);
+    graphSearcher.searchLevel(
+        knnCollector, query, numVectors, 0, new int[] {ep}, graph, acceptOrds);
   }
 
   private static <T> void search(
@@ -398,8 +397,8 @@ public class HnswGraphSearcher<T> {
     return new int[] {currentEp, visitedCount};
   }
 
-  private int[] findBestEntryPoint(VectorScorer vectorScorer, int numVecs, HnswGraph graph, long visitLimit)
-          throws IOException {
+  private int[] findBestEntryPoint(
+      VectorScorer vectorScorer, int numVecs, HnswGraph graph, long visitLimit) throws IOException {
     int size = graph.size();
     int visitedCount = 1;
     prepareScratchState(numVecs);
@@ -425,7 +424,7 @@ public class HnswGraphSearcher<T> {
           float friendSimilarity = vectorScorer.score(friendOrd);
           visitedCount++;
           if (friendSimilarity > currentScore
-                  || (friendSimilarity == currentScore && friendOrd < currentEp)) {
+              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
             currentScore = friendSimilarity;
             currentEp = friendOrd;
             foundBetter = true;
@@ -506,14 +505,14 @@ public class HnswGraphSearcher<T> {
   }
 
   void searchLevel(
-          KnnCollector results,
-          VectorScorer vectorScorer,
-          int numVecs,
-          int level,
-          final int[] eps,
-          HnswGraph graph,
-          Bits acceptOrds)
-          throws IOException {
+      KnnCollector results,
+      VectorScorer vectorScorer,
+      int numVecs,
+      int level,
+      final int[] eps,
+      HnswGraph graph,
+      Bits acceptOrds)
+      throws IOException {
 
     int size = graph.size();
     prepareScratchState(numVecs);
@@ -567,7 +566,6 @@ public class HnswGraphSearcher<T> {
       }
     }
   }
-
 
   private float compare(T query, RandomAccessVectorValues<T> vectors, int ord) throws IOException {
     if (vectorEncoding == VectorEncoding.BYTE) {

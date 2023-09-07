@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.5 file format.
+ * Lucene 9.8 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -183,6 +183,10 @@
  *   <li>{@link org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat Vector values}. The
  *       vector format stores numeric vectors in a format optimized for random access and
  *       computation, supporting high-dimensional nearest-neighbor search.
+ *   <li>{@link org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat quantized
+ *       vector values}. The quantized vector format stores numeric vectors in a scalar quantized
+ *       format optimized for random access and computation. Can be used in conjunction with HNSW to
+ *       support approximate nearest-neighbor search at query time.
  * </ul>
  *
  * <p>Details on each of these are provided in their linked pages. </div> <a id="File_Naming"></a>
@@ -315,6 +319,12 @@
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
  * <code>.vem</code> the vector metadata</td>
  * </tr>
+ * <tr>
+ * <td>{@link org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat Quantized Vector values}</td>
+ * <td>.veq, .vemq</td>
+ * <td><code>.veq</code>Holds quantized vector values; the byte[] encoded vectors and relevant offsets
+ * <code>.vemq</code> the quantized vector metadata</td>
+ * </tr>
  * </table>
  *
  * </div> <a id="Lock_File"></a>
@@ -408,6 +418,8 @@
  *   <li>In version 9.5, HNSW graph connections were changed to be delta-encoded with vints.
  *       Additionally, metadata file size improvements were made by delta-encoding nodes by graph
  *       layer and not writing the node ids for the zeroth layer.
+ *   <li>In version 9.8, Vector scalar quantization support was added. Allowing the HNSW vector
+ *       format to utilize int8 quantized vectors for float32 vector search.
  * </ul>
  *
  * <a id="Limitations"></a>

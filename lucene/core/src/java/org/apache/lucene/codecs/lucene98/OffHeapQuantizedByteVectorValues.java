@@ -17,6 +17,8 @@
 
 package org.apache.lucene.codecs.lucene98;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -24,12 +26,9 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 /** Read the vector values from the index input. This supports both iterated and random access. */
 abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
-    implements RandomAccessVectorValues<byte[]> {
+    implements RandomAccessQuantizedByteVectorValues {
 
   protected final int dimension;
   protected final int size;
@@ -37,6 +36,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
+  protected int lastOrd = -1;
   protected float scoreCorrectionConstant;
 
   OffHeapQuantizedByteVectorValues(int dimension, int size, IndexInput slice) {
@@ -60,7 +60,13 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
 
   @Override
   public byte[] vectorValue(int targetOrd) throws IOException {
-    readValue(targetOrd);
+    if (lastOrd == targetOrd) {
+      return binaryValue;
+    }
+    slice.seek((long) targetOrd * byteSize);
+    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension);
+    scoreCorrectionConstant = Float.intBitsToFloat(slice.readInt());
+    lastOrd = targetOrd;
     return binaryValue;
   }
 
@@ -69,22 +75,17 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     return scoreCorrectionConstant;
   }
 
-  void readValue(int targetOrd) throws IOException {
-    slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension);
-    scoreCorrectionConstant = Float.intBitsToFloat(slice.readInt());
-  }
-
   static OffHeapQuantizedByteVectorValues load(
-          Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+      Lucene98ScalarQuantizedVectorsReader.FieldEntry fieldEntry, IndexInput vectorData)
+      throws IOException {
     if (fieldEntry.docsWithFieldOffset == -2) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
-    IndexInput bytesSlice = vectorData.slice(
-                "quantized-vector-data",
-                fieldEntry.quantizedVectorDataOffset,
-                fieldEntry.quantizedVectorDataLength
-        );
+    IndexInput bytesSlice =
+        vectorData.slice(
+            "quantized-vector-data",
+            fieldEntry.quantizedVectorDataOffset,
+            fieldEntry.quantizedVectorDataLength);
     if (fieldEntry.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
     } else {
@@ -104,8 +105,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
 
     @Override
     public byte[] vectorValue() throws IOException {
-      readValue(doc);
-      return binaryValue;
+      return vectorValue(doc);
     }
 
     @Override
@@ -169,10 +169,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
 
     @Override
     public byte[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension, false);
-      scoreCorrectionConstant = Float.intBitsToFloat(slice.readInt());
-      return binaryValue;
+      return vectorValue(disi.index());
     }
 
     @Override

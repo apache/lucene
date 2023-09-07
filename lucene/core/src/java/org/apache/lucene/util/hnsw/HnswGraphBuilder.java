@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.codecs.lucene98.VectorScorer;
 import org.apache.lucene.codecs.lucene98.VectorScorerSupplier;
 import org.apache.lucene.index.VectorEncoding;
@@ -97,13 +96,13 @@ public final class HnswGraphBuilder<T> {
   }
 
   public static HnswGraphBuilder<float[]> create(
-          VectorScorerSupplier scorerSupplier,
-          VectorEncoding vectorEncoding,
-          VectorSimilarityFunction similarityFunction,
-          int M,
-          int beamWidth,
-          long seed)
-          throws IOException {
+      VectorScorerSupplier scorerSupplier,
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int M,
+      int beamWidth,
+      long seed)
+      throws IOException {
     return new HnswGraphBuilder<>(vectors, vectorEncoding, similarityFunction, M, beamWidth, seed);
   }
 
@@ -340,14 +339,16 @@ public final class HnswGraphBuilder<T> {
     GraphBuilderKnnCollector candidates = entryCandidates;
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates.clear();
-      graphSearcher.searchLevel(candidates, vectorScorer, vectorScorerSupplier.numVectors(), level, eps, hnsw, null);
+      graphSearcher.searchLevel(
+          candidates, vectorScorer, vectorScorerSupplier.numVectors(), level, eps, hnsw, null);
       eps = new int[] {candidates.popNode()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     candidates = beamCandidates;
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates.clear();
-      graphSearcher.searchLevel(candidates, vectorScorer, vectorScorerSupplier.numVectors(), level, eps, hnsw, null);
+      graphSearcher.searchLevel(
+          candidates, vectorScorer, vectorScorerSupplier.numVectors(), level, eps, hnsw, null);
       eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
