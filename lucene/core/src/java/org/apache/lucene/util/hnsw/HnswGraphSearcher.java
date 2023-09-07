@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene98.VectorScorer;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -130,24 +129,6 @@ public class HnswGraphSearcher<T> {
             new NeighborQueue(knnCollector.k(), true),
             new SparseFixedBitSet(vectors.size()));
     search(query, knnCollector, vectors, graph, graphSearcher, acceptOrds);
-  }
-
-  public static void search(
-      VectorScorer vectorScorer,
-      int numVectors,
-      KnnCollector knnCollector,
-      VectorEncoding vectorEncoding,
-      VectorSimilarityFunction similarityFunction,
-      HnswGraph graph,
-      Bits acceptOrds)
-      throws IOException {
-    HnswGraphSearcher<float[]> graphSearcher =
-        new HnswGraphSearcher<>(
-            vectorEncoding,
-            similarityFunction,
-            new NeighborQueue(knnCollector.k(), true),
-            new SparseFixedBitSet(numVectors));
-    search(vectorScorer, numVectors, knnCollector, graph, graphSearcher, acceptOrds);
   }
 
   /**
@@ -268,31 +249,6 @@ public class HnswGraphSearcher<T> {
     return collector;
   }
 
-  private static void search(
-      VectorScorer query,
-      int numVectors,
-      KnnCollector knnCollector,
-      HnswGraph graph,
-      HnswGraphSearcher<float[]> graphSearcher,
-      Bits acceptOrds)
-      throws IOException {
-    int initialEp = graph.entryNode();
-    if (initialEp == -1) {
-      return;
-    }
-    int[] epAndVisited =
-        graphSearcher.findBestEntryPoint(query, numVectors, graph, knnCollector.visitLimit());
-    int numVisited = epAndVisited[1];
-    int ep = epAndVisited[0];
-    if (ep == -1) {
-      knnCollector.incVisitedCount(numVisited);
-      return;
-    }
-    knnCollector.incVisitedCount(numVisited);
-    graphSearcher.searchLevel(
-        knnCollector, query, numVectors, 0, new int[] {ep}, graph, acceptOrds);
-  }
-
   private static <T> void search(
       T query,
       KnnCollector knnCollector,
@@ -397,44 +353,6 @@ public class HnswGraphSearcher<T> {
     return new int[] {currentEp, visitedCount};
   }
 
-  private int[] findBestEntryPoint(
-      VectorScorer vectorScorer, int numVecs, HnswGraph graph, long visitLimit) throws IOException {
-    int size = graph.size();
-    int visitedCount = 1;
-    prepareScratchState(numVecs);
-    int currentEp = graph.entryNode();
-    float currentScore = vectorScorer.score(currentEp);
-    boolean foundBetter;
-    for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      foundBetter = true;
-      visited.set(currentEp);
-      // Keep searching the given level until we stop finding a better candidate entry point
-      while (foundBetter) {
-        foundBetter = false;
-        graphSeek(graph, level, currentEp);
-        int friendOrd;
-        while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-          assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-          if (visited.getAndSet(friendOrd)) {
-            continue;
-          }
-          if (visitedCount >= visitLimit) {
-            return new int[] {-1, visitedCount};
-          }
-          float friendSimilarity = vectorScorer.score(friendOrd);
-          visitedCount++;
-          if (friendSimilarity > currentScore
-              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
-            currentScore = friendSimilarity;
-            currentEp = friendOrd;
-            foundBetter = true;
-          }
-        }
-      }
-    }
-    return new int[] {currentEp, visitedCount};
-  }
-
   /**
    * Add the closest neighbors found to a priority queue (heap). These are returned in REVERSE
    * proximity order -- the most distant neighbor of the topK found, i.e. the one with the lowest
@@ -491,69 +409,6 @@ public class HnswGraphSearcher<T> {
           break;
         }
         float friendSimilarity = compare(query, vectors, friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity >= minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collect(friendOrd, friendSimilarity)) {
-              minAcceptedSimilarity = results.minCompetitiveSimilarity();
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void searchLevel(
-      KnnCollector results,
-      VectorScorer vectorScorer,
-      int numVecs,
-      int level,
-      final int[] eps,
-      HnswGraph graph,
-      Bits acceptOrds)
-      throws IOException {
-
-    int size = graph.size();
-    prepareScratchState(numVecs);
-
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float score = vectorScorer.score(ep);
-        results.incVisitedCount(1);
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
-      }
-    }
-
-    // A bound that holds the minimum similarity to the query vector that a candidate vector must
-    // have to be considered.
-    float minAcceptedSimilarity = results.minCompetitiveSimilarity();
-    while (candidates.size() > 0 && results.earlyTerminated() == false) {
-      // get the best candidate (closest or best scoring)
-      float topCandidateSimilarity = candidates.topScore();
-      if (topCandidateSimilarity < minAcceptedSimilarity) {
-        break;
-      }
-
-      int topCandidateNode = candidates.pop();
-      graphSeek(graph, level, topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
-          continue;
-        }
-
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float friendSimilarity = vectorScorer.score(friendOrd);
         results.incVisitedCount(1);
         if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
