@@ -248,7 +248,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     IOUtils.close(r, dir);
   }
 
-  public void testMultipleSegmentsExecuteOnTheExecutor() throws IOException {
+  public void testSlicesAllOffloadedToTheExecutor() throws IOException {
     List<LeafReaderContext> leaves = reader.leaves();
     AtomicInteger numExecutions = new AtomicInteger(0);
     IndexSearcher searcher =
@@ -268,10 +268,6 @@ public class TestIndexSearcher extends LuceneTestCase {
           }
         };
     searcher.search(new MatchAllDocsQuery(), 10);
-    if (leaves.size() <= 1) {
-      assertEquals(0, numExecutions.get());
-    } else {
-      assertEquals(leaves.size(), numExecutions.get());
-    }
+    assertEquals(leaves.size(), numExecutions.get());
   }
 }
