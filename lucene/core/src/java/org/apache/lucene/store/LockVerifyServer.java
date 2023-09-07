@@ -43,6 +43,7 @@ public class LockVerifyServer {
   static void run(String hostname, int maxClients, Consumer<InetSocketAddress> startClients)
       throws Exception {
     try (final ServerSocket s = new ServerSocket()) {
+      s.setSoTimeout(30000); // give clients at most 30 secs to connect and send bytes
       s.bind(new InetSocketAddress(hostname, 0));
       final InetSocketAddress localAddr = (InetSocketAddress) s.getLocalSocketAddress();
       System.out.println("Listening on " + localAddr + "...");
