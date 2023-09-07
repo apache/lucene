@@ -55,6 +55,8 @@ API Changes
 
 * GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
 
+* GITHUB#12407: Removed Scorable#docID. (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -73,10 +75,21 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
+* GITHUB#12447, GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
+* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
+
+* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+
 Optimizations
 ---------------------
 
 * GITHUB#11857, GITHUB#11859, GITHUB#11893, GITHUB#11909: Hunspell: improved suggestion performance (Peter Gromov)
+
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
+* GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
+  to count. (Greg Miller)
 
 Bug Fixes
 ---------------------
@@ -111,6 +124,116 @@ Other
 * GITHUB#11960: Hunspell: supported empty dictionaries (Peter Gromov)
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
+
+======================== Lucene 9.8.0 =======================
+
+API Changes
+---------------------
+
+* GITHUB#11248: IntBlockPool's SliceReader, SliceWriter, and all int slice functionality are moved out to MemoryIndex.
+  (Stefan Vodita)
+
+* GITHUB#12436: Move max vector dims limit to Codec (Mayya Sharipova)
+
+New Features
+---------------------
+
+* GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
+  collection has finished running on a leaf. (Adrien Grand)
+
+* LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
+  HyphenationCompoundWordFilter (Martin Demberger, original from Rupert Westenthaler)
+
+* GITHUB#12434: Add `KnnCollector` to `LeafReader` and `KnnVectorReader` so that custom collection of vector
+  search results can be provided. The first custom collector provides `ToParentBlockJoin[Float|Byte]KnnVectorQuery`
+  joining child vector documents with their parent documents. (Ben Trent)
+
+* GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
+  vector search. (Jack Mazanec, Ben Trent)
+
+Improvements
+---------------------
+* GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
+
+* GITHUB#12499: Simplify task executor for concurrent operations by offloading concurrent operations to the
+  provided executor unconditionally. (Luca Cavanna)
+
+Optimizations
+---------------------
+
+* GITHUB#12377: Avoid redundant loop for compute min value in DirectMonotonicWriter. (Chao Zhang)
+
+* GITHUB#12361: Faster top-level disjunctions sorted by descending score.
+  (Adrien Grand)
+
+* GITHUB#12444: Faster top-level disjunctions sorted by descending score in
+  case of many terms or queries that expose suboptimal score upper bounds.
+  (Adrien Grand)
+
+* GITHUB#12383: Assign a dummy simScorer in TermsWeight if score is not needed. (Sagar Upadhyaya)
+
+* GITHUB#12372: Reduce allocation during HNSW construction (Jonathan Ellis)
+
+* GITHUB#12385: Restore parallel knn query rewrite across segments rather than slices (Luca Cavanna)
+
+* GITHUB#12381: Speed up NumericDocValuesWriter with index sorting. (Chao Zhang)
+
+* GITHUB#12453: Faster bulk numeric reads from BufferedIndexInput (Armin Braun)
+
+* GITHUB#12415: Optimized counts on disjunctive queries. (Adrien Grand)
+
+* GITHUB#12518: Use panama vector API to speed up l2norm calculations (Ben Trent)
+
+* GITHUB##12371: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12516: Unwrap and throw execution exceptions cause when performing concurrent search (Luca Cavanna)
+
+* GITHUB#12498: Offload concurrent search execution to the executor that's optionally provided to the IndexSearcher.
+  Tasks are no longer executed on the caller thread when rejected or if the executor queue goes above a predefined
+  threshold. Adaptive behaviour as well as a saturation policy can be incorporated in the provided executor instead.
+  (Luca Cavanna)
+
+* GITHUB#12515: Offload sequential search execution to the executor that's optionally provided to the IndexSearcher
+  (Luca Cavanna)
+
+Bug Fixes
+---------------------
+
+* GITHUB#9660: Throw an ArithmeticException when the offset overflows in a ByteBlockPool. (Stefan Vodita)
+
+* GITHUB#11537: Fix stack overflow in RegExp for long strings by reducing recursion. (Jakub Slowinski)
+
+* GITHUB#12388: JoinUtil queries were ignoring boosts. (Alan Woodward)
+
+* GITHUB#12413: Fix HNSW graph search bug that potentially leaked unapproved docs (Ben Trent).
+
+* GITHUB#12423: Respect timeouts in ExitableDirectoryReader when searching with byte[] vectors (Ben Trent).
+
+* GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
+  (Greg Miller).
+
+* GITHUB#2472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
+  impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
+  scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
+
+* LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
+
+Other
+---------------------
+
+* GITHUB#12404: Remove usage and add some legacy java.util classes to forbiddenapis (Stack, Hashtable, Vector).
+  (Uwe Schindler)
+
+* GITHUB#12410: Refactor vectorization support (split provider from implementation classes).
+  (Uwe Schindler, Chris Hegarty)
+
+* GITHUB#12428: Replace consecutive close() calls and close() calls with null checks with IOUtils.close().
+  (Shubham Chaudhary)
+
+* GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
 
 ======================== Lucene 9.7.0 =======================
 
@@ -152,6 +275,8 @@ New Features
   closed while queries are running can no longer crash the JVM. To disable this feature,
   pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
+  
+* GITHUB#12252 Add function queries for computing similarity scores between knn vectors. (Elia Porciani, Alessandro Benedetti)
 
 Improvements
 ---------------------
@@ -191,6 +316,8 @@ Optimizations
   queries relying on terms in NIOFSDirectory and SimpleFSDirectory. (Alan Woodward)
 
 * GITHUB#12339: Optimize part of duplicate calculation numDeletesToMerge in merge phase (fudongying)
+
+* GITHUB#12334: Honor after value for skipping documents even if queue is not full for PagingFieldCollector (Chaitanya Gohel)
 
 Bug Fixes
 ---------------------

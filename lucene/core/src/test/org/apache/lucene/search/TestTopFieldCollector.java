@@ -195,23 +195,20 @@ public class TestTopFieldCollector extends LuceneTestCase {
     for (int totalHitsThreshold = 0; totalHitsThreshold < 20; ++totalHitsThreshold) {
       for (FieldDoc after : new FieldDoc[] {null, new FieldDoc(4, Float.NaN, new Object[] {2L})}) {
         TopFieldCollector collector = TopFieldCollector.create(sort, 2, after, totalHitsThreshold);
-        ScoreAndDoc scorer = new ScoreAndDoc();
+        Score scorer = new Score();
 
         LeafCollector leafCollector1 = collector.getLeafCollector(reader.leaves().get(0));
         leafCollector1.setScorer(scorer);
 
-        scorer.doc = 0;
         scorer.score = 3;
         leafCollector1.collect(0);
 
-        scorer.doc = 1;
         scorer.score = 3;
         leafCollector1.collect(1);
 
         LeafCollector leafCollector2 = collector.getLeafCollector(reader.leaves().get(1));
         leafCollector2.setScorer(scorer);
 
-        scorer.doc = 1;
         scorer.score = 3;
         if (totalHitsThreshold < 3) {
           expectThrows(CollectionTerminatedException.class, () -> leafCollector2.collect(1));
@@ -223,7 +220,6 @@ public class TestTopFieldCollector extends LuceneTestCase {
           leafCollector2.collect(1);
         }
 
-        scorer.doc = 5;
         scorer.score = 4;
         if (totalHitsThreshold == 3) {
           expectThrows(CollectionTerminatedException.class, () -> leafCollector2.collect(1));
@@ -244,19 +240,13 @@ public class TestTopFieldCollector extends LuceneTestCase {
     dir.close();
   }
 
-  private static class ScoreAndDoc extends Scorable {
-    int doc = -1;
+  private static class Score extends Scorable {
     float score;
     Float minCompetitiveScore = null;
 
     @Override
     public void setMinCompetitiveScore(float minCompetitiveScore) {
       this.minCompetitiveScore = minCompetitiveScore;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override
@@ -280,51 +270,44 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     Sort sort = new Sort(FIELD_SCORE, new SortField("foo", SortField.Type.LONG));
     TopFieldCollector collector = TopFieldCollector.create(sort, 2, null, 2);
-    ScoreAndDoc scorer = new ScoreAndDoc();
+    Score scorer = new Score();
 
     LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
     leafCollector.setScorer(scorer);
     assertNull(scorer.minCompetitiveScore);
 
-    scorer.doc = 0;
     scorer.score = 1;
     leafCollector.collect(0);
     assertNull(scorer.minCompetitiveScore);
 
-    scorer.doc = 1;
     scorer.score = 2;
     leafCollector.collect(1);
     assertNull(scorer.minCompetitiveScore);
 
-    scorer.doc = 2;
     scorer.score = 3;
     leafCollector.collect(2);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
 
-    scorer.doc = 3;
     scorer.score = 0.5f;
     // Make sure we do not call setMinCompetitiveScore for non-competitive hits
     scorer.minCompetitiveScore = Float.NaN;
     leafCollector.collect(3);
     assertTrue(Float.isNaN(scorer.minCompetitiveScore));
 
-    scorer.doc = 4;
     scorer.score = 4;
     leafCollector.collect(4);
     assertEquals(3f, scorer.minCompetitiveScore, 0f);
 
     // Make sure the min score is set on scorers on new segments
-    scorer = new ScoreAndDoc();
+    scorer = new Score();
     leafCollector = collector.getLeafCollector(reader.leaves().get(1));
     leafCollector.setScorer(scorer);
     assertEquals(3f, scorer.minCompetitiveScore, 0f);
 
-    scorer.doc = 0;
     scorer.score = 1;
     leafCollector.collect(0);
     assertEquals(3f, scorer.minCompetitiveScore, 0f);
 
-    scorer.doc = 1;
     scorer.score = 4;
     leafCollector.collect(1);
     assertEquals(4f, scorer.minCompetitiveScore, 0f);
@@ -349,27 +332,23 @@ public class TestTopFieldCollector extends LuceneTestCase {
     for (int totalHitsThreshold = 0; totalHitsThreshold < 20; ++totalHitsThreshold) {
       Sort sort = new Sort(FIELD_SCORE, new SortField("foo", SortField.Type.LONG));
       TopFieldCollector collector = TopFieldCollector.create(sort, 2, null, totalHitsThreshold);
-      ScoreAndDoc scorer = new ScoreAndDoc();
+      Score scorer = new Score();
 
       LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
       leafCollector.setScorer(scorer);
 
-      scorer.doc = 0;
       scorer.score = 3;
       leafCollector.collect(0);
 
-      scorer.doc = 1;
       scorer.score = 3;
       leafCollector.collect(1);
 
       leafCollector = collector.getLeafCollector(reader.leaves().get(1));
       leafCollector.setScorer(scorer);
 
-      scorer.doc = 1;
       scorer.score = 3;
       leafCollector.collect(1);
 
-      scorer.doc = 5;
       scorer.score = 4;
       leafCollector.collect(1);
 
@@ -442,6 +421,15 @@ public class TestTopFieldCollector extends LuceneTestCase {
                     throws IOException {
                   final LeafCollector in = topCollector.getLeafCollector(context);
                   return new FilterLeafCollector(in) {
+
+                    int currentDoc = -1;
+
+                    @Override
+                    public void collect(int doc) throws IOException {
+                      currentDoc = doc;
+                      super.collect(doc);
+                    }
+
                     @Override
                     public void setScorer(final Scorable scorer) throws IOException {
                       Scorable s =
@@ -451,10 +439,10 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
                             @Override
                             public float score() throws IOException {
-                              if (lastComputedDoc == docID()) {
-                                throw new AssertionError("Score computed twice on " + docID());
+                              if (lastComputedDoc == currentDoc) {
+                                throw new AssertionError("Score computed twice on " + currentDoc);
                               }
-                              lastComputedDoc = docID();
+                              lastComputedDoc = currentDoc;
                               return scorer.score();
                             }
                           };
@@ -567,62 +555,54 @@ public class TestTopFieldCollector extends LuceneTestCase {
     // force the check of the global minimum score on every round
     minValueChecker.modInterval = 0;
 
-    ScoreAndDoc scorer = new ScoreAndDoc();
-    ScoreAndDoc scorer2 = new ScoreAndDoc();
+    Score scorer = new Score();
+    Score scorer2 = new Score();
 
     LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
     leafCollector.setScorer(scorer);
     LeafCollector leafCollector2 = collector2.getLeafCollector(reader.leaves().get(1));
     leafCollector2.setScorer(scorer2);
 
-    scorer.doc = 0;
     scorer.score = 3;
     leafCollector.collect(0);
     assertNull(minValueChecker.get());
     assertNull(scorer.minCompetitiveScore);
 
-    scorer2.doc = 0;
     scorer2.score = 6;
     leafCollector2.collect(0);
     assertNull(minValueChecker.get());
     assertNull(scorer2.minCompetitiveScore);
 
-    scorer.doc = 1;
     scorer.score = 2;
     leafCollector.collect(1);
     assertEquals(2f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertNull(scorer2.minCompetitiveScore);
 
-    scorer2.doc = 1;
     scorer2.score = 9;
     leafCollector2.collect(1);
     assertEquals(6f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertEquals(6f, scorer2.minCompetitiveScore, 0f);
 
-    scorer2.doc = 2;
     scorer2.score = 7;
     leafCollector2.collect(2);
     assertEquals(7f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
-    scorer2.doc = 3;
     scorer2.score = 1;
     leafCollector2.collect(3);
     assertEquals(7f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
-    scorer.doc = 2;
     scorer.score = 10;
     leafCollector.collect(2);
     assertEquals(7f, minValueChecker.get().score, 0f);
     assertEquals(7f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
-    scorer.doc = 3;
     scorer.score = 11;
     leafCollector.collect(3);
     assertEquals(10f, minValueChecker.get().score, 0f);
@@ -631,17 +611,15 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     TopFieldCollector collector3 = manager.newCollector();
     LeafCollector leafCollector3 = collector3.getLeafCollector(reader.leaves().get(2));
-    ScoreAndDoc scorer3 = new ScoreAndDoc();
+    Score scorer3 = new Score();
     leafCollector3.setScorer(scorer3);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
-    scorer3.doc = 0;
     scorer3.score = 1f;
     leafCollector3.collect(0);
     assertEquals(10f, minValueChecker.get().score, 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
-    scorer.doc = 4;
     scorer.score = 11;
     leafCollector.collect(4);
     assertEquals(11f, minValueChecker.get().score, 0f);
@@ -649,7 +627,6 @@ public class TestTopFieldCollector extends LuceneTestCase {
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
-    scorer3.doc = 1;
     scorer3.score = 2f;
     leafCollector3.collect(1);
     assertEquals(11f, minValueChecker.get().score, 0f);

@@ -28,8 +28,8 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, byte[], int, Bits, int)} to perform nearest neighbour
- * search.
+ * Uses {@link KnnVectorsReader#search(String, byte[], KnnCollector, Bits)} to perform nearest
+ * neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
  * executes the filter for each leaf, then chooses a strategy dynamically:

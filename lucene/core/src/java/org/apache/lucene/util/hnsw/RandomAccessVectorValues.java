@@ -46,4 +46,14 @@ public interface RandomAccessVectorValues<T> {
    * {@link RandomAccessVectorValues#vectorValue}.
    */
   RandomAccessVectorValues<T> copy() throws IOException;
+
+  /**
+   * Translates vector ordinal to the correct document ID. By default, this is an identity function.
+   *
+   * @param ord the vector ordinal
+   * @return the document Id for that vector ordinal
+   */
+  default int ordToDoc(int ord) {
+    return ord;
+  }
 }
