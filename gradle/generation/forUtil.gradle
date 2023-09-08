@@ -20,12 +20,12 @@
 configure(project(":lucene:core")) {
 
   task generateForUtilInternal() {
-    description "Regenerate gen_ForUtil.py"
+    description "Regenerate gen_DefaultForUtil90.py"
     group "generation"
 
-    def genDir = file("src/java/org/apache/lucene/codecs/lucene90")
-    def genScript = file("${genDir}/gen_ForUtil.py")
-    def genOutput = file("${genDir}/ForUtil.java")
+    def genDir = file("src/java/org/apache/lucene/internal/vectorization")
+    def genScript = file("${genDir}/gen_DefaultForUtil90.py")
+    def genOutput = file("${genDir}/DefaultForUtil90.java")
 
     inputs.file genScript
     outputs.file genOutput
@@ -40,6 +40,28 @@ configure(project(":lucene:core")) {
   }
 
   regenerate.dependsOn wrapWithPersistentChecksums(generateForUtilInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  
+  task generatePanamaForUtilInternal() {
+    description "Regenerate gen_PanamaForUtil.py"
+    group "generation"
+
+    def genDir = file("src/java20/org/apache/lucene/internal/vectorization")
+    def genScript = file("${genDir}/gen_PanamaForUtil90.py")
+    def genOutput = file("${genDir}/PanamaForUtil90.java")
+
+    inputs.file genScript
+    outputs.file genOutput
+
+    doLast {
+      quietExec {
+        workingDir genDir
+        executable project.externalTool("python3")
+        args = [ '-B', genScript ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generatePanamaForUtilInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
 }
 
 configure(project(":lucene:backward-codecs")) {

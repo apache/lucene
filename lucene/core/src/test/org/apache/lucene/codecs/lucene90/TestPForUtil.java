@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.internal.vectorization.ForUtil90;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -39,21 +40,22 @@ public class TestPForUtil extends LuceneTestCase {
     final long endPointer = encodeTestData(iterations, values, d);
 
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
         pforUtil.skip(in);
         continue;
       }
-      final long[] restored = new long[ForUtil.BLOCK_SIZE];
+      final long[] restored = new long[ForUtil90.BLOCK_SIZE];
       pforUtil.decode(in, restored);
-      int[] ints = new int[ForUtil.BLOCK_SIZE];
-      for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
+      int[] ints = new int[ForUtil90.BLOCK_SIZE];
+      for (int j = 0; j < ForUtil90.BLOCK_SIZE; ++j) {
         ints[j] = Math.toIntExact(restored[j]);
       }
       assertArrayEquals(
           Arrays.toString(ints),
-          ArrayUtil.copyOfSubArray(values, i * ForUtil.BLOCK_SIZE, (i + 1) * ForUtil.BLOCK_SIZE),
+          ArrayUtil.copyOfSubArray(
+              values, i * ForUtil90.BLOCK_SIZE, (i + 1) * ForUtil90.BLOCK_SIZE),
           ints);
     }
     assertEquals(endPointer, in.getFilePointer());
@@ -72,18 +74,18 @@ public class TestPForUtil extends LuceneTestCase {
     final long endPointer = encodeTestData(iterations, values, d);
 
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
-    final PForUtil pForUtil = new PForUtil(new ForUtil());
+    final PForUtil pForUtil = new PForUtil();
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {
         pForUtil.skip(in);
         continue;
       }
       long base = 0;
-      final long[] restored = new long[ForUtil.BLOCK_SIZE];
+      final long[] restored = new long[ForUtil90.BLOCK_SIZE];
       pForUtil.decodeAndPrefixSum(in, base, restored);
-      final long[] expected = new long[ForUtil.BLOCK_SIZE];
-      for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
-        expected[j] = values[i * ForUtil.BLOCK_SIZE + j];
+      final long[] expected = new long[ForUtil90.BLOCK_SIZE];
+      for (int j = 0; j < ForUtil90.BLOCK_SIZE; ++j) {
+        expected[j] = values[i * ForUtil90.BLOCK_SIZE + j];
         if (j > 0) {
           expected[j] += expected[j - 1];
         } else {
@@ -99,12 +101,12 @@ public class TestPForUtil extends LuceneTestCase {
   }
 
   private int[] createTestData(int iterations, int maxBpv) {
-    final int[] values = new int[iterations * ForUtil.BLOCK_SIZE];
+    final int[] values = new int[iterations * ForUtil90.BLOCK_SIZE];
 
     for (int i = 0; i < iterations; ++i) {
       final int bpv = TestUtil.nextInt(random(), 0, maxBpv);
-      for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
-        values[i * ForUtil.BLOCK_SIZE + j] =
+      for (int j = 0; j < ForUtil90.BLOCK_SIZE; ++j) {
+        values[i * ForUtil90.BLOCK_SIZE + j] =
             RandomNumbers.randomIntBetween(random(), 0, (int) PackedInts.maxValue(bpv));
         if (random().nextInt(100) == 0) {
           final int exceptionBpv;
@@ -113,7 +115,8 @@ public class TestPForUtil extends LuceneTestCase {
           } else {
             exceptionBpv = Math.min(bpv + TestUtil.nextInt(random(), 1, 8), maxBpv);
           }
-          values[i * ForUtil.BLOCK_SIZE + j] |= random().nextInt(1 << (exceptionBpv - bpv)) << bpv;
+          values[i * ForUtil90.BLOCK_SIZE + j] |=
+              random().nextInt(1 << (exceptionBpv - bpv)) << bpv;
         }
       }
     }
@@ -123,12 +126,12 @@ public class TestPForUtil extends LuceneTestCase {
 
   private long encodeTestData(int iterations, int[] values, Directory d) throws IOException {
     IndexOutput out = d.createOutput("test.bin", IOContext.DEFAULT);
-    final PForUtil pforUtil = new PForUtil(new ForUtil());
+    final PForUtil pforUtil = new PForUtil();
 
     for (int i = 0; i < iterations; ++i) {
-      long[] source = new long[ForUtil.BLOCK_SIZE];
-      for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
-        source[j] = values[i * ForUtil.BLOCK_SIZE + j];
+      long[] source = new long[ForUtil90.BLOCK_SIZE];
+      for (int j = 0; j < ForUtil90.BLOCK_SIZE; ++j) {
+        source[j] = values[i * ForUtil90.BLOCK_SIZE + j];
       }
       pforUtil.encode(source, out);
     }

@@ -82,4 +82,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilSupport;
   }
+
+  @Override
+  public ForUtil90 newForUtil90() {
+    return new PanamaForUtil90();
+  }
 }

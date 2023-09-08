@@ -31,6 +31,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
+import org.apache.lucene.internal.vectorization.ForUtil90;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -356,7 +357,7 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
   public static final String PAY_EXTENSION = "pay";
 
   /** Size of blocks. */
-  public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
+  public static final int BLOCK_SIZE = ForUtil90.BLOCK_SIZE;
 
   /**
    * Expert: The maximum number of skip levels. Smaller values result in slightly smaller indexes,
@@ -449,12 +450,12 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
     public long payStartFP;
     /**
      * file offset for the start of the skip list, relative to docStartFP, if there are more than
-     * {@link ForUtil#BLOCK_SIZE} docs; otherwise -1
+     * {@link ForUtil90#BLOCK_SIZE} docs; otherwise -1
      */
     public long skipOffset;
     /**
      * file offset for the last position in the last block, if there are more than {@link
-     * ForUtil#BLOCK_SIZE} positions; otherwise -1
+     * ForUtil90#BLOCK_SIZE} positions; otherwise -1
      */
     public long lastPosBlockOffset;
     /**

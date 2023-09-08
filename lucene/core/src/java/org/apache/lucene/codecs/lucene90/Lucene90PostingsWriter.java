@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import static org.apache.lucene.codecs.lucene90.ForUtil.BLOCK_SIZE;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.MAX_SKIP_LEVELS;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.PAY_CODEC;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.POS_CODEC;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.TERMS_CODEC;
 import static org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.internal.vectorization.ForUtil90.BLOCK_SIZE;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
@@ -110,7 +110,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     try {
       CodecUtil.writeIndexHeader(
           docOut, DOC_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
-      pforUtil = new PForUtil(new ForUtil());
+      pforUtil = new PForUtil();
       if (state.fieldInfos.hasProx()) {
         posDeltaBuffer = new long[BLOCK_SIZE];
         String posFileName =
