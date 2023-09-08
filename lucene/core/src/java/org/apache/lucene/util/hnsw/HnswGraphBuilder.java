@@ -74,7 +74,7 @@ public final class HnswGraphBuilder {
   private final Set<Integer> initializedNodes;
 
   public static HnswGraphBuilder create(
-          RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
     return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
   }
@@ -104,7 +104,7 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   private HnswGraphBuilder(
-          RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");

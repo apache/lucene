@@ -56,7 +56,7 @@ public class Word2VecSynonymProvider {
         RandomVectorScorerSupplier.createFloats(word2VecModel, SIMILARITY_FUNCTION);
     HnswGraphBuilder builder =
         HnswGraphBuilder.create(
-                scorerSupplier, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, HnswGraphBuilder.randSeed);
+            scorerSupplier, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, HnswGraphBuilder.randSeed);
     this.hnswGraph = builder.build(word2VecModel.size());
   }
 

@@ -426,7 +426,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
-                            scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+                        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -442,7 +442,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
-                            scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+                        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
             };
