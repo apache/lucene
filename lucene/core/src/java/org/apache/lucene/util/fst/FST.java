@@ -83,12 +83,12 @@ public final class FST<T> implements Accountable {
 
   static final int BIT_ARC_HAS_FINAL_OUTPUT = 1 << 5;
 
-  /** Value of the arc flags to declare a node with fixed length arcs designed for binary search. */
+  /** Value of the arc flags to declare a node with fixed length (sparse) arcs designed for binary search. */
   // We use this as a marker because this one flag is illegal by itself.
   public static final byte ARCS_FOR_BINARY_SEARCH = BIT_ARC_HAS_FINAL_OUTPUT;
 
   /**
-   * Value of the arc flags to declare a node with fixed length arcs and bit table designed for
+   * Value of the arc flags to declare a node with fixed length dense arcs and bit table designed for
    * direct addressing.
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;

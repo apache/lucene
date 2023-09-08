@@ -37,21 +37,28 @@ final class NodeHash<T> {
     this.in = in;
   }
 
+  /** Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address, returning
+   *  true if they are equal. */
   private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
     fst.readFirstRealTargetArc(address, scratchArc, in);
 
-    // Fail fast for a node with fixed length arcs.
+    // fail fast for a node with fixed length arcs
     if (scratchArc.bytesPerArc() != 0) {
-      if (scratchArc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
-        if (node.numArcs != scratchArc.numArcs()) {
-          return false;
-        }
-      } else {
-        assert scratchArc.nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING;
-        if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
-            || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
-          return false;
-        }
+      // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be sparse or dense
+      switch (scratchArc.nodeFlags()) {
+        case FST.ARCS_FOR_BINARY_SEARCH:
+          if (node.numArcs != scratchArc.numArcs()) {
+            return false;
+          }
+          break;
+        case FST.ARCS_FOR_DIRECT_ADDRESSING:
+          if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
+              || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
+            return false;
+          }
+          break;
+        default:
+          throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
       }
     }
 
