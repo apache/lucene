@@ -160,99 +160,6 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     return readSize;
   }
 
-  public void executeQueries(
-      ByteBufferBoundedQueue.ByteBuffers queryBatch, PimSystemManager.ResultReceiver resultReceiver)
-      throws DpuException {
-
-    // 1) send queries to PIM
-    sendQueriesToPIM(queryBatch);
-
-    // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
-    System.out.println(">> Launching DPUs");
-    dpuSystem.async().exec(null);
-
-    if (DpuConstants.DEBUG_DPU) {
-      dpuSystem
-          .async()
-          .call(
-              (s, i) -> {
-                try {
-                  dpuPrintLock.lock();
-                  s.log();
-                } finally {
-                  dpuPrintLock.unlock();
-                }
-              });
-    }
-
-    // 3) results transfer from DPUs to CPU
-    // first get the meta-data (index of query results in results array for each DPU)
-    // This meta-data has one integer per query in the batch
-    ByteBuffer[] dpuQueryResultsAddr = new ByteBuffer[dpuSystem.dpus().size()];
-    for (int i = 0; i < dpuQueryResultsAddr.length; ++i) {
-      dpuQueryResultsAddr[i] =
-          ByteBuffer.allocateDirect(AlignTo8(queryBatch.getNbElems() * Integer.BYTES));
-      dpuQueryResultsAddr[i].order(ByteOrder.LITTLE_ENDIAN);
-    }
-    dpuSystem
-        .async()
-        .copy(
-            dpuQueryResultsAddr,
-            DpuConstants.dpuResultsIndexVarName,
-            AlignTo8(queryBatch.getNbElems() * Integer.BYTES));
-
-    // then transfer the results
-    // use a callback to transfer a minimal number of results per rank
-    assert queryBatch.getNbElems() != 0;
-    final int lastQueryIndex = (queryBatch.getNbElems() - 1) * Integer.BYTES;
-    ByteBuffer[] dpuResults = new ByteBuffer[dpuSystem.dpus().size()];
-    ByteBuffer[][] dpuResultsPerRank = new ByteBuffer[dpuSystem.ranks().size()][];
-    dpuSystem
-        .async()
-        .call(
-            (DpuSet set, int rankId) -> {
-              // find the max byte size of results for DPUs in this rank
-              int resultsSize = 0;
-              for (int i = 0; i < set.dpus().size(); ++i) {
-                int dpuResultsSize =
-                    dpuQueryResultsAddr[dpuIdOffset[rankId] + i].getInt(lastQueryIndex);
-                if (dpuResultsSize > resultsSize) resultsSize = dpuResultsSize;
-              }
-              assert resultsSize >= 0;
-              if (resultsSize == 0) return;
-
-              // allocate the memory to transfer results
-              dpuResultsPerRank[rankId] = new ByteBuffer[set.dpus().size()];
-              for (int i = 0; i < set.dpus().size(); ++i) {
-                dpuResults[dpuIdOffset[rankId] + i] =
-                    ByteBuffer.allocateDirect(resultsSize * Integer.BYTES * 2);
-                dpuResults[dpuIdOffset[rankId] + i].order(ByteOrder.LITTLE_ENDIAN);
-                dpuResultsPerRank[rankId][i] = dpuResults[dpuIdOffset[rankId] + i];
-              }
-
-              // perform the transfer for this rank
-              set.copy(
-                  dpuResultsPerRank[rankId],
-                  DpuConstants.dpuResultsBatchVarName,
-                  resultsSize * Integer.BYTES * 2);
-            });
-
-    // 4) barrier to wait for all transfers to be finished
-    dpuSystem.async().sync();
-
-    // 5) Update the results map for the client threads to read their results
-    resultReceiver.startResultBatch();
-    try {
-      for (int q = 0; q < queryBatch.getNbElems(); ++q) {
-        resultReceiver.addResults(
-            queryBatch.getUniqueIdOf(q),
-            new DpuResultsInput(nbDpusInIndex, dpuResults, dpuQueryResultsAddr, q));
-      }
-    } finally {
-      resultReceiver.endResultBatch();
-    }
-  }
-
   /**
    * Broadcast an integer to the DpuSystem
    *
@@ -369,7 +276,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   }
 
   @Override
-  public void executeQueries(List<PimSystemManager2.QueryBuffer> queryBuffers) throws DpuException {
+  public void executeQueries(List<PimSystemManager.QueryBuffer> queryBuffers) throws DpuException {
 
     // 1) send queries to PIM
     sendQueriesToPIM(queryBuffers);
@@ -455,7 +362,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     }
   }
 
-  private void sendQueriesToPIM(List<PimSystemManager2.QueryBuffer> queryBuffers)
+  private void sendQueriesToPIM(List<PimSystemManager.QueryBuffer> queryBuffers)
       throws DpuException {
     // TODO: Here we could sort queryBuffers to group the queries by type before
     // sending them. Just need to make QueryBuffer implement Comparable and compare
@@ -465,7 +372,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // TODO: use Scatter Gather approach to send query buffers separately?
     int batchLength = 0;
     ByteArrayDataOutput out = new ByteArrayDataOutput(dpuQueryOffsetInBatch);
-    for (PimSystemManager2.QueryBuffer queryBuffer : queryBuffers) {
+    for (PimSystemManager.QueryBuffer queryBuffer : queryBuffers) {
       System.arraycopy(queryBuffer.bytes, 0, queryBatchBuffer, batchLength, queryBuffer.length);
       out.writeInt(batchLength);
       batchLength += queryBuffer.length;

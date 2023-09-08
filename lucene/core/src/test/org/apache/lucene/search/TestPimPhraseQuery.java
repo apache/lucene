@@ -48,7 +48,7 @@ import org.junit.BeforeClass;
  */
 
 /**
- * Tests {@link PhraseQuery}.
+ * Tests {@link PimPhraseQuery}.
  *
  * @see TestPositionIncrement
  */

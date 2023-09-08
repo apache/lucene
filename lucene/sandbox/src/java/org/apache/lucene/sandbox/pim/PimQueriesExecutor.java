@@ -8,11 +8,7 @@ interface PimQueriesExecutor {
 
   void setPimIndex(PimIndexInfo pimIndexInfo) throws DpuException, IOException;
 
-  void executeQueries(
-      ByteBufferBoundedQueue.ByteBuffers queryBatch, PimSystemManager.ResultReceiver resultReceiver)
-      throws IOException, DpuException;
-
-  void executeQueries(List<PimSystemManager2.QueryBuffer> queryBuffers)
+  void executeQueries(List<PimSystemManager.QueryBuffer> queryBuffers)
       throws IOException, DpuException;
 
   default void dumpDpuStream() {}
