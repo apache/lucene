@@ -31,11 +31,11 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   private int nbDpusInIndex;
   private final Lock dpuPrintLock = new ReentrantLock();
 
-  DpuSystemExecutor() throws DpuException {
+  DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
     // allocate DPUs, load the program, allocate space for DPU results
     dpuStream = new ByteArrayOutputStream();
-    dpuSystem = DpuSystem.allocate(DpuConstants.nrDpus, "", new PrintStream(dpuStream));
+    dpuSystem = DpuSystem.allocate(numDpusToAlloc, "", new PrintStream(dpuStream));
     dpuProgramInfo = dpuSystem.load(DpuConstants.dpuProgramPath);
     dpuQueryOffsetInBatch = new byte[DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
     dpuIdOffset = new int[dpuSystem.dpus().size()];

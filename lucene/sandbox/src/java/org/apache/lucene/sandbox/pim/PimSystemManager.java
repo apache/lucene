@@ -13,7 +13,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.*;
@@ -25,11 +24,11 @@ public class PimSystemManager {
 
   private static class SingletonHolder {
     static final PimSystemManager INSTANCE;
+
     static {
       try {
         INSTANCE = new PimSystemManager();
-      }
-      catch (DpuException e) {
+      } catch (DpuException e) {
         throw new ExceptionInInitializerError(e);
       }
     }
@@ -42,6 +41,7 @@ public class PimSystemManager {
 
   // TODO: Should there be a queue per query type, with a different max number of queries?
   private static final int MAX_NUM_QUERIES = 128;
+  private static int NUM_ALLOC_DPUS = DpuConstants.nrDpus;
 
   private final ThreadLocal<QueryBuffer> threadQueryBuffer =
       ThreadLocal.withInitial(QueryBuffer::new);
@@ -56,7 +56,7 @@ public class PimSystemManager {
     if (USE_SOFTWARE_MODEL) {
       queriesExecutor = new DpuSystemSimulator();
     } else {
-      queriesExecutor = new DpuSystemExecutor();
+      queriesExecutor = new DpuSystemExecutor(NUM_ALLOC_DPUS);
     }
     queryQueue = new ArrayBlockingQueue<>(MAX_NUM_QUERIES);
     queryRunner = new QueryRunner();
@@ -69,8 +69,24 @@ public class PimSystemManager {
   }
 
   /** Returns the singleton. */
-  public static PimSystemManager get() {
-    return SingletonHolder.INSTANCE;
+  public static PimSystemManager get() throws DpuException {
+    try {
+      return SingletonHolder.INSTANCE;
+    } catch (ExceptionInInitializerError e) {
+      throw new DpuException(
+          "DPU Allocation error: failed to allocate " + NUM_ALLOC_DPUS + " DPUs");
+    }
+  }
+
+  /**
+   * Set the number of DPUs that are allocated on instantiation of the singleton PimSystemManager.
+   * If the number of DPUs is too large, the allocation may fail on instantiation of the singleton
+   * on first PimSystemManager.get call. In this case, a DpuException is thrown.
+   *
+   * @param n the number of DPUs to allocate
+   */
+  public static void setNumAllocDpus(int n) {
+    NUM_ALLOC_DPUS = n;
   }
 
   /** Tells whether the current PIM index loaded is up-to-date and can be used to answer queries */

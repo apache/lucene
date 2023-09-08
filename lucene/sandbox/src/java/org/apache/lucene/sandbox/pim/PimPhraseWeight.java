@@ -1,5 +1,6 @@
 package org.apache.lucene.sandbox.pim;
 
+import com.upmem.dpu.DpuException;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
@@ -52,39 +53,44 @@ public class PimPhraseWeight extends Weight {
     // LeafSimScorer.getNormValue())
     // this table can be an array: n bits per norm value, with n determined based on [min,max]
     // value.
+    try {
+      // if the PIM system is ready to answer queries for this context use it
+      if (PimSystemManager.get().isReady(context)
+          && PimSystemManager.get().isQuerySupported(getQuery())) {
 
-    // if the PIM system is ready to answer queries for this context use it
-    if (PimSystemManager.get().isReady(context)
-        && PimSystemManager.get().isQuerySupported(getQuery())) {
-
-      System.out.println(
-          ">> Query is offloaded to PIM system "
-              + (PimSystemManager.USE_SOFTWARE_MODEL ? "simulator" : "hardware")
-              + " for segment "
-              + context.ord);
-      PimPhraseQuery pimQuery = (PimPhraseQuery) getQuery();
-      LeafSimScorer simScorer =
-          new LeafSimScorer(
-              scoreStats.similarity.scorer(
-                  scoreStats.boost, scoreStats.collectionStats, scoreStats.termStats),
-              context.reader(),
-              pimQuery.getField(),
-              scoreStats.scoreMode.needsScores());
-      try {
-        return new PimScorer(
-            this,
-            new DpuResults(pimQuery, PimSystemManager.get().search(context, pimQuery), simScorer));
-      } catch (PimSystemManager.PimQueryQueueFullException e) {
-        // PimSystemManager queue is full, handle the query on CPU
+        System.out.println(
+            ">> Query is offloaded to PIM system "
+                + (PimSystemManager.USE_SOFTWARE_MODEL ? "simulator" : "hardware")
+                + " for segment "
+                + context.ord);
+        PimPhraseQuery pimQuery = (PimPhraseQuery) getQuery();
+        LeafSimScorer simScorer =
+            new LeafSimScorer(
+                scoreStats.similarity.scorer(
+                    scoreStats.boost, scoreStats.collectionStats, scoreStats.termStats),
+                context.reader(),
+                pimQuery.getField(),
+                scoreStats.scoreMode.needsScores());
+        try {
+          return new PimScorer(
+              this,
+              new DpuResults(
+                  pimQuery, PimSystemManager.get().search(context, pimQuery), simScorer));
+        } catch (PimSystemManager.PimQueryQueueFullException e) {
+          // PimSystemManager queue is full, handle the query on CPU
+          return matchWithPhraseQuery(context);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return null;
+        }
+      } else {
         return matchWithPhraseQuery(context);
-        // for testing fail if this happens
-        // System.out.println(e.getMessage());
-        // throw new RuntimeException();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return null;
       }
-    } else {
+    } catch (DpuException e) {
+      // Error in PimSystemManager instantiation due to failing DPU allocation
+      // Note: this should not happen as at this stage the PimSystemManager
+      // instantiation should already be done if a PIM index was loaded in the system
+      // Run the query on CPU
       return matchWithPhraseQuery(context);
     }
   }
