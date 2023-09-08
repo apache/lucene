@@ -65,7 +65,7 @@ public final class Lucene98ScalarQuantizedVectorsFormat {
    *     based on the vector field dimensions.
    */
   public Lucene98ScalarQuantizedVectorsFormat(Float quantile) {
-    if (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE) {
+    if (quantile != null && (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE)) {
       throw new IllegalArgumentException(
           "quantile must be between "
               + MINIMUM_QUANTILE

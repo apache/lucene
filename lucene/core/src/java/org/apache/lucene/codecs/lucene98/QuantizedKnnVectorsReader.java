@@ -18,9 +18,7 @@ package org.apache.lucene.codecs.lucene98;
 
 import org.apache.lucene.codecs.KnnVectorsReader;
 
-/**
- * A version of KnnVectorsReader that provides quantized state and values.
- */
+/** A version of KnnVectorsReader that provides quantized state and values. */
 abstract class QuantizedKnnVectorsReader extends KnnVectorsReader {
 
   abstract QuantizedByteVectorValues getQuantizedVectorValues(String fieldName);
