@@ -72,8 +72,8 @@ public class TestPayloadSpans extends LuceneTestCase {
 
   @Override
   public void tearDown() throws Exception {
-    super.tearDown();
     helper.tearDown();
+    super.tearDown();
   }
 
   public void testSpanTermQuery() throws Exception {

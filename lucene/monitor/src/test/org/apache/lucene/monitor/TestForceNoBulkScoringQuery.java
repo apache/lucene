@@ -52,7 +52,7 @@ public class TestForceNoBulkScoringQuery extends LuceneTestCase {
 
   public void testRewrite() throws IOException {
 
-    try (Directory dir = new ByteBuffersDirectory();
+    try (Directory dir = newDirectory();
         IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
 
       Document doc = new Document();
