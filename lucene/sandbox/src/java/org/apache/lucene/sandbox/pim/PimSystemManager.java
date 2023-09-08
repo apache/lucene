@@ -24,7 +24,15 @@ import org.apache.lucene.util.BitUtil;
 public class PimSystemManager {
 
   private static class SingletonHolder {
-    static final PimSystemManager INSTANCE = new PimSystemManager();
+    static final PimSystemManager INSTANCE;
+    static {
+      try {
+        INSTANCE = new PimSystemManager();
+      }
+      catch (DpuException e) {
+        throw new ExceptionInInitializerError(e);
+      }
+    }
   }
   /**
    * Variable to control the backend used for queries It can be the software simulator on CPU or the
@@ -44,15 +52,11 @@ public class PimSystemManager {
   private volatile boolean indexLoaded;
   private PimIndexInfo pimIndexInfo;
 
-  private PimSystemManager() {
+  private PimSystemManager() throws DpuException {
     if (USE_SOFTWARE_MODEL) {
       queriesExecutor = new DpuSystemSimulator();
     } else {
-      try {
-        queriesExecutor = new DpuSystemExecutor();
-      } catch (DpuException e) {
-        throw new RuntimeException(e);
-      }
+      queriesExecutor = new DpuSystemExecutor();
     }
     queryQueue = new ArrayBlockingQueue<>(MAX_NUM_QUERIES);
     queryRunner = new QueryRunner();
