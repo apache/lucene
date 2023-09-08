@@ -92,6 +92,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -1877,7 +1879,13 @@ public abstract class LuceneTestCase extends Assert {
 
   /** Create a new searcher over the reader. This searcher might randomly use threads. */
   public static IndexSearcher newSearcher(IndexReader r) {
-    return newSearcher(r, true);
+    IndexSearcher indexSearcher = newSearcher(r, true);
+    if (r.getReaderCacheHelper() != null) {
+      ExecutorService executorService = Executors.newFixedThreadPool(1);
+      executorService.execute(() -> {});
+      r.getReaderCacheHelper().addClosedListener(key -> TestUtil.shutdownExecutorService(executorService));
+    }
+    return indexSearcher;
   }
 
   /** Create a new searcher over the reader. This searcher might randomly use threads. */
