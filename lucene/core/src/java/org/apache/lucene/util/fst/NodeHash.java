@@ -62,12 +62,13 @@ final class NodeHash<T> {
       }
     }
 
+    // compare arc by arc to see if there is a difference
     for (int arcUpto = 0; arcUpto < node.numArcs; arcUpto++) {
       final FSTCompiler.Arc<T> arc = node.arcs[arcUpto];
       if (arc.label != scratchArc.label()
-          || !arc.output.equals(scratchArc.output())
+          || arc.output.equals(scratchArc.output()) == false
           || ((FSTCompiler.CompiledNode) arc.target).node != scratchArc.target()
-          || !arc.nextFinalOutput.equals(scratchArc.nextFinalOutput())
+          || arc.nextFinalOutput.equals(scratchArc.nextFinalOutput()) == false
           || arc.isFinal != scratchArc.isFinal()) {
         return false;
       }
@@ -79,9 +80,12 @@ final class NodeHash<T> {
           return false;
         }
       }
+
       fst.readNextRealArc(scratchArc, in);
     }
 
+    // unfrozen node has fewer arcs than frozen node
+    
     return false;
   }
 
@@ -110,6 +114,9 @@ final class NodeHash<T> {
     return h & Long.MAX_VALUE;
   }
 
+  // nocommit lets store the (cached) hash value for nodes in the new fixed-size hash table
+  // nocommit make a frozen fixed-size hash table up front based on memory limit
+  
   // hash code for a frozen node
   private long hash(long node) throws IOException {
     final int PRIME = 31;
@@ -132,13 +139,13 @@ final class NodeHash<T> {
       }
       fst.readNextRealArc(scratchArc, in);
     }
-    // System.out.println("  ret " + (h&Integer.MAX_VALUE));
+
     return h & Long.MAX_VALUE;
   }
 
   public long add(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)
       throws IOException {
-    // System.out.println("hash: add count=" + count + " vs " + table.size() + " mask=" + mask);
+
     final long h = hash(nodeIn);
     long pos = h & mask;
     int c = 0;
@@ -147,10 +154,13 @@ final class NodeHash<T> {
       if (v == 0) {
         // freeze & add
         final long node = fstCompiler.addNode(nodeIn);
-        // System.out.println("  now freeze node=" + node);
+
+        // confirm frozen hash and unfrozen hash are the same
         assert hash(node) == h : "frozenHash=" + hash(node) + " vs h=" + h;
+
         count++;
         table.set(pos, node);
+
         // Rehash at 2/3 occupancy:
         if (count > 2 * table.size() / 3) {
           rehash(node);
@@ -181,7 +191,7 @@ final class NodeHash<T> {
     }
   }
 
-  private void rehash(long lastNodeAddress) throws IOException {
+  private void rehash(long node) throws IOException {
     final PagedGrowableWriter oldTable = table;
 
     table =
