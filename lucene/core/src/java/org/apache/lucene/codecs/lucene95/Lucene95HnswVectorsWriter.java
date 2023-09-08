@@ -434,11 +434,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                RandomVectorScorerProvider scorerProvider =
-                    RandomVectorScorerProvider.createBytes(
+                RandomVectorScorerSupplier scorerSupplier =
+                    RandomVectorScorerSupplier.createBytes(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerProvider, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -449,11 +449,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                RandomVectorScorerProvider scorerProvider =
-                    RandomVectorScorerProvider.createFloats(
+                RandomVectorScorerSupplier scorerSupplier =
+                    RandomVectorScorerSupplier.createFloats(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerProvider, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -487,11 +487,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   private HnswGraphBuilder createHnswGraphBuilder(
       MergeState mergeState,
       FieldInfo fieldInfo,
-      RandomVectorScorerProvider scorerProvider,
+      RandomVectorScorerSupplier scorerSupplier,
       int initializerIndex)
       throws IOException {
     if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed);
+      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     }
 
     HnswGraph initializerGraph =
@@ -499,7 +499,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     Map<Integer, Integer> ordinalMapper =
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
     return HnswGraphBuilder.create(
-        scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
+            scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
   }
 
   private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
@@ -889,17 +889,17 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
       RAVectorValues<T> raVectors = new RAVectorValues<>(vectors, dim);
-      RandomVectorScorerProvider scorerProvider =
+      RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> RandomVectorScorerProvider.createBytes(
+            case BYTE -> RandomVectorScorerSupplier.createBytes(
                 (RandomAccessVectorValues<byte[]>) raVectors,
                 fieldInfo.getVectorSimilarityFunction());
-            case FLOAT32 -> RandomVectorScorerProvider.createFloats(
+            case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
                 (RandomAccessVectorValues<float[]>) raVectors,
                 fieldInfo.getVectorSimilarityFunction());
           };
       hnswGraphBuilder =
-          HnswGraphBuilder.create(scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed);
+          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
     }
 

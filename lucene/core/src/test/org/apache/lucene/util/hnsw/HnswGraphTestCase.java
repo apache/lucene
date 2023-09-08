@@ -110,12 +110,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   abstract T getTargetVector();
 
   @SuppressWarnings("unchecked")
-  protected RandomVectorScorerProvider buildScorerProvider(RandomAccessVectorValues<T> vectors)
+  protected RandomVectorScorerSupplier buildScorerSupplier(RandomAccessVectorValues<T> vectors)
       throws IOException {
     return switch (getVectorEncoding()) {
-      case BYTE -> RandomVectorScorerProvider.createBytes(
+      case BYTE -> RandomVectorScorerSupplier.createBytes(
           (RandomAccessVectorValues<byte[]>) vectors, similarityFunction);
-      case FLOAT32 -> RandomVectorScorerProvider.createFloats(
+      case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
           (RandomAccessVectorValues<float[]>) vectors, similarityFunction);
     };
   }
@@ -141,8 +141,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     long seed = random().nextLong();
     AbstractMockVectorValues<T> vectors = vectorValues(nDoc, dim);
     AbstractMockVectorValues<T> v2 = vectors.copy(), v3 = vectors.copy();
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, M, beamWidth, seed);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph hnsw = builder.build(vectors.size());
 
     // Recreate the graph while indexing with the same random seed and write it out
@@ -371,8 +371,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int nDoc = 100;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 10, 100, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
 
     // run some searches
@@ -404,8 +404,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int nDoc = 100;
     RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 16, 100, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     // the first 10 docs must not be deleted to ensure the expected recall
     Bits acceptOrds = createRandomAcceptOrds(10, nDoc);
@@ -429,8 +429,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int nDoc = 100;
     RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 16, 100, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     // Only mark a few vectors as accepted
     BitSet acceptOrds = new FixedBitSet(nDoc);
@@ -533,9 +533,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     long seed = random().nextLong();
 
     AbstractMockVectorValues<T> initializerVectors = vectorValues(initializerSize, dim);
-    RandomVectorScorerProvider initialScorerProvider = buildScorerProvider(initializerVectors);
+    RandomVectorScorerSupplier initialscorerSupplier = buildScorerSupplier(initializerVectors);
     HnswGraphBuilder initializerBuilder =
-        HnswGraphBuilder.create(initialScorerProvider, 10, 30, seed);
+        HnswGraphBuilder.create(initialscorerSupplier, 10, 30, seed);
 
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     AbstractMockVectorValues<T> finalVectorValues =
@@ -544,10 +544,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     Map<Integer, Integer> initializerOrdMap =
         createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
 
-    RandomVectorScorerProvider finalScorerProvider = buildScorerProvider(finalVectorValues);
+    RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
         HnswGraphBuilder.create(
-            finalScorerProvider, 10, 30, seed, initializerGraph, initializerOrdMap);
+            finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
 
     // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, finalBuilder.getGraph());
@@ -564,9 +564,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     long seed = random().nextLong();
 
     AbstractMockVectorValues<T> initializerVectors = vectorValues(initializerSize, dim);
-    RandomVectorScorerProvider initialScorerProvider = buildScorerProvider(initializerVectors);
+    RandomVectorScorerSupplier initialscorerSupplier = buildScorerSupplier(initializerVectors);
     HnswGraphBuilder initializerBuilder =
-        HnswGraphBuilder.create(initialScorerProvider, 10, 30, seed);
+        HnswGraphBuilder.create(initialscorerSupplier, 10, 30, seed);
 
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     AbstractMockVectorValues<T> finalVectorValues =
@@ -574,10 +574,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     Map<Integer, Integer> initializerOrdMap =
         createOffsetOrdinalMap(initializerSize, finalVectorValues.copy(), docIdOffset);
 
-    RandomVectorScorerProvider finalScorerProvider = buildScorerProvider(finalVectorValues);
+    RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
         HnswGraphBuilder.create(
-            finalScorerProvider, 10, 30, seed, initializerGraph, initializerOrdMap);
+            finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
 
     assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
 
@@ -675,8 +675,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int nDoc = 500;
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
     RandomAccessVectorValues<T> vectors = circularVectorValues(nDoc);
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 16, 100, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
 
     int topK = 50;
@@ -694,13 +694,13 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   public void testHnswGraphBuilderInvalid() throws IOException {
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectorValues(1, 1));
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues(1, 1));
     // M must be > 0
     expectThrows(
-        IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerProvider, 0, 10, 0));
+        IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 0, 10, 0));
     // beamWidth must be > 0
     expectThrows(
-        IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerProvider, 10, 0, 0));
+        IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 10, 0, 0));
   }
 
   public void testRamUsageEstimate() throws IOException {
@@ -711,9 +711,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     similarityFunction = RandomizedTest.randomFrom(VectorSimilarityFunction.values());
     RandomAccessVectorValues<T> vectors = vectorValues(size, dim);
 
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder =
-        HnswGraphBuilder.create(scorerProvider, M, M * 2, random().nextLong());
+        HnswGraphBuilder.create(scorerSupplier, M, M * 2, random().nextLong());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     long estimated = RamUsageEstimator.sizeOfObject(hnsw);
     long actual = ramUsed(hnsw);
@@ -736,8 +736,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     };
     AbstractMockVectorValues<T> vectors = vectorValues(values);
     // First add nodes until everybody gets a full neighbor list
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 2, 10, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 2, 10, random().nextInt());
     // node 0 is added by the builder constructor
     builder.addGraphNode(0);
     builder.addGraphNode(1);
@@ -790,8 +790,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     };
     AbstractMockVectorValues<T> vectors = vectorValues(values);
     // First add nodes until everybody gets a full neighbor list
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 1, 10, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 1, 10, random().nextInt());
     builder.addGraphNode(0);
     builder.addGraphNode(1);
     builder.addGraphNode(2);
@@ -820,8 +820,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     };
     AbstractMockVectorValues<T> vectors = vectorValues(values);
     // First add nodes until everybody gets a full neighbor list
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 1, 10, random().nextInt());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 1, 10, random().nextInt());
     builder.addGraphNode(0);
     builder.addGraphNode(1);
     builder.addGraphNode(2);
@@ -856,8 +856,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int dim = atLeast(10);
     AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
     int topK = 5;
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 10, 30, random().nextLong());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 30, random().nextLong());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 
@@ -904,8 +904,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     int size = atLeast(100);
     int dim = atLeast(10);
     AbstractMockVectorValues<T> vectors = vectorValues(size, dim);
-    RandomVectorScorerProvider scorerProvider = buildScorerProvider(vectors);
-    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerProvider, 10, 30, random().nextLong());
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 10, 30, random().nextLong());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());
     Bits acceptOrds = random().nextBoolean() ? null : createRandomAcceptOrds(0, size);
 

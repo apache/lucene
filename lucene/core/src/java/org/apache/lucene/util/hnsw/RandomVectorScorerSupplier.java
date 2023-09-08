@@ -20,8 +20,8 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
-/** A provider that creates {@link RandomVectorScorer} from an ordinal. */
-public interface RandomVectorScorerProvider {
+/** A supplier that creates {@link RandomVectorScorer} from an ordinal. */
+public interface RandomVectorScorerSupplier {
   /**
    * This creates a {@link RandomVectorScorer} for scoring random nodes in batches against the given
    * ordinal.
@@ -32,7 +32,7 @@ public interface RandomVectorScorerProvider {
   RandomVectorScorer scorer(int ord) throws IOException;
 
   /**
-   * Creates a {@link RandomVectorScorerProvider} to compare float vectors.
+   * Creates a {@link RandomVectorScorerSupplier} to compare float vectors.
    *
    * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
    * using it after calling this function. If you plan to use it again outside the returned {@link
@@ -42,7 +42,7 @@ public interface RandomVectorScorerProvider {
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to score vectors
    */
-  static RandomVectorScorerProvider createFloats(
+  static RandomVectorScorerSupplier createFloats(
       final RandomAccessVectorValues<float[]> vectors,
       final VectorSimilarityFunction similarityFunction)
       throws IOException {
@@ -55,7 +55,7 @@ public interface RandomVectorScorerProvider {
   }
 
   /**
-   * Creates a {@link RandomVectorScorerProvider} to compare byte vectors.
+   * Creates a {@link RandomVectorScorerSupplier} to compare byte vectors.
    *
    * <p>WARNING: The {@link RandomAccessVectorValues} given can contain stateful buffers. Avoid
    * using it after calling this function. If you plan to use it again outside the returned {@link
@@ -65,7 +65,7 @@ public interface RandomVectorScorerProvider {
    * @param vectors the underlying storage for vectors
    * @param similarityFunction the similarity function to score vectors
    */
-  static RandomVectorScorerProvider createBytes(
+  static RandomVectorScorerSupplier createBytes(
       final RandomAccessVectorValues<byte[]> vectors,
       final VectorSimilarityFunction similarityFunction)
       throws IOException {

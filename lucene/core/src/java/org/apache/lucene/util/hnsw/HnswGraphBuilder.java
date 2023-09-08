@@ -61,7 +61,7 @@ public final class HnswGraphBuilder {
   private final NeighborArray scratch;
 
   private final SplittableRandom random;
-  private final RandomVectorScorerProvider scorerProvider;
+  private final RandomVectorScorerSupplier scorerSupplier;
   private final HnswGraphSearcher graphSearcher;
   private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
   private final GraphBuilderKnnCollector
@@ -74,20 +74,20 @@ public final class HnswGraphBuilder {
   private final Set<Integer> initializedNodes;
 
   public static HnswGraphBuilder create(
-      RandomVectorScorerProvider scorerProvider, int M, int beamWidth, long seed)
+          RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(scorerProvider, M, beamWidth, seed);
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
   }
 
   public static HnswGraphBuilder create(
-      RandomVectorScorerProvider scorerProvider,
+      RandomVectorScorerSupplier scorerSupplier,
       int M,
       int beamWidth,
       long seed,
       HnswGraph initializerGraph,
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerProvider, M, beamWidth, seed);
+    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
@@ -96,6 +96,7 @@ public final class HnswGraphBuilder {
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
+   * @param scorerSupplier a supplier to create vector scorer from ordinals.
    * @param M – graph fanout parameter used to calculate the maximum number of connections a node
    *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
@@ -103,7 +104,7 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   private HnswGraphBuilder(
-      RandomVectorScorerProvider scorerProvider, int M, int beamWidth, long seed)
+          RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -112,8 +113,8 @@ public final class HnswGraphBuilder {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
     this.M = M;
-    this.scorerProvider =
-        Objects.requireNonNull(scorerProvider, "scorer provider must not be null");
+    this.scorerSupplier =
+        Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null");
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
@@ -204,7 +205,7 @@ public final class HnswGraphBuilder {
 
   /** Inserts a doc with vector value to the graph */
   public void addGraphNode(int node) throws IOException {
-    RandomVectorScorer scorer = scorerProvider.scorer(node);
+    RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
 
@@ -314,7 +315,7 @@ public final class HnswGraphBuilder {
    */
   private boolean diversityCheck(int candidate, float score, NeighborArray neighbors)
       throws IOException {
-    RandomVectorScorer scorer = scorerProvider.scorer(candidate);
+    RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity = scorer.score(neighbors.node[i]);
       if (neighborSimilarity >= score) {
@@ -329,7 +330,7 @@ public final class HnswGraphBuilder {
    * neighbours
    */
   private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
-    RandomVectorScorer scorer = scorerProvider.scorer(nodeOrd);
+    RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
     int[] uncheckedIndexes = neighbors.sort(scorer);
     if (uncheckedIndexes == null) {
       // all nodes are checked, we will directly return the most distant one
@@ -355,7 +356,7 @@ public final class HnswGraphBuilder {
       int candidateIndex, NeighborArray neighbors, int[] uncheckedIndexes, int uncheckedCursor)
       throws IOException {
     float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    RandomVectorScorer scorer = scorerProvider.scorer(neighbors.node[candidateIndex]);
+    RandomVectorScorer scorer = scorerSupplier.scorer(neighbors.node[candidateIndex]);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
       // the candidate itself is unchecked
       for (int i = candidateIndex - 1; i >= 0; i--) {

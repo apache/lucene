@@ -71,7 +71,6 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
   private void readValue(int targetOrd) throws IOException {
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
-    lastOrd = targetOrd;
   }
 
   static OffHeapByteVectorValues load(

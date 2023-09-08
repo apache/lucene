@@ -39,7 +39,11 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.*;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.NeighborArray;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -273,10 +277,10 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
 
     // build graph
-    RandomVectorScorerProvider scorerProvider =
-        RandomVectorScorerProvider.createFloats(vectorValues, similarityFunction);
+    RandomVectorScorerSupplier scorerSupplier =
+        RandomVectorScorerSupplier.createFloats(vectorValues, similarityFunction);
     HnswGraphBuilder hnswGraphBuilder =
-        HnswGraphBuilder.create(scorerProvider, M, beamWidth, HnswGraphBuilder.randSeed);
+        HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
 
     OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.size());

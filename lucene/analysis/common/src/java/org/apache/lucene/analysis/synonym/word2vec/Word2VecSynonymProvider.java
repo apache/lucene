@@ -27,7 +27,11 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.hnsw.*;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
  * The Word2VecSynonymProvider generates the list of sysnonyms of a term.
@@ -48,11 +52,11 @@ public class Word2VecSynonymProvider {
    */
   public Word2VecSynonymProvider(Word2VecModel model) throws IOException {
     this.word2VecModel = model;
-    RandomVectorScorerProvider scorerProvider =
-        RandomVectorScorerProvider.createFloats(word2VecModel, SIMILARITY_FUNCTION);
+    RandomVectorScorerSupplier scorerSupplier =
+        RandomVectorScorerSupplier.createFloats(word2VecModel, SIMILARITY_FUNCTION);
     HnswGraphBuilder builder =
         HnswGraphBuilder.create(
-            scorerProvider, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, HnswGraphBuilder.randSeed);
+                scorerSupplier, DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, HnswGraphBuilder.randSeed);
     this.hnswGraph = builder.build(word2VecModel.size());
   }
 
