@@ -42,10 +42,7 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
    * @param subScorers The sub scorers this Scorer should iterate on
    */
   DisjunctionMaxScorer(
-      Weight weight,
-      float tieBreakerMultiplier,
-      List<Scorer> subScorers,
-      ScoreMode scoreMode)
+      Weight weight, float tieBreakerMultiplier, List<Scorer> subScorers, ScoreMode scoreMode)
       throws IOException {
     super(weight, subScorers, scoreMode);
     this.subScorers = subScorers;
