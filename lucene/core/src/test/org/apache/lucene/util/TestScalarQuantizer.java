@@ -28,7 +28,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);
-    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 100);
+    ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, 1);
     float[] dequantized = new float[dims];
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
@@ -49,15 +49,15 @@ public class TestScalarQuantizer extends LuceneTestCase {
       percs[i] = (float) i;
     }
     shuffleArray(percs);
-    float[] upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 90);
+    float[] upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 0.9f);
     assertEquals(50f, upperAndLower[0], 1e-7);
     assertEquals(950f, upperAndLower[1], 1e-7);
     shuffleArray(percs);
-    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 95);
+    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 0.95f);
     assertEquals(25f, upperAndLower[0], 1e-7);
     assertEquals(975f, upperAndLower[1], 1e-7);
     shuffleArray(percs);
-    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 99);
+    upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(percs, 0.99f);
     assertEquals(5f, upperAndLower[0], 1e-7);
     assertEquals(995f, upperAndLower[1], 1e-7);
   }

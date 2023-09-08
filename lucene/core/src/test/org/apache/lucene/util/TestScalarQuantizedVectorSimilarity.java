@@ -32,7 +32,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     int numVecs = 100;
 
     float[][] floats = randomFloats(numVecs, dims);
-    for (int quantile : new int[] {90, 95, 99, 100}) {
+    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
       float error = Math.max((100 - quantile) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
@@ -60,7 +60,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
 
     float[][] floats = randomFloats(numVecs, dims);
 
-    for (int quantile : new int[] {90, 95, 99, 100}) {
+    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
       float error = Math.max((100 - quantile) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloatsNormalized(floats);
       ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
@@ -91,7 +91,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     for (float[] fs : floats) {
       VectorUtil.l2normalize(fs);
     }
-    for (int quantile : new int[] {90, 95, 99, 100}) {
+    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
       float error = Math.max((100 - quantile) * 0.01f, 0.01f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
@@ -119,7 +119,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
     int numVecs = 100;
 
     float[][] floats = randomFloats(numVecs, dims);
-    for (int quantile : new int[] {90, 95, 99, 100}) {
+    for (float quantile : new float[] {0.9f, 0.95f, 0.99f, (1 - 1f / (dims + 1)), 1f}) {
       float error = Math.max((100 - quantile) * 0.5f, 0.5f);
       FloatVectorValues floatVectorValues = fromFloats(floats);
       ScalarQuantizer scalarQuantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);

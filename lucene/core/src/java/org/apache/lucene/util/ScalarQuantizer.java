@@ -100,12 +100,13 @@ public class ScalarQuantizer {
 
   private static final Random random = new Random(42);
 
-  public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, int quantile)
+  public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, float quantile)
       throws IOException {
+    assert 0.9f <= quantile && quantile <= 1f;
     if (floatVectorValues.size() == 0) {
       return new ScalarQuantizer(0f, 0f);
     }
-    if (quantile == 100) {
+    if (quantile == 1f) {
       float min = Float.POSITIVE_INFINITY;
       float max = Float.NEGATIVE_INFINITY;
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
@@ -159,11 +160,11 @@ public class ScalarQuantizer {
    * providing floats `[0..100]` and asking for `90` quantiles will return `5` and `95`.
    *
    * @param arr array of floats
-   * @param quantile the configured quantile
+   * @param quantileFloat the configured quantile
    * @return lower and upper quantile values
    */
-  static float[] getUpperAndLowerQuantile(float[] arr, int quantile) {
-    float quantileFloat = quantile / 100f;
+  static float[] getUpperAndLowerQuantile(float[] arr, float quantileFloat) {
+    assert 0.9f <= quantileFloat && quantileFloat <= 1f;
     int selectorIndex = (int) (arr.length * (1f - quantileFloat) / 2f + 0.5f);
     Selector selector = new FloatSelector(arr);
     selector.select(0, arr.length, arr.length - selectorIndex);

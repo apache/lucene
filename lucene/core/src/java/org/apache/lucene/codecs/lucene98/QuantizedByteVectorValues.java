@@ -18,6 +18,10 @@ package org.apache.lucene.codecs.lucene98;
 
 import org.apache.lucene.index.ByteVectorValues;
 
+/**
+ * A version of {@link ByteVectorValues}, but additionally retrieving score correction offset for
+ * Scalar quantization scores.
+ */
 abstract class QuantizedByteVectorValues extends ByteVectorValues {
   abstract float getScoreCorrectionConstant();
 }

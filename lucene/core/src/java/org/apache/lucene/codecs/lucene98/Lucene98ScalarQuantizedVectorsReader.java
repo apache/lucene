@@ -225,7 +225,7 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
     };
   }
 
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
@@ -243,11 +243,6 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
       return null;
     }
     return QuantizedVectorScorer.fromFieldEntry(fieldEntry, values, target);
-  }
-
-  public float[] getQuantiles(String field) {
-    FieldEntry fieldEntry = fields.get(field);
-    return new float[] {fieldEntry.lowerQuantile, fieldEntry.upperQuantile};
   }
 
   @Override

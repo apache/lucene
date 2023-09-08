@@ -33,6 +33,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.lucene90;
   exports org.apache.lucene.codecs.lucene94;
   exports org.apache.lucene.codecs.lucene95;
+  exports org.apache.lucene.codecs.lucene98;
   exports org.apache.lucene.codecs.lucene90.blocktree;
   exports org.apache.lucene.codecs.lucene90.compressing;
   exports org.apache.lucene.codecs.perfield;

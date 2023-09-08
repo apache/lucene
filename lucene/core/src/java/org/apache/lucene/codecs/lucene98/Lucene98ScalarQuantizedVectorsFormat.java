@@ -40,34 +40,31 @@ public final class Lucene98ScalarQuantizedVectorsFormat {
   public static final int VERSION_CURRENT = VERSION_START;
 
   /** The minimum quantile */
-  private static final int MINIMUM_QUANTILE = 90;
+  private static final float MINIMUM_QUANTILE = 0.9f;
 
   /** The maximum quantile */
-  private static final int MAXIMUM_QUANTILE = 100;
-  /**
-   * Default number of the size of the queue maintained while searching during a graph construction.
-   */
-  public static final int DEFAULT_QUANTILE = 99;
+  private static final float MAXIMUM_QUANTILE = 1f;
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
   /**
-   * Controls the quantile used to scalar quantize the vectors {@link
-   * Lucene98ScalarQuantizedVectorsFormat#DEFAULT_QUANTILE}.
+   * Controls the quantile used to scalar quantize the vectors the default quantile is calculated as
+   * `1-1/(vector_dimensions + 1)`
    */
-  private final int quantile;
+  private final Float quantile;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene98ScalarQuantizedVectorsFormat() {
-    this(DEFAULT_QUANTILE);
+    this(null);
   }
 
   /**
    * Constructs a format using the given graph construction parameters.
    *
-   * @param quantile the quantile for scalar quantizing the vectors
+   * @param quantile the quantile for scalar quantizing the vectors, when `null` it is calculated
+   *     based on the vector field dimensions.
    */
-  public Lucene98ScalarQuantizedVectorsFormat(int quantile) {
+  public Lucene98ScalarQuantizedVectorsFormat(Float quantile) {
     if (quantile < MINIMUM_QUANTILE || quantile > MAXIMUM_QUANTILE) {
       throw new IllegalArgumentException(
           "quantile must be between "
@@ -88,6 +85,10 @@ public final class Lucene98ScalarQuantizedVectorsFormat {
   public Lucene98ScalarQuantizedVectorsReader quantizationReader(SegmentReadState state)
       throws IOException {
     return new Lucene98ScalarQuantizedVectorsReader(state);
+  }
+
+  static float calculateDefaultQuantile(int vectorDimension) {
+    return Math.max(MINIMUM_QUANTILE, 1f - (1f / (vectorDimension + 1)));
   }
 
   @Override
