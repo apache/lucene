@@ -165,8 +165,9 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
 
   private void writeQuantizedVectors(QuantizationVectorWriter fieldData) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
+    byte[] vector = new byte[fieldData.dim];
     for (float[] v : fieldData.floatVectors) {
-      byte[] vector = scalarQuantizer.quantize(v);
+      scalarQuantizer.quantize(v, vector);
       quantizedVectorData.writeBytes(vector, vector.length);
       float offsetCorrection =
           scalarQuantizer.calculateVectorOffset(vector, fieldData.vectorSimilarityFunction);
@@ -220,9 +221,10 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
       throws IOException {
     long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
+    byte[] vector = new byte[fieldData.dim];
     for (int ordinal : ordMap) {
       float[] v = fieldData.floatVectors.get(ordinal);
-      byte[] vector = scalarQuantizer.quantize(v);
+      scalarQuantizer.quantize(v, vector);
       quantizedVectorData.writeBytes(vector, vector.length);
       float offsetCorrection =
           scalarQuantizer.calculateVectorOffset(vector, fieldData.vectorSimilarityFunction);
@@ -232,7 +234,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
   }
 
   public void mergeOneField(
-      FieldInfo fieldInfo, MergeState mergeState, FloatVectorValues floatVectorValues)
+      FieldInfo fieldInfo, MergeState mergeState, FloatVectorValues originalVectors)
       throws IOException {
     final long quantizedVectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempQuantizedVectorData =
@@ -245,6 +247,21 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
       final float[] minMaxQuantiles;
       final QuantizedByteVectorValues quantizedByteVectorValues;
       if (requantizationState.requiresRequantization) {
+        final FloatVectorValues floatVectorValues;
+        if (originalVectors != null) {
+          floatVectorValues = originalVectors;
+        } else {
+          MergedQuantizedVectorValues byteVectorValues =
+              MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(fieldInfo, mergeState);
+          floatVectorValues =
+              new Lucene98ScalarQuantizedVectorsReader.DeQuantizedFloatVectorValues(
+                  byteVectorValues) {
+                @Override
+                void deQuantize(byte[] src, float[] dest) {
+                  byteVectorValues.current.quantizer.deQuantize(src, dest);
+                }
+              };
+        }
         ScalarQuantizer quantizer = ScalarQuantizer.fromVectors(floatVectorValues, quantile);
         quantizedByteVectorValues =
             new QuantizedFloatVectorValues(
@@ -493,9 +510,9 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
       return maxQuantile;
     }
 
-    private ScalarQuantizer createQuantizer() throws IOException {
+    private ScalarQuantizer createQuantizer() {
       assert finished;
-      return new ScalarQuantizer(new float[] {minQuantile, maxQuantile});
+      return new ScalarQuantizer(minQuantile, maxQuantile);
     }
 
     @Override
@@ -575,10 +592,17 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
   private static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
 
     final QuantizedByteVectorValues values;
+    final ScalarQuantizer quantizer;
 
-    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
+    QuantizedByteVectorValueSub(
+        MergeState.DocMap docMap,
+        QuantizedByteVectorValues values,
+        QuantizationState quantizationState) {
       super(docMap);
       this.values = values;
+      this.quantizer =
+          new ScalarQuantizer(
+              quantizationState.getLowerQuantile(), quantizationState.getUpperQuantile());
       assert values.docID() == -1;
     }
 
@@ -590,7 +614,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
 
   /** Returns a merged view over all the segment's {@link QuantizedByteVectorValues}. */
   static class MergedQuantizedVectorValues extends QuantizedByteVectorValues {
-    public static QuantizedByteVectorValues mergeQuantizedByteVectorValues(
+    public static MergedQuantizedVectorValues mergeQuantizedByteVectorValues(
         FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
       if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
@@ -609,7 +633,9 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
         if (knnVectorsReader instanceof QuantizedKnnVectorsReader reader) {
           subs.add(
               new QuantizedByteVectorValueSub(
-                  mergeState.docMaps[i], reader.getQuantizedVectorValues(fieldInfo.name)));
+                  mergeState.docMaps[i],
+                  reader.getQuantizedVectorValues(fieldInfo.name),
+                  reader.getQuantizationState(fieldInfo.name)));
         } else if (knnVectorsReader != null) {
           throw new UnsupportedOperationException(
               "Cannot merge vectors from codec other than Lucene98QuantizedHnswVectorsFormat");
@@ -679,7 +705,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements Accountable, 
     }
   }
 
-  private class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
+  private static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;

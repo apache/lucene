@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -216,8 +217,12 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
     OffHeapQuantizedByteVectorValues vectorValues =
         OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
     final ScalarQuantizer scalarQuantizer = fieldEntry.scalarQuantizer;
-    // TODO transform byte quantized back into float[] as iterated
-    return null;
+    return new DeQuantizedFloatVectorValues(vectorValues) {
+      @Override
+      void deQuantize(byte[] src, float[] dest) {
+        scalarQuantizer.deQuantize(src, dest);
+      }
+    };
   }
 
   public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
@@ -294,7 +299,7 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
       dimension = input.readVInt();
       lowerQuantile = Float.intBitsToFloat(input.readInt());
       upperQuantile = Float.intBitsToFloat(input.readInt());
-      scalarQuantizer = new ScalarQuantizer(new float[] {lowerQuantile, upperQuantile});
+      scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile);
       size = input.readInt();
 
       docsWithFieldOffset = input.readLong();
@@ -323,6 +328,57 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
+    }
+  }
+
+  abstract static class DeQuantizedFloatVectorValues extends FloatVectorValues {
+
+    private final ByteVectorValues in;
+    private final float[] floatVector;
+
+    DeQuantizedFloatVectorValues(ByteVectorValues in) {
+      this.in = in;
+      this.floatVector = new float[in.dimension()];
+    }
+
+    abstract void deQuantize(byte[] src, float[] dest);
+
+    @Override
+    public int dimension() {
+      return in.dimension();
+    }
+
+    @Override
+    public int size() {
+      return in.size();
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      return floatVector;
+    }
+
+    @Override
+    public int docID() {
+      return in.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      int nextDoc = in.nextDoc();
+      if (nextDoc != NO_MORE_DOCS) {
+        deQuantize(in.vectorValue(), floatVector);
+      }
+      return nextDoc;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      int nextDoc = in.advance(target);
+      if (nextDoc != NO_MORE_DOCS) {
+        deQuantize(in.vectorValue(), floatVector);
+      }
+      return nextDoc;
     }
   }
 }

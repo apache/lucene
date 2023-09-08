@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.util;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -9,28 +25,35 @@ import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
+/** Will scalar quantize float vectors into `int8` byte values */
 public class ScalarQuantizer {
 
-  public static final int SCALAR_QUANTIZATION_SAMPLE_SIZE = 100_000;
+  public static final int SCALAR_QUANTIZATION_SAMPLE_SIZE = 25_000;
 
   private final float alpha;
   private final float offset;
-  private final float[] quantiles;
+  private final float minQuantile, maxQuantile;
 
-  public ScalarQuantizer(float[] quantiles) {
-    assert quantiles.length == 2;
-    assert quantiles[1] >= quantiles[0];
-    this.quantiles = quantiles;
-    this.alpha = (quantiles[1] - quantiles[0]) / 127f;
-    this.offset = quantiles[0];
+  public ScalarQuantizer(float minQuantile, float maxQuantile) {
+    assert maxQuantile >= maxQuantile;
+    this.minQuantile = minQuantile;
+    this.maxQuantile = maxQuantile;
+    this.alpha = (maxQuantile - minQuantile) / 127f;
+    this.offset = minQuantile;
   }
 
-  public byte[] quantize(float[] vector) {
-    byte[] q = new byte[vector.length];
-    for (int i = 0; i < vector.length; i++) {
-      q[i] = (byte) Math.max(-128f, Math.min((vector[i] - offset) / alpha, 127f));
+  public void quantize(float[] src, byte[] dest) {
+    assert src.length == dest.length;
+    for (int i = 0; i < src.length; i++) {
+      dest[i] = (byte) Math.max(-128f, Math.min(Math.round((src[i] - offset) / alpha), 127f));
     }
-    return q;
+  }
+
+  public void deQuantize(byte[] src, float[] dest) {
+    assert src.length == dest.length;
+    for (int i = 0; i < src.length; i++) {
+      dest[i] = (alpha * src[i]) + offset;
+    }
   }
 
   public float calculateVectorOffset(byte[] vector, VectorSimilarityFunction similarityFunction) {
@@ -52,15 +75,19 @@ public class ScalarQuantizer {
   }
 
   public float getLowerQuantile() {
-    return quantiles[0];
+    return minQuantile;
   }
 
   public float getUpperQuantile() {
-    return quantiles[1];
+    return maxQuantile;
   }
 
   public float getAlpha() {
     return alpha;
+  }
+
+  public float getConstantMultiplier() {
+    return alpha * alpha;
   }
 
   public float getOffset() {
@@ -76,7 +103,7 @@ public class ScalarQuantizer {
   public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, int quantile)
       throws IOException {
     if (floatVectorValues.size() == 0) {
-      return new ScalarQuantizer(new float[] {0f, 0f});
+      return new ScalarQuantizer(0f, 0f);
     }
     if (quantile == 100) {
       float min = Float.POSITIVE_INFINITY;
@@ -87,18 +114,19 @@ public class ScalarQuantizer {
           max = Math.max(max, v);
         }
       }
-      return new ScalarQuantizer(new float[] {min, max});
+      return new ScalarQuantizer(min, max);
     }
     int dim = floatVectorValues.dimension();
     if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
       int copyOffset = 0;
-      float[] values = new float[floatVectorValues.size()];
+      float[] values = new float[floatVectorValues.size() * dim];
       while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
         float[] floatVector = floatVectorValues.vectorValue();
         System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
         copyOffset += dim;
       }
-      return new ScalarQuantizer(getUpperAndLowerQuantile(values, quantile));
+      float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
+      return new ScalarQuantizer(upperAndLower[0], upperAndLower[1]);
     }
     int numFloatVecs = floatVectorValues.size();
     // Reservoir sample the vector ordinals we want to read
@@ -121,7 +149,8 @@ public class ScalarQuantizer {
       System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
       copyOffset += dim;
     }
-    return new ScalarQuantizer(getUpperAndLowerQuantile(values, quantile));
+    float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
+    return new ScalarQuantizer(upperAndLower[0], upperAndLower[1]);
   }
 
   /**
