@@ -49,7 +49,7 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class SearchWikiDPUMultiThread {
 
-  private static final int NB_THREADS=32;
+  private static final int NB_THREADS=64;
 
   private SearchWikiDPUMultiThread() {}
 
@@ -87,10 +87,11 @@ public class SearchWikiDPUMultiThread {
     IndexSearcher searcher = new IndexSearcher(reader);
 
     // load PIM index from PIM directory
-    if(!PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu"))))
-      System.out.println("WARNING: failed to load PIM index");
-
-    System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
+    PimSystemManager.setNumAllocDpus(2048);
+    if(PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu"))))
+      System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
+    else
+      System.out.println("WARNING: failed to load PIM Index");
 
     BufferedReader in = Files.newBufferedReader(Paths.get(queries), StandardCharsets.UTF_8);
     int nb_queries = 0;
@@ -124,8 +125,8 @@ public class SearchWikiDPUMultiThread {
     }
 
     System.out.println("Cumulative time: " + String.format("%.2f", (end - start) * 1e-6) 
-        + " ms, throughput=" + String.format("%.2f", ((double)nb_queries * 1e9 / (end - start))) 
-        + " (queries/sec)");
+        + " ms, #queries=" + nb_queries + " throughput=" 
+        + String.format("%.2f", ((double)nb_queries * 1e9 / (end - start))) + " (queries/sec)");
 
     reader.close();
     PimSystemManager.get().shutDown();

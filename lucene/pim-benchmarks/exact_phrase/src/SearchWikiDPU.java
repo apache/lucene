@@ -92,9 +92,11 @@ public class SearchWikiDPU {
         IndexSearcher searcher = new IndexSearcher(reader);
 
         // load PIM index from PIM directory
-        PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu")));
-
-        System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
+        PimSystemManager.setNumAllocDpus(2048);
+        if(PimSystemManager.get().loadPimIndex(MMapDirectory.open(Paths.get(index + "/dpu"))))
+          System.out.println("Loaded PIM index with " + PimSystemManager.get().getNbDpus() + " DPUs");
+        else
+          System.out.println("WARNING: failed to load PIM Index");
 
         BufferedReader in = null;
         if (queries != null) {
