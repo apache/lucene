@@ -145,7 +145,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
         final Weight thisWeight = this;
         return new ScorerSupplier() {
 
-          private boolean topLevelScoringClause;
           private long cost = -1;
 
           @Override
@@ -155,7 +154,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
               scorers.add(ss.get(leadCost));
             }
             return new DisjunctionMaxScorer(
-                thisWeight, tieBreakerMultiplier, scorers, scoreMode, topLevelScoringClause);
+                thisWeight, tieBreakerMultiplier, scorers, scoreMode);
           }
 
           @Override
@@ -172,7 +171,6 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
           @Override
           public void setTopLevelScoringClause() throws IOException {
-            this.topLevelScoringClause = true;
             if (tieBreakerMultiplier == 0) {
               for (ScorerSupplier ss : scorerSuppliers) {
                 // sub scorers need to be able to skip too as calls to setMinCompetitiveScore get

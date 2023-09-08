@@ -47,7 +47,7 @@ public final class TermScorer extends Scorer {
    * Construct a {@link TermScorer} that will use impacts to skip blocks of non-competitive
    * documents.
    */
-  TermScorer(
+  public TermScorer(
       Weight weight,
       ImpactsEnum impactsEnum,
       LeafSimScorer docScorer,

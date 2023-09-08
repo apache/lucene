@@ -136,9 +136,9 @@ final class FeatureQuery extends Query {
           public Scorer get(long leadCost) throws IOException {
             final SimScorer scorer = function.scorer(boost);
             final LeafSimScorer simScorer =
-                new LeafSimScorer(scorer, context.reader(), fieldName, topLevelScoringClause);
+                new LeafSimScorer(scorer, context.reader(), fieldName, false);
             final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
-            return new TermScorer(thisWeight, impacts, simScorer);
+            return new TermScorer(thisWeight, impacts, simScorer, topLevelScoringClause);
           }
 
           @Override
