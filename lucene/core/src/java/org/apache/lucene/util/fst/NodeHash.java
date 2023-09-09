@@ -146,7 +146,7 @@ final class NodeHash<T> {
         table.set(pos, node);
         // Rehash at 2/3 occupancy:
         if (count > 2 * table.size() / 3) {
-          rehash();
+          rehash(node);
         }
         return node;
       } else if (nodesEqual(nodeIn, v)) {
@@ -174,12 +174,15 @@ final class NodeHash<T> {
     }
   }
 
-  private void rehash() throws IOException {
+  private void rehash(long lastNodeAddress) throws IOException {
     final PagedGrowableWriter oldTable = table;
 
     table =
         new PagedGrowableWriter(
-            2 * oldTable.size(), 1 << 30, PackedInts.bitsRequired(count), PackedInts.COMPACT);
+            2 * oldTable.size(),
+            1 << 27,
+            PackedInts.bitsRequired(lastNodeAddress),
+            PackedInts.COMPACT);
     mask = table.size() - 1;
     for (long idx = 0; idx < oldTable.size(); idx++) {
       final long address = oldTable.get(idx);
