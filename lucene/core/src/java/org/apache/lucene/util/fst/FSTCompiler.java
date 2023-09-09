@@ -89,18 +89,6 @@ public class FSTCompiler<T> {
 
   // private static final boolean DEBUG = true;
 
-  // simplistic pruning: we prune node (and all following
-  // nodes) if less than this number of terms go through it:
-  private final int minSuffixCount1;
-
-  // better pruning: we prune node (and all following
-  // nodes) if the prior node has less than this number of
-  // terms go through it:
-  private final int minSuffixCount2;
-
-  private final boolean doShareNonSingletonNodes;
-  private final int shareMaxTailLength;
-
   private final IntsRefBuilder lastInput = new IntsRefBuilder();
 
   // NOTE: cutting this over to ArrayList instead loses ~6%
@@ -136,31 +124,23 @@ public class FSTCompiler<T> {
    * tuning and tweaking, see {@link Builder}.
    */
   public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
-    this(inputType, 0, 0, true, true, Integer.MAX_VALUE, outputs, true, 15, 1f);
+    this(inputType, 16384, outputs, true, 15, 1f);
   }
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
-      int minSuffixCount1,
-      int minSuffixCount2,
-      boolean doShareSuffix,
-      boolean doShareNonSingletonNodes,
-      int shareMaxTailLength,
+      int suffixHashSize, // pass 0 to disable suffix compression/trie; must be power of two
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
       float directAddressingMaxOversizingFactor) {
-    this.minSuffixCount1 = minSuffixCount1;
-    this.minSuffixCount2 = minSuffixCount2;
-    this.doShareNonSingletonNodes = doShareNonSingletonNodes;
-    this.shareMaxTailLength = shareMaxTailLength;
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
     fst = new FST<>(inputType, outputs, bytesPageBits);
     bytes = fst.bytes;
     assert bytes != null;
-    if (doShareSuffix) {
-      dedupHash = new NodeHash<>(fst, bytes.getReverseReader(false));
+    if (suffixHashSize > 0) {
+      dedupHash = new NodeHash<>(fst, suffixHashSize, bytes.getReverseReader(false));
     } else {
       dedupHash = null;
     }
@@ -184,11 +164,7 @@ public class FSTCompiler<T> {
 
     private final INPUT_TYPE inputType;
     private final Outputs<T> outputs;
-    private int minSuffixCount1;
-    private int minSuffixCount2;
-    private boolean shouldShareSuffix = true;
-    private boolean shouldShareNonSingletonNodes = true;
-    private int shareMaxTailLength = Integer.MAX_VALUE;
+    private int suffixHashSize = 16384;
     private boolean allowFixedLengthArcs = true;
     private int bytesPageBits = 15;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
@@ -207,59 +183,14 @@ public class FSTCompiler<T> {
     }
 
     /**
-     * If pruning the input graph during construction, this threshold is used for telling if a node
-     * is kept or pruned. If transition_count(node) &gt;= minSuffixCount1, the node is kept.
+     * The size of the hash table used to share suffixes.  Larger values require more RAM during
+     * building, but result in more minimal FSTs.  Set to 0 to disable all suffix sharing (the FST
+     * then becomes a prefix trie).
      *
-     * <p>Default = 0.
+     * <p>Default = {@code 16384}.
      */
-    public Builder<T> minSuffixCount1(int minSuffixCount1) {
-      this.minSuffixCount1 = minSuffixCount1;
-      return this;
-    }
-
-    /**
-     * Better pruning: we prune node (and all following nodes) if the prior node has less than this
-     * number of terms go through it.
-     *
-     * <p>Default = 0.
-     */
-    public Builder<T> minSuffixCount2(int minSuffixCount2) {
-      this.minSuffixCount2 = minSuffixCount2;
-      return this;
-    }
-
-    /**
-     * If {@code true}, the shared suffixes will be compacted into unique paths. This requires an
-     * additional RAM-intensive hash map for lookups in memory. Setting this parameter to {@code
-     * false} creates a single suffix path for all input sequences. This will result in a larger
-     * FST, but requires substantially less memory and CPU during building.
-     *
-     * <p>Default = {@code true}.
-     */
-    public Builder<T> shouldShareSuffix(boolean shouldShareSuffix) {
-      this.shouldShareSuffix = shouldShareSuffix;
-      return this;
-    }
-
-    /**
-     * Only used if {@code shouldShareSuffix} is true. Set this to true to ensure FST is fully
-     * minimal, at cost of more CPU and more RAM during building.
-     *
-     * <p>Default = {@code true}.
-     */
-    public Builder<T> shouldShareNonSingletonNodes(boolean shouldShareNonSingletonNodes) {
-      this.shouldShareNonSingletonNodes = shouldShareNonSingletonNodes;
-      return this;
-    }
-
-    /**
-     * Only used if {@code shouldShareSuffix} is true. Set this to Integer.MAX_VALUE to ensure FST
-     * is fully minimal, at cost of more CPU and more RAM during building.
-     *
-     * <p>Default = {@link Integer#MAX_VALUE}.
-     */
-    public Builder<T> shareMaxTailLength(int shareMaxTailLength) {
-      this.shareMaxTailLength = shareMaxTailLength;
+    public Builder<T> suffixHashSize(int suffixHashSize) {
+      this.suffixHashSize = suffixHashSize;
       return this;
     }
 
@@ -286,6 +217,8 @@ public class FSTCompiler<T> {
       return this;
     }
 
+    // nocommit maybe don't track inputCount anymore?
+
     /**
      * Overrides the default the maximum oversizing of fixed array allowed to enable direct
      * addressing of arcs instead of binary search.
@@ -309,11 +242,7 @@ public class FSTCompiler<T> {
       FSTCompiler<T> fstCompiler =
           new FSTCompiler<>(
               inputType,
-              minSuffixCount1,
-              minSuffixCount2,
-              shouldShareSuffix,
-              shouldShareNonSingletonNodes,
-              shareMaxTailLength,
+              suffixHashSize,
               outputs,
               allowFixedLengthArcs,
               bytesPageBits,
@@ -346,9 +275,7 @@ public class FSTCompiler<T> {
   private CompiledNode compileNode(UnCompiledNode<T> nodeIn, int tailLength) throws IOException {
     final long node;
     long bytesPosStart = bytes.getPosition();
-    if (dedupHash != null
-        && (doShareNonSingletonNodes || nodeIn.numArcs <= 1)
-        && tailLength <= shareMaxTailLength) {
+    if (dedupHash != null) {
       if (nodeIn.numArcs == 0) {
         node = addNode(nodeIn);
         lastFrozenNode = node;
@@ -739,112 +666,37 @@ public class FSTCompiler<T> {
   }
 
   private void freezeTail(int prefixLenPlus1) throws IOException {
-    // System.out.println("  compileTail " + prefixLenPlus1);
+
     final int downTo = Math.max(1, prefixLenPlus1);
+    
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
-      boolean doPrune = false;
-      boolean doCompile = false;
+      boolean doCompile = true;
 
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parent = frontier[idx - 1];
 
-      if (node.inputCount < minSuffixCount1) {
-        doPrune = true;
-        doCompile = true;
-      } else if (idx > prefixLenPlus1) {
-        // prune if parent's inputCount is less than suffixMinCount2
-        if (parent.inputCount < minSuffixCount2
-            || (minSuffixCount2 == 1 && parent.inputCount == 1 && idx > 1)) {
-          // my parent, about to be compiled, doesn't make the cut, so
-          // I'm definitely pruned
+      final T nextFinalOutput = node.output;
 
-          // if minSuffixCount2 is 1, we keep only up
-          // until the 'distinguished edge', ie we keep only the
-          // 'divergent' part of the FST. if my parent, about to be
-          // compiled, has inputCount 1 then we are already past the
-          // distinguished edge.  NOTE: this only works if
-          // the FST outputs are not "compressible" (simple
-          // ords ARE compressible).
-          doPrune = true;
-        } else {
-          // my parent, about to be compiled, does make the cut, so
-          // I'm definitely not pruned
-          doPrune = false;
-        }
-        doCompile = true;
-      } else {
-        // if pruning is disabled (count is 0) we can always
-        // compile current node
-        doCompile = minSuffixCount2 == 0;
-      }
+      // We "fake" the node as being final if it has no
+      // outgoing arcs; in theory we could leave it
+      // as non-final (the FST can represent this), but
+      // FSTEnum, Util, etc., have trouble w/ non-final
+      // dead-end states:
 
-      // System.out.println("    label=" + ((char) lastInput.ints[lastInput.offset+idx-1]) + " idx="
-      // + idx + " inputCount=" + frontier[idx].inputCount + " doCompile=" + doCompile + " doPrune="
-      // + doPrune);
+      // nocommit -- removeme?  should never be promoted to final w/o pruning?
+      final boolean isFinal = node.isFinal || node.numArcs == 0;
 
-      if (node.inputCount < minSuffixCount2
-          || (minSuffixCount2 == 1 && node.inputCount == 1 && idx > 1)) {
-        // drop all arcs
-        for (int arcIdx = 0; arcIdx < node.numArcs; arcIdx++) {
-          @SuppressWarnings({"rawtypes", "unchecked"})
-          final UnCompiledNode<T> target = (UnCompiledNode<T>) node.arcs[arcIdx].target;
-          target.clear();
-        }
-        node.numArcs = 0;
-      }
-
-      if (doPrune) {
-        // this node doesn't make it -- deref it
-        node.clear();
-        parent.deleteLast(lastInput.intAt(idx - 1), node);
-      } else {
-
-        if (minSuffixCount2 != 0) {
-          compileAllTargets(node, lastInput.length() - idx);
-        }
-        final T nextFinalOutput = node.output;
-
-        // We "fake" the node as being final if it has no
-        // outgoing arcs; in theory we could leave it
-        // as non-final (the FST can represent this), but
-        // FSTEnum, Util, etc., have trouble w/ non-final
-        // dead-end states:
-        final boolean isFinal = node.isFinal || node.numArcs == 0;
-
-        if (doCompile) {
-          // this node makes it and we now compile it.  first,
-          // compile any targets that were previously
-          // undecided:
-          parent.replaceLast(
-              lastInput.intAt(idx - 1),
-              compileNode(node, 1 + lastInput.length() - idx),
-              nextFinalOutput,
-              isFinal);
-        } else {
-          // replaceLast just to install
-          // nextFinalOutput/isFinal onto the arc
-          parent.replaceLast(lastInput.intAt(idx - 1), node, nextFinalOutput, isFinal);
-          // this node will stay in play for now, since we are
-          // undecided on whether to prune it.  later, it
-          // will be either compiled or pruned, so we must
-          // allocate a new node:
-          frontier[idx] = new UnCompiledNode<>(this, idx);
-        }
-      }
+      // this node makes it and we now compile it.  first,
+      // compile any targets that were previously
+      // undecided:
+      parent.replaceLast(
+                         lastInput.intAt(idx - 1),
+                         compileNode(node, 1 + lastInput.length() - idx),
+                         nextFinalOutput,
+                         isFinal);
     }
   }
-
-  // for debugging
-  /*
-  private String toString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      return b.toString();
-    }
-  }
-  */
 
   /**
    * Add the next input/output pair. The provided input must be sorted after the previous one
@@ -987,20 +839,12 @@ public class FSTCompiler<T> {
 
     // minimize nodes in the last word's suffix
     freezeTail(0);
-    if (root.inputCount < minSuffixCount1
-        || root.inputCount < minSuffixCount2
-        || root.numArcs == 0) {
+    if (root.numArcs == 0) {
       if (fst.emptyOutput == null) {
         return null;
-      } else if (minSuffixCount1 > 0 || minSuffixCount2 > 0) {
-        // empty string got pruned
-        return null;
-      }
-    } else {
-      if (minSuffixCount2 != 0) {
-        compileAllTargets(root, lastInput.length());
       }
     }
+    
     // if (DEBUG) System.out.println("  builder.finish root.isFinal=" + root.isFinal + "
     // root.output=" + root.output);
     fst.finish(compileNode(root, lastInput.length()).node);

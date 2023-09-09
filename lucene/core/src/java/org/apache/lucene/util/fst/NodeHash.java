@@ -17,22 +17,35 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
-import org.apache.lucene.util.packed.PackedInts;
-import org.apache.lucene.util.packed.PagedGrowableWriter;
+import java.util.Arrays;
 
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
 
-  private PagedGrowableWriter table;
+  // primary table
+  private long[] table;
+
+  // how many nodes are stored in the primary table; when this gets full, we discard tableOld and move primary to it
   private long count;
-  private long mask;
+
+  // fallback table.  if we fallback and find the frozen node here, we promote it to primary table, for a simplistic LRU behaviour
+  private long[] fallbackTable;
+
+  private final int mask;
   private final FST<T> fst;
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   private final FST.BytesReader in;
 
-  public NodeHash(FST<T> fst, FST.BytesReader in) {
-    table = new PagedGrowableWriter(16, 1 << 27, 8, PackedInts.COMPACT);
-    mask = 15;
+  public NodeHash(FST<T> fst, int tableSize, FST.BytesReader in) {
+    if (tableSize <= 0) {
+      throw new IllegalArgumentException("tableSize must be positive; got: " + tableSize);
+    }
+    mask = tableSize - 1;
+    if ((mask & tableSize) != 0) {
+      throw new IllegalArgumentException("tableSize must be a power of 2; got: " + tableSize);
+    }
+    table = new long[tableSize];
+    fallbackTable = new long[tableSize];
     this.fst = fst;
     this.in = in;
   }
@@ -93,14 +106,10 @@ final class NodeHash<T> {
   // to the frozen case (below)!!
   private long hash(FSTCompiler.UnCompiledNode<T> node) {
     final int PRIME = 31;
-    // System.out.println("hash unfrozen");
     long h = 0;
     // TODO: maybe if number of arcs is high we can safely subsample?
     for (int arcIdx = 0; arcIdx < node.numArcs; arcIdx++) {
       final FSTCompiler.Arc<T> arc = node.arcs[arcIdx];
-      // System.out.println("  label=" + arc.label + " target=" + ((Builder.CompiledNode)
-      // arc.target).node + " h=" + h + " output=" + fst.outputs.outputToString(arc.output) + "
-      // isFinal?=" + arc.isFinal);
       h = PRIME * h + arc.label;
       long n = ((FSTCompiler.CompiledNode) arc.target).node;
       h = PRIME * h + (int) (n ^ (n >> 32));
@@ -110,23 +119,19 @@ final class NodeHash<T> {
         h += 17;
       }
     }
-    // System.out.println("  ret " + (h&Integer.MAX_VALUE));
+
     return h & Long.MAX_VALUE;
   }
 
-  // nocommit lets store the (cached) hash value for nodes in the new fixed-size hash table
-  // nocommit make a frozen fixed-size hash table up front based on memory limit
+  // nocommit lets store the (cached) hash value for nodes in the new fixed-size hash table?
   
   // hash code for a frozen node
   private long hash(long node) throws IOException {
     final int PRIME = 31;
-    // System.out.println("hash frozen node=" + node);
+
     long h = 0;
     fst.readFirstRealTargetArc(node, scratchArc, in);
     while (true) {
-      // System.out.println("  label=" + scratchArc.label + " target=" + scratchArc.target + " h=" +
-      // h + " output=" + fst.outputs.outputToString(scratchArc.output) + " next?=" +
-      // scratchArc.flag(4) + " final?=" + scratchArc.isFinal() + " pos=" + in.getPosition());
       h = PRIME * h + scratchArc.label();
       h = PRIME * h + (int) (scratchArc.target() ^ (scratchArc.target() >> 32));
       h = PRIME * h + scratchArc.output().hashCode();
@@ -143,69 +148,79 @@ final class NodeHash<T> {
     return h & Long.MAX_VALUE;
   }
 
+  // nocommit measure how wasteful/conflicty these hash tables are.  should we improve hash function?
+  // nocommit should i make hash a long?
+  
+  private long getFallback(FSTCompiler.UnCompiledNode<T> nodeIn, long hash) throws IOException {
+    int pos = (int) (hash & mask);
+    int c = 0;
+    while (true) {
+      long node = fallbackTable[pos];
+      if (node == 0) {
+        // not found
+        return 0;
+      } else if (nodesEqual(nodeIn, node)) {
+        // frozen version of this node is already here
+        return node;
+      }
+
+      // nocommit -- is this really quadratic probe?
+      // quadratic probe
+      pos = (pos + (++c)) & mask;
+    }
+  }
+
   public long add(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)
       throws IOException {
 
-    final long h = hash(nodeIn);
-    long pos = h & mask;
+    long hash = hash(nodeIn);
+    
+    int pos = (int) (hash & mask);
     int c = 0;
-    while (true) {
-      final long v = table.get(pos);
-      if (v == 0) {
-        // freeze & add
-        final long node = fstCompiler.addNode(nodeIn);
 
-        // confirm frozen hash and unfrozen hash are the same
-        assert hash(node) == h : "frozenHash=" + hash(node) + " vs h=" + h;
+    while (true) {
+
+      long node = table[pos];
+      if (node == 0) {
+        // node is not in primary table; is it in fallback table?
+        node = getFallback(nodeIn, hash);
+        if (node != 0) {
+          // it was already in fallback -- promote
+          table[pos] = node;
+        } else {
+          // not in fallback either -- freeze & add the incoming node
+        
+          // freeze & add
+          node = fstCompiler.addNode(nodeIn);
+
+          // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node at 0:
+          assert node != 0;
+
+          // confirm frozen hash and unfrozen hash are the same
+          assert hash(node) == hash : "frozenHash=" + hash(node) + " vs hash=" + hash;
+
+          table[pos] = node;
+        }
 
         count++;
-        table.set(pos, node);
 
-        // Rehash at 2/3 occupancy:
-        if (count > 2 * table.size() / 3) {
-          rehash(node);
+        // swap with fallback at 2/3 occupancy
+        if (count > 2 * table.length / 3) {
+          fallbackTable = table;
+          Arrays.fill(table, 0);
+          count = 0;
         }
+
         return node;
-      } else if (nodesEqual(nodeIn, v)) {
-        // same node is already here
-        return v;
+        
+      } else if (nodesEqual(nodeIn, node)) {
+        // same node (in frozen form) is already in primary table
+        return node;
       }
 
+      // nocommit -- is this really quadratic probe?
       // quadratic probe
       pos = (pos + (++c)) & mask;
-    }
-  }
-
-  // called only by rehash
-  private void addNew(long address) throws IOException {
-    long pos = hash(address) & mask;
-    int c = 0;
-    while (true) {
-      if (table.get(pos) == 0) {
-        table.set(pos, address);
-        break;
-      }
-
-      // quadratic probe
-      pos = (pos + (++c)) & mask;
-    }
-  }
-
-  private void rehash(long node) throws IOException {
-    final PagedGrowableWriter oldTable = table;
-
-    table =
-        new PagedGrowableWriter(
-            2 * oldTable.size(),
-            1 << 27,
-            PackedInts.bitsRequired(lastNodeAddress),
-            PackedInts.COMPACT);
-    mask = table.size() - 1;
-    for (long idx = 0; idx < oldTable.size(); idx++) {
-      final long address = oldTable.get(idx);
-      if (address != 0) {
-        addNew(address);
-      }
     }
   }
 }

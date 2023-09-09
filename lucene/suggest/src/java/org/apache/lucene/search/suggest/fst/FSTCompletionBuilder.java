@@ -158,6 +158,7 @@ public class FSTCompletionBuilder {
 
     this.sorter = sorter;
     this.buckets = buckets;
+    // nocommit removeme
     this.shareMaxTailLength = shareMaxTailLength;
   }
 
@@ -204,7 +205,6 @@ public class FSTCompletionBuilder {
     final Object empty = outputs.getNoOutput();
     final FSTCompiler<Object> fstCompiler =
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
-            .shareMaxTailLength(shareMaxTailLength)
             .build();
 
     BytesRefBuilder scratch = new BytesRefBuilder();

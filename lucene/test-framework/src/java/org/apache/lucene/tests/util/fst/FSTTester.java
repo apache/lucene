@@ -276,12 +276,6 @@ public class FSTTester<T> {
     final FSTCompiler<T> fstCompiler =
         new FSTCompiler.Builder<>(
                 inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
-            .minSuffixCount1(prune1)
-            .minSuffixCount2(prune2)
-            .shouldShareSuffix(prune1 == 0 && prune2 == 0)
-            .shouldShareNonSingletonNodes(allowRandomSuffixSharing ? random.nextBoolean() : true)
-            .shareMaxTailLength(
-                allowRandomSuffixSharing ? TestUtil.nextInt(random, 1, 10) : Integer.MAX_VALUE)
             .build();
 
     for (InputOutput<T> pair : pairs) {
