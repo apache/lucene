@@ -180,19 +180,6 @@ public class FSTTester<T> {
     }
   }
 
-  public void doTest(boolean testPruning) throws IOException {
-    // no pruning
-    doTest(0, 0, true);
-
-    if (testPruning) {
-      // simple pruning
-      doTest(TestUtil.nextInt(random, 1, 1 + pairs.size()), 0, true);
-
-      // leafy pruning
-      doTest(0, TestUtil.nextInt(random, 1, 1 + pairs.size()), true);
-    }
-  }
-
   // runs the term, returning the output, or null if term
   // isn't accepted.  if prefixLength is non-null it must be
   // length 1 int array; prefixLength[0] is set to the length
@@ -267,11 +254,8 @@ public class FSTTester<T> {
     return output;
   }
 
-  public FST<T> doTest(int prune1, int prune2, boolean allowRandomSuffixSharing)
+  public FST<T> doTest()
       throws IOException {
-    if (LuceneTestCase.VERBOSE) {
-      System.out.println("\nTEST: prune1=" + prune1 + " prune2=" + prune2);
-    }
 
     final FSTCompiler<T> fstCompiler =
         new FSTCompiler.Builder<>(
@@ -326,11 +310,7 @@ public class FSTTester<T> {
       }
     }
 
-    if (prune1 == 0 && prune2 == 0) {
-      verifyUnPruned(inputMode, fst);
-    } else {
-      verifyPruned(inputMode, fst, prune1, prune2);
-    }
+    verifyUnPruned(inputMode, fst);
 
     nodeCount = fstCompiler.getNodeCount();
     arcCount = fstCompiler.getArcCount();
