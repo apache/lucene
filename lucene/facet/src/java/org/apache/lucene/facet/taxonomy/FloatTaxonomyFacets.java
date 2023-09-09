@@ -37,23 +37,11 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   // TODO: also use native hash map for sparse collection, like IntTaxonomyFacets
 
-  /** Aggregation function used for combining values. */
-  final AssociationAggregationFunction aggregationFunction;
+  /** Aggregation functions used for combining values. */
+  final List<AssociationAggregationFunction> aggregationFunctions;
 
   /** Per-ordinal value. */
-  float[] values;
-
-  /** Sole constructor. */
-  FloatTaxonomyFacets(
-      String indexFieldName,
-      TaxonomyReader taxoReader,
-      AssociationAggregationFunction aggregationFunction,
-      FacetsConfig config,
-      FacetsCollector fc)
-      throws IOException {
-    super(indexFieldName, taxoReader, config, fc);
-    this.aggregationFunction = aggregationFunction;
-  }
+  float[][] values;
 
   @Override
   boolean hasValues() {
@@ -62,8 +50,30 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   void initializeValueCounters() {
     if (values == null) {
-      values = new float[taxoReader.getSize()];
+      values = new float[aggregationFunctions.size()][taxoReader.getSize()];
     }
+  }
+
+  FloatTaxonomyFacets(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      AssociationAggregationFunction aggregationFunction,
+      FacetsConfig config,
+      FacetsCollector fc)
+      throws IOException {
+    this(indexFieldName, taxoReader, List.of(aggregationFunction), config, fc);
+  }
+
+  FloatTaxonomyFacets(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      List<AssociationAggregationFunction> aggregationFunctions,
+      FacetsConfig config,
+      FacetsCollector fc)
+      throws IOException {
+    super(indexFieldName, taxoReader, config, fc);
+    this.aggregationFunctions = aggregationFunctions;
+    values = new float[aggregationFunctions.size()][taxoReader.getSize()];
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
@@ -80,19 +90,30 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       if (ft.hierarchical && ft.multiValued == false) {
         int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
         assert dimRootOrd > 0;
-        float newValue =
-            aggregationFunction.aggregate(values[dimRootOrd], rollup(children[dimRootOrd]));
-        values[dimRootOrd] = newValue;
+        for (int aggregationIdx = 0;
+            aggregationIdx < aggregationFunctions.size();
+            aggregationIdx++) {
+          AssociationAggregationFunction aggregationFunction =
+              aggregationFunctions.get(aggregationIdx);
+          float newValue =
+              aggregationFunction.aggregate(
+                  values[aggregationIdx][dimRootOrd],
+                  rollup(aggregationFunction, values[aggregationIdx], children[dimRootOrd]));
+          values[aggregationIdx][dimRootOrd] = newValue;
+        }
       }
     }
   }
 
-  private float rollup(int ord) throws IOException {
+  private float rollup(AssociationAggregationFunction aggregationFunction, float[] values, int ord)
+      throws IOException {
     int[] children = getChildren();
     int[] siblings = getSiblings();
     float aggregationValue = 0f;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float childValue = aggregationFunction.aggregate(values[ord], rollup(children[ord]));
+      float childValue =
+          aggregationFunction.aggregate(
+              values[ord], rollup(aggregationFunction, values, children[ord]));
       values[ord] = childValue;
       aggregationValue = aggregationFunction.aggregate(aggregationValue, childValue);
       ord = siblings[ord];
@@ -102,6 +123,11 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   public Number getSpecificValue(String dim, String... path) throws IOException {
+    return getSpecificValue(0, dim, path);
+  }
+
+  public Number getSpecificValue(int aggregationIdx, String dim, String... path)
+      throws IOException {
     DimConfig dimConfig = verifyDim(dim);
     if (path.length == 0) {
       if (dimConfig.hierarchical && dimConfig.multiValued == false) {
@@ -117,11 +143,16 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     if (ord < 0) {
       return -1;
     }
-    return values == null ? 0 : values[ord];
+    return values == null ? 0 : values[aggregationIdx][ord];
   }
 
   @Override
   public FacetResult getAllChildren(String dim, String... path) throws IOException {
+    return getAllChildren(0, dim, path);
+  }
+
+  public FacetResult getAllChildren(int aggregationIdx, String dim, String... path)
+      throws IOException {
     DimConfig dimConfig = verifyDim(dim);
     FacetLabel cp = new FacetLabel(dim, path);
     int dimOrd = taxoReader.getOrdinal(cp);
@@ -143,10 +174,13 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
     FloatArrayList ordValues = new FloatArrayList();
 
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      if (values[ord] > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, values[ord]);
+      if (values[aggregationIdx][ord] > 0) {
+        aggregatedValue =
+            aggregationFunctions
+                .get(aggregationIdx)
+                .aggregate(aggregatedValue, values[aggregationIdx][ord]);
         ordinals.add(ord);
-        ordValues.add(values[ord]);
+        ordValues.add(values[aggregationIdx][ord]);
       }
       ord = siblings[ord];
     }
@@ -157,7 +191,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = values[dimOrd];
+        aggregatedValue = values[aggregationIdx][dimOrd];
       } else {
         // Our sum'd count is not correct, in general:
         aggregatedValue = -1;
@@ -179,6 +213,11 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
+    return getTopChildren(0, topN, dim, path);
+  }
+
+  public FacetResult getTopChildren(int aggregationIdx, int topN, String dim, String... path)
+      throws IOException {
     validateTopN(topN);
     DimConfig dimConfig = verifyDim(dim);
     FacetLabel cp = new FacetLabel(dim, path);
@@ -191,7 +230,8 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
       return null;
     }
 
-    TopChildrenForPath topChildrenForPath = getTopChildrenForPath(dimConfig, dimOrd, topN);
+    TopChildrenForPath topChildrenForPath =
+        getTopChildrenForPath(aggregationIdx, dimConfig, dimOrd, topN);
     return createFacetResult(topChildrenForPath, dim, path);
   }
 
@@ -201,6 +241,11 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
    */
   private TopChildrenForPath getTopChildrenForPath(DimConfig dimConfig, int pathOrd, int topN)
       throws IOException {
+    return getTopChildrenForPath(0, dimConfig, pathOrd, topN);
+  }
+
+  private TopChildrenForPath getTopChildrenForPath(
+      int aggregationIdx, DimConfig dimConfig, int pathOrd, int topN) throws IOException {
 
     TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
     float bottomValue = 0;
@@ -215,9 +260,10 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     TopOrdAndFloatQueue.OrdAndValue reuse = null;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float value = values[ord];
+      float value = values[aggregationIdx][ord];
       if (value > 0) {
-        aggregatedValue = aggregationFunction.aggregate(aggregatedValue, value);
+        aggregatedValue =
+            aggregationFunctions.get(aggregationIdx).aggregate(aggregatedValue, value);
         childCount++;
         if (value > bottomValue || (value == bottomValue && ord < bottomOrd)) {
           if (reuse == null) {
@@ -238,7 +284,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        aggregatedValue = values[pathOrd];
+        aggregatedValue = values[aggregationIdx][pathOrd];
       } else {
         // Our sum'd count is not correct, in general:
         aggregatedValue = -1;
@@ -286,6 +332,11 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
+    return getTopDims(0, topNDims, topNChildren);
+  }
+
+  public List<FacetResult> getTopDims(int aggregationIdx, int topNDims, int topNChildren)
+      throws IOException {
     validateTopN(topNDims);
     validateTopN(topNChildren);
 
@@ -330,7 +381,7 @@ abstract class FloatTaxonomyFacets extends TaxonomyFacets {
             if (dimConfig.requireDimCount) {
               // If the dim is configured as multi-valued and requires dim counts, we can access
               // an accurate count for the dim computed at indexing time:
-              dimValue = values[dimOrd];
+              dimValue = values[aggregationIdx][dimOrd];
             } else {
               // If the dim is configured as multi-valued but not requiring dim counts, we cannot
               // compute an accurate dim count, and use -1 as a place-holder:

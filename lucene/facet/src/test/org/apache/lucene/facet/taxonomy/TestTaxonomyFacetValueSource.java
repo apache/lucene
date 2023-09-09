@@ -517,9 +517,12 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     config.setMultiValued("a", true);
     config.setRequireDimCount("a", true);
 
-    Document doc = new Document();
-    doc.add(new FacetField("a", Integer.toString(2), "1"));
-    iw.addDocument(config.build(taxoWriter, doc));
+    for (int i = 0; i < 4; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", (i + 1)));
+      doc.add(new FacetField("a", Integer.toString(i % 2), "1"));
+      iw.addDocument(config.build(taxoWriter, doc));
+    }
 
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
@@ -552,6 +555,61 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
+  }
+
+  public void testMultipleAggregations() throws Exception {
+    Directory indexDir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+    IndexWriter iw = new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("a", true);
+
+    for (int i = 0; i < 4; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("popularity", (i + 11)));
+      doc.add(new NumericDocValuesField("price", (i + 1)));
+      doc.add(new FacetField("a", Integer.toString(i % 2), "1"));
+      iw.addDocument(config.build(taxoWriter, doc));
+    }
+
+    DirectoryReader r = DirectoryReader.open(iw);
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    FloatTaxonomyFacets facets =
+        new TaxonomyFacetFloatAssociations(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME,
+            taxoReader,
+            config,
+            sfc,
+            List.of(
+                AssociationAggregationFunction.SUM,
+                AssociationAggregationFunction.MAX,
+                AssociationAggregationFunction.SUM,
+                AssociationAggregationFunction.MAX),
+            List.of(
+                DoubleValuesSource.fromLongField("popularity"),
+                DoubleValuesSource.fromLongField("popularity"),
+                DoubleValuesSource.fromLongField("price"),
+                DoubleValuesSource.fromLongField("price")));
+    assertEquals(
+        "dim=a path=[] value=50.0 childCount=2\n  1 (26.0)\n  0 (24.0)\n",
+        facets.getTopChildren(0, 10, "a").toString());
+    assertEquals(
+        "dim=a path=[] value=14.0 childCount=2\n  1 (14.0)\n  0 (13.0)\n",
+        facets.getTopChildren(1, 10, "a").toString());
+    assertEquals(
+        "dim=a path=[] value=10.0 childCount=2\n  1 (6.0)\n  0 (4.0)\n",
+        facets.getTopChildren(2, 10, "a").toString());
+    assertEquals(
+        "dim=a path=[] value=4.0 childCount=2\n  1 (4.0)\n  0 (3.0)\n",
+        facets.getTopChildren(3, 10, "a").toString());
+
+    IOUtils.close(iw, taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
 
   public void testCountAndSumScore() throws Exception {
