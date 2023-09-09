@@ -660,6 +660,7 @@ public class TestFSTs extends LuceneTestCase {
   // java -cp
   // ../build/codecs/classes/java:../test-framework/lib/randomizedtesting-runner-*.jar:../build/core/classes/test:../build/core/classes/test-framework:../build/core/classes/java:../build/test-framework/classes/java:../test-framework/lib/junit-4.10.jar org.apache.lucene.util.fst.TestFSTs /xold/tmp/allTerms3.txt out
   public static void main(String[] args) throws IOException {
+    // nocommit get rid of prune
     int prune = 0;
     int limit = Integer.MAX_VALUE;
     int inputMode = 0; // utf8

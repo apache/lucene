@@ -186,6 +186,8 @@ final class NodeHash<T> {
         node = getFallback(nodeIn, hash);
         if (node != 0) {
           // it was already in fallback -- promote
+          // nocommit could we somehow use the pos from fallback here?  i don't think so?  this hash will have different entries
+          //System.out.println("promote fallback " + node);
           table[pos] = node;
         } else {
           // not in fallback either -- freeze & add the incoming node
@@ -206,7 +208,10 @@ final class NodeHash<T> {
 
         // swap with fallback at 2/3 occupancy
         if (count > 2 * table.length / 3) {
+          // more current table to fallback, swap old fallback to current table and zero/clear it
+          long[] tmp = fallbackTable;
           fallbackTable = table;
+          table = tmp;
           Arrays.fill(table, 0);
           count = 0;
         }
@@ -215,6 +220,7 @@ final class NodeHash<T> {
         
       } else if (nodesEqual(nodeIn, node)) {
         // same node (in frozen form) is already in primary table
+        //System.out.println("found existing " + node);
         return node;
       }
 
