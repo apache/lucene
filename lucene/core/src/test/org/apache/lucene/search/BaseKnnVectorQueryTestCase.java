@@ -152,6 +152,20 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testFindFewer() throws IOException {
+    try (Directory indexStore =
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, 0}, 2);
+      assertMatches(searcher, kvq, 2);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertEquals(scoreDocs.length, 2);
+      assertIdMatches(reader, "id2", scoreDocs[0]);
+      assertIdMatches(reader, "id0", scoreDocs[1]);
+    }
+  }
+
   public void testSearchBoost() throws IOException {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
@@ -210,10 +224,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 10);
       IllegalArgumentException e =
-          expectThrows(
-              RuntimeException.class,
-              IllegalArgumentException.class,
-              () -> searcher.search(kvq, 10));
+          expectThrows(IllegalArgumentException.class, () -> searcher.search(kvq, 10));
       assertEquals("vector query dimension: 1 differs from field dimension: 2", e.getMessage());
     }
   }
@@ -329,6 +340,29 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(NO_MORE_DOCS, it.advance(4));
         expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
       }
+    }
+  }
+
+  public void testScoreMIP() throws IOException {
+    try (Directory indexStore =
+            getIndexStore(
+                "field",
+                VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
+                new float[] {0, 1},
+                new float[] {1, 2},
+                new float[] {0, 0});
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, -1}, 10);
+      assertMatches(searcher, kvq, 3);
+      ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
+      assertIdMatches(reader, "id2", scoreDocs[0]);
+      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertIdMatches(reader, "id1", scoreDocs[2]);
+
+      assertEquals(1.0, scoreDocs[0].score, 1e-7);
+      assertEquals(1 / 2f, scoreDocs[1].score, 1e-7);
+      assertEquals(1 / 3f, scoreDocs[2].score, 1e-7);
     }
   }
 
@@ -498,7 +532,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(9, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
-              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -513,7 +546,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(5, results.totalHits.value);
           assertEquals(results.totalHits.value, results.scoreDocs.length);
           expectThrows(
-              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -541,7 +573,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
           Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
           expectThrows(
-              RuntimeException.class,
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
@@ -714,7 +745,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
         Query filter = new ThrowingBitSetQuery(new FixedBitSet(numDocs));
         expectThrows(
-            RuntimeException.class,
             UnsupportedOperationException.class,
             () ->
                 searcher.search(
@@ -725,11 +755,21 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   /** Creates a new directory and adds documents with the given vectors as kNN vector fields */
   Directory getIndexStore(String field, float[]... contents) throws IOException {
+    return getIndexStore(field, VectorSimilarityFunction.EUCLIDEAN, contents);
+  }
+
+  /**
+   * Creates a new directory and adds documents with the given vectors with similarity as kNN vector
+   * fields
+   */
+  Directory getIndexStore(
+      String field, VectorSimilarityFunction vectorSimilarityFunction, float[]... contents)
+      throws IOException {
     Directory indexStore = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), indexStore);
     for (int i = 0; i < contents.length; ++i) {
       Document doc = new Document();
-      doc.add(getKnnVectorField(field, contents[i]));
+      doc.add(getKnnVectorField(field, contents[i], vectorSimilarityFunction));
       doc.add(new StringField("id", "id" + i, Field.Store.YES));
       writer.addDocument(doc);
     }
@@ -776,6 +816,15 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       throws IOException {
     String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
+  }
+
+  void assertDocScoreQueryToString(Query query) {
+    String queryString = query.toString("ignored");
+    // The string should contain matching docIds and their score.
+    // Since a forceMerge could occur in this test, we must not assert that a specific doc_id is
+    // matched
+    // But that instead the string format is expected and that the score is 1.0
+    assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[1.0,...]"));
   }
 
   /**
