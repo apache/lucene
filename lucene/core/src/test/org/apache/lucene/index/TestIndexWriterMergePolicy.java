@@ -400,7 +400,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     assertEquals(5, unmergedReader.leaves().size());
     unmergedReader.close();
 
-    writerWithMergePolicy.commit(); // merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
 
     DirectoryReader mergedReader = DirectoryReader.open(writerWithMergePolicy);
@@ -451,7 +451,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     unmergedReader.close();
 
     assertFalse(eventListener.isEventsRecorded());
-    writerWithMergePolicy.commit(); // Doc added, do merge on commit.
+    writerWithMergePolicy.commit(); // Do merge on commit.
     assertEquals(1, writerWithMergePolicy.getSegmentCount()); //
     assertTrue(eventListener.isEventsRecorded());
 
