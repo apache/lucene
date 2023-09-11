@@ -1,0 +1,50 @@
+>> test index basic
+=== DPU#0x0 ===
+field1 OK
+green postings OK: doc:1 freq:1 pos:1
+field2 OK
+green postings OK: doc:1 freq:1 pos:0
+orange postings OK: doc:0 freq:2 pos:1 pos:3
+field3 OK
+>> test index moretext
+=== DPU#0x0 ===
+field title OK
+apache postings OK: doc:1 freq:1 pos:0
+Munchen postings OK: doc:0 freq:1 pos:0
+field body OK
+conserve postings OK
+dativ postings OK: doc:0 freq:1 pos:33
+wird postings OK: doc:0 freq:2 pos:3 pos:12
+search postings OK: doc:1 freq:2 length:2 pos:24 pos:38 / doc:3 freq:1 length:1 pos:3
+>> test phrase
+=== DPU#0x0 ===
+Query 0: 2 terms
+Found a result for query 0: did=1, pos=0
+Query 3: 2 terms
+Found a result for query 3: did=1, pos=37
+Query 1: 2 terms
+Found a result for query 3: did=3, pos=2
+Found a result for query 1: did=2, pos=25
+Query 4: 2 terms
+Query 2: 4 terms
+Found a result for query 4: did=1, pos=41
+Found a result for query 2: did=0, pos=41
+Found a result for query 4: did=3, pos=47
+Query 5: 13 terms
+Found a result for query 5: did=1, pos=13
+
+QUERIES RESULTS:
+Query 0 results:
+doc:1 freq:1
+Query 1 results:
+doc:2 freq:1
+Query 2 results:
+doc:0 freq:1
+Query 3 results:
+doc:1 freq:1
+doc:3 freq:1
+Query 4 results:
+doc:1 freq:1
+doc:3 freq:1
+Query 5 results:
+doc:1 freq:1

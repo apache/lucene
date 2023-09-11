@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.sandbox.pim;
 
 import com.upmem.dpu.DpuException;
@@ -8,6 +25,7 @@ import com.upmem.dpu.DpuSystem;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
@@ -25,14 +43,17 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   private final ByteArrayOutputStream dpuStream;
   private final byte[] dpuQueryOffsetInBatch;
   private final int[] dpuIdOffset;
-  private final byte[] dpuQueryTmp = new byte[8];
   private int nbDpusInIndex;
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
     // allocate DPUs, load the program, allocate space for DPU results
     dpuStream = new ByteArrayOutputStream();
-    dpuSystem = DpuSystem.allocate(numDpusToAlloc, "", new PrintStream(dpuStream));
+    try {
+      dpuSystem = DpuSystem.allocate(numDpusToAlloc, "", new PrintStream(dpuStream, true, "UTF-8"));
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
     dpuProgramInfo = dpuSystem.load(DpuConstants.dpuProgramPath);
     dpuQueryOffsetInBatch = new byte[DpuConstants.dpuQueryMaxBatchSize * Integer.BYTES];
     dpuIdOffset = new int[dpuSystem.dpus().size()];
@@ -183,102 +204,13 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     return ((v + 7) >> 3) << 3;
   }
 
-  private void sendQueriesToPIM(ByteBufferBoundedQueue.ByteBuffers queryBatch) throws DpuException {
-
-    // if the query is too big for the limit on DPU, throw an exception
-    // The query would have to be handled by the CPU
-    if (queryBatch.getSize() > DpuConstants.dpuQueryBatchByteSize)
-      throw new DpuException(
-          "Query too big: size="
-              + queryBatch.getSize()
-              + " limit="
-              + DpuConstants.dpuQueryBatchByteSize);
-
-    // prepare the array with query offsets in the query batch array
-    int length = 0;
-    ByteArrayDataOutput out = new ByteArrayDataOutput(dpuQueryOffsetInBatch);
-    for (int i = 0; i < queryBatch.getNbElems(); ++i) {
-      out.writeInt(length);
-      length += queryBatch.getSizeOf(i);
-    }
-
-    // there is a special case when the byte buffer slice spans ends and beginning of the byte
-    // buffer
-    if (queryBatch.isSplitted()) {
-      int firstSliceNbElems = queryBatch.getBuffer().length - queryBatch.getStartIndex();
-      int secondSliceNbElems = queryBatch.getSize() - firstSliceNbElems;
-      dpuSystem
-          .async()
-          .copy(
-              DpuConstants.dpuQueryBatchVarName,
-              queryBatch.getBuffer(),
-              queryBatch.getStartIndex(),
-              AlignTo8(firstSliceNbElems),
-              0);
-      int firstDisalign = AlignTo8(firstSliceNbElems) - firstSliceNbElems;
-      dpuSystem
-          .async()
-          .copy(
-              DpuConstants.dpuQueryBatchVarName,
-              queryBatch.getBuffer(),
-              firstDisalign,
-              AlignTo8(secondSliceNbElems),
-              AlignTo8(firstSliceNbElems));
-      if (firstDisalign != 0) {
-        // here we need to handle the alignment issue by sending the 8 bytes in between
-        send8bytesSplitCase(queryBatch);
-      }
-    } else {
-      dpuSystem
-          .async()
-          .copy(
-              DpuConstants.dpuQueryBatchVarName,
-              queryBatch.getBuffer(),
-              queryBatch.getStartIndex(),
-              AlignTo8(queryBatch.getSize()),
-              0);
-    }
-    dpuSystem
-        .async()
-        .copy(
-            DpuConstants.dpuQueryOffsetInBatchVarName,
-            dpuQueryOffsetInBatch,
-            0,
-            AlignTo8(queryBatch.getNbElems() * Integer.BYTES),
-            0);
-    copyIntToDpus(DpuConstants.dpuNbQueryInBatchVarName, queryBatch.getNbElems());
-    copyIntToDpus(DpuConstants.dpuNbByteInBatchVarName, queryBatch.getSize());
-  }
-
-  private void send8bytesSplitCase(ByteBufferBoundedQueue.ByteBuffers queryBatch)
-      throws DpuException {
-    int firstSliceNbElems = queryBatch.getBuffer().length - queryBatch.getStartIndex();
-    int firstDisalign = AlignTo8(firstSliceNbElems) - firstSliceNbElems;
-    int nbFirst = 8 - firstDisalign;
-    int i = 0;
-    for (; i < nbFirst; ++i) {
-      dpuQueryTmp[i] = queryBatch.getBuffer()[queryBatch.getBuffer().length - nbFirst + i];
-    }
-    for (; i < 8; ++i) {
-      dpuQueryTmp[i] = queryBatch.getBuffer()[i - nbFirst];
-    }
-    dpuSystem
-        .async()
-        .copy(
-            DpuConstants.dpuQueryBatchVarName,
-            dpuQueryTmp,
-            0,
-            8,
-            firstSliceNbElems & (Integer.MAX_VALUE & ~7));
-  }
-
   @Override
   public void executeQueries(List<PimSystemManager.QueryBuffer> queryBuffers) throws DpuException {
 
     // 1) send queries to PIM
     sendQueriesToPIM(queryBuffers);
 
-    System.out.println(">> Launching DPUs");
+    // System.out.println(">> Launching DPUs");
     // 2) launch DPUs (program should be loaded on PimSystemManager Index load (only once)
     dpuSystem.async().exec(null);
 
@@ -383,8 +315,11 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     copyIntToDpus(DpuConstants.dpuNbByteInBatchVarName, batchLength);
   }
 
+  @Override
   public void dumpDpuStream() {
-    System.out.println("Printing DPU stream");
-    System.out.println(dpuStream.toString());
+    if (DpuConstants.DEBUG_DPU) {
+      System.out.println("Printing DPU stream");
+      System.out.println(dpuStream.toString());
+    }
   }
 }

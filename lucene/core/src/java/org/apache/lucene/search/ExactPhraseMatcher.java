@@ -188,7 +188,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   /** Merge impacts for multiple terms of an exact phrase. */
-  static ImpactsSource mergeImpacts(ImpactsEnum[] impactsEnums) {
+  public static ImpactsSource mergeImpacts(ImpactsEnum[] impactsEnums) {
     // Iteration of block boundaries uses the impacts enum with the lower cost.
     // This is consistent with BlockMaxConjunctionScorer.
     int tmpLeadIndex = -1;

@@ -1,11 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.sandbox.pim;
 
 import static org.apache.lucene.sandbox.pim.DpuSystemExecutor.QUERY_BATCH_BUFFER_CAPACITY;
 
 import com.upmem.dpu.DpuException;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -121,7 +136,9 @@ public class PimSystemManager {
             queriesExecutor.setPimIndex(pimIndexInfo);
             indexLoaded = true;
             return true;
-          } catch (DpuException e) {
+          } catch (
+              @SuppressWarnings("unused")
+              DpuException e) {
             return false;
           }
         }
@@ -145,17 +162,12 @@ public class PimSystemManager {
 
   private static PimIndexInfo readPimIndexInfo(Directory pimDirectory) throws IOException {
     IndexInput infoInput = pimDirectory.openInput("pimIndexInfo", IOContext.DEFAULT);
-    byte[] bytes = new byte[(int) infoInput.length()];
-    infoInput.readBytes(bytes, 0, bytes.length);
-    infoInput.close();
-    ObjectInputStream objectInputStream = new ObjectInputStream(new ByteArrayInputStream(bytes));
-    PimIndexInfo pimIndexInfo;
+    PimIndexInfo pimIndexInfo = null;
     try {
-      pimIndexInfo = (PimIndexInfo) objectInputStream.readObject();
-    } catch (ClassNotFoundException e) {
-      throw new RuntimeException(e);
+      pimIndexInfo = PimIndexInfo.readExternal(infoInput);
+    } finally {
+      infoInput.close();
     }
-    objectInputStream.close();
     pimIndexInfo.setPimDir(pimDirectory);
     return pimIndexInfo;
   }
@@ -308,7 +320,7 @@ public class PimSystemManager {
 
     public void stop() {
 
-      if (DpuConstants.DEBUG_DPU) queriesExecutor.dumpDpuStream();
+      queriesExecutor.dumpDpuStream();
 
       stop = true;
       // Add any QueryBuffer to the queue to make sure it stops waiting if it is empty.
@@ -319,7 +331,9 @@ public class PimSystemManager {
     public void run() {
       try {
         runInner();
-      } catch (InterruptedException e) {
+      } catch (
+          @SuppressWarnings("unused")
+          InterruptedException e) {
         Thread.currentThread().interrupt();
       } catch (IOException e) {
         throw new UncheckedIOException(e);

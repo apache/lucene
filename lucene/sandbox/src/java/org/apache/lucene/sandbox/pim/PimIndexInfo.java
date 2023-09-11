@@ -1,26 +1,43 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
-import java.io.Serializable;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
 /**
  * class PimIndexInfo Class to hold the information to be passed from the PimIndexWriter to the
  * PimSystemManager that loads the index to PIM.
  */
-public class PimIndexInfo implements Serializable {
+public class PimIndexInfo {
 
-  transient Directory pimDir;
-  final int numDpus;
-  final int numSegments;
-  final int numDpuSegments;
-  final String segmentCommitName[];
-  final int startDoc[];
+  Directory pimDir;
+  int numDpus;
+  int numSegments;
+  int numDpuSegments;
+  String[] segmentCommitName;
+  int startDoc[];
 
   /**
    * Constructor
@@ -45,6 +62,15 @@ public class PimIndexInfo implements Serializable {
         startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
       }
     }
+  }
+
+  private PimIndexInfo() {
+    this.pimDir = null;
+    this.numDpus = 0;
+    this.numSegments = 0;
+    this.numDpuSegments = 0;
+    this.segmentCommitName = null;
+    this.startDoc = null;
   }
 
   /**
@@ -91,7 +117,7 @@ public class PimIndexInfo implements Serializable {
    * @param in the IndexInput for the PIM index
    * @param dpuId the dpu ID
    * @return a slice of IndexInput
-   * @throws IOException
+   * @throws IOException if failed to read the IndexInput
    */
   public IndexInput getFieldFileInput(IndexInput in, int dpuId) throws IOException {
 
@@ -113,7 +139,7 @@ public class PimIndexInfo implements Serializable {
    * @param in the IndexInput for the PIM index
    * @param dpuId the dpu ID
    * @return a slice of IndexInput
-   * @throws IOException
+   * @throws IOException if failed to read the IndexInput
    */
   public IndexInput getBlockTableFileInput(IndexInput in, int dpuId) throws IOException {
 
@@ -135,7 +161,7 @@ public class PimIndexInfo implements Serializable {
    * @param in the IndexInput for the PIM index
    * @param dpuId the dpu ID
    * @return a slice of IndexInput
-   * @throws IOException
+   * @throws IOException if failed to read the IndexInput
    */
   public IndexInput getBlocksFileInput(IndexInput in, int dpuId) throws IOException {
 
@@ -157,7 +183,7 @@ public class PimIndexInfo implements Serializable {
    * @param in the IndexInput for the PIM index
    * @param dpuId the dpu ID
    * @return a slice of IndexInput
-   * @throws IOException
+   * @throws IOException if failed to read the IndexInput
    */
   public IndexInput getPostingsFileInput(IndexInput in, int dpuId) throws IOException {
 
@@ -181,7 +207,7 @@ public class PimIndexInfo implements Serializable {
    *
    * @param leafIdx the segment ID
    * @return the IndexInput object
-   * @throws IOException
+   * @throws IOException if failed to open the IndexInput
    */
   public IndexInput getFileInput(int leafIdx) throws IOException {
 
@@ -198,7 +224,7 @@ public class PimIndexInfo implements Serializable {
    * @param in the IndexInput for the PIM index
    * @param dpuId the DPU id
    * @return the size in bytes of the DPU index
-   * @throws IOException
+   * @throws IOException if failed to read the IndexInput
    */
   public long seekToDpu(IndexInput in, int dpuId) throws IOException {
 
@@ -223,6 +249,36 @@ public class PimIndexInfo implements Serializable {
 
     if (next) return in.length() - in.getFilePointer();
     else return nextDpuAddr - dpuAddr;
+  }
+
+  public void writeExternal(IndexOutput out) throws IOException {
+
+    out.writeInt(numDpus);
+    out.writeInt(numSegments);
+    out.writeInt(numDpuSegments);
+    for (int i = 0; i < segmentCommitName.length; ++i) {
+      out.writeString(segmentCommitName[i]);
+    }
+    for (int i = 0; i < startDoc.length; ++i) {
+      out.writeInt(startDoc[i]);
+    }
+  }
+
+  public static PimIndexInfo readExternal(IndexInput in) throws IOException {
+
+    PimIndexInfo info = new PimIndexInfo();
+    info.numDpus = in.readInt();
+    info.numSegments = in.readInt();
+    info.numDpuSegments = in.readInt();
+    info.segmentCommitName = new String[info.numSegments];
+    info.startDoc = new int[info.numSegments];
+    for (int i = 0; i < info.segmentCommitName.length; ++i) {
+      info.segmentCommitName[i] = in.readString();
+    }
+    for (int i = 0; i < info.startDoc.length; ++i) {
+      info.startDoc[i] = in.readInt();
+    }
+    return info;
   }
 
   public static final String DPU_INDEX_COMPOUND_EXTENSION = "dpuc";

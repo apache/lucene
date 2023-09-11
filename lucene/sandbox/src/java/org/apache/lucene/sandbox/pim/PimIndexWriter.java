@@ -1,9 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.sandbox.pim;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -102,7 +118,7 @@ public class PimIndexWriter extends IndexWriter {
   @Override
   protected void doAfterCommit() throws IOException {
 
-    System.out.println("Creating PIM index...");
+    if (DEBUG_INDEX) System.out.println("Creating PIM index...");
     long start = System.nanoTime();
     SegmentInfos segmentInfos =
         SegmentInfos.readCommit(
@@ -118,17 +134,18 @@ public class PimIndexWriter extends IndexWriter {
         LeafReaderContext leafReaderContext = leaves.get(leafIdx);
         LeafReader reader = leafReaderContext.reader();
         SegmentCommitInfo segmentCommitInfo = segmentInfos.info(leafIdx);
-        System.out.println(
-            "segment="
-                + new BytesRef(segmentCommitInfo.getId())
-                + " "
-                + segmentCommitInfo.info.name
-                + " leafReader ord="
-                + leafReaderContext.ord
-                + " maxDoc="
-                + segmentCommitInfo.info.maxDoc()
-                + " delCount="
-                + segmentCommitInfo.getDelCount());
+        if (DEBUG_INDEX)
+          System.out.println(
+              "segment="
+                  + new BytesRef(segmentCommitInfo.getId())
+                  + " "
+                  + segmentCommitInfo.info.name
+                  + " leafReader ord="
+                  + leafReaderContext.ord
+                  + " maxDoc="
+                  + segmentCommitInfo.info.maxDoc()
+                  + " delCount="
+                  + segmentCommitInfo.getDelCount());
         // Create a DpuTermIndexes that will build the term index for each DPU separately.
         try (DpuTermIndexes dpuTermIndexes =
             new DpuTermIndexes(segmentCommitInfo, nbDocPerDPUSegment)) {
@@ -140,7 +157,7 @@ public class PimIndexWriter extends IndexWriter {
             Terms terms = reader.terms(fieldInfo.name);
             if (terms != null) {
               int docCount = terms.getDocCount();
-              System.out.println("  " + docCount + " docs");
+              if (DEBUG_INDEX) System.out.println("  " + docCount + " docs");
               TermsEnum termsEnum = terms.iterator();
               // Send the term enum to DpuTermIndexes.
               // DpuTermIndexes separates the term docs according to the docId range split per DPU.
@@ -152,24 +169,24 @@ public class PimIndexWriter extends IndexWriter {
       // successfully updated the PIM index, register it
       writePimIndexInfo(segmentInfos, pimConfig.getNumDpuSegments());
     }
-    System.out.printf("\nPIM index creation took %.2f secs\n", (System.nanoTime() - start) * 1e-9);
+    if (DEBUG_INDEX)
+      System.out.printf(
+          "\nPIM index creation took %.2f secs\n", (System.nanoTime() - start) * 1e-9);
   }
 
   private void writePimIndexInfo(SegmentInfos segmentInfos, int numDpuSegments) throws IOException {
 
     pimIndexInfo = new PimIndexInfo(pimDirectory, pimConfig.nbDpus, numDpuSegments, segmentInfos);
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    ObjectOutputStream objectOutputStream = new ObjectOutputStream(baos);
-    objectOutputStream.writeObject(pimIndexInfo);
-    objectOutputStream.flush();
-    objectOutputStream.close();
     Set<String> fileNames = Set.of(pimDirectory.listAll());
     if (fileNames.contains("pimIndexInfo")) {
       pimDirectory.deleteFile("pimIndexInfo");
     }
     IndexOutput infoOutput = pimDirectory.createOutput("pimIndexInfo", IOContext.DEFAULT);
-    infoOutput.writeBytes(baos.toByteArray(), baos.size());
-    infoOutput.close();
+    try {
+      pimIndexInfo.writeExternal(infoOutput);
+    } finally {
+      infoOutput.close();
+    }
   }
 
   private class DpuTermIndexes implements Closeable {
@@ -195,11 +212,13 @@ public class PimIndexWriter extends IndexWriter {
       termIndexes = new DpuTermIndex[pimConfig.getNumDpus()];
       this.nbDocPerDpuSegment = nbDocPerDpuSegment;
 
-      System.out.println("Directory " + getDirectory() + " --------------");
-      for (String fileNames : getDirectory().listAll()) {
-        System.out.println(fileNames);
+      if (DEBUG_INDEX) {
+        System.out.println("Directory " + getDirectory() + " --------------");
+        for (String fileNames : getDirectory().listAll()) {
+          System.out.println(fileNames);
+        }
+        System.out.println("---------");
       }
-      System.out.println("---------");
 
       commitName = segmentCommitInfo.info.name;
 
