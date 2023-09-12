@@ -53,6 +53,7 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -420,16 +421,14 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                HnswGraphBuilder<byte[]> hnswGraphBuilder =
+                RandomVectorScorerSupplier scorerSupplier =
+                    RandomVectorScorerSupplier.createBytes(
+                        vectorValues, fieldInfo.getVectorSimilarityFunction());
+                HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
-                        vectorValues,
-                        fieldInfo.getVectorEncoding(),
-                        fieldInfo.getVectorSimilarityFunction(),
-                        M,
-                        beamWidth,
-                        HnswGraphBuilder.randSeed);
+                        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
+                yield hnswGraphBuilder.build(vectorValues.size());
               }
               case FLOAT32 -> {
                 OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
@@ -438,16 +437,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
                         docsWithField.cardinality(),
                         vectorDataInput,
                         byteSize);
-                HnswGraphBuilder<float[]> hnswGraphBuilder =
+                RandomVectorScorerSupplier scorerSupplier =
+                    RandomVectorScorerSupplier.createFloats(
+                        vectorValues, fieldInfo.getVectorSimilarityFunction());
+                HnswGraphBuilder hnswGraphBuilder =
                     HnswGraphBuilder.create(
-                        vectorValues,
-                        fieldInfo.getVectorEncoding(),
-                        fieldInfo.getVectorSimilarityFunction(),
-                        M,
-                        beamWidth,
-                        HnswGraphBuilder.randSeed);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.copy());
+                        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+                yield hnswGraphBuilder.build(vectorValues.size());
               }
             };
         writeGraph(graph);
@@ -630,7 +626,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
-    private final HnswGraphBuilder<T> hnswGraphBuilder;
+    private final HnswGraphBuilder hnswGraphBuilder;
 
     private int lastDocID = -1;
     private int node = 0;
@@ -654,21 +650,25 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       };
     }
 
+    @SuppressWarnings("unchecked")
     FieldWriter(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RAVectorValues<T> raVectorValues = new RAVectorValues<>(vectors, dim);
+      RandomAccessVectorValues<T> raVectors = new RAVectorValues<>(vectors, dim);
+      RandomVectorScorerSupplier scorerSupplier =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE -> RandomVectorScorerSupplier.createBytes(
+                (RandomAccessVectorValues<byte[]>) raVectors,
+                fieldInfo.getVectorSimilarityFunction());
+            case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
+                (RandomAccessVectorValues<float[]>) raVectors,
+                fieldInfo.getVectorSimilarityFunction());
+          };
       hnswGraphBuilder =
-          HnswGraphBuilder.create(
-              raVectorValues,
-              fieldInfo.getVectorEncoding(),
-              fieldInfo.getVectorSimilarityFunction(),
-              M,
-              beamWidth,
-              HnswGraphBuilder.randSeed);
+          HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
     }
 
@@ -685,7 +685,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       assert docID > lastDocID;
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
-      hnswGraphBuilder.addGraphNode(node, vectorValue);
+      hnswGraphBuilder.addGraphNode(node);
       node++;
       lastDocID = docID;
     }

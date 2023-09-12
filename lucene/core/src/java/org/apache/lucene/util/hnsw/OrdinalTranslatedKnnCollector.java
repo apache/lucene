@@ -24,12 +24,12 @@ import org.apache.lucene.search.TotalHits;
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
  */
-final class OrdinalTranslatedKnnCollector implements KnnCollector {
+public final class OrdinalTranslatedKnnCollector implements KnnCollector {
 
   private final KnnCollector in;
   private final IntToIntFunction vectorOrdinalToDocId;
 
-  OrdinalTranslatedKnnCollector(KnnCollector in, IntToIntFunction vectorOrdinalToDocId) {
+  public OrdinalTranslatedKnnCollector(KnnCollector in, IntToIntFunction vectorOrdinalToDocId) {
     this.in = in;
     this.vectorOrdinalToDocId = vectorOrdinalToDocId;
   }

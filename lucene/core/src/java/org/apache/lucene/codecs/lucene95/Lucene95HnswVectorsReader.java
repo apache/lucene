@@ -45,6 +45,8 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -274,12 +276,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
     HnswGraphSearcher.search(
-        target,
-        knnCollector,
-        vectorValues,
-        fieldEntry.vectorEncoding,
-        fieldEntry.similarityFunction,
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
         vectorValues.getAcceptOrds(acceptDocs));
   }
@@ -296,12 +297,11 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
     HnswGraphSearcher.search(
-        target,
-        knnCollector,
-        vectorValues,
-        fieldEntry.vectorEncoding,
-        fieldEntry.similarityFunction,
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
         vectorValues.getAcceptOrds(acceptDocs));
   }
