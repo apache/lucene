@@ -162,15 +162,15 @@ public abstract class Weight implements SegmentCacheable {
    */
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
 
-    Scorer scorer = scorer(context);
-    if (scorer == null) {
+    ScorerSupplier scorerSupplier = scorerSupplier(context);
+    if (scorerSupplier == null) {
       // No docs match
       return null;
     }
 
-    // This impl always scores docs in order, so we can
-    // ignore scoreDocsInOrder:
-    return new DefaultBulkScorer(scorer);
+    scorerSupplier.setTopLevelScoringClause();
+
+    return new DefaultBulkScorer(scorerSupplier.get(Long.MAX_VALUE));
   }
 
   /**

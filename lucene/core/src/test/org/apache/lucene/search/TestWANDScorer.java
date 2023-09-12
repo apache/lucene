@@ -122,10 +122,10 @@ public class TestWANDScorer extends LuceneTestCase {
                     Occur.SHOULD)
                 .build());
 
-    Scorer scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    Scorer scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -144,10 +144,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(4);
 
     assertEquals(3, scorer.iterator().nextDoc());
@@ -158,10 +157,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -188,10 +186,10 @@ public class TestWANDScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
             .build();
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(3, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -201,10 +199,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     scorer.setMinCompetitiveScore(2);
 
@@ -231,10 +228,10 @@ public class TestWANDScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
             .build();
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(2 + 1, scorer.score(), 0);
@@ -247,10 +244,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer =
-        searcher
-            .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-            .scorer(searcher.getIndexReader().leaves().get(0));
+    ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
 
     scorer.setMinCompetitiveScore(3);
 
@@ -304,10 +300,10 @@ public class TestWANDScorer extends LuceneTestCase {
                     .setMinimumNumberShouldMatch(2)
                     .build());
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
@@ -320,10 +316,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
         scorer.setMinCompetitiveScore(4);
 
         assertEquals(3, scorer.iterator().nextDoc());
@@ -334,10 +329,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
@@ -386,10 +380,10 @@ public class TestWANDScorer extends LuceneTestCase {
                     .setMinimumNumberShouldMatch(2)
                     .build());
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(0, scorer.iterator().nextDoc());
         scorer.setMinCompetitiveScore(scorer.score());
@@ -501,10 +495,10 @@ public class TestWANDScorer extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
                 .build();
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
 
         assertEquals(1, scorer.iterator().nextDoc());
         assertEquals(2 + 4, scorer.score(), 0);
@@ -514,10 +508,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
 
         scorer.setMinCompetitiveScore(2 + 1 + 4);
 
@@ -638,10 +631,8 @@ public class TestWANDScorer extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
                 .build();
 
-        Scorer scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+        Scorer scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
 
         assertEquals(0, scorer.iterator().nextDoc());
         assertEquals(2 + 1, scorer.score(), 0);
@@ -651,10 +642,9 @@ public class TestWANDScorer extends LuceneTestCase {
 
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-        scorer =
-            searcher
-                .createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1)
-                .scorer(searcher.getIndexReader().leaves().get(0));
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
 
         scorer.setMinCompetitiveScore(4);
 

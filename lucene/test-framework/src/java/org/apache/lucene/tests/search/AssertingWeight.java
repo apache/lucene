@@ -61,7 +61,7 @@ class AssertingWeight extends FilterWeight {
     if (random.nextBoolean()) {
       final Scorer inScorer = in.scorer(context);
       assert inScorer == null || inScorer.docID() == -1;
-      return AssertingScorer.wrap(new Random(random.nextLong()), inScorer, scoreMode);
+      return AssertingScorer.wrap(new Random(random.nextLong()), inScorer, scoreMode, false);
     } else {
       final ScorerSupplier scorerSupplier = scorerSupplier(context);
       if (scorerSupplier == null) {
@@ -83,6 +83,7 @@ class AssertingWeight extends FilterWeight {
     }
     return new ScorerSupplier() {
       private boolean getCalled = false;
+      private boolean topLevelScoringClause = false;
 
       @Override
       public Scorer get(long leadCost) throws IOException {
@@ -90,7 +91,10 @@ class AssertingWeight extends FilterWeight {
         getCalled = true;
         assert leadCost >= 0 : leadCost;
         return AssertingScorer.wrap(
-            new Random(random.nextLong()), inScorerSupplier.get(leadCost), scoreMode);
+            new Random(random.nextLong()),
+            inScorerSupplier.get(leadCost),
+            scoreMode,
+            topLevelScoringClause);
       }
 
       @Override
@@ -98,6 +102,13 @@ class AssertingWeight extends FilterWeight {
         final long cost = inScorerSupplier.cost();
         assert cost >= 0;
         return cost;
+      }
+
+      @Override
+      public void setTopLevelScoringClause() throws IOException {
+        assert getCalled == false;
+        topLevelScoringClause = true;
+        inScorerSupplier.setTopLevelScoringClause();
       }
     };
   }

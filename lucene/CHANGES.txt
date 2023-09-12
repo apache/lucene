@@ -70,6 +70,8 @@ Optimizations
 
 * GITHUB##12371: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
 
+* GITHUB#12490: Faster computation of top-k hits on boolean queries. (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
