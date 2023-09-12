@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -24,8 +25,8 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -39,21 +40,17 @@ class TaskExecutor {
     this.executor = Objects.requireNonNull(executor, "Executor is null");
   }
 
-  final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) {
-    int i = 0;
+  /**
+   * Execute all the tasks provided as an argument, wait for them to complete and return the
+   * obtained results.
+   *
+   * @param tasks the tasks to execute
+   * @return a list containing the results from the tasks execution
+   * @param <T> the return type of the task execution
+   */
+  final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) throws IOException {
     for (Runnable task : tasks) {
-      if (shouldExecuteOnCallerThread(i, tasks.size())) {
-        task.run();
-      } else {
-        try {
-          executor.execute(task);
-        } catch (
-            @SuppressWarnings("unused")
-            RejectedExecutionException e) {
-          task.run();
-        }
-      }
-      ++i;
+      executor.execute(task);
     }
     final List<T> results = new ArrayList<>();
     for (Future<T> future : tasks) {
@@ -62,14 +59,9 @@ class TaskExecutor {
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
-        throw new RuntimeException(e.getCause());
+        throw IOUtils.rethrowAlways(e.getCause());
       }
     }
     return results;
-  }
-
-  boolean shouldExecuteOnCallerThread(int index, int numTasks) {
-    // Execute last task on caller thread
-    return index == numTasks - 1;
   }
 }

@@ -17,11 +17,12 @@
 
 package org.apache.lucene.util.hnsw;
 
+import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestNeighborArray extends LuceneTestCase {
 
-  public void testScoresDescOrder() {
+  public void testScoresDescOrder() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addInOrder(0, 1);
     neighbors.addInOrder(1, 0.8f);
@@ -70,7 +71,7 @@ public class TestNeighborArray extends LuceneTestCase {
     assertNodesEqual(new int[] {0, 3, 8, 1}, neighbors);
   }
 
-  public void testScoresAscOrder() {
+  public void testScoresAscOrder() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, false);
     neighbors.addInOrder(0, 0.1f);
     neighbors.addInOrder(1, 0.3f);
@@ -119,7 +120,7 @@ public class TestNeighborArray extends LuceneTestCase {
     assertNodesEqual(new int[] {8, 0, 6, 7}, neighbors);
   }
 
-  public void testSortAsc() {
+  public void testSortAsc() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, false);
     neighbors.addOutOfOrder(1, 2);
     // we disallow calling addInOrder after addOutOfOrder even if they're actual in order
@@ -130,7 +131,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, 8);
     neighbors.addOutOfOrder(6, 7);
     neighbors.addOutOfOrder(4, 5);
-    int[] unchecked = neighbors.sort();
+    int[] unchecked = neighbors.sort(null);
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {2, 3, 4, 5, 6, 7, 8}, neighbors);
@@ -143,13 +144,13 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors2.addOutOfOrder(6, 7);
     neighbors2.addOutOfOrder(5, 6);
     neighbors2.addOutOfOrder(3, 4);
-    unchecked = neighbors2.sort();
+    unchecked = neighbors2.sort(null);
     assertArrayEquals(new int[] {2, 3, 5, 6}, unchecked);
     assertNodesEqual(new int[] {0, 1, 2, 3, 4, 5, 6}, neighbors2);
     assertScoresEqual(new float[] {1, 2, 3, 4, 5, 6, 7}, neighbors2);
   }
 
-  public void testSortDesc() {
+  public void testSortDesc() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(1, 7);
     // we disallow calling addInOrder after addOutOfOrder even if they're actual in order
@@ -160,7 +161,7 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors.addOutOfOrder(7, 1);
     neighbors.addOutOfOrder(6, 2);
     neighbors.addOutOfOrder(4, 4);
-    int[] unchecked = neighbors.sort();
+    int[] unchecked = neighbors.sort(null);
     assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
@@ -173,10 +174,42 @@ public class TestNeighborArray extends LuceneTestCase {
     neighbors2.addOutOfOrder(7, 1);
     neighbors2.addOutOfOrder(6, 2);
     neighbors2.addOutOfOrder(4, 4);
-    unchecked = neighbors2.sort();
+    unchecked = neighbors2.sort(null);
     assertArrayEquals(new int[] {2, 3, 5, 6}, unchecked);
     assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors2);
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors2);
+  }
+
+  public void testAddwithScoringFunction() throws IOException {
+    NeighborArray neighbors = new NeighborArray(10, true);
+    neighbors.addOutOfOrder(1, Float.NaN);
+    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    neighbors.addOutOfOrder(2, Float.NaN);
+    neighbors.addOutOfOrder(5, Float.NaN);
+    neighbors.addOutOfOrder(3, Float.NaN);
+    neighbors.addOutOfOrder(7, Float.NaN);
+    neighbors.addOutOfOrder(6, Float.NaN);
+    neighbors.addOutOfOrder(4, Float.NaN);
+    int[] unchecked = neighbors.sort(nodeId -> 7 - nodeId + 1);
+    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    assertNodesEqual(new int[] {1, 2, 3, 4, 5, 6, 7}, neighbors);
+    assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
+  }
+
+  public void testAddwithScoringFunctionLargeOrd() throws IOException {
+    NeighborArray neighbors = new NeighborArray(10, true);
+    neighbors.addOutOfOrder(11, Float.NaN);
+    expectThrows(AssertionError.class, () -> neighbors.addInOrder(1, 2));
+    neighbors.addOutOfOrder(12, Float.NaN);
+    neighbors.addOutOfOrder(15, Float.NaN);
+    neighbors.addOutOfOrder(13, Float.NaN);
+    neighbors.addOutOfOrder(17, Float.NaN);
+    neighbors.addOutOfOrder(16, Float.NaN);
+    neighbors.addOutOfOrder(14, Float.NaN);
+    int[] unchecked = neighbors.sort(nodeId -> 7 - nodeId + 11);
+    assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6}, unchecked);
+    assertNodesEqual(new int[] {11, 12, 13, 14, 15, 16, 17}, neighbors);
+    assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
   }
 
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
