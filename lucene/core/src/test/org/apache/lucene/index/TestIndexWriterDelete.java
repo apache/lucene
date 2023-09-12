@@ -1315,7 +1315,8 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     w.addDocument(doc);
     w.close();
 
-    iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc = new IndexWriterConfig(new MockAnalyzer(random()))
+        .setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setOpenMode(IndexWriterConfig.OpenMode.APPEND);
     w = new IndexWriter(d, iwc);
     IndexReader r = DirectoryReader.open(w, false, false);

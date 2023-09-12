@@ -518,11 +518,10 @@ public class TestIndexWriter extends LuceneTestCase {
     doc.add(newField("field", "aaa", customType));
     for (int i = 0; i < 19; i++) writer.addDocument(doc);
     writer.flush(false, true);
-    writer.close();
-    SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     // Since we flushed w/o allowing merging we should now
     // have 10 segments
-    assertEquals(10, sis.size());
+    assertEquals(10, writer.getSegmentCount());
+    writer.close();
     dir.close();
   }
 

@@ -4223,7 +4223,6 @@ public class IndexWriter
           flushSuccess = true;
         } finally {
           assert Thread.holdsLock(fullFlushLock);
-          ;
           docWriter.finishFullFlush(flushSuccess);
           processEvents(false);
         }
