@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
+import org.apache.lucene.codecs.lucene98.Lucene98Codec;
+import org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -78,10 +78,10 @@ public class TestKnnGraph extends LuceneTestCase {
     }
 
     codec =
-        new Lucene95Codec() {
+        new Lucene98Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+            return new Lucene98HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, null);
           }
         };
 
@@ -90,10 +90,10 @@ public class TestKnnGraph extends LuceneTestCase {
     vectorEncoding = randomVectorEncoding();
 
     codec =
-        new Lucene95Codec() {
+        new Lucene98Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+            return new Lucene98HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, null);
           }
         };
 
@@ -101,10 +101,10 @@ public class TestKnnGraph extends LuceneTestCase {
       float32Codec = codec;
     } else {
       float32Codec =
-          new Lucene95Codec() {
+          new Lucene98Codec() {
             @Override
             public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return new Lucene95HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
+              return new Lucene98HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, null);
             }
           };
     }
@@ -393,8 +393,8 @@ public class TestKnnGraph extends LuceneTestCase {
         if (perFieldReader == null) {
           continue;
         }
-        Lucene95HnswVectorsReader vectorReader =
-            (Lucene95HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
+        Lucene98HnswVectorsReader vectorReader =
+            (Lucene98HnswVectorsReader) perFieldReader.getFieldReader(vectorField);
         if (vectorReader == null) {
           continue;
         }

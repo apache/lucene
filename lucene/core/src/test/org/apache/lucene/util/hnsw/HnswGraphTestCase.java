@@ -41,9 +41,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
+import org.apache.lucene.codecs.lucene98.Lucene98Codec;
+import org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -154,10 +154,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new Lucene95Codec() {
+                  new Lucene98Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene95HnswVectorsFormat(M, beamWidth);
+                      return new Lucene98HnswVectorsFormat(M, beamWidth, null);
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -184,7 +184,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertEquals(indexedDoc, ctx.reader().numDocs());
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
-              ((Lucene95HnswVectorsReader)
+              ((Lucene98HnswVectorsReader)
                       ((PerFieldKnnVectorsFormat.FieldsReader)
                               ((CodecReader) ctx.reader()).getVectorReader())
                           .getFieldReader("field"))
@@ -210,19 +210,19 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     IndexWriterConfig iwc =
         new IndexWriterConfig()
             .setCodec(
-                new Lucene95Codec() {
+                new Lucene98Codec() {
                   @Override
                   public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                    return new Lucene95HnswVectorsFormat(M, beamWidth);
+                    return new Lucene98HnswVectorsFormat(M, beamWidth, null);
                   }
                 });
     IndexWriterConfig iwc2 =
         new IndexWriterConfig()
             .setCodec(
-                new Lucene95Codec() {
+                new Lucene98Codec() {
                   @Override
                   public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                    return new Lucene95HnswVectorsFormat(M, beamWidth);
+                    return new Lucene98HnswVectorsFormat(M, beamWidth, null);
                   }
                 })
             .setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
