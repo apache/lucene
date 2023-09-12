@@ -193,7 +193,7 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       float[] v = ArrayUtil.copyOfSubArray(f, 0, f.length);
       VectorUtil.l2normalize(v);
       quantized[i] = new byte[v.length];
-      scalarQuantizer.quantizeTo(v, quantized[i]);
+      scalarQuantizer.quantize(v, quantized[i]);
       ++i;
     }
     return quantized;

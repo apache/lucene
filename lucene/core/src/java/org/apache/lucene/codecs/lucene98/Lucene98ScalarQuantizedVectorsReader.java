@@ -17,7 +17,6 @@
 
 package org.apache.lucene.codecs.lucene98;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,8 +45,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene98ScalarQuantizedVectorsReader
-    implements Closeable, Accountable, QuantizedVectorsReader {
+public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene98ScalarQuantizedVectorsFormat.class);

@@ -528,6 +528,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
       finished = true;
     }
 
+    @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
       if (docID == lastDocID) {
         throw new IllegalArgumentException(

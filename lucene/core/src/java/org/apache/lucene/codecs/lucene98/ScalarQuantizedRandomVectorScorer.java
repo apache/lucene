@@ -39,7 +39,7 @@ final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
           }
         };
     byte[] quantizedQuery = new byte[query.length];
-    scalarQuantizer.quantizeTo(processedQuery, quantizedQuery);
+    scalarQuantizer.quantize(processedQuery, quantizedQuery);
     return quantizedQuery;
   }
 
