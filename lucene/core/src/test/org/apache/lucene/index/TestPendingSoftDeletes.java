@@ -262,6 +262,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             newIndexWriterConfig()
                 .setSoftDeletesField("_soft_deletes")
                 .setMaxBufferedDocs(3) // make sure we write one segment
+                .setMergePolicy(NoMergePolicy.INSTANCE) // prevent deletes from triggering merges
                 .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.YES));
@@ -330,6 +331,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             newIndexWriterConfig()
                 .setSoftDeletesField("_soft_deletes")
                 .setMaxBufferedDocs(3) // make sure we write one segment
+                .setMergePolicy(NoMergePolicy.INSTANCE) // prevent deletes from triggering merges
                 .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.YES));
