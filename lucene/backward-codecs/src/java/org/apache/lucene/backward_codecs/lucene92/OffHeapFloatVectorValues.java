@@ -34,6 +34,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   protected final int size;
   protected final IndexInput slice;
   protected final int byteSize;
+  protected int lastOrd = -1;
   protected final float[] value;
 
   OffHeapFloatVectorValues(int dimension, int size, IndexInput slice) {
@@ -56,8 +57,12 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   @Override
   public float[] vectorValue(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return value;
+    }
     slice.seek((long) targetOrd * byteSize);
     slice.readFloats(value, 0, value.length);
+    lastOrd = targetOrd;
     return value;
   }
 
@@ -87,9 +92,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public float[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readFloats(value, 0, value.length);
-      return value;
+      return vectorValue(doc);
     }
 
     @Override
@@ -151,9 +154,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public float[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readFloats(value, 0, value.length);
-      return value;
+      return vectorValue(disi.index());
     }
 
     @Override

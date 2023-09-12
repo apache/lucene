@@ -86,7 +86,7 @@ public class NeighborArray {
    * @return indexes of newly sorted (unchecked) nodes, in ascending order, or null if the array is
    *     already fully sorted
    */
-  public int[] sort(ScoringFunction scoringFunction) throws IOException {
+  public int[] sort(RandomVectorScorer scorer) throws IOException {
     if (size == sortedNodeSize) {
       // all nodes checked and sorted
       return null;
@@ -95,8 +95,7 @@ public class NeighborArray {
     int[] uncheckedIndexes = new int[size - sortedNodeSize];
     int count = 0;
     while (sortedNodeSize != size) {
-      uncheckedIndexes[count] =
-          insertSortedInternal(scoringFunction); // sortedNodeSize is increased inside
+      uncheckedIndexes[count] = insertSortedInternal(scorer); // sortedNodeSize is increased inside
       for (int i = 0; i < count; i++) {
         if (uncheckedIndexes[i] >= uncheckedIndexes[count]) {
           // the previous inserted nodes has been shifted
@@ -110,13 +109,13 @@ public class NeighborArray {
   }
 
   /** insert the first unsorted node into its sorted position */
-  private int insertSortedInternal(ScoringFunction scoringFunction) throws IOException {
+  private int insertSortedInternal(RandomVectorScorer scorer) throws IOException {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
     int tmpNode = node[sortedNodeSize];
     float tmpScore = score[sortedNodeSize];
 
     if (Float.isNaN(tmpScore)) {
-      tmpScore = scoringFunction.computeScore(tmpNode);
+      tmpScore = scorer.score(tmpNode);
     }
 
     int insertionPoint =
@@ -203,21 +202,5 @@ public class NeighborArray {
       else start = mid + 1;
     }
     return start;
-  }
-
-  /**
-   * ScoringFunction is a lambda function created in HnswGraphBuilder to allow for lazy computation
-   * of distance score.
-   */
-  interface ScoringFunction {
-    /**
-     * Computes the distance score between the given node ID and the root node of this
-     * NeighborArray.
-     *
-     * @param nodeId The ID of the node for which to compute the distance score.
-     * @return The distance score as a float value.
-     * @throws IOException If an I/O error occurs during computation.
-     */
-    float computeScore(int nodeId) throws IOException;
   }
 }
