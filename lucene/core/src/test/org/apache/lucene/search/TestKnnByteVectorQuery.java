@@ -24,12 +24,22 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
-  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
+  AbstractKnnVectorQuery getKnnVectorQuery(
+      String field, float[] query, int k, int ef, Query queryFilter) {
+    return new KnnByteVectorQuery(field, floatToBytes(query), k, ef, queryFilter) {
+      @Override
+      protected TopDocs approximateSearch(
+          LeafReaderContext context, Bits acceptDocs, int efSearch, int visitedLimit)
+          throws IOException {
+        assertTrue(efSearch >= k);
+        return super.approximateSearch(context, acceptDocs, efSearch, visitedLimit);
+      }
+    };
   }
 
   @Override
@@ -73,7 +83,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     try (Directory indexStore =
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
-      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0, 1}, 10);
+      AbstractKnnVectorQuery query = new KnnByteVectorQuery("field", new byte[] {0, 1}, 10);
       assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));

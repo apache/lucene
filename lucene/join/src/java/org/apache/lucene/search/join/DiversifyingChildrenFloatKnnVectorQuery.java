@@ -123,14 +123,15 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   }
 
   @Override
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context, Bits acceptDocs, int efSearch, int visitedLimit)
       throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return NO_RESULTS;
     }
     KnnCollector collector =
-        new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
+        new DiversifyingNearestChildrenKnnCollector(efSearch, visitedLimit, parentBitSet);
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     return collector.topDocs();
   }

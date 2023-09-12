@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -36,6 +37,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -50,15 +52,18 @@ import org.apache.lucene.util.FixedBitSet;
 
 /** Test cases for AbstractKnnVectorQuery objects. */
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
-
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter);
+      String field, float[] query, int k, int ef, Query queryFilter);
 
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
     return getKnnVectorQuery(field, query, k, null);
+  }
+
+  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    return getKnnVectorQuery(field, query, k, k, queryFilter);
   }
 
   abstract float[] randomVector(int dim);
@@ -243,6 +248,9 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** Test bad parameters */
   public void testIllegalArguments() throws IOException {
     expectThrows(IllegalArgumentException.class, () -> getKnnVectorQuery("xx", new float[] {1}, 0));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> getKnnVectorQuery("xx", new float[] {1}, 10, 5, null));
   }
 
   public void testDifferentReader() throws IOException {
@@ -749,6 +757,42 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             () ->
                 searcher.search(
                     getKnnVectorQuery("vector", randomVector(dim), 10, filter), numDocs));
+      }
+    }
+  }
+
+  public void testEfSearch() throws IOException {
+    int k = 1;
+    int efSearch = 10;
+    int dim = 2;
+    try (Directory d = newDirectory()) {
+      IndexWriterConfig config = newIndexWriterConfig();
+      config.setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter w = new IndexWriter(d, config)) {
+        int r = 0;
+        for (int i = 0; i < 10; i++) {
+          int numDoc = randomIntBetween(k, efSearch * 2);
+          for (int j = 0; j < numDoc; j++) {
+            Document doc = new Document();
+            doc.add(getKnnVectorField("field", randomVector(dim)));
+            doc.add(new StringField("id", "id" + r, Field.Store.YES));
+            w.addDocument(doc);
+            ++r;
+          }
+          w.flush();
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertTrue(reader.leaves().size() > 1);
+        IndexSearcher searcher = newSearcher(reader);
+
+        TopDocs results1 =
+            searcher.search(getKnnVectorQuery("field", randomVector(dim), 1, 10, null), 1);
+        assertEquals(1, results1.scoreDocs.length);
+
+        TopDocs results2 =
+            searcher.search(getKnnVectorQuery("field", randomVector(dim), 10, 100, null), 10);
+        assertEquals(10, results2.scoreDocs.length);
       }
     }
   }

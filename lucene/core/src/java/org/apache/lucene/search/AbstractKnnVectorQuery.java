@@ -52,11 +52,17 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   protected final String field;
   protected final int k;
+  private final int ef;
   private final Query filter;
 
-  public AbstractKnnVectorQuery(String field, int k, Query filter) {
+  public AbstractKnnVectorQuery(String field, int k, int ef, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
     this.k = k;
+    this.ef = ef;
+    if (ef < k) {
+      throw new IllegalArgumentException(
+          "ef must be equal or greater than k, got: " + ef + " < " + k);
+    }
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
@@ -81,10 +87,11 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
+    int totalDoc = indexSearcher.getIndexReader().maxDoc();
     TopDocs[] perLeafResults =
         (taskExecutor == null)
-            ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(reader.leaves(), filterWeight, taskExecutor);
+            ? sequentialSearch(reader.leaves(), filterWeight, totalDoc)
+            : parallelSearch(reader.leaves(), filterWeight, taskExecutor, totalDoc);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -95,26 +102,31 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) throws IOException {
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, int totalDoc)
+      throws IOException {
     TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
     for (LeafReaderContext ctx : leafReaderContexts) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
+      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight, totalDoc);
     }
     return perLeafResults;
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
+      List<LeafReaderContext> leafReaderContexts,
+      Weight filterWeight,
+      TaskExecutor taskExecutor,
+      int totalDoc)
       throws IOException {
     List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
+      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight, totalDoc)));
     }
     return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {
-    TopDocs results = getLeafResults(ctx, filterWeight);
+  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight, int totalDoc)
+      throws IOException {
+    TopDocs results = getLeafResults(ctx, filterWeight, totalDoc);
     if (ctx.docBase > 0) {
       for (ScoreDoc scoreDoc : results.scoreDocs) {
         scoreDoc.doc += ctx.docBase;
@@ -123,12 +135,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     return results;
   }
 
-  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight) throws IOException {
+  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight, int totalDoc)
+      throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
+    double docRatio = (double) ctx.reader().maxDoc() / totalDoc;
+    int efSegment = (int) Math.max(k, Math.ceil(docRatio * ef));
+
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, Integer.MAX_VALUE);
+      return approximateSearch(ctx, liveDocs, efSegment, Integer.MAX_VALUE);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -146,7 +162,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, cost);
+    TopDocs results = approximateSearch(ctx, acceptDocs, efSegment, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
@@ -174,7 +190,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   protected abstract TopDocs approximateSearch(
-      LeafReaderContext context, Bits acceptDocs, int visitedLimit) throws IOException;
+      LeafReaderContext context, Bits acceptDocs, int efSearch, int visitedLimit)
+      throws IOException;
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
@@ -265,7 +282,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AbstractKnnVectorQuery that = (AbstractKnnVectorQuery) o;
-    return k == that.k && Objects.equals(field, that.field) && Objects.equals(filter, that.filter);
+    return k == that.k
+        && ef == that.ef
+        && Objects.equals(field, that.field)
+        && Objects.equals(filter, that.filter);
   }
 
   @Override
