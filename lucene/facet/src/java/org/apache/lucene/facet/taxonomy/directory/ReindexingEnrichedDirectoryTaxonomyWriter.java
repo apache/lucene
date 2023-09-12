@@ -32,6 +32,8 @@ import org.apache.lucene.util.IOUtils;
  * Use this {@link org.apache.lucene.facet.taxonomy.TaxonomyWriter} to append arbitrary fields to
  * the ordinal documents in the taxonomy. To update the custom data added to the docs, it is
  * required to {@link #reindexWithNewOrdinalData(BiConsumer)}.
+ *
+ * @lucene.experimental
  */
 public class ReindexingEnrichedDirectoryTaxonomyWriter extends DirectoryTaxonomyWriter {
   private BiConsumer<FacetLabel, Document> ordinalDataAppender;
@@ -92,7 +94,7 @@ public class ReindexingEnrichedDirectoryTaxonomyWriter extends DirectoryTaxonomy
     List<FacetLabel> ordinalToPath = recordPathsInOrder(d);
 
     // Delete old taxonomy files.
-    reset();
+    deleteAll();
 
     // Index paths in order - they will use the new appender.
     for (FacetLabel categoryPath : ordinalToPath) {

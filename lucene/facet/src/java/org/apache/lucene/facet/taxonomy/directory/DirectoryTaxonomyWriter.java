@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -439,6 +440,8 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   /**
    * Child classes can implement this method to modify the document corresponding to a category path
    * before indexing it.
+   *
+   * @lucene.experimental
    */
   protected void enrichOrdinalDocument(Document d, FacetLabel categoryPath) {}
 
@@ -887,8 +890,16 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
     ++indexEpoch;
   }
 
-  /** Delete all taxonomy data and start over. */
-  public synchronized void reset() throws IOException {
+  /**
+   * Delete the taxonomy and reset all state for this writer.
+   *
+   * <p>To keep using the same main index, you would have to regenerate the taxonomy, taking care
+   * that ordinals are indexed in the same order as before. An example of this can be found in
+   * {@link ReindexingEnrichedDirectoryTaxonomyWriter#reindexWithNewOrdinalData(BiConsumer)}.
+   *
+   * @lucene.experimental
+   */
+  synchronized void deleteAll() throws IOException {
     indexWriter.deleteAll();
     shouldRefreshReaderManager = true;
     initReaderManager(); // ensure that it's initialized
