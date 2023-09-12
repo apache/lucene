@@ -46,6 +46,8 @@ public interface RandomVectorScorerSupplier {
       final RandomAccessVectorValues<float[]> vectors,
       final VectorSimilarityFunction similarityFunction)
       throws IOException {
+    // We copy the provided random accessor just once during the supplier's initialization
+    // and then reuse it consistently across all scorers for conducting vector comparisons.
     final RandomAccessVectorValues<float[]> vectorsCopy = vectors.copy();
     return queryOrd ->
         (RandomVectorScorer)
@@ -69,6 +71,8 @@ public interface RandomVectorScorerSupplier {
       final RandomAccessVectorValues<byte[]> vectors,
       final VectorSimilarityFunction similarityFunction)
       throws IOException {
+    // We copy the provided random accessor just once during the supplier's initialization
+    // and then reuse it consistently across all scorers for conducting vector comparisons.
     final RandomAccessVectorValues<byte[]> vectorsCopy = vectors.copy();
     return queryOrd ->
         (RandomVectorScorer)
