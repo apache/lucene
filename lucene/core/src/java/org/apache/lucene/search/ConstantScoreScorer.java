@@ -74,6 +74,8 @@ public final class ConstantScoreScorer extends Scorer {
     super(weight);
     this.score = score;
     this.scoreMode = scoreMode;
+    // TODO: Only wrap when it is the top-level scoring clause? See
+    // ScorerSupplier#setTopLevelScoringClause
     this.approximation =
         scoreMode == ScoreMode.TOP_SCORES ? new DocIdSetIteratorWrapper(disi) : disi;
     this.twoPhaseIterator = null;
@@ -95,6 +97,8 @@ public final class ConstantScoreScorer extends Scorer {
     this.score = score;
     this.scoreMode = scoreMode;
     if (scoreMode == ScoreMode.TOP_SCORES) {
+      // TODO: Only wrap when it is the top-level scoring clause? See
+      // ScorerSupplier#setTopLevelScoringClause
       this.approximation = new DocIdSetIteratorWrapper(twoPhaseIterator.approximation());
       this.twoPhaseIterator =
           new TwoPhaseIterator(this.approximation) {

@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
@@ -37,7 +38,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
   // Index of the first essential scorer, ie. essentialQueue contains all scorers from
   // allScorers[firstEssentialScorer:]. All scorers below this index are non-essential.
   private int firstEssentialScorer;
-  private final MaxScoreSumPropagator maxScorePropagator;
   private final long cost;
   private float minCompetitiveScore;
   private boolean minCompetitiveScoreUpdated;
@@ -59,7 +59,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       allScorers[i++] = w;
     }
     this.cost = cost;
-    maxScorePropagator = new MaxScoreSumPropagator(scorers);
     essentialQueue = new DisiPriorityQueue(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
@@ -227,7 +226,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
       throws IOException {
     double score = essentialScore;
     for (int i = firstEssentialScorer - 1; i >= 0; --i) {
-      float maxPossibleScore = maxScorePropagator.scoreSumUpperBound(score + maxScoreSums[i]);
+      float maxPossibleScore =
+          (float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length);
       if (maxPossibleScore < minCompetitiveScore) {
         // Hit is not competitive.
         return;
@@ -268,7 +268,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       final DisiWrapper w = scratch[i];
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
       float maxScoreSumFloat =
-          MaxScoreSumPropagator.scoreSumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
+          (float) MathUtil.sumUpperBound(newMaxScoreSum, firstEssentialScorer + 1);
       if (maxScoreSumFloat < minCompetitiveScore) {
         maxScoreSum = newMaxScoreSum;
         allScorers[firstEssentialScorer] = w;
@@ -324,7 +324,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
     @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
       MaxScoreBulkScorer.this.minCompetitiveScore = minScore;
-      maxScorePropagator.setMinCompetitiveScore(minScore);
       minCompetitiveScoreUpdated = true;
     }
   }
