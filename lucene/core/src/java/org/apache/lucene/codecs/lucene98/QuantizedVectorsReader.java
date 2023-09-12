@@ -16,12 +16,14 @@
  */
 package org.apache.lucene.codecs.lucene98;
 
-import org.apache.lucene.codecs.KnnVectorsReader;
+import java.io.Closeable;
+import java.io.IOException;
+import org.apache.lucene.util.Accountable;
 
-/** A version of KnnVectorsReader that provides quantized state and values. */
-abstract class QuantizedKnnVectorsReader extends KnnVectorsReader {
+/** Quantized vector reader */
+interface QuantizedVectorsReader extends Closeable, Accountable {
 
-  abstract QuantizedByteVectorValues getQuantizedVectorValues(String fieldName);
+  QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
 
-  abstract QuantizationState getQuantizationState(String fieldName);
+  ScalarQuantizationState getQuantizationState(String fieldName);
 }

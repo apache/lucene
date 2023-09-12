@@ -38,6 +38,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.ScalarQuantizer;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -45,7 +46,8 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Accountable {
+public final class Lucene98ScalarQuantizedVectorsReader
+    implements Closeable, Accountable, QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene98ScalarQuantizedVectorsFormat.class);
@@ -225,7 +227,8 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
     };
   }
 
-  QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  OffHeapQuantizedByteVectorValues getRandomAccessQuantizedVectorValues(String field)
+      throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
     if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
@@ -235,14 +238,36 @@ public final class Lucene98ScalarQuantizedVectorsReader implements Closeable, Ac
     return OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
   }
 
-  public VectorScorer getQuantizedVectorScorer(String field, float[] target) throws IOException {
+  @Override
+  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+
+    if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      return null;
+    }
+
+    return OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
+  }
+
+  @Override
+  public ScalarQuantizationState getQuantizationState(String field) {
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null) {
+      return null;
+    }
+    return new ScalarQuantizationState(fieldEntry.lowerQuantile, fieldEntry.upperQuantile);
+  }
+
+  public RandomVectorScorer getQuantizedVectorScorer(String field, float[] target)
+      throws IOException {
     RandomAccessQuantizedByteVectorValues values =
         (OffHeapQuantizedByteVectorValues) getQuantizedVectorValues(field);
     FieldEntry fieldEntry = fields.get(field);
     if (values == null || fieldEntry == null) {
       return null;
     }
-    return QuantizedVectorScorer.fromFieldEntry(fieldEntry, values, target);
+    return new ScalarQuantizedRandomVectorScorer(
+        fieldEntry.similarityFunction, fieldEntry.scalarQuantizer, values, target);
   }
 
   @Override

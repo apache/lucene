@@ -67,13 +67,6 @@ public class ScalarQuantizer {
     return 0f;
   }
 
-  public void quantizeTo(float[] vector, byte[] output) {
-    assert vector.length == output.length;
-    for (int i = 0; i < vector.length; i++) {
-      output[i] = (byte) Math.max(-128f, Math.min((vector[i] - offset) / alpha, 127f));
-    }
-  }
-
   public float getLowerQuantile() {
     return minQuantile;
   }

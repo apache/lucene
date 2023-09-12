@@ -16,9 +16,28 @@
  */
 package org.apache.lucene.codecs.lucene98;
 
+import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.Accountable;
 
-/** vector scorer */
-public interface VectorScorer {
-  float score(int vectorOrdinal) throws IOException;
+/** Quantized vector reader */
+interface QuantizedVectorsWriter extends Closeable, Accountable {
+
+  void finish() throws IOException;
+
+  KnnFieldVectorsWriter<float[]> addField(FieldInfo fieldInfo) throws IOException;
+
+  void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
+
+  ScalarQuantizationState mergeQuantiles(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException;
+
+  IndexInput mergeOneField(
+      FieldInfo fieldInfo, MergeState mergeState, ScalarQuantizationState mergedQuantizationState)
+      throws IOException;
 }

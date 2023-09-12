@@ -17,14 +17,19 @@
 package org.apache.lucene.codecs.lucene98;
 
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ScalarQuantizer;
 
 /** The quantization state, includes lower and upper quantile */
-class QuantizationState implements Accountable {
+class ScalarQuantizationState implements Accountable {
   private final float lowerQuantile, upperQuantile;
 
-  QuantizationState(float lowerQuantile, float upperQuantile) {
+  ScalarQuantizationState(float lowerQuantile, float upperQuantile) {
     this.lowerQuantile = lowerQuantile;
     this.upperQuantile = upperQuantile;
+  }
+
+  ScalarQuantizer buildQuantizer() {
+    return new ScalarQuantizer(lowerQuantile, upperQuantile);
   }
 
   float getLowerQuantile() {
