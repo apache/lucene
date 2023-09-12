@@ -33,7 +33,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
@@ -44,6 +43,7 @@ import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -278,16 +278,13 @@ public final class Lucene92HnswVectorsWriter extends BufferingKnnVectorsWriter {
       throws IOException {
 
     // build graph
-    HnswGraphBuilder<float[]> hnswGraphBuilder =
-        HnswGraphBuilder.create(
-            vectorValues,
-            VectorEncoding.FLOAT32,
-            similarityFunction,
-            M,
-            beamWidth,
-            HnswGraphBuilder.randSeed);
+    RandomVectorScorerSupplier scorerSupplier =
+        RandomVectorScorerSupplier.createFloats(vectorValues, similarityFunction);
+    HnswGraphBuilder hnswGraphBuilder =
+        HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.copy());
+
+    OnHeapHnswGraph graph = hnswGraphBuilder.build(vectorValues.size());
 
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();

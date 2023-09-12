@@ -354,6 +354,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     final IndexInput dataIn;
 
     final int byteSize;
+    int lastOrd = -1;
     final float[] value;
 
     int ord = -1;
@@ -380,9 +381,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public float[] vectorValue() throws IOException {
-      dataIn.seek((long) ord * byteSize);
-      dataIn.readFloats(value, 0, value.length);
-      return value;
+      return vectorValue(ord);
     }
 
     @Override
@@ -423,8 +422,12 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
     @Override
     public float[] vectorValue(int targetOrd) throws IOException {
+      if (lastOrd == targetOrd) {
+        return value;
+      }
       dataIn.seek((long) targetOrd * byteSize);
       dataIn.readFloats(value, 0, value.length);
+      lastOrd = targetOrd;
       return value;
     }
   }
