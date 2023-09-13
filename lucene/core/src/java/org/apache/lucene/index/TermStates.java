@@ -18,6 +18,9 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.TaskExecutor;
 
 /**
  * Maintains a {@link IndexReader} {@link TermState} view over {@link IndexReader} instances
@@ -86,19 +89,47 @@ public final class TermStates {
    * @param needsStats if {@code true} then all leaf contexts will be visited up-front to collect
    *     term statistics. Otherwise, the {@link TermState} objects will be built only when requested
    */
-  public static TermStates build(IndexReaderContext context, Term term, boolean needsStats)
+  public static TermStates build(IndexSearcher indexSearcher, Term term, boolean needsStats)
       throws IOException {
-    assert context != null && context.isTopLevel;
+    IndexReaderContext context = indexSearcher.getTopReaderContext();
+    assert context != null;
     final TermStates perReaderTermState = new TermStates(needsStats ? null : term, context);
     if (needsStats) {
-      for (final LeafReaderContext ctx : context.leaves()) {
-        // if (DEBUG) System.out.println("  r=" + leaves[i].reader);
-        TermsEnum termsEnum = loadTermsEnum(ctx, term);
-        if (termsEnum != null) {
-          final TermState termState = termsEnum.termState();
-          // if (DEBUG) System.out.println("    found");
-          perReaderTermState.register(
-              termState, ctx.ord, termsEnum.docFreq(), termsEnum.totalTermFreq());
+      TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
+      if (taskExecutor != null) {
+        // build the term states concurrently
+        List<TaskExecutor.Task<TermStateInfo>> tasks =
+            context.leaves().stream()
+                .map(
+                    ctx ->
+                        taskExecutor.createTask(
+                            () -> {
+                              TermsEnum termsEnum = loadTermsEnum(ctx, term);
+                              if (termsEnum != null) {
+                                return new TermStateInfo(
+                                    termsEnum.termState(),
+                                    ctx.ord,
+                                    termsEnum.docFreq(),
+                                    termsEnum.totalTermFreq());
+                              }
+                              return null;
+                            }))
+                .toList();
+        List<TermStateInfo> resultInfos = taskExecutor.invokeAll(tasks);
+        for (TermStateInfo info : resultInfos) {
+          if (info != null) {
+            perReaderTermState.register(
+                info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
+          }
+        }
+      } else {
+        // build the term states sequentially
+        for (final LeafReaderContext ctx : context.leaves()) {
+          TermsEnum termsEnum = loadTermsEnum(ctx, term);
+          if (termsEnum != null) {
+            perReaderTermState.register(
+                termsEnum.termState(), ctx.ord, termsEnum.docFreq(), termsEnum.totalTermFreq());
+          }
         }
       }
     }
@@ -210,5 +241,41 @@ public final class TermStates {
     }
 
     return sb.toString();
+  }
+
+  /** Wrapper over TermState, ordinal value, term doc frequency and total term frequency */
+  private static final class TermStateInfo {
+    private final TermState state;
+    private final int ordinal;
+    private final int docFreq;
+    private final long totalTermFreq;
+
+    /** Initialize TermStateInfo */
+    public TermStateInfo(TermState state, int ordinal, int docFreq, long totalTermFreq) {
+      this.state = state;
+      this.ordinal = ordinal;
+      this.docFreq = docFreq;
+      this.totalTermFreq = totalTermFreq;
+    }
+
+    /** Get term state */
+    public TermState getState() {
+      return state;
+    }
+
+    /** Get ordinal value */
+    public int getOrdinal() {
+      return ordinal;
+    }
+
+    /** Get term doc frequency */
+    public int getDocFreq() {
+      return docFreq;
+    }
+
+    /** Get total term frequency */
+    public long getTotalTermFreq() {
+      return totalTermFreq;
+    }
   }
 }
