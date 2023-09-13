@@ -333,9 +333,13 @@ public final class SynonymQuery extends Query {
         boosts[i] = termBoosts.get(i);
       }
       ImpactsSource impactsSource = mergeImpacts(impacts.toArray(new ImpactsEnum[0]), boosts);
-      ImpactsDISI impactsDisi = new ImpactsDISI(iterator, impactsSource, simScorer.getSimScorer());
+      MaxScoreCache maxScoreCache = new MaxScoreCache(impactsSource, simScorer.getSimScorer());
+      ImpactsDISI impactsDisi = new ImpactsDISI(iterator, maxScoreCache);
 
       if (scoreMode == ScoreMode.TOP_SCORES) {
+        // TODO: only do this when this is the top-level scoring clause
+        // (ScorerSupplier#setTopLevelScoringClause) to save the overhead of wrapping with
+        // ImpactsDISI when it would not help
         iterator = impactsDisi;
       }
 
@@ -520,6 +524,7 @@ public final class SynonymQuery extends Query {
 
     private final DisiPriorityQueue queue;
     private final DocIdSetIterator iterator;
+    private final MaxScoreCache maxScoreCache;
     private final ImpactsDISI impactsDisi;
     private final LeafSimScorer simScorer;
 
@@ -532,6 +537,7 @@ public final class SynonymQuery extends Query {
       super(weight);
       this.queue = queue;
       this.iterator = iterator;
+      this.maxScoreCache = impactsDisi.getMaxScoreCache();
       this.impactsDisi = impactsDisi;
       this.simScorer = simScorer;
     }
@@ -562,12 +568,12 @@ public final class SynonymQuery extends Query {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-      return impactsDisi.getMaxScore(upTo);
+      return maxScoreCache.getMaxScore(upTo);
     }
 
     @Override
     public int advanceShallow(int target) throws IOException {
-      return impactsDisi.advanceShallow(target);
+      return maxScoreCache.advanceShallow(target);
     }
 
     @Override
