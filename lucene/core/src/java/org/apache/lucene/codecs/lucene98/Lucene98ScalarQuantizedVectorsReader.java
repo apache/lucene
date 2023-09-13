@@ -168,10 +168,9 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
               + fieldEntry.quantizedVectorDataLength
               + " not matching size="
               + fieldEntry.size
-              + " * dim="
+              + " * (dim="
               + dimension
-              + " * byteSize="
-              + quantizedVectorBytes
+              + " + 4)"
               + " = "
               + numQuantizedVectorBytes);
     }

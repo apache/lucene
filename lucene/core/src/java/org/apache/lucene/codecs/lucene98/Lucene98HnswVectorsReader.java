@@ -346,7 +346,7 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, vectorIndex);
+    IOUtils.close(vectorData, vectorIndex, quantizedVectorsReader);
   }
 
   @Override

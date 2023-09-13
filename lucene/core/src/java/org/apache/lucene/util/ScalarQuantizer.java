@@ -159,12 +159,14 @@ public class ScalarQuantizer {
   static float[] getUpperAndLowerQuantile(float[] arr, float quantileFloat) {
     assert 0.9f <= quantileFloat && quantileFloat <= 1f;
     int selectorIndex = (int) (arr.length * (1f - quantileFloat) / 2f + 0.5f);
-    Selector selector = new FloatSelector(arr);
-    selector.select(0, arr.length, arr.length - selectorIndex);
-    selector.select(0, arr.length - selectorIndex, selectorIndex);
+    if (selectorIndex > 0) {
+      Selector selector = new FloatSelector(arr);
+      selector.select(0, arr.length, arr.length - selectorIndex);
+      selector.select(0, arr.length - selectorIndex, selectorIndex);
+    }
     float min = Float.POSITIVE_INFINITY;
     float max = Float.NEGATIVE_INFINITY;
-    for (int i = selectorIndex; i <= arr.length - selectorIndex; i++) {
+    for (int i = selectorIndex; i < arr.length - selectorIndex; i++) {
       min = Math.min(arr[i], min);
       max = Math.max(arr[i], max);
     }

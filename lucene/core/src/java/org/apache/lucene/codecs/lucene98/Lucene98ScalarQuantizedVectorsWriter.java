@@ -121,7 +121,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
             : this.quantile;
     QuantizationVectorWriter newField = QuantizationVectorWriter.create(fieldInfo, quantile);
     fields.add(newField);
-    return QuantizationVectorWriter.create(fieldInfo, quantile);
+    return newField;
   }
 
   @Override
@@ -142,6 +142,11 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
       throw new IllegalStateException("already finished");
     }
     finished = true;
+    if (meta != null) {
+      // write end of fields marker
+      meta.writeInt(-1);
+      CodecUtil.writeFooter(meta);
+    }
     if (quantizedVectorData != null) {
       CodecUtil.writeFooter(quantizedVectorData);
     }
@@ -245,6 +250,9 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
   @Override
   public ScalarQuantizationState mergeQuantiles(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
+    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32) == false) {
+      return null;
+    }
     float quantile =
         this.quantile == null
             ? calculateDefaultQuantile(fieldInfo.getVectorDimension())
@@ -469,8 +477,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
         docV = quantizedByteVectorValues.nextDoc()) {
       // write vector
       byte[] binaryValue = quantizedByteVectorValues.vectorValue();
-      assert binaryValue.length
-          == quantizedByteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
+      assert binaryValue.length == quantizedByteVectorValues.dimension() : "dim=" + quantizedByteVectorValues.dimension() + " len=" + binaryValue.length;
       output.writeBytes(binaryValue, binaryValue.length);
       output.writeInt(Float.floatToIntBits(quantizedByteVectorValues.getScoreCorrectionConstant()));
       docsWithField.add(docV);
@@ -538,6 +545,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
       }
       assert docID > lastDocID;
       docsWithField.add(docID);
+      // TODO only copy if we have to.
       float[] copy = ArrayUtil.copyOfSubArray(vectorValue, 0, dim);
       if (normalize) {
         // vectorize?

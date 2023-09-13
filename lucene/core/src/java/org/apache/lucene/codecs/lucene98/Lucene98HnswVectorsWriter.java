@@ -137,7 +137,8 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     KnnFieldVectorsWriter<float[]> quantizedVectorWriter = null;
-    if (quantizedVectorsWriter != null) {
+    // Quantization only supports FLOAT32 for now
+    if (quantizedVectorsWriter != null && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       quantizedVectorWriter = quantizedVectorsWriter.addField(fieldInfo);
     }
     FieldWriter<?> newField =
@@ -431,7 +432,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       ScalarQuantizationState quantizationState = null;
-      if (quantizedVectorsWriter != null) {
+      if (quantizedVectorsWriter != null && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
         quantizationState = quantizedVectorsWriter.mergeQuantiles(fieldInfo, mergeState);
         quantizationDataInput =
             quantizedVectorsWriter.mergeOneField(fieldInfo, mergeState, quantizationState);
