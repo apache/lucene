@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
-
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FieldInfo;
@@ -68,6 +67,7 @@ import org.apache.lucene.util.OfflineSorter.BufferSize;
  * Partitioning".
  *
  * <p>Typical usage would look like this:
+ *
  * <pre class="prettyprint">
  * LeafReader reader; // reader to reorder
  * Directory targetDir; // Directory where to write the reordered index
@@ -165,7 +165,8 @@ public final class BPIndexReorderer {
   /**
    * Set the {@link ForkJoinPool} to run graph partitioning concurrently.
    *
-   * <p>NOTE: A value of {@code null} can be used to run in the current thread, which is the default.
+   * <p>NOTE: A value of {@code null} can be used to run in the current thread, which is the
+   * default.
    */
   public void setForkJoinPool(ForkJoinPool forkJoinPool) {
     this.forkJoinPool = forkJoinPool;

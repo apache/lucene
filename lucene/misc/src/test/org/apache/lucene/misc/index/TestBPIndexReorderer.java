@@ -21,7 +21,6 @@ import static org.apache.lucene.misc.index.BPIndexReorderer.fastLog2;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
