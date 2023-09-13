@@ -73,8 +73,10 @@ public class PimSystemManager {
     try {
       return SingletonHolder.INSTANCE;
     } catch (ExceptionInInitializerError e) {
-      throw new DpuException(
-          "DPU Allocation error: failed to allocate " + NUM_ALLOC_DPUS + " DPUs");
+      if (e.getException() instanceof DpuException)
+        throw new DpuException(
+            "DPU Allocation error: failed to allocate " + NUM_ALLOC_DPUS + " DPUs");
+      else throw new RuntimeException(e);
     }
   }
 

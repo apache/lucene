@@ -18,6 +18,8 @@ public class PimBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+
+    if (scorer == null) return DocIdSetIterator.NO_MORE_DOCS;
     collector.setScorer(scorer);
     DocIdSetIterator disi = scorer.iterator();
     int doc = scorer.docID();

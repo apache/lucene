@@ -363,7 +363,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
     initDirectories();
     PimConfig pimConfig = new PimConfig(2, 4);
-    PimIndexInfo pimIndexInfo = writeFewWikiText(pimConfig);
+    writeFewWikiText(pimConfig);
 
     // load the index to PIM system
     PimSystemManager pimSystemManager = PimSystemManager.get();
@@ -404,6 +404,34 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     // The managing thread is normally killed with a hook at JVM shutdown
     // But the test system verifies that threads are not leaked before JVM shutdowm
     pimSystemManager.shutDown();
+    reader.close();
+    closeDirectories();
+  }
+
+  public void testPimPhraseQueryNoPimLoad() throws Exception {
+
+    initDirectories();
+    PimConfig pimConfig = new PimConfig(2, 4);
+    writeFewWikiText(pimConfig);
+
+    // no load of the index to PIM system
+    // the PimPhraseQuery queries should be rewritten as PhraseQuery
+    IndexReader reader = DirectoryReader.open(directory);
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    System.out.println("\nTEST PIM PHRASE QUERY (PHRASE MORE TEXT)");
+
+    checkPhraseQuery(searcher, "title", "Apache", "Lucene");
+    checkPhraseQuery(searcher, "body", "recette", "secrète");
+    checkPhraseQuery(searcher, "body", "dem", "Vorläufer", "von", "neuhochdeutsch");
+    checkPhraseQuery(
+        searcher, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
+
+    System.out.println("");
+    // Need an explicit PimSystemManager shutdown here
+    // The managing thread is normally killed with a hook at JVM shutdown
+    // But the test system verifies that threads are not leaked before JVM shutdowm
+    PimSystemManager.get().shutDown();
     reader.close();
     closeDirectories();
   }
