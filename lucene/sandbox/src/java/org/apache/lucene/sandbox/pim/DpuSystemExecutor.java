@@ -11,8 +11,6 @@ import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
 
@@ -29,7 +27,6 @@ class DpuSystemExecutor implements PimQueriesExecutor {
   private final int[] dpuIdOffset;
   private final byte[] dpuQueryTmp = new byte[8];
   private int nbDpusInIndex;
-  private final Lock dpuPrintLock = new ReentrantLock();
 
   DpuSystemExecutor(int numDpusToAlloc) throws DpuException {
     queryBatchBuffer = new byte[QUERY_BATCH_BUFFER_CAPACITY];
@@ -286,17 +283,11 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     dpuSystem.async().exec(null);
 
     if (DpuConstants.DEBUG_DPU) {
-      dpuSystem
-          .async()
-          .call(
-              (s, i) -> {
-                try {
-                  dpuPrintLock.lock();
-                  s.log();
-                } finally {
-                  dpuPrintLock.unlock();
-                }
-              });
+      dpuSystem.async().sync();
+      for (int i = 0; i < dpuSystem.ranks().size(); ++i) {
+
+        dpuSystem.ranks().get(i).log();
+      }
     }
 
     // 3) results transfer from DPUs to CPU
