@@ -162,7 +162,13 @@ public class TestIndexedDISI extends LuceneTestCase {
         RandomAccessInput jumpTable =
             IndexedDISI.createJumpTable(fullInput, 0, fullInput.length(), jumpTableEntryCount);
         IndexedDISI disi =
-            new IndexedDISI(blockData, jumpTable, jumpTableEntryCount, denseRankPower, cardinality);
+            new IndexedDISI(
+                blockData,
+                jumpTable,
+                jumpTableEntryCount,
+                denseRankPower,
+                cardinality,
+                random().nextBoolean());
         // This failed at some point during LUCENE-8585 development as it did not reset the slice
         // position
         disi.advanceExact(BLOCKS * 65536 - 1);
@@ -223,14 +229,28 @@ public class TestIndexedDISI extends LuceneTestCase {
     try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
       for (int i = 0; i < set.length(); i++) {
         IndexedDISI disi =
-            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+            new IndexedDISI(
+                in,
+                0L,
+                length,
+                jumpTableentryCount,
+                denseRankPower,
+                cardinality,
+                random().nextBoolean());
         assertEquals(
             "The bit at " + i + " should be correct with advanceExact",
             set.get(i),
             disi.advanceExact(i));
 
         IndexedDISI disi2 =
-            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+            new IndexedDISI(
+                in,
+                0L,
+                length,
+                jumpTableentryCount,
+                denseRankPower,
+                cardinality,
+                random().nextBoolean());
         disi2.advance(i);
         // Proper sanity check with jump tables as an error could make them seek backwards
         assertTrue(
@@ -346,6 +366,18 @@ public class TestIndexedDISI extends LuceneTestCase {
                 IndexedDISI.MAX_ARRAY_LENGTH + 1);
         assertEquals(start, disi.nextDoc());
         assertEquals(IndexedDISI.Method.DENSE, disi.method);
+
+        disi =
+            new IndexedDISI(
+                in,
+                0L,
+                length,
+                jumpTableEntryCount,
+                denseRankPower,
+                IndexedDISI.MAX_ARRAY_LENGTH + 1,
+                false);
+        assertEquals(start, disi.nextDoc());
+        assertEquals(IndexedDISI.Method.DENSE_WITHOUT_INDEX, disi.method);
       }
       doTest(set, dir);
     }
@@ -502,7 +534,14 @@ public class TestIndexedDISI extends LuceneTestCase {
 
     try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
       IndexedDISI disi =
-          new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+          new IndexedDISI(
+              in,
+              0L,
+              length,
+              jumpTableentryCount,
+              denseRankPower,
+              cardinality,
+              random().nextBoolean());
       BitSetIterator disi2 = new BitSetIterator(set, cardinality);
       assertSingleStepEquality(disi, disi2);
     }
@@ -510,7 +549,14 @@ public class TestIndexedDISI extends LuceneTestCase {
     for (int step : new int[] {1, 10, 100, 1000, 10000, 100000}) {
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
-            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+            new IndexedDISI(
+                in,
+                0L,
+                length,
+                jumpTableentryCount,
+                denseRankPower,
+                cardinality,
+                random().nextBoolean());
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
         assertAdvanceEquality(disi, disi2, step);
       }
@@ -519,7 +565,14 @@ public class TestIndexedDISI extends LuceneTestCase {
     for (int step : new int[] {10, 100, 1000, 10000, 100000}) {
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
-            new IndexedDISI(in, 0L, length, jumpTableentryCount, denseRankPower, cardinality);
+            new IndexedDISI(
+                in,
+                0L,
+                length,
+                jumpTableentryCount,
+                denseRankPower,
+                cardinality,
+                random().nextBoolean());
         BitSetIterator disi2 = new BitSetIterator(set, cardinality);
         int disi2length = set.length();
         assertAdvanceExactRandomized(disi, disi2, disi2length, step);
@@ -544,12 +597,12 @@ public class TestIndexedDISI extends LuceneTestCase {
       boolean exists = disi.advanceExact(target);
       assertEquals(doc == target, exists);
       if (exists) {
-        assertEquals(index, disi.index());
+        if (disi.needIndex()) assertEquals(index, disi.index());
       } else if (random.nextBoolean()) {
         assertEquals(doc, disi.nextDoc());
         // This is a bit strange when doc == NO_MORE_DOCS as the index overcounts in the disi2
         // while-loop
-        assertEquals(index, disi.index());
+        if (disi.needIndex()) assertEquals(index, disi.index());
         target = doc;
       }
     }
@@ -559,7 +612,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     int i = 0;
     for (int doc = disi2.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi2.nextDoc()) {
       assertEquals(doc, disi.nextDoc());
-      assertEquals(i++, disi.index());
+      if (disi.needIndex()) assertEquals(i++, disi.index());
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, disi.nextDoc());
   }
@@ -578,8 +631,10 @@ public class TestIndexedDISI extends LuceneTestCase {
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         break;
       }
-      assertEquals(
-          "Expected equality using step " + step + " at docID " + doc, index, disi.index());
+      if (disi.needIndex()) {
+        assertEquals(
+            "Expected equality using step " + step + " at docID " + doc, index, disi.index());
+      }
     }
   }
 }

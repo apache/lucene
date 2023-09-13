@@ -543,7 +543,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               entry.docsWithFieldLength,
               entry.jumpTableEntryCount,
               entry.denseRankPower,
-              entry.numValues);
+              entry.numValues,
+              entry.bitsPerValue != 0);
       if (entry.bitsPerValue == 0) {
         return new SparseNumericDocValues(disi) {
           @Override

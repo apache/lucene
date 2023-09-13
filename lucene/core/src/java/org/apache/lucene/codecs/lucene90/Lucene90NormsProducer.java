@@ -423,7 +423,8 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
               disiJumpTable,
               entry.jumpTableEntryCount,
               entry.denseRankPower,
-              entry.numDocsWithField);
+              entry.numDocsWithField,
+              true);
 
       if (entry.bytesPerNorm == 0) {
         return new SparseNormsIterator(disi) {

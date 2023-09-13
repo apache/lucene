@@ -185,8 +185,34 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
+  private long[] writeValuesSoftDeleteField(FieldInfo field, DocValuesProducer valuesProducer)
+      throws IOException {
+    // we use IndexedDISI to cover numDocsWithValue == maxDoc (isFullyDeleted)
+    long offset = data.getFilePointer();
+    meta.writeLong(offset); // docsWithFieldOffset
+    SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    final int[] result = IndexedDISI.writeBitSetInternal(values, data, (byte) -1);
+    meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
+    meta.writeShort((short) result[0]); // jumpTableEntryCount
+    meta.writeByte((byte) -1); // denseRankPower
+    meta.writeLong(result[1]); // numValues
+    meta.writeInt(-1); // tablesize
+
+    meta.writeByte((byte) 0); // numBitsPerValue
+    meta.writeLong(1); // min
+    meta.writeLong(1); // gcd
+    long startOffset = data.getFilePointer();
+    meta.writeLong(startOffset); // valueOffset
+    meta.writeLong(data.getFilePointer() - startOffset); // valuesLength
+    meta.writeLong(-1); // jumpTableOffset
+    return null;
+  }
+
   private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
       throws IOException {
+    if (field.isSoftDeletesField()) {
+      return writeValuesSoftDeleteField(field, valuesProducer);
+    }
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     final long firstValue;
     if (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
@@ -248,6 +274,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     long min = minMax.min;
     final long max = minMax.max;
     assert blockMinMax.spaceInBits <= minMax.spaceInBits;
+    boolean allValuesAreEqual = min >= max ? true : false;
 
     if (numDocsWithValue == 0) { // meta[-2, 0]: No documents with values
       meta.writeLong(-2); // docsWithFieldOffset
@@ -264,17 +291,18 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       meta.writeLong(offset); // docsWithFieldOffset
       values = valuesProducer.getSortedNumeric(field);
       final short jumpTableEntryCount =
-          IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+          IndexedDISI.writeBitSet(
+              values, data, allValuesAreEqual ? -1 : IndexedDISI.DEFAULT_DENSE_RANK_POWER);
       meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
       meta.writeShort(jumpTableEntryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+      meta.writeByte(allValuesAreEqual ? -1 : IndexedDISI.DEFAULT_DENSE_RANK_POWER);
     }
 
     meta.writeLong(numValues);
     final int numBitsPerValue;
     boolean doBlocks = false;
     Map<Long, Integer> encode = null;
-    if (min >= max) { // meta[-1]: All values are 0
+    if (allValuesAreEqual) { // meta[-1]: All values are 0
       numBitsPerValue = 0;
       meta.writeInt(-1); // tablesize
     } else {
