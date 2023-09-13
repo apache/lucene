@@ -147,11 +147,10 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
   }
 
   @Override
-  public PimMatch readResult(DataInput input, LeafSimScorer scorer) throws IOException {
+  public void readResult(DataInput input, LeafSimScorer scorer, PimMatch match) throws IOException {
 
     // a result for a phrase query is just a document id and a frequency as of now
-    int docId = input.readInt();
-    int freq = input.readInt();
-    return new PimMatch(docId, scorer.score(docId, freq));
+    match.docId = input.readInt();
+    match.score = scorer.score(match.docId, input.readInt());
   }
 }

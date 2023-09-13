@@ -18,12 +18,13 @@ public class DpuResults {
     this.query = query;
     this.reader = reader;
     this.simScorer = simScorer;
+    this.match = new PimMatch(-1, 0.0F);
   }
 
   public boolean next() {
     if (reader.eof()) return false;
     try {
-      match = query.readResult(reader, simScorer);
+      query.readResult(reader, simScorer, match);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

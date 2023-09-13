@@ -22,8 +22,7 @@ public interface PimQuery {
    *
    * @param input
    * @param scorer
-   * @return
    * @throws IOException
    */
-  PimMatch readResult(DataInput input, LeafSimScorer scorer) throws IOException;
+  void readResult(DataInput input, LeafSimScorer scorer, PimMatch match) throws IOException;
 }
