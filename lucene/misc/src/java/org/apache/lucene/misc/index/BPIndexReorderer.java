@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
+
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FieldInfo;
@@ -66,6 +67,22 @@ import org.apache.lucene.util.OfflineSorter.BufferSize;
  * optimizations suggested by Mackenzie et al. in "Tradeoff Options for Bipartite Graph
  * Partitioning".
  *
+ * <p>Typical usage would look like this:
+ * <pre class="prettyprint">
+ * LeafReader reader; // reader to reorder
+ * Directory targetDir; // Directory where to write the reordered index
+ *
+ * Directory targetDir = FSDirectory.open(targetPath);
+ * BPIndexReorderer reorderer = new BPIndexReorderer();
+ * reorderer.setForkJoinPool(ForkJoinPool.commonPool());
+ * reorderer.setFields(Collections.singleton("body"));
+ * CodecReader reorderedReaderView = reorderer.reorder(SlowCodecReaderWrapper.wrap(reader), targetDir);
+ * try (IndexWriter w = new IndexWriter(targetDir, new IndexWriterConfig().setOpenMode(OpenMode.CREATE))) {
+ *   w.addIndexes(reorderedReaderView);
+ * }
+ * DirectoryReader reorderedReader = DirectoryReader.open(targetDir);
+ * </pre>
+ *
  * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms * numThreads) memory.
  */
 public final class BPIndexReorderer {
@@ -102,7 +119,6 @@ public final class BPIndexReorderer {
   private int minPartitionSize;
   private int maxIters;
   private ForkJoinPool forkJoinPool;
-  private int concurrency;
   private double ramBudgetMB;
   private Set<String> fields;
 
@@ -111,7 +127,8 @@ public final class BPIndexReorderer {
     setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
     setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
     setMaxIters(DEFAULT_MAX_ITERS);
-    setForkJoinPool(null, 1);
+    setForkJoinPool(null);
+    // 10% of the available heap size by default
     setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
     setFields(null);
   }
@@ -146,22 +163,16 @@ public final class BPIndexReorderer {
   }
 
   /**
-   * Set the {@link ForkJoinPool} to run graph partitioning concurrently. {@code concurrency} must
-   * indicate the concurrency of the pool.
+   * Set the {@link ForkJoinPool} to run graph partitioning concurrently.
    *
-   * <p>NOTE: A value of {@code null} and a concurrency of {@code 1} can be used to run in the
-   * current thread, which is the default.
+   * <p>NOTE: A value of {@code null} can be used to run in the current thread, which is the default.
    */
-  public void setForkJoinPool(ForkJoinPool forkJoinPool, int concurrency) {
-    if (concurrency < 1) {
-      throw new IllegalArgumentException("concurrency must be at least 1, got " + concurrency);
-    }
-    if (forkJoinPool == null && concurrency != 1) {
-      throw new IllegalArgumentException(
-          "Concurrency must be set to 1 when running in the current thread");
-    }
+  public void setForkJoinPool(ForkJoinPool forkJoinPool) {
     this.forkJoinPool = forkJoinPool;
-    this.concurrency = concurrency;
+  }
+
+  private int getParallelism() {
+    return forkJoinPool == null ? 1 : forkJoinPool.getParallelism();
   }
 
   /**
@@ -402,15 +413,13 @@ public final class BPIndexReorderer {
         rightSorter.run();
       }
 
-      // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
-      // Bipartite Graph Partitioning" by comparing the gain against `iter` rather than zero.
-      if (gains[left.offset] + gains[right.offset] <= iter) {
-        return false;
-      }
-      swap(left.ints, left.offset, right.offset, forwardIndex, leftDocFreqs, rightDocFreqs);
-
-      for (int i = 1; i < left.length; ++i) {
+      for (int i = 0; i < left.length; ++i) {
+        // This uses the simulated annealing proposed by Mackenzie et al in "Tradeoff Options for
+        // Bipartite Graph Partitioning" by comparing the gain against `iter` rather than zero.
         if (gains[left.offset + i] + gains[right.offset + i] <= iter) {
+          if (i == 0) {
+            return false;
+          }
           break;
         }
 
@@ -458,8 +467,8 @@ public final class BPIndexReorderer {
           terms = forwardIndex.nextTerms()) {
         for (int i = 0; i < terms.length; ++i) {
           final int termID = terms.ints[terms.offset + i];
-          --leftDocFreqs[termID];
-          ++rightDocFreqs[termID];
+          ++leftDocFreqs[termID];
+          --rightDocFreqs[termID];
         }
       }
 
@@ -535,6 +544,8 @@ public final class BPIndexReorderer {
           final int termID = terms.ints[terms.offset + i];
           final int fromDocFreq = fromDocFreqs[termID];
           final int toDocFreq = toDocFreqs[termID];
+          assert fromDocFreq >= 0;
+          assert toDocFreq >= 0;
           gain +=
               (toDocFreq == 0 ? 0 : fastLog2(toDocFreq))
                   - (fromDocFreq == 0 ? 0 : fastLog2(fromDocFreq));
@@ -604,7 +615,7 @@ public final class BPIndexReorderer {
     final int maxNumTerms =
         (int)
             ((ramBudgetMB * 1024 * 1024 - docRAMRequirements(reader.maxDoc()))
-                / concurrency
+                / getParallelism()
                 / termRAMRequirementsPerThreadPerTerm());
 
     int numTerms = 0;
@@ -671,11 +682,11 @@ public final class BPIndexReorderer {
                 return ArrayUtil.compareUnsigned8(o1.bytes, o1.offset, o2.bytes, o2.offset);
               }
             },
-            BufferSize.megabytes((long) (ramBudgetMB / concurrency)),
+            BufferSize.megabytes((long) (ramBudgetMB / getParallelism())),
             OfflineSorter.MAX_TEMPFILES,
             2 * Integer.BYTES,
             forkJoinPool,
-            concurrency) {
+            getParallelism()) {
 
           @Override
           protected ByteSequencesReader getReader(ChecksumIndexInput in, String name)
