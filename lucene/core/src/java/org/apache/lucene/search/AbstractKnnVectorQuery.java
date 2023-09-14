@@ -104,7 +104,8 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (ef == k) {
       return k;
     }
-    // We reduce the value of 'ef' proportionally based on the ratio of documents within the segment.
+    // We reduce the value of 'ef' proportionally based on the ratio of documents within the
+    // segment.
     int efSearch = (int) Math.round(Math.log((double) maxDoc / maxDocSegment));
     return Math.max(ef / efSearch, k);
   }
