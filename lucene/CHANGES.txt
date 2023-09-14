@@ -31,6 +31,11 @@ New Features
 * GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
   vector search. (Jack Mazanec, Ben Trent)
 
+* GITHUB#12489: Add support for recursive graph bisection, also called
+  bipartite graph partitioning, and often abbreviated BP, an algorithm for
+  reordering doc IDs that results in more compact postings and faster queries,
+  especially conjunctions. (Adrien Grand)
+
 Improvements
 ---------------------
 * GITHUB#12374: Add CachingLeafSlicesSupplier to compute the LeafSlices for concurrent segment search (Sorabh Hamirwasia)
