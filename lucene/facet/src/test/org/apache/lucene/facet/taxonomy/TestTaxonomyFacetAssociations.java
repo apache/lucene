@@ -363,6 +363,72 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     assertEquals(topDims, allDims);
   }
 
+  public void testMultipleAssociations() throws Exception {
+    IndexSearcher searcher = newSearcher(reader);
+    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+
+    FloatTaxonomyFacets facets =
+        new TaxonomyFacetFloatAssociations(
+            "$facets.float",
+            taxoReader,
+            config,
+            fc,
+            List.of(AssociationAggregationFunction.SUM, AssociationAggregationFunction.MAX));
+    assertEquals(
+        "dim=float path=[] value=-1.0 childCount=2\n  a (50.0)\n  b (9.999995)\n",
+        facets.getTopChildren(10, "float").toString());
+    assertEquals(
+        "dim=float path=[] value=-1.0 childCount=2\n  a (0.5)\n  b (0.2)\n",
+        facets.getTopChildren(1, 10, "float").toString());
+
+    assertFacetResult(
+        facets.getAllChildren("float"),
+        "float",
+        new String[0],
+        2,
+        -1.0f,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 50.0f), new LabelAndValue("b", 9.999995f),
+        });
+    assertFacetResult(
+        facets.getAllChildren(1, "float"),
+        "float",
+        new String[0],
+        2,
+        -1.0f,
+        new LabelAndValue[] {
+          new LabelAndValue("a", 0.5f), new LabelAndValue("b", 0.2f),
+        });
+
+    assertEquals(
+        "Wrong count for category 'a'!",
+        50f,
+        facets.getSpecificValue("float", "a").floatValue(),
+        0.00001);
+    assertEquals(
+        "Wrong count for category 'b'!",
+        10f,
+        facets.getSpecificValue("float", "b").floatValue(),
+        0.00001);
+    assertEquals(
+        "Wrong count for category 'a'!",
+        0.5f,
+        facets.getSpecificValue(1, "float", "a").floatValue(),
+        0.00001);
+    assertEquals(
+        "Wrong count for category 'b'!",
+        0.2f,
+        facets.getSpecificValue(1, "float", "b").floatValue(),
+        0.00001);
+
+    // test getAllDims and getTopDims
+    List<FacetResult> allDims = facets.getAllDims(10);
+    List<FacetResult> topDims = facets.getTopDims(10, 10);
+    assertEquals(topDims, allDims);
+    topDims = facets.getTopDims(1, 10, 10);
+    assertEquals(topDims, allDims);
+  }
+
   /**
    * Make sure we can test both int and float assocs in one index, as long as we send each to a
    * different field.

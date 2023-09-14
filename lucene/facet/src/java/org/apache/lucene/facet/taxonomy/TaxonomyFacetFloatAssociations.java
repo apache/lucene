@@ -88,8 +88,19 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       FacetsCollector fc,
       AssociationAggregationFunction aggregationFunction)
       throws IOException {
-    super(indexFieldName, taxoReader, aggregationFunction, config, fc);
-    aggregateValues(aggregationFunction, fc.getMatchingDocs());
+    this(indexFieldName, taxoReader, config, fc, List.of(aggregationFunction));
+  }
+
+  /** Create {@code TaxonomyFacetFloatAssociations} with multiple aggregations. */
+  public TaxonomyFacetFloatAssociations(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      FacetsConfig config,
+      FacetsCollector fc,
+      List<AssociationAggregationFunction> aggregationFunctions)
+      throws IOException {
+    super(indexFieldName, taxoReader, aggregationFunctions, config, fc);
+    aggregateValues(aggregationFunctions, fc.getMatchingDocs());
   }
 
   /**
@@ -104,8 +115,26 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       AssociationAggregationFunction aggregationFunction,
       DoubleValuesSource valuesSource)
       throws IOException {
-    super(indexFieldName, taxoReader, aggregationFunction, config, fc);
-    aggregateValues(aggregationFunction, fc.getMatchingDocs(), fc.getKeepScores(), valuesSource);
+    this(
+        indexFieldName,
+        taxoReader,
+        config,
+        fc,
+        List.of(aggregationFunction),
+        List.of((valuesSource)));
+  }
+
+  /** Create {@code TaxonomyFacetFloatAssociations} with multiple aggregations. */
+  public TaxonomyFacetFloatAssociations(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      FacetsConfig config,
+      FacetsCollector fc,
+      List<AssociationAggregationFunction> aggregationFunctions,
+      List<DoubleValuesSource> valuesSources)
+      throws IOException {
+    super(indexFieldName, taxoReader, aggregationFunctions, config, fc);
+    aggregateValues(aggregationFunctions, fc.getMatchingDocs(), fc.getKeepScores(), valuesSources);
   }
 
   private static DoubleValues scores(MatchingDocs hits) {
@@ -128,10 +157,10 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
 
   /** Aggregate using the provided {@code DoubleValuesSource}. */
   private void aggregateValues(
-      AssociationAggregationFunction aggregationFunction,
+      List<AssociationAggregationFunction> aggregationFunctions,
       List<MatchingDocs> matchingDocs,
       boolean keepScores,
-      DoubleValuesSource valueSource)
+      List<DoubleValuesSource> valuesSources)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
       if (hits.totalHits == 0) {
@@ -139,21 +168,46 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       }
       initializeValueCounters();
 
+      int numAggregations = aggregationFunctions.size();
+      assert numAggregations == valuesSources.size();
+
       SortedNumericDocValues ordinalValues =
           DocValues.getSortedNumeric(hits.context.reader(), indexFieldName);
       DoubleValues scores = keepScores ? scores(hits) : null;
-      DoubleValues functionValues = valueSource.getValues(hits.context, scores);
+      DoubleValues[] functionValues = new DoubleValues[numAggregations];
+      for (int aggregationIdx = 0; aggregationIdx < numAggregations; aggregationIdx++) {
+        functionValues[aggregationIdx] =
+            valuesSources.get(aggregationIdx).getValues(hits.context, scores);
+      }
       DocIdSetIterator it =
           ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), ordinalValues));
 
+      int[] advanced = new int[numAggregations];
+      float[] incomingValues = new float[numAggregations];
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        if (functionValues.advanceExact(doc)) {
-          float value = (float) functionValues.doubleValue();
-          int ordinalCount = ordinalValues.docValueCount();
-          for (int i = 0; i < ordinalCount; i++) {
-            int ord = (int) ordinalValues.nextValue();
-            float newValue = aggregationFunction.aggregate(values[ord], value);
-            values[ord] = newValue;
+        int numAdvanced = 0;
+        for (int aggregationIdx = 0; aggregationIdx < numAggregations; aggregationIdx++) {
+          if (functionValues[aggregationIdx].advanceExact(doc)) {
+            advanced[numAdvanced] = aggregationIdx;
+            incomingValues[numAdvanced] = (float) functionValues[aggregationIdx].doubleValue();
+            numAdvanced++;
+          }
+        }
+        if (numAdvanced == 0) {
+          continue;
+        }
+
+        int ordinalCount = ordinalValues.docValueCount();
+        for (int i = 0; i < ordinalCount; i++) {
+          int ord = (int) ordinalValues.nextValue();
+          for (int advancedIdx = 0; advancedIdx < numAdvanced; advancedIdx++) {
+            int aggregationIdx = advanced[advancedIdx];
+            float value = incomingValues[advancedIdx];
+            float newValue =
+                aggregationFunctions
+                    .get(aggregationIdx)
+                    .aggregate(values[aggregationIdx][ord], value);
+            values[aggregationIdx][ord] = newValue;
           }
         }
       }
@@ -165,7 +219,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
 
   /** Aggregate from indexed association values. */
   private void aggregateValues(
-      AssociationAggregationFunction aggregationFunction, List<MatchingDocs> matchingDocs)
+      List<AssociationAggregationFunction> aggregationFunctions, List<MatchingDocs> matchingDocs)
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
@@ -188,8 +242,15 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
           offset += 4;
           float value = (float) BitUtil.VH_BE_FLOAT.get(bytes, offset);
           offset += 4;
-          float newValue = aggregationFunction.aggregate(values[ord], value);
-          values[ord] = newValue;
+          for (int aggregationIdx = 0;
+              aggregationIdx < aggregationFunctions.size();
+              aggregationIdx++) {
+            float newValue =
+                aggregationFunctions
+                    .get(aggregationIdx)
+                    .aggregate(values[aggregationIdx][ord], value);
+            values[aggregationIdx][ord] = newValue;
+          }
         }
       }
     }
