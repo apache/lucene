@@ -562,7 +562,7 @@ public class OfflineSorter {
     protected final String name;
     protected final ChecksumIndexInput in;
     protected final long end;
-    private final BytesRefBuilder ref = new BytesRefBuilder();
+    protected final BytesRefBuilder ref = new BytesRefBuilder();
 
     /** Constructs a ByteSequencesReader from the provided IndexInput */
     public ByteSequencesReader(ChecksumIndexInput in, String name) {
