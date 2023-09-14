@@ -87,11 +87,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-    int totalDoc = indexSearcher.getIndexReader().maxDoc();
     TopDocs[] perLeafResults =
         (taskExecutor == null)
-            ? sequentialSearch(reader.leaves(), filterWeight, totalDoc)
-            : parallelSearch(reader.leaves(), filterWeight, taskExecutor, totalDoc);
+            ? sequentialSearch(reader, filterWeight)
+            : parallelSearch(reader, filterWeight, taskExecutor);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -101,32 +100,42 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, int totalDoc)
-      throws IOException {
-    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
-    for (LeafReaderContext ctx : leafReaderContexts) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight, totalDoc);
+  private int computeEfSearch(int maxDocSegment, int maxDoc) {
+    if (ef == k) {
+      return k;
+    }
+    // We reduce the value of 'ef' proportionally based on the ratio of documents within the segment.
+    int efSearch = (int) Math.round(Math.log((double) maxDoc / maxDocSegment));
+    return Math.max(ef / efSearch, k);
+  }
+
+  private TopDocs[] sequentialSearch(IndexReader reader, Weight filterWeight) throws IOException {
+    TopDocs[] perLeafResults = new TopDocs[reader.leaves().size()];
+    for (LeafReaderContext ctx : reader.leaves()) {
+      perLeafResults[ctx.ord] =
+          searchLeaf(ctx, filterWeight, computeEfSearch(ctx.reader().maxDoc(), reader.maxDoc()));
     }
     return perLeafResults;
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts,
-      Weight filterWeight,
-      TaskExecutor taskExecutor,
-      int totalDoc)
-      throws IOException {
+      IndexReader reader, Weight filterWeight, TaskExecutor taskExecutor) throws IOException {
     List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
-    for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight, totalDoc)));
+    for (LeafReaderContext context : reader.leaves()) {
+      tasks.add(
+          new FutureTask<>(
+              () ->
+                  searchLeaf(
+                      context,
+                      filterWeight,
+                      computeEfSearch(context.reader().maxDoc(), reader.maxDoc()))));
     }
     return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }
 
-  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight, int totalDoc)
+  private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight, int efSearch)
       throws IOException {
-    TopDocs results = getLeafResults(ctx, filterWeight, totalDoc);
+    TopDocs results = getLeafResults(ctx, filterWeight, efSearch);
     if (ctx.docBase > 0) {
       for (ScoreDoc scoreDoc : results.scoreDocs) {
         scoreDoc.doc += ctx.docBase;
@@ -135,16 +144,13 @@ abstract class AbstractKnnVectorQuery extends Query {
     return results;
   }
 
-  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight, int totalDoc)
+  private TopDocs getLeafResults(LeafReaderContext ctx, Weight filterWeight, int efSearch)
       throws IOException {
     Bits liveDocs = ctx.reader().getLiveDocs();
     int maxDoc = ctx.reader().maxDoc();
 
-    double docRatio = (double) ctx.reader().maxDoc() / totalDoc;
-    int efSegment = (int) Math.max(k, Math.ceil(docRatio * ef));
-
     if (filterWeight == null) {
-      return approximateSearch(ctx, liveDocs, efSegment, Integer.MAX_VALUE);
+      return approximateSearch(ctx, liveDocs, efSearch, Integer.MAX_VALUE);
     }
 
     Scorer scorer = filterWeight.scorer(ctx);
@@ -162,7 +168,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     // Perform the approximate kNN search
-    TopDocs results = approximateSearch(ctx, acceptDocs, efSegment, cost);
+    TopDocs results = approximateSearch(ctx, acceptDocs, efSearch, cost);
     if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
       return results;
     } else {
