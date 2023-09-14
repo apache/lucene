@@ -130,6 +130,8 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#12554: Allow FilteredDocIdSetIterator.match(doc) to throw IOException (Gokul Manoj)
+
 * GITHUB#11248: IntBlockPool's SliceReader, SliceWriter, and all int slice functionality are moved out to MemoryIndex.
   (Stefan Vodita)
 
