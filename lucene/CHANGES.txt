@@ -99,6 +99,9 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
+* GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
+  that causes IndexOutOfBoundsException. (Egor Potemkin)
+
 Other
 ---------------------
 
