@@ -108,6 +108,9 @@ class ExpressionValueSource extends DoubleValuesSource {
         // This implementation wraps all expression arguments, so we lazily advance it in case the
         // value is never needed by the expression for a given doc (e.g., ternary branch or
         // condition short-circuit):
+        if (currentDoc == doc) {
+          return true;
+        }
         currentDoc = doc;
         computed = false;
         return true;
