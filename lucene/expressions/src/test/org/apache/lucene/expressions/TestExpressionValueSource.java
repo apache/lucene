@@ -156,14 +156,21 @@ public class TestExpressionValueSource extends LuceneTestCase {
     bindings.add("f1", DoubleValuesSource.constant(42));
     bindings.add("f2", new NoAdvanceDoubleValuesSource());
 
-    // f2 should never be evaluated
+    // f2 should never be evaluated:
     Expression expression = JavascriptCompiler.compile("f0 == 1 ? f1 : f2");
     DoubleValuesSource dvs = expression.getDoubleValuesSource(bindings);
     DoubleValues dv = dvs.getValues(reader.leaves().get(0), null);
-
     dv.advanceExact(0);
     double value = dv.doubleValue();
+    assertEquals(42, value, 0);
 
+    // one more example to show that we will also correctly short-circuit a condition (f2 should
+    // not be advanced or evaluated):
+    expression = JavascriptCompiler.compile("(1 == 1 || f2) ? f1 : 0");
+    dvs = expression.getDoubleValuesSource(bindings);
+    dv = dvs.getValues(reader.leaves().get(0), null);
+    dv.advanceExact(0);
+    value = dv.doubleValue();
     assertEquals(42, value, 0);
   }
 

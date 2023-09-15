@@ -105,6 +105,9 @@ class ExpressionValueSource extends DoubleValuesSource {
 
       @Override
       public boolean advanceExact(int doc) {
+        // This implementation wraps all expression arguments, so we lazily advance it in case the
+        // value is never needed by the expression for a given doc (e.g., ternary branch or
+        // condition short-circuit):
         currentDoc = doc;
         computed = false;
         return true;
