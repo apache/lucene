@@ -159,7 +159,7 @@ abstract class IntTaxonomyFacets extends TaxonomyFacets {
     }
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
-    return sumTotalHits < maxDoc / 10;
+    return maxDoc == 0 || sumTotalHits < maxDoc / 10;
   }
 
   @Override
