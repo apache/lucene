@@ -195,6 +195,9 @@ Optimizations
 
 * GITHUB#12490: Faster computation of top-k hits on boolean queries. (Adrien Grand)
 
+* GITHUB#12560: ExpressionValueSource defers #advanceExact on dependencies until their values are needed, avoiding
+  unnecessary advancing on values that are never evaluated (e.g., because of ternary expressions). (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
