@@ -90,16 +90,24 @@ class ExpressionValueSource extends DoubleValuesSource {
   static DoubleValues zeroWhenUnpositioned(DoubleValues in) {
     return new DoubleValues() {
 
-      boolean positioned = false;
+      int currentDoc = -1;
+      double value;
+      boolean computed = false;
 
       @Override
       public double doubleValue() throws IOException {
-        return positioned ? in.doubleValue() : 0;
+        if (computed == false) {
+          value = in.advanceExact(currentDoc) ? in.doubleValue() : 0;
+          computed = true;
+        }
+        return value;
       }
 
       @Override
-      public boolean advanceExact(int doc) throws IOException {
-        return positioned = in.advanceExact(doc);
+      public boolean advanceExact(int doc) {
+        currentDoc = doc;
+        computed = false;
+        return true;
       }
     };
   }

@@ -39,9 +39,12 @@ class ExpressionFunctionValues extends DoubleValues {
   }
 
   @Override
-  public boolean advanceExact(int doc) {
+  public boolean advanceExact(int doc) throws IOException {
     if (currentDoc == doc) {
       return true;
+    }
+    for (DoubleValues v : functionValues) {
+      v.advanceExact(doc);
     }
     currentDoc = doc;
     computed = false;
@@ -49,11 +52,8 @@ class ExpressionFunctionValues extends DoubleValues {
   }
 
   @Override
-  public double doubleValue() throws IOException {
+  public double doubleValue() {
     if (computed == false) {
-      for (DoubleValues v : functionValues) {
-        v.advanceExact(currentDoc);
-      }
       currentValue = expression.evaluate(functionValues);
       computed = true;
     }
