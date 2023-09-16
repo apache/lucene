@@ -117,6 +117,9 @@ Bug Fixes
 
 * LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
 
+* GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
+  that causes IndexOutOfBoundsException. (Egor Potemkin)
+
 Other
 ---------------------
 

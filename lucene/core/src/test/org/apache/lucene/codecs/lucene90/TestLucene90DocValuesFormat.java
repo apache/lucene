@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
@@ -957,6 +958,63 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     assertEquals(new BytesRef("abc2defghijkl"), termsEnum.next());
     assertNull(termsEnum.next());
 
+    reader.close();
+    directory.close();
+  }
+
+  // Testing termsEnum seekCeil edge case, where inconsistent internal state led to
+  // IndexOutOfBoundsException
+  // see https://github.com/apache/lucene/pull/12555 for details
+  public void testTermsEnumConsistency() throws IOException {
+    int numTerms =
+        Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE
+            + 10; // need more than one block of unique terms.
+    Directory directory = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig();
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, conf);
+    Document doc = new Document();
+
+    // for simplicity, we will generate sorted list of terms which are a) unique b) all greater than
+    // the term that we want to use for the test
+    char termA = 'A';
+    Function<Integer, String> stringSupplier =
+        (Integer n) -> {
+          assert n < 25 * 25;
+          char[] chars = new char[] {(char) (termA + 1 + n / 25), (char) (termA + 1 + n % 25)};
+          return new String(chars);
+        };
+    SortedDocValuesField field =
+        new SortedDocValuesField("field", new BytesRef(stringSupplier.apply(0)));
+    doc.add(field);
+    iwriter.addDocument(doc);
+    for (int i = 1; i < numTerms; i++) {
+      field.setBytesValue(new BytesRef(stringSupplier.apply(i)));
+      iwriter.addDocument(doc);
+    }
+    // merging to one segment to make sure we have more than one block (TERMS_DICT_BLOCK_LZ4_SIZE)
+    // in a segment, to trigger next block decompression.
+    iwriter.forceMerge(1);
+    iwriter.close();
+
+    IndexReader reader = DirectoryReader.open(directory);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    SortedDocValues values = leafReader.getSortedDocValues("field");
+    TermsEnum termsEnum = values.termsEnum();
+
+    // Position terms enum at 0
+    termsEnum.seekExact(0L);
+    assertEquals(0, termsEnum.ord());
+    // seekCeil to a term which doesn't exist in the index
+    assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef("A")));
+    // ... and before any other term in the index
+    assertEquals(0, termsEnum.ord());
+
+    assertEquals(new BytesRef(stringSupplier.apply(0)), termsEnum.term());
+    // read more than one block of terms to trigger next block decompression
+    for (int i = 1; i < numTerms; i++) {
+      assertEquals(new BytesRef(stringSupplier.apply(i)), termsEnum.next());
+    }
+    assertNull(termsEnum.next());
     reader.close();
     directory.close();
   }
