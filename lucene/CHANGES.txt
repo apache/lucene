@@ -99,9 +99,6 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
-* GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
-  that causes IndexOutOfBoundsException. (Egor Potemkin)
-
 Other
 ---------------------
 
@@ -225,6 +222,9 @@ Bug Fixes
   scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
 
 * LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
+
+* GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
+  that causes IndexOutOfBoundsException. (Egor Potemkin)
 
 Other
 ---------------------
