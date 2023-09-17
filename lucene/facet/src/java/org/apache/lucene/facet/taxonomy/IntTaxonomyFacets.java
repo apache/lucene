@@ -122,6 +122,9 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       maxDoc += docs.context.reader().maxDoc();
     }
 
+    if (maxDoc == 0) {
+      throw new IllegalStateException("Max doc is 0!");
+    }
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
     return sumTotalHits < maxDoc / 10;
   }
