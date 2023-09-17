@@ -41,6 +41,7 @@ import org.apache.lucene.facet.DrillSideways.DrillSidewaysResult;
 import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState;
+import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -63,6 +64,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryCachingPolicy;
@@ -1352,6 +1354,40 @@ public class TestDrillSideways extends FacetTestCase {
 
     w.close();
     IOUtils.close(r, tr, tw, d, td);
+  }
+
+  public void testMaxDocIsNeverZero() throws Exception {
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+
+    Document doc = new Document();
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    for(int i=0; i<1024; i++){
+      doc.add(new FacetField("RandomFacetField_" + i, String.valueOf(i)));
+    }
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    writer.close();
+    taxoWriter.close();
+
+    DirectoryReader indexReader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(indexReader);
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+
+    DrillDownQuery drillDownQuery = new DrillDownQuery(config, new MatchNoDocsQuery());
+    drillDownQuery.add("Publish Date", "2010");
+
+    DrillSideways ds = new DrillSideways(searcher, config, taxoReader);
+    DrillSidewaysResult drillSidewaysResult = ds.search(drillDownQuery, 10);
+    assert drillSidewaysResult.drillSidewaysFacetsCollector.length == 1;
+    Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, drillSidewaysResult.drillSidewaysFacetsCollector[0]);
+
+    IOUtils.close(indexReader);
   }
 
   private static class Counters {
