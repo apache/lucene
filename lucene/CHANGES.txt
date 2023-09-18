@@ -236,6 +236,8 @@ Bug Fixes
 * GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
   that causes IndexOutOfBoundsException. (Egor Potemkin)
 
+* GITHUB#12571: Fix HNSW graph read bug when built with excessive connections. (Ben Trent).
+
 Other
 ---------------------
 
