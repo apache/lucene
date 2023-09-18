@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
 /**
@@ -75,6 +76,23 @@ public enum VectorSimilarityFunction {
     @Override
     public float compare(byte[] v1, byte[] v2) {
       return (1 + cosine(v1, v2)) / 2;
+    }
+  },
+
+  /**
+   * Maximum inner product. This is like {@link VectorSimilarityFunction#DOT_PRODUCT}, but does not
+   * require normalization of the inputs. Should be used when the embedding vectors store useful
+   * information within the vector magnitude
+   */
+  MAXIMUM_INNER_PRODUCT {
+    @Override
+    public float compare(float[] v1, float[] v2) {
+      return scaleMaxInnerProductScore(dotProduct(v1, v2));
+    }
+
+    @Override
+    public float compare(byte[] v1, byte[] v2) {
+      return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
   };
 

@@ -43,6 +43,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.IOUtils;
 
 /** Simple command-line based search demo. */
 public class SearchFiles {
@@ -154,10 +155,7 @@ public class SearchFiles {
         break;
       }
     }
-    if (vectorDict != null) {
-      vectorDict.close();
-    }
-    reader.close();
+    IOUtils.close(vectorDict, reader);
   }
 
   /**

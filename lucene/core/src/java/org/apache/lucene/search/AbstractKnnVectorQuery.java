@@ -24,8 +24,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -33,7 +33,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -81,12 +80,11 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    SliceExecutor sliceExecutor = indexSearcher.getSliceExecutor();
-    // in case of parallel execution, the leaf results are not ordered by leaf context's ordinal
+    TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     TopDocs[] perLeafResults =
-        (sliceExecutor == null)
+        (taskExecutor == null)
             ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(indexSearcher.getSlices(), filterWeight, sliceExecutor);
+            : parallelSearch(reader.leaves(), filterWeight, taskExecutor);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -97,53 +95,22 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) {
-    try {
-      TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
-      for (LeafReaderContext ctx : leafReaderContexts) {
-        perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
-      }
-      return perLeafResults;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) throws IOException {
+    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+    for (LeafReaderContext ctx : leafReaderContexts) {
+      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
     }
+    return perLeafResults;
   }
 
   private TopDocs[] parallelSearch(
-      IndexSearcher.LeafSlice[] slices, Weight filterWeight, SliceExecutor sliceExecutor) {
-
-    List<FutureTask<TopDocs[]>> tasks = new ArrayList<>(slices.length);
-    int segmentsCount = 0;
-    for (IndexSearcher.LeafSlice slice : slices) {
-      segmentsCount += slice.leaves.length;
-      tasks.add(
-          new FutureTask<>(
-              () -> {
-                TopDocs[] results = new TopDocs[slice.leaves.length];
-                int i = 0;
-                for (LeafReaderContext context : slice.leaves) {
-                  results[i++] = searchLeaf(context, filterWeight);
-                }
-                return results;
-              }));
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
+      throws IOException {
+    List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
+    for (LeafReaderContext context : leafReaderContexts) {
+      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
     }
-
-    sliceExecutor.invokeAll(tasks);
-
-    TopDocs[] topDocs = new TopDocs[segmentsCount];
-    int i = 0;
-    for (FutureTask<TopDocs[]> task : tasks) {
-      try {
-        for (TopDocs docs : task.get()) {
-          topDocs[i++] = docs;
-        }
-      } catch (ExecutionException e) {
-        throw new RuntimeException(e.getCause());
-      } catch (InterruptedException e) {
-        throw new ThreadInterruptedException(e);
-      }
-    }
-    return topDocs;
+    return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {

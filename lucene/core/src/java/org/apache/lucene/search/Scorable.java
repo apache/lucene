@@ -42,9 +42,6 @@ public abstract class Scorable {
     return 0f;
   }
 
-  /** Returns the doc ID that is currently being scored. */
-  public abstract int docID();
-
   /**
    * Optional method: Tell the scorer that its iterator may safely ignore all documents whose score
    * is less than the given {@code minScore}. This is a no-op by default.

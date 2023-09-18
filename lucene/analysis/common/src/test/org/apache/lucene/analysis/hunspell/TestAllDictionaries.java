@@ -74,7 +74,12 @@ public class TestAllDictionaries extends LuceneTestCase {
     try (InputStream dictionary = Files.newInputStream(dic);
         InputStream affix = Files.newInputStream(aff);
         BaseDirectoryWrapper tempDir = newDirectory()) {
-      return new Dictionary(tempDir, "dictionary", affix, dictionary);
+      return new Dictionary(tempDir, "dictionary", affix, dictionary) {
+        @Override
+        protected boolean tolerateAffixRuleCountMismatches() {
+          return true;
+        }
+      };
     }
   }
 

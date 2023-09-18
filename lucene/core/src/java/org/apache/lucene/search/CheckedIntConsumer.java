@@ -16,21 +16,16 @@
  */
 package org.apache.lucene.search;
 
-/**
- * Used by {@link BulkScorer}s that need to pass a {@link Scorable} to {@link
- * LeafCollector#setScorer}.
- */
-final class ScoreAndDoc extends Scorable {
-  float score;
-  int doc = -1;
+import java.util.function.IntConsumer;
 
-  @Override
-  public int docID() {
-    return doc;
-  }
+/** Like {@link IntConsumer}, but may throw checked exceptions. */
+@FunctionalInterface
+public interface CheckedIntConsumer<T extends Exception> {
 
-  @Override
-  public float score() {
-    return score;
-  }
+  /**
+   * Process the given value.
+   *
+   * @see IntConsumer#accept(int)
+   */
+  void accept(int value) throws T;
 }

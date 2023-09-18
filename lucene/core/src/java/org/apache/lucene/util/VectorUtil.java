@@ -17,10 +17,14 @@
 
 package org.apache.lucene.util;
 
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
+
 /** Utilities for computations with numeric arrays */
 public final class VectorUtil {
 
-  private static final VectorUtilProvider PROVIDER = VectorUtilProvider.lookup(false);
+  private static final VectorUtilSupport IMPL =
+      VectorizationProvider.getInstance().getVectorUtilSupport();
 
   private VectorUtil() {}
 
@@ -33,7 +37,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = PROVIDER.dotProduct(a, b);
+    float r = IMPL.dotProduct(a, b);
     assert Float.isFinite(r);
     return r;
   }
@@ -47,7 +51,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = PROVIDER.cosine(a, b);
+    float r = IMPL.cosine(a, b);
     assert Float.isFinite(r);
     return r;
   }
@@ -57,7 +61,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.cosine(a, b);
+    return IMPL.cosine(a, b);
   }
 
   /**
@@ -69,7 +73,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float r = PROVIDER.squareDistance(a, b);
+    float r = IMPL.squareDistance(a, b);
     assert Float.isFinite(r);
     return r;
   }
@@ -79,7 +83,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.squareDistance(a, b);
+    return IMPL.squareDistance(a, b);
   }
 
   /**
@@ -102,11 +106,8 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
-    double squareSum = 0.0f;
+    double squareSum = IMPL.dotProduct(v, v);
     int dim = v.length;
-    for (float x : v) {
-      squareSum += x * x;
-    }
     if (squareSum == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
@@ -144,7 +145,7 @@ public final class VectorUtil {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return PROVIDER.dotProduct(a, b);
+    return IMPL.dotProduct(a, b);
   }
 
   /**
@@ -158,6 +159,17 @@ public final class VectorUtil {
     // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
     float denom = (float) (a.length * (1 << 15));
     return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  /**
+   * @param vectorDotProductSimilarity the raw similarity between two vectors
+   * @return A scaled score preventing negative scores for maximum-inner-product
+   */
+  public static float scaleMaxInnerProductScore(float vectorDotProductSimilarity) {
+    if (vectorDotProductSimilarity < 0) {
+      return 1 / (1 + -1 * vectorDotProductSimilarity);
+    }
+    return vectorDotProductSimilarity + 1;
   }
 
   /**

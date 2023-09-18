@@ -47,10 +47,6 @@ public class KnnFloatVectorField extends Field {
     if (dimension == 0) {
       throw new IllegalArgumentException("cannot index an empty vector");
     }
-    if (dimension > FloatVectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "cannot index vectors with dimension greater than " + FloatVectorValues.MAX_DIMENSIONS);
-    }
     if (similarityFunction == null) {
       throw new IllegalArgumentException("similarity function must not be null");
     }

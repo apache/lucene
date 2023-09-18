@@ -99,6 +99,16 @@ public class TestPerformance extends LuceneTestCase {
     checkSuggestionPerformance("fr", 1_000);
   }
 
+  @Test
+  public void uk() throws Exception {
+    checkAnalysisPerformance("uk", 200_000);
+  }
+
+  @Test
+  public void uk_suggest() throws Exception {
+    checkSuggestionPerformance("uk", 800);
+  }
+
   private Dictionary loadDictionary(String code) throws IOException, ParseException {
     long start = System.nanoTime();
     Path aff = findAffFile(code);

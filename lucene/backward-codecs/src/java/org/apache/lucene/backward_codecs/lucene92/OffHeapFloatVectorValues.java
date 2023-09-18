@@ -34,6 +34,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   protected final int size;
   protected final IndexInput slice;
   protected final int byteSize;
+  protected int lastOrd = -1;
   protected final float[] value;
 
   OffHeapFloatVectorValues(int dimension, int size, IndexInput slice) {
@@ -56,12 +57,14 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   @Override
   public float[] vectorValue(int targetOrd) throws IOException {
+    if (lastOrd == targetOrd) {
+      return value;
+    }
     slice.seek((long) targetOrd * byteSize);
     slice.readFloats(value, 0, value.length);
+    lastOrd = targetOrd;
     return value;
   }
-
-  public abstract int ordToDoc(int ord);
 
   static OffHeapFloatVectorValues load(
       Lucene92HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
@@ -89,9 +92,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public float[] vectorValue() throws IOException {
-      slice.seek((long) doc * byteSize);
-      slice.readFloats(value, 0, value.length);
-      return value;
+      return vectorValue(doc);
     }
 
     @Override
@@ -116,11 +117,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public RandomAccessVectorValues<float[]> copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone());
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return ord;
     }
 
     @Override
@@ -158,9 +154,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
     @Override
     public float[] vectorValue() throws IOException {
-      slice.seek((long) (disi.index()) * byteSize);
-      slice.readFloats(value, 0, value.length);
-      return value;
+      return vectorValue(disi.index());
     }
 
     @Override

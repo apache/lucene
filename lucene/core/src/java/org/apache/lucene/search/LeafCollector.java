@@ -84,6 +84,29 @@ public interface LeafCollector {
   void collect(int doc) throws IOException;
 
   /**
+   * Bulk-collect doc IDs.
+   *
+   * <p>Note: The provided {@link DocIdStream} may be reused across calls and should be consumed
+   * immediately.
+   *
+   * <p>Note: The provided {@link DocIdStream} typically only holds a small subset of query matches.
+   * This method may be called multiple times per segment.
+   *
+   * <p>Like {@link #collect(int)}, it is guaranteed that doc IDs get collected in order, ie. doc
+   * IDs are collected in order within a {@link DocIdStream}, and if called twice, all doc IDs from
+   * the second {@link DocIdStream} will be greater than all doc IDs from the first {@link
+   * DocIdStream}.
+   *
+   * <p>It is legal for callers to mix calls to {@link #collect(DocIdStream)} and {@link
+   * #collect(int)}.
+   *
+   * <p>The default implementation calls {@code stream.forEach(this::collect)}.
+   */
+  default void collect(DocIdStream stream) throws IOException {
+    stream.forEach(this::collect);
+  }
+
+  /**
    * Optionally returns an iterator over competitive documents.
    *
    * <p>Collectors should delegate this method to their comparators if their comparators provide the
@@ -95,4 +118,13 @@ public interface LeafCollector {
   default DocIdSetIterator competitiveIterator() throws IOException {
     return null;
   }
+
+  /**
+   * Hook that gets called once the leaf that is associated with this collector has finished
+   * collecting successfully, including when a {@link CollectionTerminatedException} is thrown. This
+   * is typically useful to compile data that has been collected on this leaf, e.g. to convert facet
+   * counts on leaf ordinals to facet counts on global ordinals. The default implementation does
+   * nothing.
+   */
+  default void finish() throws IOException {}
 }

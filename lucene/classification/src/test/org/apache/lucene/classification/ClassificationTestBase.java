@@ -31,6 +31,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 
@@ -83,8 +84,7 @@ public abstract class ClassificationTestBase<T> extends LuceneTestCase {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    indexWriter.close();
-    dir.close();
+    IOUtils.close(indexWriter, dir);
   }
 
   protected ClassificationResult<T> checkCorrectClassification(

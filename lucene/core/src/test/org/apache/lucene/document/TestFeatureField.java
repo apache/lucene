@@ -38,6 +38,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.IOUtils;
 
 public class TestFeatureField extends LuceneTestCase {
 
@@ -177,8 +178,7 @@ public class TestFeatureField extends LuceneTestCase {
 
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, s.iterator().nextDoc());
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testExplanations() throws Exception {
@@ -237,8 +237,7 @@ public class TestFeatureField extends LuceneTestCase {
     QueryUtils.check(
         random(), FeatureField.newSigmoidQuery("features", "pagerank", .2f, 12f, 0.6f), searcher);
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testLogSimScorer() {
@@ -303,8 +302,7 @@ public class TestFeatureField extends LuceneTestCase {
     double expected = Math.pow(10 * 100 * 1 * 42, 1 / 4.); // geometric mean
     assertEquals(expected, pivot, 0.1);
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testDemo() throws IOException {
@@ -359,8 +357,7 @@ public class TestFeatureField extends LuceneTestCase {
     assertEquals(3, topDocs.scoreDocs[2].doc);
     assertEquals(2, topDocs.scoreDocs[3].doc);
 
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   public void testBasicsNonScoringCase() throws IOException {

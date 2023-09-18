@@ -143,6 +143,18 @@ Lucene 9.2 or stay with 9.0.
 
 See LUCENE-10558 for more details and workarounds.
 
+### Removed Scorable#docID() (GITHUB#12407)
+
+This method has been removed in order to enable more search-time optimizations.
+Use the doc ID passed to `LeafCollector#collect` to know which doc ID is being
+collected.
+
+### ScoreCachingWrappingScorer now wraps a LeafCollector instead of a Scorable (GITHUB#12407)
+
+In order to adapt to the removal of `Scorable#docID()`,
+`ScoreCachingWrappingScorer` now wraps a `LeafCollector` rather than a
+`Scorable`.
+
 ## Migration from Lucene 8.x to Lucene 9.0
 
 ### Rename of binary artifacts from '**-analyzers-**' to '**-analysis-**' (LUCENE-9562)

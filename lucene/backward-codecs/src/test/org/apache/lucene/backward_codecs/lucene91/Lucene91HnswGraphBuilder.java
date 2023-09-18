@@ -24,14 +24,15 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswGraph;
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -56,7 +57,7 @@ public final class Lucene91HnswGraphBuilder {
   private final RandomAccessVectorValues<float[]> vectorValues;
   private final SplittableRandom random;
   private final Lucene91BoundsChecker bound;
-  private final HnswGraphSearcher<float[]> graphSearcher;
+  private final HnswGraphSearcher graphSearcher;
 
   final Lucene91OnHeapHnswGraph hnsw;
 
@@ -102,11 +103,8 @@ public final class Lucene91HnswGraphBuilder {
     int levelOfFirstNode = getRandomGraphLevel(ml, random);
     this.hnsw = new Lucene91OnHeapHnswGraph(maxConn, levelOfFirstNode);
     this.graphSearcher =
-        new HnswGraphSearcher<>(
-            VectorEncoding.FLOAT32,
-            similarityFunction,
-            new NeighborQueue(beamWidth, true),
-            new FixedBitSet(vectorValues.size()));
+        new HnswGraphSearcher(
+            new NeighborQueue(beamWidth, true), new FixedBitSet(vectorValues.size()));
     bound = Lucene91BoundsChecker.create(false);
     scratch = new Lucene91NeighborArray(Math.max(beamWidth, maxConn + 1));
   }
@@ -146,7 +144,9 @@ public final class Lucene91HnswGraphBuilder {
 
   /** Inserts a doc with vector value to the graph */
   void addGraphNode(int node, float[] value) throws IOException {
-    NeighborQueue candidates;
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createFloats(vectorValues, similarityFunction, value);
+    HnswGraphBuilder.GraphBuilderKnnCollector candidates;
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
     int[] eps = new int[] {hnsw.entryNode()};
@@ -158,13 +158,13 @@ public final class Lucene91HnswGraphBuilder {
 
     // for levels > nodeLevel search with topk = 1
     for (int level = curMaxLevel; level > nodeLevel; level--) {
-      candidates = graphSearcher.searchLevel(value, 1, level, eps, vectorValues, hnsw);
-      eps = new int[] {candidates.pop()};
+      candidates = graphSearcher.searchLevel(scorer, 1, level, eps, hnsw);
+      eps = new int[] {candidates.popNode()};
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
-      candidates = graphSearcher.searchLevel(value, beamWidth, level, eps, vectorValues, hnsw);
-      eps = candidates.nodes();
+      candidates = graphSearcher.searchLevel(scorer, beamWidth, level, eps, hnsw);
+      eps = candidates.popUntilNearestKNodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
@@ -188,7 +188,8 @@ public final class Lucene91HnswGraphBuilder {
    * work better if we keep the neighbor arrays sorted. Possibly we should switch back to a heap?
    * But first we should just see if sorting makes a significant difference.
    */
-  private void addDiverseNeighbors(int level, int node, NeighborQueue candidates)
+  private void addDiverseNeighbors(
+      int level, int node, HnswGraphBuilder.GraphBuilderKnnCollector candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -227,14 +228,14 @@ public final class Lucene91HnswGraphBuilder {
     }
   }
 
-  private void popToScratch(NeighborQueue candidates) {
+  private void popToScratch(HnswGraphBuilder.GraphBuilderKnnCollector candidates) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
     // sorted from worst to best
     for (int i = 0; i < candidateCount; i++) {
-      float similarity = candidates.topScore();
-      scratch.add(candidates.pop(), similarity);
+      float similarity = candidates.minCompetitiveSimilarity();
+      scratch.add(candidates.popNode(), similarity);
     }
   }
 
