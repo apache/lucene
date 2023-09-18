@@ -536,10 +536,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader
-              instanceof
-              org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader
-              candidateReader)) {
+          || !(currKnnVectorsReader instanceof Lucene95HnswVectorsReader candidateReader)) {
         continue;
       }
 
@@ -573,11 +570,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
         && perFieldReader.getFieldReader(fieldName)
-            instanceof org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader fieldReader) {
+            instanceof Lucene95HnswVectorsReader fieldReader) {
       return fieldReader.getGraph(fieldName);
     }
 
-    if (knnVectorsReader instanceof org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader) {
+    if (knnVectorsReader instanceof Lucene95HnswVectorsReader) {
       return ((Lucene95HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
     }
 
