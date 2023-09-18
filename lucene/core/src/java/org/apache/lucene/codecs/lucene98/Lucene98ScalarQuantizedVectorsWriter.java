@@ -286,7 +286,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
           quantizedVectorDataInput, quantizedVectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(quantizedVectorDataInput);
       final long quantizedVectorDataLength =
-          quantizedVectorDataInput.getFilePointer() - quantizedVectorDataOffset;
+          quantizedVectorData.getFilePointer() - quantizedVectorDataOffset;
 
       writeMeta(
           fieldInfo,
@@ -310,15 +310,18 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
   }
 
   static ScalarQuantizationState mergeQuantiles(
-      ScalarQuantizationState[] quantizationStates, int[] segmentSizes) {
-    assert quantizationStates.length == segmentSizes.length;
+      List<ScalarQuantizationState> quantizationStates, List<Integer> segmentSizes) {
+    assert quantizationStates.size() == segmentSizes.size();
+    if (quantizationStates.isEmpty()) {
+      return null;
+    }
     float lowerQuantile = 0f;
     float upperQuantile = 0f;
     int totalCount = 0;
-    for (int i = 0; i < quantizationStates.length; i++) {
-      lowerQuantile += quantizationStates[i].getLowerQuantile() * segmentSizes[i];
-      upperQuantile += quantizationStates[i].getUpperQuantile() * segmentSizes[i];
-      totalCount += segmentSizes[i];
+    for (int i = 0; i < quantizationStates.size(); i++) {
+      lowerQuantile += quantizationStates.get(i).getLowerQuantile() * segmentSizes.get(i);
+      upperQuantile += quantizationStates.get(i).getUpperQuantile() * segmentSizes.get(i);
+      totalCount += segmentSizes.get(i);
     }
     lowerQuantile /= totalCount;
     upperQuantile /= totalCount;
@@ -327,7 +330,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
 
   static boolean shouldRecomputeQuantiles(
       ScalarQuantizationState mergedQuantizationState,
-      ScalarQuantizationState[] quantizationStates) {
+      List<ScalarQuantizationState> quantizationStates) {
     float limit =
         (mergedQuantizationState.getUpperQuantile() - mergedQuantizationState.getLowerQuantile())
             / QUANTIZATION_RECOMPUTE_LIMIT;
@@ -368,24 +371,33 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
 
   static ScalarQuantizationState mergeAndRecalculateQuantiles(
       MergeState mergeState, FieldInfo fieldInfo, float quantile) throws IOException {
-    ScalarQuantizationState[] quantizationStates =
-        new ScalarQuantizationState[mergeState.liveDocs.length];
-    int[] segmentSizes = new int[mergeState.liveDocs.length];
+    List<ScalarQuantizationState> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
+    List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
+    boolean missingQuantizationState = false;
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
-      quantizationStates[i] = getQuantizedState(mergeState.knnVectorsReaders[i], fieldInfo.name);
-      if (quantizationStates[i] == null) {
-        throw new IllegalArgumentException(
-            "attempting to merge in unknown codec ["
-                + mergeState.knnVectorsReaders[i]
-                + "] for field ["
-                + fieldInfo.name
-                + "]");
+      FloatVectorValues fvv;
+      if (mergeState.knnVectorsReaders[i] != null
+          && (fvv = mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name)) != null
+          && fvv.size() > 0) {
+        ScalarQuantizationState quantizationState =
+            getQuantizedState(mergeState.knnVectorsReaders[i], fieldInfo.name);
+        // If we have quantization state, we can utilize that to make merging cheaper
+        if (quantizationState != null) {
+          quantizationStates.add(quantizationState);
+          segmentSizes.add(fvv.size());
+        } else {
+          missingQuantizationState = true;
+        }
       }
-      segmentSizes[i] =
-          mergeState.liveDocs[i] == null ? mergeState.maxDocs[i] : mergeState.liveDocs[i].length();
     }
     ScalarQuantizationState mergedQuantiles = mergeQuantiles(quantizationStates, segmentSizes);
-    if (shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
+    // Segments no providing quantization state indicates that their quantiles were never
+    // calculated.
+    // To be safe, we should always recalculate given a sample set over all the float vectors in the
+    // merged
+    // segment view
+    if ((missingQuantizationState || mergedQuantiles == null)
+        || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
       FloatVectorValues vectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
       ScalarQuantizer quantizer = ScalarQuantizer.fromVectors(vectorValues, quantile);
@@ -421,6 +433,9 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
     meta.writeVLong(quantizedVectorDataOffset);
     meta.writeVLong(quantizedVectorDataLength);
     meta.writeVInt(field.getVectorDimension());
+    meta.writeInt(
+        Float.floatToIntBits(
+            quantile != null ? quantile : calculateDefaultQuantile(field.getVectorDimension())));
     meta.writeInt(Float.floatToIntBits(lowerQuantile));
     meta.writeInt(Float.floatToIntBits(upperQuantile));
 
@@ -477,7 +492,8 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
         docV = quantizedByteVectorValues.nextDoc()) {
       // write vector
       byte[] binaryValue = quantizedByteVectorValues.vectorValue();
-      assert binaryValue.length == quantizedByteVectorValues.dimension() : "dim=" + quantizedByteVectorValues.dimension() + " len=" + binaryValue.length;
+      assert binaryValue.length == quantizedByteVectorValues.dimension()
+          : "dim=" + quantizedByteVectorValues.dimension() + " len=" + binaryValue.length;
       output.writeBytes(binaryValue, binaryValue.length);
       output.writeInt(Float.floatToIntBits(quantizedByteVectorValues.getScoreCorrectionConstant()));
       docsWithField.add(docV);
@@ -661,31 +677,33 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
 
       List<QuantizedByteVectorValueSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
-        QuantizedVectorsReader reader =
-            getQuantizedKnnVectorsReader(mergeState.knnVectorsReaders[i], fieldInfo.name);
-        if (reader == null) {
-          throw new UnsupportedOperationException(
-              "Cannot merge vectors from codec other than Lucene98QuantizedHnswVectorsFormat");
+        if (mergeState.knnVectorsReaders[i] != null
+            && mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name) != null) {
+          QuantizedVectorsReader reader =
+              getQuantizedKnnVectorsReader(mergeState.knnVectorsReaders[i], fieldInfo.name);
+          assert mergedQuantizationState != null;
+          final QuantizedByteVectorValueSub sub;
+          final ScalarQuantizer scalarQuantizer =
+              new ScalarQuantizer(
+                  mergedQuantizationState.getLowerQuantile(),
+                  mergedQuantizationState.getUpperQuantile());
+          // Either our quantization parameters are way different than the merged ones
+          // Or we have never been quantized.
+          if (reader == null || shouldRequantize(reader, fieldInfo.name, mergedQuantizationState)) {
+            sub =
+                new QuantizedByteVectorValueSub(
+                    mergeState.docMaps[i],
+                    new QuantizedFloatVectorValues(
+                        mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name),
+                        fieldInfo.getVectorSimilarityFunction(),
+                        scalarQuantizer));
+          } else {
+            sub =
+                new QuantizedByteVectorValueSub(
+                    mergeState.docMaps[i], reader.getQuantizedVectorValues(fieldInfo.name));
+          }
+          subs.add(sub);
         }
-        final QuantizedByteVectorValueSub sub;
-        final ScalarQuantizer scalarQuantizer =
-            new ScalarQuantizer(
-                mergedQuantizationState.getLowerQuantile(),
-                mergedQuantizationState.getUpperQuantile());
-        if (shouldRequantize(reader, fieldInfo.name, mergedQuantizationState)) {
-          sub =
-              new QuantizedByteVectorValueSub(
-                  mergeState.docMaps[i],
-                  new QuantizedFloatVectorValues(
-                      mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name),
-                      fieldInfo.getVectorSimilarityFunction(),
-                      scalarQuantizer));
-        } else {
-          sub =
-              new QuantizedByteVectorValueSub(
-                  mergeState.docMaps[i], reader.getQuantizedVectorValues(fieldInfo.name));
-        }
-        subs.add(sub);
       }
       return new MergedQuantizedVectorValues(subs, mergeState);
     }

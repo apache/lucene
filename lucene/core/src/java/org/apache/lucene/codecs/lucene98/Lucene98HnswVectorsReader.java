@@ -64,12 +64,10 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
-  private final Lucene98ScalarQuantizedVectorsReader quantizedVectorsReader;
+  private Lucene98ScalarQuantizedVectorsReader quantizedVectorsReader;
 
-  Lucene98HnswVectorsReader(SegmentReadState state, Lucene98ScalarQuantizedVectorsReader reader)
-      throws IOException {
+  Lucene98HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
-    this.quantizedVectorsReader = reader;
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -98,6 +96,7 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene98HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
+    boolean quantizationReader = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
@@ -109,12 +108,15 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
                 Lucene98HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
+        quantizationReader = readFields(meta, state.fieldInfos);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+    }
+    if (quantizationReader) {
+      this.quantizedVectorsReader = new Lucene98ScalarQuantizedVectorsReader(state);
     }
     return versionMeta;
   }
@@ -155,16 +157,19 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+  private boolean readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
+    boolean hasQuantizedVectors = false;
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
+      hasQuantizedVectors = (meta.readByte() == 1) || hasQuantizedVectors;
       FieldEntry fieldEntry = readField(meta);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
+    return hasQuantizedVectors;
   }
 
   private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {

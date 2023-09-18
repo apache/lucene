@@ -63,10 +63,10 @@ public class TestScalarQuantizer extends LuceneTestCase {
   }
 
   public void testEdgeCase() {
-    float[] upperAndLower = ScalarQuantizer.getUpperAndLowerQuantile(new float[]{1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
+    float[] upperAndLower =
+        ScalarQuantizer.getUpperAndLowerQuantile(new float[] {1.0f, 1.0f, 1.0f, 1.0f, 1.0f}, 0.9f);
     assertEquals(1f, upperAndLower[0], 1e-7f);
     assertEquals(1f, upperAndLower[1], 1e-7f);
-
   }
 
   static void shuffleArray(float[] ar) {

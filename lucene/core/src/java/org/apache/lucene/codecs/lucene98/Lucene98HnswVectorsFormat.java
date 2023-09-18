@@ -192,11 +192,7 @@ public final class Lucene98HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    Lucene98ScalarQuantizedVectorsReader reader =
-        scalarQuantizedVectorsFormat != null
-            ? scalarQuantizedVectorsFormat.quantizationReader(state)
-            : null;
-    return new Lucene98HnswVectorsReader(state, reader);
+    return new Lucene98HnswVectorsReader(state);
   }
 
   @Override

@@ -285,6 +285,7 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
     // Every field has a calculated quantile for quantization
     final float lowerQuantile;
     final float upperQuantile;
+    final float configuredQuantile;
     final ScalarQuantizer scalarQuantizer;
 
     // the following four variables used to read docIds encoded by IndexDISI
@@ -314,6 +315,7 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
       quantizedVectorDataOffset = input.readVLong();
       quantizedVectorDataLength = input.readVLong();
       dimension = input.readVInt();
+      configuredQuantile = Float.intBitsToFloat(input.readInt());
       lowerQuantile = Float.intBitsToFloat(input.readInt());
       upperQuantile = Float.intBitsToFloat(input.readInt());
       scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile);

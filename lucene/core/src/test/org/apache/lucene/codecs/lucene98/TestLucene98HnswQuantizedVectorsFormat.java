@@ -17,17 +17,15 @@
 package org.apache.lucene.codecs.lucene98;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene98HnswQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new FilterCodec("Lucene98", TestUtil.getDefaultCodec()) {
+    return new Lucene98Codec() {
       @Override
-      public KnnVectorsFormat knnVectorsFormat() {
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene98HnswVectorsFormat(
             Lucene98HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene98HnswVectorsFormat.DEFAULT_BEAM_WIDTH,

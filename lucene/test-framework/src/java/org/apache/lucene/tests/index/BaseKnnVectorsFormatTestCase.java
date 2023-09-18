@@ -1409,7 +1409,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           }
         }
         assertEquals(
-                "encoding=" + vectorEncoding,
+            "encoding=" + vectorEncoding,
             fieldValuesCheckSum,
             checksum,
             vectorEncoding == VectorEncoding.BYTE ? numDocs * 0.2 : 1e-5);

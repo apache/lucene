@@ -43,7 +43,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     this.size = size;
     this.slice = slice;
     this.byteSize = dimension + Float.BYTES;
-    byteBuffer = ByteBuffer.allocate(byteSize);
+    byteBuffer = ByteBuffer.allocate(dimension);
     binaryValue = byteBuffer.array();
   }
 

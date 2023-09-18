@@ -138,7 +138,8 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     KnnFieldVectorsWriter<float[]> quantizedVectorWriter = null;
     // Quantization only supports FLOAT32 for now
-    if (quantizedVectorsWriter != null && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+    if (quantizedVectorsWriter != null
+        && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       quantizedVectorWriter = quantizedVectorsWriter.addField(fieldInfo);
     }
     FieldWriter<?> newField =
@@ -167,10 +168,10 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     if (finished) {
       throw new IllegalStateException("already finished");
     }
+    finished = true;
     if (quantizedVectorsWriter != null) {
       quantizedVectorsWriter.finish();
     }
-    finished = true;
 
     if (meta != null) {
       // write end of fields marker
@@ -208,6 +209,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
+        fieldData.writer != null,
         fieldData.fieldInfo,
         maxDoc,
         vectorDataOffset,
@@ -277,6 +279,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
+        fieldData.writer != null,
         fieldData.fieldInfo,
         maxDoc,
         vectorDataOffset,
@@ -432,7 +435,8 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       ScalarQuantizationState quantizationState = null;
-      if (quantizedVectorsWriter != null && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+      if (quantizedVectorsWriter != null
+          && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
         quantizationState = quantizedVectorsWriter.mergeQuantiles(fieldInfo, mergeState);
         quantizationDataInput =
             quantizedVectorsWriter.mergeOneField(fieldInfo, mergeState, quantizationState);
@@ -521,6 +525,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
+          quantizationState != null,
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
@@ -762,6 +767,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private void writeMeta(
+      boolean isQuantized,
       FieldInfo field,
       int maxDoc,
       long vectorDataOffset,
@@ -773,6 +779,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
       int[][] graphLevelNodeOffsets)
       throws IOException {
     meta.writeInt(field.number);
+    meta.writeByte(isQuantized ? (byte) 1 : (byte) 0);
     meta.writeInt(field.getVectorEncoding().ordinal());
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
     meta.writeVLong(vectorDataOffset);

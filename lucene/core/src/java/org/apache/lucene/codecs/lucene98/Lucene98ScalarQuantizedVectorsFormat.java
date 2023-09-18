@@ -28,7 +28,7 @@ import org.apache.lucene.index.SegmentWriteState;
  */
 public final class Lucene98ScalarQuantizedVectorsFormat {
 
-  static final String NAME = "Lucene98ScalarQuantizedFormat";
+  static final String NAME = "Lucene98ScalarQuantizedVectorsFormat";
 
   static final String META_CODEC_NAME = "Lucene98ScalarQuantizedVectorsFormatMeta";
 
