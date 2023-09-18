@@ -22,18 +22,28 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
-import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Executor wrapper responsible for the execution of concurrent tasks. Used to parallelize search
- * across segments as well as query rewrite in some cases.
+ * across segments as well as query rewrite in some cases. Exposes a {@link #createTask(Callable)}
+ * method to create tasks given a {@link Callable}, as well as the {@link #invokeAll(Collection)}
+ * method to execute a set of tasks concurrently. Once all tasks are submitted to the executor, it
+ * blocks and wait for all tasks to be completed, and then returns a list with the obtained results.
+ * Ensures that the underlying executor is only used for top-level {@link #invokeAll(Collection)}
+ * calls, and not for potential {@link #invokeAll(Collection)} calls made from one of the tasks.
+ * This is to prevent deadlock with certain types of executors, as well as to limit the level of
+ * parallelism.
  */
 class TaskExecutor {
+  private static final ThreadLocal<Boolean> isConcurrentTask = ThreadLocal.withInitial(() -> false);
+
   private final Executor executor;
 
   TaskExecutor(Executor executor) {
@@ -48,10 +58,17 @@ class TaskExecutor {
    * @return a list containing the results from the tasks execution
    * @param <T> the return type of the task execution
    */
-  final <T> List<T> invokeAll(Collection<RunnableFuture<T>> tasks) throws IOException {
-    for (Runnable task : tasks) {
-      executor.execute(task);
+  final <T> List<T> invokeAll(Collection<Task<T>> tasks) throws IOException {
+    if (isConcurrentTask.get()) {
+      for (Task<T> task : tasks) {
+        task.run();
+      }
+    } else {
+      for (Runnable task : tasks) {
+        executor.execute(task);
+      }
     }
+
     final List<T> results = new ArrayList<>();
     for (Future<T> future : tasks) {
       try {
@@ -63,5 +80,25 @@ class TaskExecutor {
       }
     }
     return results;
+  }
+
+  final <C> Task<C> createTask(Callable<C> callable) {
+    return new Task<>(callable);
+  }
+
+  static class Task<V> extends FutureTask<V> {
+    private Task(Callable<V> callable) {
+      super(callable);
+    }
+
+    @Override
+    public void run() {
+      try {
+        isConcurrentTask.set(true);
+        super.run();
+      } finally {
+        isConcurrentTask.set(false);
+      }
+    }
   }
 }
