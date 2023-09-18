@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
@@ -37,7 +38,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final Scorer[] scorers;
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead;
-  private final MaxScoreSumPropagator maxScorePropagator;
   private final DocAndScore scorable = new DocAndScore();
   private final double[] sumOfOtherClauses;
 
@@ -50,7 +50,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     this.iterators =
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
     lead = iterators[0];
-    this.maxScorePropagator = new MaxScoreSumPropagator(Arrays.asList(this.scorers));
     this.sumOfOtherClauses = new double[this.scorers.length];
   }
 
@@ -113,7 +112,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
       for (int i = 1; i < iterators.length; ++i) {
         // First check if we have a chance of having a match
-        if (hasMinCompetitiveScore && maxScorePropagator.scoreSumUpperBound(currentScore + sumOfOtherClauses[i]) < scorable.minCompetitiveScore) {
+        if (hasMinCompetitiveScore && MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length) < scorable.minCompetitiveScore) {
           doc = lead.nextDoc();
           continue advanceHead;
         }
@@ -138,7 +137,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
           currentScore += scorer.score();
         }
       }
-      scorable.doc = doc;
       scorable.score = (float) currentScore;
       collector.collect(doc);
       // The collect() call may have updated the minimum competitive score.
@@ -158,7 +156,6 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
   private class DocAndScore extends Scorable {
 
-    int doc;
     float score;
     float minCompetitiveScore;
 
@@ -168,14 +165,8 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     }
 
     @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
     public void setMinCompetitiveScore(float minScore) throws IOException {
       this.minCompetitiveScore = minScore;
-      maxScorePropagator.setMinCompetitiveScore(minScore);
     }
   }
 }
