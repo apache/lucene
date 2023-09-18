@@ -27,11 +27,10 @@ import org.apache.lucene.util.MathUtil;
 /**
  * BulkScorer implementation of {@link BlockMaxConjunctionScorer} that focuses on top-level
  * conjunctions over clauses that do not have two-phase iterators. Use a {@link DefaultBulkScorer}
- * around a {@link BlockMaxConjunctionScorer} if you need two-phase support.
- * Another difference with {@link BlockMaxConjunctionScorer} is that this scorer computes scores on
- * the fly in order to be able to skip evaluating more clauses if the total score would be under the
- * minimum competitive score anyway. This generally works well because computing a score is cheaper
- * than
+ * around a {@link BlockMaxConjunctionScorer} if you need two-phase support. Another difference with
+ * {@link BlockMaxConjunctionScorer} is that this scorer computes scores on the fly in order to be
+ * able to skip evaluating more clauses if the total score would be under the minimum competitive
+ * score anyway. This generally works well because computing a score is cheaper than decoding a block of postings.
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
@@ -74,7 +73,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         maxWindowScore += maxScore;
       }
       for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
-        sumOfOtherClauses[i] += sumOfOtherClauses[i+1];
+        sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
       }
       scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, (float) maxWindowScore);
       windowMin = Math.max(lead.docID(), windowMax + 1);
@@ -101,7 +100,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         continue;
       }
 
-      // Compute the score as we find more matching clauses, in order to skip advancing other clauses if the total score has no chance of being competitive. This works well because computing a score is usually cheaper than decoding a full block of postings and frequencies.
+      // Compute the score as we find more matching clauses, in order to skip advancing other
+      // clauses if the total score has no chance of being competitive. This works well because
+      // computing a score is usually cheaper than decoding a full block of postings and
+      // frequencies.
       final boolean hasMinCompetitiveScore = scorable.minCompetitiveScore > 0;
       double currentScore;
       if (hasMinCompetitiveScore) {
@@ -112,7 +114,9 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
       for (int i = 1; i < iterators.length; ++i) {
         // First check if we have a chance of having a match
-        if (hasMinCompetitiveScore && MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length) < scorable.minCompetitiveScore) {
+        if (hasMinCompetitiveScore
+            && MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length)
+                < scorable.minCompetitiveScore) {
           doc = lead.nextDoc();
           continue advanceHead;
         }
