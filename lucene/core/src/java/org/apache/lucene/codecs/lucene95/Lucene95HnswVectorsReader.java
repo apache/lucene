@@ -41,6 +41,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -465,7 +466,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
-    private final int[] currentNeighborsBuffer;
+    private int[] currentNeighborsBuffer;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
       this.dataIn =
@@ -499,6 +500,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
       if (arcCount > 0) {
+        if (arcCount > currentNeighborsBuffer.length) {
+          currentNeighborsBuffer = ArrayUtil.grow(currentNeighborsBuffer, arcCount);
+        }
         currentNeighborsBuffer[0] = dataIn.readVInt();
         for (int i = 1; i < arcCount; i++) {
           currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
