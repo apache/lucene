@@ -42,7 +42,8 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * parallelism.
  */
 class TaskExecutor {
-  private static final ThreadLocal<Boolean> isConcurrentTask = ThreadLocal.withInitial(() -> false);
+  // a static thread local is ok as long as there is a single TaskExecutor ever created
+  private static final ThreadLocal<Integer> runSameThread = ThreadLocal.withInitial(() -> 0);
 
   private final Executor executor;
 
@@ -59,7 +60,7 @@ class TaskExecutor {
    * @param <T> the return type of the task execution
    */
   final <T> List<T> invokeAll(Collection<Task<T>> tasks) throws IOException {
-    if (isConcurrentTask.get()) {
+    if (runSameThread.get() > 0) {
       for (Task<T> task : tasks) {
         task.run();
       }
@@ -94,10 +95,12 @@ class TaskExecutor {
     @Override
     public void run() {
       try {
-        isConcurrentTask.set(true);
+        Integer counter = runSameThread.get();
+        runSameThread.set(++counter);
         super.run();
       } finally {
-        isConcurrentTask.set(false);
+        Integer counter = runSameThread.get();
+        runSameThread.set(--counter);
       }
     }
   }
