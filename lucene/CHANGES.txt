@@ -130,6 +130,8 @@ Other
 API Changes
 ---------------------
 
+* GITHUB#12554: Allow FilteredDocIdSetIterator.match(doc) to throw IOException (Gokul Manoj)
+
 * GITHUB#11248: IntBlockPool's SliceReader, SliceWriter, and all int slice functionality are moved out to MemoryIndex.
   (Stefan Vodita)
 
@@ -150,6 +152,11 @@ New Features
 
 * GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
   vector search. (Jack Mazanec, Ben Trent)
+
+* GITHUB#12489: Add support for recursive graph bisection, also called
+  bipartite graph partitioning, and often abbreviated BP, an algorithm for
+  reordering doc IDs that results in more compact postings and faster queries,
+  especially conjunctions. (Adrien Grand)
 
 Improvements
 ---------------------
@@ -188,6 +195,9 @@ Optimizations
 
 * GITHUB#12490: Faster computation of top-k hits on boolean queries. (Adrien Grand)
 
+* GITHUB#12560: ExpressionValueSource defers #advanceExact on dependencies until their values are needed, avoiding
+  unnecessary advancing on values that are never evaluated (e.g., because of ternary expressions). (Greg Miller)
+
 Changes in runtime behavior
 ---------------------
 
@@ -222,6 +232,9 @@ Bug Fixes
   scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
 
 * LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
+
+* GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
+  that causes IndexOutOfBoundsException. (Egor Potemkin)
 
 Other
 ---------------------
