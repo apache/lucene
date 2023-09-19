@@ -91,6 +91,8 @@ Optimizations
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)
 
+* GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
+
 Bug Fixes
 ---------------------
 
