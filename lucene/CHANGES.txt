@@ -181,6 +181,8 @@ Changes in runtime behavior
 
 * GITHUB#12765: Disable vectorization on VMs that are not Hotspot-based.  (Uwe Schindler, Robert Muir)
 
+* GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
+
 Bug Fixes
 ---------------------
 
