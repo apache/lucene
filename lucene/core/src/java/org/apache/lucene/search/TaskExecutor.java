@@ -40,6 +40,8 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * calls, and not for potential {@link #invokeAll(Collection)} calls made from one of the tasks.
  * This is to prevent deadlock with certain types of pool based executors (e.g. {@link
  * java.util.concurrent.ThreadPoolExecutor}).
+ *
+ * @lucene.experimental
  */
 public final class TaskExecutor {
   // a static thread local is ok as long as we use a counter, which accounts for multiple
