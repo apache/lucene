@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.BytesRef;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 /** Unit test for {@link BufferedUpdates} */
 public class TestBufferedUpdates extends LuceneTestCase {
