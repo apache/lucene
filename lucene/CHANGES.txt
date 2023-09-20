@@ -75,7 +75,7 @@ Optimizations
 
 * GITHUB#12518: Use panama vector API to speed up l2norm calculations (Ben Trent)
 
-* GITHUB##12371: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
+* GITHUB#12480: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
 
 * GITHUB#12490: Faster computation of top-k hits on boolean queries. (Adrien Grand)
 
