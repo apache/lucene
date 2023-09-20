@@ -96,7 +96,7 @@ class TaskExecutor {
     public void run() {
       try {
         Integer counter = runSameThread.get();
-        runSameThread.set(++counter);
+        runSameThread.set(counter + 1);
         super.run();
       } finally {
         Integer counter = runSameThread.get();
