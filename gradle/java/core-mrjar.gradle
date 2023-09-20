@@ -29,7 +29,7 @@ configure(project(":lucene:core")) {
       dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
       tasks.named("compileMain${jdkVersion}Java").configure {
-        def apijar = layout.projectDirectory.file("src/generated/jdk/jdk${jdkVersion}.apijar")
+        def apijar = apijars.file("jdk${jdkVersion}.apijar")
         
         int releaseIndex = options.compilerArgs.indexOf("--release")
         options.compilerArgs.removeAt(releaseIndex)
