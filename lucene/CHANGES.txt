@@ -131,7 +131,6 @@ Other
 
 API Changes
 ---------------------
-(No changes)
 
 New Features
 ---------------------
@@ -139,7 +138,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
+  outside of the o.a.l.search package (Luca Cavanna)
 
 Optimizations
 ---------------------
