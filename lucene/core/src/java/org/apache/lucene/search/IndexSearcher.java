@@ -984,6 +984,7 @@ public class IndexSearcher {
 
   /**
    * Returns this searchers executor or <code>null</code> if no executor was provided
+   *
    * @deprecated use {@link #getTaskExecutor()} executor instead to execute concurrent tasks
    */
   @Deprecated
