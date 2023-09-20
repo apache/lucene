@@ -26,8 +26,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.document.Document;
@@ -705,17 +703,16 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<RunnableFuture<C>> listTasks = new ArrayList<>();
+      final List<TaskExecutor.Task<C>> listTasks = new ArrayList<>();
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
-        FutureTask<C> task =
-            new FutureTask<>(
+        TaskExecutor.Task<C> task =
+            taskExecutor.createTask(
                 () -> {
                   search(Arrays.asList(leaves), weight, collector);
                   return collector;
                 });
-
         listTasks.add(task);
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
