@@ -100,7 +100,7 @@ class TaskExecutor {
         super.run();
       } finally {
         Integer counter = runSameThread.get();
-        runSameThread.set(--counter);
+        runSameThread.set(counter - 1);
       }
     }
   }
