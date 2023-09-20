@@ -102,7 +102,7 @@ public class TestTaskExecutor extends LuceneTestCase {
     assertEquals("exc", runtimeException.getCause().getMessage());
   }
 
-  public void testInvokeAllFromTaskDoesNotDeadlock() throws IOException {
+  public void testInvokeAllFromTaskDoesNotDeadlockSameSearcher() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 500; i++) {
@@ -142,6 +142,63 @@ public class TestTaskExecutor extends LuceneTestCase {
                                           .invokeAll(Collections.singletonList(anotherTask));
                                       return null;
                                     });
+                        searcher.getTaskExecutor().invokeAll(Collections.singletonList(task));
+                      }
+
+                      @Override
+                      public void collect(int doc) {}
+                    };
+                  }
+
+                  @Override
+                  public ScoreMode scoreMode() {
+                    return ScoreMode.COMPLETE;
+                  }
+                };
+              }
+
+              @Override
+              public Void reduce(Collection<Collector> collectors) {
+                return null;
+              }
+            });
+      }
+    }
+  }
+
+  public void testInvokeAllFromTaskDoesNotDeadlockMultipleSearchers() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < 500; i++) {
+        iw.addDocument(new Document());
+      }
+      try (DirectoryReader reader = iw.getReader()) {
+        IndexSearcher searcher =
+            new IndexSearcher(reader, executorService) {
+              @Override
+              protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+                return slices(leaves, 1, 1);
+              }
+            };
+
+        searcher.search(
+            new MatchAllDocsQuery(),
+            new CollectorManager<Collector, Void>() {
+              @Override
+              public Collector newCollector() {
+                return new Collector() {
+                  @Override
+                  public LeafCollector getLeafCollector(LeafReaderContext context) {
+                    return new LeafCollector() {
+                      @Override
+                      public void setScorer(Scorable scorer) throws IOException {
+                        // the thread local used to prevent deadlock is static, so while each
+                        // searcher has its own
+                        // TaskExecutor, the safeguard is shared among all the searchers that get
+                        // the same executor
+                        IndexSearcher indexSearcher = new IndexSearcher(reader, executorService);
+                        TaskExecutor.Task<Void> task =
+                            indexSearcher.getTaskExecutor().createTask(() -> null);
                         searcher.getTaskExecutor().invokeAll(Collections.singletonList(task));
                       }
 

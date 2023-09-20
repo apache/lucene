@@ -38,12 +38,14 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * blocks and wait for all tasks to be completed, and then returns a list with the obtained results.
  * Ensures that the underlying executor is only used for top-level {@link #invokeAll(Collection)}
  * calls, and not for potential {@link #invokeAll(Collection)} calls made from one of the tasks.
- * This is to prevent deadlock with certain types of executors, as well as to limit the level of
- * parallelism.
+ * This is to prevent deadlock with certain types of pool based executors (e.g. {@link
+ * java.util.concurrent.ThreadPoolExecutor}).
  */
 class TaskExecutor {
-  // a static thread local is ok as long as there is a single TaskExecutor ever created
-  private static final ThreadLocal<Integer> runSameThread = ThreadLocal.withInitial(() -> 0);
+  // a static thread local is ok as long as we use a counter, which accounts for multiple
+  // searchers holding a different TaskExecutor all backed by the same executor
+  private static final ThreadLocal<Integer> numberOfRunningTasksInCurrentThread =
+      ThreadLocal.withInitial(() -> 0);
 
   private final Executor executor;
 
@@ -60,7 +62,7 @@ class TaskExecutor {
    * @param <T> the return type of the task execution
    */
   final <T> List<T> invokeAll(Collection<Task<T>> tasks) throws IOException {
-    if (runSameThread.get() > 0) {
+    if (numberOfRunningTasksInCurrentThread.get() > 0) {
       for (Task<T> task : tasks) {
         task.run();
       }
@@ -95,12 +97,12 @@ class TaskExecutor {
     @Override
     public void run() {
       try {
-        Integer counter = runSameThread.get();
-        runSameThread.set(counter + 1);
+        Integer counter = numberOfRunningTasksInCurrentThread.get();
+        numberOfRunningTasksInCurrentThread.set(counter + 1);
         super.run();
       } finally {
-        Integer counter = runSameThread.get();
-        runSameThread.set(counter - 1);
+        Integer counter = numberOfRunningTasksInCurrentThread.get();
+        numberOfRunningTasksInCurrentThread.set(counter - 1);
       }
     }
   }
