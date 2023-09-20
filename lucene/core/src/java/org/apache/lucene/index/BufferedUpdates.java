@@ -263,7 +263,8 @@ class BufferedUpdates implements Accountable {
      *
      * @see BytesRefHash#sort
      */
-    <E extends Exception> void forEachSorted(DeletedTermConsumer<E> consumer) throws E {
+    <E extends Exception> void forEachOrdered(DeletedTermConsumer<E> consumer) throws E {
+      long start = System.currentTimeMillis();
       List<Map.Entry<String, BytesRefIntMap>> deleteFields =
           new ArrayList<>(deleteTerms.entrySet());
       deleteFields.sort(Map.Entry.comparingByKey());
@@ -279,6 +280,8 @@ class BufferedUpdates implements Accountable {
           }
         }
       }
+      long end = System.currentTimeMillis();
+      System.out.println("sort took:" + (end - start));
     }
 
     @Override

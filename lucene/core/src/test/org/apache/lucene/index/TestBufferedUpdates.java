@@ -85,7 +85,7 @@ public class TestBufferedUpdates extends LuceneTestCase {
       List<Map.Entry<Term, Integer>> expectedSorted =
           expected.entrySet().stream().sorted(Map.Entry.comparingByKey()).toList();
       List<Map.Entry<Term, Integer>> actualSorted = new ArrayList<>();
-      actual.forEachSorted(
+      actual.forEachOrdered(
           ((term, docId) -> {
             Term copy = new Term(term.field, BytesRef.deepCopyOf(term.bytes));
             actualSorted.add(Map.entry(copy, docId));
