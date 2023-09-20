@@ -712,7 +712,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  private VectorSimilarityFunction randomSimilarity() {
+  protected VectorSimilarityFunction randomSimilarity() {
     return VectorSimilarityFunction.values()[
         random().nextInt(VectorSimilarityFunction.values().length)];
   }
@@ -1221,7 +1221,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     iw.updateDocument(idTerm, doc);
   }
 
-  private float[] randomVector(int dim) {
+  protected float[] randomVector(int dim) {
     assert dim > 0;
     float[] v = new float[dim];
     double squareSum = 0.0;

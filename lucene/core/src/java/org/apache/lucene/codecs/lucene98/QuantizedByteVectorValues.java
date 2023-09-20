@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene98;
 
+import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
 
 /**
@@ -23,5 +24,5 @@ import org.apache.lucene.index.ByteVectorValues;
  * Scalar quantization scores.
  */
 abstract class QuantizedByteVectorValues extends ByteVectorValues {
-  abstract float getScoreCorrectionConstant();
+  abstract float getScoreCorrectionConstant() throws IOException;
 }

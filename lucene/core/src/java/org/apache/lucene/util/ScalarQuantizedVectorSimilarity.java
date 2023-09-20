@@ -25,17 +25,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * parameters
  */
 public interface ScalarQuantizedVectorSimilarity {
-  static float scoreCorrectiveOffset(
-      VectorSimilarityFunction sim, byte[] quantizedVector, float alpha, float scalarOffset) {
-    if (sim == VectorSimilarityFunction.EUCLIDEAN) {
-      return 0f;
-    }
-    int sum = 0;
-    for (byte b : quantizedVector) {
-      sum += b;
-    }
-    return sum * alpha * scalarOffset;
-  }
 
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
       VectorSimilarityFunction sim, float constMultiplier) {

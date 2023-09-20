@@ -45,7 +45,10 @@ public class ScalarQuantizer {
   public void quantize(float[] src, byte[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
-      dest[i] = (byte) Math.max(-128f, Math.min(Math.round((src[i] - offset) / alpha), 127f));
+      dest[i] =
+          (byte)
+              Math.round(
+                  (Math.max(minQuantile, Math.min(maxQuantile, src[i])) - minQuantile) / alpha);
     }
   }
 
@@ -136,9 +139,13 @@ public class ScalarQuantizer {
     }
     Arrays.sort(vectorsToTake);
     int copyOffset = 0;
+    int index = 0;
     for (int i : vectorsToTake) {
-      int docId = floatVectorValues.advance(i);
-      assert docId != NO_MORE_DOCS;
+      while (index <= i) {
+        floatVectorValues.nextDoc();
+        index++;
+      }
+      assert floatVectorValues.docID() != NO_MORE_DOCS;
       float[] floatVector = floatVectorValues.vectorValue();
       System.arraycopy(floatVector, 0, values, copyOffset, floatVector.length);
       copyOffset += dim;

@@ -92,11 +92,7 @@ final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
         scalarQuantizer,
         values,
         quantizedQuery,
-        ScalarQuantizedVectorSimilarity.scoreCorrectiveOffset(
-            similarityFunction,
-            quantizedQuery,
-            scalarQuantizer.getAlpha(),
-            scalarQuantizer.getOffset()));
+        scalarQuantizer.calculateVectorOffset(quantizedQuery, similarityFunction));
   }
 
   ScalarQuantizedRandomVectorScorer(

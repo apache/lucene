@@ -152,20 +152,10 @@ public class TestScalarQuantizedVectorSimilarity extends LuceneTestCase {
       ScalarQuantizer scalarQuantizer,
       float globalOffset) {
     for (int i = 0; i < floats.length; i++) {
-      float storedOffset =
-          ScalarQuantizedVectorSimilarity.scoreCorrectiveOffset(
-              similarityFunction,
-              quantized[i],
-              scalarQuantizer.getAlpha(),
-              scalarQuantizer.getOffset());
+      float storedOffset = scalarQuantizer.calculateVectorOffset(quantized[i], similarityFunction);
       byte[] quantizedQuery = new byte[query.length];
       scalarQuantizer.quantize(query, quantizedQuery);
-      float queryOffset =
-          ScalarQuantizedVectorSimilarity.scoreCorrectiveOffset(
-              similarityFunction,
-              quantizedQuery,
-              scalarQuantizer.getAlpha(),
-              scalarQuantizer.getOffset());
+      float queryOffset = scalarQuantizer.calculateVectorOffset(quantizedQuery, similarityFunction);
       float original = similarityFunction.compare(query, floats[i]);
       float quantizedScore =
           quantizedSimilarity.score(

@@ -585,7 +585,7 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
       return maxQuantile;
     }
 
-    private ScalarQuantizer createQuantizer() {
+    ScalarQuantizer createQuantizer() {
       assert finished;
       return new ScalarQuantizer(minQuantile, maxQuantile);
     }
@@ -654,17 +654,30 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
 
   private static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
 
-    final QuantizedByteVectorValues values;
+    private final QuantizedByteVectorValues values;
+    private final ScalarQuantizer quantizer;
 
-    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
+    QuantizedByteVectorValueSub(
+        MergeState.DocMap docMap,
+        QuantizedByteVectorValues values,
+        ScalarQuantizer scalarQuantizer) {
       super(docMap);
       this.values = values;
+      this.quantizer = scalarQuantizer;
       assert values.docID() == -1;
     }
 
     @Override
     public int nextDoc() throws IOException {
       return values.nextDoc();
+    }
+
+    float getScoreCorrectionConstant() throws IOException {
+      if (quantizer == null) {
+        return values.getScoreCorrectionConstant();
+      }
+      return quantizer.calculateVectorOffset(
+          values.vectorValue(), VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
     }
   }
 
@@ -676,6 +689,10 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
       assert fieldInfo != null && fieldInfo.hasVectorValues();
 
       List<QuantizedByteVectorValueSub> subs = new ArrayList<>();
+      final ScalarQuantizer scalarQuantizer =
+          new ScalarQuantizer(
+              mergedQuantizationState.getLowerQuantile(),
+              mergedQuantizationState.getUpperQuantile());
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {
         if (mergeState.knnVectorsReaders[i] != null
             && mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name) != null) {
@@ -683,10 +700,6 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
               getQuantizedKnnVectorsReader(mergeState.knnVectorsReaders[i], fieldInfo.name);
           assert mergedQuantizationState != null;
           final QuantizedByteVectorValueSub sub;
-          final ScalarQuantizer scalarQuantizer =
-              new ScalarQuantizer(
-                  mergedQuantizationState.getLowerQuantile(),
-                  mergedQuantizationState.getUpperQuantile());
           // Either our quantization parameters are way different than the merged ones
           // Or we have never been quantized.
           if (reader == null || shouldRequantize(reader, fieldInfo.name, mergedQuantizationState)) {
@@ -696,11 +709,14 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
                     new QuantizedFloatVectorValues(
                         mergeState.knnVectorsReaders[i].getFloatVectorValues(fieldInfo.name),
                         fieldInfo.getVectorSimilarityFunction(),
-                        scalarQuantizer));
+                        scalarQuantizer),
+                    null);
           } else {
             sub =
                 new QuantizedByteVectorValueSub(
-                    mergeState.docMaps[i], reader.getQuantizedVectorValues(fieldInfo.name));
+                    mergeState.docMaps[i],
+                    reader.getQuantizedVectorValues(fieldInfo.name),
+                    scalarQuantizer);
           }
           subs.add(sub);
         }
@@ -764,8 +780,8 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
     }
 
     @Override
-    float getScoreCorrectionConstant() {
-      return current.values.getScoreCorrectionConstant();
+    float getScoreCorrectionConstant() throws IOException {
+      return current.getScoreCorrectionConstant();
     }
   }
 

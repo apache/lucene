@@ -442,7 +442,6 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
             quantizedVectorsWriter.mergeOneField(fieldInfo, mergeState, quantizationState);
       }
       // write the vector data to a temporary file
-      // write the vector data to a temporary file
       DocsWithFieldSet docsWithField =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> writeByteVectorData(
