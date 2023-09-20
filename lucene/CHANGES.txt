@@ -145,6 +145,12 @@ Optimizations
 ---------------------
 (No changes)
 
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
+  (Luca Cavanna)
+
 Bug Fixes
 ---------------------
 (No changes)
@@ -237,9 +243,6 @@ Changes in runtime behavior
   (Luca Cavanna)
 
 * GITHUB#12515: Offload sequential search execution to the executor that's optionally provided to the IndexSearcher
-  (Luca Cavanna)
-
-* GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
   (Luca Cavanna)
 
 Bug Fixes
