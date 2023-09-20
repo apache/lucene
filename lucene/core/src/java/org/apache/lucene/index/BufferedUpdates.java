@@ -281,7 +281,7 @@ class BufferedUpdates implements Accountable {
         }
       }
       long end = System.currentTimeMillis();
-      System.out.println("sort took:" + (end - start));
+      System.out.println("sort took:" + (end - start) + ", deleted terms: " + size());
     }
 
     @Override
