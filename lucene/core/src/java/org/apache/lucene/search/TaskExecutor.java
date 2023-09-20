@@ -100,7 +100,7 @@ public final class TaskExecutor {
    * Extension of {@link FutureTask} that tracks the number of tasks that are running in each
    * thread.
    *
-   * @param <V> the return tyupe of the task
+   * @param <V> the return type of the task
    */
   public static final class Task<V> extends FutureTask<V> {
     private Task(Callable<V> callable) {
