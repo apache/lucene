@@ -41,7 +41,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * This is to prevent deadlock with certain types of pool based executors (e.g. {@link
  * java.util.concurrent.ThreadPoolExecutor}).
  */
-class TaskExecutor {
+public final class TaskExecutor {
   // a static thread local is ok as long as we use a counter, which accounts for multiple
   // searchers holding a different TaskExecutor all backed by the same executor
   private static final ThreadLocal<Integer> numberOfRunningTasksInCurrentThread =
@@ -61,7 +61,7 @@ class TaskExecutor {
    * @return a list containing the results from the tasks execution
    * @param <T> the return type of the task execution
    */
-  final <T> List<T> invokeAll(Collection<Task<T>> tasks) throws IOException {
+  public <T> List<T> invokeAll(Collection<Task<T>> tasks) throws IOException {
     if (numberOfRunningTasksInCurrentThread.get() > 0) {
       for (Task<T> task : tasks) {
         task.run();
@@ -85,11 +85,24 @@ class TaskExecutor {
     return results;
   }
 
-  final <C> Task<C> createTask(Callable<C> callable) {
+  /**
+   * Creates a task given the provided {@link Callable}
+   *
+   * @param callable the callable to be executed as part of the task
+   * @return the created task
+   * @param <C> the return type of the task
+   */
+  public <C> Task<C> createTask(Callable<C> callable) {
     return new Task<>(callable);
   }
 
-  static class Task<V> extends FutureTask<V> {
+  /**
+   * Extension of {@link FutureTask} that tracks the number of tasks that are running in each
+   * thread.
+   *
+   * @param <V> the return tyupe of the task
+   */
+  public static final class Task<V> extends FutureTask<V> {
     private Task(Callable<V> callable) {
       super(callable);
     }

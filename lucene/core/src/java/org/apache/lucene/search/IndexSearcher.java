@@ -951,7 +951,12 @@ public class IndexSearcher {
     return executor;
   }
 
-  TaskExecutor getTaskExecutor() {
+  /**
+   * Returns the {@link TaskExecutor} that this searcher relies on to execute concurrent operations
+   *
+   * @return the task executor
+   */
+  public TaskExecutor getTaskExecutor() {
     return taskExecutor;
   }
 
