@@ -24,7 +24,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.Similarity;
@@ -257,28 +256,23 @@ final class BooleanWeight extends Weight {
   // Return a BulkScorer for the required clauses only
   private BulkScorer requiredBulkScorer(LeafReaderContext context) throws IOException {
     // Is there a single required clause by any chance? Then pull its bulk scorer.
-    Optional<WeightedBooleanClause> singleRequiredClause = null;
+    List<WeightedBooleanClause> requiredClauses = new ArrayList<>();
     for (WeightedBooleanClause wc : weightedClauses) {
-      if (wc.clause.isRequired() == false) {
-        continue;
-      }
-      if (singleRequiredClause == null) {
-        singleRequiredClause = Optional.of(wc);
-      } else {
-        singleRequiredClause = Optional.empty();
-        break;
+      if (wc.clause.isRequired()) {
+        requiredClauses.add(wc);
       }
     }
 
-    if (singleRequiredClause == null) {
+    if (requiredClauses.isEmpty()) {
       // No required clauses at all.
       return null;
-    } else if (singleRequiredClause.isPresent()) {
-      BulkScorer scorer = singleRequiredClause.get().weight.bulkScorer(context);
+    } else if (requiredClauses.size() == 1) {
+      WeightedBooleanClause clause = requiredClauses.get(0);
+      BulkScorer scorer = clause.weight.bulkScorer(context);
       if (scorer == null) {
         return null;
       }
-      if (singleRequiredClause.get().clause.isScoring() == false && scoreMode.needsScores()) {
+      if (clause.clause.isScoring() == false && scoreMode.needsScores()) {
         scorer = disableScoring(scorer);
       }
       return scorer;
@@ -288,12 +282,9 @@ final class BooleanWeight extends Weight {
     List<ScorerSupplier> requiredScoringSupplier = new ArrayList<>();
 
     long leadCost = Long.MAX_VALUE;
-    for (WeightedBooleanClause wc : weightedClauses) {
+    for (WeightedBooleanClause wc : requiredClauses) {
       Weight w = wc.weight;
       BooleanClause c = wc.clause;
-      if (c.isRequired() == false) {
-        continue;
-      }
       ScorerSupplier scorerSupplier = w.scorerSupplier(context);
       if (scorerSupplier == null) {
         // One clause doesn't have matches, so the entire conjunction doesn't have matches.

@@ -66,12 +66,11 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         scorers[i].advanceShallow(windowMin);
       }
 
-      for (int i = 0; i < scorers.length; ++i) {
-        sumOfOtherClauses[i] = scorers[i].getMaxScore(windowMax);
-      }
       double maxWindowScore = 0;
-      for (double maxScore : sumOfOtherClauses) {
-        maxWindowScore += maxScore;
+      for (int i = 0; i < scorers.length; ++i) {
+        double maxClauseScore = scorers[i].getMaxScore(windowMax);
+        sumOfOtherClauses[i] = maxClauseScore;
+        maxWindowScore += maxClauseScore;
       }
       for (int i = sumOfOtherClauses.length - 2; i >= 0; --i) {
         sumOfOtherClauses[i] += sumOfOtherClauses[i + 1];
@@ -159,7 +158,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     return lead.cost();
   }
 
-  private class DocAndScore extends Scorable {
+  private static class DocAndScore extends Scorable {
 
     float score;
     float minCompetitiveScore;
