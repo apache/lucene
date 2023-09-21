@@ -224,8 +224,7 @@ class BufferedUpdates implements Accountable {
                 bytesUsed.addAndGet(RamUsageEstimator.sizeOf(term.field));
                 return new BytesRefIntMap(pool, bytesUsed);
               });
-      int v = hash.put(term.bytes, value);
-      if (v == -1) {
+      if (hash.put(term.bytes, value)) {
         termsSize++;
       }
     }
@@ -301,7 +300,7 @@ class BufferedUpdates implements Accountable {
               BytesRefHash.DEFAULT_CAPACITY,
               new BytesRefHash.DirectBytesStartArray(BytesRefHash.DEFAULT_CAPACITY, counter));
       this.values = new int[BytesRefHash.DEFAULT_CAPACITY];
-      counter.addAndGet(BytesRefHash.DEFAULT_CAPACITY * Integer.BYTES);
+      counter.addAndGet(RamUsageEstimator.sizeOf(this.values));
     }
 
     private Set<BytesRef> keySet() {
@@ -314,12 +313,12 @@ class BufferedUpdates implements Accountable {
       return set;
     }
 
-    private int put(BytesRef key, int value) {
+    private boolean put(BytesRef key, int value) {
       assert value >= 0;
       int e = bytesRefHash.add(key);
       if (e < 0) {
         values[-e - 1] = value;
-        return value;
+        return false;
       } else {
         if (e >= values.length) {
           int originLength = values.length;
@@ -327,7 +326,7 @@ class BufferedUpdates implements Accountable {
           counter.addAndGet((long) (values.length - originLength) * Integer.BYTES);
         }
         values[e] = value;
-        return -1;
+        return true;
       }
     }
 
