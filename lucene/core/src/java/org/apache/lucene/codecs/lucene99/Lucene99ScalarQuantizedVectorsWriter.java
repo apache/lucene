@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat.calculateDefaultQuantile;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -55,10 +55,10 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *
  * @lucene.experimental
  */
-public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVectorsWriter {
+public final class Lucene99ScalarQuantizedVectorsWriter implements QuantizedVectorsWriter {
 
   private static final long BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene98ScalarQuantizedVectorsWriter.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsWriter.class);
 
   private static final float QUANTIZATION_RECOMPUTE_LIMIT = 32;
   private final SegmentWriteState segmentWriteState;
@@ -68,20 +68,20 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
 
   private boolean finished;
 
-  Lucene98ScalarQuantizedVectorsWriter(SegmentWriteState state, Float quantile) throws IOException {
+  Lucene99ScalarQuantizedVectorsWriter(SegmentWriteState state, Float quantile) throws IOException {
     this.quantile = quantile;
     segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_META_EXTENSION);
+            Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_META_EXTENSION);
 
     String quantizedVectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION);
+            Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION);
 
     boolean success = false;
     try {
@@ -91,14 +91,14 @@ public final class Lucene98ScalarQuantizedVectorsWriter implements QuantizedVect
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene98ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           quantizedVectorData,
-          Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME,
-          Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME,
+          Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;

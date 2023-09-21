@@ -15,37 +15,35 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapByteVectorValues extends ByteVectorValues
-    implements RandomAccessVectorValues<byte[]> {
+abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
+    implements RandomAccessQuantizedByteVectorValues {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
-  protected int lastOrd = -1;
   protected final byte[] binaryValue;
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
+  protected int lastOrd = -1;
+  protected float scoreCorrectionConstant;
 
-  OffHeapByteVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
+  OffHeapQuantizedByteVectorValues(int dimension, int size, IndexInput slice) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
-    this.byteSize = byteSize;
-    byteBuffer = ByteBuffer.allocate(byteSize);
+    this.byteSize = dimension + Float.BYTES;
+    byteBuffer = ByteBuffer.allocate(dimension);
     binaryValue = byteBuffer.array();
   }
 
@@ -61,42 +59,47 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
 
   @Override
   public byte[] vectorValue(int targetOrd) throws IOException {
-    if (lastOrd != targetOrd) {
-      readValue(targetOrd);
-      lastOrd = targetOrd;
+    if (lastOrd == targetOrd) {
+      return binaryValue;
     }
+    slice.seek((long) targetOrd * byteSize);
+    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension);
+    scoreCorrectionConstant = Float.intBitsToFloat(slice.readInt());
+    lastOrd = targetOrd;
     return binaryValue;
   }
 
-  private void readValue(int targetOrd) throws IOException {
-    slice.seek((long) targetOrd * byteSize);
-    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+  @Override
+  public float getScoreCorrectionConstant() {
+    return scoreCorrectionConstant;
   }
 
-  static OffHeapByteVectorValues load(
-      Lucene98HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2 || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+  static OffHeapQuantizedByteVectorValues load(
+      Lucene99ScalarQuantizedVectorsReader.FieldEntry fieldEntry, IndexInput vectorData)
+      throws IOException {
+    if (fieldEntry.docsWithFieldOffset == -2) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
     IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize = fieldEntry.dimension;
+        vectorData.slice(
+            "quantized-vector-data",
+            fieldEntry.quantizedVectorDataOffset,
+            fieldEntry.quantizedVectorDataLength);
     if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(
-          fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
+      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
     } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
+      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
     }
   }
 
   abstract Bits getAcceptOrds(Bits acceptDocs);
 
-  static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
+  static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     private int doc = -1;
 
-    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
-      super(dimension, size, slice, byteSize);
+    public DenseOffHeapVectorValues(int dimension, int size, IndexInput slice) {
+      super(dimension, size, slice);
     }
 
     @Override
@@ -124,8 +127,8 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
-      return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
+    public DenseOffHeapVectorValues copy() throws IOException {
+      return new DenseOffHeapVectorValues(dimension, size, slice.clone());
     }
 
     @Override
@@ -134,21 +137,20 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
   }
 
-  private static class SparseOffHeapVectorValues extends OffHeapByteVectorValues {
+  private static class SparseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene98HnswVectorsReader.FieldEntry fieldEntry;
+    private final Lucene99ScalarQuantizedVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene98HnswVectorsReader.FieldEntry fieldEntry,
+        Lucene99ScalarQuantizedVectorsReader.FieldEntry fieldEntry,
         IndexInput dataIn,
-        IndexInput slice,
-        int byteSize)
+        IndexInput slice)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
+      super(fieldEntry.dimension, fieldEntry.size, slice);
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
@@ -186,8 +188,8 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
+    public SparseOffHeapVectorValues copy() throws IOException {
+      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
     }
 
     @Override
@@ -214,10 +216,10 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
   }
 
-  private static class EmptyOffHeapVectorValues extends OffHeapByteVectorValues {
+  private static class EmptyOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
-      super(dimension, 0, null, 0);
+      super(dimension, 0, null);
     }
 
     private int doc = -1;
@@ -253,7 +255,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<byte[]> copy() throws IOException {
+    public EmptyOffHeapVectorValues copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 

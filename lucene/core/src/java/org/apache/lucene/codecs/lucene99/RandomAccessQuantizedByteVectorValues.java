@@ -14,34 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ScalarQuantizer;
+import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
-/** The quantization state, includes lower and upper quantile */
-class ScalarQuantizationState implements Accountable {
-  private final float lowerQuantile, upperQuantile;
-
-  ScalarQuantizationState(float lowerQuantile, float upperQuantile) {
-    this.lowerQuantile = lowerQuantile;
-    this.upperQuantile = upperQuantile;
-  }
-
-  ScalarQuantizer buildQuantizer() {
-    return new ScalarQuantizer(lowerQuantile, upperQuantile);
-  }
-
-  float getLowerQuantile() {
-    return lowerQuantile;
-  }
-
-  float getUpperQuantile() {
-    return upperQuantile;
-  }
+/**
+ * Random access values for <code>byte[]</code>, but also includes accessing the score correction
+ * constant for the current vector in the buffer.
+ */
+interface RandomAccessQuantizedByteVectorValues extends RandomAccessVectorValues<byte[]> {
+  float getScoreCorrectionConstant();
 
   @Override
-  public long ramBytesUsed() {
-    return Float.BYTES * 2;
-  }
+  RandomAccessQuantizedByteVectorValues copy() throws IOException;
 }

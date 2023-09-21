@@ -18,8 +18,8 @@ package org.apache.lucene.tests.codecs.vector;
 
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene98.Lucene98Codec;
-import org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 
 /**
  * This codec allows customization of the number of connections made for an hnsw index. Increasing
@@ -31,13 +31,13 @@ public class ConfigurableMCodec extends FilterCodec {
   private final KnnVectorsFormat knnVectorsFormat;
 
   public ConfigurableMCodec() {
-    super("ConfigurableMCodec", new Lucene98Codec());
-    knnVectorsFormat = new Lucene98HnswVectorsFormat(128, 100, null);
+    super("ConfigurableMCodec", new Lucene99Codec());
+    knnVectorsFormat = new Lucene99HnswVectorsFormat(128, 100, null);
   }
 
   public ConfigurableMCodec(int maxConn) {
-    super("ConfigurableMCodec", new Lucene98Codec());
-    knnVectorsFormat = new Lucene98HnswVectorsFormat(maxConn, 100, null);
+    super("ConfigurableMCodec", new Lucene99Codec());
+    knnVectorsFormat = new Lucene99HnswVectorsFormat(maxConn, 100, null);
   }
 
   @Override

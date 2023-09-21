@@ -180,10 +180,10 @@
  *       of files, recording dimensionally indexed fields, to enable fast numeric range filtering
  *       and large numeric values like BigInteger and BigDecimal (1D) and geographic shape
  *       intersection (2D, 3D).
- *   <li>{@link org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsFormat Vector values}. The
+ *   <li>{@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat Vector values}. The
  *       vector format stores numeric vectors in a format optimized for random access and
  *       computation, supporting high-dimensional nearest-neighbor search.
- *   <li>{@link org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat quantized
+ *   <li>{@link org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat quantized
  *       vector values}. The quantized vector format stores numeric vectors in a scalar quantized
  *       format optimized for random access and computation. Can be used in conjunction with HNSW to
  *       support approximate nearest-neighbor search at query time.
@@ -314,13 +314,13 @@
  * <td>Holds indexed points</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsFormat Vector values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat Vector values}</td>
  * <td>.vec, .vem</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data, and
  * <code>.vem</code> the vector metadata</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene98.Lucene98ScalarQuantizedVectorsFormat Quantized Vector values}</td>
+ * <td>{@link org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat Quantized Vector values}</td>
  * <td>.veq, .vemq</td>
  * <td><code>.veq</code>Holds quantized vector values; the byte[] encoded vectors and relevant offsets
  * <code>.vemq</code> the quantized vector metadata</td>
@@ -434,4 +434,4 @@
  * <code>UInt64</code> values, or better yet, {@link org.apache.lucene.store.DataOutput#writeVInt
  * VInt} values which have no limit. </div>
  */
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;

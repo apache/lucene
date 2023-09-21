@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -28,22 +29,24 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapFloatVectorValues extends FloatVectorValues
-    implements RandomAccessVectorValues<float[]> {
+abstract class OffHeapByteVectorValues extends ByteVectorValues
+    implements RandomAccessVectorValues<byte[]> {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
-  protected final int byteSize;
   protected int lastOrd = -1;
-  protected final float[] value;
+  protected final byte[] binaryValue;
+  protected final ByteBuffer byteBuffer;
+  protected final int byteSize;
 
-  OffHeapFloatVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
+  OffHeapByteVectorValues(int dimension, int size, IndexInput slice, int byteSize) {
     this.dimension = dimension;
     this.size = size;
     this.slice = slice;
     this.byteSize = byteSize;
-    value = new float[dimension];
+    byteBuffer = ByteBuffer.allocate(byteSize);
+    binaryValue = byteBuffer.array();
   }
 
   @Override
@@ -57,25 +60,27 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
-    if (lastOrd == targetOrd) {
-      return value;
+  public byte[] vectorValue(int targetOrd) throws IOException {
+    if (lastOrd != targetOrd) {
+      readValue(targetOrd);
+      lastOrd = targetOrd;
     }
-    slice.seek((long) targetOrd * byteSize);
-    slice.readFloats(value, 0, value.length);
-    lastOrd = targetOrd;
-    return value;
+    return binaryValue;
   }
 
-  static OffHeapFloatVectorValues load(
-      Lucene98HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+  private void readValue(int targetOrd) throws IOException {
+    slice.seek((long) targetOrd * byteSize);
+    slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), byteSize);
+  }
+
+  static OffHeapByteVectorValues load(
+      Lucene99HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
+    if (fieldEntry.docsWithFieldOffset == -2 || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize = fieldEntry.dimension * Float.BYTES;
+    int byteSize = fieldEntry.dimension;
     if (fieldEntry.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
@@ -86,7 +91,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   abstract Bits getAcceptOrds(Bits acceptDocs);
 
-  static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
+  static class DenseOffHeapVectorValues extends OffHeapByteVectorValues {
 
     private int doc = -1;
 
@@ -95,7 +100,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       return vectorValue(doc);
     }
 
@@ -119,7 +124,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() throws IOException {
+    public RandomAccessVectorValues<byte[]> copy() throws IOException {
       return new DenseOffHeapVectorValues(dimension, size, slice.clone(), byteSize);
     }
 
@@ -129,15 +134,15 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
   }
 
-  private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
+  private static class SparseOffHeapVectorValues extends OffHeapByteVectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene98HnswVectorsReader.FieldEntry fieldEntry;
+    private final Lucene99HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene98HnswVectorsReader.FieldEntry fieldEntry,
+        Lucene99HnswVectorsReader.FieldEntry fieldEntry,
         IndexInput dataIn,
         IndexInput slice,
         int byteSize)
@@ -160,7 +165,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       return vectorValue(disi.index());
     }
 
@@ -181,7 +186,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() throws IOException {
+    public RandomAccessVectorValues<byte[]> copy() throws IOException {
       return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
     }
 
@@ -209,7 +214,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
   }
 
-  private static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
+  private static class EmptyOffHeapVectorValues extends OffHeapByteVectorValues {
 
     public EmptyOffHeapVectorValues(int dimension) {
       super(dimension, 0, null, 0);
@@ -228,7 +233,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public byte[] vectorValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -248,12 +253,12 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public RandomAccessVectorValues<float[]> copy() throws IOException {
+    public RandomAccessVectorValues<byte[]> copy() throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) throws IOException {
+    public byte[] vectorValue(int targetOrd) throws IOException {
       throw new UnsupportedOperationException();
     }
 

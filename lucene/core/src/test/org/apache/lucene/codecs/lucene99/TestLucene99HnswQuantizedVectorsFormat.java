@@ -14,40 +14,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
-public class TestLucene98HnswVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return new Lucene99Codec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return new Lucene99HnswVectorsFormat(
+            Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+            Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+            new Lucene99ScalarQuantizedVectorsFormat());
+      }
+    };
   }
 
   public void testToString() {
-    Lucene98Codec customCodec =
-        new Lucene98Codec() {
+    Lucene99Codec customCodec =
+        new Lucene99Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene98HnswVectorsFormat(10, 20, null);
+            return new Lucene99HnswVectorsFormat(
+                10, 20, new Lucene99ScalarQuantizedVectorsFormat(0.9f));
           }
         };
     String expectedString =
-        "Lucene98HnswVectorsFormat(name=Lucene98HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=none)";
+        "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, quantile=0.9))";
     assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
-  }
-
-  public void testLimits() {
-    expectThrows(IllegalArgumentException.class, () -> new Lucene98HnswVectorsFormat(-1, 20, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene98HnswVectorsFormat(0, 20, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene98HnswVectorsFormat(20, 0, null));
-    expectThrows(IllegalArgumentException.class, () -> new Lucene98HnswVectorsFormat(20, -1, null));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene98HnswVectorsFormat(512 + 1, 20, null));
-    expectThrows(
-        IllegalArgumentException.class, () -> new Lucene98HnswVectorsFormat(20, 3201, null));
   }
 }

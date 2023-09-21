@@ -14,30 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.Sorter;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 
 /** Quantized vector reader */
-interface QuantizedVectorsWriter extends Closeable, Accountable {
+interface QuantizedVectorsReader extends Closeable, Accountable {
 
-  void finish() throws IOException;
+  QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
 
-  KnnFieldVectorsWriter<float[]> addField(FieldInfo fieldInfo) throws IOException;
-
-  void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
-
-  ScalarQuantizationState mergeQuantiles(FieldInfo fieldInfo, MergeState mergeState)
-      throws IOException;
-
-  IndexInput mergeOneField(
-      FieldInfo fieldInfo, MergeState mergeState, ScalarQuantizationState mergedQuantizationState)
-      throws IOException;
+  ScalarQuantizationState getQuantizationState(String fieldName);
 }

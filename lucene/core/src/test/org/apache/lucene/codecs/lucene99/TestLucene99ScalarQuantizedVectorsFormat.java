@@ -14,26 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestLucene98ScalarQuantizedVectorsFormat extends LuceneTestCase {
+public class TestLucene99ScalarQuantizedVectorsFormat extends LuceneTestCase {
 
   public void testDefaultQuantile() {
-    float defaultQuantile = Lucene98ScalarQuantizedVectorsFormat.calculateDefaultQuantile(99);
+    float defaultQuantile = Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(99);
     assertEquals(0.99f, defaultQuantile, 1e-5);
-    defaultQuantile = Lucene98ScalarQuantizedVectorsFormat.calculateDefaultQuantile(1);
+    defaultQuantile = Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(1);
     assertEquals(0.9f, defaultQuantile, 1e-5);
     defaultQuantile =
-        Lucene98ScalarQuantizedVectorsFormat.calculateDefaultQuantile(Integer.MAX_VALUE - 2);
+        Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile(Integer.MAX_VALUE - 2);
     assertEquals(1.0f, defaultQuantile, 1e-5);
   }
 
   public void testLimits() {
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene98ScalarQuantizedVectorsFormat(0.89f));
+        IllegalArgumentException.class, () -> new Lucene99ScalarQuantizedVectorsFormat(0.89f));
     expectThrows(
-        IllegalArgumentException.class, () -> new Lucene98ScalarQuantizedVectorsFormat(1.1f));
+        IllegalArgumentException.class, () -> new Lucene99ScalarQuantizedVectorsFormat(1.1f));
   }
 }

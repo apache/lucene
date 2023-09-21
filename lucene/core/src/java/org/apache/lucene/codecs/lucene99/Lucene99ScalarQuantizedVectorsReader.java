@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -45,15 +45,15 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVectorsReader {
+public final class Lucene99ScalarQuantizedVectorsReader implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene98ScalarQuantizedVectorsFormat.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsFormat.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
 
-  Lucene98ScalarQuantizedVectorsReader(SegmentReadState state) throws IOException {
+  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
     boolean success = false;
     try {
@@ -61,8 +61,8 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
           openDataInput(
               state,
               versionMeta,
-              Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
-              Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
+              Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
+              Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -76,7 +76,7 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene98ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_META_EXTENSION);
+            Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_META_EXTENSION);
     int versionMeta = -1;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
@@ -84,9 +84,9 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene98ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene98ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+                Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
+                Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -111,8 +111,8 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene98ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene98ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+              Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
+              Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -202,7 +202,7 @@ public final class Lucene98ScalarQuantizedVectorsReader implements QuantizedVect
 
   @Override
   public long ramBytesUsed() {
-    return Lucene98ScalarQuantizedVectorsReader.SHALLOW_SIZE
+    return Lucene99ScalarQuantizedVectorsReader.SHALLOW_SIZE
         + RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
   }

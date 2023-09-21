@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -96,11 +96,11 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *
  * @lucene.experimental
  */
-public final class Lucene98HnswVectorsFormat extends KnnVectorsFormat {
+public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
-  static final String META_CODEC_NAME = "Lucene98HnswVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene98HnswVectorsFormatData";
-  static final String VECTOR_INDEX_CODEC_NAME = "Lucene98HnswVectorsFormatIndex";
+  static final String META_CODEC_NAME = "Lucene99HnswVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene99HnswVectorsFormatData";
+  static final String VECTOR_INDEX_CODEC_NAME = "Lucene99HnswVectorsFormatIndex";
   static final String META_EXTENSION = "vem";
   static final String VECTOR_DATA_EXTENSION = "vec";
   static final String VECTOR_INDEX_EXTENSION = "vex";
@@ -133,22 +133,22 @@ public final class Lucene98HnswVectorsFormat extends KnnVectorsFormat {
 
   /**
    * Controls how many of the nearest neighbor candidates are connected to the new node. Defaults to
-   * {@link Lucene98HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
+   * {@link Lucene99HnswVectorsFormat#DEFAULT_MAX_CONN}. See {@link HnswGraph} for more details.
    */
   private final int maxConn;
 
   /**
    * The number of candidate neighbors to track while searching the graph for each newly inserted
-   * node. Defaults to to {@link Lucene98HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
+   * node. Defaults to to {@link Lucene99HnswVectorsFormat#DEFAULT_BEAM_WIDTH}. See {@link
    * HnswGraph} for details.
    */
   private final int beamWidth;
 
   /** Should this codec scalar quantize float32 vectors and use this format */
-  private final Lucene98ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat;
+  private final Lucene99ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat;
 
   /** Constructs a format using default graph construction parameters */
-  public Lucene98HnswVectorsFormat() {
+  public Lucene99HnswVectorsFormat() {
     this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, null);
   }
 
@@ -159,9 +159,9 @@ public final class Lucene98HnswVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param scalarQuantize the scalar quantization format
    */
-  public Lucene98HnswVectorsFormat(
-      int maxConn, int beamWidth, Lucene98ScalarQuantizedVectorsFormat scalarQuantize) {
-    super("Lucene98HnswVectorsFormat");
+  public Lucene99HnswVectorsFormat(
+      int maxConn, int beamWidth, Lucene99ScalarQuantizedVectorsFormat scalarQuantize) {
+    super("Lucene99HnswVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be postive and less than or equal to"
@@ -183,16 +183,16 @@ public final class Lucene98HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    Lucene98ScalarQuantizedVectorsWriter writer =
+    Lucene99ScalarQuantizedVectorsWriter writer =
         scalarQuantizedVectorsFormat != null
             ? scalarQuantizedVectorsFormat.quantizationWriter(state)
             : null;
-    return new Lucene98HnswVectorsWriter(state, maxConn, beamWidth, writer);
+    return new Lucene99HnswVectorsWriter(state, maxConn, beamWidth, writer);
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene98HnswVectorsReader(state);
+    return new Lucene99HnswVectorsReader(state);
   }
 
   @Override
@@ -202,7 +202,7 @@ public final class Lucene98HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene98HnswVectorsFormat(name=Lucene98HnswVectorsFormat, maxConn="
+    return "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn="
         + maxConn
         + ", beamWidth="
         + beamWidth

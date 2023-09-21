@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -54,19 +54,19 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene98HnswVectorsReader extends KnnVectorsReader
+public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene98HnswVectorsFormat.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
 
   private final FieldInfos fieldInfos;
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
-  private Lucene98ScalarQuantizedVectorsReader quantizedVectorsReader;
+  private Lucene99ScalarQuantizedVectorsReader quantizedVectorsReader;
 
-  Lucene98HnswVectorsReader(SegmentReadState state) throws IOException {
+  Lucene99HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
     boolean success = false;
@@ -75,14 +75,14 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
           openDataInput(
               state,
               versionMeta,
-              Lucene98HnswVectorsFormat.VECTOR_DATA_EXTENSION,
-              Lucene98HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
+              Lucene99HnswVectorsFormat.VECTOR_DATA_EXTENSION,
+              Lucene99HnswVectorsFormat.VECTOR_DATA_CODEC_NAME);
       vectorIndex =
           openDataInput(
               state,
               versionMeta,
-              Lucene98HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
-              Lucene98HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
+              Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
       success = true;
     } finally {
       if (success == false) {
@@ -94,7 +94,7 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
   private int readMetadata(SegmentReadState state) throws IOException {
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene98HnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
     boolean quantizationReader = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
@@ -103,9 +103,9 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene98HnswVectorsFormat.META_CODEC_NAME,
-                Lucene98HnswVectorsFormat.VERSION_START,
-                Lucene98HnswVectorsFormat.VERSION_CURRENT,
+                Lucene99HnswVectorsFormat.META_CODEC_NAME,
+                Lucene99HnswVectorsFormat.VERSION_START,
+                Lucene99HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         quantizationReader = readFields(meta, state.fieldInfos);
@@ -116,7 +116,7 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
       }
     }
     if (quantizationReader) {
-      this.quantizedVectorsReader = new Lucene98ScalarQuantizedVectorsReader(state);
+      this.quantizedVectorsReader = new Lucene99ScalarQuantizedVectorsReader(state);
     }
     return versionMeta;
   }
@@ -133,8 +133,8 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene98HnswVectorsFormat.VERSION_START,
-              Lucene98HnswVectorsFormat.VERSION_CURRENT,
+              Lucene99HnswVectorsFormat.VERSION_START,
+              Lucene99HnswVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -232,7 +232,7 @@ public final class Lucene98HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public long ramBytesUsed() {
-    return Lucene98HnswVectorsReader.SHALLOW_SIZE
+    return Lucene99HnswVectorsReader.SHALLOW_SIZE
         + RamUsageEstimator.sizeOfMap(
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
   }

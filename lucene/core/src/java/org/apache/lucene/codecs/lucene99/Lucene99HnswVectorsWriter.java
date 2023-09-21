@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene98;
+package org.apache.lucene.codecs.lucene99;
 
-import static org.apache.lucene.codecs.lucene98.Lucene98HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -66,22 +66,22 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  *
  * @lucene.experimental
  */
-public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
+public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData, vectorIndex;
   private final int M;
   private final int beamWidth;
-  private final Lucene98ScalarQuantizedVectorsWriter quantizedVectorsWriter;
+  private final Lucene99ScalarQuantizedVectorsWriter quantizedVectorsWriter;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
   private boolean finished;
 
-  Lucene98HnswVectorsWriter(
+  Lucene99HnswVectorsWriter(
       SegmentWriteState state,
       int M,
       int beamWidth,
-      Lucene98ScalarQuantizedVectorsWriter quantizedVectorsWriter)
+      Lucene99ScalarQuantizedVectorsWriter quantizedVectorsWriter)
       throws IOException {
     this.M = M;
     this.beamWidth = beamWidth;
@@ -89,19 +89,19 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     this.quantizedVectorsWriter = quantizedVectorsWriter;
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene98HnswVectorsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene98HnswVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene99HnswVectorsFormat.VECTOR_DATA_EXTENSION);
 
     String indexDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene98HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
+            Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
@@ -110,20 +110,20 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene98HnswVectorsFormat.META_CODEC_NAME,
-          Lucene98HnswVectorsFormat.VERSION_CURRENT,
+          Lucene99HnswVectorsFormat.META_CODEC_NAME,
+          Lucene99HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene98HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene98HnswVectorsFormat.VERSION_CURRENT,
+          Lucene99HnswVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene99HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorIndex,
-          Lucene98HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
-          Lucene98HnswVectorsFormat.VERSION_CURRENT,
+          Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
+          Lucene99HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       success = true;
@@ -461,7 +461,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
-      // we use Lucene98HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
+      // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
       int byteSize = fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
@@ -569,7 +569,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     // Find the KnnVectorReader with the most docs that meets the following criteria:
     //  1. Does not contain any deleted docs
-    //  2. Is a Lucene98HnswVectorsReader/PerFieldKnnVectorReader
+    //  2. Is a Lucene99HnswVectorsReader/PerFieldKnnVectorReader
     // If no readers exist that meet this criteria, return -1. If they do, return their index in
     // merge state
     int maxCandidateVectorCount = 0;
@@ -583,7 +583,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader instanceof Lucene98HnswVectorsReader candidateReader)) {
+          || !(currKnnVectorsReader instanceof Lucene99HnswVectorsReader candidateReader)) {
         continue;
       }
 
@@ -617,12 +617,12 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
         && perFieldReader.getFieldReader(fieldName)
-            instanceof Lucene98HnswVectorsReader fieldReader) {
+            instanceof Lucene99HnswVectorsReader fieldReader) {
       return fieldReader.getGraph(fieldName);
     }
 
-    if (knnVectorsReader instanceof Lucene98HnswVectorsReader) {
-      return ((Lucene98HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    if (knnVectorsReader instanceof Lucene99HnswVectorsReader) {
+      return ((Lucene99HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
     }
 
     // We should not reach here because knnVectorsReader's type is checked in
@@ -630,7 +630,7 @@ public final class Lucene98HnswVectorsWriter extends KnnVectorsWriter {
     throw new IllegalArgumentException(
         "Invalid KnnVectorsReader type for field: "
             + fieldName
-            + ". Must be Lucene98HnswVectorsReader or newer");
+            + ". Must be Lucene99HnswVectorsReader or newer");
   }
 
   private Map<Integer, Integer> getOldToNewOrdinalMap(
