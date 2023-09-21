@@ -24,8 +24,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -106,9 +104,9 @@ abstract class AbstractKnnVectorQuery extends Query {
   private TopDocs[] parallelSearch(
       List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
       throws IOException {
-    List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
+    List<TaskExecutor.Task<TopDocs>> tasks = new ArrayList<>();
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
+      tasks.add(taskExecutor.createTask(() -> searchLeaf(context, filterWeight)));
     }
     return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }

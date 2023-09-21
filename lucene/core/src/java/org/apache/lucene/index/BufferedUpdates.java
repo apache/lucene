@@ -288,6 +288,11 @@ class BufferedUpdates implements Accountable {
 
   private static class BytesRefIntMap {
 
+    private static final long INIT_RAM_BYTES =
+        RamUsageEstimator.shallowSizeOf(BytesRefIntMap.class)
+            + RamUsageEstimator.shallowSizeOf(BytesRefHash.class)
+            + RamUsageEstimator.sizeOf(new int[BytesRefHash.DEFAULT_CAPACITY]);
+
     private final Counter counter;
     private final BytesRefHash bytesRefHash;
     private int[] values;
@@ -300,7 +305,7 @@ class BufferedUpdates implements Accountable {
               BytesRefHash.DEFAULT_CAPACITY,
               new BytesRefHash.DirectBytesStartArray(BytesRefHash.DEFAULT_CAPACITY, counter));
       this.values = new int[BytesRefHash.DEFAULT_CAPACITY];
-      counter.addAndGet(RamUsageEstimator.sizeOf(this.values));
+      counter.addAndGet(INIT_RAM_BYTES);
     }
 
     private Set<BytesRef> keySet() {

@@ -57,6 +57,9 @@ API Changes
 
 * GITHUB#12407: Removed Scorable#docID. (Adrien Grand)
 
+* GITHUB#12580: Remove deprecated IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
+
 New Features
 ---------------------
 
@@ -131,7 +134,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#12578: Deprecate IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
 
 New Features
 ---------------------
@@ -139,12 +143,21 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
+  outside of the o.a.l.search package (Luca Cavanna)
 
 Optimizations
 ---------------------
 
+* GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
+
 * GITHUB#12573: Use radix sort to speed up the sorting of deleted terms. (Guo Feng)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
+  (Luca Cavanna)
 
 Bug Fixes
 ---------------------
