@@ -30,7 +30,8 @@ import org.apache.lucene.util.MathUtil;
  * around a {@link BlockMaxConjunctionScorer} if you need two-phase support. Another difference with
  * {@link BlockMaxConjunctionScorer} is that this scorer computes scores on the fly in order to be
  * able to skip evaluating more clauses if the total score would be under the minimum competitive
- * score anyway. This generally works well because computing a score is cheaper than decoding a block of postings.
+ * score anyway. This generally works well because computing a score is cheaper than decoding a
+ * block of postings.
  */
 final class BlockMaxConjunctionBulkScorer extends BulkScorer {
 
