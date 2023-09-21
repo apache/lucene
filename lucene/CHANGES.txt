@@ -96,6 +96,9 @@ Optimizations
 
 * GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
+* GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
+  descending score. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
@@ -211,9 +214,6 @@ Optimizations
 
 * GITHUB#12361: Faster top-level disjunctions sorted by descending score.
   (Adrien Grand)
-
-* GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
-  descending score. (Adrien Grand)
 
 * GITHUB#12444: Faster top-level disjunctions sorted by descending score in
   case of many terms or queries that expose suboptimal score upper bounds.
