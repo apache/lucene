@@ -285,9 +285,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
         int length = in.readVInt();
-        byte[] data = new byte[length];
-        in.readBytes(data, 0, length);
-        visitor.binaryField(info, data);
+        visitor.binaryField(info, in, length);
         break;
       case STRING:
         visitor.stringField(info, in.readString());
