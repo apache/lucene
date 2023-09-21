@@ -75,15 +75,13 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
 
   /** Writes a stored binary value from a {@link DataInput} and a {@code length}. */
   public void writeField(FieldInfo info, DataInput value, int length) throws IOException {
-     BytesRef bytesRef = new BytesRef(length);
-     value.readBytes(bytesRef.bytes, 0, bytesRef.length);
-     writeField(info, bytesRef);
+    BytesRef bytesRef = new BytesRef(length);
+    value.readBytes(bytesRef.bytes, 0, bytesRef.length);
+    writeField(info, bytesRef);
   }
 
   /** Writes a stored binary value. */
   public abstract void writeField(FieldInfo info, BytesRef value) throws IOException;
-
-
 
   /** Writes a stored String value. */
   public abstract void writeField(FieldInfo info, String value) throws IOException;
