@@ -39,7 +39,9 @@ public class PimPhraseWeight extends Weight {
 
   @Override
   public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    return new PimBulkScorer(scorer(context));
+    Scorer scorer = scorer(context);
+    if (scorer == null) return null;
+    return new PimBulkScorer(scorer);
   }
 
   @Override

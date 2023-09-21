@@ -29,6 +29,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.*;
@@ -111,7 +112,12 @@ public class PimSystemManager {
 
   /** Tells whether the current PIM index loaded is up-to-date and can be used to answer queries */
   public boolean isReady(LeafReaderContext context) {
-    return indexLoaded;
+    if (!indexLoaded) return false;
+    if (context.reader() instanceof SegmentReader) {
+      String commitName = ((SegmentReader) context.reader()).getSegmentName();
+      return (commitName.compareTo(pimIndexInfo.segmentCommitName) == 0);
+    }
+    return false;
   }
 
   /**
