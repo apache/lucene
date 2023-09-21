@@ -148,7 +148,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
 
 Changes in runtime behavior
 ---------------------
