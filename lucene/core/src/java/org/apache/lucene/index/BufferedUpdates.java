@@ -189,12 +189,12 @@ class BufferedUpdates implements Accountable {
   static class DeletedTerms implements Accountable {
 
     private final Counter bytesUsed = Counter.newCounter();
+    private final ByteBlockPool pool =
+        new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
     private final Map<String, BytesRefIntMap> deleteTerms = new HashMap<>();
-    private int termsSize;
+    private int termsSize = 0;
 
-    DeletedTerms() {
-      this.termsSize = 0;
-    }
+    DeletedTerms() {}
 
     /**
      * Get the newest doc id of the deleted term.
@@ -222,7 +222,7 @@ class BufferedUpdates implements Accountable {
               term.field,
               k -> {
                 bytesUsed.addAndGet(RamUsageEstimator.sizeOf(term.field));
-                return new BytesRefIntMap(bytesUsed);
+                return new BytesRefIntMap(pool, bytesUsed);
               });
       int v = hash.put(term.bytes, value);
       if (v == -1) {
@@ -293,11 +293,11 @@ class BufferedUpdates implements Accountable {
     private final BytesRefHash bytesRefHash;
     private int[] values;
 
-    private BytesRefIntMap(Counter counter) {
+    private BytesRefIntMap(ByteBlockPool pool, Counter counter) {
       this.counter = counter;
       this.bytesRefHash =
           new BytesRefHash(
-              new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(counter)),
+              pool,
               BytesRefHash.DEFAULT_CAPACITY,
               new BytesRefHash.DirectBytesStartArray(BytesRefHash.DEFAULT_CAPACITY, counter));
       this.values = new int[BytesRefHash.DEFAULT_CAPACITY];
