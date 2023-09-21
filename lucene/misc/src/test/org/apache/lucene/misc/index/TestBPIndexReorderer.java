@@ -21,6 +21,7 @@ import static org.apache.lucene.misc.index.BPIndexReorderer.fastLog2;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -47,7 +48,11 @@ public class TestBPIndexReorderer extends LuceneTestCase {
 
   public void testSingleTermWithForkJoinPool() throws IOException {
     int concurrency = TestUtil.nextInt(random(), 1, 8);
-    ForkJoinPool pool = new ForkJoinPool(concurrency);
+    // The default ForkJoinPool implementation uses a thread factory that removes all permissions on
+    // threads, so we need to create our own to avoid tests failing with FS-based directories.
+    ForkJoinPool pool =
+        new ForkJoinPool(
+            concurrency, p -> new ForkJoinWorkerThread(p) {}, null, random().nextBoolean());
     try {
       doTestSingleTerm(pool);
     } finally {

@@ -74,7 +74,9 @@ import org.apache.lucene.util.OfflineSorter.BufferSize;
  *
  * Directory targetDir = FSDirectory.open(targetPath);
  * BPIndexReorderer reorderer = new BPIndexReorderer();
- * reorderer.setForkJoinPool(ForkJoinPool.commonPool());
+ * ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors(),
+ *     p -&gt; new ForkJoinWorkerThread(p) {}, null, false);
+ * reorderer.setForkJoinPool(pool);
  * reorderer.setFields(Collections.singleton("body"));
  * CodecReader reorderedReaderView = reorderer.reorder(SlowCodecReaderWrapper.wrap(reader), targetDir);
  * try (IndexWriter w = new IndexWriter(targetDir, new IndexWriterConfig().setOpenMode(OpenMode.CREATE))) {
