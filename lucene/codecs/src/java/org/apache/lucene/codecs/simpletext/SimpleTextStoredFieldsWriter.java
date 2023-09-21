@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
@@ -143,6 +144,13 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
     write(VALUE);
     write(value);
     newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, DataInput value, int length) throws IOException {
+    BytesRef bytesRef = new BytesRef(length);
+    value.readBytes(bytesRef.bytes, 0, bytesRef.length);
+    writeField(info, bytesRef);
   }
 
   @Override
