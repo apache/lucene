@@ -314,6 +314,9 @@ final class BooleanWeight extends Weight {
     }
     List<Scorer> requiredScoring = new ArrayList<>();
     for (ScorerSupplier ss : requiredScoringSupplier) {
+      if (requiredScoringSupplier.size() == 1) {
+        ss.setTopLevelScoringClause();
+      }
       requiredScoring.add(ss.get(leadCost));
     }
     if (scoreMode == ScoreMode.TOP_SCORES
