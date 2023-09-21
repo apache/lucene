@@ -144,7 +144,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#12573: Speed up sort on deleted terms. (Guo Feng)
+* GITHUB#12573: Use radix sort to speed up the sorting of deleted terms. (Guo Feng)
 
 Bug Fixes
 ---------------------
