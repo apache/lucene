@@ -207,7 +207,7 @@ public final class SynonymQuery extends Query {
       termStates = new TermStates[terms.length];
       for (int i = 0; i < termStates.length; i++) {
         Term term = new Term(field, terms[i].term);
-        TermStates ts = TermStates.build(searcher.getTopReaderContext(), term, true);
+        TermStates ts = TermStates.build(searcher, term, true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
           TermStatistics termStats =
