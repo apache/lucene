@@ -982,7 +982,12 @@ public class IndexSearcher {
     return new CollectionStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
-  /** Returns this searchers executor or <code>null</code> if no executor was provided */
+  /**
+   * Returns this searchers executor or <code>null</code> if no executor was provided
+   *
+   * @deprecated use {@link #getTaskExecutor()} executor instead to execute concurrent tasks
+   */
+  @Deprecated
   public Executor getExecutor() {
     return executor;
   }

@@ -7,6 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#12578: Deprecate IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
 
 New Features
 ---------------------
