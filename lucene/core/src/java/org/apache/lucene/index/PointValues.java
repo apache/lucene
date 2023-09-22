@@ -330,7 +330,7 @@ public abstract class PointValues {
     /** Similar to {@link IntersectVisitor#visit(int, byte[])} but return a match state. */
     default int visitWithState(int docID, byte[] packedValue, int sortedDim) throws IOException {
       visit(docID, packedValue);
-      return -1;
+      return MatchState.INVALID;
     }
 
     /**
