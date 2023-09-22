@@ -25,8 +25,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
@@ -654,7 +652,7 @@ public class IndexSearcher {
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
-    if (leafSlices == null || leafSlices.length <= 1) {
+    if (leafSlices == null || leafSlices.length == 0) {
       search(leafContexts, weight, firstCollector);
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
@@ -669,17 +667,16 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<RunnableFuture<C>> listTasks = new ArrayList<>();
+      final List<TaskExecutor.Task<C>> listTasks = new ArrayList<>();
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
-        FutureTask<C> task =
-            new FutureTask<>(
+        TaskExecutor.Task<C> task =
+            taskExecutor.createTask(
                 () -> {
                   search(Arrays.asList(leaves), weight, collector);
                   return collector;
                 });
-
         listTasks.add(task);
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
@@ -949,12 +946,12 @@ public class IndexSearcher {
     return new CollectionStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
-  /** Returns this searchers executor or <code>null</code> if no executor was provided */
-  public Executor getExecutor() {
-    return executor;
-  }
-
-  TaskExecutor getTaskExecutor() {
+  /**
+   * Returns the {@link TaskExecutor} that this searcher relies on to execute concurrent operations
+   *
+   * @return the task executor
+   */
+  public TaskExecutor getTaskExecutor() {
     return taskExecutor;
   }
 

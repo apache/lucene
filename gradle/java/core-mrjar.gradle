@@ -29,20 +29,19 @@ configure(project(":lucene:core")) {
       dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
       tasks.named("compileMain${jdkVersion}Java").configure {
-        def apijar = new File(apijars, "jdk${jdkVersion}.apijar")
-        
-        inputs.file(apijar)
+        def apijar = apijars.file("jdk${jdkVersion}.apijar")
         
         int releaseIndex = options.compilerArgs.indexOf("--release")
         options.compilerArgs.removeAt(releaseIndex)
         options.compilerArgs.removeAt(releaseIndex)
         options.compilerArgs += [
           "-Xlint:-options",
-          "--patch-module", "java.base=${apijar}",
           "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
           // for compilation we patch the incubator packages into java.base, this has no effect on resulting class files:
           "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
+
+        options.compilerArgumentProviders.add(new CompilerArgsProvider(apiJarFile: apijar))
       }
     }
     
@@ -57,5 +56,17 @@ configure(project(":lucene:core")) {
         'Multi-Release': 'true'
       )
     }
+  }
+}
+
+class CompilerArgsProvider implements CommandLineArgumentProvider {
+
+  @InputFile
+  @PathSensitive(PathSensitivity.RELATIVE)
+  RegularFile apiJarFile
+
+  @Override
+  Iterable<String> asArguments() {
+    return ["--patch-module", "java.base=${apiJarFile}"]
   }
 }

@@ -24,8 +24,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.RunnableFuture;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -95,23 +93,20 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) {
-    try {
-      TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
-      for (LeafReaderContext ctx : leafReaderContexts) {
-        perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
-      }
-      return perLeafResults;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) throws IOException {
+    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+    for (LeafReaderContext ctx : leafReaderContexts) {
+      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
     }
+    return perLeafResults;
   }
 
   private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor) {
-    List<RunnableFuture<TopDocs>> tasks = new ArrayList<>();
+      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
+      throws IOException {
+    List<TaskExecutor.Task<TopDocs>> tasks = new ArrayList<>();
     for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(new FutureTask<>(() -> searchLeaf(context, filterWeight)));
+      tasks.add(taskExecutor.createTask(() -> searchLeaf(context, filterWeight)));
     }
     return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }

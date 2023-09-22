@@ -57,6 +57,9 @@ API Changes
 
 * GITHUB#12407: Removed Scorable#docID. (Adrien Grand)
 
+* GITHUB#12580: Remove deprecated IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
+
 New Features
 ---------------------
 
@@ -90,6 +93,8 @@ Optimizations
 
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)
+
+* GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
 Bug Fixes
 ---------------------
@@ -125,10 +130,48 @@ Other
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
+======================== Lucene 9.9.0 =======================
+
+API Changes
+---------------------
+* GITHUB#12578: Deprecate IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+* GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
+  outside of the o.a.l.search package (Luca Cavanna)
+
+Optimizations
+---------------------
+* GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
+
+* GITHUB#12573: Use radix sort to speed up the sorting of deleted terms. (Guo Feng)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
+  (Luca Cavanna)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.8.0 =======================
 
 API Changes
 ---------------------
+
+* GITHUB#12554: Allow FilteredDocIdSetIterator.match(doc) to throw IOException (Gokul Manoj)
 
 * GITHUB#11248: IntBlockPool's SliceReader, SliceWriter, and all int slice functionality are moved out to MemoryIndex.
   (Stefan Vodita)
@@ -138,7 +181,7 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
+* GITHUB#12380: Introduced LeafCollector#finish, a hook that runs after
   collection has finished running on a leaf. (Adrien Grand)
 
 * LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
@@ -150,6 +193,11 @@ New Features
 
 * GITHUB#12479: Add new Maximum Inner Product vector similarity function for non-normalized dot-product
   vector search. (Jack Mazanec, Ben Trent)
+
+* GITHUB#12489: Add support for recursive graph bisection, also called
+  bipartite graph partitioning, and often abbreviated BP, an algorithm for
+  reordering doc IDs that results in more compact postings and faster queries,
+  especially conjunctions. (Adrien Grand)
 
 Improvements
 ---------------------
@@ -184,6 +232,26 @@ Optimizations
 
 * GITHUB#12518: Use panama vector API to speed up l2norm calculations (Ben Trent)
 
+* GITHUB#12480: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
+
+* GITHUB#12490: Faster computation of top-k hits on boolean queries. (Adrien Grand)
+
+* GITHUB#12560: ExpressionValueSource defers #advanceExact on dependencies until their values are needed, avoiding
+  unnecessary advancing on values that are never evaluated (e.g., because of ternary expressions). (Greg Miller)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12516: Unwrap and throw execution exceptions cause when performing concurrent search (Luca Cavanna)
+
+* GITHUB#12498: Offload concurrent search execution to the executor that's optionally provided to the IndexSearcher.
+  Tasks are no longer executed on the caller thread when rejected or if the executor queue goes above a predefined
+  threshold. Adaptive behaviour as well as a saturation policy can be incorporated in the provided executor instead.
+  (Luca Cavanna)
+
+* GITHUB#12515: Offload sequential search execution to the executor that's optionally provided to the IndexSearcher
+  (Luca Cavanna)
+
 Bug Fixes
 ---------------------
 
@@ -200,9 +268,16 @@ Bug Fixes
 * GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
   (Greg Miller).
 
-* GITHUB#2472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
+* GITHUB#12472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
   impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
   scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
+
+* LUCENE-12521: Sort After returning in-correct result when missing values are competitive. (Chaitanya Gohel)
+
+* GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
+  that causes IndexOutOfBoundsException. (Egor Potemkin)
+
+* GITHUB#12571: Fix HNSW graph read bug when built with excessive connections. (Ben Trent).
 
 Other
 ---------------------
