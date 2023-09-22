@@ -16,8 +16,14 @@
  */
 package org.apache.lucene.index;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 /** Unit test for {@link BufferedUpdates} */
 public class TestBufferedUpdates extends LuceneTestCase {
@@ -28,14 +34,14 @@ public class TestBufferedUpdates extends LuceneTestCase {
     assertFalse(bu.any());
     int queries = atLeast(1);
     for (int i = 0; i < queries; i++) {
-      final int docIDUpto = random().nextBoolean() ? Integer.MAX_VALUE : random().nextInt();
+      final int docIDUpto = random().nextBoolean() ? Integer.MAX_VALUE : random().nextInt(100000);
       final Term term = new Term("id", Integer.toString(random().nextInt(100)));
       bu.addQuery(new TermQuery(term), docIDUpto);
     }
 
     int terms = atLeast(1);
     for (int i = 0; i < terms; i++) {
-      final int docIDUpto = random().nextBoolean() ? Integer.MAX_VALUE : random().nextInt();
+      final int docIDUpto = random().nextBoolean() ? Integer.MAX_VALUE : random().nextInt(100000);
       final Term term = new Term("id", Integer.toString(random().nextInt(100)));
       bu.addTerm(term, docIDUpto);
     }
@@ -51,5 +57,47 @@ public class TestBufferedUpdates extends LuceneTestCase {
     bu.clear();
     assertFalse(bu.any());
     assertEquals(bu.ramBytesUsed(), 0L);
+  }
+
+  public void testDeletedTerms() {
+    int iters = atLeast(10);
+    String[] fields = new String[] {"a", "b", "c"};
+    for (int iter = 0; iter < iters; iter++) {
+
+      Map<Term, Integer> expected = new HashMap<>();
+      BufferedUpdates.DeletedTerms actual = new BufferedUpdates.DeletedTerms();
+      assertTrue(actual.isEmpty());
+
+      int termCount = atLeast(5000);
+      int maxBytesNum = random().nextInt(3) + 1;
+      for (int i = 0; i < termCount; i++) {
+        int byteNum = random().nextInt(maxBytesNum) + 1;
+        byte[] bytes = new byte[byteNum];
+        random().nextBytes(bytes);
+        Term term = new Term(fields[random().nextInt(fields.length)], new BytesRef(bytes));
+        int value = random().nextInt(10000000);
+        expected.put(term, value);
+        actual.put(term, value);
+      }
+
+      assertEquals(expected.size(), actual.size());
+
+      for (Map.Entry<Term, Integer> entry : expected.entrySet()) {
+        assertEquals(entry.getValue(), Integer.valueOf(actual.get(entry.getKey())));
+      }
+
+      List<Map.Entry<Term, Integer>> expectedSorted =
+          expected.entrySet().stream()
+              .sorted(Map.Entry.comparingByKey())
+              .collect(Collectors.toList());
+      List<Map.Entry<Term, Integer>> actualSorted = new ArrayList<>();
+      actual.forEachOrdered(
+          ((term, docId) -> {
+            Term copy = new Term(term.field, BytesRef.deepCopyOf(term.bytes));
+            actualSorted.add(Map.entry(copy, docId));
+          }));
+
+      assertEquals(expectedSorted, actualSorted);
+    }
   }
 }
