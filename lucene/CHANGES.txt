@@ -57,6 +57,9 @@ API Changes
 
 * GITHUB#12407: Removed Scorable#docID. (Adrien Grand)
 
+* GITHUB#12580: Remove deprecated IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
+
 New Features
 ---------------------
 
@@ -90,6 +93,8 @@ Optimizations
 
 * GITHUB#12408: Lazy initialization improvements for Facets implementations when there are segments with no hits
   to count. (Greg Miller)
+
+* GITHUB#12552: Make FSTPostingsFormat load FSTs off-heap. (Tony X)
 
 Bug Fixes
 ---------------------
@@ -125,6 +130,40 @@ Other
 
 * GITHUB#12239: Hunspell: reduced suggestion set dependency on the hash table order (Peter Gromov)
 
+======================== Lucene 9.9.0 =======================
+
+API Changes
+---------------------
+* GITHUB#12578: Deprecate IndexSearcher#getExecutor in favour of executing concurrent tasks using
+  the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+* GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
+  outside of the o.a.l.search package (Luca Cavanna)
+
+Optimizations
+---------------------
+* GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
+
+Changes in runtime behavior
+---------------------
+
+* GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
+  (Luca Cavanna)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================== Lucene 9.8.0 =======================
 
 API Changes
@@ -140,7 +179,7 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#12383: Introduced LeafCollector#finish, a hook that runs after
+* GITHUB#12380: Introduced LeafCollector#finish, a hook that runs after
   collection has finished running on a leaf. (Adrien Grand)
 
 * LUCENE-8183, GITHUB#9231: Added the abbility to get noSubMatches and noOverlappingMatches in
@@ -191,7 +230,7 @@ Optimizations
 
 * GITHUB#12518: Use panama vector API to speed up l2norm calculations (Ben Trent)
 
-* GITHUB##12371: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
+* GITHUB#12480: Lazy computation of similarity score during initializeFromGraph (Jack Wang)
 
 * GITHUB#12490: Faster computation of top-k hits on boolean queries. (Adrien Grand)
 
@@ -227,7 +266,7 @@ Bug Fixes
 * GITHUB#12451: Change TestStringsToAutomaton validation to avoid automaton conversion bug discovered in GH#12458
   (Greg Miller).
 
-* GITHUB#2472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
+* GITHUB#12472: UTF32ToUTF8 would sometimes accept extra invalid UTF-8 binary sequences.  This should not have any
   impact on the user, unless you explicitly invoke the convert function of UTF32ToUTF8, and in the extremely rare
   scenario of searching a non-UTF-8 inverted field with Unicode search terms (Tang Donghai).
 
@@ -235,6 +274,8 @@ Bug Fixes
 
 * GITHUB#12555: Fix bug in TermsEnum#seekCeil on doc values terms enums
   that causes IndexOutOfBoundsException. (Egor Potemkin)
+
+* GITHUB#12571: Fix HNSW graph read bug when built with excessive connections. (Ben Trent).
 
 Other
 ---------------------

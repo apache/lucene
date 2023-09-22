@@ -95,6 +95,11 @@ Callers should remove the parameter when calling this method.
 The former `DaciukMihovAutomatonBuilder#build` functionality is exposed through `Automata#makeStringUnion`.
 Users should be able to directly migrate to the `Automata` static method as a 1:1 replacement.
 
+### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580) 
+
+The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors 
+has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor` 
+that the searcher holds, retrieved via `IndexSearcher#getTaskExecutor`.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 
