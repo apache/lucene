@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -86,7 +88,7 @@ public class TestBufferedUpdates extends LuceneTestCase {
       }
 
       List<Map.Entry<Term, Integer>> expectedSorted =
-          expected.entrySet().stream().sorted(Map.Entry.comparingByKey()).toList();
+          expected.entrySet().stream().sorted(Map.Entry.comparingByKey()).collect(Collectors.toList());
       List<Map.Entry<Term, Integer>> actualSorted = new ArrayList<>();
       actual.forEachOrdered(
           ((term, docId) -> {
