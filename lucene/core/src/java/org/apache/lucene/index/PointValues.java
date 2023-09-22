@@ -350,10 +350,7 @@ public abstract class PointValues {
      */
     default int visitWithState(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
         throws IOException {
-      int docID;
-      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        visit(docID, packedValue);
-      }
+      visit(iterator, packedValue);
       return MatchState.INVALID;
     }
 
