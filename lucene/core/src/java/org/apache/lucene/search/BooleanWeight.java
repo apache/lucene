@@ -48,7 +48,6 @@ final class BooleanWeight extends Weight {
 
   final ArrayList<WeightedBooleanClause> weightedClauses;
   final ScoreMode scoreMode;
-  // nocommit: avoid holding a strong reference to the IndexSearcher from the Weight
   final IndexSearcher searcher;
 
   BooleanWeight(BooleanQuery query, IndexSearcher searcher, ScoreMode scoreMode, float boost)
@@ -56,8 +55,8 @@ final class BooleanWeight extends Weight {
     super(query);
     this.query = query;
     this.scoreMode = scoreMode;
-    this.similarity = searcher.getSimilarity();
     this.searcher = searcher;
+    this.similarity = searcher.getSimilarity();
     weightedClauses = new ArrayList<>();
     for (BooleanClause c : query) {
       Weight w =
@@ -568,8 +567,11 @@ final class BooleanWeight extends Weight {
       return super.getScoreLowerBoundAtRank(k);
     }
 
-    // Idea: Compute the k-th score when only using clauses that have evaluated less than 2k matches
-    // so far to drive iteration
+    // Idea: Compute the k-th score, only evaluating the first 2*k hits for each clause. This should
+    // give a lower bound of the score of the k-th hit which is in the order of the median score of
+    // the clause that produces the higher scores (assuming that scores are distributed evenly
+    // across the doc ID space), which is a decent estimator for disjunctions, at a small fraction
+    // of evaluating the query on the entire doc ID space.
 
     PriorityQueue<ScorerWrapper> essentialClauses =
         new PriorityQueue<ScorerWrapper>(weightedClauses.size()) {
@@ -595,7 +597,6 @@ final class BooleanWeight extends Weight {
     }
 
     Iterator<LeafReaderContext> contextIterator = searcher.getIndexReader().leaves().iterator();
-    List<ScorerWrapper> otherClauses = new ArrayList<>();
     ScorerWrapper top = essentialClauses.top();
     Bits liveDocs = null;
     main:
@@ -607,9 +608,6 @@ final class BooleanWeight extends Weight {
           LeafReaderContext context = contextIterator.next();
           liveDocs = context.reader().getLiveDocs();
           for (ScorerWrapper sw : essentialClauses) {
-            sw.setLeafReaderContext(context);
-          }
-          for (ScorerWrapper sw : otherClauses) {
             sw.setLeafReaderContext(context);
           }
         } else {
@@ -629,6 +627,7 @@ final class BooleanWeight extends Weight {
           top.doc = top.iterator.nextDoc();
           top = essentialClauses.updateTop();
         } while (top.doc == doc);
+        continue;
       }
 
       double score = 0;
@@ -636,22 +635,12 @@ final class BooleanWeight extends Weight {
         score += top.scorer.score();
         top.doc = top.iterator.nextDoc();
         if (++top.evaluatedCount >= 2 * k) {
-          otherClauses.add(top);
           essentialClauses.pop();
           top = essentialClauses.top();
         } else {
           top = essentialClauses.updateTop();
         }
       } while (top != null && top.doc == doc);
-
-      for (ScorerWrapper sw : otherClauses) {
-        if (sw.doc < doc) {
-          sw.doc = sw.iterator.advance(doc);
-        }
-        if (sw.doc == doc) {
-          score += sw.scorer.score();
-        }
-      }
 
       scorePQ.insertWithOverflow((float) score);
     }

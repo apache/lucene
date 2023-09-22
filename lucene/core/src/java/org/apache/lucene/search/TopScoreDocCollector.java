@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.MaxScoreAccumulator.DocAndScore;
 
@@ -48,7 +49,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
     SimpleTopScoreDocCollector(
         int numHits, HitsThresholdChecker hitsThresholdChecker, MaxScoreAccumulator minScoreAcc) {
-      super(numHits, hitsThresholdChecker, minScoreAcc);
+      super(numHits, null, hitsThresholdChecker, minScoreAcc);
     }
 
     @Override
@@ -104,7 +105,6 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   private static class PagingTopScoreDocCollector extends TopScoreDocCollector {
 
-    private final ScoreDoc after;
     private int collectedHits;
 
     PagingTopScoreDocCollector(
@@ -112,8 +112,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         ScoreDoc after,
         HitsThresholdChecker hitsThresholdChecker,
         MaxScoreAccumulator minScoreAcc) {
-      super(numHits, hitsThresholdChecker, minScoreAcc);
-      this.after = after;
+      super(numHits, Objects.requireNonNull(after), hitsThresholdChecker, minScoreAcc);
       this.collectedHits = 0;
     }
 
@@ -281,6 +280,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     };
   }
 
+  final ScoreDoc after;
   int docBase;
   ScoreDoc pqTop;
   final HitsThresholdChecker hitsThresholdChecker;
@@ -291,8 +291,12 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   // prevents instantiation
   TopScoreDocCollector(
-      int numHits, HitsThresholdChecker hitsThresholdChecker, MaxScoreAccumulator minScoreAcc) {
+      int numHits,
+      ScoreDoc after,
+      HitsThresholdChecker hitsThresholdChecker,
+      MaxScoreAccumulator minScoreAcc) {
     super(new HitQueue(numHits, true));
+    this.after = after;
     assert hitsThresholdChecker != null;
 
     // HitQueue implements getSentinelObject to return a ScoreDoc, so we know
@@ -340,10 +344,12 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         && pqTop.score != Float.NEGATIVE_INFINITY) { // -Infinity is the score of sentinels
 
       if (bootstrappedMinCompetitiveScore == false) {
-        if (weight != null) {
-          // nocommit: this is wrong when `after` is not null
-          minCompetitiveScore = weight.getScoreLowerBoundAtRank(pq.size());
-          scorer.setMinCompetitiveScore(minCompetitiveScore);
+        if (after != null && weight != null) {
+          float scoreAtRankK = weight.getScoreLowerBoundAtRank(pq.size());
+          if (scoreAtRankK < minCompetitiveScore) {
+            minCompetitiveScore = scoreAtRankK;
+            scorer.setMinCompetitiveScore(minCompetitiveScore);
+          }
         }
         bootstrappedMinCompetitiveScore = true;
       }

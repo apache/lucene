@@ -113,4 +113,15 @@ class QueryProfilerWeight extends FilterWeight {
   public boolean isCacheable(LeafReaderContext ctx) {
     return false;
   }
+
+  @Override
+  public float getScoreLowerBoundAtRank(int k) throws IOException {
+    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.SCORE_AT_RANK_K);
+    timer.start();
+    try {
+      return in.getScoreLowerBoundAtRank(k);
+    } finally {
+      timer.stop();
+    }
+  }
 }

@@ -30,7 +30,8 @@ public enum QueryProfilerTimingType {
   SCORE,
   SHALLOW_ADVANCE,
   COMPUTE_MAX_SCORE,
-  SET_MIN_COMPETITIVE_SCORE;
+  SET_MIN_COMPETITIVE_SCORE,
+  SCORE_AT_RANK_K;
 
   @Override
   public String toString() {

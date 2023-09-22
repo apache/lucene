@@ -1245,4 +1245,50 @@ public class TestBooleanQuery extends LuceneTestCase {
           }
         });
   }
+
+  public void testGetScoreLowerBoundAtRank() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, newIndexWriterConfig());
+    Document doc = new Document();
+    Field field = newTextField("field", "", Store.NO);
+    doc.add(field);
+    for (int i = 0; i < 100; ++i) {
+      String value;
+      switch (i & 3) {
+        case 0:
+          value = "a";
+          break;
+        case 1:
+          value = "a b c";
+          break;
+        case 2:
+          value = "c d";
+          break;
+        default:
+          value = "a c";
+          break;
+      }
+      field.setStringValue(value);
+      w.addDocument(doc);
+    }
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "a")), Occur.SHOULD)
+            .add(new TermQuery(new Term("field", "b")), Occur.SHOULD)
+            .add(new TermQuery(new Term("field", "c")), Occur.SHOULD)
+            .build();
+    TopDocs topDocs = searcher.search(query, 100);
+
+    Weight weight = searcher.createWeight(query, ScoreMode.TOP_SCORES, 1f);
+    for (int k = 100; k > 0; --k) {
+      float lowerBoundAtRankK = weight.getScoreLowerBoundAtRank(k);
+      assertTrue(lowerBoundAtRankK <= topDocs.scoreDocs[k - 1].score);
+    }
+    reader.close();
+    w.close();
+    dir.close();
+  }
 }

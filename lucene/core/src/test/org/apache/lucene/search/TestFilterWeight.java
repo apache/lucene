@@ -36,7 +36,7 @@ public class TestFilterWeight extends LuceneTestCase {
       final int modifiers = superClassMethod.getModifiers();
       if (Modifier.isFinal(modifiers)) continue;
       if (Modifier.isStatic(modifiers)) continue;
-      if (Arrays.asList("bulkScorer", "scorerSupplier", "count")
+      if (Arrays.asList("bulkScorer", "scorerSupplier", "count", "getScoreLowerBoundAtRank")
           .contains(superClassMethod.getName())) {
         try {
           final Method subClassMethod =

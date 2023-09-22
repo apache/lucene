@@ -130,4 +130,11 @@ class AssertingWeight extends FilterWeight {
     return AssertingBulkScorer.wrap(
         new Random(random.nextLong()), inScorer, context.reader().maxDoc(), scoreMode);
   }
+
+  @Override
+  public float getScoreLowerBoundAtRank(int k) throws IOException {
+    float scoreAtRankK = in.getScoreLowerBoundAtRank(k);
+    assert scoreAtRankK >= 0;
+    return scoreAtRankK;
+  }
 }
