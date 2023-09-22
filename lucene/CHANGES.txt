@@ -104,6 +104,9 @@ Bug Fixes
 
 * GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
 
+* GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
+  periods in the local part. (Eran Yarkon)
+
 Other
 ---------------------
 
