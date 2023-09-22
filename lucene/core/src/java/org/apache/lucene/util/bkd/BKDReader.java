@@ -891,7 +891,7 @@ public class BKDReader extends PointValues {
         }
         scratchIterator.reset(i, length);
         int visitState = visitor.visitWithState(scratchIterator, scratchPackedValue, sortedDim);
-        if (visitState == 2) {
+        if (visitState == MatchState.HIGH_IN_SORTED_DIM) {
           if (visitor.isInverse()) {
             scratchIterator.reset(i, count - i);
             visitor.visit(scratchIterator);
@@ -977,7 +977,7 @@ public class BKDReader extends PointValues {
           visitState =
               visitor.visitWithState(
                   scratchIterator.docIDs[offset], scratchPackedValue, compressedDim);
-          if (visitState == 2) {
+          if (visitState == MatchState.HIGH_IN_SORTED_DIM) {
             if (visitor.isInverse()) {
               scratchIterator.reset(offset, count - offset);
               visitor.visit(scratchIterator);
@@ -985,7 +985,7 @@ public class BKDReader extends PointValues {
             break;
           }
         }
-        if (visitState == 2) break;
+        if (visitState == MatchState.HIGH_IN_SORTED_DIM) break;
         i += runLen;
       }
     }
