@@ -150,6 +150,8 @@ Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
 
+* GITHUB#12573: Use radix sort to speed up the sorting of deleted terms. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
