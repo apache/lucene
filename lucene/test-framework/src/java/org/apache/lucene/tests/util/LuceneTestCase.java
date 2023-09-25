@@ -92,6 +92,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -1875,6 +1876,32 @@ public abstract class LuceneTestCase extends Assert {
     System.clearProperty(ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY);
   }
 
+  private static ExecutorService executor;
+
+  @BeforeClass
+  public static void setUpExecutorService() {
+    int threads = TestUtil.nextInt(random(), 1, 8);
+    executor =
+        new ThreadPoolExecutor(
+            threads,
+            threads,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            new NamedThreadFactory("LuceneTestCase"));
+    // uncomment to intensify LUCENE-3840
+    // executor.prestartAllCoreThreads();
+    if (VERBOSE) {
+      System.out.println("NOTE: newSearcher using ExecutorService with " + threads + " threads");
+    }
+  }
+
+  @AfterClass
+  public static void shutdownExecutorService() {
+    TestUtil.shutdownExecutorService(executor);
+    executor = null;
+  }
+
   /** Create a new searcher over the reader. This searcher might randomly use threads. */
   public static IndexSearcher newSearcher(IndexReader r) {
     return newSearcher(r, true);
@@ -1938,30 +1965,11 @@ public abstract class LuceneTestCase extends Assert {
       ret.setSimilarity(classEnvRule.similarity);
       return ret;
     } else {
-      int threads = 0;
-      final ThreadPoolExecutor ex;
+      final ExecutorService ex;
       if (r.getReaderCacheHelper() == null || random.nextBoolean()) {
         ex = null;
       } else {
-        threads = TestUtil.nextInt(random, 1, 8);
-        ex =
-            new ThreadPoolExecutor(
-                threads,
-                threads,
-                0L,
-                TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(),
-                new NamedThreadFactory("LuceneTestCase"));
-        // uncomment to intensify LUCENE-3840
-        // ex.prestartAllCoreThreads();
-      }
-      if (ex != null) {
-        if (VERBOSE) {
-          System.out.println(
-              "NOTE: newSearcher using ExecutorService with " + threads + " threads");
-        }
-        r.getReaderCacheHelper()
-            .addClosedListener(cacheKey -> TestUtil.shutdownExecutorService(ex));
+        ex = executor;
       }
       IndexSearcher ret;
       int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
