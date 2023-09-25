@@ -836,7 +836,7 @@ public class BKDReader extends PointValues {
         }
 
         if (compressedDim == -2) {
-          // low cardinality values.
+          // Low cardinality values.
           visitSparseRawDocValuesEarlyTerminate(
               commonPrefixLengths,
               scratchDataPackedValue,
@@ -846,7 +846,7 @@ public class BKDReader extends PointValues {
               visitor,
               sortedDim);
         } else {
-          // high cardinality
+          // High cardinality.
           visitCompressedDocValuesEarlyTerminate(
               commonPrefixLengths,
               scratchDataPackedValue,
@@ -871,7 +871,7 @@ public class BKDReader extends PointValues {
       }
     }
 
-    // early terminate if packed value greater than upper point in sorted dimension.
+    // Early terminate if packed value greater than upper point in sorted dimension.
     private void visitSparseRawDocValuesEarlyTerminate(
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
@@ -947,7 +947,7 @@ public class BKDReader extends PointValues {
       }
     }
 
-    // early terminate if packed value greater than upper point in sorted dimension.
+    // Early terminate if packed value greater than upper point in sorted dimension.
     private void visitCompressedDocValuesEarlyTerminate(
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
