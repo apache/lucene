@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.util;
 
-abstract class StringMSBRadixSorter extends MSBRadixSorter {
+public abstract class StringMSBRadixSorter extends MSBRadixSorter {
 
-  StringMSBRadixSorter() {
+  protected StringMSBRadixSorter() {
     super(Integer.MAX_VALUE);
   }
 
