@@ -121,7 +121,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private void scoreInnerWindow(LeafCollector collector, Bits acceptDocs, int max)
       throws IOException {
     DisiWrapper top = essentialQueue.top();
-
     DisiWrapper top2 = essentialQueue.top2();
     if (top2 == null) {
       scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
@@ -138,13 +137,30 @@ final class MaxScoreBulkScorer extends BulkScorer {
       LeafCollector collector, Bits acceptDocs, int upTo) throws IOException {
     DisiWrapper top = essentialQueue.top();
 
+    if (top.maxWindowScore < minCompetitiveScore
+        && (firstEssentialScorer == 1
+            || MathUtil.sumUpperBound(
+                    top.maxWindowScore + maxScoreSums[firstEssentialScorer - 2],
+                    allScorers.length - 1)
+                < minCompetitiveScore)) {
+      // If there is a single essential clause and matching it plus all non-essential clauses but
+      // the best one is not enough to yield a competitive match, the we know that hits must match
+      // both the essential clause and the best non-essential clause. Here are some examples when
+      // this optimization would kick in:
+      //   `quick fox`  when maxscore(quick) = 1, maxscore(fox) = 1, minCompetitiveScore = 1.5
+      //   `the quick fox` when maxscore (the) = 0.1, maxscore(quick) = 1, maxscore(fox) = 1,
+      //       minCompetitiveScore = 1.5
+      scoreInnerWindowAsConjunctionWithBestNonEssentialClause(collector, acceptDocs, upTo);
+      return;
+    }
+
     // single essential clause in this window, we can iterate it directly and skip the bitset.
     // this is a common case for 2-clauses queries
     for (int doc = top.doc; doc < upTo; doc = top.iterator.nextDoc()) {
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
-      scoreNonEssentialClauses(collector, doc, top.scorer.score());
+      scoreNonEssentialClauses(collector, doc, top.scorer.score(), firstEssentialScorer);
       if (minCompetitiveScoreUpdated) {
         // force scorers to be partitioned again before collecting more hits
         top.iterator.nextDoc();
@@ -152,6 +168,65 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
     }
     top.doc = top.iterator.docID();
+    essentialQueue.updateTop();
+  }
+
+  private void scoreInnerWindowAsConjunctionWithBestNonEssentialClause(
+      LeafCollector collector, Bits acceptDocs, int upTo) throws IOException {
+
+    DisiWrapper top = essentialQueue.top();
+    DisiWrapper lead = top;
+    DisiWrapper other = allScorers[firstEssentialScorer - 1];
+    if (lead.cost > other.cost) {
+      DisiWrapper tmp = lead;
+      lead = other;
+      other = tmp;
+    }
+
+    double sumOtherScores = other.maxWindowScore; // sum of all max scores but the lead score
+    if (firstEssentialScorer >= 2) {
+      sumOtherScores += this.maxScoreSums[firstEssentialScorer - 2];
+    }
+
+    if (lead.doc < other.doc) {
+      // make sure to not advance to a doc that is not within the window
+      lead.doc = lead.iterator.advance(Math.min(upTo, other.doc));
+    }
+
+    for (int leadDoc = lead.doc, otherDoc = other.doc; leadDoc < upTo; ) {
+      assert leadDoc >= otherDoc;
+
+      if (acceptDocs != null && acceptDocs.get(leadDoc) == false) {
+        leadDoc = lead.iterator.nextDoc();
+        continue;
+      }
+
+      double score = lead.scorer.score();
+      if (MathUtil.sumUpperBound(score + sumOtherScores, allScorers.length)
+          >= minCompetitiveScore) {
+        if (otherDoc < leadDoc) {
+          otherDoc = other.iterator.advance(leadDoc);
+        }
+        if (leadDoc == otherDoc) {
+          scoreNonEssentialClauses(
+              collector, leadDoc, score + other.scorer.score(), firstEssentialScorer - 1);
+        } else {
+          // make sure to not advance to a doc that is not within the window
+          leadDoc = lead.iterator.advance(Math.min(otherDoc, upTo));
+          continue;
+        }
+      }
+      leadDoc = lead.iterator.nextDoc();
+    }
+
+    lead.doc = lead.iterator.docID();
+    other.doc = other.iterator.docID();
+
+    if (top.doc < upTo) {
+      // It is possible that other was used as a lead and `top` is not beyond upTo yet
+      top.doc = top.iterator.advance(upTo);
+    }
+
     essentialQueue.updateTop();
   }
 
@@ -186,7 +261,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         double score = windowScores[index];
         windowScores[index] = 0d;
 
-        scoreNonEssentialClauses(collector, doc, score);
+        scoreNonEssentialClauses(collector, doc, score, firstEssentialScorer);
       }
     }
   }
@@ -222,10 +297,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
     return windowMax;
   }
 
-  private void scoreNonEssentialClauses(LeafCollector collector, int doc, double essentialScore)
+  private void scoreNonEssentialClauses(
+      LeafCollector collector, int doc, double essentialScore, int numNonEssentialClauses)
       throws IOException {
     double score = essentialScore;
-    for (int i = firstEssentialScorer - 1; i >= 0; --i) {
+    for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
       float maxPossibleScore =
           (float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length);
       if (maxPossibleScore < minCompetitiveScore) {
