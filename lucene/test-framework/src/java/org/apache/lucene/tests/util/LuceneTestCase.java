@@ -1965,12 +1965,7 @@ public abstract class LuceneTestCase extends Assert {
       ret.setSimilarity(classEnvRule.similarity);
       return ret;
     } else {
-      final ExecutorService ex;
-      if (r.getReaderCacheHelper() == null || random.nextBoolean()) {
-        ex = null;
-      } else {
-        ex = executor;
-      }
+      final ExecutorService ex = random.nextBoolean() ? null : executor;
       IndexSearcher ret;
       int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
       int maxSegmentsPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(10);
