@@ -316,7 +316,7 @@ final class BooleanWeight extends Weight {
         && requiredScoring.size() > 1
         // Only specialize top-level conjunctions for clauses that don't have a two-phase iterator.
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
-      return new BlockMaxConjunctionBulkScorer(requiredScoring);
+      return new BlockMaxConjunctionBulkScorer(context.reader().maxDoc(), requiredScoring);
     }
     if (scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() > 1) {
       requiredScoring =
