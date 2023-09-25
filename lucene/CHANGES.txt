@@ -140,6 +140,7 @@ API Changes
 * GITHUB#12556: StoredFieldVisitor has a new expert method StoredFieldVisitor#binaryField(FieldInfo, DataInput, int)
   that allows implementors to read binary values directly from the DataInput without having to allocate a byte[].
   The default implementation allocates an ew byte array and call StoredFieldVisitor#binaryField(FieldInfo, byte[]).
+  (Ignacio Vera)
 
 New Features
 ---------------------
