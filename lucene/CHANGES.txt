@@ -157,6 +157,9 @@ Optimizations
 
 * GITHUB#12573: Use radix sort to speed up the sorting of deleted terms. (Guo Feng)
 
+* GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
+  descending score. (Adrien Grand)
+
 * GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
 
 Changes in runtime behavior
