@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+/** A base implementation of {@link MSBRadixSorter} for sort on {@link BytesRef}s. */
 public abstract class StringMSBRadixSorter extends MSBRadixSorter {
 
   protected StringMSBRadixSorter() {
