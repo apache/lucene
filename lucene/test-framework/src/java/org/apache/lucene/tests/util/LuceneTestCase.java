@@ -1880,7 +1880,7 @@ public abstract class LuceneTestCase extends Assert {
 
   @BeforeClass
   public static void setUpExecutorService() {
-    int threads = TestUtil.nextInt(random(), 1, 8);
+    int threads = TestUtil.nextInt(random(), 1, 2);
     executor =
         new ThreadPoolExecutor(
             threads,
