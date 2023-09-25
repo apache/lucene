@@ -366,11 +366,6 @@ final class DocumentsWriter implements Closeable, Accountable {
     return deleteQueue.getBufferedUpdatesTermsSize();
   }
 
-  // for testing
-  int getNumBufferedDeleteTerms() {
-    return deleteQueue.numGlobalTermDeletes();
-  }
-
   boolean anyDeletions() {
     return deleteQueue.anyChanges();
   }

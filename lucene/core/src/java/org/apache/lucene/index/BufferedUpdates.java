@@ -85,16 +85,14 @@ class BufferedUpdates implements Accountable {
   public String toString() {
     if (VERBOSE_DELETES) {
       return ("gen=" + gen)
-          + (" numTerms=" + numTermDeletes)
           + (", deleteTerms=" + deleteTerms)
           + (", deleteQueries=" + deleteQueries)
           + (", fieldUpdates=" + fieldUpdates)
           + (", bytesUsed=" + bytesUsed);
     } else {
       String s = "gen=" + gen;
-      if (numTermDeletes.get() != 0) {
-        s +=
-            " " + numTermDeletes.get() + " deleted terms (unique count=" + deleteTerms.size() + ")";
+      if (!deleteTerms.isEmpty()) {
+        s += " " + deleteTerms.size() + " unique deleted terms ";
       }
       if (deleteQueries.size() != 0) {
         s += " " + deleteQueries.size() + " deleted queries";
@@ -132,10 +130,6 @@ class BufferedUpdates implements Accountable {
     }
 
     deleteTerms.put(term, docIDUpto);
-    // note that if current != -1 then it means there's already a buffered
-    // delete on that term, therefore we seem to over-count. this over-counting
-    // is done to respect IndexWriterConfig.setMaxBufferedDeleteTerms.
-    numTermDeletes.incrementAndGet();
   }
 
   void addNumericUpdate(NumericDocValuesUpdate update, int docIDUpto) {
@@ -163,14 +157,12 @@ class BufferedUpdates implements Accountable {
   }
 
   void clearDeleteTerms() {
-    numTermDeletes.set(0);
     deleteTerms.clear();
   }
 
   void clear() {
     deleteTerms.clear();
     deleteQueries.clear();
-    numTermDeletes.set(0);
     numFieldUpdates.set(0);
     fieldUpdates.clear();
     bytesUsed.addAndGet(-bytesUsed.get());
@@ -283,6 +275,13 @@ class BufferedUpdates implements Accountable {
     @Override
     public long ramBytesUsed() {
       return bytesUsed.get();
+    }
+
+    @Override
+    public String toString() {
+      return keySet().stream()
+          .map(t -> t + "=" + get(t))
+          .collect(Collectors.joining(", ", "{", "}"));
     }
   }
 

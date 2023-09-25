@@ -393,7 +393,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   public int numGlobalTermDeletes() {
-    return globalBufferedUpdates.numTermDeletes.get();
+    return globalBufferedUpdates.deleteTerms.size();
   }
 
   void clear() {
