@@ -140,6 +140,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     }
 
     @Override
+    public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+      writer.writeField(fieldInfo, value, length);
+    }
+
+    @Override
     public void binaryField(FieldInfo fieldInfo, byte[] value) throws IOException {
       // TODO: can we avoid new BR here?
       writer.writeField(fieldInfo, new BytesRef(value));
