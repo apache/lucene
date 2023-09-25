@@ -1892,7 +1892,7 @@ public abstract class LuceneTestCase extends Assert {
     // uncomment to intensify LUCENE-3840
     // executor.prestartAllCoreThreads();
     if (VERBOSE) {
-      System.out.println("NOTE: newSearcher using ExecutorService with " + threads + " threads");
+      System.out.println("NOTE: Created shared ExecutorService with " + threads + " threads");
     }
   }
 
@@ -1965,7 +1965,15 @@ public abstract class LuceneTestCase extends Assert {
       ret.setSimilarity(classEnvRule.similarity);
       return ret;
     } else {
-      final ExecutorService ex = random.nextBoolean() ? null : executor;
+      final ExecutorService ex;
+      if (random.nextBoolean()) {
+        ex = null;
+      } else {
+        ex = executor;
+        if (VERBOSE) {
+          System.out.println("NOTE: newSearcher using shared ExecutorService");
+        }
+      }
       IndexSearcher ret;
       int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
       int maxSegmentsPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(10);
