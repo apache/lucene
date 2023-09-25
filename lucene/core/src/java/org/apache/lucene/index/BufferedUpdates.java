@@ -58,7 +58,6 @@ class BufferedUpdates implements Accountable {
           + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
           + 2 * Integer.BYTES
           + 24;
-  final AtomicInteger numTermDeletes = new AtomicInteger();
   final AtomicInteger numFieldUpdates = new AtomicInteger();
 
   final DeletedTerms deleteTerms = new DeletedTerms();
