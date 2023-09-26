@@ -213,6 +213,7 @@ final class FieldUpdatesBuffer {
     final boolean sortedTerms = hasSingleValue() && hasValues == null && fields.length == 1;
     if (sortedTerms) {
       termSortState = termValues.sort(BytesRefComparator.NATURAL, true);
+      assert assertTermAndDocInOrder();
       bytesUsed.addAndGet(termSortState.ramBytesUsed());
     }
   }
