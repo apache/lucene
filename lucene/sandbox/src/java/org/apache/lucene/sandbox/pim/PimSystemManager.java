@@ -23,6 +23,7 @@ import com.upmem.dpu.DpuException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -90,6 +91,8 @@ public class PimSystemManager {
   /** Returns the singleton. */
   public static PimSystemManager get() throws DpuException {
     try {
+      if (SingletonHolder.INSTANCE.queryRunner.stop)
+        throw new RuntimeException("PimSystemManager has been shutdown");
       return SingletonHolder.INSTANCE;
     } catch (ExceptionInInitializerError e) {
       if (e.getException() instanceof DpuException)
@@ -113,9 +116,14 @@ public class PimSystemManager {
   /** Tells whether the current PIM index loaded is up-to-date and can be used to answer queries */
   public boolean isReady(LeafReaderContext context) {
     if (!indexLoaded) return false;
+    if (context.ord >= pimIndexInfo.getNumSegments()) return false;
     if (context.reader() instanceof SegmentReader) {
-      String commitName = ((SegmentReader) context.reader()).getSegmentName();
-      return (commitName.compareTo(pimIndexInfo.segmentCommitName) == 0);
+      SegmentReader reader = (SegmentReader) context.reader();
+      byte[] commitId = reader.getSegmentInfo().getId();
+      byte[] segmentId = reader.getSegmentInfo().info.getId();
+      if (segmentId == null || commitId == null) return false;
+      return (Arrays.equals(segmentId, pimIndexInfo.segmentId[context.ord])
+          && Arrays.equals(commitId, pimIndexInfo.segmentCommitId[context.ord]));
     }
     return false;
   }

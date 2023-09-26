@@ -38,6 +38,8 @@ public class PimIndexInfo {
   int numDpuSegments;
   String segmentCommitName;
   int startDoc[];
+  byte segmentId[][];
+  byte segmentCommitId[][];
 
   /**
    * Constructor
@@ -54,10 +56,14 @@ public class PimIndexInfo {
     this.numDpuSegments = numDpuSegments;
     segmentCommitName = segmentInfos.getSegmentsFileName();
     startDoc = new int[numSegments];
+    segmentId = new byte[numSegments][];
+    segmentCommitId = new byte[numSegments][];
 
-    for (int i = 0; i < numSegments - 1; ++i) {
+    for (int i = 0; i < numSegments; ++i) {
       SegmentCommitInfo segmentCommitInfo = segmentInfos.info(i);
-      startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
+      segmentId[i] = segmentCommitInfo.info.getId();
+      segmentCommitId[i] = segmentCommitInfo.getId();
+      if (i + 1 < numSegments) startDoc[i + 1] = startDoc[i] + segmentCommitInfo.info.maxDoc();
     }
   }
 
@@ -70,29 +76,6 @@ public class PimIndexInfo {
   public int getStartDoc(int leafId) {
     assert leafId < numSegments;
     return startDoc[leafId];
-  }
-
-  /**
-   * Get the leaf id for the document
-   *
-   * @param docId the document id
-   * @param leafIdxHint a hint from which to find the leaf id (helps when documents are scanned in
-   *     the leaf order
-   * @return the leaf id of the index in which this document is
-   */
-  public int getLeafId(int docId, int leafIdxHint) {
-
-    assert leafIdxHint < startDoc.length;
-    int leaf = leafIdxHint;
-    while (leaf < numSegments && docId >= startDoc[leaf]) leaf++;
-
-    if (leaf == leafIdxHint) {
-      leaf = 0;
-      while (leaf < numSegments && docId >= startDoc[leaf]) leaf++;
-    }
-
-    assert leaf > 0;
-    return leaf - 1;
   }
 
   private PimIndexInfo() {
@@ -282,6 +265,14 @@ public class PimIndexInfo {
     for (int i = 0; i < startDoc.length; ++i) {
       out.writeInt(startDoc[i]);
     }
+    for (int i = 0; i < segmentId.length; ++i) {
+      out.writeInt(segmentId[i].length);
+      out.writeBytes(segmentId[i], segmentId[i].length);
+    }
+    for (int i = 0; i < segmentCommitId.length; ++i) {
+      out.writeInt(segmentCommitId[i].length);
+      out.writeBytes(segmentCommitId[i], segmentCommitId[i].length);
+    }
   }
 
   public static PimIndexInfo readExternal(IndexInput in) throws IOException {
@@ -291,10 +282,22 @@ public class PimIndexInfo {
     info.numSegments = in.readInt();
     info.numDpuSegments = in.readInt();
     info.startDoc = new int[info.numSegments];
+    info.segmentId = new byte[info.numSegments][];
+    info.segmentCommitId = new byte[info.numSegments][];
     info.segmentCommitName = in.readString();
 
     for (int i = 0; i < info.startDoc.length; ++i) {
       info.startDoc[i] = in.readInt();
+    }
+    for (int i = 0; i < info.segmentId.length; ++i) {
+      int size = in.readInt();
+      info.segmentId[i] = new byte[size];
+      in.readBytes(info.segmentId[i], 0, info.segmentId[i].length);
+    }
+    for (int i = 0; i < info.segmentCommitId.length; ++i) {
+      int size = in.readInt();
+      info.segmentCommitId[i] = new byte[size];
+      in.readBytes(info.segmentCommitId[i], 0, info.segmentCommitId[i].length);
     }
     return info;
   }
