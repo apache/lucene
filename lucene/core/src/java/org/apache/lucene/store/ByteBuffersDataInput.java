@@ -71,11 +71,11 @@ public final class ByteBuffersDataInput extends DataInput
       this.blockMask = (1 << blockBits) - 1;
     }
 
-    long size = 0;
+    long length = 0;
     for (ByteBuffer block : blocks) {
-      size += block.remaining();
+      length += block.remaining();
     }
-    this.length = size;
+    this.length = length;
 
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
@@ -108,7 +108,7 @@ public final class ByteBuffersDataInput extends DataInput
       pos++;
       return v;
     } catch (IndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -141,7 +141,7 @@ public final class ByteBuffersDataInput extends DataInput
         len -= chunk;
       }
     } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -168,7 +168,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
-      if (pos >= size()) {
+      if (pos >= length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -298,7 +298,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
-      if (pos - offset + Float.BYTES > size()) {
+      if (pos - offset + Float.BYTES > length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -330,7 +330,7 @@ public final class ByteBuffersDataInput extends DataInput
         off += chunk;
       }
     } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
-      if (pos - offset + Long.BYTES > size()) {
+      if (pos - offset + Long.BYTES > length()) {
         throw new EOFException();
       } else {
         throw e; // Something is wrong.
@@ -370,8 +370,8 @@ public final class ByteBuffersDataInput extends DataInput
 
   public void seek(long position) throws EOFException {
     this.pos = position + offset;
-    if (position > size()) {
-      this.pos = size();
+    if (position > length()) {
+      this.pos = length();
       throw new EOFException();
     }
   }
@@ -404,7 +404,7 @@ public final class ByteBuffersDataInput extends DataInput
     return String.format(
         Locale.ROOT,
         "%,d bytes, block size: %,d, blocks: %,d, position: %,d%s",
-        size(),
+        length(),
         blockSize(),
         blocks.length,
         position(),
