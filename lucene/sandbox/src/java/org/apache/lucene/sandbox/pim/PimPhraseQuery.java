@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.pim;
 
 import java.io.IOException;
-import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -110,12 +109,11 @@ public class PimPhraseQuery extends PhraseQuery implements PimQuery {
 
   private PimPhraseScoreStats buildScoreStats(
       IndexSearcher searcher, ScoreMode scoreMode, float boost) throws IOException {
-    IndexReaderContext context = searcher.getTopReaderContext();
     TermStatistics[] termStats = new TermStatistics[getTerms().length];
     int termUpTo = 0;
     for (final Term term : getTerms()) {
       if (scoreMode.needsScores()) {
-        TermStates ts = TermStates.build(context, term, true);
+        TermStates ts = TermStates.build(searcher, term, true);
         if (ts.docFreq() > 0) {
           termStats[termUpTo++] = searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
         }
