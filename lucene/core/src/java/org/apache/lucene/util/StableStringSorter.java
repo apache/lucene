@@ -24,8 +24,10 @@ abstract class StableStringSorter extends StringSorter {
     super(cmp);
   }
 
+  /** Save the i-th value into the j-th position in temporary storage. */
   protected abstract void save(int i, int j);
 
+  /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
   protected abstract void restore(int i, int j);
 
   @Override
