@@ -238,7 +238,7 @@ final class FieldUpdatesBuffer {
         lastOrd = iterator.ord();
       }
     } catch (IOException e) {
-      assert false : "IO Exception";
+      assert false : e.getMessage();
     }
     return true;
   }
