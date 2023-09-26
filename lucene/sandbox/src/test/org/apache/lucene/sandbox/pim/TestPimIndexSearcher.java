@@ -35,6 +35,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestRuleLimitSysouts;
 import org.apache.lucene.util.BytesRef;
+import org.junit.AfterClass;
 
 @TestRuleLimitSysouts.Limit(bytes = 1 << 14, hardLimit = 1 << 14)
 public class TestPimIndexSearcher extends LuceneTestCase {
@@ -53,6 +54,15 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     directory = null;
     pimDirectory.close();
     pimDirectory = null;
+  }
+
+  @AfterClass
+  public static void afterClass() throws Exception {
+
+    // Need an explicit PimSystemManager shutdown here
+    // The managing thread is normally killed with a hook at JVM shutdown
+    // But the test system verifies that threads are not leaked before JVM shutdowm
+    PimSystemManager.get().shutDown();
   }
 
   public void testTermBasic() throws Exception {
@@ -420,10 +430,6 @@ public class TestPimIndexSearcher extends LuceneTestCase {
 
     System.out.println("");
     pimSystemManager.unloadPimIndex();
-    // Need an explicit PimSystemManager shutdown here
-    // The managing thread is normally killed with a hook at JVM shutdown
-    // But the test system verifies that threads are not leaked before JVM shutdowm
-    pimSystemManager.shutDown();
     reader.close();
     closeDirectories();
   }
@@ -439,7 +445,7 @@ public class TestPimIndexSearcher extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(directory);
     IndexSearcher searcher = new IndexSearcher(reader);
 
-    System.out.println("\nTEST PIM PHRASE QUERY (PHRASE MORE TEXT)");
+    System.out.println("\nTEST PIM PHRASE QUERY NO LOAD (PHRASE MORE TEXT)");
 
     checkPhraseQuery(searcher, "title", "Apache", "Lucene");
     checkPhraseQuery(searcher, "body", "recette", "secrète");
@@ -448,10 +454,6 @@ public class TestPimIndexSearcher extends LuceneTestCase {
         searcher, "body", "fuzzy", "search", "based", "on", "Levenshtein", "distance.");
 
     System.out.println("");
-    // Need an explicit PimSystemManager shutdown here
-    // The managing thread is normally killed with a hook at JVM shutdown
-    // But the test system verifies that threads are not leaked before JVM shutdowm
-    PimSystemManager.get().shutDown();
     reader.close();
     closeDirectories();
   }
