@@ -137,6 +137,11 @@ API Changes
 * GITHUB#12578: Deprecate IndexSearcher#getExecutor in favour of executing concurrent tasks using
   the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
 
+* GITHUB#12556: StoredFieldVisitor has a new expert method StoredFieldVisitor#binaryField(FieldInfo, DataInput, int)
+  that allows implementors to read binary values directly from the DataInput without having to allocate a byte[].
+  The default implementation allocates an ew byte array and call StoredFieldVisitor#binaryField(FieldInfo, byte[]).
+  (Ignacio Vera)
+
 New Features
 ---------------------
 (No changes)
@@ -151,6 +156,9 @@ Optimizations
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
 
 * GITHUB#12573: Use radix sort to speed up the sorting of deleted terms. (Guo Feng)
+
+* GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
+  descending score. (Adrien Grand)
 
 Changes in runtime behavior
 ---------------------
