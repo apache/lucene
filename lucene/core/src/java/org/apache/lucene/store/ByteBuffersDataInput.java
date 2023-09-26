@@ -42,7 +42,7 @@ public final class ByteBuffersDataInput extends DataInput
   private final LongBuffer[] longBuffers;
   private final int blockBits;
   private final int blockMask;
-  private final long size;
+  private final long length;
   private final long offset;
 
   private long pos;
@@ -75,15 +75,21 @@ public final class ByteBuffersDataInput extends DataInput
     for (ByteBuffer block : blocks) {
       size += block.remaining();
     }
-    this.size = size;
+    this.length = size;
 
     // The initial "position" of this stream is shifted by the position of the first block.
     this.offset = blocks[0].position();
     this.pos = offset;
   }
 
+  /**
+   * Returns the total number of bytes in this stream.
+   *
+   * @deprecated Use {@link #length()} instead.
+   */
+  @Deprecated
   public long size() {
-    return size;
+    return length();
   }
 
   @Override
@@ -204,6 +210,11 @@ public final class ByteBuffersDataInput extends DataInput
     } else {
       return super.readLong();
     }
+  }
+
+  @Override
+  public long length() {
+    return length;
   }
 
   @Override
@@ -375,7 +386,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   public ByteBuffersDataInput slice(long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.size) {
+    if (offset < 0 || length < 0 || offset + length > this.length) {
       throw new IllegalArgumentException(
           String.format(
               Locale.ROOT,
