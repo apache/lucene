@@ -212,9 +212,7 @@ final class FieldUpdatesBuffer {
     finished = true;
     final boolean sortedTerms = hasSingleValue() && hasValues == null && fields.length == 1;
     if (sortedTerms) {
-      // use a stable sort to keep the writing order of the same term values.
       termSortState = termValues.sort(BytesRefComparator.NATURAL, true);
-      assert assertTermAndDocInOrder();
       bytesUsed.addAndGet(termSortState.ramBytesUsed());
     }
   }
@@ -361,7 +359,11 @@ final class FieldUpdatesBuffer {
         do {
           aheadTerm = lookAheadTermIterator.next();
           lastTerm = termValuesIterator.next();
-        } while (aheadTerm != null && aheadTerm.equals(lastTerm));
+        } while (aheadTerm != null
+            // Shortcut to avoid equals, we did a stable sort before, so aheadTerm can only equal
+            // lastTerm when aheadTerm has a lager ord.
+            && lookAheadTermIterator.ord() > termValuesIterator.ord()
+            && aheadTerm.equals(lastTerm));
         return lastTerm;
       } else {
         return termValuesIterator.next();
