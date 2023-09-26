@@ -215,14 +215,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int windowMax = DocIdSetIterator.NO_MORE_DOCS;
     for (int i = firstWindowLead; i < allScorers.length; ++i) {
       final DisiWrapper scorer = allScorers[i];
-      final int upTo;
-      if (scorer.doc - windowMin >= INNER_WINDOW_SIZE) {
-        // Let's create a window that does not match this clause, so we're more likely to skip it
-        // only based on scores.
-        upTo = scorer.doc - 1;
-      } else {
-        upTo = scorer.scorer.advanceShallow(Math.max(scorer.doc, windowMin));
-      }
+      final int upTo = scorer.scorer.advanceShallow(Math.max(scorer.doc, windowMin));
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
 
