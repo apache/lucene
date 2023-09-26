@@ -3110,9 +3110,16 @@ public class TestIndexWriter extends LuceneTestCase {
         w.docWriter.flushControl.findLargestNonPendingWriter();
     assertFalse(largestNonPendingWriter.isFlushPending());
     assertEquals(1, w.numRamDocs());
-    w.flushNextBuffer();
+    assertTrue(w.flushNextBuffer());
     assertEquals(0, w.numRamDocs());
     assertFalse("deletes were not flushed", w.docWriter.flushControl.getAndResetApplyAllDeletes());
+    // test flush deletes without any docs
+    w.deleteDocuments(new Term("id", "foo"));
+    assertNull(w.docWriter.flushControl.findLargestNonPendingWriter());
+    w.docWriter.flushControl.setApplyAllDeletes();
+    assertTrue(w.flushNextBuffer());
+    // now nothing should happen since no docs no deletes pending
+    assertFalse(w.flushNextBuffer());
     w.close();
     dir.close();
   }
