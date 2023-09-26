@@ -46,6 +46,11 @@ abstract class StringSorter extends Sorter {
         get(scratch1, scratchBytes1, i);
         return cmp.byteAt(scratchBytes1, k);
       }
+
+      @Override
+      protected Sorter getFallbackSorter(int k) {
+        return fallbackSorter((o1, o2) -> cmp.compare(o1, o2, k));
+      }
     };
   }
 
