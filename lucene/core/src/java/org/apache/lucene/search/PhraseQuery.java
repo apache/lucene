@@ -24,7 +24,6 @@ import java.util.Objects;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -451,13 +450,12 @@ public class PhraseQuery extends Query {
           throw new IllegalStateException(
               "PhraseWeight requires that the first position is 0, call rewrite first");
         }
-        final IndexReaderContext context = searcher.getTopReaderContext();
         states = new TermStates[terms.length];
         TermStatistics[] termStats = new TermStatistics[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
           final Term term = terms[i];
-          states[i] = TermStates.build(context, term, scoreMode.needsScores());
+          states[i] = TermStates.build(searcher, term, scoreMode.needsScores());
           if (scoreMode.needsScores()) {
             TermStates ts = states[i];
             if (ts.docFreq() > 0) {
