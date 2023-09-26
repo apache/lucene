@@ -3107,7 +3107,7 @@ public class TestIndexWriter extends LuceneTestCase {
     // ensure we mark deletes pending
     w.docWriter.flushControl.setApplyAllDeletes();
     DocumentsWriterPerThread largestNonPendingWriter =
-            w.docWriter.flushControl.findLargestNonPendingWriter();
+        w.docWriter.flushControl.findLargestNonPendingWriter();
     assertFalse(largestNonPendingWriter.isFlushPending());
     assertEquals(1, w.numRamDocs());
     w.flushNextBuffer();
