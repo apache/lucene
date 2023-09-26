@@ -26,6 +26,23 @@ import java.util.Comparator;
  */
 public abstract class BytesRefComparator implements Comparator<BytesRef> {
 
+  /** Comparing ByteRefs in natual order. */
+  public static final BytesRefComparator NATURAL =
+      new BytesRefComparator(Integer.MAX_VALUE) {
+        @Override
+        protected int byteAt(BytesRef ref, int i) {
+          if (ref.length <= i) {
+            return -1;
+          }
+          return ref.bytes[ref.offset + i] & 0xFF;
+        }
+
+        @Override
+        public int compare(BytesRef o1, BytesRef o2) {
+          return o1.compareTo(o2);
+        }
+      };
+
   final int comparedBytesCount;
 
   /**

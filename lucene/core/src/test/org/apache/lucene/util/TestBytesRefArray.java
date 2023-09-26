@@ -89,7 +89,7 @@ public class TestBytesRefArray extends LuceneTestCase {
       }
 
       Collections.sort(stringList, TestUtil.STRING_CODEPOINT_COMPARATOR);
-      BytesRefIterator iter = list.iterator(Comparator.naturalOrder());
+      BytesRefIterator iter = list.iterator(random().nextBoolean() ? Comparator.naturalOrder() : BytesRefComparator.NATURAL);
       int i = 0;
       BytesRef next;
       while ((next = iter.next()) != null) {
