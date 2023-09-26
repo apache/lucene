@@ -344,9 +344,9 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         && pqTop.score != Float.NEGATIVE_INFINITY) { // -Infinity is the score of sentinels
 
       if (bootstrappedMinCompetitiveScore == false) {
-        if (after != null && weight != null) {
+        if (after == null && weight != null) {
           float scoreAtRankK = weight.getScoreLowerBoundAtRank(pq.size());
-          if (scoreAtRankK < minCompetitiveScore) {
+          if (scoreAtRankK > minCompetitiveScore) {
             minCompetitiveScore = scoreAtRankK;
             scorer.setMinCompetitiveScore(minCompetitiveScore);
           }
