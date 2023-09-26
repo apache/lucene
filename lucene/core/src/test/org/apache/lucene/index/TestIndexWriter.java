@@ -3096,6 +3096,27 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.close();
   }
 
+  public void testFlushNextBufferFlushesDeletes() throws IOException, InterruptedException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new StringField("id", "foo", Field.Store.YES));
+    w.addDocument(doc);
+    w.flushNextBuffer();
+    w.updateDocument(new Term("id", "foo"), doc);
+    // ensure we mark deletes pending
+    w.docWriter.flushControl.setApplyAllDeletes();
+    DocumentsWriterPerThread largestNonPendingWriter =
+            w.docWriter.flushControl.findLargestNonPendingWriter();
+    assertFalse(largestNonPendingWriter.isFlushPending());
+    assertEquals(1, w.numRamDocs());
+    w.flushNextBuffer();
+    assertEquals(0, w.numRamDocs());
+    assertFalse("deletes were not flushed", w.docWriter.flushControl.getAndResetApplyAllDeletes());
+    w.close();
+    dir.close();
+  }
+
   private int indexDocsForMultipleDWPTs(IndexWriter w) throws InterruptedException {
     Thread[] threads = new Thread[3];
     CountDownLatch latch = new CountDownLatch(threads.length);

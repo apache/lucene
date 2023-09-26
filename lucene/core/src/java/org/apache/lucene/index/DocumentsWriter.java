@@ -246,10 +246,14 @@ final class DocumentsWriter implements Closeable, Accountable {
     if (documentsWriterPerThread == null) {
       documentsWriterPerThread = flushControl.checkoutLargestNonPendingWriter();
     }
+    boolean hasEvents = false;
     if (documentsWriterPerThread != null) {
-      return doFlush(documentsWriterPerThread);
+      hasEvents = doFlush(documentsWriterPerThread);
     }
-    return false; // we didn't flush anything here
+    // just in case we have pending deletes to apply we can now write them
+    // doFlush will only do it if the deletes consume a significant amount of ram as a safety net
+    hasEvents |= applyAllDeletes();
+    return hasEvents;
   }
 
   /**

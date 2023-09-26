@@ -166,6 +166,9 @@ Changes in runtime behavior
 * GITHUB#12569: Prevent concurrent tasks from parallelizing execution further which could cause deadlock
   (Luca Cavanna)
 
+* GITHUB#12572: IndexWriter#flushNextBuffer now also applies deletes if necessary even if no DWPT has been flushed.
+  (Simon Willnauer)
+
 Bug Fixes
 ---------------------
 (No changes)
