@@ -317,9 +317,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   @Override
   public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
     try {
-      if (true) {
-        throw new IOException("not implemented");
-      }
       final int si = (int) (pos >> chunkSizePower);
       MemorySegment.copy(segments[si], LAYOUT_BYTE, pos & chunkSizeMask, b, offset, len);
     } catch (
@@ -619,9 +616,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     @Override
     public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
-      if (true) {
-        throw new IllegalArgumentException("not implemented");
-      }
       super.readBytes(pos + this.offset, bytes, offset, length);
     }
 

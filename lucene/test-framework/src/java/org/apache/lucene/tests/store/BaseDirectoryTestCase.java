@@ -1143,7 +1143,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     }
   }
 
-  private static void assertBytes(RandomAccessInput slice, byte[] bytes, int bytesOffset)
+  protected void assertBytes(RandomAccessInput slice, byte[] bytes, int bytesOffset)
       throws IOException {
     int toRead = bytes.length - bytesOffset;
     for (int i = 0; i < toRead; i++) {
