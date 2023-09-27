@@ -168,6 +168,28 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  private void readBytesBoundary(long pos, byte[] b, int offset, int len) throws IOException {
+    try {
+      int si = (int) (pos >> chunkSizePower);
+      pos = pos & chunkSizeMask;
+      long curAvail = segments[si].byteSize() - pos;
+      while (len > curAvail) {
+        MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, (int) curAvail);
+        len -= curAvail;
+        offset += curAvail;
+        si++;
+        if (si >= segments.length) {
+          throw new EOFException("read past EOF: " + this);
+        }
+        pos = 0L;
+        curAvail = segments[si].byteSize();
+      }
+      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, len);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
   @Override
   public void readInts(int[] dst, int offset, int length) throws IOException {
     try {
@@ -287,6 +309,23 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException ioobe) {
       throw handlePositionalIOOBE(ioobe, "read", pos);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
+  public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
+    try {
+      if (true) {
+        throw new IOException("not implemented");
+      }
+      final int si = (int) (pos >> chunkSizePower);
+      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos & chunkSizeMask, b, offset, len);
+    } catch (
+        @SuppressWarnings("unused")
+        IndexOutOfBoundsException e) {
+      readBytesBoundary(pos, b, offset, len);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -491,6 +530,17 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
 
     @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+      try {
+        MemorySegment.copy(curSegment, LAYOUT_BYTE, pos, bytes, offset, length);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
+      } catch (NullPointerException | IllegalStateException e) {
+        throw alreadyClosed(e);
+      }
+    }
+
+    @Override
     public short readShort(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_SHORT, pos);
@@ -565,6 +615,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     @Override
     public byte readByte(long pos) throws IOException {
       return super.readByte(pos + offset);
+    }
+
+    @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+      if (true) {
+        throw new IllegalArgumentException("not implemented");
+      }
+      super.readBytes(pos + this.offset, bytes, offset, length);
     }
 
     @Override
