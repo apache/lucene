@@ -15,6 +15,9 @@ API Changes
   The default implementation allocates an ew byte array and call StoredFieldVisitor#binaryField(FieldInfo, byte[]).
   (Ignacio Vera)
 
+* GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
+  ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
+
 New Features
 ---------------------
 (No changes)
