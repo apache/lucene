@@ -149,6 +149,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
       // return default impl
       return new RandomAccessInput() {
         @Override
+        public long length() {
+          assert length == slice.length();
+          return slice.length();
+        }
+
+        @Override
         public byte readByte(long pos) throws IOException {
           slice.seek(pos);
           return slice.readByte();
