@@ -17,20 +17,29 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestStringMSBRadixSorter extends LuceneTestCase {
+public class TestStringSorter extends LuceneTestCase {
 
   private void test(BytesRef[] refs, int len) {
+    test(Arrays.copyOf(refs, len), len, BytesRefComparator.NATURAL);
+    test(Arrays.copyOf(refs, len), len, Comparator.naturalOrder());
+  }
+
+  private void test(BytesRef[] refs, int len, Comparator<BytesRef> comparator) {
     BytesRef[] expected = ArrayUtil.copyOfSubArray(refs, 0, len);
     Arrays.sort(expected);
 
-    new StringMSBRadixSorter() {
+    new StringSorter(comparator) {
 
       @Override
-      protected BytesRef get(int i) {
-        return refs[i];
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        BytesRef ref = refs[i];
+        result.offset = ref.offset;
+        result.length = ref.length;
+        result.bytes = ref.bytes;
       }
 
       @Override
