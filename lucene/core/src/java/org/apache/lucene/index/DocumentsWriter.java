@@ -246,6 +246,23 @@ final class DocumentsWriter implements Closeable, Accountable {
     if (documentsWriterPerThread == null) {
       documentsWriterPerThread = flushControl.checkoutLargestNonPendingWriter();
     }
+    if (documentsWriterPerThread != null
+        && documentsWriterPerThread.getLastCommittedBytesUsed()
+            < flushControl.getDeleteBytesUsed()) {
+      // if the largest writer consumes less RAM than the buffered deletes we flush both, the writer
+      // as well as the deletes to make sure we free more RAM used by the IW
+      flushControl.setApplyAllDeletes();
+      if (infoStream.isEnabled("DW")) {
+        infoStream.message(
+            "DW",
+            String.format(
+                Locale.ROOT,
+                "force apply deletes after flushing largest pending writer deletesBytesUsed=%.1f MB,"
+                    + " largestWriterBytesUsed=%.1f MB, ramBuffer=%.1f MB",
+                flushControl.getDeleteBytesUsed() / (1024. * 1024.),
+                config.getRAMBufferSizeMB()));
+      }
+    }
     boolean hasEvents = false;
     if (documentsWriterPerThread != null) {
       hasEvents = doFlush(documentsWriterPerThread);
