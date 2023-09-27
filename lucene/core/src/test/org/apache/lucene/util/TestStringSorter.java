@@ -24,8 +24,8 @@ import org.apache.lucene.tests.util.TestUtil;
 public class TestStringSorter extends LuceneTestCase {
 
   private void test(BytesRef[] refs, int len) {
-    test(Arrays.copyOf(refs, len), len, BytesRefComparator.NATURAL);
-    test(Arrays.copyOf(refs, len), len, Comparator.naturalOrder());
+    test(ArrayUtil.copyOfSubArray(refs, 0, len), len, BytesRefComparator.NATURAL);
+    test(ArrayUtil.copyOfSubArray(refs, 0, len), len, Comparator.naturalOrder());
   }
 
   private void test(BytesRef[] refs, int len, Comparator<BytesRef> comparator) {
