@@ -299,7 +299,9 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   }
 
   public void testBytesCrossBoundary() throws Exception {
-    byte[] bytes = new byte[50];
+    int num =
+        TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 1000) : TestUtil.nextInt(random(), 50, 100);
+    byte[] bytes = new byte[num];
     random().nextBytes(bytes);
     try (Directory dir = getDirectory(createTempDir("testBytesCrossBoundary"), 16)) {
       try (IndexOutput out = dir.createOutput("bytesCrossBoundary", newIOContext(random()))) {
