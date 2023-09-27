@@ -566,6 +566,9 @@ final class DocumentsWriter implements Closeable, Accountable {
     final double ramBufferSizeMB = config.getRAMBufferSizeMB();
     if (ramBufferSizeMB != IndexWriterConfig.DISABLE_AUTO_FLUSH
         && flushControl.getDeleteBytesUsed() > (1024 * 1024 * ramBufferSizeMB / 2)) {
+      // TODO this looks flaky we need to setApplyAllDeletes() on FlushControl in order to
+      // trigger a flush but this doesn't do it.. looks like a bug and we need a test too for this
+      // safety net
       hasEvents = true;
       if (applyAllDeletes() == false) {
         if (infoStream.isEnabled("DW")) {
