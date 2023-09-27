@@ -25,7 +25,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 
-/** Quantized vector reader */
+/** Quantized vector writer */
 interface QuantizedVectorsWriter extends Closeable, Accountable {
 
   void finish() throws IOException;

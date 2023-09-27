@@ -36,7 +36,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   protected final ByteBuffer byteBuffer;
   protected final int byteSize;
   protected int lastOrd = -1;
-  protected float scoreCorrectionConstant;
+  protected final float[] scoreCorrectionConstant = new float[1];
 
   OffHeapQuantizedByteVectorValues(int dimension, int size, IndexInput slice) {
     this.dimension = dimension;
@@ -64,14 +64,14 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
     }
     slice.seek((long) targetOrd * byteSize);
     slice.readBytes(byteBuffer.array(), byteBuffer.arrayOffset(), dimension);
-    scoreCorrectionConstant = Float.intBitsToFloat(slice.readInt());
+    slice.readFloats(scoreCorrectionConstant, 0, 1);
     lastOrd = targetOrd;
     return binaryValue;
   }
 
   @Override
   public float getScoreCorrectionConstant() {
-    return scoreCorrectionConstant;
+    return scoreCorrectionConstant[0];
   }
 
   static OffHeapQuantizedByteVectorValues load(

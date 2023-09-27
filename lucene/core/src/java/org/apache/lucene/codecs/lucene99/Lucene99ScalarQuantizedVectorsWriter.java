@@ -22,6 +22,8 @@ import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFo
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
@@ -180,12 +182,15 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements QuantizedVect
   private void writeQuantizedVectors(QuantizationVectorWriter fieldData) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.dim];
+    final ByteBuffer offsetBuffer =
+      ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (float[] v : fieldData.floatVectors) {
       scalarQuantizer.quantize(v, vector);
       quantizedVectorData.writeBytes(vector, vector.length);
       float offsetCorrection =
           scalarQuantizer.calculateVectorOffset(vector, fieldData.vectorSimilarityFunction);
-      quantizedVectorData.writeInt(Float.floatToIntBits(offsetCorrection));
+      offsetBuffer.putFloat(offsetCorrection);
+      quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
     }
   }
 
@@ -236,13 +241,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements QuantizedVect
     long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.dim];
+    final ByteBuffer offsetBuffer =
+      ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int ordinal : ordMap) {
       float[] v = fieldData.floatVectors.get(ordinal);
       scalarQuantizer.quantize(v, vector);
       quantizedVectorData.writeBytes(vector, vector.length);
       float offsetCorrection =
           scalarQuantizer.calculateVectorOffset(vector, fieldData.vectorSimilarityFunction);
-      quantizedVectorData.writeInt(Float.floatToIntBits(offsetCorrection));
+      offsetBuffer.putFloat(offsetCorrection);
+      quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
     }
     return vectorDataOffset;
   }
