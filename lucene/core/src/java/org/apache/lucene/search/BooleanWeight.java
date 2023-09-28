@@ -523,7 +523,7 @@ final class BooleanWeight extends Weight {
 
     // scorer simplifications:
 
-    if (scorers.get(Occur.SHOULD).size() == minShouldMatch) {
+    if (minShouldMatch > 0 && scorers.get(Occur.SHOULD).size() == minShouldMatch) {
       // any optional clauses are in fact required
       scorers.get(Occur.MUST).addAll(scorers.get(Occur.SHOULD));
       scorers.get(Occur.SHOULD).clear();
