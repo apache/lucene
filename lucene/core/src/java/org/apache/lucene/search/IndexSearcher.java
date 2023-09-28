@@ -118,10 +118,7 @@ public class IndexSearcher {
    * method from constructor, which is a bad practice. This is {@code null} if no executor is
    * provided
    */
-  private final CachingLeafSlicesSupplier leafSlicesSupplier;
-
-  // These are only used for multi-threaded search
-  private final Executor executor;
+  private final Supplier<LeafSlice[]> leafSlicesSupplier;
 
   // Used internally for load balancing threads executing for the query
   private final TaskExecutor taskExecutor;
@@ -226,12 +223,14 @@ public class IndexSearcher {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader" + context.reader();
     reader = context.reader();
-    this.executor = executor;
-    this.taskExecutor = executor == null ? null : new TaskExecutor(executor);
+    this.taskExecutor =
+        executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
     leafSlicesSupplier =
-        (executor == null) ? null : new CachingLeafSlicesSupplier(this::slices, leafContexts);
+        executor == null
+            ? () -> new LeafSlice[] {new LeafSlice(leafContexts)}
+            : new CachingLeafSlicesSupplier(this::slices, leafContexts);
   }
 
   /**
@@ -420,13 +419,12 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns the leaf slices used for concurrent searching, or null if no {@code Executor} was
-   * passed to the constructor.
+   * Returns the leaf slices used for concurrent searching
    *
    * @lucene.experimental
    */
   public LeafSlice[] getSlices() {
-    return (executor == null) ? null : leafSlicesSupplier.get();
+    return leafSlicesSupplier.get();
   }
 
   /**
@@ -456,12 +454,12 @@ public class IndexSearcher {
         new CollectorManager<TopScoreDocCollector, TopDocs>() {
 
           private final HitsThresholdChecker hitsThresholdChecker =
-              (leafSlices == null || leafSlices.length <= 1)
+              leafSlices.length <= 1
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
-              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
+              leafSlices.length <= 1 ? null : new MaxScoreAccumulator();
 
           @Override
           public TopScoreDocCollector newCollector() throws IOException {
@@ -601,12 +599,12 @@ public class IndexSearcher {
         new CollectorManager<>() {
 
           private final HitsThresholdChecker hitsThresholdChecker =
-              (leafSlices == null || leafSlices.length <= 1)
+              leafSlices.length <= 1
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
           private final MaxScoreAccumulator minScoreAcc =
-              (leafSlices == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
+              leafSlices.length <= 1 ? null : new MaxScoreAccumulator();
 
           @Override
           public TopFieldCollector newCollector() throws IOException {
@@ -652,8 +650,10 @@ public class IndexSearcher {
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
-    if (leafSlices == null || leafSlices.length == 0) {
-      search(leafContexts, weight, firstCollector);
+    if (leafSlices.length == 0) {
+      // there are no segments, nothing to offload to the executor, but we do need to call reduce to
+      // create some kind of empty result
+      assert leafContexts.size() == 0;
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
       final List<C> collectors = new ArrayList<>(leafSlices.length);
@@ -894,13 +894,7 @@ public class IndexSearcher {
 
   @Override
   public String toString() {
-    return "IndexSearcher("
-        + reader
-        + "; executor="
-        + executor
-        + "; sliceExecutionControlPlane "
-        + taskExecutor
-        + ")";
+    return "IndexSearcher(" + reader + "; taskExecutor=" + taskExecutor + ")";
   }
 
   /**

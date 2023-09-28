@@ -96,40 +96,28 @@ public final class TermStates {
     final TermStates perReaderTermState = new TermStates(needsStats ? null : term, context);
     if (needsStats) {
       TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-      if (taskExecutor != null) {
-        // build the term states concurrently
-        List<TaskExecutor.Task<TermStateInfo>> tasks =
-            context.leaves().stream()
-                .map(
-                    ctx ->
-                        taskExecutor.createTask(
-                            () -> {
-                              TermsEnum termsEnum = loadTermsEnum(ctx, term);
-                              if (termsEnum != null) {
-                                return new TermStateInfo(
-                                    termsEnum.termState(),
-                                    ctx.ord,
-                                    termsEnum.docFreq(),
-                                    termsEnum.totalTermFreq());
-                              }
-                              return null;
-                            }))
-                .toList();
-        List<TermStateInfo> resultInfos = taskExecutor.invokeAll(tasks);
-        for (TermStateInfo info : resultInfos) {
-          if (info != null) {
-            perReaderTermState.register(
-                info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
-          }
-        }
-      } else {
-        // build the term states sequentially
-        for (final LeafReaderContext ctx : context.leaves()) {
-          TermsEnum termsEnum = loadTermsEnum(ctx, term);
-          if (termsEnum != null) {
-            perReaderTermState.register(
-                termsEnum.termState(), ctx.ord, termsEnum.docFreq(), termsEnum.totalTermFreq());
-          }
+      List<TaskExecutor.Task<TermStateInfo>> tasks =
+          context.leaves().stream()
+              .map(
+                  ctx ->
+                      taskExecutor.createTask(
+                          () -> {
+                            TermsEnum termsEnum = loadTermsEnum(ctx, term);
+                            if (termsEnum != null) {
+                              return new TermStateInfo(
+                                  termsEnum.termState(),
+                                  ctx.ord,
+                                  termsEnum.docFreq(),
+                                  termsEnum.totalTermFreq());
+                            }
+                            return null;
+                          }))
+              .toList();
+      List<TermStateInfo> resultInfos = taskExecutor.invokeAll(tasks);
+      for (TermStateInfo info : resultInfos) {
+        if (info != null) {
+          perReaderTermState.register(
+              info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
         }
       }
     }

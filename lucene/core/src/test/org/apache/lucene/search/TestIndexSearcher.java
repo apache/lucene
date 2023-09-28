@@ -42,7 +42,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.junit.Test;
 
 public class TestIndexSearcher extends LuceneTestCase {
   Directory dir;
@@ -115,7 +114,6 @@ public class TestIndexSearcher extends LuceneTestCase {
     TestUtil.shutdownExecutorService(service);
   }
 
-  @Test
   public void testSearchAfterPassedMaxDoc() throws Exception {
     // LUCENE-5128: ensure we get a meaningful message if searchAfter exceeds maxDoc
     Directory dir = newDirectory();
@@ -269,5 +267,10 @@ public class TestIndexSearcher extends LuceneTestCase {
         };
     searcher.search(new MatchAllDocsQuery(), 10);
     assertEquals(leaves.size(), numExecutions.get());
+  }
+
+  public void testNullExecutorNonNullTaskExecutor() {
+    IndexSearcher indexSearcher = new IndexSearcher(reader);
+    assertNotNull(indexSearcher.getTaskExecutor());
   }
 }
