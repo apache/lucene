@@ -278,10 +278,6 @@ public class TestIndexSearcher extends LuceneTestCase {
   /**
    * Tests that when IndexerSearcher runs concurrent searches on multiple slices if any Exception is
    * thrown by one of the slice tasks, it will not return until all tasks have completed.
-   *
-   * <p>Without a larger refactoring of the Lucene IndexSearcher and/or TaskExecutor there isn't a
-   * clean deterministic way to test this. This test is probabilistic using short timeouts in the
-   * tasks that do not throw an Exception.
    */
   public void testMultipleSegmentsOnTheExecutorWithException() {
     List<LeafReaderContext> leaves = reader.leaves();
@@ -305,8 +301,9 @@ public class TestIndexSearcher extends LuceneTestCase {
     try {
       AtomicInteger callsToScorer = new AtomicInteger(0);
       int numExceptions = leaves.size() == 1 ? 1 : RandomizedTest.randomIntBetween(1, 2);
+      CountDownLatch latch = new CountDownLatch(numExceptions);
       MatchAllOrThrowExceptionQuery query =
-          new MatchAllOrThrowExceptionQuery(numExceptions, callsToScorer);
+          new MatchAllOrThrowExceptionQuery(numExceptions, callsToScorer, latch);
       RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
       // if the TaskExecutor didn't wait for all tasks to finish, this assert would frequently fail
       assertEquals(leaves.size(), callsToScorer.get());
@@ -322,6 +319,7 @@ public class TestIndexSearcher extends LuceneTestCase {
     private final AtomicInteger numExceptionsToThrow;
     private final Query delegate;
     private final AtomicInteger callsToScorer;
+    private final CountDownLatch latch;
 
     /**
      * Throws an Exception out of the {@code scorer} method the first {@code numExceptions} times it
@@ -331,10 +329,12 @@ public class TestIndexSearcher extends LuceneTestCase {
      * @param callsToScorer where to record the number of times the {@code scorer} method has been
      *     called
      */
-    public MatchAllOrThrowExceptionQuery(int numExceptions, AtomicInteger callsToScorer) {
+    public MatchAllOrThrowExceptionQuery(
+        int numExceptions, AtomicInteger callsToScorer, CountDownLatch latch) {
       this.numExceptionsToThrow = new AtomicInteger(numExceptions);
       this.callsToScorer = callsToScorer;
       this.delegate = new MatchAllDocsQuery();
+      this.latch = latch;
     }
 
     @Override
@@ -357,14 +357,17 @@ public class TestIndexSearcher extends LuceneTestCase {
         public Scorer scorer(LeafReaderContext context) throws IOException {
           if (numExceptionsToThrow.getAndDecrement() > 0) {
             callsToScorer.getAndIncrement();
-            throw new RuntimeException("MatchAllOrThrowExceptionQuery Exception");
+            try {
+              throw new RuntimeException("MatchAllOrThrowExceptionQuery Exception");
+            } finally {
+              latch.countDown();
+            }
           } else {
-            // A small sleep before incrementing the callsToScorer counter allows
-            // the task with the Exception to be thrown and if TaskExecutor.invokeAll
-            // does not wait until all tasks have finished, then the callsToScorer
-            // counter will not match the total number of tasks (or rather usually will
-            // not match, since there is a race condition that makes it probabilistic).
-            RandomizedTest.sleep(25);
+            try {
+              latch.await(5000, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+              throw new RuntimeException("test waited too long", e);
+            }
             callsToScorer.getAndIncrement();
           }
           return matchAllWeight.scorer(context);
