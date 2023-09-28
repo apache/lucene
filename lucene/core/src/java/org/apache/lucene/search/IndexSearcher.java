@@ -227,10 +227,9 @@ public class IndexSearcher {
         executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
-    leafSlicesSupplier =
-        executor == null
-            ? () -> new LeafSlice[] {new LeafSlice(leafContexts)}
-            : new CachingLeafSlicesSupplier(this::slices, leafContexts);
+    Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
+        executor == null ? ctx -> new LeafSlice[] {new LeafSlice(ctx)} : this::slices;
+    leafSlicesSupplier = new CachingLeafSlicesSupplier(slicesProvider, leafContexts);
   }
 
   /**
