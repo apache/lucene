@@ -494,6 +494,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
               .shouldShareNonSingletonNodes(false)
+              .bytesPageBits(10)
               .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
