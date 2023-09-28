@@ -82,9 +82,18 @@ public final class TaskExecutor {
       try {
         results.add(future.get());
       } catch (InterruptedException e) {
-        exc = new ThreadInterruptedException(e);
+        var newException = new ThreadInterruptedException(e);
+        if (exc == null) {
+          exc = newException;
+        } else {
+          exc.addSuppressed(newException);
+        }
       } catch (ExecutionException e) {
-        exc = e.getCause();
+        if (exc == null) {
+          exc = e.getCause();
+        } else {
+          exc.addSuppressed(e.getCause());
+        }
       }
     }
     if (exc != null) {
