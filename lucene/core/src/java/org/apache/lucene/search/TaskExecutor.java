@@ -32,14 +32,13 @@ import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * Executor wrapper responsible for the execution of concurrent tasks. Used to parallelize search
- * across segments as well as query rewrite in some cases. Exposes a {@link #createTask(Callable)}
- * method to create tasks given a {@link Callable}, as well as the {@link #invokeAll(Collection)}
- * method to execute a set of tasks concurrently. Once all tasks are submitted to the executor, it
- * blocks and wait for all tasks to be completed, and then returns a list with the obtained results.
- * Ensures that the underlying executor is only used for top-level {@link #invokeAll(Collection)}
- * calls, and not for potential {@link #invokeAll(Collection)} calls made from one of the tasks.
- * This is to prevent deadlock with certain types of pool based executors (e.g. {@link
- * java.util.concurrent.ThreadPoolExecutor}).
+ * across segments as well as query rewrite in some cases. Exposes a single {@link
+ * #invokeAll(Collection)} method that takes a collection of {@link Callable}s and executes them
+ * concurrently/ Once all tasks are submitted to the executor, it blocks and wait for all tasks to
+ * be completed, and then returns a list with the obtained results. Ensures that the underlying
+ * executor is only used for top-level {@link #invokeAll(Collection)} calls, and not for potential
+ * {@link #invokeAll(Collection)} calls made from one of the tasks. This is to prevent deadlock with
+ * certain types of pool based executors (e.g. {@link java.util.concurrent.ThreadPoolExecutor}).
  *
  * @lucene.experimental
  */
@@ -56,24 +55,25 @@ public final class TaskExecutor {
   }
 
   /**
-   * Execute all the tasks provided as an argument, wait for them to complete and return the
+   * Execute all the callables provided as an argument, wait for them to complete and return the
    * obtained results.
    *
-   * @param tasks the tasks to execute
+   * @param callables the callables to execute
    * @return a list containing the results from the tasks execution
    * @param <T> the return type of the task execution
    */
-  public <T> List<T> invokeAll(Collection<Task<T>> tasks) throws IOException {
-    if (numberOfRunningTasksInCurrentThread.get() > 0) {
-      for (Task<T> task : tasks) {
+  public <T> List<T> invokeAll(Collection<Callable<T>> callables) throws IOException {
+    List<Task<T>> tasks = new ArrayList<>(callables.size());
+    boolean runOnCallerThread = numberOfRunningTasksInCurrentThread.get() > 0;
+    for (Callable<T> callable : callables) {
+      Task<T> task = new Task<>(callable);
+      tasks.add(task);
+      if (runOnCallerThread) {
         task.run();
-      }
-    } else {
-      for (Runnable task : tasks) {
+      } else {
         executor.execute(task);
       }
     }
-
     final List<T> results = new ArrayList<>();
     for (Future<T> future : tasks) {
       try {
@@ -88,23 +88,12 @@ public final class TaskExecutor {
   }
 
   /**
-   * Creates a task given the provided {@link Callable}
-   *
-   * @param callable the callable to be executed as part of the task
-   * @return the created task
-   * @param <C> the return type of the task
-   */
-  public <C> Task<C> createTask(Callable<C> callable) {
-    return new Task<>(callable);
-  }
-
-  /**
    * Extension of {@link FutureTask} that tracks the number of tasks that are running in each
    * thread.
    *
    * @param <V> the return type of the task
    */
-  public static final class Task<V> extends FutureTask<V> {
+  private static final class Task<V> extends FutureTask<V> {
     private Task(Callable<V> callable) {
       super(callable);
     }
