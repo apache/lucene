@@ -76,7 +76,7 @@ public final class TaskExecutor {
       }
     }
 
-    RuntimeException exc = null;
+    Throwable exc = null;
     final List<T> results = new ArrayList<>();
     for (Future<T> future : tasks) {
       try {
@@ -84,7 +84,7 @@ public final class TaskExecutor {
       } catch (InterruptedException e) {
         exc = new ThreadInterruptedException(e);
       } catch (ExecutionException e) {
-        exc = new RuntimeException(e.getCause());
+        exc = e.getCause();
       }
     }
     if (exc != null) {
