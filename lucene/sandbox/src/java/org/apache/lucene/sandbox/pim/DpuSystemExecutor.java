@@ -130,6 +130,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
                     set.copy(sym, indexBuffers, ((readSizeSet + 7) >> 3) << 3);
                     cnt++;
                   }
+                  in.close();
                 } catch (IOException e) {
                   throw new DpuException(e.getMessage());
                 }
