@@ -163,6 +163,8 @@ Optimizations
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
 
+* GITHUB#12573: Reduce block size of FST BytesStore in BlockTreeTermsWriter. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
