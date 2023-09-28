@@ -228,7 +228,9 @@ public class IndexSearcher {
     this.readerContext = context;
     leafContexts = context.leaves();
     Function<List<LeafReaderContext>, LeafSlice[]> slicesProvider =
-        executor == null ? leaves -> new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))} : this::slices;
+        executor == null
+            ? leaves -> new LeafSlice[] {new LeafSlice(new ArrayList<>(leaves))}
+            : this::slices;
     leafSlicesSupplier = new CachingLeafSlicesSupplier(slicesProvider, leafContexts);
   }
 
