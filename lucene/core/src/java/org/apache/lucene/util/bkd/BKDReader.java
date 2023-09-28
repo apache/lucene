@@ -890,12 +890,7 @@ public class BKDReader extends PointValues {
               scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
         }
         scratchIterator.reset(i, length);
-        int visitState = visitor.visitWithState(scratchIterator, scratchPackedValue, sortedDim);
-        if (visitState == MatchState.HIGH_IN_SORTED_DIM) {
-          if (visitor.isInverse()) {
-            scratchIterator.reset(i, count - i);
-            visitor.visit(scratchIterator);
-          }
+        if (visitor.visitWithSortedDim(scratchIterator, scratchPackedValue, sortedDim) == false) {
           break;
         }
         i += length;
@@ -963,7 +958,7 @@ public class BKDReader extends PointValues {
           compressedDim * config.bytesPerDim + commonPrefixLengths[compressedDim];
       commonPrefixLengths[compressedDim]++;
       int i;
-      int visitState = -1;
+      boolean continueVisit = true;
       for (i = 0; i < count; ) {
         scratchPackedValue[compressedByteOffset] = in.readByte();
         final int runLen = Byte.toUnsignedInt(in.readByte());
@@ -974,18 +969,14 @@ public class BKDReader extends PointValues {
                 scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
           }
           int offset = i + j;
-          visitState =
-              visitor.visitWithState(
+          continueVisit =
+              visitor.visitWithSortedDim(
                   scratchIterator.docIDs[offset], scratchPackedValue, compressedDim);
-          if (visitState == MatchState.HIGH_IN_SORTED_DIM) {
-            if (visitor.isInverse()) {
-              scratchIterator.reset(offset, count - offset);
-              visitor.visit(scratchIterator);
-            }
+          if (continueVisit == false) {
             break;
           }
         }
-        if (visitState == MatchState.HIGH_IN_SORTED_DIM) break;
+        if (continueVisit == false) break;
         i += runLen;
       }
     }

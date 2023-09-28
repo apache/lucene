@@ -298,11 +298,6 @@ public abstract class PointValues {
    */
   public interface IntersectVisitor {
 
-    /** return true if this is an inverse visitor. */
-    default boolean isInverse() {
-      return false;
-    }
-
     /**
      * Called for all documents in a leaf cell that's fully contained by the query. The consumer
      * should blindly accept the docID.
@@ -327,10 +322,18 @@ public abstract class PointValues {
      */
     void visit(int docID, byte[] packedValue) throws IOException;
 
-    /** Similar to {@link IntersectVisitor#visit(int, byte[])} but return a match state. */
-    default int visitWithState(int docID, byte[] packedValue, int sortedDim) throws IOException {
+    /**
+     * Similar to {@link IntersectVisitor#visit(int, byte[])} but data is visited in increasing
+     * order on the sortedDim, and in the case of ties, in increasing docID order. Implementers can
+     * stop processing points on the leaf by returning false when for example the sorted dimension
+     * value is too high to be matched by the query.
+     *
+     * @return true if the visitor should continue visiting points on this leaf, otherwise false.
+     */
+    default boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
+        throws IOException {
       visit(docID, packedValue);
-      return MatchState.INVALID;
+      return true;
     }
 
     /**
@@ -346,12 +349,17 @@ public abstract class PointValues {
     }
 
     /**
-     * Similar to {@link IntersectVisitor#visit(DocIdSetIterator, byte[])} but return a match state.
+     * Similar to {@link IntersectVisitor#visit(DocIdSetIterator, byte[])} but data is visited in
+     * increasing order on the sortedDim, and in the case of ties, in increasing docID order.
+     * Implementers can stop processing points on the leaf by returning false when for example the
+     * sorted dimension value is too high to be matched by the query.
+     *
+     * @return true if the visitor should continue visiting points on this leaf, otherwise false.
      */
-    default int visitWithState(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
+    default boolean visitWithSortedDim(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
         throws IOException {
       visit(iterator, packedValue);
-      return MatchState.INVALID;
+      return true;
     }
 
     /**
