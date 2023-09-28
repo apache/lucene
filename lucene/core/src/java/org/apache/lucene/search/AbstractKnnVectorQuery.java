@@ -85,7 +85,10 @@ abstract class AbstractKnnVectorQuery extends Query {
             : parallelSearch(reader.leaves(), filterWeight, taskExecutor);
 
     // Merge sort the results
-    TopDocs topK = TopDocs.merge(k, perLeafResults);
+    TopDocs topK = mergeLeafResults(perLeafResults);
+    if (topK.scoreDocs.length == 0) {
+      return new MatchNoDocsQuery();
+    }
     return createRewrittenQuery(reader, topK);
   }
 
@@ -213,12 +216,14 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new TopDocs(totalHits, topScoreDocs);
   }
 
-  protected Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
-    int len = topK.scoreDocs.length;
-    if (len == 0) {
-      return new MatchNoDocsQuery();
-    }
+  protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+    return TopDocs.merge(k, perLeafResults);
+  }
 
+  private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
+    int len = topK.scoreDocs.length;
+
+    assert len > 0;
     float maxScore = topK.scoreDocs[0].score;
 
     Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
