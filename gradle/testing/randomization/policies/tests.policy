@@ -129,3 +129,7 @@ grant {
   permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
 };
 
+grant {
+    // Allow DPU JNI library for PIM query execution
+    permission java.lang.RuntimePermission "loadLibrary.dpujni";
+};
