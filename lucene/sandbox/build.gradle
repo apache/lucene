@@ -49,4 +49,9 @@ task compileDpu (type: Exec) {
           'dpu/src/exact_phrase/src/term_lookup.c', 'dpu/src/exact_phrase/src/postings_util.c'
 }
 
+test {
+  systemProperty 'lucene.pim.dir', "${rootProject.projectDir}"
+  environment 'LD_LIBRARY_PATH', "$projectDir/dpu/"
+}
+
 compileJava.dependsOn(compileDpu)

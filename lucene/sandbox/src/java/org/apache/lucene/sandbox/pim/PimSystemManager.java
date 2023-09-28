@@ -55,7 +55,7 @@ public class PimSystemManager {
    * Variable to control the backend used for queries It can be the software simulator on CPU or the
    * real PIM HW
    */
-  static boolean USE_SOFTWARE_MODEL = true;
+  static boolean USE_SOFTWARE_MODEL = false;
 
   // TODO: Should there be a queue per query type, with a different max number of queries?
   private static final int MAX_NUM_QUERIES = 128;

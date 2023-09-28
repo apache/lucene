@@ -23,8 +23,8 @@ import org.apache.lucene.search.Query;
 
 /**
  * This class is used to hold the results of a query until the results of each segment has been
- * read. Queries sent to PIM return results for all segments of the index, then results are cached and
- * provided to Lucene's search APIs on a per-segment basis.
+ * read. Queries sent to PIM return results for all segments of the index, then results are cached
+ * and provided to Lucene's search APIs on a per-segment basis.
  */
 public class PimMatchCache {
 
