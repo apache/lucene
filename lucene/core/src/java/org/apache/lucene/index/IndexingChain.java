@@ -844,7 +844,7 @@ final class IndexingChain implements Accountable {
           "Field ["
               + fieldName
               + "]"
-              + "vector's dimensions must be <= ["
+              + " vector's dimensions must be <= ["
               + maxVectorDim
               + "]; got "
               + vectorDim);
