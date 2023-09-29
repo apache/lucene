@@ -59,6 +59,9 @@ public final class MutablePointTreeReaderUtils {
     final int bitsPerDocId = sortedByDocID ? 0 : PackedInts.bitsRequired(maxDoc - 1);
     new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
 
+      final BytesRef scratch1 = new BytesRef();
+      final BytesRef scratch2 = new BytesRef();
+
       @Override
       protected void swap(int i, int j) {
         reader.swap(i, j);
@@ -87,35 +90,19 @@ public final class MutablePointTreeReaderUtils {
       @Override
       protected Sorter getFallbackSorter(int k) {
         return new InPlaceMergeSorter() {
-          final BytesRef scratch1 = new BytesRef();
-          final BytesRef scratch2 = new BytesRef();
-          final ByteArrayComparator cmp = comparator();
-
-          private ByteArrayComparator comparator() {
-            if (config.packedBytesLength <= k) {
-              return null;
-            }
-            if (config.packedBytesLength == Integer.BYTES
-                || config.packedBytesLength == Long.BYTES) {
-              // We have optimizations for 4/8 bytes, so get the comparator regardless k;
-              return ArrayUtil.getUnsignedComparator(config.packedBytesLength);
-            }
-            return (a, aI, b, bI) ->
-                Arrays.compareUnsigned(
-                    a,
-                    aI + k,
-                    aI + config.packedBytesLength,
-                    b,
-                    bI + k,
-                    aI + config.packedBytesLength);
-          }
-
           @Override
           protected int compare(int i, int j) {
-            if (cmp != null) {
+            if (k >= config.packedBytesLength) {
               reader.getValue(i, scratch1);
               reader.getValue(j, scratch2);
-              int v = cmp.compare(scratch1.bytes, scratch1.offset, scratch2.bytes, scratch2.offset);
+              int v =
+                  Arrays.compareUnsigned(
+                      scratch1.bytes,
+                      scratch1.offset + k,
+                      scratch1.offset + scratch1.length,
+                      scratch2.bytes,
+                      scratch2.offset + k,
+                      scratch2.offset + scratch2.length);
               if (v != 0) {
                 return v;
               }
