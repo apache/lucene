@@ -42,7 +42,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.hamcrest.Matchers;
 
 public class TestIndexSearcher extends LuceneTestCase {
   Directory dir;
@@ -236,7 +235,8 @@ public class TestIndexSearcher extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     for (int i = 0; i < 10; i++) {
       w.addDocument(new Document());
-      // manually flush, so we get to create multiple segments almost all the times, as well as multiple slices
+      // manually flush, so we get to create multiple segments almost all the times, as well as
+      // multiple slices
       w.flush();
     }
     IndexReader r = w.getReader();
