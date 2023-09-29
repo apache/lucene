@@ -216,6 +216,19 @@ abstract class AbstractKnnVectorQuery extends Query {
     return new TopDocs(totalHits, topScoreDocs);
   }
 
+  /**
+   * Merges all segment-level kNN results to get the index-level kNN results.
+   *
+   * <p>The default implementation delegates to {@link TopDocs#merge(int, TopDocs[])} to find the overall top
+   * {@link #k}, which requires input results to be sorted.</p>
+   *
+   * <p>This method is useful for reading and / or modifying the final results as needed.</p>
+   *
+   * @param perLeafResults  array of segment-level kNN results.
+   * @return                index-level kNN results (no constraint on their ordering).
+   *
+   * @lucene.experimental
+   */
   protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
     return TopDocs.merge(k, perLeafResults);
   }
