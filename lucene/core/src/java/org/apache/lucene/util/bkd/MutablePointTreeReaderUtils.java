@@ -100,7 +100,14 @@ public final class MutablePointTreeReaderUtils {
               // We have optimizations for 4/8 bytes, so get the comparator regardless k;
               return ArrayUtil.getUnsignedComparator(config.packedBytesLength);
             }
-            return ArrayUtil.getUnsignedComparator(config.packedBytesLength - k);
+            return (a, aI, b, bI) ->
+                Arrays.compareUnsigned(
+                    a,
+                    aI + k,
+                    aI + config.packedBytesLength,
+                    b,
+                    bI + k,
+                    aI + config.packedBytesLength);
           }
 
           @Override
@@ -108,9 +115,7 @@ public final class MutablePointTreeReaderUtils {
             if (cmp != null) {
               reader.getValue(i, scratch1);
               reader.getValue(j, scratch2);
-              int v =
-                  cmp.compare(
-                      scratch1.bytes, scratch1.offset + k, scratch2.bytes, scratch2.offset + k);
+              int v = cmp.compare(scratch1.bytes, scratch1.offset, scratch2.bytes, scratch2.offset);
               if (v != 0) {
                 return v;
               }
