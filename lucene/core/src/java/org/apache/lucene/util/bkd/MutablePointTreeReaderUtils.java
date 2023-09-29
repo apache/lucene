@@ -21,10 +21,12 @@ import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.RadixSelector;
 import org.apache.lucene.util.Selector;
+import org.apache.lucene.util.Sorter;
 import org.apache.lucene.util.StableMSBRadixSorter;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -80,6 +82,51 @@ public final class MutablePointTreeReaderUtils {
           final int shift = bitsPerDocId - ((k - config.packedBytesLength + 1) << 3);
           return (reader.getDocID(i) >>> Math.max(0, shift)) & 0xff;
         }
+      }
+
+      @Override
+      protected Sorter getFallbackSorter(int k) {
+        return new InPlaceMergeSorter() {
+          final BytesRef scratch1 = new BytesRef();
+          final BytesRef scratch2 = new BytesRef();
+          final ByteArrayComparator cmp = comparator();
+
+          private ByteArrayComparator comparator() {
+            if (config.packedBytesLength <= k) {
+              return null;
+            }
+            if (config.packedBytesLength == Integer.BYTES
+                || config.packedBytesLength == Long.BYTES) {
+              // We have optimizations for 4/8 bytes, so get the comparator regardless k;
+              return ArrayUtil.getUnsignedComparator(config.packedBytesLength);
+            }
+            return ArrayUtil.getUnsignedComparator(config.packedBytesLength - k);
+          }
+
+          @Override
+          protected int compare(int i, int j) {
+            if (cmp != null) {
+              reader.getValue(i, scratch1);
+              reader.getValue(j, scratch2);
+              int v =
+                  cmp.compare(
+                      scratch1.bytes, scratch1.offset + k, scratch2.bytes, scratch2.offset + k);
+              if (v != 0) {
+                return v;
+              }
+            }
+            if (bitsPerDocId == 0) {
+              return 0;
+            }
+            // Directly compare the whole int even if some bytes have been checked before.
+            return Integer.compare(reader.getDocID(i), reader.getDocID(j));
+          }
+
+          @Override
+          protected void swap(int i, int j) {
+            reader.swap(i, j);
+          }
+        };
       }
     }.sort(from, to);
   }
