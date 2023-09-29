@@ -78,11 +78,7 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
-* GITHUB#12447, GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
-
-* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
-
-* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+* GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
 Optimizations
 ---------------------
@@ -216,6 +212,13 @@ Improvements
 
 * GITHUB#12499: Simplify task executor for concurrent operations by offloading concurrent operations to the
   provided executor unconditionally. (Luca Cavanna)
+
+* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
+
+* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+
+* GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
 
 Optimizations
 ---------------------
