@@ -843,8 +843,7 @@ final class IndexingChain implements Accountable {
       throw new IllegalArgumentException(
           "Field ["
               + fieldName
-              + "]"
-              + "vector's dimensions must be <= ["
+              + "] vector's dimensions must be <= ["
               + maxVectorDim
               + "]; got "
               + vectorDim);
