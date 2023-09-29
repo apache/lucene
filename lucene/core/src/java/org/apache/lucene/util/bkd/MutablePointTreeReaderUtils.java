@@ -92,7 +92,7 @@ public final class MutablePointTreeReaderUtils {
         return new InPlaceMergeSorter() {
           @Override
           protected int compare(int i, int j) {
-            if (k >= config.packedBytesLength) {
+            if (k < config.packedBytesLength) {
               reader.getValue(i, scratch1);
               reader.getValue(j, scratch2);
               int v =
