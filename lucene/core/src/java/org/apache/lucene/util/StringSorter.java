@@ -21,7 +21,7 @@ import java.util.Comparator;
 
 /**
  * A {@link BytesRef} sorter tries to use a efficient radix sorter if {@link StringSorter#cmp} is a
- * {@link BytesRefComparator}, other wise fall back to {@link StringSorter#fallbackSorter}
+ * {@link BytesRefComparator}, otherwise fallback to {@link StringSorter#fallbackSorter}
  */
 public abstract class StringSorter extends Sorter {
 
