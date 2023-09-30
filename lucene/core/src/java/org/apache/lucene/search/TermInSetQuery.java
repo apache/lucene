@@ -32,8 +32,9 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringMSBRadixSorter;
+import org.apache.lucene.util.StringSorter;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -112,18 +113,21 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     boolean sorted =
         terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;
     if (sorted == false) {
-      new StringMSBRadixSorter() {
+      new StringSorter(BytesRefComparator.NATURAL) {
+
+        @Override
+        protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+          BytesRef term = sortedTerms[i];
+          result.length = term.length;
+          result.offset = term.offset;
+          result.bytes = term.bytes;
+        }
 
         @Override
         protected void swap(int i, int j) {
           BytesRef b = sortedTerms[i];
           sortedTerms[i] = sortedTerms[j];
           sortedTerms[j] = b;
-        }
-
-        @Override
-        protected BytesRef get(int i) {
-          return sortedTerms[i];
         }
       }.sort(0, sortedTerms.length);
     }
