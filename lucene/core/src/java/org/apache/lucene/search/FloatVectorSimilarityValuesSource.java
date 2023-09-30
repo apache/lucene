@@ -28,14 +28,13 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * A {@link DoubleValuesSource} which computes the vector similarity scores between the query vector
  * and the {@link org.apache.lucene.document.KnnFloatVectorField} for documents.
  */
-class FloatVectorSimilarityValuesSource extends DoubleValuesSource {
+class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
 
   private final float[] queryVector;
-  private final String fieldName;
 
   public FloatVectorSimilarityValuesSource(float[] vector, String fieldName) {
+    super(fieldName);
     this.queryVector = vector;
-    this.fieldName = fieldName;
   }
 
   @Override
@@ -51,24 +50,10 @@ class FloatVectorSimilarityValuesSource extends DoubleValuesSource {
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        if (doc >= vectorValues.docID()
-            && (vectorValues.docID() == doc || vectorValues.advance(doc) == doc)) {
-          return true;
-        } else {
-          return false;
-        }
+        return doc >= vectorValues.docID()
+            && (vectorValues.docID() == doc || vectorValues.advance(doc) == doc);
       }
     };
-  }
-
-  @Override
-  public boolean needsScores() {
-    return false;
-  }
-
-  @Override
-  public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
-    return this;
   }
 
   @Override
@@ -92,10 +77,5 @@ class FloatVectorSimilarityValuesSource extends DoubleValuesSource {
         + " queryVector="
         + Arrays.toString(queryVector)
         + ")";
-  }
-
-  @Override
-  public boolean isCacheable(LeafReaderContext ctx) {
-    return true;
   }
 }

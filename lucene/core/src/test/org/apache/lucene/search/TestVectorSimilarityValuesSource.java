@@ -32,6 +32,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -139,12 +140,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
   @AfterClass
   public static void afterClass() throws Exception {
     searcher = null;
-    reader.close();
-    reader = null;
-    dir.close();
-    dir = null;
-    analyzer.close();
-    analyzer = null;
+    IOUtils.close(reader, dir, analyzer);
   }
 
   public void testEuclideanSimilarityValuesSource() throws Exception {
@@ -352,12 +348,12 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     byte[] byteQueryVector = new byte[] {-10, 20, 30};
 
     expectThrows(
-        AssertionError.class,
+        IllegalArgumentException.class,
         () ->
             DoubleValuesSource.similarityToQueryVector(
                 searcher.reader.leaves().get(0), floatQueryVector, "knnByteField1"));
     expectThrows(
-        AssertionError.class,
+        IllegalArgumentException.class,
         () ->
             DoubleValuesSource.similarityToQueryVector(
                 searcher.reader.leaves().get(0), byteQueryVector, "knnFloatField1"));
