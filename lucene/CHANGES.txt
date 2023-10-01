@@ -171,6 +171,11 @@ Bug Fixes
 ---------------------
 (No changes)
 
+Build
+---------------------
+
+* GITHUB#xxxx: Upgrade forbiddenapis to version 3.6.  (Uwe Schindler)
+
 Other
 ---------------------
 (No changes)
