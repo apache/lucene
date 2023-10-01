@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.boost;
 import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.BoostAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.util.IgnoreRandomChains;
 
 /**

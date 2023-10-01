@@ -40,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.TokenStreamToAutomaton;
+import org.apache.lucene.analysis.tokenattributes.BoostAttribute;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
 import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
@@ -55,7 +56,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableFieldType;
-import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -251,7 +251,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
       if (payloadAtt != null)
         payloadAtt.setPayload(new BytesRef(new byte[] {0x00, -0x21, 0x12, -0x43, 0x24}));
       if (flagsAtt != null) flagsAtt.setFlags(~0); // all 1's
-      if (boostAtt != null) boostAtt.setBoost(-1f);
+      if (boostAtt != null) boostAtt.setBoost(1.0f);
 
       checkClearAtt.getAndResetClearCalled(); // reset it, because we called clearAttribute() before
       assertTrue("token " + i + " does not exist", ts.incrementToken());
@@ -417,7 +417,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
     if (payloadAtt != null)
       payloadAtt.setPayload(new BytesRef(new byte[] {0x00, -0x21, 0x12, -0x43, 0x24}));
     if (flagsAtt != null) flagsAtt.setFlags(~0); // all 1's
-    if (boostAtt != null) boostAtt.setBoost(-1);
+    if (boostAtt != null) boostAtt.setBoost(1.0f);
 
     checkClearAtt.getAndResetClearCalled(); // reset it, because we called clearAttribute() before
 

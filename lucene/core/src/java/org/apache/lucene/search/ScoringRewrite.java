@@ -129,12 +129,12 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
         new BytesRefHash(new ByteBlockPool(new ByteBlockPool.DirectAllocator()), 16, array);
     TermsEnum termsEnum;
 
-    private BoostAttribute boostAtt;
+    private MultiTermQueryBoostAttribute boostAtt;
 
     @Override
     public void setNextEnum(TermsEnum termsEnum) {
       this.termsEnum = termsEnum;
-      this.boostAtt = termsEnum.attributes().addAttribute(BoostAttribute.class);
+      this.boostAtt = termsEnum.attributes().addAttribute(MultiTermQueryBoostAttribute.class);
     }
 
     @Override

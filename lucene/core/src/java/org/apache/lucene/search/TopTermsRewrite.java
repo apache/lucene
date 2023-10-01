@@ -74,7 +74,7 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
           private final Map<BytesRef, ScoreTerm> visitedTerms = new HashMap<>();
 
           private TermsEnum termsEnum;
-          private BoostAttribute boostAtt;
+          private MultiTermQueryBoostAttribute boostAtt;
           private ScoreTerm st;
 
           @Override
@@ -85,7 +85,7 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
 
             // lazy init the initial ScoreTerm because comparator is not known on ctor:
             if (st == null) st = new ScoreTerm(new TermStates(topReaderContext));
-            boostAtt = termsEnum.attributes().addAttribute(BoostAttribute.class);
+            boostAtt = termsEnum.attributes().addAttribute(MultiTermQueryBoostAttribute.class);
           }
 
           // for assert:

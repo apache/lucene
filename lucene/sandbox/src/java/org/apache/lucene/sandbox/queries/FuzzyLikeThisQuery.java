@@ -34,11 +34,11 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.FuzzyTermsEnum;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MultiTermQueryBoostAttribute;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
@@ -217,7 +217,8 @@ public class FuzzyLikeThisQuery extends Query {
           int numVariants = 0;
           int totalVariantDocFreqs = 0;
           BytesRef possibleMatch;
-          BoostAttribute boostAtt = fe.attributes().addAttribute(BoostAttribute.class);
+          MultiTermQueryBoostAttribute boostAtt =
+              fe.attributes().addAttribute(MultiTermQueryBoostAttribute.class);
           while ((possibleMatch = fe.next()) != null) {
             numVariants++;
             totalVariantDocFreqs += fe.docFreq();
