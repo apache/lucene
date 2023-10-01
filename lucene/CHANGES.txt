@@ -48,6 +48,11 @@ Bug Fixes
 ---------------------
 (No changes)
 
+Build
+---------------------
+
+* GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+
 Other
 ---------------------
 (No changes)
