@@ -17,8 +17,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Callable;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TaskExecutor;
 
@@ -98,23 +100,20 @@ public final class TermStates {
       TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
       if (taskExecutor != null) {
         // build the term states concurrently
-        List<TaskExecutor.Task<TermStateInfo>> tasks =
-            context.leaves().stream()
-                .map(
-                    ctx ->
-                        taskExecutor.createTask(
-                            () -> {
-                              TermsEnum termsEnum = loadTermsEnum(ctx, term);
-                              if (termsEnum != null) {
-                                return new TermStateInfo(
-                                    termsEnum.termState(),
-                                    ctx.ord,
-                                    termsEnum.docFreq(),
-                                    termsEnum.totalTermFreq());
-                              }
-                              return null;
-                            }))
-                .toList();
+        List<Callable<TermStateInfo>> tasks = new ArrayList<>(context.leaves().size());
+        for (LeafReaderContext ctx : context.leaves()) {
+          tasks.add(
+              () -> {
+                TermsEnum termsEnum = loadTermsEnum(ctx, term);
+                return termsEnum == null
+                    ? null
+                    : new TermStateInfo(
+                        termsEnum.termState(),
+                        ctx.ord,
+                        termsEnum.docFreq(),
+                        termsEnum.totalTermFreq());
+              });
+        }
         List<TermStateInfo> resultInfos = taskExecutor.invokeAll(tasks);
         for (TermStateInfo info : resultInfos) {
           if (info != null) {
