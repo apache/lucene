@@ -281,7 +281,7 @@ public class TestIndexSearcher extends LuceneTestCase {
    */
   public void testMultipleSegmentsOnTheExecutorWithException() {
     List<LeafReaderContext> leaves = reader.leaves();
-    int fixedThreads = leaves.size() == 1 ? 1 : leaves.size() / 2;
+    int fixedThreads = leaves.size() == 1 ? 1 : Math.min(leaves.size() / 2, 8);
 
     ExecutorService fixedThreadPoolExecutor =
         Executors.newFixedThreadPool(fixedThreads, new NamedThreadFactory("concurrent-slices"));
@@ -290,11 +290,7 @@ public class TestIndexSearcher extends LuceneTestCase {
         new IndexSearcher(reader, fixedThreadPoolExecutor) {
           @Override
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-            ArrayList<LeafSlice> slices = new ArrayList<>();
-            for (LeafReaderContext ctx : leaves) {
-              slices.add(new LeafSlice(Arrays.asList(ctx)));
-            }
-            return slices.toArray(new LeafSlice[0]);
+            return slices(leaves, 1, 1);
           }
         };
 
@@ -309,6 +305,12 @@ public class TestIndexSearcher extends LuceneTestCase {
       assertEquals(leaves.size(), callsToScorer.get());
       assertThat(
           exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
+      Throwable[] suppressed = exc.getSuppressed();
+      if (numExceptions == 2) {
+        assertEquals(1, suppressed.length);
+        assertThat(
+            exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
+      }
     } finally {
       TestUtil.shutdownExecutorService(fixedThreadPoolExecutor);
     }
@@ -364,6 +366,10 @@ public class TestIndexSearcher extends LuceneTestCase {
             }
           } else {
             try {
+              // slices that don't throw an Exception will wait here until all the necessary
+              // Exceptions are thrown. This helps to make the concurrent test more deterministic.
+              // (or rather it makes the test more likely to fail if TaskExecutor.invokeAll does
+              // NOT wait for all tasks/callables to finish).
               latch.await(5000, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
               throw new RuntimeException("test waited too long", e);
