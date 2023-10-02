@@ -102,22 +102,22 @@ public final class TermStates {
       List<Callable<TermStateInfo>> tasks = new ArrayList<>(context.leaves().size());
       for (LeafReaderContext ctx : context.leaves()) {
         tasks.add(
-                () -> {
-                  TermsEnum termsEnum = loadTermsEnum(ctx, term);
-                  return termsEnum == null
-                          ? null
-                          : new TermStateInfo(
-                          termsEnum.termState(),
-                          ctx.ord,
-                          termsEnum.docFreq(),
-                          termsEnum.totalTermFreq());
-                });
+            () -> {
+              TermsEnum termsEnum = loadTermsEnum(ctx, term);
+              return termsEnum == null
+                  ? null
+                  : new TermStateInfo(
+                      termsEnum.termState(),
+                      ctx.ord,
+                      termsEnum.docFreq(),
+                      termsEnum.totalTermFreq());
+            });
       }
       List<TermStateInfo> resultInfos = taskExecutor.invokeAll(tasks);
       for (TermStateInfo info : resultInfos) {
         if (info != null) {
           perReaderTermState.register(
-                  info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
+              info.getState(), info.getOrdinal(), info.getDocFreq(), info.getTotalTermFreq());
         }
       }
     }
