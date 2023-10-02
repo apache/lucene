@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -276,67 +275,73 @@ public class TestIndexSearcher extends LuceneTestCase {
   }
 
   /**
-   * Tests that when IndexerSearcher runs concurrent searches on multiple slices if any Exception is
-   * thrown by one of the slice tasks, it will not return until all tasks have completed.
+   * The goal of this test is to ensure that TaskExecutor.invokeAll waits for all tasks/callables to
+   * finish even if one or more of them throw an Exception.
+   *
+   * <p>To make the test deterministic, a custom single threaded executor is used. And to ensure
+   * that TaskExecutor.invokeAll does not return early upon getting an Exception, two Exceptions are
+   * thrown in the underlying Query class (in the Weight#scorer method). The first Exception is
+   * thrown by the first call to Weight#scorer and the last Exception is thrown by the last call to
+   * Weight#scorer. Since TaskExecutor.invokeAll adds subsequent Exceptions to the first one caught
+   * as a suppressed Exception, we can check that both exceptions were thrown, ensuring that all
+   * TaskExecutor#invokeAll check all tasks (using future.get()) before it returned.
    */
   public void testMultipleSegmentsOnTheExecutorWithException() {
     List<LeafReaderContext> leaves = reader.leaves();
-    int fixedThreads = leaves.size() == 1 ? 1 : Math.min(leaves.size() / 2, 8);
-
-    ExecutorService fixedThreadPoolExecutor =
-        Executors.newFixedThreadPool(fixedThreads, new NamedThreadFactory("concurrent-slices"));
-
     IndexSearcher searcher =
-        new IndexSearcher(reader, fixedThreadPoolExecutor) {
+        new IndexSearcher(
+            reader,
+            task -> {
+              task.run();
+            }) {
           @Override
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             return slices(leaves, 1, 1);
           }
         };
 
-    try {
-      AtomicInteger callsToScorer = new AtomicInteger(0);
-      int numExceptions = leaves.size() == 1 ? 1 : RandomizedTest.randomIntBetween(1, 2);
-      CountDownLatch latch = new CountDownLatch(numExceptions);
-      MatchAllOrThrowExceptionQuery query =
-          new MatchAllOrThrowExceptionQuery(numExceptions, callsToScorer, latch);
-      RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
-      // if the TaskExecutor didn't wait for all tasks to finish, this assert would frequently fail
-      assertEquals(leaves.size(), callsToScorer.get());
+    AtomicInteger callsToScorer = new AtomicInteger(0);
+    MatchAllOrThrowExceptionQuery query =
+        new MatchAllOrThrowExceptionQuery(leaves.size(), callsToScorer);
+    RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
+    assertEquals(leaves.size(), callsToScorer.get());
+    assertThat(
+        exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery First Exception"));
+    Throwable[] suppressed = exc.getSuppressed();
+
+    // two exceptions are thrown only when there is more than one task/callable to execute
+    if (leaves.size() > 1) {
+      assertEquals(1, suppressed.length);
       assertThat(
-          exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
-      Throwable[] suppressed = exc.getSuppressed();
-      if (numExceptions == 2) {
-        assertEquals(1, suppressed.length);
-        assertThat(
-            exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery Exception"));
-      }
-    } finally {
-      TestUtil.shutdownExecutorService(fixedThreadPoolExecutor);
+          suppressed[0].getMessage(),
+          Matchers.containsString("MatchAllOrThrowExceptionQuery Second Exception"));
     }
   }
 
+  /**
+   * Query for use with testMultipleSegmentsOnTheExecutorWithException. It assumes a single-threaded
+   * Executor model, where the Weight#scorer method is called sequentially not concurrently.
+   *
+   * <p>If there are at least 2 tasks to run, it will throw two exceptions - on the first call to
+   * scorer and the last call to scorer. All other calls will just increment the callsToScorer
+   * counter and return a MatchAllDocsQuery.
+   */
   private static class MatchAllOrThrowExceptionQuery extends Query {
 
-    private final AtomicInteger numExceptionsToThrow;
     private final Query delegate;
     private final AtomicInteger callsToScorer;
-    private final CountDownLatch latch;
+    private final int numTasks;
 
     /**
-     * Throws an Exception out of the {@code scorer} method the first {@code numExceptions} times it
-     * is called. Otherwise, it delegates all calls to the MatchAllDocsQuery.
-     *
-     * @param numExceptions number of exceptions to throw from scorer method
+     * @param numTasks number of tasks/callables in this test (number of times scorer will be
+     *     called)
      * @param callsToScorer where to record the number of times the {@code scorer} method has been
      *     called
      */
-    public MatchAllOrThrowExceptionQuery(
-        int numExceptions, AtomicInteger callsToScorer, CountDownLatch latch) {
-      this.numExceptionsToThrow = new AtomicInteger(numExceptions);
+    public MatchAllOrThrowExceptionQuery(int numTasks, AtomicInteger callsToScorer) {
+      this.numTasks = numTasks;
       this.callsToScorer = callsToScorer;
       this.delegate = new MatchAllDocsQuery();
-      this.latch = latch;
     }
 
     @Override
@@ -357,24 +362,11 @@ public class TestIndexSearcher extends LuceneTestCase {
 
         @Override
         public Scorer scorer(LeafReaderContext context) throws IOException {
-          if (numExceptionsToThrow.getAndDecrement() > 0) {
-            callsToScorer.getAndIncrement();
-            try {
-              throw new RuntimeException("MatchAllOrThrowExceptionQuery Exception");
-            } finally {
-              latch.countDown();
-            }
-          } else {
-            try {
-              // slices that don't throw an Exception will wait here until all the necessary
-              // Exceptions are thrown. This helps to make the concurrent test more deterministic.
-              // (or rather it makes the test more likely to fail if TaskExecutor.invokeAll does
-              // NOT wait for all tasks/callables to finish).
-              latch.await(5000, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-              throw new RuntimeException("test waited too long", e);
-            }
-            callsToScorer.getAndIncrement();
+          int currCount = callsToScorer.incrementAndGet();
+          if (currCount == 1) {
+            throw new RuntimeException("MatchAllOrThrowExceptionQuery First Exception");
+          } else if (currCount == numTasks) {
+            throw new RuntimeException("MatchAllOrThrowExceptionQuery Second Exception");
           }
           return matchAllWeight.scorer(context);
         }
