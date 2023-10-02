@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -25,6 +26,29 @@ import java.util.Comparator;
  * @lucene.internal
  */
 public abstract class BytesRefComparator implements Comparator<BytesRef> {
+
+  /** Comparing ByteRefs in natual order. */
+  public static final BytesRefComparator NATURAL =
+      new BytesRefComparator(Integer.MAX_VALUE) {
+        @Override
+        protected int byteAt(BytesRef ref, int i) {
+          if (ref.length <= i) {
+            return -1;
+          }
+          return ref.bytes[ref.offset + i] & 0xFF;
+        }
+
+        @Override
+        public int compare(BytesRef o1, BytesRef o2, int k) {
+          return Arrays.compareUnsigned(
+              o1.bytes,
+              o1.offset + k,
+              o1.offset + o1.length,
+              o2.bytes,
+              o2.offset + k,
+              o2.offset + o2.length);
+        }
+      };
 
   final int comparedBytesCount;
 
@@ -45,8 +69,13 @@ public abstract class BytesRefComparator implements Comparator<BytesRef> {
   protected abstract int byteAt(BytesRef ref, int i);
 
   @Override
-  public int compare(BytesRef o1, BytesRef o2) {
-    for (int i = 0; i < comparedBytesCount; ++i) {
+  public final int compare(BytesRef o1, BytesRef o2) {
+    return compare(o1, o2, 0);
+  }
+
+  /** Compare two bytes refs that first k bytes are already guaranteed to be equal. */
+  public int compare(BytesRef o1, BytesRef o2, int k) {
+    for (int i = k; i < comparedBytesCount; ++i) {
       final int b1 = byteAt(o1, i);
       final int b2 = byteAt(o2, i);
       if (b1 != b2) {
