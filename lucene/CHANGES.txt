@@ -169,7 +169,8 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
 
 Build
 ---------------------
