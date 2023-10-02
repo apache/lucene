@@ -152,7 +152,7 @@ Improvements
   outside of the o.a.l.search package (Luca Cavanna)
 
 * GITHUB#12603: Simplify the TaskExecutor API by exposing a single invokeAll method that takes a
-  collection, executes them and returns their results  (Luca Cavanna)
+  collection of callables, executes them and returns their results  (Luca Cavanna)
 
 Optimizations
 ---------------------
