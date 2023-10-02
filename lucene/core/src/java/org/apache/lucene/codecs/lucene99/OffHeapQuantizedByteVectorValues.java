@@ -19,11 +19,8 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
@@ -75,20 +72,23 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   }
 
   static OffHeapQuantizedByteVectorValues load(
-      Lucene99ScalarQuantizedVectorsReader.FieldEntry fieldEntry, IndexInput vectorData)
+      Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+      int dimension,
+      int size,
+      long quantizedVectorDataOffset,
+      long quantizedVectorDataLength,
+      IndexInput vectorData)
       throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2) {
-      return new EmptyOffHeapVectorValues(fieldEntry.dimension);
+    if (configuration.docsWithFieldOffset == -2) {
+      return new EmptyOffHeapVectorValues(dimension);
     }
     IndexInput bytesSlice =
         vectorData.slice(
-            "quantized-vector-data",
-            fieldEntry.quantizedVectorDataOffset,
-            fieldEntry.quantizedVectorDataLength);
-    if (fieldEntry.docsWithFieldOffset == -1) {
-      return new DenseOffHeapVectorValues(fieldEntry.dimension, fieldEntry.size, bytesSlice);
+            "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
+    if (configuration.docsWithFieldOffset == -1) {
+      return new DenseOffHeapVectorValues(dimension, size, bytesSlice);
     } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice);
+      return new SparseOffHeapVectorValues(configuration, dimension, size, vectorData, bytesSlice);
     }
   }
 
@@ -138,63 +138,56 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   }
 
   private static class SparseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
-    private final DirectMonotonicReader ordToDoc;
-    private final IndexedDISI disi;
+    private final Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration;
+    private final Lucene99HnswVectorsReader.OrdToDocDISReader reader;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene99ScalarQuantizedVectorsReader.FieldEntry fieldEntry;
+    private final int dimension, size;
 
     public SparseOffHeapVectorValues(
-        Lucene99ScalarQuantizedVectorsReader.FieldEntry fieldEntry,
+        Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+        int dimension,
+        int size,
         IndexInput dataIn,
         IndexInput slice)
         throws IOException {
-
-      super(fieldEntry.dimension, fieldEntry.size, slice);
-      this.fieldEntry = fieldEntry;
-      final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+      super(dimension, size, slice);
+      this.configuration = configuration;
+      this.reader = new Lucene99HnswVectorsReader.OrdToDocDISReader(configuration, dataIn);
       this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
-      this.disi =
-          new IndexedDISI(
-              dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
+      this.dimension = dimension;
+      this.size = size;
     }
 
     @Override
     public byte[] vectorValue() throws IOException {
-      return vectorValue(disi.index());
+      return vectorValue(reader.index());
     }
 
     @Override
     public int docID() {
-      return disi.docID();
+      return reader.docID();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return disi.nextDoc();
+      return reader.nextDoc();
     }
 
     @Override
     public int advance(int target) throws IOException {
       assert docID() < target;
-      return disi.advance(target);
+      return reader.advance(target);
     }
 
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone());
+      return new SparseOffHeapVectorValues(configuration, dimension, size, dataIn, slice.clone());
     }
 
     @Override
     public int ordToDoc(int ord) {
-      return (int) ordToDoc.get(ord);
+      return reader.ordToDoc(ord);
     }
 
     @Override

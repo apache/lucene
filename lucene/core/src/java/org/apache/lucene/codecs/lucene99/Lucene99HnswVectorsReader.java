@@ -24,7 +24,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -34,6 +36,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -43,6 +46,7 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -55,7 +59,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  * @lucene.experimental
  */
 public final class Lucene99HnswVectorsReader extends KnnVectorsReader
-    implements QuantizedVectorsReader {
+    implements QuantizedVectorsReader, HnswGraphProvider {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99HnswVectorsFormat.class);
@@ -64,7 +68,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
-  private Lucene99ScalarQuantizedVectorsReader quantizedVectorsReader;
+  private final IndexInput quantizedVectorData;
+  private final Lucene99ScalarQuantizedVectorsReader quantizedVectorsReader;
 
   Lucene99HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
@@ -83,6 +88,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               versionMeta,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
+      if (fields.values().stream().anyMatch(FieldEntry::hasQuantizedVectors)) {
+        quantizedVectorData =
+            openDataInput(
+                state,
+                versionMeta,
+                Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
+                Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
+        quantizedVectorsReader = new Lucene99ScalarQuantizedVectorsReader(quantizedVectorData);
+      } else {
+        quantizedVectorData = null;
+        quantizedVectorsReader = null;
+      }
       success = true;
     } finally {
       if (success == false) {
@@ -96,7 +113,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
     int versionMeta = -1;
-    boolean quantizationReader = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
@@ -108,15 +124,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
                 Lucene99HnswVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
-        quantizationReader = readFields(meta, state.fieldInfos);
+        readFields(meta, state.fieldInfos);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
-    }
-    if (quantizationReader) {
-      this.quantizedVectorsReader = new Lucene99ScalarQuantizedVectorsReader(state);
     }
     return versionMeta;
   }
@@ -157,19 +170,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
   }
 
-  private boolean readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
-    boolean hasQuantizedVectors = false;
+  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
       if (info == null) {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
-      hasQuantizedVectors = (meta.readByte() == 1) || hasQuantizedVectors;
       FieldEntry fieldEntry = readField(meta);
       validateFieldEntry(info, fieldEntry);
       fields.put(info.name, fieldEntry);
     }
-    return hasQuantizedVectors;
   }
 
   private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
@@ -203,6 +213,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               + byteSize
               + " = "
               + numBytes);
+    }
+    if (fieldEntry.hasQuantizedVectors()) {
+      Lucene99ScalarQuantizedVectorsReader.validateFieldEntry(
+          info, fieldEntry.dimension, fieldEntry.size, fieldEntry.quantizedVectorDataLength);
     }
   }
 
@@ -287,12 +301,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     if (quantizedVectorsReader != null) {
-      OffHeapQuantizedByteVectorValues vectorValues =
-          quantizedVectorsReader.getRandomAccessQuantizedVectorValues(field);
+      OffHeapQuantizedByteVectorValues vectorValues = getQuantizedVectorValues(field);
       if (vectorValues == null) {
         return;
       }
-      RandomVectorScorer scorer = quantizedVectorsReader.getQuantizedVectorScorer(field, target);
+      RandomVectorScorer scorer =
+          new ScalarQuantizedRandomVectorScorer(
+              fieldEntry.similarityFunction, fieldEntry.scalarQuantizer, vectorValues, target);
       HnswGraphSearcher.search(
           scorer,
           new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
@@ -331,7 +346,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         vectorValues.getAcceptOrds(acceptDocs));
   }
 
-  /** Get knn graph values; used for testing */
+  @Override
   public HnswGraph getGraph(String field) throws IOException {
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
@@ -351,23 +366,32 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorData, vectorIndex, quantizedVectorsReader);
+    IOUtils.close(vectorData, vectorIndex, quantizedVectorData);
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException {
-    if (quantizedVectorsReader != null) {
-      return quantizedVectorsReader.getQuantizedVectorValues(fieldName);
+  public OffHeapQuantizedByteVectorValues getQuantizedVectorValues(String field)
+      throws IOException {
+    FieldEntry fieldEntry = fields.get(field);
+    if (fieldEntry == null || fieldEntry.hasQuantizedVectors() == false) {
+      return null;
     }
-    return null;
+    assert quantizedVectorsReader != null && fieldEntry.quantizedOrdToDoc != null;
+    return quantizedVectorsReader.getQuantizedVectorValues(
+        fieldEntry.quantizedOrdToDoc,
+        fieldEntry.dimension,
+        fieldEntry.size,
+        fieldEntry.quantizedVectorDataOffset,
+        fieldEntry.quantizedVectorDataLength);
   }
 
   @Override
-  public ScalarQuantizationState getQuantizationState(String fieldName) {
-    if (quantizedVectorsReader != null) {
-      return quantizedVectorsReader.getQuantizationState(fieldName);
+  public ScalarQuantizer getQuantizationState(String fieldName) {
+    FieldEntry field = fields.get(fieldName);
+    if (field == null || field.hasQuantizedVectors() == false) {
+      return null;
     }
-    return null;
+    return field.scalarQuantizer;
   }
 
   static class FieldEntry implements Accountable {
@@ -389,23 +413,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final long offsetsOffset;
     final int offsetsBlockShift;
     final long offsetsLength;
+    final OrdToDocDISReaderConfiguration ordToDoc;
 
-    // the following four variables used to read docIds encoded by IndexDISI
-    // special values of docsWithFieldOffset are -1 and -2
-    // -1 : dense
-    // -2 : empty
-    // other: sparse
-    final long docsWithFieldOffset;
-    final long docsWithFieldLength;
-    final short jumpTableEntryCount;
-    final byte denseRankPower;
-
-    // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
-    // note that only spare case needs to store ordToDoc
-    final long addressesOffset;
-    final int blockShift;
-    final DirectMonotonicReader.Meta meta;
-    final long addressesLength;
+    final float configuredQuantile, lowerQuantile, upperQuantile;
+    final long quantizedVectorDataOffset, quantizedVectorDataLength;
+    final ScalarQuantizer scalarQuantizer;
+    final boolean isQuantized;
+    final OrdToDocDISReaderConfiguration quantizedOrdToDoc;
 
     FieldEntry(
         IndexInput input,
@@ -414,14 +428,37 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         throws IOException {
       this.similarityFunction = similarityFunction;
       this.vectorEncoding = vectorEncoding;
+      this.isQuantized = input.readByte() == 1;
+      // Has int8 quantization
+      if (isQuantized) {
+        configuredQuantile = Float.intBitsToFloat(input.readInt());
+        lowerQuantile = Float.intBitsToFloat(input.readInt());
+        upperQuantile = Float.intBitsToFloat(input.readInt());
+        quantizedVectorDataOffset = input.readVLong();
+        quantizedVectorDataLength = input.readVLong();
+        scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile);
+      } else {
+        configuredQuantile = -1;
+        lowerQuantile = -1;
+        upperQuantile = -1;
+        quantizedVectorDataOffset = -1;
+        quantizedVectorDataLength = -1;
+        scalarQuantizer = null;
+      }
       vectorDataOffset = input.readVLong();
       vectorDataLength = input.readVLong();
       vectorIndexOffset = input.readVLong();
       vectorIndexLength = input.readVLong();
       dimension = input.readVInt();
       size = input.readInt();
+      if (isQuantized) {
+        quantizedOrdToDoc = OrdToDocDISReaderConfiguration.fromStoredMeta(input, size);
+      } else {
+        quantizedOrdToDoc = null;
+      }
+      ordToDoc = OrdToDocDISReaderConfiguration.fromStoredMeta(input, size);
 
-      docsWithFieldOffset = input.readLong();
+      /*docsWithFieldOffset = input.readLong();
       docsWithFieldLength = input.readLong();
       jumpTableEntryCount = input.readShort();
       denseRankPower = input.readByte();
@@ -434,11 +471,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         addressesLength = 0;
       } else {
         // sparse
+        if (isQuantized) {
+
+        }
         addressesOffset = input.readLong();
         blockShift = input.readVInt();
         meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
         addressesLength = input.readLong();
-      }
+      }*/
 
       // read nodes by level
       M = input.readVInt();
@@ -475,12 +515,133 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return size;
     }
 
+    boolean hasQuantizedVectors() {
+      return isQuantized;
+    }
+
     @Override
     public long ramBytesUsed() {
       return SHALLOW_SIZE
           + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(meta)
+          + RamUsageEstimator.sizeOf(ordToDoc)
+          + (quantizedOrdToDoc == null ? 0 : RamUsageEstimator.sizeOf(quantizedOrdToDoc))
           + RamUsageEstimator.sizeOf(offsetsMeta);
+    }
+  }
+
+  static final class OrdToDocDISReaderConfiguration implements Accountable {
+    private static final long SHALLOW_SIZE =
+        RamUsageEstimator.shallowSizeOfInstance(OrdToDocDISReaderConfiguration.class);
+
+    static OrdToDocDISReaderConfiguration fromStoredMeta(IndexInput inputMeta, int size)
+        throws IOException {
+      long docsWithFieldOffset = inputMeta.readLong();
+      long docsWithFieldLength = inputMeta.readLong();
+      short jumpTableEntryCount = inputMeta.readShort();
+      byte denseRankPower = inputMeta.readByte();
+      long addressesOffset = 0;
+      int blockShift = 0;
+      DirectMonotonicReader.Meta meta = null;
+      long addressesLength = 0;
+      if (docsWithFieldOffset > -1) {
+        addressesOffset = inputMeta.readLong();
+        blockShift = inputMeta.readVInt();
+        meta = DirectMonotonicReader.loadMeta(inputMeta, size, blockShift);
+        addressesLength = inputMeta.readLong();
+      }
+      return new OrdToDocDISReaderConfiguration(
+          size,
+          jumpTableEntryCount,
+          addressesOffset,
+          addressesLength,
+          docsWithFieldOffset,
+          docsWithFieldLength,
+          denseRankPower,
+          meta);
+    }
+
+    final int size;
+    final short jumpTableEntryCount;
+    // the following four variables used to read docIds encoded by IndexDISI
+    // special values of docsWithFieldOffset are -1 and -2
+    // -1 : dense
+    // -2 : empty
+    // other: sparse
+    final long addressesOffset, addressesLength, docsWithFieldOffset, docsWithFieldLength;
+    final byte denseRankPower;
+    final DirectMonotonicReader.Meta meta;
+
+    OrdToDocDISReaderConfiguration(
+        int size,
+        short jumpTableEntryCount,
+        long addressesOffset,
+        long addressesLength,
+        long docsWithFieldOffset,
+        long docsWithFieldLength,
+        byte denseRankPower,
+        DirectMonotonicReader.Meta meta) {
+      this.size = size;
+      this.jumpTableEntryCount = jumpTableEntryCount;
+      this.addressesOffset = addressesOffset;
+      this.addressesLength = addressesLength;
+      this.docsWithFieldOffset = docsWithFieldOffset;
+      this.docsWithFieldLength = docsWithFieldLength;
+      this.denseRankPower = denseRankPower;
+      this.meta = meta;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
+    }
+  }
+
+  static final class OrdToDocDISReader extends DocIdSetIterator {
+    private final DirectMonotonicReader ordToDoc;
+    private final IndexedDISI disi;
+
+    OrdToDocDISReader(OrdToDocDISReaderConfiguration configuration, IndexInput dataIn)
+        throws IOException {
+      final RandomAccessInput addressesData =
+          dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
+      this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, addressesData);
+      this.disi =
+          new IndexedDISI(
+              dataIn,
+              configuration.docsWithFieldOffset,
+              configuration.docsWithFieldLength,
+              configuration.jumpTableEntryCount,
+              configuration.denseRankPower,
+              configuration.size);
+    }
+
+    @Override
+    public int docID() {
+      return disi.docID();
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return disi.nextDoc();
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      assert docID() < target;
+      return disi.advance(target);
+    }
+
+    @Override
+    public long cost() {
+      return disi.cost();
+    }
+
+    int ordToDoc(int ord) {
+      return (int) ordToDoc.get(ord);
+    }
+
+    int index() {
+      return disi.index();
     }
   }
 

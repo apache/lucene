@@ -18,14 +18,11 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
-import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
 abstract class OffHeapFloatVectorValues extends FloatVectorValues
@@ -69,18 +66,24 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   static OffHeapFloatVectorValues load(
       Lucene99HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2
+    if (fieldEntry.ordToDoc.docsWithFieldOffset == -2
         || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return new EmptyOffHeapVectorValues(fieldEntry.dimension);
     }
     IndexInput bytesSlice =
         vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
     int byteSize = fieldEntry.dimension * Float.BYTES;
-    if (fieldEntry.docsWithFieldOffset == -1) {
+    if (fieldEntry.ordToDoc.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           fieldEntry.dimension, fieldEntry.size, bytesSlice, byteSize);
     } else {
-      return new SparseOffHeapVectorValues(fieldEntry, vectorData, bytesSlice, byteSize);
+      return new SparseOffHeapVectorValues(
+          fieldEntry.ordToDoc,
+          fieldEntry.dimension,
+          fieldEntry.size,
+          vectorData,
+          bytesSlice,
+          byteSize);
     }
   }
 
@@ -130,64 +133,56 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
   }
 
   private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
-    private final DirectMonotonicReader ordToDoc;
-    private final IndexedDISI disi;
+    private final Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration;
+    private final Lucene99HnswVectorsReader.OrdToDocDISReader reader;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final Lucene99HnswVectorsReader.FieldEntry fieldEntry;
 
     public SparseOffHeapVectorValues(
-        Lucene99HnswVectorsReader.FieldEntry fieldEntry,
+        Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+        int dimension,
+        int size,
         IndexInput dataIn,
         IndexInput slice,
         int byteSize)
         throws IOException {
 
-      super(fieldEntry.dimension, fieldEntry.size, slice, byteSize);
-      this.fieldEntry = fieldEntry;
-      final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+      super(dimension, size, slice, byteSize);
+      this.configuration = configuration;
+      this.reader = new Lucene99HnswVectorsReader.OrdToDocDISReader(configuration, dataIn);
       this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
-      this.disi =
-          new IndexedDISI(
-              dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
     }
 
     @Override
     public float[] vectorValue() throws IOException {
-      return vectorValue(disi.index());
+      return vectorValue(reader.index());
     }
 
     @Override
     public int docID() {
-      return disi.docID();
+      return reader.docID();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return disi.nextDoc();
+      return reader.nextDoc();
     }
 
     @Override
     public int advance(int target) throws IOException {
       assert docID() < target;
-      return disi.advance(target);
+      return reader.advance(target);
     }
 
     @Override
     public RandomAccessVectorValues<float[]> copy() throws IOException {
-      return new SparseOffHeapVectorValues(fieldEntry, dataIn, slice.clone(), byteSize);
+      return new SparseOffHeapVectorValues(
+          configuration, dimension, size, dataIn, slice.clone(), byteSize);
     }
 
     @Override
     public int ordToDoc(int ord) {
-      return (int) ordToDoc.get(ord);
+      return reader.ordToDoc(ord);
     }
 
     @Override

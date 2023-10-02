@@ -18,156 +18,45 @@
 package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.ScalarQuantizer;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
-import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
  * Reads Scalar Quantized vectors from the index segments along with index data structures.
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsReader implements QuantizedVectorsReader {
+public final class Lucene99ScalarQuantizedVectorsReader {
 
-  private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsFormat.class);
-
-  private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
 
-  Lucene99ScalarQuantizedVectorsReader(SegmentReadState state) throws IOException {
-    int versionMeta = readMetadata(state);
-    boolean success = false;
-    try {
-      quantizedVectorData =
-          openDataInput(
-              state,
-              versionMeta,
-              Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION,
-              Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
-    }
+  Lucene99ScalarQuantizedVectorsReader(IndexInput quantizedVectorData) {
+    this.quantizedVectorData = quantizedVectorData;
   }
 
-  private int readMetadata(SegmentReadState state) throws IOException {
-    String metaFileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name,
-            state.segmentSuffix,
-            Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_META_EXTENSION);
-    int versionMeta = -1;
-    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
-      Throwable priorE = null;
-      try {
-        versionMeta =
-            CodecUtil.checkIndexHeader(
-                meta,
-                Lucene99ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
-                state.segmentInfo.getId(),
-                state.segmentSuffix);
-        readFields(meta, state.fieldInfos);
-      } catch (Throwable exception) {
-        priorE = exception;
-      } finally {
-        CodecUtil.checkFooter(meta, priorE);
-      }
-    }
-    return versionMeta;
-  }
-
-  private static IndexInput openDataInput(
-      SegmentReadState state, int versionMeta, String fileExtension, String codecName)
-      throws IOException {
-    String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
-    IndexInput in = state.directory.openInput(fileName, state.context);
-    boolean success = false;
-    try {
-      int versionVectorData =
-          CodecUtil.checkIndexHeader(
-              in,
-              codecName,
-              Lucene99ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
-              state.segmentInfo.getId(),
-              state.segmentSuffix);
-      if (versionMeta != versionVectorData) {
-        throw new CorruptIndexException(
-            "Format versions mismatch: meta="
-                + versionMeta
-                + ", "
-                + codecName
-                + "="
-                + versionVectorData,
-            in);
-      }
-      CodecUtil.retrieveChecksum(in);
-      success = true;
-      return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
-    }
-  }
-
-  private void readFields(ChecksumIndexInput meta, FieldInfos infos) throws IOException {
-    for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
-      FieldInfo info = infos.fieldInfo(fieldNumber);
-      if (info == null) {
-        throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
-      }
-      FieldEntry fieldEntry = readField(meta);
-      validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
-    }
-  }
-
-  private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
+  static void validateFieldEntry(
+      FieldInfo info, int fieldDimension, int size, long quantizedVectorDataLength) {
     int dimension = info.getVectorDimension();
-    if (dimension != fieldEntry.dimension) {
+    if (dimension != fieldDimension) {
       throw new IllegalStateException(
           "Inconsistent vector dimension for field=\""
               + info.name
               + "\"; "
               + dimension
               + " != "
-              + fieldEntry.dimension);
+              + fieldDimension);
     }
 
     // int8 quantized and calculated stored offset.
     long quantizedVectorBytes = dimension + Float.BYTES;
-    long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, fieldEntry.size);
-    if (numQuantizedVectorBytes != fieldEntry.quantizedVectorDataLength) {
+    long numQuantizedVectorBytes = Math.multiplyExact(quantizedVectorBytes, size);
+    if (numQuantizedVectorBytes != quantizedVectorDataLength) {
       throw new IllegalStateException(
           "Quantized vector data length "
-              + fieldEntry.quantizedVectorDataLength
+              + quantizedVectorDataLength
               + " not matching size="
-              + fieldEntry.size
+              + size
               + " * (dim="
               + dimension
               + " + 4)"
@@ -176,228 +65,23 @@ public final class Lucene99ScalarQuantizedVectorsReader implements QuantizedVect
     }
   }
 
-  private VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
-    int similarityFunctionId = input.readInt();
-    if (similarityFunctionId < 0
-        || similarityFunctionId >= VectorSimilarityFunction.values().length) {
-      throw new CorruptIndexException(
-          "Invalid similarity function id: " + similarityFunctionId, input);
-    }
-    return VectorSimilarityFunction.values()[similarityFunctionId];
-  }
-
-  private VectorEncoding readVectorEncoding(DataInput input) throws IOException {
-    int encodingId = input.readInt();
-    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
-      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
-    }
-    return VectorEncoding.values()[encodingId];
-  }
-
-  private FieldEntry readField(IndexInput input) throws IOException {
-    VectorEncoding vectorEncoding = readVectorEncoding(input);
-    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
-    return new FieldEntry(input, vectorEncoding, similarityFunction);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return Lucene99ScalarQuantizedVectorsReader.SHALLOW_SIZE
-        + RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
-  }
-
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(quantizedVectorData);
   }
 
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    OffHeapQuantizedByteVectorValues vectorValues =
-        OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
-    final ScalarQuantizer scalarQuantizer = fieldEntry.scalarQuantizer;
-    return new DeQuantizedFloatVectorValues(vectorValues) {
-      @Override
-      void deQuantize(byte[] src, float[] dest) {
-        scalarQuantizer.deQuantize(src, dest);
-      }
-    };
-  }
-
-  OffHeapQuantizedByteVectorValues getRandomAccessQuantizedVectorValues(String field)
+  OffHeapQuantizedByteVectorValues getQuantizedVectorValues(
+      Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+      int dimension,
+      int size,
+      long quantizedVectorDataOffset,
+      long quantizedVectorDataLength)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
-    }
-
-    return OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
-  }
-
-  @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0 || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return null;
-    }
-
-    return OffHeapQuantizedByteVectorValues.load(fieldEntry, quantizedVectorData);
-  }
-
-  @Override
-  public ScalarQuantizationState getQuantizationState(String field) {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
-      return null;
-    }
-    return new ScalarQuantizationState(fieldEntry.lowerQuantile, fieldEntry.upperQuantile);
-  }
-
-  public RandomVectorScorer getQuantizedVectorScorer(String field, float[] target)
-      throws IOException {
-    RandomAccessQuantizedByteVectorValues values =
-        (OffHeapQuantizedByteVectorValues) getQuantizedVectorValues(field);
-    FieldEntry fieldEntry = fields.get(field);
-    if (values == null || fieldEntry == null) {
-      return null;
-    }
-    return new ScalarQuantizedRandomVectorScorer(
-        fieldEntry.similarityFunction, fieldEntry.scalarQuantizer, values, target);
-  }
-
-  @Override
-  public void close() throws IOException {
-    IOUtils.close(quantizedVectorData);
-  }
-
-  static class FieldEntry implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class);
-    final VectorSimilarityFunction similarityFunction;
-    final VectorEncoding vectorEncoding;
-    final long quantizedVectorDataOffset;
-    final long quantizedVectorDataLength;
-    final int dimension;
-    final int size;
-
-    // Every field has a calculated quantile for quantization
-    final float lowerQuantile;
-    final float upperQuantile;
-    final float configuredQuantile;
-    final ScalarQuantizer scalarQuantizer;
-
-    // the following four variables used to read docIds encoded by IndexDISI
-    // special values of docsWithFieldOffset are -1 and -2
-    // -1 : dense
-    // -2 : empty
-    // other: sparse
-    final long docsWithFieldOffset;
-    final long docsWithFieldLength;
-    final short jumpTableEntryCount;
-    final byte denseRankPower;
-
-    // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
-    // note that only spare case needs to store ordToDoc
-    final long addressesOffset;
-    final int blockShift;
-    final DirectMonotonicReader.Meta meta;
-    final long addressesLength;
-
-    FieldEntry(
-        IndexInput input,
-        VectorEncoding vectorEncoding,
-        VectorSimilarityFunction similarityFunction)
-        throws IOException {
-      this.similarityFunction = similarityFunction;
-      this.vectorEncoding = vectorEncoding;
-      quantizedVectorDataOffset = input.readVLong();
-      quantizedVectorDataLength = input.readVLong();
-      dimension = input.readVInt();
-      configuredQuantile = Float.intBitsToFloat(input.readInt());
-      lowerQuantile = Float.intBitsToFloat(input.readInt());
-      upperQuantile = Float.intBitsToFloat(input.readInt());
-      scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile);
-      size = input.readInt();
-
-      docsWithFieldOffset = input.readLong();
-      docsWithFieldLength = input.readLong();
-      jumpTableEntryCount = input.readShort();
-      denseRankPower = input.readByte();
-      // dense or empty
-      if (docsWithFieldOffset == -1 || docsWithFieldOffset == -2) {
-        addressesOffset = 0;
-        blockShift = 0;
-        meta = null;
-        addressesLength = 0;
-      } else {
-        // sparse
-        addressesOffset = input.readLong();
-        blockShift = input.readVInt();
-        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
-        addressesLength = input.readLong();
-      }
-    }
-
-    int size() {
-      return size;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
-    }
-  }
-
-  abstract static class DeQuantizedFloatVectorValues extends FloatVectorValues {
-
-    private final ByteVectorValues in;
-    private final float[] floatVector;
-
-    DeQuantizedFloatVectorValues(ByteVectorValues in) {
-      this.in = in;
-      this.floatVector = new float[in.dimension()];
-    }
-
-    abstract void deQuantize(byte[] src, float[] dest);
-
-    @Override
-    public int dimension() {
-      return in.dimension();
-    }
-
-    @Override
-    public int size() {
-      return in.size();
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return floatVector;
-    }
-
-    @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int nextDoc = in.nextDoc();
-      if (nextDoc != NO_MORE_DOCS) {
-        deQuantize(in.vectorValue(), floatVector);
-      }
-      return nextDoc;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int nextDoc = in.advance(target);
-      if (nextDoc != NO_MORE_DOCS) {
-        deQuantize(in.vectorValue(), floatVector);
-      }
-      return nextDoc;
-    }
+    return OffHeapQuantizedByteVectorValues.load(
+        configuration,
+        dimension,
+        size,
+        quantizedVectorDataOffset,
+        quantizedVectorDataLength,
+        quantizedVectorData);
   }
 }

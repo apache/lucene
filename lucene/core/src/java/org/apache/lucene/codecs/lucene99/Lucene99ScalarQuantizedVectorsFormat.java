@@ -17,9 +17,8 @@
 
 package org.apache.lucene.codecs.lucene99;
 
-import java.io.IOException;
-import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 
 /**
  * Format supporting vector quantization, storage, and retrieval
@@ -30,14 +29,10 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
-  static final String META_CODEC_NAME = "Lucene99ScalarQuantizedVectorsFormatMeta";
-
+  static final int VERSION_START = 0;
+  static final int VERSION_CURRENT = VERSION_START;
   static final String QUANTIZED_VECTOR_DATA_CODEC_NAME = "Lucene99ScalarQuantizedVectorsData";
   static final String QUANTIZED_VECTOR_DATA_EXTENSION = "veq";
-  static final String QUANTIZED_VECTOR_META_EXTENSION = "vemq";
-
-  public static final int VERSION_START = 0;
-  public static final int VERSION_CURRENT = VERSION_START;
 
   /** The minimum quantile */
   private static final float MINIMUM_QUANTILE = 0.9f;
@@ -45,13 +40,11 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
   /** The maximum quantile */
   private static final float MAXIMUM_QUANTILE = 1f;
 
-  static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
-
   /**
    * Controls the quantile used to scalar quantize the vectors the default quantile is calculated as
    * `1-1/(vector_dimensions + 1)`
    */
-  private final Float quantile;
+  final Float quantile;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -77,14 +70,12 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
     this.quantile = quantile;
   }
 
-  public Lucene99ScalarQuantizedVectorsWriter quantizationWriter(SegmentWriteState state)
-      throws IOException {
-    return new Lucene99ScalarQuantizedVectorsWriter(state, quantile);
+  Lucene99ScalarQuantizedVectorsWriter quantizationWriter(IndexOutput quantizedVectorData) {
+    return new Lucene99ScalarQuantizedVectorsWriter(quantizedVectorData, quantile);
   }
 
-  public Lucene99ScalarQuantizedVectorsReader quantizationReader(SegmentReadState state)
-      throws IOException {
-    return new Lucene99ScalarQuantizedVectorsReader(state);
+  Lucene99ScalarQuantizedVectorsReader quantizationReader(IndexInput quantizedVectorData) {
+    return new Lucene99ScalarQuantizedVectorsReader(quantizedVectorData);
   }
 
   static float calculateDefaultQuantile(int vectorDimension) {

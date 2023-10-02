@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -69,7 +71,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
 public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
-  private final IndexOutput meta, vectorData, vectorIndex;
+  private final IndexOutput meta, vectorData, quantizedVectorData, vectorIndex;
   private final int M;
   private final int beamWidth;
   private final Lucene99ScalarQuantizedVectorsWriter quantizedVectorsWriter;
@@ -81,12 +83,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       SegmentWriteState state,
       int M,
       int beamWidth,
-      Lucene99ScalarQuantizedVectorsWriter quantizedVectorsWriter)
+      Lucene99ScalarQuantizedVectorsFormat quantizedVectorsFormat)
       throws IOException {
     this.M = M;
     this.beamWidth = beamWidth;
     segmentWriteState = state;
-    this.quantizedVectorsWriter = quantizedVectorsWriter;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
@@ -102,6 +103,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             state.segmentInfo.name,
             state.segmentSuffix,
             Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
+
+    final String quantizedVectorDataFileName =
+        quantizedVectorsFormat != null
+            ? IndexFileNames.segmentFileName(
+                state.segmentInfo.name,
+                state.segmentSuffix,
+                Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_EXTENSION)
+            : null;
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
@@ -126,6 +135,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           Lucene99HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
+      if (quantizedVectorDataFileName != null) {
+        quantizedVectorData =
+            state.directory.createOutput(quantizedVectorDataFileName, state.context);
+        CodecUtil.writeIndexHeader(
+            quantizedVectorData,
+            Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_DATA_CODEC_NAME,
+            Lucene99ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
+        quantizedVectorsWriter =
+            new Lucene99ScalarQuantizedVectorsWriter(
+                quantizedVectorData, quantizedVectorsFormat.quantile);
+      } else {
+        quantizedVectorData = null;
+        quantizedVectorsWriter = null;
+      }
       success = true;
     } finally {
       if (success == false) {
@@ -136,29 +161,32 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    KnnFieldVectorsWriter<float[]> quantizedVectorWriter = null;
+    Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter quantizedVectorFieldWriter = null;
     // Quantization only supports FLOAT32 for now
     if (quantizedVectorsWriter != null
         && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      quantizedVectorWriter = quantizedVectorsWriter.addField(fieldInfo);
+      quantizedVectorFieldWriter = quantizedVectorsWriter.addField(fieldInfo);
     }
     FieldWriter<?> newField =
         FieldWriter.create(
-            fieldInfo, M, beamWidth, segmentWriteState.infoStream, quantizedVectorWriter);
+            fieldInfo, M, beamWidth, segmentWriteState.infoStream, quantizedVectorFieldWriter);
     fields.add(newField);
     return newField;
   }
 
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    if (quantizedVectorsWriter != null) {
-      quantizedVectorsWriter.flush(maxDoc, sortMap);
-    }
     for (FieldWriter<?> field : fields) {
+      long[] quantizedVectorOffsetAndLen = null;
+      if (field.quantizedWriter != null) {
+        assert quantizedVectorsWriter != null;
+        quantizedVectorOffsetAndLen =
+            quantizedVectorsWriter.flush(sortMap, field.quantizedWriter, field.docsWithField);
+      }
       if (sortMap == null) {
-        writeField(field, maxDoc);
+        writeField(field, maxDoc, quantizedVectorOffsetAndLen);
       } else {
-        writeSortingField(field, maxDoc, sortMap);
+        writeSortingField(field, maxDoc, sortMap, quantizedVectorOffsetAndLen);
       }
     }
   }
@@ -193,7 +221,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     return total;
   }
 
-  private void writeField(FieldWriter<?> fieldData, int maxDoc) throws IOException {
+  private void writeField(FieldWriter<?> fieldData, int maxDoc, long[] quantizedVecOffsetAndLen)
+      throws IOException {
     // write vector values
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     switch (fieldData.fieldInfo.getVectorEncoding()) {
@@ -209,9 +238,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
-        fieldData.writer != null,
+        fieldData.isQuantized(),
         fieldData.fieldInfo,
         maxDoc,
+        fieldData.getConfiguredQuantile(),
+        fieldData.getMinQuantile(),
+        fieldData.getMaxQuantile(),
+        quantizedVecOffsetAndLen,
         vectorDataOffset,
         vectorDataLength,
         vectorIndexOffset,
@@ -237,7 +270,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
+  private void writeSortingField(
+      FieldWriter<?> fieldData,
+      int maxDoc,
+      Sorter.DocMap sortMap,
+      long[] quantizedVectorOffsetAndLen)
       throws IOException {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
@@ -279,9 +316,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
 
     writeMeta(
-        fieldData.writer != null,
+        fieldData.isQuantized(),
         fieldData.fieldInfo,
         maxDoc,
+        fieldData.getConfiguredQuantile(),
+        fieldData.getMinQuantile(),
+        fieldData.getMaxQuantile(),
+        quantizedVectorOffsetAndLen,
         vectorDataOffset,
         vectorDataLength,
         vectorIndexOffset,
@@ -334,18 +375,16 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     nodesByLevel.add(null);
 
     int maxOrd = graph.size();
-    int maxConnOnLevel = M * 2;
     NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
     levelNodeOffsets[0] = new int[nodesOnLevel0.size()];
     while (nodesOnLevel0.hasNext()) {
       int node = nodesOnLevel0.nextInt();
       NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
-    maxConnOnLevel = M;
     for (int level = 1; level < graph.numLevels(); level++) {
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       int[] newNodes = new int[nodesOnLevel.size()];
@@ -359,7 +398,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       for (int node : newNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -401,8 +440,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     };
   }
 
-  private void reconstructAndWriteNeigbours(
-      NeighborArray neighbors, int[] oldToNewMap, int maxConnOnLevel, int maxOrd)
+  private void reconstructAndWriteNeigbours(NeighborArray neighbors, int[] oldToNewMap, int maxOrd)
       throws IOException {
     int size = neighbors.size();
     vectorIndex.writeVInt(size);
@@ -432,14 +470,25 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             vectorData.getName(), "temp", segmentWriteState.context);
     IndexInput vectorDataInput = null;
     IndexInput quantizationDataInput = null;
+    Lucene99ScalarQuantizedVectorsWriter.MergedQuantileState quantizationState = null;
     boolean success = false;
     try {
-      ScalarQuantizationState quantizationState = null;
-      if (quantizedVectorsWriter != null
-          && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-        quantizationState = quantizedVectorsWriter.mergeQuantiles(fieldInfo, mergeState);
-        quantizationDataInput =
-            quantizedVectorsWriter.mergeOneField(fieldInfo, mergeState, quantizationState);
+      long[] quantizedVectorDataOffsetAndLength = null;
+      if (quantizedVectorsWriter != null) {
+        quantizationState =
+            quantizedVectorsWriter.mergeOneField(segmentWriteState, fieldInfo, mergeState);
+        if (quantizationState != null) {
+          quantizedVectorDataOffsetAndLength = new long[2];
+          quantizedVectorDataOffsetAndLength[0] = quantizedVectorData.alignFilePointer(Float.BYTES);
+          quantizationDataInput =
+              segmentWriteState.directory.openInput(
+                  quantizationState.tempVectorFileName, segmentWriteState.context);
+          quantizedVectorData.copyBytes(
+              quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
+          quantizedVectorDataOffsetAndLength[1] =
+              quantizedVectorData.getFilePointer() - quantizedVectorDataOffsetAndLength[0];
+          CodecUtil.retrieveChecksum(quantizationDataInput);
+        }
       }
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField =
@@ -490,7 +539,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
               case FLOAT32 -> {
                 final int maxOrd;
                 final RandomVectorScorerSupplier scorerSupplier;
-                if (quantizedVectorsWriter != null) {
+                if (quantizationState != null) {
                   RandomAccessQuantizedByteVectorValues values =
                       new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
                           fieldInfo.getVectorDimension(),
@@ -500,7 +549,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                   scorerSupplier =
                       new ScalarQuantizedRandomVectorScorerSupplier(
                           fieldInfo.getVectorSimilarityFunction(),
-                          quantizationState.buildQuantizer(),
+                          quantizationState.mergeQuantile,
                           values);
                 } else {
                   OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
@@ -527,6 +576,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           quantizationState != null,
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
+          quantizationState == null ? null : quantizationState.configuredQuantile,
+          quantizationState == null ? null : quantizationState.mergeQuantile.getLowerQuantile(),
+          quantizationState == null ? null : quantizationState.mergeQuantile.getUpperQuantile(),
+          quantizedVectorDataOffsetAndLength,
           vectorDataOffset,
           vectorDataLength,
           vectorIndexOffset,
@@ -539,6 +592,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       IOUtils.close(vectorDataInput, quantizationDataInput);
       if (success) {
         segmentWriteState.directory.deleteFile(tempVectorData.getName());
+        if (quantizationState != null) {
+          segmentWriteState.directory.deleteFile(quantizationState.tempVectorFileName);
+        }
       } else {
         IOUtils.closeWhileHandlingException(tempVectorData);
         IOUtils.deleteFilesIgnoringExceptions(
@@ -583,21 +639,23 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader instanceof Lucene99HnswVectorsReader candidateReader)) {
+          || !(currKnnVectorsReader instanceof HnswGraphProvider)) {
         continue;
       }
 
       int candidateVectorCount = 0;
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE -> {
-          ByteVectorValues byteVectorValues = candidateReader.getByteVectorValues(fieldInfo.name);
+          ByteVectorValues byteVectorValues =
+              currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
           if (byteVectorValues == null) {
             continue;
           }
           candidateVectorCount = byteVectorValues.size();
         }
         case FLOAT32 -> {
-          FloatVectorValues vectorValues = candidateReader.getFloatVectorValues(fieldInfo.name);
+          FloatVectorValues vectorValues =
+              currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
           if (vectorValues == null) {
             continue;
           }
@@ -616,13 +674,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
       throws IOException {
     if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
-        && perFieldReader.getFieldReader(fieldName)
-            instanceof Lucene99HnswVectorsReader fieldReader) {
+        && perFieldReader.getFieldReader(fieldName) instanceof HnswGraphProvider fieldReader) {
       return fieldReader.getGraph(fieldName);
     }
 
-    if (knnVectorsReader instanceof Lucene99HnswVectorsReader) {
-      return ((Lucene99HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    if (knnVectorsReader instanceof HnswGraphProvider) {
+      return ((HnswGraphProvider) knnVectorsReader).getGraph(fieldName);
     }
 
     // We should not reach here because knnVectorsReader's type is checked in
@@ -769,6 +826,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       boolean isQuantized,
       FieldInfo field,
       int maxDoc,
+      Float configuredQuantizationQuantile,
+      Float lowerQuantile,
+      Float upperQuantile,
+      long[] quantizedVectorDataOffsetAndLen,
       long vectorDataOffset,
       long vectorDataLength,
       long vectorIndexOffset,
@@ -778,9 +839,29 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int[][] graphLevelNodeOffsets)
       throws IOException {
     meta.writeInt(field.number);
-    meta.writeByte(isQuantized ? (byte) 1 : (byte) 0);
     meta.writeInt(field.getVectorEncoding().ordinal());
     meta.writeInt(field.getVectorSimilarityFunction().ordinal());
+    meta.writeByte(isQuantized ? (byte) 1 : (byte) 0);
+    if (isQuantized) {
+      assert lowerQuantile != null
+          && upperQuantile != null
+          && quantizedVectorDataOffsetAndLen != null;
+      assert quantizedVectorDataOffsetAndLen.length == 2;
+      meta.writeInt(
+          Float.floatToIntBits(
+              configuredQuantizationQuantile != null
+                  ? configuredQuantizationQuantile
+                  : calculateDefaultQuantile(field.getVectorDimension())));
+      meta.writeInt(Float.floatToIntBits(lowerQuantile));
+      meta.writeInt(Float.floatToIntBits(upperQuantile));
+      meta.writeVLong(quantizedVectorDataOffsetAndLen[0]);
+      meta.writeVLong(quantizedVectorDataOffsetAndLen[1]);
+    } else {
+      assert configuredQuantizationQuantile == null
+          && lowerQuantile == null
+          && upperQuantile == null
+          && quantizedVectorDataOffsetAndLen == null;
+    }
     meta.writeVLong(vectorDataOffset);
     meta.writeVLong(vectorDataLength);
     meta.writeVLong(vectorIndexOffset);
@@ -790,42 +871,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     // write docIDs
     int count = docsWithField.cardinality();
     meta.writeInt(count);
-    if (count == 0) {
-      meta.writeLong(-2); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else if (count == maxDoc) {
-      meta.writeLong(-1); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else {
-      long offset = vectorData.getFilePointer();
-      meta.writeLong(offset); // docsWithFieldOffset
-      final short jumpTableEntryCount =
-          IndexedDISI.writeBitSet(
-              docsWithField.iterator(), vectorData, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      meta.writeLong(vectorData.getFilePointer() - offset); // docsWithFieldLength
-      meta.writeShort(jumpTableEntryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-
-      // write ordToDoc mapping
-      long start = vectorData.getFilePointer();
-      meta.writeLong(start);
-      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-      // dense case and empty case do not need to store ordToMap mapping
-      final DirectMonotonicWriter ordToDocWriter =
-          DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
-      DocIdSetIterator iterator = docsWithField.iterator();
-      for (int doc = iterator.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = iterator.nextDoc()) {
-        ordToDocWriter.add(doc);
-      }
-      ordToDocWriter.finish();
-      meta.writeLong(vectorData.getFilePointer() - start);
+    if (isQuantized) {
+      writeOrdToDoc(quantizedVectorData, docsWithField, count, maxDoc);
     }
+    writeOrdToDoc(vectorData, docsWithField, count, maxDoc);
 
     meta.writeVInt(M);
     // write graph nodes on each level
@@ -872,6 +921,48 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  private void writeOrdToDoc(
+      IndexOutput data, DocsWithFieldSet docsWithField, int count, int maxDoc) throws IOException {
+    if (count == 0) {
+      meta.writeLong(-2); // docsWithFieldOffset
+      meta.writeLong(0L); // docsWithFieldLength
+      meta.writeShort((short) -1); // jumpTableEntryCount
+      meta.writeByte((byte) -1); // denseRankPower
+    } else if (count == maxDoc) {
+      meta.writeLong(-1); // docsWithFieldOffset
+      meta.writeLong(0L); // docsWithFieldLength
+      meta.writeShort((short) -1); // jumpTableEntryCount
+      meta.writeByte((byte) -1); // denseRankPower
+    } else {
+      long offset = data.getFilePointer();
+      meta.writeLong(offset); // docsWithFieldOffset
+      final short jumpTableEntryCount =
+          IndexedDISI.writeBitSet(
+              docsWithField.iterator(), data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+      meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
+      meta.writeShort(jumpTableEntryCount);
+      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
+
+      // write ordToDoc mapping
+      long start = data.getFilePointer();
+      meta.writeLong(start); // addressesOffset
+      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT); // blockShift
+      // dense case and empty case do not need to store ordToMap mapping
+      // write meta information
+      final DirectMonotonicWriter ordToDocWriter =
+          DirectMonotonicWriter.getInstance(
+              meta, data, docsWithField.cardinality(), DIRECT_MONOTONIC_BLOCK_SHIFT);
+      DocIdSetIterator iterator = docsWithField.iterator();
+      for (int doc = iterator.nextDoc();
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = iterator.nextDoc()) {
+        ordToDocWriter.add(doc);
+      }
+      ordToDocWriter.finish();
+      meta.writeLong(data.getFilePointer() - start); // addressesLength
+    }
+  }
+
   /**
    * Writes the byte vector values to the output and returns a set of documents that contains
    * vectors.
@@ -914,7 +1005,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorData, vectorIndex, quantizedVectorsWriter);
+    IOUtils.close(meta, vectorData, vectorIndex, quantizedVectorData);
   }
 
   private abstract static class FieldWriter<T> extends KnnFieldVectorsWriter<T> {
@@ -923,7 +1014,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
     private final HnswGraphBuilder hnswGraphBuilder;
-    private final KnnFieldVectorsWriter<float[]> writer;
+    private final Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter quantizedWriter;
 
     private int lastDocID = -1;
     private int node = 0;
@@ -933,7 +1024,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        KnnFieldVectorsWriter<float[]> writer)
+        Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter writer)
         throws IOException {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
@@ -958,14 +1049,15 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        KnnFieldVectorsWriter<float[]> writer)
+        Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter quantizedWriter)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
-      this.writer = writer;
+      this.quantizedWriter = quantizedWriter;
       vectors = new ArrayList<>();
-      if (writer != null && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32) == false) {
+      if (quantizedWriter != null
+          && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32) == false) {
         throw new IllegalArgumentException(
             "Vector encoding ["
                 + VectorEncoding.FLOAT32
@@ -996,9 +1088,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       assert docID > lastDocID;
-      if (writer != null) {
+      if (quantizedWriter != null) {
         assert vectorValue instanceof float[];
-        writer.addValue(docID, (float[]) vectorValue);
+        quantizedWriter.addValue((float[]) vectorValue);
       }
       docsWithField.add(docID);
       vectors.add(copyValue(vectorValue));
@@ -1018,7 +1110,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     @Override
     public long ramBytesUsed() {
       if (vectors.size() == 0) return 0;
-      long quantizationSpace = writer != null ? writer.ramBytesUsed() : 0L;
+      long quantizationSpace = quantizedWriter != null ? quantizedWriter.ramBytesUsed() : 0L;
       return docsWithField.ramBytesUsed()
           + (long) vectors.size()
               * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
@@ -1027,6 +1119,22 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
               * fieldInfo.getVectorEncoding().byteSize
           + hnswGraphBuilder.getGraph().ramBytesUsed()
           + quantizationSpace;
+    }
+
+    Float getConfiguredQuantile() {
+      return quantizedWriter == null ? null : quantizedWriter.getQuantile();
+    }
+
+    Float getMinQuantile() {
+      return quantizedWriter == null ? null : quantizedWriter.getMinQuantile();
+    }
+
+    Float getMaxQuantile() {
+      return quantizedWriter == null ? null : quantizedWriter.getMaxQuantile();
+    }
+
+    boolean isQuantized() {
+      return quantizedWriter != null;
     }
   }
 

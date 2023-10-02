@@ -183,11 +183,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    Lucene99ScalarQuantizedVectorsWriter writer =
-        scalarQuantizedVectorsFormat != null
-            ? scalarQuantizedVectorsFormat.quantizationWriter(state)
-            : null;
-    return new Lucene99HnswVectorsWriter(state, maxConn, beamWidth, writer);
+    return new Lucene99HnswVectorsWriter(state, maxConn, beamWidth, scalarQuantizedVectorsFormat);
   }
 
   @Override
