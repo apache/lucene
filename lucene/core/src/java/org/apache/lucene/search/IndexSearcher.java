@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -671,17 +672,15 @@ public class IndexSearcher {
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<TaskExecutor.Task<C>> listTasks = new ArrayList<>();
+      final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
       for (int i = 0; i < leafSlices.length; ++i) {
         final LeafReaderContext[] leaves = leafSlices[i].leaves;
         final C collector = collectors.get(i);
-        TaskExecutor.Task<C> task =
-            taskExecutor.createTask(
-                () -> {
-                  search(Arrays.asList(leaves), weight, collector);
-                  return collector;
-                });
-        listTasks.add(task);
+        listTasks.add(
+            () -> {
+              search(Arrays.asList(leaves), weight, collector);
+              return collector;
+            });
       }
       List<C> results = taskExecutor.invokeAll(listTasks);
       return collectorManager.reduce(results);

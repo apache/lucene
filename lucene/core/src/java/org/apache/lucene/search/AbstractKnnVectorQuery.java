@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -79,9 +80,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-    List<TaskExecutor.Task<TopDocs>> tasks = new ArrayList<>();
-    for (LeafReaderContext context : reader.leaves()) {
-      tasks.add(taskExecutor.createTask(() -> searchLeaf(context, filterWeight)));
+    List<LeafReaderContext> leafReaderContexts = reader.leaves();
+    List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
+    for (LeafReaderContext context : leafReaderContexts) {
+      tasks.add(() -> searchLeaf(context, filterWeight));
     }
     TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
 

@@ -78,11 +78,7 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
-* GITHUB#12447, GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
-
-* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
-
-* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+* GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
 Optimizations
 ---------------------
@@ -154,6 +150,9 @@ Improvements
 * GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
   outside of the o.a.l.search package (Luca Cavanna)
 
+* GITHUB#12603: Simplify the TaskExecutor API by exposing a single invokeAll method that takes a
+  collection of callables, executes them and returns their results  (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -162,6 +161,8 @@ Optimizations
 
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
+  
+* GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
 Changes in runtime behavior
 ---------------------
@@ -171,7 +172,13 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
+
+Build
+---------------------
+
+* GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
 
 Other
 ---------------------
@@ -216,6 +223,13 @@ Improvements
 
 * GITHUB#12499: Simplify task executor for concurrent operations by offloading concurrent operations to the
   provided executor unconditionally. (Luca Cavanna)
+
+* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
+
+* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+
+* GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
 
 Optimizations
 ---------------------
