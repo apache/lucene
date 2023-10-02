@@ -1231,6 +1231,15 @@ groups:
         logfile: push.log
         stdout: true
         comment: Push the release branch
+  - !Todo
+    id: create_github_release
+    title: Create a Github Release
+    description: |
+      Create a github release named "{{ release_version }}" based off of the git tag "{{ release_version }}".
+      You can use the previous releases as a template. No artifacts need to be manually uploaded.
+      (You can hit "edit" on a previous release, to get the markdown version of the notes to copy.)
+    links:
+      - https://github.com/apache/lucene/releases
 - !TodoGroup
   id: announce
   title: Announce the release
@@ -1515,14 +1524,6 @@ groups:
       because there was no released Lucene version to test against.
       {{ set_java_home(release_version) }}
   - !Todo
-    id: github_release
-    title: Mark version as released in GitHub
-    description: |-
-      Go to https://github.com/apache/lucene/milestones.
-      . Click "Close" on the version you just released.
-    links:
-    - https://github.com/apache/lucene/milestones
-  - !Todo
     id: github_change_unresolved
     title: Remove milestone for unresolved
     description: |-
@@ -1532,6 +1533,18 @@ groups:
       . Remove the milestone from all issues and pull requests that are still open.
     links:
     - https://github.com/apache/lucene/milestones/{{ release_version }}
+  - !Todo
+    id: github_milestone_close
+    depends: github_change_unresolved
+    title: Mark milestone as closed in Github
+    description: |-
+      Go to https://github.com/apache/lucene/milestones.
+      . Find version {{ release_version }}, click "edit" under the progress bar
+      . Set the "Due Date" to the release date of this version
+      . Click "Close milestone"
+
+    links:
+    - https://github.com/apache/lucene/milestones
   - !Todo
     id: new_github_versions_bugfix
     title: Add a new milestone in GitHub for the next release
