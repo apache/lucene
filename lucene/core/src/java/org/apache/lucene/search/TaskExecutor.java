@@ -56,8 +56,8 @@ public final class TaskExecutor {
 
   /**
    * Execute all the callables provided as an argument, wait for them to complete and return the
-   * obtained results. If an exception is thrown by more than one task, the subsequent ones
-   * will be added as suppressed exceptions to the first one that was caught.
+   * obtained results. If an exception is thrown by more than one callable, the subsequent ones will
+   * be added as suppressed exceptions to the first one that was caught.
    *
    * @param callables the callables to execute
    * @return a list containing the results from the tasks execution
