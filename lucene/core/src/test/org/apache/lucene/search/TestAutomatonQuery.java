@@ -108,6 +108,14 @@ public class TestAutomatonQuery extends LuceneTestCase {
                 newTerm("bogus"),
                 automaton,
                 false,
+                MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"),
+                automaton,
+                false,
                 MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }
 

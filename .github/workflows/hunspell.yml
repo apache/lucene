@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up JDK
-      uses: actions/setup-java@v2
+      uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: 17
@@ -26,9 +26,6 @@ jobs:
 
     - name: Prepare caches
       uses: ./.github/actions/gradle-caches
-
-    - name: Initialize gradle settings
-      run: ./gradlew localSettings
 
     - name: Run regular and regression tests
       run: ./gradlew -p lucene/analysis/common check testRegressions

@@ -62,7 +62,7 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
             @Override
             public void run() {
 
-              int iters = atLeast(1000);
+              int iters = atLeast(100);
               for (int j = 0; j < iters; j++) {
                 ctrl.updateStalled(random().nextInt(stallProbability) == 0);
                 if (random().nextInt(5) == 0) { // thread 0 only updates

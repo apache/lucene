@@ -21,22 +21,8 @@ package org.apache.lucene.index;
  * document count depending on the IndexWriter's {@link IndexWriterConfig}. It also applies pending
  * deletes based on the number of buffered delete terms.
  *
- * <ul>
- *   <li>{@link #onDelete(DocumentsWriterFlushControl, DocumentsWriterPerThread)} - applies pending
- *       delete operations based on the global number of buffered delete terms if the consumed
- *       memory is greater than {@link IndexWriterConfig#getRAMBufferSizeMB()}.
- *   <li>{@link #onInsert(DocumentsWriterFlushControl, DocumentsWriterPerThread)} - flushes either
- *       on the number of documents per {@link DocumentsWriterPerThread} ( {@link
- *       DocumentsWriterPerThread#getNumDocsInRAM()}) or on the global active memory consumption in
- *       the current indexing session iff {@link IndexWriterConfig#getMaxBufferedDocs()} or {@link
- *       IndexWriterConfig#getRAMBufferSizeMB()} is enabled respectively
- *   <li>{@link #onUpdate(DocumentsWriterFlushControl, DocumentsWriterPerThread)} - calls {@link
- *       #onInsert(DocumentsWriterFlushControl, DocumentsWriterPerThread)} and {@link
- *       #onDelete(DocumentsWriterFlushControl, DocumentsWriterPerThread)} in order
- * </ul>
- *
- * All {@link IndexWriterConfig} settings are used to mark {@link DocumentsWriterPerThread} as flush
- * pending during indexing with respect to their live updates.
+ * <p>All {@link IndexWriterConfig} settings are used to mark {@link DocumentsWriterPerThread} as
+ * flush pending during indexing with respect to their live updates.
  *
  * <p>If {@link IndexWriterConfig#setRAMBufferSizeMB(double)} is enabled, the largest ram consuming
  * {@link DocumentsWriterPerThread} will be marked as pending iff the global active RAM consumption
@@ -45,44 +31,52 @@ package org.apache.lucene.index;
 class FlushByRamOrCountsPolicy extends FlushPolicy {
 
   @Override
-  public void onDelete(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
-    if ((flushOnRAM()
-        && control.getDeleteBytesUsed() > 1024 * 1024 * indexWriterConfig.getRAMBufferSizeMB())) {
-      control.setApplyAllDeletes();
-      if (infoStream.isEnabled("FP")) {
-        infoStream.message(
-            "FP",
-            "force apply deletes bytesUsed="
-                + control.getDeleteBytesUsed()
-                + " vs ramBufferMB="
-                + indexWriterConfig.getRAMBufferSizeMB());
-      }
-    }
-  }
-
-  @Override
-  public void onInsert(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
-    if (flushOnDocCount()
+  public void onChange(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
+    if (perThread != null
+        && flushOnDocCount()
         && perThread.getNumDocsInRAM() >= indexWriterConfig.getMaxBufferedDocs()) {
       // Flush this state by num docs
       control.setFlushPending(perThread);
     } else if (flushOnRAM()) { // flush by RAM
       final long limit = (long) (indexWriterConfig.getRAMBufferSizeMB() * 1024.d * 1024.d);
-      final long totalRam = control.activeBytes() + control.getDeleteBytesUsed();
-      if (totalRam >= limit) {
-        if (infoStream.isEnabled("FP")) {
-          infoStream.message(
-              "FP",
-              "trigger flush: activeBytes="
-                  + control.activeBytes()
-                  + " deleteBytes="
-                  + control.getDeleteBytesUsed()
-                  + " vs limit="
-                  + limit);
-        }
-        markLargestWriterPending(control, perThread);
+      final long activeRam = control.activeBytes();
+      final long deletesRam = control.getDeleteBytesUsed();
+      if (deletesRam >= limit && activeRam >= limit && perThread != null) {
+        flushDeletes(control);
+        flushActiveBytes(control, perThread);
+      } else if (deletesRam >= limit) {
+        flushDeletes(control);
+      } else if (activeRam + deletesRam >= limit && perThread != null) {
+        flushActiveBytes(control, perThread);
       }
     }
+  }
+
+  private void flushDeletes(DocumentsWriterFlushControl control) {
+    control.setApplyAllDeletes();
+    if (infoStream.isEnabled("FP")) {
+      infoStream.message(
+          "FP",
+          "force apply deletes bytesUsed="
+              + control.getDeleteBytesUsed()
+              + " vs ramBufferMB="
+              + indexWriterConfig.getRAMBufferSizeMB());
+    }
+  }
+
+  private void flushActiveBytes(
+      DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
+    if (infoStream.isEnabled("FP")) {
+      infoStream.message(
+          "FP",
+          "trigger flush: activeBytes="
+              + control.activeBytes()
+              + " deleteBytes="
+              + control.getDeleteBytesUsed()
+              + " vs ramBufferMB="
+              + indexWriterConfig.getRAMBufferSizeMB());
+    }
+    markLargestWriterPending(control, perThread);
   }
 
   /** Marks the most ram consuming active {@link DocumentsWriterPerThread} flush pending */

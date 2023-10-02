@@ -35,6 +35,8 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
 
 /**
@@ -56,6 +58,8 @@ public abstract class RangeFieldQuery extends Query {
   final byte[] ranges;
   /** number of bytes per dimension */
   final int bytesPerDim;
+  /** ByteArrayComparator selected by bytesPerDim */
+  final ByteArrayComparator comparator;
 
   /**
    * Used by {@code RangeFieldQuery} to check how each internal or leaf node relates to the query.
@@ -71,46 +75,19 @@ public abstract class RangeFieldQuery extends Query {
           byte[] maxPackedValue,
           int numDims,
           int bytesPerDim,
-          int dim) {
+          int dim,
+          ByteArrayComparator comparator) {
         int minOffset = dim * bytesPerDim;
         int maxOffset = minOffset + bytesPerDim * numDims;
 
-        if (Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    minPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                < 0
-            || Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    maxPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                > 0) {
+        if (comparator.compare(queryPackedValue, maxOffset, minPackedValue, minOffset) < 0
+            || comparator.compare(queryPackedValue, minOffset, maxPackedValue, maxOffset) > 0) {
           // disjoint
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        if (Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    maxPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                >= 0
-            && Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    minPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                <= 0) {
+        if (comparator.compare(queryPackedValue, maxOffset, maxPackedValue, minOffset) >= 0
+            && comparator.compare(queryPackedValue, minOffset, minPackedValue, maxOffset) <= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
 
@@ -119,25 +96,16 @@ public abstract class RangeFieldQuery extends Query {
 
       @Override
       boolean matches(
-          byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim, int dim) {
+          byte[] queryPackedValue,
+          byte[] packedValue,
+          int numDims,
+          int bytesPerDim,
+          int dim,
+          ByteArrayComparator comparator) {
         int minOffset = dim * bytesPerDim;
         int maxOffset = minOffset + bytesPerDim * numDims;
-        return Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    packedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                >= 0
-            && Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    packedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                <= 0;
+        return comparator.compare(queryPackedValue, maxOffset, packedValue, minOffset) >= 0
+            && comparator.compare(queryPackedValue, minOffset, packedValue, maxOffset) <= 0;
       }
     },
     /** Use this for within queries. */
@@ -150,46 +118,19 @@ public abstract class RangeFieldQuery extends Query {
           byte[] maxPackedValue,
           int numDims,
           int bytesPerDim,
-          int dim) {
+          int dim,
+          ByteArrayComparator comparator) {
         int minOffset = dim * bytesPerDim;
         int maxOffset = minOffset + bytesPerDim * numDims;
 
-        if (Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    minPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                < 0
-            || Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    maxPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                > 0) {
+        if (comparator.compare(queryPackedValue, maxOffset, minPackedValue, maxOffset) < 0
+            || comparator.compare(queryPackedValue, minOffset, maxPackedValue, minOffset) > 0) {
           // all ranges have at least one point outside of the query
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        if (Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    maxPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                >= 0
-            && Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    minPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                <= 0) {
+        if (comparator.compare(queryPackedValue, maxOffset, maxPackedValue, maxOffset) >= 0
+            && comparator.compare(queryPackedValue, minOffset, minPackedValue, minOffset) <= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
 
@@ -198,25 +139,16 @@ public abstract class RangeFieldQuery extends Query {
 
       @Override
       boolean matches(
-          byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim, int dim) {
+          byte[] queryPackedValue,
+          byte[] packedValue,
+          int numDims,
+          int bytesPerDim,
+          int dim,
+          ByteArrayComparator comparator) {
         int minOffset = dim * bytesPerDim;
         int maxOffset = minOffset + bytesPerDim * numDims;
-        return Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    packedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                <= 0
-            && Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    packedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                >= 0;
+        return comparator.compare(queryPackedValue, minOffset, packedValue, minOffset) <= 0
+            && comparator.compare(queryPackedValue, maxOffset, packedValue, maxOffset) >= 0;
       }
     },
     /** Use this for contains */
@@ -229,46 +161,19 @@ public abstract class RangeFieldQuery extends Query {
           byte[] maxPackedValue,
           int numDims,
           int bytesPerDim,
-          int dim) {
+          int dim,
+          ByteArrayComparator comparator) {
         int minOffset = dim * bytesPerDim;
         int maxOffset = minOffset + bytesPerDim * numDims;
 
-        if (Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    maxPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                > 0
-            || Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    minPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                < 0) {
+        if (comparator.compare(queryPackedValue, maxOffset, maxPackedValue, maxOffset) > 0
+            || comparator.compare(queryPackedValue, minOffset, minPackedValue, minOffset) < 0) {
           // all ranges are either less than the query max or greater than the query min
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        if (Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    minPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                <= 0
-            && Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    maxPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                >= 0) {
+        if (comparator.compare(queryPackedValue, maxOffset, minPackedValue, maxOffset) <= 0
+            && comparator.compare(queryPackedValue, minOffset, maxPackedValue, minOffset) >= 0) {
           return Relation.CELL_INSIDE_QUERY;
         }
 
@@ -277,25 +182,16 @@ public abstract class RangeFieldQuery extends Query {
 
       @Override
       boolean matches(
-          byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim, int dim) {
+          byte[] queryPackedValue,
+          byte[] packedValue,
+          int numDims,
+          int bytesPerDim,
+          int dim,
+          ByteArrayComparator comparator) {
         int minOffset = dim * bytesPerDim;
         int maxOffset = minOffset + bytesPerDim * numDims;
-        return Arrays.compareUnsigned(
-                    queryPackedValue,
-                    minOffset,
-                    minOffset + bytesPerDim,
-                    packedValue,
-                    minOffset,
-                    minOffset + bytesPerDim)
-                >= 0
-            && Arrays.compareUnsigned(
-                    queryPackedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim,
-                    packedValue,
-                    maxOffset,
-                    maxOffset + bytesPerDim)
-                <= 0;
+        return comparator.compare(queryPackedValue, minOffset, packedValue, minOffset) >= 0
+            && comparator.compare(queryPackedValue, maxOffset, packedValue, maxOffset) <= 0;
       }
     },
     /** Use this for crosses queries */
@@ -308,13 +204,19 @@ public abstract class RangeFieldQuery extends Query {
           byte[] maxPackedValue,
           int numDims,
           int bytesPerDim,
-          int dim) {
+          int dim,
+          ByteArrayComparator comparator) {
         throw new UnsupportedOperationException();
       }
 
       @Override
       boolean matches(
-          byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim, int dim) {
+          byte[] queryPackedValue,
+          byte[] packedValue,
+          int numDims,
+          int bytesPerDim,
+          int dim,
+          ByteArrayComparator comparator) {
         throw new UnsupportedOperationException();
       }
 
@@ -324,17 +226,18 @@ public abstract class RangeFieldQuery extends Query {
           byte[] minPackedValue,
           byte[] maxPackedValue,
           int numDims,
-          int bytesPerDim) {
+          int bytesPerDim,
+          ByteArrayComparator comparator) {
         Relation intersectRelation =
             QueryType.INTERSECTS.compare(
-                queryPackedValue, minPackedValue, maxPackedValue, numDims, bytesPerDim);
+                queryPackedValue, minPackedValue, maxPackedValue, numDims, bytesPerDim, comparator);
         if (intersectRelation == Relation.CELL_OUTSIDE_QUERY) {
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
         Relation withinRelation =
             QueryType.WITHIN.compare(
-                queryPackedValue, minPackedValue, maxPackedValue, numDims, bytesPerDim);
+                queryPackedValue, minPackedValue, maxPackedValue, numDims, bytesPerDim, comparator);
         if (withinRelation == Relation.CELL_INSIDE_QUERY) {
           return Relation.CELL_OUTSIDE_QUERY;
         }
@@ -348,9 +251,15 @@ public abstract class RangeFieldQuery extends Query {
       }
 
       @Override
-      boolean matches(byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim) {
-        return INTERSECTS.matches(queryPackedValue, packedValue, numDims, bytesPerDim)
-            && WITHIN.matches(queryPackedValue, packedValue, numDims, bytesPerDim) == false;
+      public boolean matches(
+          byte[] queryPackedValue,
+          byte[] packedValue,
+          int numDims,
+          int bytesPerDim,
+          ByteArrayComparator comparator) {
+        return INTERSECTS.matches(queryPackedValue, packedValue, numDims, bytesPerDim, comparator)
+            && WITHIN.matches(queryPackedValue, packedValue, numDims, bytesPerDim, comparator)
+                == false;
       }
     };
 
@@ -360,18 +269,27 @@ public abstract class RangeFieldQuery extends Query {
         byte[] maxPackedValue,
         int numDims,
         int bytesPerDim,
-        int dim);
+        int dim,
+        ByteArrayComparator comparator);
 
     Relation compare(
         byte[] queryPackedValue,
         byte[] minPackedValue,
         byte[] maxPackedValue,
         int numDims,
-        int bytesPerDim) {
+        int bytesPerDim,
+        ByteArrayComparator comparator) {
       boolean inside = true;
       for (int dim = 0; dim < numDims; ++dim) {
         Relation relation =
-            compare(queryPackedValue, minPackedValue, maxPackedValue, numDims, bytesPerDim, dim);
+            compare(
+                queryPackedValue,
+                minPackedValue,
+                maxPackedValue,
+                numDims,
+                bytesPerDim,
+                dim,
+                comparator);
         if (relation == Relation.CELL_OUTSIDE_QUERY) {
           return Relation.CELL_OUTSIDE_QUERY;
         } else if (relation != Relation.CELL_INSIDE_QUERY) {
@@ -382,11 +300,26 @@ public abstract class RangeFieldQuery extends Query {
     }
 
     abstract boolean matches(
-        byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim, int dim);
+        byte[] queryPackedValue,
+        byte[] packedValue,
+        int numDims,
+        int bytesPerDim,
+        int dim,
+        ByteArrayComparator comparator);
 
-    boolean matches(byte[] queryPackedValue, byte[] packedValue, int numDims, int bytesPerDim) {
+    /**
+     * Compares every dim for 2 encoded ranges and returns true if all dims match. Matching
+     * implementation is based on the QueryType.
+     */
+    public boolean matches(
+        byte[] queryPackedValue,
+        byte[] packedValue,
+        int numDims,
+        int bytesPerDim,
+        ByteArrayComparator comparator) {
       for (int dim = 0; dim < numDims; ++dim) {
-        if (matches(queryPackedValue, packedValue, numDims, bytesPerDim, dim) == false) {
+        if (matches(queryPackedValue, packedValue, numDims, bytesPerDim, dim, comparator)
+            == false) {
           return false;
         }
       }
@@ -412,6 +345,7 @@ public abstract class RangeFieldQuery extends Query {
     this.numDims = numDims;
     this.ranges = ranges;
     this.bytesPerDim = ranges.length / (2 * numDims);
+    this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
   }
 
   /** check input arguments */
@@ -473,21 +407,22 @@ public abstract class RangeFieldQuery extends Query {
 
           @Override
           public void visit(int docID, byte[] leaf) throws IOException {
-            if (queryType.matches(ranges, leaf, numDims, bytesPerDim)) {
+            if (queryType.matches(ranges, leaf, numDims, bytesPerDim, comparator)) {
               visit(docID);
             }
           }
 
           @Override
           public void visit(DocIdSetIterator iterator, byte[] leaf) throws IOException {
-            if (queryType.matches(ranges, leaf, numDims, bytesPerDim)) {
+            if (queryType.matches(ranges, leaf, numDims, bytesPerDim, comparator)) {
               adder.add(iterator);
             }
           }
 
           @Override
           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-            return queryType.compare(ranges, minPackedValue, maxPackedValue, numDims, bytesPerDim);
+            return queryType.compare(
+                ranges, minPackedValue, maxPackedValue, numDims, bytesPerDim, comparator);
           }
         };
       }
@@ -513,7 +448,8 @@ public abstract class RangeFieldQuery extends Query {
                     values.getMinPackedValue(),
                     values.getMaxPackedValue(),
                     numDims,
-                    bytesPerDim)
+                    bytesPerDim,
+                    comparator)
                 == Relation.CELL_INSIDE_QUERY) {
           allDocsMatch = true;
         }

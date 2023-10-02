@@ -70,6 +70,14 @@ public abstract class FunctionValues {
     return intVal(doc) != 0;
   }
 
+  public float[] floatVectorVal(int doc) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  public byte[] byteVectorVal(int doc) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * returns the bytes representation of the string val - TODO: should this return the indexed raw
    * bytes not?

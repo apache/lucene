@@ -22,12 +22,12 @@ import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
@@ -266,10 +266,6 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   private void assertChunking(Random random, int chunkSize) throws Exception {
     Path path = createTempDir("mmap" + chunkSize);
     Directory chunkedDir = getDirectory(path, chunkSize);
-    // we will map a lot, try to turn on the unmap hack
-    if (chunkedDir instanceof MMapDirectory && MMapDirectory.UNMAP_SUPPORTED) {
-      ((MMapDirectory) chunkedDir).setUseUnmap(true);
-    }
     MockDirectoryWrapper dir = new MockDirectoryWrapper(random, chunkedDir);
     RandomIndexWriter writer =
         new RandomIndexWriter(
@@ -291,10 +287,11 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     IndexReader reader = writer.getReader();
     writer.close();
 
+    StoredFields storedFields = reader.storedFields();
     int numAsserts = atLeast(100);
     for (int i = 0; i < numAsserts; i++) {
       int docID = random.nextInt(numDocs);
-      assertEquals("" + docID, reader.document(docID).get("docid"));
+      assertEquals("" + docID, storedFields.document(docID).get("docid"));
     }
     reader.close();
     dir.close();

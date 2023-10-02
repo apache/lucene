@@ -17,13 +17,12 @@
 package org.apache.lucene.expressions.js;
 
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.tests.util.LuceneTestCase;
 
-public class TestJavascriptFunction extends LuceneTestCase {
+public class TestJavascriptFunction extends CompilerTestCase {
   private static double DELTA = 0.0000001;
 
   private void assertEvaluatesTo(String expression, double expected) throws Exception {
-    Expression evaluator = JavascriptCompiler.compile(expression);
+    Expression evaluator = compile(expression);
     double actual = evaluator.evaluate(null);
     assertEquals(expected, actual, DELTA);
   }

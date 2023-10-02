@@ -162,12 +162,12 @@ public final class DocIdSetBuilder {
    * RoaringDocIdSet.Builder}.
    */
   public void add(DocIdSetIterator iter) throws IOException {
+    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
+    BulkAdder adder = grow(cost);
     if (bitSet != null) {
       bitSet.or(iter);
       return;
     }
-    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
-    BulkAdder adder = grow(cost);
     for (int i = 0; i < cost; ++i) {
       int doc = iter.nextDoc();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {

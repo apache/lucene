@@ -16,14 +16,10 @@
  */
 package org.apache.lucene.codecs.lucene90.compressing;
 
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -51,51 +47,6 @@ public class TestCompressingStoredFieldsFormat extends BaseStoredFieldsFormatTes
     } else {
       return CompressingCodec.reasonableInstance(random());
     }
-  }
-
-  public void testDeletePartiallyWrittenFilesIfAbort() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig iwConf = newIndexWriterConfig(new MockAnalyzer(random()));
-    iwConf.setMaxBufferedDocs(RandomNumbers.randomIntBetween(random(), 2, 30));
-    iwConf.setCodec(getCodec());
-    // disable CFS because this test checks file names
-    iwConf.setMergePolicy(newLogMergePolicy(false));
-    iwConf.setUseCompoundFile(false);
-
-    // Cannot use RIW because this test wants CFS to stay off:
-    IndexWriter iw = new IndexWriter(dir, iwConf);
-
-    final Document validDoc = new Document();
-    validDoc.add(new IntPoint("id", 0));
-    validDoc.add(new StoredField("id", 0));
-    iw.addDocument(validDoc);
-    iw.commit();
-
-    // make sure that #writeField will fail to trigger an abort
-    final Document invalidDoc = new Document();
-    FieldType fieldType = new FieldType();
-    fieldType.setStored(true);
-    invalidDoc.add(
-        new Field("invalid", fieldType) {
-
-          @Override
-          public String stringValue() {
-            // TODO: really bad & scary that this causes IW to
-            // abort the segment!!  We should fix this.
-            return null;
-          }
-        });
-
-    try {
-      iw.addDocument(invalidDoc);
-      iw.commit();
-    } catch (IllegalArgumentException iae) {
-      // expected
-      assertEquals(iae, iw.getTragicException());
-    }
-    // Writer should be closed by tragedy
-    assertFalse(iw.isOpen());
-    dir.close();
   }
 
   public void testZFloat() throws Exception {

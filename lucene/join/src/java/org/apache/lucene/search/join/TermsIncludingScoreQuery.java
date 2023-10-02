@@ -151,8 +151,17 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
               postingsEnum = segmentTermsEnum.postings(postingsEnum, PostingsEnum.NONE);
               if (postingsEnum.advance(doc) == doc) {
                 final float score = TermsIncludingScoreQuery.this.scores[ords[i]];
-                return Explanation.match(
-                    score, "Score based on join value " + segmentTermsEnum.term().utf8ToString());
+                if (boost == 1.0f) {
+                  return Explanation.match(
+                      score, "Score based on join value " + segmentTermsEnum.term().utf8ToString());
+                } else {
+                  return Explanation.match(
+                      score * boost,
+                      "Score based on join value "
+                          + segmentTermsEnum.term().utf8ToString()
+                          + "^"
+                          + boost);
+                }
               }
             }
           }
@@ -172,9 +181,11 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
         TermsEnum segmentTermsEnum = terms.iterator();
         if (multipleValuesPerDocument) {
-          return new MVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost);
+          return new MVInOrderScorer(
+              this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         } else {
-          return new SVInOrderScorer(this, segmentTermsEnum, context.reader().maxDoc(), cost);
+          return new SVInOrderScorer(
+              this, segmentTermsEnum, context.reader().maxDoc(), cost, boost);
         }
       }
 
@@ -190,14 +201,17 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
     final DocIdSetIterator matchingDocsIterator;
     final float[] scores;
     final long cost;
+    final float boost;
 
-    SVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost) throws IOException {
+    SVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost, float boost)
+        throws IOException {
       super(weight);
       FixedBitSet matchingDocs = new FixedBitSet(maxDoc);
       this.scores = new float[maxDoc];
       fillDocsAndScores(matchingDocs, termsEnum);
       this.matchingDocsIterator = new BitSetIterator(matchingDocs, cost);
       this.cost = cost;
+      this.boost = boost;
     }
 
     protected void fillDocsAndScores(FixedBitSet matchingDocs, TermsEnum termsEnum)
@@ -223,7 +237,7 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
 
     @Override
     public float score() throws IOException {
-      return scores[docID()];
+      return scores[docID()] * boost;
     }
 
     @Override
@@ -246,8 +260,9 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
   // related documents.
   class MVInOrderScorer extends SVInOrderScorer {
 
-    MVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost) throws IOException {
-      super(weight, termsEnum, maxDoc, cost);
+    MVInOrderScorer(Weight weight, TermsEnum termsEnum, int maxDoc, long cost, float boost)
+        throws IOException {
+      super(weight, termsEnum, maxDoc, cost, boost);
     }
 
     @Override

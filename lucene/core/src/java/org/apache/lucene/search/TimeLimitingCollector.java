@@ -33,9 +33,9 @@ public class TimeLimitingCollector implements Collector {
   /** Thrown when elapsed search time exceeds allowed search time. */
   @SuppressWarnings("serial")
   public static class TimeExceededException extends RuntimeException {
-    private long timeAllowed;
-    private long timeElapsed;
-    private int lastDocCollected;
+    private final long timeAllowed;
+    private final long timeElapsed;
+    private final int lastDocCollected;
 
     private TimeExceededException(long timeAllowed, long timeElapsed, int lastDocCollected) {
       super(

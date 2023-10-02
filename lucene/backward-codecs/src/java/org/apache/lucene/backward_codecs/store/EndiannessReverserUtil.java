@@ -45,7 +45,7 @@ public final class EndiannessReverserUtil {
   /** Open a checksum index input */
   public static ChecksumIndexInput openChecksumInput(
       Directory directory, String name, IOContext context) throws IOException {
-    return new EndiannessReverserChecksumIndexInput(directory.openChecksumInput(name, context));
+    return new EndiannessReverserChecksumIndexInput(directory.openChecksumInput(name));
   }
 
   /** Open an index output */
@@ -66,7 +66,7 @@ public final class EndiannessReverserUtil {
       return ((EndiannessReverserDataOutput) dataOutput).out;
     }
     if (dataOutput instanceof EndiannessReverserIndexOutput) {
-      return ((EndiannessReverserIndexOutput) dataOutput).out;
+      return ((EndiannessReverserIndexOutput) dataOutput).getDelegate();
     }
     return new EndiannessReverserDataOutput(dataOutput);
   }
@@ -77,7 +77,7 @@ public final class EndiannessReverserUtil {
       return ((EndiannessReverserDataInput) dataInput).in;
     }
     if (dataInput instanceof EndiannessReverserIndexInput) {
-      return ((EndiannessReverserIndexInput) dataInput).in;
+      return ((EndiannessReverserIndexInput) dataInput).getDelegate();
     }
     return new EndiannessReverserDataInput(dataInput);
   }

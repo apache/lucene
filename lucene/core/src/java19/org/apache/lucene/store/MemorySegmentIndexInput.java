@@ -24,6 +24,7 @@ import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -91,11 +92,13 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
-  RuntimeException handlePositionalIOOBE(String action, long pos) throws IOException {
+  // the unused parameter is just to silence javac about unused variables
+  RuntimeException handlePositionalIOOBE(RuntimeException unused, String action, long pos)
+      throws IOException {
     if (pos < 0L) {
-      return new IllegalArgumentException(action + " negative position: " + this);
+      return new IllegalArgumentException(action + " negative position (pos=" + pos + "): " + this);
     } else {
-      throw new EOFException(action + " past EOF: " + this);
+      throw new EOFException(action + " past EOF (pos=" + pos + "): " + this);
     }
   }
 
@@ -272,10 +275,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
         this.curSegment = seg;
       }
       this.curPosition = Objects.checkIndex(pos & chunkSizeMask, curSegment.byteSize() + 1);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
-      throw handlePositionalIOOBE("seek", pos);
+    } catch (IndexOutOfBoundsException e) {
+      throw handlePositionalIOOBE(e, "seek", pos);
     }
   }
 
@@ -284,10 +285,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     try {
       final int si = (int) (pos >> chunkSizePower);
       return segments[si].get(LAYOUT_BYTE, pos & chunkSizeMask);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException ioobe) {
-      throw handlePositionalIOOBE("read", pos);
+    } catch (IndexOutOfBoundsException ioobe) {
+      throw handlePositionalIOOBE(ioobe, "read", pos);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -301,10 +300,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       this.curPosition = pos & chunkSizeMask;
       this.curSegmentIndex = si;
       this.curSegment = seg;
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException ioobe) {
-      throw handlePositionalIOOBE("read", pos);
+    } catch (IndexOutOfBoundsException ioobe) {
+      throw handlePositionalIOOBE(ioobe, "read", pos);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -408,7 +405,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
 
     // we always allocate one more slice, the last one may be a 0 byte one after truncating with
     // asSlice():
-    final MemorySegment slices[] = Arrays.copyOfRange(segments, startIndex, endIndex + 1);
+    final MemorySegment slices[] = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
 
     // set the last segment's limit for the sliced view.
     slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
@@ -471,10 +468,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
       ensureOpen();
       try {
         curPosition = Objects.checkIndex(pos, length + 1);
-      } catch (
-          @SuppressWarnings("unused")
-          IndexOutOfBoundsException e) {
-        throw handlePositionalIOOBE("seek", pos);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "seek", pos);
       }
     }
 
@@ -488,10 +483,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     public byte readByte(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_BYTE, pos);
-      } catch (
-          @SuppressWarnings("unused")
-          IndexOutOfBoundsException e) {
-        throw handlePositionalIOOBE("read", pos);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
       }
@@ -501,10 +494,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     public short readShort(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_SHORT, pos);
-      } catch (
-          @SuppressWarnings("unused")
-          IndexOutOfBoundsException e) {
-        throw handlePositionalIOOBE("read", pos);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
       }
@@ -514,10 +505,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     public int readInt(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_INT, pos);
-      } catch (
-          @SuppressWarnings("unused")
-          IndexOutOfBoundsException e) {
-        throw handlePositionalIOOBE("read", pos);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
       }
@@ -527,10 +516,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     public long readLong(long pos) throws IOException {
       try {
         return curSegment.get(LAYOUT_LE_LONG, pos);
-      } catch (
-          @SuppressWarnings("unused")
-          IndexOutOfBoundsException e) {
-        throw handlePositionalIOOBE("read", pos);
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
       } catch (NullPointerException | IllegalStateException e) {
         throw alreadyClosed(e);
       }
@@ -559,8 +546,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
 
     @Override
+    RuntimeException handlePositionalIOOBE(RuntimeException unused, String action, long pos)
+        throws IOException {
+      return super.handlePositionalIOOBE(unused, action, pos - offset);
+    }
+
+    @Override
     public void seek(long pos) throws IOException {
-      assert pos >= 0L;
+      assert pos >= 0L : "negative position";
       super.seek(pos + offset);
     }
 

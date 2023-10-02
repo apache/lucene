@@ -92,7 +92,7 @@ public class TieredMergePolicy extends MergePolicy {
   private long floorSegmentBytes = 2 * 1024 * 1024L;
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
-  private double deletesPctAllowed = 33.0;
+  private double deletesPctAllowed = 20.0;
 
   /** Sole constructor, setting all settings to their defaults. */
   public TieredMergePolicy() {
@@ -151,12 +151,17 @@ public class TieredMergePolicy extends MergePolicy {
   /**
    * Controls the maximum percentage of deleted documents that is tolerated in the index. Lower
    * values make the index more space efficient at the expense of increased CPU and I/O activity.
-   * Values must be between 20 and 50. Default value is 33.
+   * Values must be between 5 and 50. Default value is 20.
+   *
+   * <p>When the maximum delete percentage is lowered, the indexing thread will call for merges more
+   * often, meaning that write amplification factor will be increased. Write amplification factor
+   * measures the number of times each document in the index is written. A higher write
+   * amplification factor will lead to higher CPU and I/O activity as indicated above.
    */
   public TieredMergePolicy setDeletesPctAllowed(double v) {
-    if (v < 20 || v > 50) {
+    if (v < 5 || v > 50) {
       throw new IllegalArgumentException(
-          "indexPctDeletedTarget must be >= 20.0 and <= 50 (got " + v + ")");
+          "indexPctDeletedTarget must be >= 5.0 and <= 50 (got " + v + ")");
     }
     deletesPctAllowed = v;
     return this;
@@ -337,7 +342,7 @@ public class TieredMergePolicy extends MergePolicy {
             "  seg="
                 + segString(mergeContext, Collections.singleton(segSizeDocs.segInfo))
                 + " size="
-                + String.format(Locale.ROOT, "%.3f", segBytes / 1024 / 1024.)
+                + String.format(Locale.ROOT, "%.3f", segBytes / 1024. / 1024.)
                 + " MB"
                 + extra,
             mergeContext);
@@ -688,7 +693,7 @@ public class TieredMergePolicy extends MergePolicy {
     // don't want to make this exponent too large else we
     // can end up doing poor merges of small segments in
     // order to avoid the large merges:
-    mergeScore *= Math.pow(totAfterMergeBytes, 0.05);
+    mergeScore *= Math.pow((double) totAfterMergeBytes, 0.05);
 
     // Strongly favor merges that reclaim deletes:
     final double nonDelRatio = ((double) totAfterMergeBytes) / totBeforeMergeBytes;
@@ -957,8 +962,8 @@ public class TieredMergePolicy extends MergePolicy {
   public String toString() {
     StringBuilder sb = new StringBuilder("[" + getClass().getSimpleName() + ": ");
     sb.append("maxMergeAtOnce=").append(maxMergeAtOnce).append(", ");
-    sb.append("maxMergedSegmentMB=").append(maxMergedSegmentBytes / 1024 / 1024.).append(", ");
-    sb.append("floorSegmentMB=").append(floorSegmentBytes / 1024 / 1024.).append(", ");
+    sb.append("maxMergedSegmentMB=").append(maxMergedSegmentBytes / 1024. / 1024.).append(", ");
+    sb.append("floorSegmentMB=").append(floorSegmentBytes / 1024. / 1024.).append(", ");
     sb.append("forceMergeDeletesPctAllowed=").append(forceMergeDeletesPctAllowed).append(", ");
     sb.append("segmentsPerTier=").append(segsPerTier).append(", ");
     sb.append("maxCFSSegmentSizeMB=").append(getMaxCFSSegmentSizeMB()).append(", ");

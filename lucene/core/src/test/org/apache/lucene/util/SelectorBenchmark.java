@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.BaseSortTestCase.Entry;
 import org.apache.lucene.util.BaseSortTestCase.Strategy;
 
@@ -112,8 +113,8 @@ public class SelectorBenchmark {
           k -= clone.length;
         }
       }
-      long timeMs = (System.nanoTime() - startTimeNs) / 1000000;
-      System.out.printf(Locale.ROOT, "%5d", timeMs);
+      System.out.printf(
+          Locale.ROOT, "%5d", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTimeNs));
     }
   }
 

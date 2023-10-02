@@ -1158,7 +1158,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                .setRAMBufferSizeMB(0.1f)
+                .setRAMBufferSizeMB(0.5f)
                 .setMaxBufferedDocs(1000)
                 .setMergePolicy(NoMergePolicy.INSTANCE)
                 .setReaderPooling(false));
@@ -1338,6 +1338,8 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w = new IndexWriter(d, iwc);
     Document doc = new Document();
+    w.addDocument(doc);
+    w.addDocument(doc);
     w.addDocument(doc);
     w.addDocument(doc);
     w.addDocument(doc);

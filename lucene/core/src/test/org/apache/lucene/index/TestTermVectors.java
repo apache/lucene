@@ -57,11 +57,12 @@ public class TestTermVectors extends LuceneTestCase {
 
   private void verifyIndex(Directory dir) throws IOException {
     IndexReader r = DirectoryReader.open(dir);
+    TermVectors termVectors = r.termVectors();
     int numDocs = r.numDocs();
     for (int i = 0; i < numDocs; i++) {
       assertNotNull(
           "term vectors should not have been null for document " + i,
-          r.getTermVectors(i).terms("c"));
+          termVectors.get(i).terms("c"));
     }
     r.close();
   }

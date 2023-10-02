@@ -88,7 +88,9 @@ public class TestReqOptSumScorer extends LuceneTestCase {
     assertEquals(4, scorer.iterator().nextDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ScorerSupplier ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(Math.nextDown(1f));
     assertEquals(0, scorer.iterator().nextDoc());
     assertEquals(1, scorer.iterator().nextDoc());
@@ -96,13 +98,17 @@ public class TestReqOptSumScorer extends LuceneTestCase {
     assertEquals(4, scorer.iterator().nextDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(Math.nextUp(1f));
     assertEquals(1, scorer.iterator().nextDoc());
     assertEquals(4, scorer.iterator().nextDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     assertEquals(0, scorer.iterator().nextDoc());
     scorer.setMinCompetitiveScore(Math.nextUp(1f));
     assertEquals(1, scorer.iterator().nextDoc());

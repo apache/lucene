@@ -444,7 +444,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           longs[i] = random().nextBoolean() ? Long.MIN_VALUE : Long.MAX_VALUE;
           break;
         case 2:
-          longs[i] = (random().nextBoolean() ? -1 : 1) * random().nextInt(1024);
+          longs[i] = (random().nextBoolean() ? -1 : 1) * (long) random().nextInt(1024);
           break;
         default:
           throw new AssertionError();
@@ -567,7 +567,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       output.writeBytes(bytes, 0, bytes.length);
       output.close();
 
-      ChecksumIndexInput input = dir.openChecksumInput("checksum", newIOContext(random()));
+      ChecksumIndexInput input = dir.openChecksumInput("checksum");
       input.skipBytes(numBytes);
 
       assertEquals(expected.getValue(), input.getChecksum());
@@ -685,8 +685,8 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       o.close();
 
       IndexInput i = dir.openInput("out", newIOContext(random()));
-      i.seek(2 * bufferLength - 1);
-      i.seek(3 * bufferLength);
+      i.seek(2L * bufferLength - 1);
+      i.seek(3L * bufferLength);
       i.seek(bufferLength);
       i.readBytes(bytes, 0, 2 * bufferLength);
       i.close();
@@ -955,16 +955,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("longs", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < longs.length; i++) {
-        assertEquals(longs[i], slice.readLong(i * 8));
+        assertEquals(longs[i], slice.readLong(i * 8L));
       }
 
       // subslices
       for (int i = 1; i < longs.length; i++) {
-        long offset = i * 8;
+        long offset = i * 8L;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < longs.length; j++) {
-          assertEquals(longs[j], subslice.readLong((j - i) * 8));
+          assertEquals(longs[j], subslice.readLong((j - i) * 8L));
         }
       }
 
@@ -980,8 +982,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < longs.length; j++) {
-          assertEquals(longs[j], whole.readLong(j * 8));
+          assertEquals(longs[j], whole.readLong(j * 8L));
         }
         padded.close();
       }
@@ -1004,16 +1007,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("ints", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < ints.length; i++) {
-        assertEquals(ints[i], slice.readInt(i * 4));
+        assertEquals(ints[i], slice.readInt(i * 4L));
       }
 
       // subslices
       for (int i = 1; i < ints.length; i++) {
-        long offset = i * 4;
+        long offset = i * 4L;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < ints.length; j++) {
-          assertEquals(ints[j], subslice.readInt((j - i) * 4));
+          assertEquals(ints[j], subslice.readInt((j - i) * 4L));
         }
       }
 
@@ -1029,8 +1034,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < ints.length; j++) {
-          assertEquals(ints[j], whole.readInt(j * 4));
+          assertEquals(ints[j], whole.readInt(j * 4L));
         }
         padded.close();
       }
@@ -1052,16 +1058,18 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("shorts", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < shorts.length; i++) {
-        assertEquals(shorts[i], slice.readShort(i * 2));
+        assertEquals(shorts[i], slice.readShort(i * 2L));
       }
 
       // subslices
       for (int i = 1; i < shorts.length; i++) {
-        long offset = i * 2;
+        long offset = i * 2L;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < shorts.length; j++) {
-          assertEquals(shorts[j], subslice.readShort((j - i) * 2));
+          assertEquals(shorts[j], subslice.readShort((j - i) * 2L));
         }
       }
 
@@ -1077,8 +1085,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < shorts.length; j++) {
-          assertEquals(shorts[j], whole.readShort(j * 2));
+          assertEquals(shorts[j], whole.readShort(j * 2L));
         }
         padded.close();
       }
@@ -1100,6 +1109,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       // slice
       IndexInput input = dir.openInput("bytes", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
+      assertEquals(input.length(), slice.length());
       for (int i = 0; i < bytes.length; i++) {
         assertEquals(bytes[i], slice.readByte(i));
       }
@@ -1108,6 +1118,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       for (int i = 1; i < bytes.length; i++) {
         long offset = i;
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
+        assertEquals(input.length() - offset, subslice.length());
         for (int j = i; j < bytes.length; j++) {
           assertEquals(bytes[j], subslice.readByte(j - i));
         }
@@ -1125,6 +1136,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         o.close();
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
+        assertEquals(padded.length() - i, whole.length());
         for (int j = 0; j < bytes.length; j++) {
           assertEquals(bytes[j], whole.readByte(j));
         }

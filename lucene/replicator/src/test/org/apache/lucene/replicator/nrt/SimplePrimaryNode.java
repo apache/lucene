@@ -34,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -47,6 +48,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LogMergePolicy;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.search.IndexSearcher;
@@ -245,7 +247,7 @@ class SimplePrimaryNode extends PrimaryNode {
                       + " to "
                       + preCopy.connections.size()
                       + " replicas for %.1f sec...",
-                  (ns - startNS) / 1000000000.0));
+                  (ns - startNS) / (double) TimeUnit.SECONDS.toNanos(1)));
           lastWarnNS = ns;
         }
 
@@ -650,6 +652,10 @@ class SimplePrimaryNode extends PrimaryNode {
   // merges:
   static final byte CMD_NEW_REPLICA = 20;
 
+  // Leak a CopyState to simulate failure
+  static final byte CMD_LEAK_COPY_STATE = 24;
+  static final byte CMD_SET_CLOSE_WAIT_MS = 25;
+
   /** Handles incoming request to the naive TCP server wrapping this node */
   void handleOneConnection(
       Random random,
@@ -821,6 +827,15 @@ class SimplePrimaryNode extends PrimaryNode {
           }
           break;
 
+        case CMD_LEAK_COPY_STATE:
+          message("leaking a CopyState");
+          getCopyState();
+          continue outer;
+
+        case CMD_SET_CLOSE_WAIT_MS:
+          setRemoteCloseTimeoutMs(in.readInt());
+          continue outer;
+
         default:
           throw new IllegalArgumentException("unrecognized cmd=" + cmd + " via socket=" + socket);
       }
@@ -844,9 +859,10 @@ class SimplePrimaryNode extends PrimaryNode {
                 + hitCount);
         TopDocs hits =
             searcher.search(new TermQuery(new Term("marker", "marker")), expectedAtLeastCount);
+        StoredFields storedFields = searcher.storedFields();
         List<Integer> seen = new ArrayList<>();
         for (ScoreDoc hit : hits.scoreDocs) {
-          Document doc = searcher.doc(hit.doc);
+          Document doc = storedFields.document(hit.doc);
           seen.add(Integer.parseInt(doc.get("docid").substring(1)));
         }
         Collections.sort(seen);

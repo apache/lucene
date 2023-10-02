@@ -110,7 +110,7 @@ public class TestSubScorerFreqs extends LuceneTestCase {
   private static class CountingCollector extends FilterCollector {
     public final Map<Integer, Map<Query, Float>> docCounts = new HashMap<>();
 
-    private final Map<Query, Scorable> subScorers = new HashMap<>();
+    private final Map<Query, Scorer> subScorers = new HashMap<>();
     private final Set<String> relationships;
 
     public CountingCollector(Collector other) {
@@ -129,7 +129,7 @@ public class TestSubScorerFreqs extends LuceneTestCase {
           setSubScorers(child.child);
         }
       }
-      subScorers.put(((Scorer) scorer).getWeight().getQuery(), scorer);
+      subScorers.put(((Scorer) scorer).getWeight().getQuery(), (Scorer) scorer);
     }
 
     @Override
@@ -140,8 +140,8 @@ public class TestSubScorerFreqs extends LuceneTestCase {
         @Override
         public void collect(int doc) throws IOException {
           final Map<Query, Float> freqs = new HashMap<Query, Float>();
-          for (Map.Entry<Query, Scorable> ent : subScorers.entrySet()) {
-            Scorable value = ent.getValue();
+          for (Map.Entry<Query, Scorer> ent : subScorers.entrySet()) {
+            Scorer value = ent.getValue();
             int matchId = value.docID();
             freqs.put(ent.getKey(), matchId == doc ? value.score() : 0.0f);
           }

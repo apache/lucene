@@ -134,7 +134,7 @@ public class TestPayloadSpanPositions extends LuceneTestCase {
       while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
         count++;
         sawZero |= spans.startPosition() == 0;
-        // System.out.println(spans.doc() + " - " + spans.start() + " - " +
+        // System.out.println(spans.storedFields().document() + " - " + spans.start() + " - " +
         // spans.end());
       }
     }

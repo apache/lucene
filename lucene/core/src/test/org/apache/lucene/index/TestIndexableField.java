@@ -26,7 +26,9 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -186,6 +188,22 @@ public class TestIndexableField extends LuceneTestCase {
           ? analyzer.tokenStream(name(), readerValue())
           : analyzer.tokenStream(name(), new StringReader(stringValue()));
     }
+
+    @Override
+    public StoredValue storedValue() {
+      if (stringValue() != null) {
+        return new StoredValue(stringValue());
+      } else if (binaryValue() != null) {
+        return new StoredValue(binaryValue());
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TOKEN_STREAM;
+    }
   }
 
   // Silly test showing how to index documents w/o using Lucene's core
@@ -251,6 +269,8 @@ public class TestIndexableField extends LuceneTestCase {
     w.close();
 
     final IndexSearcher s = newSearcher(r);
+    StoredFields storedFields = s.storedFields();
+    TermVectors termVectors = r.termVectors();
     int counter = 0;
     for (int id = 0; id < NUM_DOCS; id++) {
       if (VERBOSE) {
@@ -261,7 +281,7 @@ public class TestIndexableField extends LuceneTestCase {
       final TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
       assertEquals(1, hits.totalHits.value);
       final int docID = hits.scoreDocs[0].doc;
-      final Document doc = s.doc(docID);
+      final Document doc = storedFields.document(docID);
       final int endCounter = counter + fieldsPerDoc[id];
       while (counter < endCounter) {
         final String name = "f" + counter;
@@ -299,7 +319,7 @@ public class TestIndexableField extends LuceneTestCase {
         if (indexed) {
           final boolean tv = counter % 2 == 1 && fieldID != 9;
           if (tv) {
-            final Terms tfv = r.getTermVectors(docID).terms(name);
+            final Terms tfv = termVectors.get(docID).terms(name);
             assertNotNull(tfv);
             TermsEnum termsEnum = tfv.iterator();
             assertEquals(newBytesRef("" + counter), termsEnum.next());
@@ -321,7 +341,7 @@ public class TestIndexableField extends LuceneTestCase {
             // TODO: offsets
 
           } else {
-            Fields vectors = r.getTermVectors(docID);
+            Fields vectors = termVectors.get(docID);
             assertTrue(vectors == null || vectors.terms(name) == null);
           }
 
@@ -385,6 +405,16 @@ public class TestIndexableField extends LuceneTestCase {
       ft.setStoreTermVectors(true);
       ft.freeze();
       return ft;
+    }
+
+    @Override
+    public StoredValue storedValue() {
+      return null;
+    }
+
+    @Override
+    public InvertableType invertableType() {
+      return InvertableType.TOKEN_STREAM;
     }
   }
 

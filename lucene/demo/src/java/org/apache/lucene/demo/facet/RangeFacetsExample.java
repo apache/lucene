@@ -42,6 +42,7 @@ import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Shows simple usage of dynamic range faceting. */
 public class RangeFacetsExample implements Closeable {
@@ -69,7 +70,7 @@ public class RangeFacetsExample implements Closeable {
     // "now", 2000 sec before "now", ...:
     for (int i = 0; i < 100; i++) {
       Document doc = new Document();
-      long then = nowSec - i * 1000;
+      long then = nowSec - i * 1000L;
       // Add as doc values field, so we can compute range facets:
       doc.add(new NumericDocValuesField("timestamp", then));
       // Add as numeric field so we can drill-down:
@@ -81,7 +82,7 @@ public class RangeFacetsExample implements Closeable {
     // hour) from "now", 7200 sec (2 hours) from "now", ...:
     long startTime = 0;
     for (int i = 0; i < 168; i++) {
-      long endTime = (i + 1) * 3600;
+      long endTime = (i + 1) * 3600L;
       // Choose a relatively large number, e,g., "35", to create variation in count for
       // the top n children, so that calling getTopChildren(10) can return top 10 children with
       // different counts
@@ -183,8 +184,7 @@ public class RangeFacetsExample implements Closeable {
 
   @Override
   public void close() throws IOException {
-    searcher.getIndexReader().close();
-    indexDir.close();
+    IOUtils.close(searcher.getIndexReader(), indexDir);
   }
 
   /** Runs the search and drill-down examples and prints the results. */

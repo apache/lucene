@@ -21,9 +21,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * GeoConvexPolygon objects are generic building blocks of more complex structures. The only
@@ -42,14 +42,16 @@ class GeoConvexPolygon extends GeoBasePolygon {
 
   /** A list of edges */
   protected SidedPlane[] edges = null;
+  /** A list of edge starting bounding planes */
+  protected SidedPlane[] startBounds = null;
+  /** A list of edge ending bounding planes */
+  protected SidedPlane[] endBounds = null;
   /** The set of notable points for each edge */
   protected GeoPoint[][] notableEdgePoints = null;
   /** A point which is on the boundary of the polygon */
   protected GeoPoint[] edgePoints = null;
   /** Set to true when the polygon is complete */
   protected boolean isDone = false;
-  /** A bounds object for each sided plane */
-  protected Map<SidedPlane, Membership> eitherBounds = null;
   /** Map from edge to its previous non-coplanar brother */
   protected Map<SidedPlane, SidedPlane> prevBrotherMap = null;
   /** Map from edge to its next non-coplanar brother */
@@ -213,6 +215,8 @@ class GeoConvexPolygon extends GeoBasePolygon {
     // Time to construct the planes.  If the polygon is truly convex, then any adjacent point
     // to a segment can provide an interior measurement.
     edges = new SidedPlane[points.size()];
+    startBounds = new SidedPlane[points.size()];
+    endBounds = new SidedPlane[points.size()];
     notableEdgePoints = new GeoPoint[points.size()][];
 
     for (int i = 0; i < points.size(); i++) {
@@ -235,13 +239,14 @@ class GeoConvexPolygon extends GeoBasePolygon {
       final GeoPoint check = points.get(endPointIndex);
       final SidedPlane sp = new SidedPlane(check, start, end);
       edges[i] = sp;
+      startBounds[i] = SidedPlane.constructSidedPlaneFromOnePoint(end, sp, start);
+      endBounds[i] = SidedPlane.constructSidedPlaneFromOnePoint(start, sp, end);
       notableEdgePoints[i] = new GeoPoint[] {start, end};
     }
 
     // For each edge, create a bounds object.
-    eitherBounds = new HashMap<>(edges.length);
-    prevBrotherMap = new HashMap<>(edges.length);
-    nextBrotherMap = new HashMap<>(edges.length);
+    prevBrotherMap = CollectionUtil.newHashMap(edges.length);
+    nextBrotherMap = CollectionUtil.newHashMap(edges.length);
     for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
       final SidedPlane edge = edges[edgeIndex];
       int bound1Index = legalIndex(edgeIndex + 1);
@@ -273,7 +278,6 @@ class GeoConvexPolygon extends GeoBasePolygon {
               "Convex polygon has a side that is more than 180 degrees");
         }
       }
-      eitherBounds.put(edge, new EitherBound(edges[bound1Index], edges[bound2Index]));
       // When we are done with this cycle, we'll need to build the intersection bound for each edge
       // and its brother. For now, keep track of the relationships.
       nextBrotherMap.put(edge, edges[bound1Index]);
@@ -411,7 +415,13 @@ class GeoConvexPolygon extends GeoBasePolygon {
         // System.err.println("Checking convex edge " + edge
         // + " for intersection against plane " + p);
         if (edge.intersects(
-            planetModel, p, notablePoints, points, bounds, eitherBounds.get(edge))) {
+            planetModel,
+            p,
+            notablePoints,
+            points,
+            bounds,
+            startBounds[edgeIndex],
+            endBounds[edgeIndex])) {
           // System.err.println(" intersects!");
           return true;
         }
@@ -436,7 +446,7 @@ class GeoConvexPolygon extends GeoBasePolygon {
       final SidedPlane edge = edges[edgeIndex];
       final GeoPoint[] points = this.notableEdgePoints[edgeIndex];
       if (!isInternalEdges.get(edgeIndex)) {
-        if (shape.intersects(edge, points, eitherBounds.get(edge))) {
+        if (shape.intersects(edge, points, startBounds[edgeIndex], endBounds[edgeIndex])) {
           return true;
         }
       }
@@ -449,39 +459,6 @@ class GeoConvexPolygon extends GeoBasePolygon {
       }
     }
     return false;
-  }
-
-  /** A membership implementation representing polygon edges that must apply. */
-  protected static class EitherBound implements Membership {
-
-    protected final SidedPlane sideBound1;
-    protected final SidedPlane sideBound2;
-
-    /**
-     * Constructor.
-     *
-     * @param sideBound1 is the first side bound.
-     * @param sideBound2 is the second side bound.
-     */
-    public EitherBound(final SidedPlane sideBound1, final SidedPlane sideBound2) {
-      this.sideBound1 = sideBound1;
-      this.sideBound2 = sideBound2;
-    }
-
-    @Override
-    public boolean isWithin(final Vector v) {
-      return sideBound1.isWithin(v) && sideBound2.isWithin(v);
-    }
-
-    @Override
-    public boolean isWithin(final double x, final double y, final double z) {
-      return sideBound1.isWithin(x, y, z) && sideBound2.isWithin(x, y, z);
-    }
-
-    @Override
-    public String toString() {
-      return "(" + sideBound1 + "," + sideBound2 + ")";
-    }
   }
 
   @Override
@@ -512,8 +489,9 @@ class GeoConvexPolygon extends GeoBasePolygon {
     }
 
     // Add planes with membership.
-    for (final SidedPlane edge : edges) {
-      bounds.addPlane(planetModel, edge, eitherBounds.get(edge));
+    for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
+      final SidedPlane edge = edges[edgeIndex];
+      bounds.addPlane(planetModel, edge, startBounds[edgeIndex], endBounds[edgeIndex]);
       final SidedPlane nextEdge = nextBrotherMap.get(edge);
       bounds.addIntersection(
           planetModel, edge, nextEdge, prevBrotherMap.get(edge), nextBrotherMap.get(nextEdge));
@@ -530,10 +508,11 @@ class GeoConvexPolygon extends GeoBasePolygon {
         minimumDistance = newDist;
       }
     }
-    for (final SidedPlane edgePlane : edges) {
+    for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
+      final SidedPlane edgePlane = edges[edgeIndex];
       final double newDist =
           distanceStyle.computeDistance(
-              planetModel, edgePlane, x, y, z, eitherBounds.get(edgePlane));
+              planetModel, edgePlane, x, y, z, startBounds[edgeIndex], endBounds[edgeIndex]);
       if (newDist < minimumDistance) {
         minimumDistance = newDist;
       }

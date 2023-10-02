@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.benchmark.byTask.feeds;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;

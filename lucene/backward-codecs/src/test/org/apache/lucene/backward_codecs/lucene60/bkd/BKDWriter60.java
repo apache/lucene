@@ -32,7 +32,6 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -1021,8 +1020,8 @@ public class BKDWriter60 implements Closeable {
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
-      // long t2 = System.nanoTime();
-      // System.out.println("write time: " + ((t2-t1)/1000000.0) + " msec");
+      // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
+      //   TimeUnit.MILLISECONDS.toNanos(1)) + " ms");
 
       success = true;
     } finally {
@@ -1577,7 +1576,7 @@ public class BKDWriter60 implements Closeable {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
       if (tempDir.getCreatedFiles().contains(tempFileName)) {
-        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
           CodecUtil.checkFooter(in, priorException);
         }
       }

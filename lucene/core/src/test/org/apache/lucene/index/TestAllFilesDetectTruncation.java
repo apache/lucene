@@ -24,7 +24,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -82,7 +82,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
     doc.add(pointNumber);
     Field dvNumber = new NumericDocValuesField("long", 0L);
     doc.add(dvNumber);
-    KnnVectorField vector = new KnnVectorField("vector", new float[16]);
+    KnnFloatVectorField vector = new KnnFloatVectorField("vector", new float[16]);
     doc.add(vector);
 
     for (int i = 0; i < 100; i++) {
@@ -138,7 +138,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
         if (name.equals(victim) == false) {
           dirCopy.copyFrom(dir, name, name, IOContext.DEFAULT);
         } else {
-          try (ChecksumIndexInput in = dir.openChecksumInput(name, IOContext.DEFAULT)) {
+          try (ChecksumIndexInput in = dir.openChecksumInput(name)) {
             try {
               CodecUtil.checkFooter(in);
               // In some rare cases, the codec footer would still appear as correct even though the

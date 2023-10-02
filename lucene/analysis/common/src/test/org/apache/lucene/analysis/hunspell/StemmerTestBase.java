@@ -65,13 +65,15 @@ public abstract class StemmerTestBase extends LuceneTestCase {
       }
     }
 
+    return loadDictionary(ignoreCase, affixStream, dictStreams);
+  }
+
+  protected static Dictionary loadDictionary(
+      boolean ignoreCase, InputStream affixStream, InputStream... dictStreams)
+      throws IOException, ParseException {
     try {
-      return new Dictionary(
-          new ByteBuffersDirectory(),
-          "dictionary",
-          affixStream,
-          Arrays.asList(dictStreams),
-          ignoreCase);
+      ByteBuffersDirectory dir = new ByteBuffersDirectory();
+      return new Dictionary(dir, "dictionary", affixStream, Arrays.asList(dictStreams), ignoreCase);
     } finally {
       IOUtils.closeWhileHandlingException(affixStream);
       IOUtils.closeWhileHandlingException(dictStreams);

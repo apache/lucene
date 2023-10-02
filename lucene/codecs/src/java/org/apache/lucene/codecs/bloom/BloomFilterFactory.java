@@ -42,9 +42,7 @@ public abstract class BloomFilterFactory {
    * @return null or a hopefully more densely packed, smaller bitset
    */
   public FuzzySet downsize(FieldInfo fieldInfo, FuzzySet initialSet) {
-    // Aim for a bitset size that would have 10% of bits set (so 90% of searches
-    // would fail-fast)
-    float targetMaxSaturation = 0.1f;
+    float targetMaxSaturation = initialSet.getTargetMaxSaturation();
     return initialSet.downsize(targetMaxSaturation);
   }
 

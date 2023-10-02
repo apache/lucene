@@ -21,3 +21,4 @@ org.apache.lucene.tests.codecs.compressing.FastDecompressionCompressingCodec
 org.apache.lucene.tests.codecs.compressing.HighCompressionCompressingCodec
 org.apache.lucene.tests.codecs.compressing.LZ4WithPresetCompressingCodec
 org.apache.lucene.tests.codecs.compressing.dummy.DummyCompressingCodec
+org.apache.lucene.tests.codecs.vector.ConfigurableMCodec

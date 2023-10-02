@@ -17,7 +17,9 @@
 
 package org.apache.lucene.monitor;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * Class to hold the results of matching a single {@link org.apache.lucene.document.Document}
