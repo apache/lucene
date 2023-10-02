@@ -252,7 +252,6 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
       "<a  href=\"http://blog.edu-cyberpg.com/ct.ashx?id=6143c528-080c-4bb2-b765-5ec56c8256d3&url=http%3a%2f%2fwww.gsa.ac.uk%2fmackintoshsketchbook%2f\"\" eudora=\"autourl\">",
       "",
 
-      // "<" before ">" inhibits tag recognition
       // LUCENE-10520: "<" and ">" in attribute values is valid per the HTML5 spec
       "<input type=\"text\" value=\"<search here>\">",
       "",
