@@ -593,6 +593,17 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
 
     @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+      try {
+        guard.getBytes(curBuf, (int) pos, bytes, offset, len);
+      } catch (IllegalArgumentException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
+      } catch (NullPointerException e) {
+        throw alreadyClosed(e);
+      }
+    }
+
+    @Override
     public short readShort(long pos) throws IOException {
       try {
         return guard.getShort(curBuf, (int) pos);
