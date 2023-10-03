@@ -14,34 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene99;
 
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ScalarQuantizer;
+package org.apache.lucene.util.hnsw;
 
-/** The quantization state, includes lower and upper quantile */
-class ScalarQuantizationState implements Accountable {
-  private final float lowerQuantile, upperQuantile;
+import java.io.Closeable;
 
-  ScalarQuantizationState(float lowerQuantile, float upperQuantile) {
-    this.lowerQuantile = lowerQuantile;
-    this.upperQuantile = upperQuantile;
-  }
-
-  ScalarQuantizer buildQuantizer() {
-    return new ScalarQuantizer(lowerQuantile, upperQuantile);
-  }
-
-  float getLowerQuantile() {
-    return lowerQuantile;
-  }
-
-  float getUpperQuantile() {
-    return upperQuantile;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return Float.BYTES * 2;
-  }
-}
+/**
+ * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
+ * close after use
+ */
+public interface CloseableRandomVectorScorerSupplier
+    extends Closeable, RandomVectorScorerSupplier {}

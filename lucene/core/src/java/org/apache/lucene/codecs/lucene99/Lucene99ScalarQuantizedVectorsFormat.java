@@ -17,9 +17,6 @@
 
 package org.apache.lucene.codecs.lucene99;
 
-import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
-
 /**
  * Format supporting vector quantization, storage, and retrieval
  *
@@ -68,14 +65,6 @@ public final class Lucene99ScalarQuantizedVectorsFormat {
               + quantile);
     }
     this.quantile = quantile;
-  }
-
-  Lucene99ScalarQuantizedVectorsWriter quantizationWriter(IndexOutput quantizedVectorData) {
-    return new Lucene99ScalarQuantizedVectorsWriter(quantizedVectorData, quantile);
-  }
-
-  Lucene99ScalarQuantizedVectorsReader quantizationReader(IndexInput quantizedVectorData) {
-    return new Lucene99ScalarQuantizedVectorsReader(quantizedVectorData);
   }
 
   static float calculateDefaultQuantile(int vectorDimension) {

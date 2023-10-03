@@ -32,14 +32,15 @@ public class ScalarQuantizer {
 
   private final float alpha;
   private final float offset;
-  private final float minQuantile, maxQuantile;
+  private final float minQuantile, maxQuantile, configuredQuantile;
 
-  public ScalarQuantizer(float minQuantile, float maxQuantile) {
+  public ScalarQuantizer(float minQuantile, float maxQuantile, float configuredQuantile) {
     assert maxQuantile >= maxQuantile;
     this.minQuantile = minQuantile;
     this.maxQuantile = maxQuantile;
     this.alpha = (maxQuantile - minQuantile) / 127f;
     this.offset = minQuantile;
+    this.configuredQuantile = configuredQuantile;
   }
 
   public void quantize(float[] src, byte[] dest) {
@@ -78,6 +79,10 @@ public class ScalarQuantizer {
     return maxQuantile;
   }
 
+  public float getConfiguredQuantile() {
+    return configuredQuantile;
+  }
+
   public float getAlpha() {
     return alpha;
   }
@@ -100,7 +105,7 @@ public class ScalarQuantizer {
       throws IOException {
     assert 0.9f <= quantile && quantile <= 1f;
     if (floatVectorValues.size() == 0) {
-      return new ScalarQuantizer(0f, 0f);
+      return new ScalarQuantizer(0f, 0f, quantile);
     }
     if (quantile == 1f) {
       float min = Float.POSITIVE_INFINITY;
@@ -111,7 +116,7 @@ public class ScalarQuantizer {
           max = Math.max(max, v);
         }
       }
-      return new ScalarQuantizer(min, max);
+      return new ScalarQuantizer(min, max, quantile);
     }
     int dim = floatVectorValues.dimension();
     if (floatVectorValues.size() < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
@@ -123,7 +128,7 @@ public class ScalarQuantizer {
         copyOffset += dim;
       }
       float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
-      return new ScalarQuantizer(upperAndLower[0], upperAndLower[1]);
+      return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], quantile);
     }
     int numFloatVecs = floatVectorValues.size();
     // Reservoir sample the vector ordinals we want to read
@@ -151,7 +156,7 @@ public class ScalarQuantizer {
       copyOffset += dim;
     }
     float[] upperAndLower = getUpperAndLowerQuantile(values, quantile);
-    return new ScalarQuantizer(upperAndLower[0], upperAndLower[1]);
+    return new ScalarQuantizer(upperAndLower[0], upperAndLower[1], quantile);
   }
 
   /**

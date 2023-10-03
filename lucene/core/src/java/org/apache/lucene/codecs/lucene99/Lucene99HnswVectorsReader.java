@@ -436,7 +436,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         upperQuantile = Float.intBitsToFloat(input.readInt());
         quantizedVectorDataOffset = input.readVLong();
         quantizedVectorDataLength = input.readVLong();
-        scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile);
+        scalarQuantizer = new ScalarQuantizer(lowerQuantile, upperQuantile, configuredQuantile);
       } else {
         configuredQuantile = -1;
         lowerQuantile = -1;
@@ -457,28 +457,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         quantizedOrdToDoc = null;
       }
       ordToDoc = OrdToDocDISReaderConfiguration.fromStoredMeta(input, size);
-
-      /*docsWithFieldOffset = input.readLong();
-      docsWithFieldLength = input.readLong();
-      jumpTableEntryCount = input.readShort();
-      denseRankPower = input.readByte();
-
-      // dense or empty
-      if (docsWithFieldOffset == -1 || docsWithFieldOffset == -2) {
-        addressesOffset = 0;
-        blockShift = 0;
-        meta = null;
-        addressesLength = 0;
-      } else {
-        // sparse
-        if (isQuantized) {
-
-        }
-        addressesOffset = input.readLong();
-        blockShift = input.readVInt();
-        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
-        addressesLength = input.readLong();
-      }*/
 
       // read nodes by level
       M = input.readVInt();

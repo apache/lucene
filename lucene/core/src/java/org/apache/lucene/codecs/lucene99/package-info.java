@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.8 file format.
+ * Lucene 9.9 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *

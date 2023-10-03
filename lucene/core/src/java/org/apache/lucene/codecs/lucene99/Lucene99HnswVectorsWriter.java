@@ -54,12 +54,15 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.ScalarQuantizer;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -465,120 +468,125 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    IndexOutput tempVectorData =
-        segmentWriteState.directory.createTempOutput(
-            vectorData.getName(), "temp", segmentWriteState.context);
+    IndexOutput tempVectorData = null;
     IndexInput vectorDataInput = null;
-    IndexInput quantizationDataInput = null;
-    Lucene99ScalarQuantizedVectorsWriter.MergedQuantileState quantizationState = null;
+    CloseableRandomVectorScorerSupplier scorerSupplier = null;
     boolean success = false;
     try {
+      ScalarQuantizer scalarQuantizer = null;
       long[] quantizedVectorDataOffsetAndLength = null;
-      if (quantizedVectorsWriter != null) {
-        quantizationState =
-            quantizedVectorsWriter.mergeOneField(segmentWriteState, fieldInfo, mergeState);
-        if (quantizationState != null) {
-          quantizedVectorDataOffsetAndLength = new long[2];
-          quantizedVectorDataOffsetAndLength[0] = quantizedVectorData.alignFilePointer(Float.BYTES);
-          quantizationDataInput =
-              segmentWriteState.directory.openInput(
-                  quantizationState.tempVectorFileName, segmentWriteState.context);
-          quantizedVectorData.copyBytes(
-              quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
-          quantizedVectorDataOffsetAndLength[1] =
-              quantizedVectorData.getFilePointer() - quantizedVectorDataOffsetAndLength[0];
-          CodecUtil.retrieveChecksum(quantizationDataInput);
-        }
+      // If we have configured quantization and are FLOAT32
+      if (quantizedVectorsWriter != null
+          && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+        // We need the quantization parameters to write to the meta file
+        scalarQuantizer = quantizedVectorsWriter.mergeQuantiles(fieldInfo, mergeState);
+        assert scalarQuantizer != null;
+        quantizedVectorDataOffsetAndLength = new long[2];
+        quantizedVectorDataOffsetAndLength[0] = quantizedVectorData.alignFilePointer(Float.BYTES);
+        scorerSupplier =
+            quantizedVectorsWriter.mergeOneField(
+                segmentWriteState, fieldInfo, mergeState, scalarQuantizer);
+        quantizedVectorDataOffsetAndLength[1] =
+            quantizedVectorData.getFilePointer() - quantizedVectorDataOffsetAndLength[0];
       }
-      // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> writeByteVectorData(
-                tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-            case FLOAT32 -> writeVectorData(
-                tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
-          };
-      CodecUtil.writeFooter(tempVectorData);
-      IOUtils.close(tempVectorData);
+      final DocsWithFieldSet docsWithField;
+      int byteSize = fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
 
-      // copy the temporary file vectors to the actual data file
-      vectorDataInput =
-          segmentWriteState.directory.openInput(
-              tempVectorData.getName(), segmentWriteState.context);
-      vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
-      CodecUtil.retrieveChecksum(vectorDataInput);
+      // If we extract vector storage, this could be cleaner.
+      // But for now, vector storage & index creation/storage live together.
+      if (scorerSupplier == null) {
+        tempVectorData =
+            segmentWriteState.directory.createTempOutput(
+                vectorData.getName(), "temp", segmentWriteState.context);
+        docsWithField =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE -> writeByteVectorData(
+                  tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+              case FLOAT32 -> writeVectorData(
+                  tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            };
+        CodecUtil.writeFooter(tempVectorData);
+        IOUtils.close(tempVectorData);
+        // copy the temporary file vectors to the actual data file
+        vectorDataInput =
+            segmentWriteState.directory.openInput(
+                tempVectorData.getName(), segmentWriteState.context);
+        vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
+        CodecUtil.retrieveChecksum(vectorDataInput);
+        final RandomVectorScorerSupplier innerScoreSupplier =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE -> RandomVectorScorerSupplier.createBytes(
+                  new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                      fieldInfo.getVectorDimension(),
+                      docsWithField.cardinality(),
+                      vectorDataInput,
+                      byteSize),
+                  fieldInfo.getVectorSimilarityFunction());
+              case FLOAT32 -> RandomVectorScorerSupplier.createFloats(
+                  new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+                      fieldInfo.getVectorDimension(),
+                      docsWithField.cardinality(),
+                      vectorDataInput,
+                      byteSize),
+                  fieldInfo.getVectorSimilarityFunction());
+            };
+        final String tempFileName = tempVectorData.getName();
+        final IndexInput finalVectorDataInput = vectorDataInput;
+        scorerSupplier =
+            new CloseableRandomVectorScorerSupplier() {
+              boolean closed = false;
+
+              @Override
+              public RandomVectorScorer scorer(int ord) throws IOException {
+                return innerScoreSupplier.scorer(ord);
+              }
+
+              @Override
+              public void close() throws IOException {
+                if (closed) {
+                  return;
+                }
+                closed = true;
+                IOUtils.close(finalVectorDataInput);
+                segmentWriteState.directory.deleteFile(tempFileName);
+              }
+            };
+      } else {
+        // No need to use temporary file as we don't have to re-open for reading
+        docsWithField =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE -> writeByteVectorData(
+                  vectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+              case FLOAT32 -> writeVectorData(
+                  vectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            };
+      }
+
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
       // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
       // doesn't need to know docIds
       // TODO: separate random access vector values from DocIdSetIterator?
-      int byteSize = fieldInfo.getVectorDimension() * fieldInfo.getVectorEncoding().byteSize;
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
         // build graph
         int initializerIndex = selectGraphForInitialization(mergeState, fieldInfo);
-        graph =
-            switch (fieldInfo.getVectorEncoding()) {
-              case BYTE -> {
-                OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
-                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        vectorDataInput,
-                        byteSize);
-                RandomVectorScorerSupplier scorerSupplier =
-                    RandomVectorScorerSupplier.createBytes(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
-                HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.size());
-              }
-              case FLOAT32 -> {
-                final int maxOrd;
-                final RandomVectorScorerSupplier scorerSupplier;
-                if (quantizationState != null) {
-                  RandomAccessQuantizedByteVectorValues values =
-                      new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                          fieldInfo.getVectorDimension(),
-                          docsWithField.cardinality(),
-                          quantizationDataInput);
-                  maxOrd = values.size();
-                  scorerSupplier =
-                      new ScalarQuantizedRandomVectorScorerSupplier(
-                          fieldInfo.getVectorSimilarityFunction(),
-                          quantizationState.mergeQuantile,
-                          values);
-                } else {
-                  OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
-                      new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                          fieldInfo.getVectorDimension(),
-                          docsWithField.cardinality(),
-                          vectorDataInput,
-                          byteSize);
-                  maxOrd = vectorValues.size();
-                  scorerSupplier =
-                      RandomVectorScorerSupplier.createFloats(
-                          vectorValues, fieldInfo.getVectorSimilarityFunction());
-                }
-                HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(maxOrd);
-              }
-            };
+        HnswGraphBuilder hnswGraphBuilder =
+            createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+        hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+        graph = hnswGraphBuilder.build(docsWithField.cardinality());
         vectorIndexNodeOffsets = writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
-          quantizationState != null,
+          scalarQuantizer != null,
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
-          quantizationState == null ? null : quantizationState.configuredQuantile,
-          quantizationState == null ? null : quantizationState.mergeQuantile.getLowerQuantile(),
-          quantizationState == null ? null : quantizationState.mergeQuantile.getUpperQuantile(),
+          scalarQuantizer == null ? null : scalarQuantizer.getConfiguredQuantile(),
+          scalarQuantizer == null ? null : scalarQuantizer.getLowerQuantile(),
+          scalarQuantizer == null ? null : scalarQuantizer.getUpperQuantile(),
           quantizedVectorDataOffsetAndLength,
           vectorDataOffset,
           vectorDataLength,
@@ -589,16 +597,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           vectorIndexNodeOffsets);
       success = true;
     } finally {
-      IOUtils.close(vectorDataInput, quantizationDataInput);
       if (success) {
-        segmentWriteState.directory.deleteFile(tempVectorData.getName());
-        if (quantizationState != null) {
-          segmentWriteState.directory.deleteFile(quantizationState.tempVectorFileName);
-        }
+        IOUtils.close(scorerSupplier);
       } else {
-        IOUtils.closeWhileHandlingException(tempVectorData);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory, tempVectorData.getName());
+        IOUtils.closeWhileHandlingException(scorerSupplier, vectorDataInput, tempVectorData);
+        if (tempVectorData != null) {
+          IOUtils.deleteFilesIgnoringExceptions(
+              segmentWriteState.directory, tempVectorData.getName());
+        }
       }
     }
   }
