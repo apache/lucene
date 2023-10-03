@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -56,7 +57,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
+public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene95HnswVectorsFormat.class);
@@ -316,6 +317,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Get knn graph values; used for testing */
+  @Override
   public HnswGraph getGraph(String field) throws IOException {
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
