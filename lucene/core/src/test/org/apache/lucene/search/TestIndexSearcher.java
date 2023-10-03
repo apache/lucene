@@ -21,7 +21,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -39,7 +42,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.hamcrest.Matchers;
 import org.junit.Test;
 
 public class TestIndexSearcher extends LuceneTestCase {
@@ -265,132 +267,7 @@ public class TestIndexSearcher extends LuceneTestCase {
             return slices.toArray(new LeafSlice[0]);
           }
         };
-    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), 10);
-    assertTrue(topDocs.totalHits.value > 0);
-    if (leaves.size() <= 1) {
-      assertEquals(0, numExecutions.get());
-    } else {
-      assertEquals(leaves.size(), numExecutions.get());
-    }
-  }
-
-  /**
-   * The goal of this test is to ensure that TaskExecutor.invokeAll waits for all tasks/callables to
-   * finish even if one or more of them throw an Exception.
-   *
-   * <p>To make the test deterministic, a custom single threaded executor is used. And to ensure
-   * that TaskExecutor.invokeAll does not return early upon getting an Exception, two Exceptions are
-   * thrown in the underlying Query class (in the Weight#scorer method). The first Exception is
-   * thrown by the first call to Weight#scorer and the last Exception is thrown by the last call to
-   * Weight#scorer. Since TaskExecutor.invokeAll adds subsequent Exceptions to the first one caught
-   * as a suppressed Exception, we can check that both exceptions were thrown, ensuring that all
-   * TaskExecutor#invokeAll check all tasks (using future.get()) before it returned.
-   */
-  public void testMultipleSegmentsOnTheExecutorWithException() {
-    List<LeafReaderContext> leaves = reader.leaves();
-    IndexSearcher searcher =
-        new IndexSearcher(
-            reader,
-            task -> {
-              task.run();
-            }) {
-          @Override
-          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-            return slices(leaves, 1, 1);
-          }
-        };
-
-    AtomicInteger callsToScorer = new AtomicInteger(0);
-    MatchAllOrThrowExceptionQuery query =
-        new MatchAllOrThrowExceptionQuery(leaves.size(), callsToScorer);
-    RuntimeException exc = expectThrows(RuntimeException.class, () -> searcher.search(query, 10));
-    assertEquals(leaves.size(), callsToScorer.get());
-    assertThat(
-        exc.getMessage(), Matchers.containsString("MatchAllOrThrowExceptionQuery First Exception"));
-    Throwable[] suppressed = exc.getSuppressed();
-
-    // two exceptions are thrown only when there is more than one task/callable to execute
-    if (leaves.size() > 1) {
-      assertEquals(1, suppressed.length);
-      assertThat(
-          suppressed[0].getMessage(),
-          Matchers.containsString("MatchAllOrThrowExceptionQuery Second Exception"));
-    }
-  }
-
-  /**
-   * Query for use with testMultipleSegmentsOnTheExecutorWithException. It assumes a single-threaded
-   * Executor model, where the Weight#scorer method is called sequentially not concurrently.
-   *
-   * <p>If there are at least 2 tasks to run, it will throw two exceptions - on the first call to
-   * scorer and the last call to scorer. All other calls will just increment the callsToScorer
-   * counter and return a MatchAllDocsQuery.
-   */
-  private static class MatchAllOrThrowExceptionQuery extends Query {
-
-    private final Query delegate;
-    private final AtomicInteger callsToScorer;
-    private final int numTasks;
-
-    /**
-     * @param numTasks number of tasks/callables in this test (number of times scorer will be
-     *     called)
-     * @param callsToScorer where to record the number of times the {@code scorer} method has been
-     *     called
-     */
-    public MatchAllOrThrowExceptionQuery(int numTasks, AtomicInteger callsToScorer) {
-      this.numTasks = numTasks;
-      this.callsToScorer = callsToScorer;
-      this.delegate = new MatchAllDocsQuery();
-    }
-
-    @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
-      Weight matchAllWeight = delegate.createWeight(searcher, scoreMode, boost);
-
-      return new Weight(delegate) {
-        @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-          return matchAllWeight.isCacheable(ctx);
-        }
-
-        @Override
-        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-          return matchAllWeight.explain(context, doc);
-        }
-
-        @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          int currCount = callsToScorer.incrementAndGet();
-          if (currCount == 1) {
-            throw new RuntimeException("MatchAllOrThrowExceptionQuery First Exception");
-          } else if (currCount == numTasks) {
-            throw new RuntimeException("MatchAllOrThrowExceptionQuery Second Exception");
-          }
-          return matchAllWeight.scorer(context);
-        }
-      };
-    }
-
-    @Override
-    public void visit(QueryVisitor visitor) {
-      delegate.visit(visitor);
-    }
-
-    @Override
-    public String toString(String field) {
-      return "MatchAllOrThrowExceptionQuery";
-    }
-
-    @Override
-    public int hashCode() {
-      return delegate.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      return other == this;
-    }
+    searcher.search(new MatchAllDocsQuery(), 10);
+    assertEquals(leaves.size(), numExecutions.get());
   }
 }

@@ -17,11 +17,14 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -222,5 +225,64 @@ public class TestTaskExecutor extends LuceneTestCase {
             });
       }
     }
+  }
+
+  public void testInvokeAllDoesNotLeaveTasksBehind() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    AtomicInteger tasksExecuted = new AtomicInteger(0);
+    List<Callable<Void>> callables = new ArrayList<>();
+    callables.add(
+        () -> {
+          throw new RuntimeException();
+        });
+    int tasksWithNormalExit = 99;
+    for (int i = 0; i < tasksWithNormalExit; i++) {
+      callables.add(
+          () -> {
+            tasksExecuted.incrementAndGet();
+            return null;
+          });
+    }
+    expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
+    assertEquals(tasksWithNormalExit, tasksExecuted.get());
+  }
+
+  /**
+   * Ensures that all invokeAll catches all exceptions thrown by Callables and adds subsequent ones
+   * as suppressed exceptions to the first one caught.
+   */
+  public void testInvokeAllCatchesMultipleExceptions() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    AtomicInteger tasksExecuted = new AtomicInteger(0);
+    List<Callable<Void>> callables = new ArrayList<>();
+    callables.add(
+        () -> {
+          throw new RuntimeException("exception A");
+        });
+    int tasksWithNormalExit = 50;
+    for (int i = 0; i < tasksWithNormalExit; i++) {
+      callables.add(
+          () -> {
+            tasksExecuted.incrementAndGet();
+            return null;
+          });
+    }
+    callables.add(
+        () -> {
+          throw new IllegalStateException("exception B");
+        });
+
+    RuntimeException exc =
+        expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
+    Throwable[] suppressed = exc.getSuppressed();
+    assertEquals(1, suppressed.length);
+    if (exc.getMessage().equals("exception A")) {
+      assertEquals("exception B", suppressed[0].getMessage());
+    } else {
+      assertEquals("exception A", suppressed[0].getMessage());
+      assertEquals("exception B", exc.getMessage());
+    }
+
+    assertEquals(tasksWithNormalExit, tasksExecuted.get());
   }
 }
