@@ -176,6 +176,9 @@ Changes in runtime behavior
 Bug Fixes
 ---------------------
 
+* GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
+  (Grigoriy Troitskiy)
+
 * GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
 
 Build
