@@ -297,12 +297,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     try {
       Query singleton = uniqueQueries.putIfAbsent(query, query);
       if (singleton == null) {
-        if (query instanceof Accountable) {
-          onQueryCache(
-              query, LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + ((Accountable) query).ramBytesUsed());
-        } else {
-          onQueryCache(query, LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + QUERY_DEFAULT_RAM_BYTES_USED);
-        }
+        onQueryCache(query, getRamBytesUsed(query));
       } else {
         query = singleton;
       }
@@ -385,7 +380,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   private void onEviction(Query singleton) {
     assert lock.isHeldByCurrentThread();
-    onQueryEviction(singleton, LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + QUERY_DEFAULT_RAM_BYTES_USED);
+    onQueryEviction(singleton, getRamBytesUsed(singleton));
     for (LeafCache leafCache : cache.values()) {
       leafCache.remove(singleton);
     }
@@ -403,6 +398,13 @@ public class LRUQueryCache implements QueryCache, Accountable {
     } finally {
       lock.unlock();
     }
+  }
+
+  private static long getRamBytesUsed(Query query) {
+    if (query instanceof Accountable) {
+      return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + ((Accountable) query).ramBytesUsed();
+    }
+    return LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + QUERY_DEFAULT_RAM_BYTES_USED;
   }
 
   // pkg-private for testing
@@ -429,11 +431,10 @@ public class LRUQueryCache implements QueryCache, Accountable {
               "One leaf cache contains more keys than the top-level cache: " + keys);
         }
       }
-      long recomputedRamBytesUsed =
-          HASHTABLE_RAM_BYTES_PER_ENTRY * cache.size()
-              + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY * uniqueQueries.size();
-      recomputedRamBytesUsed +=
-          mostRecentlyUsedQueries.size() * (long) QUERY_DEFAULT_RAM_BYTES_USED;
+      long recomputedRamBytesUsed = HASHTABLE_RAM_BYTES_PER_ENTRY * cache.size();
+      for (Query query : mostRecentlyUsedQueries) {
+        recomputedRamBytesUsed += getRamBytesUsed(query);
+      }
       for (LeafCache leafCache : cache.values()) {
         recomputedRamBytesUsed += HASHTABLE_RAM_BYTES_PER_ENTRY * leafCache.cache.size();
         for (CacheAndCount cached : leafCache.cache.values()) {
