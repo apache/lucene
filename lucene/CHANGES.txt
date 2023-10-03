@@ -153,6 +153,9 @@ Improvements
 * GITHUB#12603: Simplify the TaskExecutor API by exposing a single invokeAll method that takes a
   collection of callables, executes them and returns their results  (Luca Cavanna)
 
+* GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
+  order to simplify consumer's code (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
