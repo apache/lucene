@@ -418,7 +418,7 @@
  *   <li>In version 9.5, HNSW graph connections were changed to be delta-encoded with vints.
  *       Additionally, metadata file size improvements were made by delta-encoding nodes by graph
  *       layer and not writing the node ids for the zeroth layer.
- *   <li>In version 9.8, Vector scalar quantization support was added. Allowing the HNSW vector
+ *   <li>In version 9.9, Vector scalar quantization support was added. Allowing the HNSW vector
  *       format to utilize int8 quantized vectors for float32 vector search.
  * </ul>
  *
