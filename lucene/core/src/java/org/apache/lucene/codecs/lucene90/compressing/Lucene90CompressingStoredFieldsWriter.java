@@ -36,6 +36,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -304,6 +305,15 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     bufferedDocs.writeVLong(infoAndBits);
     bufferedDocs.writeVInt(value.length);
     bufferedDocs.writeBytes(value.bytes, value.offset, value.length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, DataInput value, int length) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(length);
+    bufferedDocs.copyBytes(value, length);
   }
 
   @Override

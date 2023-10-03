@@ -42,7 +42,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.junit.Test;
 
 public class TestIndexSearcher extends LuceneTestCase {
   Directory dir;
@@ -115,7 +114,6 @@ public class TestIndexSearcher extends LuceneTestCase {
     TestUtil.shutdownExecutorService(service);
   }
 
-  @Test
   public void testSearchAfterPassedMaxDoc() throws Exception {
     // LUCENE-5128: ensure we get a meaningful message if searchAfter exceeds maxDoc
     Directory dir = newDirectory();
@@ -221,30 +219,50 @@ public class TestIndexSearcher extends LuceneTestCase {
     assertEquals(dummyPolicy, searcher.getQueryCachingPolicy());
   }
 
-  public void testGetSlices() throws Exception {
-    assertNull(new IndexSearcher(new MultiReader()).getSlices());
+  public void testGetSlicesNoLeavesNoExecutor() throws IOException {
+    IndexSearcher.LeafSlice[] slices = new IndexSearcher(new MultiReader()).getSlices();
+    assertEquals(0, slices.length);
+  }
 
+  public void testGetSlicesNoLeavesWithExecutor() throws IOException {
+    IndexSearcher.LeafSlice[] slices =
+        new IndexSearcher(new MultiReader(), Runnable::run).getSlices();
+    assertEquals(0, slices.length);
+  }
+
+  public void testGetSlices() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    w.addDocument(new Document());
+    for (int i = 0; i < 10; i++) {
+      w.addDocument(new Document());
+      // manually flush, so we get to create multiple segments almost all the times, as well as
+      // multiple slices
+      w.flush();
+    }
     IndexReader r = w.getReader();
     w.close();
 
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestIndexSearcher"));
-    IndexSearcher s = new IndexSearcher(r, service);
-    IndexSearcher.LeafSlice[] slices = s.getSlices();
-    assertNotNull(slices);
-    assertEquals(1, slices.length);
-    assertEquals(1, slices[0].leaves.length);
-    assertTrue(slices[0].leaves[0] == r.leaves().get(0));
-    service.shutdown();
+    {
+      // without executor
+      IndexSearcher.LeafSlice[] slices = new IndexSearcher(r).getSlices();
+      assertEquals(1, slices.length);
+      assertEquals(r.leaves().size(), slices[0].leaves.length);
+    }
+    {
+      // force creation of multiple slices, and provide an executor
+      IndexSearcher searcher =
+          new IndexSearcher(r, Runnable::run) {
+            @Override
+            protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+              return slices(leaves, 1, 1);
+            }
+          };
+      IndexSearcher.LeafSlice[] slices = searcher.getSlices();
+      for (IndexSearcher.LeafSlice slice : slices) {
+        assertEquals(1, slice.leaves.length);
+      }
+      assertEquals(r.leaves().size(), slices.length);
+    }
     IOUtils.close(r, dir);
   }
 
@@ -269,5 +287,10 @@ public class TestIndexSearcher extends LuceneTestCase {
         };
     searcher.search(new MatchAllDocsQuery(), 10);
     assertEquals(leaves.size(), numExecutions.get());
+  }
+
+  public void testNullExecutorNonNullTaskExecutor() {
+    IndexSearcher indexSearcher = new IndexSearcher(reader);
+    assertNotNull(indexSearcher.getTaskExecutor());
   }
 }

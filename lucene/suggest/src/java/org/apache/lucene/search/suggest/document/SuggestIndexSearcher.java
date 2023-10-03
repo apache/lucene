@@ -68,8 +68,9 @@ public class SuggestIndexSearcher extends IndexSearcher {
     for (LeafReaderContext context : getIndexReader().leaves()) {
       BulkScorer scorer = weight.bulkScorer(context);
       if (scorer != null) {
-        LeafCollector leafCollector = collector.getLeafCollector(context);
+        LeafCollector leafCollector = null;
         try {
+          leafCollector = collector.getLeafCollector(context);
           scorer.score(leafCollector, context.reader().getLiveDocs());
         } catch (
             @SuppressWarnings("unused")
@@ -77,7 +78,9 @@ public class SuggestIndexSearcher extends IndexSearcher {
           // collection was terminated prematurely
           // continue with the following leaf
         }
-        leafCollector.finish();
+        if (leafCollector != null) {
+          leafCollector.finish();
+        }
       }
     }
   }

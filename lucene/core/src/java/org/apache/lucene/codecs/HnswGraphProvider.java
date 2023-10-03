@@ -21,7 +21,8 @@ import java.io.IOException;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Provides a hnsw graph
+ * An interface that provides an HNSW graph. This interface is useful when gathering multiple HNSW
+ * graphs to bootstrap segment merging. The graph may be off the JVM heap.
  *
  * @lucene.experimental
  */

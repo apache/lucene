@@ -50,55 +50,59 @@ public class TestTaskExecutor extends LuceneTestCase {
 
   public void testUnwrapIOExceptionFromExecutionException() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new IOException("io exception");
-            });
     IOException ioException =
         expectThrows(
-            IOException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            IOException.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new IOException("io exception");
+                        })));
     assertEquals("io exception", ioException.getMessage());
   }
 
   public void testUnwrapRuntimeExceptionFromExecutionException() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new RuntimeException("runtime");
-            });
     RuntimeException runtimeException =
         expectThrows(
-            RuntimeException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            RuntimeException.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new RuntimeException("runtime");
+                        })));
     assertEquals("runtime", runtimeException.getMessage());
     assertNull(runtimeException.getCause());
   }
 
   public void testUnwrapErrorFromExecutionException() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new OutOfMemoryError("oom");
-            });
     OutOfMemoryError outOfMemoryError =
         expectThrows(
-            OutOfMemoryError.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            OutOfMemoryError.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new OutOfMemoryError("oom");
+                        })));
     assertEquals("oom", outOfMemoryError.getMessage());
     assertNull(outOfMemoryError.getCause());
   }
 
   public void testUnwrappedExceptions() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new Exception("exc");
-            });
     RuntimeException runtimeException =
         expectThrows(
-            RuntimeException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            RuntimeException.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new Exception("exc");
+                        })));
     assertEquals("exc", runtimeException.getCause().getMessage());
   }
 
@@ -128,21 +132,18 @@ public class TestTaskExecutor extends LuceneTestCase {
                     return new LeafCollector() {
                       @Override
                       public void setScorer(Scorable scorer) throws IOException {
-                        TaskExecutor.Task<Void> task =
-                            searcher
-                                .getTaskExecutor()
-                                .createTask(
+                        searcher
+                            .getTaskExecutor()
+                            .invokeAll(
+                                Collections.singletonList(
                                     () -> {
                                       // make sure that we don't miss disabling concurrency one
                                       // level deeper
-                                      TaskExecutor.Task<Object> anotherTask =
-                                          searcher.getTaskExecutor().createTask(() -> null);
                                       searcher
                                           .getTaskExecutor()
-                                          .invokeAll(Collections.singletonList(anotherTask));
+                                          .invokeAll(Collections.singletonList(() -> null));
                                       return null;
-                                    });
-                        searcher.getTaskExecutor().invokeAll(Collections.singletonList(task));
+                                    }));
                       }
 
                       @Override
@@ -197,9 +198,9 @@ public class TestTaskExecutor extends LuceneTestCase {
                         // TaskExecutor, the safeguard is shared among all the searchers that get
                         // the same executor
                         IndexSearcher indexSearcher = new IndexSearcher(reader, executorService);
-                        TaskExecutor.Task<Void> task =
-                            indexSearcher.getTaskExecutor().createTask(() -> null);
-                        searcher.getTaskExecutor().invokeAll(Collections.singletonList(task));
+                        indexSearcher
+                            .getTaskExecutor()
+                            .invokeAll(Collections.singletonList(() -> null));
                       }
 
                       @Override

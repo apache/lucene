@@ -25,6 +25,9 @@ import org.apache.lucene.util.BitUtil; // javadocs
  */
 public interface RandomAccessInput {
 
+  /** The number of bytes in the file. */
+  public long length();
+
   /**
    * Reads a byte at the given position in the file
    *
