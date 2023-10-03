@@ -169,7 +169,9 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
+  (Grigoriy Troitskiy)
 
 Build
 ---------------------
