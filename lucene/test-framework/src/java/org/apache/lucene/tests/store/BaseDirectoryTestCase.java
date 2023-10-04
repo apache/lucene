@@ -56,6 +56,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Assert;
 
@@ -1098,7 +1099,10 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testRandomByte() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testBytes"))) {
       IndexOutput output = dir.createOutput("bytes", newIOContext(random()));
-      int num = TestUtil.nextInt(random(), 50, 3000);
+      int num =
+          TEST_NIGHTLY
+              ? TestUtil.nextInt(random(), 1000, 3000)
+              : TestUtil.nextInt(random(), 50, 1000);
       byte[] bytes = new byte[num];
       random().nextBytes(bytes);
       for (int i = 0; i < bytes.length; i++) {
@@ -1110,22 +1114,17 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       IndexInput input = dir.openInput("bytes", newIOContext(random()));
       RandomAccessInput slice = input.randomAccessSlice(0, input.length());
       assertEquals(input.length(), slice.length());
-      for (int i = 0; i < bytes.length; i++) {
-        assertEquals(bytes[i], slice.readByte(i));
-      }
+      assertBytes(slice, bytes, 0);
 
       // subslices
-      for (int i = 1; i < bytes.length; i++) {
-        long offset = i;
+      for (int offset = 1; offset < bytes.length; offset++) {
         RandomAccessInput subslice = input.randomAccessSlice(offset, input.length() - offset);
         assertEquals(input.length() - offset, subslice.length());
-        for (int j = i; j < bytes.length; j++) {
-          assertEquals(bytes[j], subslice.readByte(j - i));
-        }
+        assertBytes(subslice, bytes, offset);
       }
 
       // with padding
-      for (int i = 0; i < 7; i++) {
+      for (int i = 1; i < 7; i++) {
         String name = "bytes-" + i;
         IndexOutput o = dir.createOutput(name, newIOContext(random()));
         byte[] junk = new byte[i];
@@ -1137,12 +1136,29 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         IndexInput padded = dir.openInput(name, newIOContext(random()));
         RandomAccessInput whole = padded.randomAccessSlice(i, padded.length() - i);
         assertEquals(padded.length() - i, whole.length());
-        for (int j = 0; j < bytes.length; j++) {
-          assertEquals(bytes[j], whole.readByte(j));
-        }
+        assertBytes(whole, bytes, 0);
         padded.close();
       }
       input.close();
+    }
+  }
+
+  protected void assertBytes(RandomAccessInput slice, byte[] bytes, int bytesOffset)
+      throws IOException {
+    int toRead = bytes.length - bytesOffset;
+    for (int i = 0; i < toRead; i++) {
+      assertEquals(bytes[bytesOffset + i], slice.readByte(i));
+      int offset = random().nextInt(1000);
+      byte[] sub1 = new byte[offset + i];
+      slice.readBytes(0, sub1, offset, i);
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(bytes, bytesOffset, bytesOffset + i),
+          ArrayUtil.copyOfSubArray(sub1, offset, sub1.length));
+      byte[] sub2 = new byte[offset + toRead - i];
+      slice.readBytes(i, sub2, offset, toRead - i);
+      assertArrayEquals(
+          ArrayUtil.copyOfSubArray(bytes, bytesOffset + i, bytes.length),
+          ArrayUtil.copyOfSubArray(sub2, offset, sub2.length));
     }
   }
 
