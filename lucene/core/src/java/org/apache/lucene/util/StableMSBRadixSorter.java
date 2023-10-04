@@ -98,8 +98,8 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
     }
 
     /**
-     * We tried to expose this to implementations to get a bulk copy optimization. But it did not bring a
-     * noticeable improvement in benchmark as {@code len} is usually small.
+     * We tried to expose this to implementations to get a bulk copy optimization. But it did not
+     * bring a noticeable improvement in benchmark as {@code len} is usually small.
      */
     private void bulkSave(int from, int tmpFrom, int len) {
       for (int i = 0; i < len; i++) {
