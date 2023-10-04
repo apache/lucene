@@ -30,6 +30,8 @@ import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -234,6 +236,32 @@ public class MockRandomMergePolicy extends MergePolicy {
         // otherwise, reader is unchanged
         return reader;
       }
+    }
+
+    @Override
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+      if (r.nextBoolean()) {
+        // Reverse the doc ID order
+        final int maxDoc = reader.maxDoc();
+        return new Sorter.DocMap() {
+
+          @Override
+          public int size() {
+            return maxDoc;
+          }
+
+          @Override
+          public int oldToNew(int docID) {
+            return maxDoc - 1 - docID;
+          }
+
+          @Override
+          public int newToOld(int docID) {
+            return maxDoc - 1 - docID;
+          }
+        };
+      }
+      return null;
     }
   }
 }

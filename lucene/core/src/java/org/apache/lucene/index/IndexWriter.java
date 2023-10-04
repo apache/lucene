@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -3877,6 +3878,12 @@ public class IndexWriter
                       public CodecReader wrapForMerge(CodecReader reader) throws IOException {
                         return toWrap.wrapForMerge(reader); // must delegate
                       }
+
+                      @Override
+                      public Sorter.DocMap reorder(CodecReader reader, Directory dir)
+                          throws IOException {
+                        return toWrap.reorder(reader, dir); // must delegate
+                      }
                     }),
             trigger,
             UNBOUNDED_MAX_MERGE_SEGMENTS);
@@ -4300,7 +4307,7 @@ public class IndexWriter
    * merge.info). If no deletes were flushed, no new deletes file is saved.
    */
   private synchronized ReadersAndUpdates commitMergedDeletesAndUpdates(
-      MergePolicy.OneMerge merge, MergeState mergeState) throws IOException {
+      MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps) throws IOException {
 
     mergeFinishedGen.incrementAndGet();
 
@@ -4324,7 +4331,7 @@ public class IndexWriter
 
     boolean anyDVUpdates = false;
 
-    assert sourceSegments.size() == mergeState.docMaps.length;
+    assert sourceSegments.size() == docMaps.length;
     for (int i = 0; i < sourceSegments.size(); i++) {
       SegmentCommitInfo info = sourceSegments.get(i);
       minGen = Math.min(info.getBufferedDeletesGen(), minGen);
@@ -4334,12 +4341,11 @@ public class IndexWriter
       // the pool:
       assert rld != null : "seg=" + info.info.name;
 
-      MergeState.DocMap segDocMap = mergeState.docMaps[i];
+      MergeState.DocMap segDocMap = docMaps[i];
 
       carryOverHardDeletes(
           mergedDeletesAndUpdates,
           maxDoc,
-          mergeState.liveDocs[i],
           merge.getMergeReader().get(i).hardLiveDocs,
           rld.getHardLiveDocs(),
           segDocMap);
@@ -4442,26 +4448,21 @@ public class IndexWriter
   private static void carryOverHardDeletes(
       ReadersAndUpdates mergedReadersAndUpdates,
       int maxDoc,
-      Bits mergeLiveDocs, // the liveDocs used to build the segDocMaps
       Bits prevHardLiveDocs, // the hard deletes when the merge reader was pulled
       Bits currentHardLiveDocs, // the current hard deletes
       MergeState.DocMap segDocMap)
       throws IOException {
 
-    assert mergeLiveDocs == null || mergeLiveDocs.length() == maxDoc;
     // if we mix soft and hard deletes we need to make sure that we only carry over deletes
     // that were not deleted before. Otherwise the segDocMap doesn't contain a mapping.
     // yet this is also required if any MergePolicy modifies the liveDocs since this is
     // what the segDocMap is build on.
     final IntPredicate carryOverDelete =
-        mergeLiveDocs == null || mergeLiveDocs == prevHardLiveDocs
-            ? docId -> currentHardLiveDocs.get(docId) == false
-            : docId -> mergeLiveDocs.get(docId) && currentHardLiveDocs.get(docId) == false;
+        docId -> segDocMap.get(docId) != -1 && currentHardLiveDocs.get(docId) == false;
     if (prevHardLiveDocs != null) {
       // If we had deletions on starting the merge we must
       // still have deletions now:
       assert currentHardLiveDocs != null;
-      assert mergeLiveDocs != null;
       assert prevHardLiveDocs.length() == maxDoc;
       assert currentHardLiveDocs.length() == maxDoc;
 
@@ -4504,7 +4505,7 @@ public class IndexWriter
   }
 
   @SuppressWarnings("try")
-  private synchronized boolean commitMerge(MergePolicy.OneMerge merge, MergeState mergeState)
+  private synchronized boolean commitMerge(MergePolicy.OneMerge merge, MergeState.DocMap[] docMaps)
       throws IOException {
     merge.onMergeComplete();
     testPoint("startCommitMerge");
@@ -4547,7 +4548,7 @@ public class IndexWriter
     }
 
     final ReadersAndUpdates mergedUpdates =
-        merge.info.info.maxDoc() == 0 ? null : commitMergedDeletesAndUpdates(merge, mergeState);
+        merge.info.info.maxDoc() == 0 ? null : commitMergedDeletesAndUpdates(merge, docMaps);
 
     // If the doc store we are using has been closed and
     // is in now compound format (but wasn't when we
@@ -5144,11 +5145,63 @@ public class IndexWriter
         }
         mergeReaders.add(wrappedReader);
       }
+
+      MergeState.DocMap[] reorderDocMaps = null;
+      if (config.getIndexSort() == null) {
+        // Create a merged view of the input segments. This effectively does the merge.
+        CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
+        Sorter.DocMap docMap = merge.reorder(mergedView, directory);
+        if (docMap != null) {
+          reorderDocMaps = new MergeState.DocMap[mergeReaders.size()];
+          int docBase = 0;
+          int i = 0;
+          for (CodecReader reader : mergeReaders) {
+            final int finalDocBase = docBase;
+            reorderDocMaps[i] =
+                new MergeState.DocMap() {
+                  @Override
+                  public int get(int docID) {
+                    Objects.checkIndex(docID, reader.maxDoc());
+                    return docMap.oldToNew(finalDocBase + docID);
+                  }
+                };
+            i++;
+            docBase += reader.maxDoc();
+          }
+          // This makes merging more expensive as it disables some bulk merging optimizations, so
+          // only do this if a non-null DocMap is returned.
+          mergeReaders =
+              Collections.singletonList(SortingCodecReader.wrap(mergedView, docMap, null));
+        }
+      }
+
       final SegmentMerger merger =
           new SegmentMerger(
               mergeReaders, merge.info.info, infoStream, dirWrapper, globalFieldNumberMap, context);
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
+
+      MergeState mergeState = merger.mergeState;
+      MergeState.DocMap[] docMaps;
+      if (reorderDocMaps == null) {
+        docMaps = mergeState.docMaps;
+      } else {
+        assert mergeState.docMaps.length == 1;
+        MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
+        docMaps = new MergeState.DocMap[reorderDocMaps.length];
+        for (int i = 0; i < docMaps.length; ++i) {
+          MergeState.DocMap reorderDocMap = reorderDocMaps[i];
+          docMaps[i] =
+              new MergeState.DocMap() {
+                @Override
+                public int get(int docID) {
+                  int reorderedDocId = reorderDocMap.get(docID);
+                  int compactedDocId = compactionDocMap.get(reorderedDocId);
+                  return compactedDocId;
+                }
+              };
+        }
+      }
 
       merge.mergeStartNS = System.nanoTime();
 
@@ -5157,7 +5210,6 @@ public class IndexWriter
         merger.merge();
       }
 
-      MergeState mergeState = merger.mergeState;
       assert mergeState.segmentInfo == merge.info.info;
       merge.info.info.setFiles(new HashSet<>(dirWrapper.getCreatedFiles()));
       Codec codec = config.getCodec();
@@ -5210,7 +5262,7 @@ public class IndexWriter
         // Merge would produce a 0-doc segment, so we do nothing except commit the merge to remove
         // all the 0-doc segments that we "merged":
         assert merge.info.info.maxDoc() == 0;
-        success = commitMerge(merge, mergeState);
+        success = commitMerge(merge, docMaps);
         return 0;
       }
 
@@ -5333,7 +5385,7 @@ public class IndexWriter
         }
       }
 
-      if (!commitMerge(merge, mergeState)) {
+      if (!commitMerge(merge, docMaps)) {
         // commitMerge will return false if this merge was
         // aborted
         return 0;

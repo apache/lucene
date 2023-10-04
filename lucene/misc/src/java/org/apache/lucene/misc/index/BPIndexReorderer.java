@@ -31,6 +31,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.index.SortingCodecReader;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -776,15 +777,11 @@ public final class BPIndexReorderer {
   }
 
   /**
-   * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
-   * consecutive documents in postings, which usually helps improve space efficiency and query
-   * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
-   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
-   *
-   * @throws NotEnoughRAMException if not enough RAM is provided
+   * Expert: Compute the {@link DocMap} that holds the new doc ID numbering. This is exposed to
+   * enable integration into {@link BPReorderingMergePolicy}, {@link #reorder(CodecReader,
+   * Directory)} should be preferred in general.
    */
-  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
-
+  public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir) throws IOException {
     if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
       throw new NotEnoughRAMException(
           "At least "
@@ -809,24 +806,35 @@ public final class BPIndexReorderer {
     for (int i = 0; i < newToOld.length; ++i) {
       oldToNew[newToOld[i]] = i;
     }
-    final Sorter.DocMap docMap =
-        new Sorter.DocMap() {
+    return new Sorter.DocMap() {
 
-          @Override
-          public int size() {
-            return newToOld.length;
-          }
+      @Override
+      public int size() {
+        return newToOld.length;
+      }
 
-          @Override
-          public int oldToNew(int docID) {
-            return oldToNew[docID];
-          }
+      @Override
+      public int oldToNew(int docID) {
+        return oldToNew[docID];
+      }
 
-          @Override
-          public int newToOld(int docID) {
-            return newToOld[docID];
-          }
-        };
+      @Override
+      public int newToOld(int docID) {
+        return newToOld[docID];
+      }
+    };
+  }
+
+  /**
+   * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
+   * consecutive documents in postings, which usually helps improve space efficiency and query
+   * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
+   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
+   *
+   * @throws NotEnoughRAMException if not enough RAM is provided
+   */
+  public CodecReader reorder(CodecReader reader, Directory tempDir) throws IOException {
+    Sorter.DocMap docMap = computeDocMap(reader, tempDir);
     return SortingCodecReader.wrap(reader, docMap, null);
   }
 

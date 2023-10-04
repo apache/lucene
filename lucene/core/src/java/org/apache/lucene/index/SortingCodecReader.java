@@ -468,7 +468,11 @@ public final class SortingCodecReader extends FilterCodecReader {
 
       @Override
       public PointValues getValues(String field) throws IOException {
-        return new SortingPointValues(delegate.getValues(field), docMap);
+        PointValues values = delegate.getValues(field);
+        if (values == null) {
+          return null;
+        }
+        return new SortingPointValues(values, docMap);
       }
 
       @Override
