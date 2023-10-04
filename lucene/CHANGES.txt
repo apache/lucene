@@ -60,6 +60,8 @@ API Changes
 * GITHUB#12580: Remove deprecated IndexSearcher#getExecutor in favour of executing concurrent tasks using
   the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
 
+* GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
+
 New Features
 ---------------------
 
@@ -141,7 +143,6 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
-* GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
 
 New Features
 ---------------------
