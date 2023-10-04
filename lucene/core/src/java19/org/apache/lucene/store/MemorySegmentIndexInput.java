@@ -168,28 +168,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
-  private void readBytesBoundary(long pos, byte[] b, int offset, int len) throws IOException {
-    try {
-      int si = (int) (pos >> chunkSizePower);
-      pos = pos & chunkSizeMask;
-      long curAvail = segments[si].byteSize() - pos;
-      while (len > curAvail) {
-        MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, (int) curAvail);
-        len -= curAvail;
-        offset += curAvail;
-        si++;
-        if (si >= segments.length) {
-          throw new EOFException("read past EOF: " + this);
-        }
-        pos = 0L;
-        curAvail = segments[si].byteSize();
-      }
-      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, len);
-    } catch (NullPointerException | IllegalStateException e) {
-      throw alreadyClosed(e);
-    }
-  }
-
   @Override
   public void readInts(int[] dst, int offset, int length) throws IOException {
     try {
@@ -317,12 +295,23 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
   @Override
   public void readBytes(long pos, byte[] b, int offset, int len) throws IOException {
     try {
-      final int si = (int) (pos >> chunkSizePower);
-      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos & chunkSizeMask, b, offset, len);
-    } catch (
-        @SuppressWarnings("unused")
-        IndexOutOfBoundsException e) {
-      readBytesBoundary(pos, b, offset, len);
+      int si = (int) (pos >> chunkSizePower);
+      pos = pos & chunkSizeMask;
+      long curAvail = segments[si].byteSize() - pos;
+      while (len > curAvail) {
+        MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, (int) curAvail);
+        len -= curAvail;
+        offset += curAvail;
+        si++;
+        if (si >= segments.length) {
+          throw new EOFException("read past EOF: " + this);
+        }
+        pos = 0L;
+        curAvail = segments[si].byteSize();
+      }
+      MemorySegment.copy(segments[si], LAYOUT_BYTE, pos, b, offset, len);
+    } catch (IndexOutOfBoundsException ioobe) {
+      throw handlePositionalIOOBE(ioobe, "read", pos);
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
