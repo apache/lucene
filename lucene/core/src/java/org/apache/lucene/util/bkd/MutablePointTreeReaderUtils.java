@@ -61,6 +61,8 @@ public final class MutablePointTreeReaderUtils {
 
       final BytesRef scratch1 = new BytesRef();
       final BytesRef scratch2 = new BytesRef();
+      final BytesRef pivot = new BytesRef();
+      int pivotDoc;
 
       @Override
       protected void swap(int i, int j) {
@@ -90,19 +92,33 @@ public final class MutablePointTreeReaderUtils {
       @Override
       protected Sorter getFallbackSorter(int k) {
         return new InPlaceMergeSorter() {
+          final int cmpStartOffset;
+          final ByteArrayComparator packedBytesComparator;
+
+          {
+            if (config.packedBytesLength >= 4 && config.packedBytesLength - k <= 4) {
+              cmpStartOffset = config.packedBytesLength - 4;
+              packedBytesComparator = ArrayUtil.getUnsignedComparator(4);
+            } else if (config.packedBytesLength >= 8 && config.packedBytesLength - k <= 8) {
+              cmpStartOffset = config.packedBytesLength - 8;
+              packedBytesComparator = ArrayUtil.getUnsignedComparator(8);
+            } else {
+              cmpStartOffset = k;
+              packedBytesComparator = ArrayUtil.getUnsignedComparator(config.packedBytesLength - k);
+            }
+          }
+
+          @Override
+          protected void swap(int i, int j) {
+            reader.swap(i, j);
+          }
+
           @Override
           protected int compare(int i, int j) {
             if (k < config.packedBytesLength) {
               reader.getValue(i, scratch1);
               reader.getValue(j, scratch2);
-              int v =
-                  Arrays.compareUnsigned(
-                      scratch1.bytes,
-                      scratch1.offset + k,
-                      scratch1.offset + scratch1.length,
-                      scratch2.bytes,
-                      scratch2.offset + k,
-                      scratch2.offset + scratch2.length);
+              int v = compare(scratch1, scratch2);
               if (v != 0) {
                 return v;
               }
@@ -115,8 +131,32 @@ public final class MutablePointTreeReaderUtils {
           }
 
           @Override
-          protected void swap(int i, int j) {
-            reader.swap(i, j);
+          protected void setPivot(int i) {
+            reader.getValue(i, pivot);
+            if (bitsPerDocId != 0) {
+              pivotDoc = reader.getDocID(i);
+            }
+          }
+
+          @Override
+          protected int comparePivot(int j) {
+            if (k < config.packedBytesLength) {
+              reader.getValue(j, scratch2);
+              int v = compare(pivot, scratch2);
+              if (v != 0) {
+                return v;
+              }
+            }
+            if (bitsPerDocId == 0) {
+              return 0;
+            }
+            // Directly compare the whole int even if some bytes have been checked before.
+            return Integer.compare(pivotDoc, reader.getDocID(j));
+          }
+
+          private int compare(BytesRef o1, BytesRef o2) {
+            return packedBytesComparator.compare(
+                o1.bytes, o1.offset + cmpStartOffset, o2.bytes, o2.offset + cmpStartOffset);
           }
         };
       }
