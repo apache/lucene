@@ -43,9 +43,11 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
    * Sole constructor. It takes the merge policy that should be used to compute merges, and will
    * then reorder doc IDs from all merges above the configured minimum doc count, as well as all
    * forced merges.
-   * <p>If you wish to only run reordering upon forced merges, pass {@link Integer#MAX_VALUE} as
-   * a {@code minNaturalMergeNumDocs}. Otherwise a default value of {@code 2^18 = 262,144} is
-   * suggested. This should help retain merging optimizations on small merges while reordering the larger segments that are important for good search performance.
+   *
+   * <p>If you wish to only run reordering upon forced merges, pass {@link Integer#MAX_VALUE} as a
+   * {@code minNaturalMergeNumDocs}. Otherwise a default value of {@code 2^18 = 262,144} is
+   * suggested. This should help retain merging optimizations on small merges while reordering the
+   * larger segments that are important for good search performance.
    *
    * @param in the merge policy to use to compute merges
    * @param reorderer the {@link BPIndexReorderer} to use to renumber doc IDs
