@@ -167,6 +167,9 @@ Optimizations
   
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
+* GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
+  to reduce GC load during indexing. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 

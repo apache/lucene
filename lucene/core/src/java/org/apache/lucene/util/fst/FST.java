@@ -520,6 +520,10 @@ public final class FST<T> implements Accountable {
     bytes.finish();
   }
 
+  public long numBytes() {
+    return bytes.getPosition();
+  }
+
   public T getEmptyOutput() {
     return emptyOutput;
   }
