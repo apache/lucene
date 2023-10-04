@@ -55,7 +55,6 @@ public final class MutablePointTreeReaderUtils {
     // This should be a common situation as IndexWriter accumulates data in doc ID order when
     // index sorting is not enabled.
     final int bitsPerDocId = sortedByDocID ? 0 : PackedInts.bitsRequired(maxDoc - 1);
-
     new StableMSBRadixSorter(config.packedBytesLength + (bitsPerDocId + 7) / 8) {
 
       @Override
