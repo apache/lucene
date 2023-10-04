@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -506,7 +507,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     // Find the KnnVectorReader with the most docs that meets the following criteria:
     //  1. Does not contain any deleted docs
-    //  2. Is a Lucene95HnswVectorsReader/PerFieldKnnVectorReader
+    //  2. Is a HnswGraphProvider/PerFieldKnnVectorReader
     // If no readers exist that meet this criteria, return -1. If they do, return their index in
     // merge state
     int maxCandidateVectorCount = 0;
@@ -520,21 +521,23 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader instanceof Lucene95HnswVectorsReader candidateReader)) {
+          || !(currKnnVectorsReader instanceof HnswGraphProvider)) {
         continue;
       }
 
       int candidateVectorCount = 0;
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE -> {
-          ByteVectorValues byteVectorValues = candidateReader.getByteVectorValues(fieldInfo.name);
+          ByteVectorValues byteVectorValues =
+              currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
           if (byteVectorValues == null) {
             continue;
           }
           candidateVectorCount = byteVectorValues.size();
         }
         case FLOAT32 -> {
-          FloatVectorValues vectorValues = candidateReader.getFloatVectorValues(fieldInfo.name);
+          FloatVectorValues vectorValues =
+              currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
           if (vectorValues == null) {
             continue;
           }
@@ -553,13 +556,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
       throws IOException {
     if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
-        && perFieldReader.getFieldReader(fieldName)
-            instanceof Lucene95HnswVectorsReader fieldReader) {
+        && perFieldReader.getFieldReader(fieldName) instanceof HnswGraphProvider fieldReader) {
       return fieldReader.getGraph(fieldName);
     }
 
-    if (knnVectorsReader instanceof Lucene95HnswVectorsReader) {
-      return ((Lucene95HnswVectorsReader) knnVectorsReader).getGraph(fieldName);
+    if (knnVectorsReader instanceof HnswGraphProvider provider) {
+      return provider.getGraph(fieldName);
     }
 
     // We should not reach here because knnVectorsReader's type is checked in

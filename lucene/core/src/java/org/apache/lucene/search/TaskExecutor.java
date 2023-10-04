@@ -110,4 +110,9 @@ public final class TaskExecutor {
       }
     }
   }
+
+  @Override
+  public String toString() {
+    return "TaskExecutor(" + "executor=" + executor + ')';
+  }
 }
