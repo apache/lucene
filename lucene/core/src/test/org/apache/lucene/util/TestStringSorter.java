@@ -17,20 +17,32 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.stream.IntStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestStringMSBRadixSorter extends LuceneTestCase {
+public class TestStringSorter extends LuceneTestCase {
 
   private void test(BytesRef[] refs, int len) {
+    test(ArrayUtil.copyOfSubArray(refs, 0, len), len, BytesRefComparator.NATURAL);
+    test(ArrayUtil.copyOfSubArray(refs, 0, len), len, Comparator.naturalOrder());
+    testStable(ArrayUtil.copyOfSubArray(refs, 0, len), len, BytesRefComparator.NATURAL);
+    testStable(ArrayUtil.copyOfSubArray(refs, 0, len), len, Comparator.naturalOrder());
+  }
+
+  private void test(BytesRef[] refs, int len, Comparator<BytesRef> comparator) {
     BytesRef[] expected = ArrayUtil.copyOfSubArray(refs, 0, len);
     Arrays.sort(expected);
 
-    new StringMSBRadixSorter() {
+    new StringSorter(comparator) {
 
       @Override
-      protected BytesRef get(int i) {
-        return refs[i];
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        BytesRef ref = refs[i];
+        result.offset = ref.offset;
+        result.length = ref.length;
+        result.bytes = ref.bytes;
       }
 
       @Override
@@ -42,6 +54,50 @@ public class TestStringMSBRadixSorter extends LuceneTestCase {
     }.sort(0, len);
     BytesRef[] actual = ArrayUtil.copyOfSubArray(refs, 0, len);
     assertArrayEquals(expected, actual);
+  }
+
+  private void testStable(BytesRef[] refs, int len, Comparator<BytesRef> comparator) {
+    BytesRef[] expected = ArrayUtil.copyOfSubArray(refs, 0, len);
+    Arrays.sort(expected);
+
+    int[] ord = new int[len];
+    IntStream.range(0, len).forEach(i -> ord[i] = i);
+    new StableStringSorter(comparator) {
+
+      final int[] tmp = new int[len];
+
+      @Override
+      protected void save(int i, int j) {
+        tmp[j] = ord[i];
+      }
+
+      @Override
+      protected void restore(int i, int j) {
+        System.arraycopy(tmp, i, ord, i, j - i);
+      }
+
+      @Override
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        BytesRef ref = refs[ord[i]];
+        result.offset = ref.offset;
+        result.length = ref.length;
+        result.bytes = ref.bytes;
+      }
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = ord[i];
+        ord[i] = ord[j];
+        ord[j] = tmp;
+      }
+    }.sort(0, len);
+
+    for (int i = 0; i < len; i++) {
+      assertEquals(expected[i], refs[ord[i]]);
+      if (i > 0 && expected[i].equals(expected[i - 1])) {
+        assertTrue("not stable: " + ord[i] + " <= " + ord[i - 1], ord[i] > ord[i - 1]);
+      }
+    }
   }
 
   public void testEmpty() {

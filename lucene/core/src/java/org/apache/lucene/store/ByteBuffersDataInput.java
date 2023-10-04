@@ -224,6 +224,34 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    long absPos = this.offset + pos;
+    try {
+      while (len > 0) {
+        ByteBuffer block = blocks[blockIndex(absPos)];
+        int blockPosition = blockOffset(absPos);
+        int chunk = Math.min(len, block.capacity() - blockPosition);
+        if (chunk == 0) {
+          throw new EOFException();
+        }
+
+        // Update pos early on for EOF detection, then try to get buffer content.
+        block.get(blockPosition, bytes, offset, chunk);
+
+        absPos += chunk;
+        len -= chunk;
+        offset += chunk;
+      }
+    } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
+      if (absPos >= length()) {
+        throw new EOFException();
+      } else {
+        throw e; // Something is wrong.
+      }
+    }
+  }
+
+  @Override
   public short readShort(long pos) {
     long absPos = offset + pos;
     int blockOffset = blockOffset(absPos);

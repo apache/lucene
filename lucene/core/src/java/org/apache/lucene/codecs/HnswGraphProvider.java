@@ -14,20 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs;
 
-// Declare script dependency versions outside of palantir's
-// version unification control. These are not our main dependencies
-// but are reused in buildSrc and across applied scripts.
+import java.io.IOException;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
-ext {
-  scriptDepVersions = [
-      "apache-rat": "0.14",
-      "asm": "9.6",
-      "commons-codec": "1.13",
-      "ecj": "3.30.0",
-      "flexmark": "0.61.24",
-      "javacc": "7.0.12",
-      "jflex": "1.8.2",
-      "jgit": "5.13.1.202206130422-r",
-  ]
+/**
+ * An interface that provides an HNSW graph. This interface is useful when gathering multiple HNSW
+ * graphs to bootstrap segment merging. The graph may be off the JVM heap.
+ *
+ * @lucene.experimental
+ */
+public interface HnswGraphProvider {
+  /**
+   * Return the stored HnswGraph for the given field.
+   *
+   * @param field the field containing the graph
+   * @return the HnswGraph for the given field if found
+   * @throws IOException when reading potentially off-heap graph fails
+   */
+  HnswGraph getGraph(String field) throws IOException;
 }
