@@ -86,7 +86,7 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
       mergeSort(from, to);
     }
 
-    protected void mergeSort(int from, int to) {
+    private void mergeSort(int from, int to) {
       if (to - from < BINARY_SORT_THRESHOLD) {
         binarySort(from, to);
       } else {
