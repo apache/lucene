@@ -31,14 +31,14 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
+import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.packed.PackedInts;
 
 /**
  * A merged {@link CodecReader} view of multiple {@link CodecReader}. This view is primarily
@@ -245,22 +245,20 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
   @Override
   public NormsProducer getNormsReader() {
-    return new SlowCompositeNormsProducer(codecReaders, docStarts);
+    return new SlowCompositeNormsProducer(codecReaders);
   }
 
   private static class SlowCompositeNormsProducer extends NormsProducer {
 
     private final CodecReader[] codecReaders;
     private final NormsProducer[] producers;
-    private final int[] docStarts;
 
-    SlowCompositeNormsProducer(CodecReader[] codecReaders, int[] docStarts) {
+    SlowCompositeNormsProducer(CodecReader[] codecReaders) {
       this.codecReaders = codecReaders;
       this.producers =
           Arrays.stream(codecReaders)
               .map(CodecReader::getNormsReader)
               .toArray(NormsProducer[]::new);
-      this.docStarts = docStarts;
     }
 
     @Override
@@ -270,51 +268,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public NumericDocValues getNorms(FieldInfo field) throws IOException {
-      List<DocValuesSub<NumericDocValues>> subs = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        NumericDocValues norms = reader.getNormValues(field.name);
-        if (norms != null) {
-          subs.add(new DocValuesSub<>(norms, docStarts[i], docStarts[i + 1]));
-        }
-        i++;
-      }
-      if (subs.isEmpty()) {
-        return null;
-      }
-      MergedDocIdSetIterator<NumericDocValues> mergedIterator = new MergedDocIdSetIterator<>(subs);
-      return new NumericDocValues() {
-
-        @Override
-        public long longValue() throws IOException {
-          return mergedIterator.current.sub.longValue();
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return mergedIterator.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return mergedIterator.cost();
-        }
-      };
+      return MultiDocValues.getNormValues(new MultiReader(codecReaders), field.name);
     }
 
     @Override
@@ -371,17 +325,6 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return true;
     }
 
-    public boolean advanceExact(int target) throws IOException {
-      if (advanceSub(target) == false) {
-        return false;
-      }
-      doc = target;
-      if (current.docStart > target) {
-        return false;
-      }
-      return ((DocValuesIterator) current.sub).advanceExact(target - current.docStart);
-    }
-
     @Override
     public int docID() {
       return doc;
@@ -435,6 +378,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     private final CodecReader[] codecReaders;
     private final DocValuesProducer[] producers;
     private final int[] docStarts;
+    private final Map<String, OrdinalMap> cachedOrdMaps = new HashMap<>();
 
     SlowCompositeDocValuesProducerWrapper(CodecReader[] codecReaders, int[] docStarts) {
       this.codecReaders = codecReaders;
@@ -461,294 +405,81 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-      List<DocValuesSub<NumericDocValues>> subs = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        NumericDocValues values = reader.getNumericDocValues(field.name);
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
-      }
-      MergedDocIdSetIterator<NumericDocValues> mergedIterator = new MergedDocIdSetIterator<>(subs);
-      return new NumericDocValues() {
-
-        @Override
-        public long longValue() throws IOException {
-          return mergedIterator.current.sub.longValue();
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return mergedIterator.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return mergedIterator.cost();
-        }
-      };
+      return MultiDocValues.getNumericValues(new MultiReader(codecReaders), field.name);
     }
 
     @Override
     public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-      List<DocValuesSub<BinaryDocValues>> subs = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        BinaryDocValues values = reader.getBinaryDocValues(field.name);
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
-      }
-      MergedDocIdSetIterator<BinaryDocValues> mergedIterator = new MergedDocIdSetIterator<>(subs);
-      return new BinaryDocValues() {
-
-        @Override
-        public BytesRef binaryValue() throws IOException {
-          return mergedIterator.current.sub.binaryValue();
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return mergedIterator.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return mergedIterator.cost();
-        }
-      };
-    }
-
-    final Map<Integer, OrdinalMap> ordinalMapCache = new HashMap<>();
-
-    private OrdinalMap getOrdinalMap(FieldInfo fi) throws IOException {
-      OrdinalMap map = ordinalMapCache.get(fi.number);
-      if (map != null) {
-        return map;
-      }
-      TermsEnum[] subs = new TermsEnum[producers.length];
-      long[] weights = new long[subs.length];
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        SortedSetDocValues values = null;
-        if (fi.getDocValuesType() == DocValuesType.SORTED_SET) {
-          values = reader.getSortedSetDocValues(fi.name);
-        } else if (fi.getDocValuesType() == DocValuesType.SORTED) {
-          SortedDocValues singleValues = reader.getSortedDocValues(fi.name);
-          if (singleValues != null) {
-            values = DocValues.singleton(singleValues);
-          }
-        }
-        if (values == null) {
-          values = DocValues.emptySortedSet();
-        }
-        subs[i] = values.termsEnum();
-        weights[i] = values.getValueCount();
-        i++;
-      }
-      map = OrdinalMap.build(null, subs, weights, PackedInts.COMPACT);
-      ordinalMapCache.put(fi.number, map);
-      return map;
+      return MultiDocValues.getBinaryValues(new MultiReader(codecReaders), field.name);
     }
 
     @Override
     public SortedDocValues getSorted(FieldInfo field) throws IOException {
-      List<DocValuesSub<SortedDocValues>> subs = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        SortedDocValues values = reader.getSortedDocValues(field.name);
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
+      OrdinalMap map = null;
+      synchronized (cachedOrdMaps) {
+        map = cachedOrdMaps.get(field.name);
+        if (map == null) {
+          // uncached, or not a multi dv
+          SortedDocValues dv =
+              MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
+          if (dv instanceof MultiSortedDocValues) {
+            map = ((MultiSortedDocValues) dv).mapping;
+            cachedOrdMaps.put(field.name, map);
+          }
+          return dv;
+        }
       }
-      MergedDocIdSetIterator<SortedDocValues> mergedIterator = new MergedDocIdSetIterator<>(subs);
-      OrdinalMap map = getOrdinalMap(field);
-      return new SortedDocValues() {
-
-        @Override
-        public int ordValue() throws IOException {
-          int segmentOrd = mergedIterator.current.sub.ordValue();
-          return Math.toIntExact(map.getGlobalOrds(mergedIterator.currentIndex).get(segmentOrd));
+      int size = codecReaders.length;
+      final SortedDocValues[] values = new SortedDocValues[size];
+      long totalCost = 0;
+      for (int i = 0; i < size; i++) {
+        final LeafReader reader = codecReaders[i];
+        SortedDocValues v = reader.getSortedDocValues(field.name);
+        if (v == null) {
+          v = DocValues.emptySorted();
         }
-
-        @Override
-        public BytesRef lookupOrd(int globalOrd) throws IOException {
-          int segmentNumber = map.getFirstSegmentNumber(globalOrd);
-          int segmentOrd = Math.toIntExact(map.getFirstSegmentOrd(globalOrd));
-          return subs.get(segmentNumber).sub.lookupOrd(segmentOrd);
-        }
-
-        @Override
-        public int getValueCount() {
-          return Math.toIntExact(map.getValueCount());
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return mergedIterator.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return mergedIterator.cost();
-        }
-      };
+        values[i] = v;
+        totalCost += v.cost();
+      }
+      return new MultiSortedDocValues(values, docStarts, map, totalCost);
     }
 
     @Override
     public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-      List<DocValuesSub<SortedNumericDocValues>> subs = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        SortedNumericDocValues values = reader.getSortedNumericDocValues(field.name);
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
-      }
-      MergedDocIdSetIterator<SortedNumericDocValues> mergedIterator =
-          new MergedDocIdSetIterator<>(subs);
-      return new SortedNumericDocValues() {
-
-        @Override
-        public long nextValue() throws IOException {
-          return mergedIterator.current.sub.nextValue();
-        }
-
-        @Override
-        public int docValueCount() {
-          return mergedIterator.current.sub.docValueCount();
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return mergedIterator.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return mergedIterator.cost();
-        }
-      };
+      return MultiDocValues.getSortedNumericValues(new MultiReader(codecReaders), field.name);
     }
 
     @Override
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-      List<DocValuesSub<SortedSetDocValues>> subs = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        SortedSetDocValues values = reader.getSortedSetDocValues(field.name);
-        subs.add(new DocValuesSub<>(values, docStarts[i], docStarts[i + 1]));
-        i++;
+      OrdinalMap map = null;
+      synchronized (cachedOrdMaps) {
+        map = cachedOrdMaps.get(field.name);
+        if (map == null) {
+          // uncached, or not a multi dv
+          SortedSetDocValues dv =
+              MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
+          if (dv instanceof MultiSortedSetDocValues) {
+            map = ((MultiSortedSetDocValues) dv).mapping;
+            cachedOrdMaps.put(field.name, map);
+          }
+          return dv;
+        }
       }
-      MergedDocIdSetIterator<SortedSetDocValues> mergedIterator =
-          new MergedDocIdSetIterator<>(subs);
-      OrdinalMap map = getOrdinalMap(field);
-      return new SortedSetDocValues() {
 
-        @Override
-        public long nextOrd() throws IOException {
-          long segmentOrd = mergedIterator.current.sub.nextOrd();
-          return map.getGlobalOrds(mergedIterator.currentIndex).get(segmentOrd);
+      assert map != null;
+      int size = codecReaders.length;
+      final SortedSetDocValues[] values = new SortedSetDocValues[size];
+      long totalCost = 0;
+      for (int i = 0; i < size; i++) {
+        final LeafReader reader = codecReaders[i];
+        SortedSetDocValues v = reader.getSortedSetDocValues(field.name);
+        if (v == null) {
+          v = DocValues.emptySortedSet();
         }
-
-        @Override
-        public int docValueCount() {
-          return mergedIterator.current.sub.docValueCount();
-        }
-
-        @Override
-        public BytesRef lookupOrd(long globalOrd) throws IOException {
-          int segmentNumber = map.getFirstSegmentNumber(globalOrd);
-          long segmentOrd = map.getFirstSegmentOrd(globalOrd);
-          return subs.get(segmentNumber).sub.lookupOrd(segmentOrd);
-        }
-
-        @Override
-        public long getValueCount() {
-          return map.getValueCount();
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return mergedIterator.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return mergedIterator.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return mergedIterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return mergedIterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return mergedIterator.cost();
-        }
-      };
+        values[i] = v;
+        totalCost += v.cost();
+      }
+      return new MultiSortedSetDocValues(values, docStarts, map, totalCost);
     }
   }
 
