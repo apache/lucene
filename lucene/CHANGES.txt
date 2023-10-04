@@ -164,7 +164,7 @@ Optimizations
   descending score. (Adrien Grand)
 
 * GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
-  to reducing GC load during indexing. (Guo Feng)
+  to reduce GC load during indexing. (Guo Feng)
 
 Changes in runtime behavior
 ---------------------
