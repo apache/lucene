@@ -99,7 +99,6 @@ public class TestCheckJoinIndex extends LuceneTestCase {
   public void testInconsistentDeletes() throws IOException {
     final Directory dir = newDirectory();
     final IndexWriterConfig iwc = newIndexWriterConfig();
-    iwc.setMergePolicy(newMergePolicy(random(), false));
     iwc.setMergePolicy(NoMergePolicy.INSTANCE); // so that deletions don't trigger merges
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
 
