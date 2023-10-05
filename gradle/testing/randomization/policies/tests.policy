@@ -130,6 +130,8 @@ grant {
 };
 
 grant {
-    // Allow DPU JNI library for PIM query execution
-    permission java.lang.RuntimePermission "loadLibrary.dpujni";
+  // Allow DPU JNI library for PIM query execution
+  permission java.lang.RuntimePermission "loadLibrary.dpujni";
+  // Allow loading native library dpulecene
+  permission java.lang.RuntimePermission "loadLibrary.dpuLucene";
 };

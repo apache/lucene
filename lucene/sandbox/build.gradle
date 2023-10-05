@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+plugins {
+  id 'dev.welbyseely.gradle-cmake-plugin' version '0.0.3'
+}
 apply plugin: 'java-library'
 
 description = 'Various third party contributions and new ideas'
@@ -26,32 +29,37 @@ dependencies {
   moduleTestImplementation project(':lucene:test-framework')
 }
 
-task compileDpu (type: Exec) {
-  inputs.files('dpu/src/exact_phrase/inc/decoder.h', 'dpu/src/exact_phrase/src/matcher.h',
-          'dpu/src/exact_phrase/inc/common.h', 'dpu/src/exact_phrase/inc/query_result.h',
-          'dpu/src/exact_phrase/inc/parser.h', 'dpu/src/exact_phrase/inc/query_parser.h',
-          'dpu/src/exact_phrase/inc/term_lookup.h', 'dpu/src/exact_phrase/inc/term.h',
-          'dpu/src/exact_phrase/src/dpu.c', 'dpu/src/exact_phrase/src/matcher.c',
-          'dpu/src/exact_phrase/src/parser.c', 'dpu/src/exact_phrase/src/decoder.c',
-          'dpu/src/exact_phrase/src/query_parser.c', 'dpu/src/exact_phrase/src/term_lookup.c',
-          'dpu/src/exact_phrase/inc/postings_util.h', 'dpu/src/exact_phrase/src/postings_util.c')
-  outputs.files("dpu/build/dpu_program_exact_phrase")
+cmake {
+  sourceFolder = file('dpu/src')
+  installPrefix = "$projectDir/dpu/build"
+  generator = 'Ninja'
 
-  doFirst {
-    file('dpu/build').mkdirs()
+  buildConfig='Release'
+  buildTarget='all'
+  buildClean=true
+}
+
+task cmakeInstall (type: dev.welbyseely.CMakeBuildTask) {
+  configureFromProject()
+  buildTarget = 'install'
+  inputs.dir('dpu/src')
+  outputs.files('dpu/build/libdpuLucene.so', 'dpu/build/dpu_program_exact_phrase')
+}
+
+cmakeInstall.dependsOn cmakeBuild
+assemble.dependsOn cmakeInstall
+clean.dependsOn cmakeClean
+
+cmakeClean.doFirst {
+  delete file("$projectDir/dpu/build/libdpuLucene.so")
+  delete file("$projectDir/dpu/build/dpu_program_exact_phrase")
+  if (file("$projectDir/dpu/build").list().length == 0) {
+    delete file("$projectDir/dpu/build")
   }
-
-  commandLine 'dpu-clang', '-O3', '-DSTACK_SIZE_DEFAULT=512', '-DNR_TASKLETS=16', '-flto=thin',
-          '-o', 'dpu/build/dpu_program_exact_phrase',
-          '-I', 'dpu/src/exact_phrase/inc', 'dpu/src/exact_phrase/src/dpu.c',
-          'dpu/src/exact_phrase/src/matcher.c', 'dpu/src/exact_phrase/src/parser.c',
-          'dpu/src/exact_phrase/src/decoder.c', 'dpu/src/exact_phrase/src/query_parser.c',
-          'dpu/src/exact_phrase/src/term_lookup.c', 'dpu/src/exact_phrase/src/postings_util.c'
 }
 
 test {
   systemProperty 'lucene.pim.dir', "${rootProject.projectDir}"
+  systemProperty 'java.library.path', "$projectDir/dpu/build:$projectDir/dpu/"
   environment 'LD_LIBRARY_PATH', "$projectDir/dpu/"
 }
-
-compileJava.dependsOn(compileDpu)

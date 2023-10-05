@@ -1,0 +1,13 @@
+---
+BasedOnStyle: Webkit
+ColumnLimit: 130
+IndentCaseLabels: true
+PointerAlignment: Right
+SortIncludes: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+BinPackArguments: false
+AlwaysBreakAfterReturnType: All
+ForEachMacros:
+  - 'DPU_FOREACH'
+  - 'DPU_RANK_FOREACH'

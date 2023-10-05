@@ -32,3 +32,6 @@ __pycache__
 
 # SDKMAN
 .sdkmanrc
+
+# Clangd
+.cache/
