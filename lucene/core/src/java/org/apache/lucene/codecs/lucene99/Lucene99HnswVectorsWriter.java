@@ -1104,12 +1104,13 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       assert docID > lastDocID;
+      T copy = copyValue(vectorValue);
       if (quantizedWriter != null) {
         assert vectorValue instanceof float[];
-        quantizedWriter.addValue((float[]) vectorValue);
+        quantizedWriter.addValue((float[]) copy);
       }
       docsWithField.add(docID);
-      vectors.add(copyValue(vectorValue));
+      vectors.add(copy);
       hnswGraphBuilder.addGraphNode(node);
       node++;
       lastDocID = docID;
