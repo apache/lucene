@@ -78,27 +78,30 @@ final class MaxScoreBulkScorer extends BulkScorer {
     while (outerWindowMin < max) {
       int outerWindowMax = computeOuterWindowMax(outerWindowMin);
       outerWindowMax = Math.min(outerWindowMax, max);
-      updateMaxWindowScores(outerWindowMin, outerWindowMax);
-      if (partitionScorers() == false) {
-        // No matches in this window
-        outerWindowMin = outerWindowMax;
-        continue;
-      }
-      // The outer window was computed based on essential scorers from the _previous_ window. In
-      // general the set of essential scorers is rather stable, but there is a chance that some
-      // scorers got swapped from essential to non-essential or vice-versa. So we recompute the
-      // window
-      // max to see if the new partition would prefer a smaller window in order to have better score
-      // upper bounds, and partition again if so.
-      int newOuterWindowMax = computeOuterWindowMax(outerWindowMin);
-      if (newOuterWindowMax < outerWindowMax) {
-        outerWindowMax = newOuterWindowMax;
+
+      while (true) {
         updateMaxWindowScores(outerWindowMin, outerWindowMax);
         if (partitionScorers() == false) {
           // No matches in this window
           outerWindowMin = outerWindowMax;
-          continue;
+          continue outer;
         }
+
+        // There is a dependency between windows and maximum scores, as we compute windows based on
+        // maximum scores and maximum scores based on windows.
+        // So the approach consists of starting by computing a window based on the set of essential
+        // scorers from the _previous_ window and then iteratively recompute maximum scores and
+        // windows as long as the window size decreases.
+        // In general the set of essential scorers is rather stable over time so this would exit
+        // after a single iteration, but there is a change that some scorers got swapped between the
+        // set of essential and non-essential scorers, in which case there may be multiple
+        // iterations of this loop.
+
+        int newOuterWindowMax = computeOuterWindowMax(outerWindowMin);
+        if (newOuterWindowMax >= outerWindowMax) {
+          break;
+        }
+        outerWindowMax = newOuterWindowMax;
       }
 
       DisiWrapper top = essentialQueue.top();
