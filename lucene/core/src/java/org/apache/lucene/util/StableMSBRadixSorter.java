@@ -79,6 +79,7 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
     restore(from, to);
   }
 
+  /** A MergeSorter taking advantage of temporary storage. */
   protected abstract class MergeSorter extends Sorter {
     @Override
     public void sort(int from, int to) {
@@ -87,7 +88,7 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
     }
 
     private void mergeSort(int from, int to) {
-      if (to - from < BINARY_SORT_THRESHOLD) {
+      if (to - from < 5) {
         binarySort(from, to);
       } else {
         final int mid = (from + to) >>> 1;
