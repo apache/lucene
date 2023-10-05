@@ -55,7 +55,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         for (int doc = mergedBytes.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = mergedBytes.nextDoc()) {
-          byteWriter.addValue(doc, mergedBytes.vectorValue());
+          byteWriter.addValue(doc, mergedBytes.vectorByteValue());
         }
         break;
       case FLOAT32:
@@ -66,7 +66,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         for (int doc = mergedFloats.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = mergedFloats.nextDoc()) {
-          floatWriter.addValue(doc, mergedFloats.vectorValue());
+          floatWriter.addValue(doc, mergedFloats.vectorFloatValue());
         }
         break;
     }
@@ -221,8 +221,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public float[] vectorValue() throws IOException {
-        return current.values.vectorValue();
+      public float[] vectorFloatValue() throws IOException {
+        return current.values.vectorFloatValue();
       }
 
       @Override
@@ -262,8 +262,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
 
       @Override
-      public byte[] vectorValue() throws IOException {
-        return current.values.vectorValue();
+      public byte[] vectorByteValue() throws IOException {
+        return current.values.vectorByteValue();
       }
 
       @Override

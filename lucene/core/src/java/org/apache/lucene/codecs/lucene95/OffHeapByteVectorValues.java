@@ -100,7 +100,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorByteValue() throws IOException {
       return vectorValue(doc);
     }
 
@@ -165,7 +165,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorByteValue() throws IOException {
       return vectorValue(disi.index());
     }
 
@@ -233,7 +233,7 @@ abstract class OffHeapByteVectorValues extends ByteVectorValues
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorByteValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 

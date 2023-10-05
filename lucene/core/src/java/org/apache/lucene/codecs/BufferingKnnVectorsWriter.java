@@ -141,7 +141,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public float[] vectorFloatValue() throws IOException {
       return randomAccess.vectorValue(docIdOffsets[docId] - 1);
     }
 
@@ -198,7 +198,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorByteValue() throws IOException {
       return randomAccess.vectorValue(docIdOffsets[docId] - 1);
     }
 
@@ -328,7 +328,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public float[] vectorValue() {
+    public float[] vectorFloatValue() {
       return vectors.get(ord);
     }
 
@@ -388,7 +388,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
     }
 
     @Override
-    public byte[] vectorValue() {
+    public byte[] vectorByteValue() {
       return vectors.get(ord);
     }
 

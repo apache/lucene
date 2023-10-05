@@ -181,7 +181,7 @@ public final class Lucene91HnswVectorsWriter extends BufferingKnnVectorsWriter {
         ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
       // write vector
-      float[] vectorValue = vectors.vectorValue();
+      float[] vectorValue = vectors.vectorFloatValue();
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);

@@ -714,15 +714,15 @@ public class TestField extends LuceneTestCase {
         ByteVectorValues binary = r.leaves().get(0).reader().getByteVectorValues("binary");
         assertEquals(1, binary.size());
         assertNotEquals(NO_MORE_DOCS, binary.nextDoc());
-        assertNotNull(binary.vectorValue());
-        assertArrayEquals(b, binary.vectorValue());
+        assertNotNull(binary.vectorByteValue());
+        assertArrayEquals(b, binary.vectorByteValue());
         assertEquals(NO_MORE_DOCS, binary.nextDoc());
 
         FloatVectorValues floatValues = r.leaves().get(0).reader().getFloatVectorValues("float");
         assertEquals(1, floatValues.size());
         assertNotEquals(NO_MORE_DOCS, floatValues.nextDoc());
-        assertEquals(vector.length, floatValues.vectorValue().length);
-        assertEquals(vector[0], floatValues.vectorValue()[0], 0);
+        assertEquals(vector.length, floatValues.vectorFloatValue().length);
+        assertEquals(vector[0], floatValues.vectorFloatValue()[0], 0);
         assertEquals(NO_MORE_DOCS, floatValues.nextDoc());
       }
     }

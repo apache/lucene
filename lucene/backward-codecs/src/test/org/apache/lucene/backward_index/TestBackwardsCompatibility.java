@@ -1346,7 +1346,10 @@ public class TestBackwardsCompatibility extends LuceneTestCase {
           for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(
-                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
+                "vectors do not match for doc=" + cnt,
+                expectedVector,
+                values.vectorFloatValue(),
+                0);
             cnt++;
           }
         }

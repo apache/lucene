@@ -229,7 +229,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
         int newDocID = sortMap.oldToNew(doc);
         docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
+        vectors[newDocID] = delegate.vectorFloatValue().clone();
       }
     }
 
@@ -244,7 +244,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public float[] vectorFloatValue() throws IOException {
       return vectors[docId];
     }
 
@@ -283,7 +283,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
         int newDocID = sortMap.oldToNew(doc);
         docsWithField.set(newDocID);
-        vectors[newDocID] = delegate.vectorValue().clone();
+        vectors[newDocID] = delegate.vectorByteValue().clone();
       }
     }
 
@@ -298,7 +298,7 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
+    public byte[] vectorByteValue() throws IOException {
       return vectors[docId];
     }
 

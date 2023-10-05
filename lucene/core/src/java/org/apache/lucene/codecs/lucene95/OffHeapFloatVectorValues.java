@@ -95,7 +95,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public float[] vectorFloatValue() throws IOException {
       return vectorValue(doc);
     }
 
@@ -160,7 +160,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public float[] vectorFloatValue() throws IOException {
       return vectorValue(disi.index());
     }
 
@@ -228,7 +228,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public float[] vectorFloatValue() throws IOException {
       throw new UnsupportedOperationException();
     }
 

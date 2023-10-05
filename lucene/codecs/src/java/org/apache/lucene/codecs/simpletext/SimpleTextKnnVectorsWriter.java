@@ -89,7 +89,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeFloatVectorValue(FloatVectorValues vectors) throws IOException {
     // write vector value
-    float[] value = vectors.vectorValue();
+    float[] value = vectors.vectorFloatValue();
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);
@@ -112,7 +112,7 @@ public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeByteVectorValue(ByteVectorValues vectors) throws IOException {
     // write vector value
-    byte[] value = vectors.vectorValue();
+    byte[] value = vectors.vectorByteValue();
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);

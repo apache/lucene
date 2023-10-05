@@ -121,7 +121,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
       vectors[vectorValues.docID()] =
           ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
+              vectorValues.vectorByteValue(), 0, vectorValues.vectorByteValue().length);
     }
     return MockByteVectorValues.fromValues(vectors);
   }
