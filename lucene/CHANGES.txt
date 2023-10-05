@@ -176,6 +176,8 @@ Optimizations
 * GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
   to reduce GC load during indexing. (Guo Feng)
 
+* GITHUB#12623: Use a MergeSorter taking advantage of extra storage for StableMSBRadixSorter. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
