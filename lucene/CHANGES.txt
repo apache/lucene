@@ -150,6 +150,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#12523: TaskExecutor waits for all tasks to complete before returning when Exceptions
+  are thrown during concurrent operations (Michael Peterson)
+
 * GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
   outside of the o.a.l.search package (Luca Cavanna)
 
