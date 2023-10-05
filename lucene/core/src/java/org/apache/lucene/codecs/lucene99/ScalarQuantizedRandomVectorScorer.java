@@ -27,8 +27,11 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 /** Quantized vector scorer */
 final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
 
-  private static byte[] quantizeQuery(
-      float[] query, VectorSimilarityFunction similarityFunction, ScalarQuantizer scalarQuantizer) {
+  private static float quantizeQuery(
+      float[] query,
+      byte[] quantizedQuery,
+      VectorSimilarityFunction similarityFunction,
+      ScalarQuantizer scalarQuantizer) {
     float[] processedQuery =
         switch (similarityFunction) {
           case EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> query;
@@ -38,27 +41,22 @@ final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
             yield queryCopy;
           }
         };
-    byte[] quantizedQuery = new byte[query.length];
-    scalarQuantizer.quantize(processedQuery, quantizedQuery);
-    return quantizedQuery;
+    return scalarQuantizer.quantize(processedQuery, quantizedQuery, similarityFunction);
   }
 
   private final byte[] quantizedQuery;
   private final float queryOffset;
-  private final float globalOffsetCorrection;
   private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
   ScalarQuantizedRandomVectorScorer(
       ScalarQuantizedVectorSimilarity similarityFunction,
       RandomAccessQuantizedByteVectorValues values,
-      float globalOffsetCorrection,
       byte[] query,
       float queryOffset) {
     this.quantizedQuery = query;
     this.queryOffset = queryOffset;
     this.similarity = similarityFunction;
-    this.globalOffsetCorrection = globalOffsetCorrection;
     this.values = values;
   }
 
@@ -66,51 +64,21 @@ final class ScalarQuantizedRandomVectorScorer implements RandomVectorScorer {
       VectorSimilarityFunction similarityFunction,
       ScalarQuantizer scalarQuantizer,
       RandomAccessQuantizedByteVectorValues values,
-      byte[] query,
-      float queryOffset) {
-    this(
-        ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-            similarityFunction, scalarQuantizer.getAlpha() * scalarQuantizer.getAlpha()),
-        values,
-        switch (similarityFunction) {
-          case EUCLIDEAN -> 0f;
-          case COSINE, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> values.dimension()
-              * scalarQuantizer.getOffset()
-              * scalarQuantizer.getOffset();
-        },
-        query,
-        queryOffset);
-  }
-
-  ScalarQuantizedRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      ScalarQuantizer scalarQuantizer,
-      RandomAccessQuantizedByteVectorValues values,
-      byte[] quantizedQuery) {
-    this(
-        similarityFunction,
-        scalarQuantizer,
-        values,
-        quantizedQuery,
-        scalarQuantizer.calculateVectorOffset(quantizedQuery, similarityFunction));
-  }
-
-  ScalarQuantizedRandomVectorScorer(
-      VectorSimilarityFunction similarityFunction,
-      ScalarQuantizer scalarQuantizer,
-      RandomAccessQuantizedByteVectorValues values,
       float[] query) {
-    this(
-        similarityFunction,
-        scalarQuantizer,
-        values,
-        quantizeQuery(query, similarityFunction, scalarQuantizer));
+    byte[] quantizedQuery = new byte[query.length];
+    float correction = quantizeQuery(query, quantizedQuery, similarityFunction, scalarQuantizer);
+    this.quantizedQuery = quantizedQuery;
+    this.queryOffset = correction;
+    this.similarity =
+        ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
+            similarityFunction, scalarQuantizer.getConstantMultiplier());
+    this.values = values;
   }
 
   @Override
   public float score(int node) throws IOException {
     byte[] storedVectorValue = values.vectorValue(node);
-    float storedVectorCorrection = values.getScoreCorrectionConstant() + globalOffsetCorrection;
+    float storedVectorCorrection = values.getScoreCorrectionConstant();
     return similarity.score(
         quantizedQuery, this.queryOffset, storedVectorValue, storedVectorCorrection);
   }

@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestScalarQuantizer extends LuceneTestCase {
@@ -25,6 +26,7 @@ public class TestScalarQuantizer extends LuceneTestCase {
   public void testQuantizeAndDeQuantize() throws IOException {
     int dims = 128;
     int numVecs = 100;
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     float[][] floats = randomFloats(numVecs, dims);
     FloatVectorValues floatVectorValues = fromFloats(floats);
@@ -33,9 +35,9 @@ public class TestScalarQuantizer extends LuceneTestCase {
     byte[] quantized = new byte[dims];
     byte[] requantized = new byte[dims];
     for (int i = 0; i < numVecs; i++) {
-      scalarQuantizer.quantize(floats[i], quantized);
+      scalarQuantizer.quantize(floats[i], quantized, similarityFunction);
       scalarQuantizer.deQuantize(quantized, dequantized);
-      scalarQuantizer.quantize(dequantized, requantized);
+      scalarQuantizer.quantize(dequantized, requantized, similarityFunction);
       for (int j = 0; j < dims; j++) {
         assertEquals(dequantized[j], floats[i][j], 0.02);
         assertEquals(quantized[j], requantized[j]);

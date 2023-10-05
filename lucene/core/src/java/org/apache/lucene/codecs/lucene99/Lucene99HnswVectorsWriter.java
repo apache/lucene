@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.calculateDefaultQuantile;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -168,7 +169,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     // Quantization only supports FLOAT32 for now
     if (quantizedVectorsWriter != null
         && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      quantizedVectorFieldWriter = quantizedVectorsWriter.addField(fieldInfo);
+      quantizedVectorFieldWriter =
+          quantizedVectorsWriter.addField(fieldInfo, segmentWriteState.infoStream);
     }
     FieldWriter<?> newField =
         FieldWriter.create(
@@ -480,6 +482,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
         // We need the quantization parameters to write to the meta file
         scalarQuantizer = quantizedVectorsWriter.mergeQuantiles(fieldInfo, mergeState);
+        if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
+          segmentWriteState.infoStream.message(
+              QUANTIZED_VECTOR_COMPONENT,
+              "Merged quantiles field: "
+                  + fieldInfo.name
+                  + " newly merged quantile: "
+                  + scalarQuantizer);
+        }
         assert scalarQuantizer != null;
         quantizedVectorDataOffsetAndLength = new long[2];
         quantizedVectorDataOffsetAndLength[0] = quantizedVectorData.alignFilePointer(Float.BYTES);

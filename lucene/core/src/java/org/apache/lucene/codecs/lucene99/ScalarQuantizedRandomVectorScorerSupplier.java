@@ -26,7 +26,6 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 /** Quantized vector scorer supplier */
 final class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
 
-  private final float globalOffsetCorrection;
   private final RandomAccessQuantizedByteVectorValues values;
   private final ScalarQuantizedVectorSimilarity similarity;
 
@@ -34,17 +33,9 @@ final class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSco
       VectorSimilarityFunction similarityFunction,
       ScalarQuantizer scalarQuantizer,
       RandomAccessQuantizedByteVectorValues values) {
-    this.globalOffsetCorrection =
-        switch (similarityFunction) {
-          case EUCLIDEAN -> 0f;
-          case COSINE, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> values.dimension()
-              * scalarQuantizer.getOffset()
-              * scalarQuantizer.getOffset();
-        };
-    final float correctiveMultiplier = scalarQuantizer.getAlpha() * scalarQuantizer.getAlpha();
     this.similarity =
         ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
-            similarityFunction, correctiveMultiplier);
+            similarityFunction, scalarQuantizer.getConstantMultiplier());
     this.values = values;
   }
 
@@ -53,7 +44,6 @@ final class ScalarQuantizedRandomVectorScorerSupplier implements RandomVectorSco
     final RandomAccessQuantizedByteVectorValues vectorsCopy = values.copy();
     final byte[] queryVector = values.vectorValue(ord);
     final float queryOffset = values.getScoreCorrectionConstant();
-    return new ScalarQuantizedRandomVectorScorer(
-        similarity, vectorsCopy, globalOffsetCorrection, queryVector, queryOffset);
+    return new ScalarQuantizedRandomVectorScorer(similarity, vectorsCopy, queryVector, queryOffset);
   }
 }

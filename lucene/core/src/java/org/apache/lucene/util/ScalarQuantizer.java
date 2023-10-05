@@ -31,44 +31,53 @@ public class ScalarQuantizer {
   public static final int SCALAR_QUANTIZATION_SAMPLE_SIZE = 25_000;
 
   private final float alpha;
-  private final float offset;
+  private final float scale;
   private final float minQuantile, maxQuantile, configuredQuantile;
 
   public ScalarQuantizer(float minQuantile, float maxQuantile, float configuredQuantile) {
     assert maxQuantile >= maxQuantile;
     this.minQuantile = minQuantile;
     this.maxQuantile = maxQuantile;
+    this.scale = 127f / (maxQuantile - minQuantile);
     this.alpha = (maxQuantile - minQuantile) / 127f;
-    this.offset = minQuantile;
     this.configuredQuantile = configuredQuantile;
   }
 
-  public void quantize(float[] src, byte[] dest) {
+  public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
+    float correctiveOffset = 0f;
     for (int i = 0; i < src.length; i++) {
-      dest[i] =
-          (byte)
-              Math.round(
-                  (Math.max(minQuantile, Math.min(maxQuantile, src[i])) - minQuantile) / alpha);
+      float v = src[i];
+      float dx = Math.max(minQuantile, Math.min(maxQuantile, src[i])) - minQuantile;
+      float dxs = scale * dx;
+      float dxq = Math.round(dxs) * alpha;
+      correctiveOffset += minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
+      dest[i] = (byte) Math.round(dxs);
     }
+    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
+      return 0;
+    }
+    return correctiveOffset;
+  }
+
+  public float recalculateCorrectiveOffset(
+      float oldOffset, ScalarQuantizer oldQuantizer, VectorSimilarityFunction similarityFunction) {
+    if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
+      return 0f;
+    }
+    // TODO I am not 100% sure this is correct
+    return oldOffset
+        * (minQuantile
+            / oldQuantizer.minQuantile
+            * (maxQuantile - minQuantile)
+            / (oldQuantizer.maxQuantile - oldQuantizer.minQuantile));
   }
 
   public void deQuantize(byte[] src, float[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
-      dest[i] = (alpha * src[i]) + offset;
+      dest[i] = (alpha * src[i]) + minQuantile;
     }
-  }
-
-  public float calculateVectorOffset(byte[] vector, VectorSimilarityFunction similarityFunction) {
-    if (similarityFunction != VectorSimilarityFunction.EUCLIDEAN) {
-      int sum = 0;
-      for (byte b : vector) {
-        sum += b;
-      }
-      return sum * getAlpha() * getOffset();
-    }
-    return 0f;
   }
 
   public float getLowerQuantile() {
@@ -83,20 +92,8 @@ public class ScalarQuantizer {
     return configuredQuantile;
   }
 
-  public float getAlpha() {
-    return alpha;
-  }
-
   public float getConstantMultiplier() {
     return alpha * alpha;
-  }
-
-  public float getOffset() {
-    return offset;
-  }
-
-  public float globalVectorOffset(int dim) {
-    return offset * offset * dim;
   }
 
   private static final Random random = new Random(42);

@@ -23,6 +23,7 @@ package org.apache.lucene.codecs.lucene99;
  * @lucene.experimental
  */
 public final class Lucene99ScalarQuantizedVectorsFormat {
+  public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
 
   static final String NAME = "Lucene99ScalarQuantizedVectorsFormat";
 
