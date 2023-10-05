@@ -110,6 +110,10 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
 
     private void merge(int from, int to, int mid) {
       assert to > mid && mid > from;
+      if (compare(mid - 1, mid) <= 0) {
+        // already sorted.
+        return;
+      }
       int left = from;
       int right = mid;
       int index = from;
