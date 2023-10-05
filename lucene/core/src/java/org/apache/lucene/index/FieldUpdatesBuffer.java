@@ -19,11 +19,11 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefArray;
+import org.apache.lucene.util.BytesRefComparator;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
@@ -50,7 +50,7 @@ final class FieldUpdatesBuffer {
   // we use a very simple approach and store the update term values without de-duplication
   // which is also not a common case to keep updating the same value more than once...
   // we might pay a higher price in terms of memory in certain cases but will gain
-  // on CPU for those. We also save on not needing to sort in order to apply the terms in order
+  // on CPU for those. We also use a stable sort to sort in order to apply the terms in order
   // since by definition we store them in order.
   private final BytesRefArray termValues;
   private BytesRefArray.SortState termSortState;
@@ -212,17 +212,34 @@ final class FieldUpdatesBuffer {
     finished = true;
     final boolean sortedTerms = hasSingleValue() && hasValues == null && fields.length == 1;
     if (sortedTerms) {
-      // sort by ascending by term, then sort descending by docsUpTo so that we can skip updates
-      // with lower docUpTo.
-      termSortState =
-          termValues.sort(
-              Comparator.naturalOrder(),
-              (i1, i2) ->
-                  Integer.compare(
-                      docsUpTo[getArrayIndex(docsUpTo.length, i2)],
-                      docsUpTo[getArrayIndex(docsUpTo.length, i1)]));
+      termSortState = termValues.sort(BytesRefComparator.NATURAL, true);
+      assert assertTermAndDocInOrder();
       bytesUsed.addAndGet(termSortState.ramBytesUsed());
     }
+  }
+
+  private boolean assertTermAndDocInOrder() {
+    try {
+      BytesRefArray.IndexedBytesRefIterator iterator = termValues.iterator(termSortState);
+      BytesRef last = null;
+      int lastOrd = -1;
+      BytesRef current;
+      while ((current = iterator.next()) != null) {
+        if (last != null) {
+          int cmp = current.compareTo(last);
+          assert cmp >= 0 : "term in reverse order";
+          assert cmp != 0
+                  || docsUpTo[getArrayIndex(docsUpTo.length, lastOrd)]
+                      <= docsUpTo[getArrayIndex(docsUpTo.length, iterator.ord())]
+              : "doc id in reverse order";
+        }
+        last = BytesRef.deepCopyOf(current);
+        lastOrd = iterator.ord();
+      }
+    } catch (IOException e) {
+      assert false : e.getMessage();
+    }
+    return true;
   }
 
   BufferedUpdateIterator iterator() {
@@ -336,22 +353,22 @@ final class FieldUpdatesBuffer {
 
     BytesRef nextTerm() throws IOException {
       if (lookAheadTermIterator != null) {
-        final BytesRef lastTerm = bufferedUpdate.termValue;
-        BytesRef lookAheadTerm;
-        while ((lookAheadTerm = lookAheadTermIterator.next()) != null
-            && lookAheadTerm.equals(lastTerm)) {
-          BytesRef discardedTerm =
-              termValuesIterator.next(); // discard as the docUpTo of the previous update is higher
-          assert discardedTerm.equals(lookAheadTerm)
-              : "[" + discardedTerm + "] != [" + lookAheadTerm + "]";
-          assert docsUpTo[getArrayIndex(docsUpTo.length, termValuesIterator.ord())]
-                  <= bufferedUpdate.docUpTo
-              : docsUpTo[getArrayIndex(docsUpTo.length, termValuesIterator.ord())]
-                  + ">"
-                  + bufferedUpdate.docUpTo;
+        if (bufferedUpdate.termValue == null) {
+          lookAheadTermIterator.next();
         }
+        BytesRef lastTerm, aheadTerm;
+        do {
+          aheadTerm = lookAheadTermIterator.next();
+          lastTerm = termValuesIterator.next();
+        } while (aheadTerm != null
+            // Shortcut to avoid equals, we did a stable sort before, so aheadTerm can only equal
+            // lastTerm when aheadTerm has a lager ord.
+            && lookAheadTermIterator.ord() > termValuesIterator.ord()
+            && aheadTerm.equals(lastTerm));
+        return lastTerm;
+      } else {
+        return termValuesIterator.next();
       }
-      return termValuesIterator.next();
     }
   }
 

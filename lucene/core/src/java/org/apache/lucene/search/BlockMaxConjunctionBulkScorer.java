@@ -117,7 +117,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       for (int i = 1; i < iterators.length; ++i) {
         // First check if we have a chance of having a match
         if (hasMinCompetitiveScore
-            && MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length)
+            && (float) MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length)
                 < scorable.minCompetitiveScore) {
           doc = lead.nextDoc();
           continue advanceHead;

@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -79,10 +80,12 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
 
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-    TopDocs[] perLeafResults =
-        (taskExecutor == null)
-            ? sequentialSearch(reader.leaves(), filterWeight)
-            : parallelSearch(reader.leaves(), filterWeight, taskExecutor);
+    List<LeafReaderContext> leafReaderContexts = reader.leaves();
+    List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
+    for (LeafReaderContext context : leafReaderContexts) {
+      tasks.add(() -> searchLeaf(context, filterWeight));
+    }
+    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
 
     // Merge sort the results
     TopDocs topK = TopDocs.merge(k, perLeafResults);
@@ -90,25 +93,6 @@ abstract class AbstractKnnVectorQuery extends Query {
       return new MatchNoDocsQuery();
     }
     return createRewrittenQuery(reader, topK);
-  }
-
-  private TopDocs[] sequentialSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight) throws IOException {
-    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
-    for (LeafReaderContext ctx : leafReaderContexts) {
-      perLeafResults[ctx.ord] = searchLeaf(ctx, filterWeight);
-    }
-    return perLeafResults;
-  }
-
-  private TopDocs[] parallelSearch(
-      List<LeafReaderContext> leafReaderContexts, Weight filterWeight, TaskExecutor taskExecutor)
-      throws IOException {
-    List<TaskExecutor.Task<TopDocs>> tasks = new ArrayList<>();
-    for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(taskExecutor.createTask(() -> searchLeaf(context, filterWeight)));
-    }
-    return taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
   }
 
   private TopDocs searchLeaf(LeafReaderContext ctx, Weight filterWeight) throws IOException {

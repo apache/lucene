@@ -347,6 +347,29 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    int bi = (int) (pos >> chunkSizePower);
+    int bufferPos = (int) (pos & chunkSizeMask);
+    try {
+      int curAvail = Math.min(buffers[bi].capacity() - bufferPos, len);
+      while (len > curAvail) {
+        guard.getBytes(buffers[bi], bufferPos, bytes, offset, curAvail);
+        len -= curAvail;
+        offset += curAvail;
+        bi++;
+        if (bi >= buffers.length) {
+          throw new EOFException("read past EOF: " + this);
+        }
+        bufferPos = 0;
+        curAvail = Math.min(len, buffers[bi].capacity());
+      }
+      guard.getBytes(buffers[bi], bufferPos, bytes, offset, curAvail);
+    } catch (NullPointerException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
   public short readShort(long pos) throws IOException {
     final int bi = (int) (pos >> chunkSizePower);
     try {
@@ -570,6 +593,17 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     }
 
     @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+      try {
+        guard.getBytes(curBuf, (int) pos, bytes, offset, len);
+      } catch (IllegalArgumentException e) {
+        throw handlePositionalIOOBE(e, "read", pos);
+      } catch (NullPointerException e) {
+        throw alreadyClosed(e);
+      }
+    }
+
+    @Override
     public short readShort(long pos) throws IOException {
       try {
         return guard.getShort(curBuf, (int) pos);
@@ -643,6 +677,11 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
     @Override
     public byte readByte(long pos) throws IOException {
       return super.readByte(pos + offset);
+    }
+
+    @Override
+    public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+      super.readBytes(pos + this.offset, bytes, offset, len);
     }
 
     @Override

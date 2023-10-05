@@ -679,7 +679,7 @@ public final class BPIndexReorderer {
               }
 
               @Override
-              public int compare(BytesRef o1, BytesRef o2) {
+              public int compare(BytesRef o1, BytesRef o2, int k) {
                 assert o1.length == 2 * Integer.BYTES;
                 assert o2.length == 2 * Integer.BYTES;
                 return ArrayUtil.compareUnsigned8(o1.bytes, o1.offset, o2.bytes, o2.offset);
