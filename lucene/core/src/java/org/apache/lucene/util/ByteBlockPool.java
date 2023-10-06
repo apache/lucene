@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * Represents a logical byte[] as a series of blocks. You can write into it by using append and read
- * using the offset position (random access). THe buffers can be reset to reuse the allocated
+ * using the offset position (random access). The buffers can be reset to reuse the allocated
  * buffers.
  *
  * @lucene.internal
