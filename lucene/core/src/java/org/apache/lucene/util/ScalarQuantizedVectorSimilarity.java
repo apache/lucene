@@ -26,6 +26,13 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  */
 public interface ScalarQuantizedVectorSimilarity {
 
+  /**
+   * Creates a {@link ScalarQuantizedVectorSimilarity} from a {@link VectorSimilarityFunction} and
+   * the constant multiplier used for quantization.
+   * @param sim similarity function
+   * @param constMultiplier constant multiplier used for quantization
+   * @return a {@link ScalarQuantizedVectorSimilarity} that applies the appropriate corrections
+   */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
       VectorSimilarityFunction sim, float constMultiplier) {
     return switch (sim) {

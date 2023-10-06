@@ -34,6 +34,13 @@ public class ScalarQuantizer {
   private final float scale;
   private final float minQuantile, maxQuantile, configuredQuantile;
 
+  /**
+   *
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @param configuredQuantile The configured quantile/confidence interval used to calculate the
+   *                           quantiles.
+   */
   public ScalarQuantizer(float minQuantile, float maxQuantile, float configuredQuantile) {
     assert maxQuantile >= maxQuantile;
     this.minQuantile = minQuantile;
@@ -43,6 +50,13 @@ public class ScalarQuantizer {
     this.configuredQuantile = configuredQuantile;
   }
 
+  /**
+   * Quantize a float vector into a byte vector
+   * @param src the source vector
+   * @param dest the destination vector
+   * @param similarityFunction the similarity function used to calculate the quantile
+   * @return the corrective offset that needs to be applied to the score
+   */
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
     float correctiveOffset = 0f;
@@ -60,6 +74,13 @@ public class ScalarQuantizer {
     return correctiveOffset;
   }
 
+  /**
+   * Recalculate the old score corrective value given new current quantiles
+   * @param oldOffset the old offset
+   * @param oldQuantizer the old quantizer
+   * @param similarityFunction the similarity function used to calculate the quantile
+   * @return the new offset
+   */
   public float recalculateCorrectiveOffset(
       float oldOffset, ScalarQuantizer oldQuantizer, VectorSimilarityFunction similarityFunction) {
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
@@ -73,6 +94,11 @@ public class ScalarQuantizer {
             / (oldQuantizer.maxQuantile - oldQuantizer.minQuantile));
   }
 
+  /**
+   * Dequantize a byte vector into a float vector
+   * @param src the source vector
+   * @param dest the destination vector
+   */
   public void deQuantize(byte[] src, float[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
@@ -98,6 +124,18 @@ public class ScalarQuantizer {
 
   private static final Random random = new Random(42);
 
+  /**
+   * This will read the float vector values and calculate the quantiles. If the number of float
+   * vectors is less than {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then all the values will be read
+   * and the quantiles calculated. If the number of float vectors is greater than
+   * {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then a random sample of
+   * {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} will be read and the quantiles calculated.
+   *
+   * @param floatVectorValues the float vector values from which to calculate the quantiles
+   * @param quantile the quantile/confidence interval used to calculate the quantiles
+   * @return A new {@link ScalarQuantizer} instance
+   * @throws IOException if there is an error reading the float vector values
+   */
   public static ScalarQuantizer fromVectors(FloatVectorValues floatVectorValues, float quantile)
       throws IOException {
     assert 0.9f <= quantile && quantile <= 1f;

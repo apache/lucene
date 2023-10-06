@@ -29,9 +29,9 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
- * Lucene 9.5 vector format, which encodes numeric vector values and an optional associated graph
+ * Lucene 9.9 vector format, which encodes numeric vector values and an optional associated graph
  * connecting the documents having values. The graph is used to power HNSW search. The format
- * consists of three files:
+ * consists of three files, with an optional fourth file:
  *
  * <h2>.vec (vector data) file</h2>
  *
@@ -73,6 +73,12 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <ul>
  *   <li><b>[int32]</b> field number
  *   <li><b>[int32]</b> vector similarity function ordinal
+ *   <li><b>[byte]</b> if equals to 1  indicates if the field is for quantized vectors
+ *   <li><b>[int32]</b> if quantized: the configured quantile float int bits.
+ *   <li><b>[int32]</b> if quantized: the calculated lower quantile float int32 bits.
+ *   <li><b>[int32]</b> if quantized: the calculated upper quantile float int32 bits.
+ *   <li><b>[vlong]</b> if quantized: offset to this field's vectors in the .veq file
+ *   <li><b>[vlong]</b> if quantized: length of this field's vectors, in bytes in the .veq file
  *   <li><b>[vlong]</b> offset to this field's vectors in the .vec file
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vlong]</b> offset to this field's index in the .vex file
@@ -92,6 +98,18 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *         <li><b>array[vint]</b> for levels greater than 0 list of nodes on this level, stored as
  *             the level 0th delta encoded nodes' ordinals.
  *       </ul>
+ * </ul>
+ * <h2>.veq (quantized vector data) file</h2>
+ *
+ * <p>For each field:
+ *
+ * <ul>
+ *   <li>Vector data ordered by field, document ordinal, and vector dimension. Each vector dimension is stored as a single byte
+ *       and every vector has a single float32 value for scoring corrections.
+ *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
+ *       note that only in sparse case
+ *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
+ *       that only in sparse case
  * </ul>
  *
  * @lucene.experimental

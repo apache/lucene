@@ -22,7 +22,9 @@ import java.nio.ByteBuffer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 
-/** Read the vector values from the index input. This supports both iterated and random access. */
+/** Read the quantized vector values and their score correction values from the index input.
+ * This supports both iterated and random access.
+ **/
 abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
     implements RandomAccessQuantizedByteVectorValues {
 
