@@ -37,10 +37,10 @@ public class TestByteSliceReader extends LuceneTestCase {
     BLOCK_POOL = new ByteBlockPool(new ByteBlockPool.DirectAllocator());
     BLOCK_POOL.nextBuffer();
     byte[] buffer = BLOCK_POOL.buffer;
-    int upto = BLOCK_POOL.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
+    int upto = TermsHashPerField.newSlice(BLOCK_POOL, TermsHashPerField.FIRST_LEVEL_SIZE);
     for (byte randomByte : RANDOM_DATA) {
       if ((buffer[upto] & 16) != 0) {
-        upto = BLOCK_POOL.allocSlice(buffer, upto);
+        upto = TermsHashPerField.allocSlice(BLOCK_POOL, buffer, upto);
         buffer = BLOCK_POOL.buffer;
       }
       buffer[upto++] = randomByte;
