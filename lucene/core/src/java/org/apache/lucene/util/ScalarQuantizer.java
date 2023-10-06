@@ -35,11 +35,10 @@ public class ScalarQuantizer {
   private final float minQuantile, maxQuantile, configuredQuantile;
 
   /**
-   *
    * @param minQuantile the lower quantile of the distribution
    * @param maxQuantile the upper quantile of the distribution
    * @param configuredQuantile The configured quantile/confidence interval used to calculate the
-   *                           quantiles.
+   *     quantiles.
    */
   public ScalarQuantizer(float minQuantile, float maxQuantile, float configuredQuantile) {
     assert maxQuantile >= maxQuantile;
@@ -52,6 +51,7 @@ public class ScalarQuantizer {
 
   /**
    * Quantize a float vector into a byte vector
+   *
    * @param src the source vector
    * @param dest the destination vector
    * @param similarityFunction the similarity function used to calculate the quantile
@@ -76,6 +76,7 @@ public class ScalarQuantizer {
 
   /**
    * Recalculate the old score corrective value given new current quantiles
+   *
    * @param oldOffset the old offset
    * @param oldQuantizer the old quantizer
    * @param similarityFunction the similarity function used to calculate the quantile
@@ -96,6 +97,7 @@ public class ScalarQuantizer {
 
   /**
    * Dequantize a byte vector into a float vector
+   *
    * @param src the source vector
    * @param dest the destination vector
    */
@@ -127,9 +129,9 @@ public class ScalarQuantizer {
   /**
    * This will read the float vector values and calculate the quantiles. If the number of float
    * vectors is less than {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then all the values will be read
-   * and the quantiles calculated. If the number of float vectors is greater than
-   * {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} then a random sample of
-   * {@link #SCALAR_QUANTIZATION_SAMPLE_SIZE} will be read and the quantiles calculated.
+   * and the quantiles calculated. If the number of float vectors is greater than {@link
+   * #SCALAR_QUANTIZATION_SAMPLE_SIZE} then a random sample of {@link
+   * #SCALAR_QUANTIZATION_SAMPLE_SIZE} will be read and the quantiles calculated.
    *
    * @param floatVectorValues the float vector values from which to calculate the quantiles
    * @param quantile the quantile/confidence interval used to calculate the quantiles

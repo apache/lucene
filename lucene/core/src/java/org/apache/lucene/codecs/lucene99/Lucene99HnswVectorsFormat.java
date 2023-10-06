@@ -73,7 +73,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  * <ul>
  *   <li><b>[int32]</b> field number
  *   <li><b>[int32]</b> vector similarity function ordinal
- *   <li><b>[byte]</b> if equals to 1  indicates if the field is for quantized vectors
+ *   <li><b>[byte]</b> if equals to 1 indicates if the field is for quantized vectors
  *   <li><b>[int32]</b> if quantized: the configured quantile float int bits.
  *   <li><b>[int32]</b> if quantized: the calculated lower quantile float int32 bits.
  *   <li><b>[int32]</b> if quantized: the calculated upper quantile float int32 bits.
@@ -99,13 +99,15 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *             the level 0th delta encoded nodes' ordinals.
  *       </ul>
  * </ul>
+ *
  * <h2>.veq (quantized vector data) file</h2>
  *
  * <p>For each field:
  *
  * <ul>
- *   <li>Vector data ordered by field, document ordinal, and vector dimension. Each vector dimension is stored as a single byte
- *       and every vector has a single float32 value for scoring corrections.
+ *   <li>Vector data ordered by field, document ordinal, and vector dimension. Each vector dimension
+ *       is stored as a single byte and every vector has a single float32 value for scoring
+ *       corrections.
  *   <li>DocIds encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)},
  *       note that only in sparse case
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
