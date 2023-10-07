@@ -82,7 +82,7 @@ public final class FieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
     rootBlockFP =
-        (new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length)).readVLong()
+        SegmentTermsEnum.readMSBVLong(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     // Initialize FST always off-heap.
     final IndexInput clone = indexIn.clone();

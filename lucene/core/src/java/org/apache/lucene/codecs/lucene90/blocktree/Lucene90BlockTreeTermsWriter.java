@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
@@ -460,6 +461,18 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       return "BLOCK: prefix=" + brToString(prefix);
     }
 
+    private final byte[] bytes = new byte[8];
+    private final ByteArrayDataOutput scratch = new ByteArrayDataOutput(bytes);
+
+    private void writeMSBVLong(long i, DataOutput scratchBytes) throws IOException {
+      scratch.reset(bytes);
+      scratch.writeVLong(i);
+      for (int p = scratch.getPosition() - 1; p > 0; p--) {
+        scratchBytes.writeByte((byte) ((bytes[p] & 0x7F) | 0x80));
+      }
+      scratchBytes.writeByte((byte) (bytes[0] & 0x7F));
+    }
+
     public void compileIndex(
         List<PendingBlock> blocks,
         ByteBuffersDataOutput scratchBytes,
@@ -475,7 +488,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // TODO: try writing the leading vLong in MSB order
       // (opposite of what Lucene does today), for better
       // outputs sharing in the FST
-      scratchBytes.writeVLong(encodeOutput(fp, hasTerms, isFloor));
+      writeMSBVLong(encodeOutput(fp, hasTerms, isFloor), scratchBytes);
       if (isFloor) {
         scratchBytes.writeVInt(blocks.size() - 1);
         for (int i = 1; i < blocks.size(); i++) {
