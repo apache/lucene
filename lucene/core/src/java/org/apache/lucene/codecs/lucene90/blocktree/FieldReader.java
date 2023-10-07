@@ -16,12 +16,15 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
+import static org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader.VERSION_MSB_VLONG_OUTPUT;
+
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -82,8 +85,7 @@ public final class FieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
     rootBlockFP =
-        SegmentTermsEnum.readMSBVLong(
-                new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
+        readMSBVLong(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     // Initialize FST always off-heap.
     final IndexInput clone = indexIn.clone();
@@ -98,6 +100,22 @@ public final class FieldReader extends Terms {
      w.close();
      }
     */
+  }
+
+  long readMSBVLong(DataInput in) throws IOException {
+    if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
+      long l = 0L;
+      while (true) {
+        byte b = in.readByte();
+        l = (l << 7) | (b & 0x7FL);
+        if ((b & 0x80) == 0) {
+          break;
+        }
+      }
+      return l;
+    } else {
+      return in.readVLong();
+    }
   }
 
   @Override

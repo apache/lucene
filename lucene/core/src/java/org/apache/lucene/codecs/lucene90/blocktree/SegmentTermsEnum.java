@@ -24,7 +24,6 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -237,7 +236,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, BytesRef frameData, int length)
       throws IOException {
     scratchReader.reset(frameData.bytes, frameData.offset, frameData.length);
-    final long code = readMSBVLong(scratchReader);
+    final long code = fr.readMSBVLong(scratchReader);
     final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
@@ -249,18 +248,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     pushFrame(arc, fpSeek, length);
 
     return f;
-  }
-
-  static long readMSBVLong(DataInput input) throws IOException {
-    long l = 0L;
-    while (true) {
-      byte b = input.readByte();
-      l = (l << 7) | (b & 0x7FL);
-      if ((b & 0x80) == 0) {
-        break;
-      }
-    }
-    return l;
   }
 
   // Pushes next'd frame or seek'd frame; we later
@@ -993,7 +980,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           } else if (isSeekFrame && !f.isFloor) {
             final ByteArrayDataInput reader =
                 new ByteArrayDataInput(output.bytes, output.offset, output.length);
-            final long codeOrig = readMSBVLong(reader);
+            final long codeOrig = fr.readMSBVLong(reader);
             final long code =
                 (f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
                     | (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)

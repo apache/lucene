@@ -208,20 +208,20 @@ import org.apache.lucene.util.packed.PackedInts;
  *       byte of each sub-block, and its file pointer.
  * </ul>
  *
- * @see Lucene90BlockTreeTermsReader
  * @lucene.experimental
+ * @see Lucene90BlockTreeTermsReader
  */
 public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
   /**
    * Suggested default value for the {@code minItemsInBlock} parameter to {@link
-   * #Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
+   * #Lucene90BlockTreeTermsWriter(SegmentWriteState, PostingsWriterBase, int, int)}.
    */
   public static final int DEFAULT_MIN_BLOCK_SIZE = 25;
 
   /**
    * Suggested default value for the {@code maxItemsInBlock} parameter to {@link
-   * #Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
+   * #Lucene90BlockTreeTermsWriter(SegmentWriteState, PostingsWriterBase, int, int)}.
    */
   public static final int DEFAULT_MAX_BLOCK_SIZE = 48;
 
@@ -438,6 +438,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     public final boolean hasTerms;
     public final boolean isFloor;
     public final int floorLeadByte;
+    private final byte[] scratch = new byte[10];
 
     public PendingBlock(
         BytesRef prefix,
@@ -460,16 +461,20 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       return "BLOCK: prefix=" + brToString(prefix);
     }
 
-    private final byte[] bytes = new byte[8];
-    private final ByteArrayDataOutput scratch = new ByteArrayDataOutput(bytes);
-
     private void writeMSBVLong(long i, DataOutput scratchBytes) throws IOException {
-      scratch.reset(bytes);
-      scratch.writeVLong(i);
-      for (int p = scratch.getPosition() - 1; p > 0; p--) {
-        scratchBytes.writeByte((byte) ((bytes[p] & 0x7F) | 0x80));
+      // Write LSB VLong to scratch
+      int pos = 0;
+      while ((i & ~0x7FL) != 0L) {
+        scratch[pos++] = ((byte) (i & 0x7FL));
+        i >>>= 7;
       }
-      scratchBytes.writeByte((byte) (bytes[0] & 0x7F));
+      scratch[pos] = (byte) i;
+      // Reverse order
+      while (pos > 0) {
+        scratchBytes.writeByte((byte) ((scratch[pos] & 0x7F) | 0x80));
+        pos--;
+      }
+      scratchBytes.writeByte((byte) (scratch[pos] & 0x7F));
     }
 
     public void compileIndex(
