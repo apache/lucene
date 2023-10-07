@@ -281,6 +281,13 @@ class BufferedUpdates implements Accountable {
       }
     }
 
+    /**
+     * Visible for testing.
+     */
+    ByteBlockPool getPool() {
+      return pool;
+    }
+
     @Override
     public long ramBytesUsed() {
       return bytesUsed.get();
