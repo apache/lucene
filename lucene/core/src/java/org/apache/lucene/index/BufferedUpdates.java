@@ -281,9 +281,7 @@ class BufferedUpdates implements Accountable {
       }
     }
 
-    /**
-     * Visible for testing.
-     */
+    /** Visible for testing. */
     ByteBlockPool getPool() {
       return pool;
     }
