@@ -208,20 +208,20 @@ import org.apache.lucene.util.packed.PackedInts;
  *       byte of each sub-block, and its file pointer.
  * </ul>
  *
- * @lucene.experimental
  * @see Lucene90BlockTreeTermsReader
+ * @lucene.experimental
  */
 public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
   /**
    * Suggested default value for the {@code minItemsInBlock} parameter to {@link
-   * #Lucene90BlockTreeTermsWriter(SegmentWriteState, PostingsWriterBase, int, int)}.
+   * #Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
    */
   public static final int DEFAULT_MIN_BLOCK_SIZE = 25;
 
   /**
    * Suggested default value for the {@code maxItemsInBlock} parameter to {@link
-   * #Lucene90BlockTreeTermsWriter(SegmentWriteState, PostingsWriterBase, int, int)}.
+   * #Lucene90BlockTreeTermsWriter(SegmentWriteState, PostingsWriterBase,int,int)}.
    */
   public static final int DEFAULT_MAX_BLOCK_SIZE = 48;
 
