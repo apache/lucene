@@ -489,9 +489,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert scratchBytes.size() == 0;
 
-      // TODO: try writing the leading vLong in MSB order
-      // (opposite of what Lucene does today), for better
-      // outputs sharing in the FST
+      // write the leading vLong in MSB order for better outputs sharing in the FST
       writeMSBVLong(encodeOutput(fp, hasTerms, isFloor), scratchBytes);
       if (isFloor) {
         scratchBytes.writeVInt(blocks.size() - 1);
