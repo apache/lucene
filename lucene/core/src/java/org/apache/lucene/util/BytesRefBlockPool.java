@@ -37,7 +37,7 @@ import java.util.Arrays;
 public class BytesRefBlockPool implements Accountable {
 
   private static final long BASE_RAM_BYTES =
-          RamUsageEstimator.shallowSizeOfInstance(BytesRefBlockPool.class);
+      RamUsageEstimator.shallowSizeOfInstance(BytesRefBlockPool.class);
 
   private final ByteBlockPool byteBlockPool;
 
