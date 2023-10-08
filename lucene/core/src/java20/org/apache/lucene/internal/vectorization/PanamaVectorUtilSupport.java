@@ -361,8 +361,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
           Vector<Short> prod16 = va16.mul(vb16);
 
           // sum into accumulators
-          accNorm1 = accNorm1.add(norm1_16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
-          accNorm2 = accNorm2.add(norm2_16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
+          accNorm1 =
+              accNorm1.add(norm1_16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
+          accNorm2 =
+              accNorm2.add(norm2_16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
           accSum = accSum.add(prod16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
         }
         // reduce
