@@ -344,41 +344,26 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         norm1 += accNorm1.reduceLanes(VectorOperators.ADD);
         norm2 += accNorm2.reduceLanes(VectorOperators.ADD);
       } else {
-        // 128-bit impl, which is tricky since we don't have SPECIES_32, it splits vectors up
-        int upperBound = ByteVector.SPECIES_128.loopBound(a.length);
+        // 128-bit impl, which is tricky since we don't have SPECIES_32, it does "overlapping read"
+        int upperBound = ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
         IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
         IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_128);
         IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
-        for (; i < upperBound; i += ByteVector.SPECIES_128.length()) {
-          ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_128, a, i);
-          ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_128, b, i);
+        for (; i < upperBound; i += ByteVector.SPECIES_64.length() >> 1) {
+          ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
+          ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
 
-          // first half
-          Vector<Short> va16_1 = va8.convert(VectorOperators.B2S, 0);
-          Vector<Short> vb16_1 = vb8.convert(VectorOperators.B2S, 0);
-          Vector<Short> norm1_16_1 = va16_1.mul(va16_1);
-          Vector<Short> norm2_16_1 = vb16_1.mul(vb16_1);
-          Vector<Short> prod16_1 = va16_1.mul(vb16_1);
-
-          // second half
-          Vector<Short> va16_2 = va8.convert(VectorOperators.B2S, 1);
-          Vector<Short> vb16_2 = vb8.convert(VectorOperators.B2S, 1);
-          Vector<Short> norm1_16_2 = va16_2.mul(va16_2);
-          Vector<Short> norm2_16_2 = vb16_2.mul(vb16_2);
-          Vector<Short> prod16_2 = va16_2.mul(vb16_2);
+          // process first half only
+          Vector<Short> va16 = va8.convert(VectorOperators.B2S, 0);
+          Vector<Short> vb16 = vb8.convert(VectorOperators.B2S, 0);
+          Vector<Short> norm1_16 = va16.mul(va16);
+          Vector<Short> norm2_16 = vb16.mul(vb16);
+          Vector<Short> prod16 = va16.mul(vb16);
 
           // sum into accumulators
-          Vector<Short> norm1_16 = norm1_16_1.add(norm1_16_2);
-          accNorm1 = accNorm1.add(norm1_16.convert(VectorOperators.S2I, 0));
-          accNorm1 = accNorm1.add(norm1_16.convert(VectorOperators.S2I, 1));
-
-          Vector<Short> norm2_16 = norm2_16_1.add(norm2_16_2);
-          accNorm2 = accNorm2.add(norm2_16.convert(VectorOperators.S2I, 0));
-          accNorm2 = accNorm2.add(norm2_16.convert(VectorOperators.S2I, 1));
-
-          Vector<Short> prod16 = prod16_1.add(prod16_2);
-          accSum = accSum.add(prod16.convert(VectorOperators.S2I, 0));
-          accSum = accSum.add(prod16.convert(VectorOperators.S2I, 1));
+          accNorm1 = accNorm1.add(norm1_16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
+          accNorm2 = accNorm2.add(norm2_16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
+          accSum = accSum.add(prod16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0));
         }
         // reduce
         sum += accSum.reduceLanes(VectorOperators.ADD);
