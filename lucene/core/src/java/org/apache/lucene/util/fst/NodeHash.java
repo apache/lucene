@@ -18,6 +18,7 @@ package org.apache.lucene.util.fst;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Locale;
 
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
@@ -26,7 +27,10 @@ final class NodeHash<T> {
   private long[] table;
 
   // how many nodes are stored in the primary table; when this gets full, we discard tableOld and move primary to it
-  private long count;
+  private int count;
+  private int promoteCount;
+  private int missCount;
+  private int hitCount;
 
   // fallback table.  if we fallback and find the frozen node here, we promote it to primary table, for a simplistic LRU behaviour
   private long[] fallbackTable;
@@ -37,8 +41,10 @@ final class NodeHash<T> {
   private final FST.BytesReader in;
 
   public NodeHash(FST<T> fst, int tableSize, FST.BytesReader in) {
-    if (tableSize <= 0) {
-      throw new IllegalArgumentException("tableSize must be positive; got: " + tableSize);
+    if (tableSize < 4) {
+      // 2 is a power of 2, but does not work because the rehash logic (at 2/3 capacity) becomes over-quantized, and the hash
+      // table becomes 100% full before moving to fallback, and then looking up an entry in 100% full hash table spins forever
+      throw new IllegalArgumentException("tableSize must at least 4; got: " + tableSize);
     }
     mask = tableSize - 1;
     if ((mask & tableSize) != 0) {
@@ -50,21 +56,24 @@ final class NodeHash<T> {
     this.in = in;
   }
 
-  /** Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address, returning
+  /** Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long), returning
    *  true if they are equal. */
   private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
     fst.readFirstRealTargetArc(address, scratchArc, in);
 
     // fail fast for a node with fixed length arcs
     if (scratchArc.bytesPerArc() != 0) {
+      assert node.numArcs > 0;
       // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be sparse or dense
       switch (scratchArc.nodeFlags()) {
         case FST.ARCS_FOR_BINARY_SEARCH:
+          // sparse
           if (node.numArcs != scratchArc.numArcs()) {
             return false;
           }
           break;
         case FST.ARCS_FOR_DIRECT_ADDRESSING:
+          // dense -- compare both the number of labels allocated in the array (some of which may not actually be arcs), and the number of arcs
           if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
               || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
             return false;
@@ -158,9 +167,11 @@ final class NodeHash<T> {
       long node = fallbackTable[pos];
       if (node == 0) {
         // not found
+        //probeCountHisto[c]++;
         return 0;
       } else if (nodesEqual(nodeIn, node)) {
         // frozen version of this node is already here
+        //probeCountHisto[c]++;
         return node;
       }
 
@@ -186,9 +197,10 @@ final class NodeHash<T> {
         node = getFallback(nodeIn, hash);
         if (node != 0) {
           // it was already in fallback -- promote
-          // nocommit could we somehow use the pos from fallback here?  i don't think so?  this hash will have different entries
           //System.out.println("promote fallback " + node);
           table[pos] = node;
+          promoteCount++;
+          //probeCountHisto[c]++;
         } else {
           // not in fallback either -- freeze & add the incoming node
         
@@ -202,18 +214,36 @@ final class NodeHash<T> {
           assert hash(node) == hash : "frozenHash=" + hash(node) + " vs hash=" + hash;
 
           table[pos] = node;
+          missCount++;
+          //probeCountHisto[c]++;
         }
 
         count++;
 
         // swap with fallback at 2/3 occupancy
-        if (count > 2 * table.length / 3) {
-          // more current table to fallback, swap old fallback to current table and zero/clear it
+        if (count > table.length * (2f/ 3)) {
+          // move current table to fallback, swap old fallback to current table and zero/clear it
           long[] tmp = fallbackTable;
           fallbackTable = table;
           table = tmp;
           Arrays.fill(table, 0);
           count = 0;
+          //System.out.println("promote promoteCount=" + promoteCount + " missCount=" + missCount + " hitCount=" + hitCount);
+
+          /*
+          int probeCountSum = 0;
+          for(int i=0;i<1024;i++) {
+            probeCountSum += probeCountHisto[i];
+          }
+          for(int i=0;i<1024;i++) {
+            if (probeCountHisto[i] != 0) {
+              System.out.println("  " + i + " probeCount=" + probeCountHisto[i] + " " + String.format(Locale.ROOT, "%.2f", (probeCountHisto[i]*100./probeCountSum)) + "%");
+            }
+          }
+          */
+          promoteCount = 0;
+          missCount = 0;
+          hitCount = 0;
         }
 
         return node;
@@ -221,6 +251,8 @@ final class NodeHash<T> {
       } else if (nodesEqual(nodeIn, node)) {
         // same node (in frozen form) is already in primary table
         //System.out.println("found existing " + node);
+        hitCount++;
+        //probeCountHisto[c]++;
         return node;
       }
 
@@ -228,5 +260,9 @@ final class NodeHash<T> {
       // quadratic probe
       pos = (pos + (++c)) & mask;
     }
+  }
+
+  public void printStats() {
+    
   }
 }
