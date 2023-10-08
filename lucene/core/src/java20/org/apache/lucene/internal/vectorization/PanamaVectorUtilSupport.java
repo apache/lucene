@@ -280,26 +280,29 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         res += acc.reduceLanes(VectorOperators.ADD);
       } else {
         // 128-bit implementation, which must "split up" vectors due to widening conversions
-        int upperBound = ByteVector.SPECIES_64.loopBound(a.length);
-        IntVector acc1 = IntVector.zero(IntVector.SPECIES_128);
-        IntVector acc2 = IntVector.zero(IntVector.SPECIES_128);
-        for (; i < upperBound; i += ByteVector.SPECIES_64.length()) {
-          ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
-          ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_64, b, i);
-          // expand each byte vector into short vector and multiply
-          Vector<Short> va16 = va8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_128, 0);
-          Vector<Short> vb16 = vb8.convertShape(VectorOperators.B2S, ShortVector.SPECIES_128, 0);
-          Vector<Short> prod16 = va16.mul(vb16);
-          // split each short vector into two int vectors and add
-          Vector<Integer> prod32_1 =
-              prod16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 0);
-          Vector<Integer> prod32_2 =
-              prod16.convertShape(VectorOperators.S2I, IntVector.SPECIES_128, 1);
-          acc1 = acc1.add(prod32_1);
-          acc2 = acc2.add(prod32_2);
+        int upperBound = ByteVector.SPECIES_128.loopBound(a.length);
+        IntVector acc = IntVector.zero(IntVector.SPECIES_128);
+        for (; i < upperBound; i += ByteVector.SPECIES_128.length()) {
+          ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_128, a, i);
+          ByteVector vb8 = ByteVector.fromArray(ByteVector.SPECIES_128, b, i);
+
+          // first half
+          Vector<Short> va16_1 = va8.convert(VectorOperators.B2S, 0);
+          Vector<Short> vb16_1 = vb8.convert(VectorOperators.B2S, 0);
+          Vector<Short> prod16_1 = va16_1.mul(vb16_1);
+
+          // second half
+          Vector<Short> va16_2 = va8.convert(VectorOperators.B2S, 1);
+          Vector<Short> vb16_2 = vb8.convert(VectorOperators.B2S, 1);
+          Vector<Short> prod16_2 = va16_2.mul(vb16_2);
+
+          // sum into accumulators
+          Vector<Short> prod16 = prod16_1.add(prod16_2);
+          acc = acc.add(prod16.convert(VectorOperators.S2I, 0));
+          acc = acc.add(prod16.convert(VectorOperators.S2I, 1));
         }
         // reduce
-        res += acc1.add(acc2).reduceLanes(VectorOperators.ADD);
+        res += acc.reduceLanes(VectorOperators.ADD);
       }
     }
 
