@@ -522,7 +522,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
-              .shouldShareNonSingletonNodes(false)
               .bytesPageBits(pageBits)
               .build();
       // if (DEBUG) {
