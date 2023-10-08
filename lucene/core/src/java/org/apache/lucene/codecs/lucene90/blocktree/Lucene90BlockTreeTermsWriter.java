@@ -460,17 +460,17 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       return "BLOCK: prefix=" + brToString(prefix);
     }
 
-    private static void writeMSBVLong(long i, DataOutput scratchBytes) throws IOException {
-      assert i >= 0;
+    private static void writeMSBVLong(long l, DataOutput scratchBytes) throws IOException {
+      assert l >= 0;
       // Keep zero bits on most significant byte to have more chance to get prefix bytes shared.
       // e.g. we expect 0x7FFF stored as [0x81, 0xFF, 0x7F] but not [0xFF, 0xFF, 0x40]
-      int LSBVLongBytes = (Long.SIZE - Long.numberOfLeadingZeros(i) - 1) / 7 + 1;
-      i <<= Long.SIZE - LSBVLongBytes * 7;
-      for (int j = 1; j < LSBVLongBytes; j++) {
-        scratchBytes.writeByte((byte) (((i >>> 57) & 0x7FL) | 0x80));
-        i = i << 7;
+      final int bytesNeeded = (Long.SIZE - Long.numberOfLeadingZeros(l) - 1) / 7 + 1;
+      l <<= Long.SIZE - bytesNeeded * 7;
+      for (int i = 1; i < bytesNeeded; i++) {
+        scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL) | 0x80));
+        l = l << 7;
       }
-      scratchBytes.writeByte((byte) (((i >>> 57) & 0x7FL)));
+      scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL)));
     }
 
     public void compileIndex(

@@ -85,7 +85,7 @@ public final class FieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
     rootBlockFP =
-        readLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
+        readVLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     // Initialize FST always off-heap.
     final IndexInput clone = indexIn.clone();
@@ -102,7 +102,7 @@ public final class FieldReader extends Terms {
     */
   }
 
-  long readLongOutput(DataInput in) throws IOException {
+  long readVLongOutput(DataInput in) throws IOException {
     if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
       return readMSBVLong(in);
     } else {
