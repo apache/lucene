@@ -438,7 +438,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     public final boolean hasTerms;
     public final boolean isFloor;
     public final int floorLeadByte;
-    private final byte[] scratch = new byte[10];
 
     public PendingBlock(
         BytesRef prefix,
@@ -461,20 +460,17 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       return "BLOCK: prefix=" + brToString(prefix);
     }
 
-    private void writeMSBVLong(long i, DataOutput scratchBytes) throws IOException {
-      // Write "LSB VLong" to scratch
-      int pos = 0;
-      while ((i & ~0x7FL) != 0L) {
-        scratch[pos++] = ((byte) (i & 0x7FL));
-        i >>>= 7;
+    private static void writeMSBVLong(long i, DataOutput scratchBytes) throws IOException {
+      assert i >= 0;
+      // Keep zero bits on most significant byte to have more chance to get prefix bytes shared.
+      // e.g. we expect 0x7FFF stored as [0x81, 0xFF, 0x7F] but not [0xFF, 0xFF, 0x40]
+      int LSBVLongBytes = (Long.SIZE - Long.numberOfLeadingZeros(i) - 1) / 7 + 1;
+      i <<= Long.SIZE - LSBVLongBytes * 7;
+      for (int j = 1; j < LSBVLongBytes; j++) {
+        scratchBytes.writeByte((byte) (((i >>> 57) & 0x7FL) | 0x80));
+        i = i << 7;
       }
-      scratch[pos] = (byte) i;
-      // Reverse order
-      while (pos > 0) {
-        scratchBytes.writeByte((byte) (scratch[pos] | 0x80));
-        pos--;
-      }
-      scratchBytes.writeByte(scratch[pos]);
+      scratchBytes.writeByte((byte) (((i >>> 57) & 0x7FL)));
     }
 
     public void compileIndex(
