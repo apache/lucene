@@ -72,11 +72,7 @@ public final class ByteBlockPool implements Accountable {
     private final Counter bytesUsed;
 
     public DirectTrackingAllocator(Counter bytesUsed) {
-      this(BYTE_BLOCK_SIZE, bytesUsed);
-    }
-
-    public DirectTrackingAllocator(int blockSize, Counter bytesUsed) {
-      super(blockSize);
+      super(BYTE_BLOCK_SIZE);
       this.bytesUsed = bytesUsed;
     }
 
