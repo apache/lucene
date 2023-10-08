@@ -462,7 +462,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     }
 
     private void writeMSBVLong(long i, DataOutput scratchBytes) throws IOException {
-      // Write LSB VLong to scratch
+      // Write "LSB VLong" to scratch
       int pos = 0;
       while ((i & ~0x7FL) != 0L) {
         scratch[pos++] = ((byte) (i & 0x7FL));
@@ -471,10 +471,10 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       scratch[pos] = (byte) i;
       // Reverse order
       while (pos > 0) {
-        scratchBytes.writeByte((byte) ((scratch[pos] & 0x7F) | 0x80));
+        scratchBytes.writeByte((byte) (scratch[pos] | 0x80));
         pos--;
       }
-      scratchBytes.writeByte((byte) (scratch[pos] & 0x7F));
+      scratchBytes.writeByte(scratch[pos]);
     }
 
     public void compileIndex(
