@@ -168,7 +168,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     for (int i = 0; i < streamCount; i++) {
       // initialize each stream with a slice we start with ByteBlockPool.FIRST_LEVEL_SIZE)
       // and grow as we need more space. see ByteBlockPool.LEVEL_SIZE_ARRAY
-      final int upto = newSlice(bytePool, FIRST_LEVEL_SIZE);
+      final int upto = newSlice(bytePool, FIRST_LEVEL_SIZE, 0);
       termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;
     }
     postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];
@@ -270,28 +270,24 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   /** An array holding the level sizes for byte slices. */
   static final int[] LEVEL_SIZE_ARRAY = {5, 14, 20, 30, 40, 40, 80, 80, 120, 200};
 
-  /**
-   * The first level size for new slices
-   *
-   * @see #newSlice(ByteBlockPool, int)
-   */
+  /** The first level size for new slices */
   static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
 
   /**
    * Allocates a new slice with the given size. As each slice is filled with 0's initially, we mark
    * the end with a non-zero byte. This way we don't need to record its length and instead allocate
    * new slice once they hit a non-zero byte.
-   *
-   * @see #FIRST_LEVEL_SIZE
    */
   // pkg private for access by tests
-  static int newSlice(ByteBlockPool bytePool, final int size) {
+  static int newSlice(ByteBlockPool bytePool, final int size, final int level) {
+    assert LEVEL_SIZE_ARRAY[level] == size;
+    // Maybe allocate another block
     if (bytePool.byteUpto > ByteBlockPool.BYTE_BLOCK_SIZE - size) {
       bytePool.nextBuffer();
     }
     final int upto = bytePool.byteUpto;
     bytePool.byteUpto += size;
-    bytePool.buffer[bytePool.byteUpto - 1] = 16;
+    bytePool.buffer[bytePool.byteUpto - 1] = (byte) (16 | level);
     return upto;
   }
 
@@ -317,18 +313,12 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     final int newLevel = NEXT_LEVEL_ARRAY[level];
     final int newSize = LEVEL_SIZE_ARRAY[newLevel];
 
-    // Maybe allocate another block
-    if (bytePool.byteUpto > ByteBlockPool.BYTE_BLOCK_SIZE - newSize) {
-      bytePool.nextBuffer();
-    }
-
-    final int newUpto = bytePool.byteUpto;
+    final int newUpto = newSlice(bytePool, newSize, newLevel);
     final int offset = newUpto + bytePool.byteOffset;
-    bytePool.byteUpto += newSize;
 
     // Copy forward the past 3 bytes (which we are about to overwrite with the forwarding address).
     // We actually copy 4 bytes at once since VarHandles make it cheap.
-    int past3Bytes = ((int) BitUtil.VH_LE_INT.get(slice, upto - 3)) & 0xFFFFFF;
+    final int past3Bytes = ((int) BitUtil.VH_LE_INT.get(slice, upto - 3)) & 0xFFFFFF;
     // Ensure we're not changing the content of `buffer` by setting 4 bytes instead of 3. This
     // should never happen since the next `newSize` bytes must be equal to 0.
     assert bytePool.buffer[newUpto + 3] == 0;
@@ -336,9 +326,6 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
 
     // Write forwarding address at end of last slice:
     BitUtil.VH_LE_INT.set(slice, upto - 3, offset);
-
-    // Write new level:
-    bytePool.buffer[bytePool.byteUpto - 1] = (byte) (16 | newLevel);
 
     return ((newUpto + 3) << 8) | (newSize - 3);
   }

@@ -338,7 +338,7 @@ public class TestTermsHashPerField extends LuceneTestCase {
       byte[] randomData = new byte[size];
       random().nextBytes(randomData);
 
-      int upto = TermsHashPerField.newSlice(pool, TermsHashPerField.FIRST_LEVEL_SIZE);
+      int upto = TermsHashPerField.newSlice(pool, TermsHashPerField.FIRST_LEVEL_SIZE, 0);
 
       for (int offset = 0; offset < size; ) {
         if ((pool.buffer[upto] & 16) == 0) {
