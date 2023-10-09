@@ -60,6 +60,8 @@ API Changes
 * GITHUB#12580: Remove deprecated IndexSearcher#getExecutor in favour of executing concurrent tasks using
   the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
 
+* GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
+
 New Features
 ---------------------
 
@@ -78,11 +80,7 @@ Improvements
 
 * LUCENE-10652: Add a top-n range faceting example to RangeFacetsExample. (Yuting Gan)
 
-* GITHUB#12447, GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
-
-* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
-
-* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+* GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
 Optimizations
 ---------------------
@@ -142,14 +140,27 @@ API Changes
   The default implementation allocates an ew byte array and call StoredFieldVisitor#binaryField(FieldInfo, byte[]).
   (Ignacio Vera)
 
+* GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
+  ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
+
+
 New Features
 ---------------------
 (No changes)
 
 Improvements
 ---------------------
+* GITHUB#12523: TaskExecutor waits for all tasks to complete before returning when Exceptions
+  are thrown during concurrent operations (Michael Peterson)
+
 * GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
   outside of the o.a.l.search package (Luca Cavanna)
+
+* GITHUB#12603: Simplify the TaskExecutor API by exposing a single invokeAll method that takes a
+  collection of callables, executes them and returns their results  (Luca Cavanna)
+
+* GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
+  order to simplify consumer's code (Luca Cavanna)
 
 Optimizations
 ---------------------
@@ -159,6 +170,13 @@ Optimizations
 
 * GITHUB#12382: Faster top-level conjunctions on term queries when sorting by
   descending score. (Adrien Grand)
+  
+* GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
+
+* GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
+  to reduce GC load during indexing. (Guo Feng)
+
+* GITHUB#12623: Use a MergeSorter taking advantage of extra storage for StableMSBRadixSorter. (Guo Feng)
 
 Changes in runtime behavior
 ---------------------
@@ -168,7 +186,16 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
+  (Grigoriy Troitskiy)
+
+* GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
+
+Build
+---------------------
+
+* GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
 
 Other
 ---------------------
@@ -213,6 +240,13 @@ Improvements
 
 * GITHUB#12499: Simplify task executor for concurrent operations by offloading concurrent operations to the
   provided executor unconditionally. (Luca Cavanna)
+
+* GITHUB#12464: Hunspell: allow customizing the hash table load factor (Peter Gromov)
+
+* GITHUB#12468: Hunspell: check for aff file wellformedness more strictly (Peter Gromov)
+
+* GITHUB#12491: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
+
 
 Optimizations
 ---------------------
