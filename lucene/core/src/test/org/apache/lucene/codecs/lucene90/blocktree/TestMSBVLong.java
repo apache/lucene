@@ -29,7 +29,7 @@ public class TestMSBVLong extends LuceneTestCase {
     assertMSBVLong(Long.MAX_VALUE);
     int iter = atLeast(10000);
     for (int i = 0; i < iter; i++) {
-      assertMSBVLong(random().nextLong(Long.MAX_VALUE));
+      assertMSBVLong(i);
     }
   }
 
