@@ -192,6 +192,8 @@ Bug Fixes
 
 * GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
 
+* GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
+
 Build
 ---------------------
 
