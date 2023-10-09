@@ -84,7 +84,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingCollector;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -260,7 +259,8 @@ public class TestDrillSideways extends FacetTestCase {
   }
 
   public void testCollectionTerminated() throws Exception {
-    try (Directory dir = newDirectory(); RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
       Document d = new Document();
       d.add(new TextField("foo", "bar", Field.Store.NO));
       w.addDocument(d);
@@ -291,24 +291,31 @@ public class TestDrillSideways extends FacetTestCase {
         DrillSidewaysScorer.DocsAndCost docsAndCost =
             new DrillSidewaysScorer.DocsAndCost(dimScorer, dimFC);
 
-        LeafCollector baseCollector = new LeafCollector() {
-          int counter = 0;
+        LeafCollector baseCollector =
+            new LeafCollector() {
+              int counter = 0;
 
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {
-            // doesn't matter
-          }
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                // doesn't matter
+              }
 
-          @Override
-          public void collect(int doc) throws IOException {
-            if (++counter > 1) {
-              throw new CollectionTerminatedException();
-            }
-          }
-        };
+              @Override
+              public void collect(int doc) throws IOException {
+                if (++counter > 1) {
+                  throw new CollectionTerminatedException();
+                }
+              }
+            };
 
         boolean scoreSubDocsAtOnce = random().nextBoolean();
-        DrillSidewaysScorer scorer = new DrillSidewaysScorer(ctx, baseScorer, baseFC, new DrillSidewaysScorer.DocsAndCost[]{docsAndCost}, scoreSubDocsAtOnce);
+        DrillSidewaysScorer scorer =
+            new DrillSidewaysScorer(
+                ctx,
+                baseScorer,
+                baseFC,
+                new DrillSidewaysScorer.DocsAndCost[] {docsAndCost},
+                scoreSubDocsAtOnce);
         expectThrows(CollectionTerminatedException.class, () -> scorer.score(baseCollector, null));
 
         // We've set things up so that our base collector with throw CollectionTerminatedException
