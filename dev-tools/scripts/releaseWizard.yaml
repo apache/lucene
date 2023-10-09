@@ -1292,7 +1292,7 @@ groups:
     id: add_to_apache_reporter
     title: Add the new version to the Apache Release Reporter
     description: |
-      Go to the Apache Release Reporter and add a release for lucene.
+      Go to the Apache Release Reporter and add a release for lucene. (Ask a PMC member to help if you're not one)
       Fill in the same date that you used for the release in previous steps.
       Do not use a product name prefix for the version, as this is the main release of the lucene PMC.
       Just use the version of this release: {{ release_version }}
