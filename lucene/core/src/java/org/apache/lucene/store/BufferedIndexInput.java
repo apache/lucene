@@ -249,6 +249,27 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    if (len <= bufferSize) {
+      // the buffer is big enough to satisfy this request
+      if (len > 0) { // to allow b to be null if len is 0...
+        long index = resolvePositionInBuffer(pos, len);
+        buffer.get((int) index, bytes, offset, len);
+      }
+    } else {
+      while (len > bufferSize) {
+        long index = resolvePositionInBuffer(pos, bufferSize);
+        buffer.get((int) index, bytes, offset, bufferSize);
+        len -= bufferSize;
+        offset += bufferSize;
+        pos += bufferSize;
+      }
+      long index = resolvePositionInBuffer(pos, len);
+      buffer.get((int) index, bytes, offset, len);
+    }
+  }
+
+  @Override
   public final short readShort(long pos) throws IOException {
     long index = resolvePositionInBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);

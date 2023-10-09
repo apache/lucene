@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util.hnsw;
 
+import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 
@@ -31,7 +32,6 @@ import org.apache.lucene.util.ArrayUtil;
 public class NeighborArray {
   private final boolean scoresDescOrder;
   private int size;
-
   float[] score;
   int[] node;
   private int sortedNodeSize;
@@ -67,14 +67,15 @@ public class NeighborArray {
     ++sortedNodeSize;
   }
 
-  /** Add node and score but do not insert as sorted */
+  /** Add node and newScore but do not insert as sorted */
   public void addOutOfOrder(int newNode, float newScore) {
     if (size == node.length) {
       node = ArrayUtil.grow(node);
       score = ArrayUtil.growExact(score, node.length);
     }
-    node[size] = newNode;
+
     score[size] = newScore;
+    node[size] = newNode;
     size++;
   }
 
@@ -85,7 +86,7 @@ public class NeighborArray {
    * @return indexes of newly sorted (unchecked) nodes, in ascending order, or null if the array is
    *     already fully sorted
    */
-  public int[] sort() {
+  public int[] sort(RandomVectorScorer scorer) throws IOException {
     if (size == sortedNodeSize) {
       // all nodes checked and sorted
       return null;
@@ -94,7 +95,7 @@ public class NeighborArray {
     int[] uncheckedIndexes = new int[size - sortedNodeSize];
     int count = 0;
     while (sortedNodeSize != size) {
-      uncheckedIndexes[count] = insertSortedInternal(); // sortedNodeSize is increased inside
+      uncheckedIndexes[count] = insertSortedInternal(scorer); // sortedNodeSize is increased inside
       for (int i = 0; i < count; i++) {
         if (uncheckedIndexes[i] >= uncheckedIndexes[count]) {
           // the previous inserted nodes has been shifted
@@ -108,10 +109,15 @@ public class NeighborArray {
   }
 
   /** insert the first unsorted node into its sorted position */
-  private int insertSortedInternal() {
+  private int insertSortedInternal(RandomVectorScorer scorer) throws IOException {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
     int tmpNode = node[sortedNodeSize];
     float tmpScore = score[sortedNodeSize];
+
+    if (Float.isNaN(tmpScore)) {
+      tmpScore = scorer.score(tmpNode);
+    }
+
     int insertionPoint =
         scoresDescOrder
             ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
@@ -127,9 +133,9 @@ public class NeighborArray {
   }
 
   /** This method is for test only. */
-  void insertSorted(int newNode, float newScore) {
+  void insertSorted(int newNode, float newScore) throws IOException {
     addOutOfOrder(newNode, newScore);
-    insertSortedInternal();
+    insertSortedInternal(null);
   }
 
   public int size() {

@@ -333,7 +333,7 @@ public final class SortingCodecReader extends FilterCodecReader {
    * Expert: same as {@link #wrap(org.apache.lucene.index.CodecReader, Sort)} but operates directly
    * on a {@link Sorter.DocMap}.
    */
-  static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
+  public static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
     LeafMetaData metaData = reader.getMetaData();
     LeafMetaData newMetaData =
         new LeafMetaData(metaData.getCreatedVersionMajor(), metaData.getMinVersion(), sort);
