@@ -1008,6 +1008,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   void replace(SegmentInfos other) {
     rollbackSegmentInfos(other.asList());
     lastGeneration = other.lastGeneration;
+    userData = other.userData;
   }
 
   /** Returns sum of all segment's maxDocs. Note that this does not include deletions */
