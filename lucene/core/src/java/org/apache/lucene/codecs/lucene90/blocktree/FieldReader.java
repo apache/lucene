@@ -110,7 +110,13 @@ public final class FieldReader extends Terms {
     }
   }
 
-  private static long readMSBVLong(DataInput in) throws IOException {
+  /**
+   * Decodes a variable length byte[] in MSB order back to long, as written by {@link
+   * Lucene90BlockTreeTermsWriter#writeMSBVLong}.
+   *
+   * <p>Package private for testing.
+   */
+  static long readMSBVLong(DataInput in) throws IOException {
     long l = 0L;
     while (true) {
       byte b = in.readByte();

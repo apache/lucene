@@ -430,6 +430,25 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     return brToString(new BytesRef(b));
   }
 
+  /**
+   * Encodes long value to variable length byte[], in MSB order. Use {@link
+   * FieldReader#readMSBVLong} to decode.
+   *
+   * <p>Package private for testing
+   */
+  static void writeMSBVLong(long l, DataOutput scratchBytes) throws IOException {
+    assert l >= 0;
+    // Keep zero bits on most significant byte to have more chance to get prefix bytes shared.
+    // e.g. we expect 0x7FFF stored as [0x81, 0xFF, 0x7F] but not [0xFF, 0xFF, 0x40]
+    final int bytesNeeded = (Long.SIZE - Long.numberOfLeadingZeros(l) - 1) / 7 + 1;
+    l <<= Long.SIZE - bytesNeeded * 7;
+    for (int i = 1; i < bytesNeeded; i++) {
+      scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL) | 0x80));
+      l = l << 7;
+    }
+    scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL)));
+  }
+
   private static final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
@@ -458,19 +477,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     @Override
     public String toString() {
       return "BLOCK: prefix=" + brToString(prefix);
-    }
-
-    private static void writeMSBVLong(long l, DataOutput scratchBytes) throws IOException {
-      assert l >= 0;
-      // Keep zero bits on most significant byte to have more chance to get prefix bytes shared.
-      // e.g. we expect 0x7FFF stored as [0x81, 0xFF, 0x7F] but not [0xFF, 0xFF, 0x40]
-      final int bytesNeeded = (Long.SIZE - Long.numberOfLeadingZeros(l) - 1) / 7 + 1;
-      l <<= Long.SIZE - bytesNeeded * 7;
-      for (int i = 1; i < bytesNeeded; i++) {
-        scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL) | 0x80));
-        l = l << 7;
-      }
-      scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL)));
     }
 
     public void compileIndex(
