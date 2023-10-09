@@ -316,6 +316,58 @@ public class TestDrillSideways extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
+  public void testCollectionTerminated() throws Exception {
+    try (Directory dir = newDirectory();
+        Directory taxoDir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+        DirectoryTaxonomyWriter taxoW =
+            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE)) {
+      FacetsConfig facetsConfig = new FacetsConfig();
+
+      Document d = new Document();
+      d.add(new FacetField("foo", "bar"));
+      w.addDocument(facetsConfig.build(taxoW, d));
+
+      try (IndexReader r = w.getReader();
+          TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
+        IndexSearcher searcher = new IndexSearcher(r);
+
+        Query baseQuery = new MatchAllDocsQuery();
+        Query dimQ = new TermQuery(new Term("foo", "bar"));
+
+        DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
+        ddq.add("foo", dimQ);
+        DrillSideways drillSideways = new DrillSideways(searcher, facetsConfig, taxoR);
+
+        CollectorManager<?, ?> cm =
+            new CollectorManager<>() {
+              @Override
+              public Collector newCollector() throws IOException {
+                return new Collector() {
+                  @Override
+                  public LeafCollector getLeafCollector(LeafReaderContext context)
+                      throws IOException {
+                    return new FinishOnceLeafCollector();
+                  }
+
+                  @Override
+                  public ScoreMode scoreMode() {
+                    return ScoreMode.COMPLETE;
+                  }
+                };
+              }
+
+              @Override
+              public Object reduce(Collection<Collector> collectors) throws IOException {
+                return null;
+              }
+            };
+
+        drillSideways.search(ddq, cm);
+      }
+    }
+  }
+
   private void runDrillSidewaysTestCases(FacetsConfig config, DrillSideways ds) throws Exception {
     //  case: drill-down on a single field; in this
     // case the drill-sideways + drill-down counts ==
@@ -1490,7 +1542,22 @@ public class TestDrillSideways extends FacetTestCase {
           .collect(Collectors.toList());
     }
   }
-  ;
+
+  private static class FinishOnceLeafCollector implements LeafCollector {
+    boolean finished;
+
+    @Override
+    public void setScorer(Scorable scorer) throws IOException {}
+
+    @Override
+    public void collect(int doc) throws IOException {}
+
+    @Override
+    public void finish() throws IOException {
+      assertFalse(finished);
+      finished = true;
+    }
+  }
 
   private int[] getTopNOrds(final int[] counts, final String[] values, int topN) {
     final int[] ids = new int[counts.length];
