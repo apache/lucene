@@ -29,7 +29,8 @@ import java.util.Arrays;
  * start position returned when they are appended.
  *
  * <p>The {@link BytesRef} is written so it never crosses the {@link ByteBlockPool#BYTE_BLOCK_SIZE}
- * boundary. The limit of the largest {@link BytesRef} is therefore {@link ByteBlockPool#BYTE_BLOCK_SIZE}-2 bytes.
+ * boundary. The limit of the largest {@link BytesRef} is therefore {@link
+ * ByteBlockPool#BYTE_BLOCK_SIZE}-2 bytes.
  *
  * @lucene.internal
  */
