@@ -18,12 +18,14 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -324,5 +326,216 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             null);
       }
     }
+  }
+
+  private static class FakeWeight extends Weight {
+
+    protected FakeWeight() {
+      super(null);
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
+    }
+
+    @Override
+    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Scorer scorer(LeafReaderContext context) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+  }
+
+  private static class FakeScorer extends Scorer {
+
+    final String toString;
+    int docID = -1;
+    int maxScoreUpTo = DocIdSetIterator.NO_MORE_DOCS;
+    float maxScore = 1f;
+    int cost = 10;
+
+    protected FakeScorer(String toString) {
+      super(new FakeWeight());
+      this.toString = toString;
+    }
+
+    @Override
+    public int docID() {
+      return docID;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return DocIdSetIterator.all(cost); // just so that it exposes the right cost
+    }
+
+    @Override
+    public int advanceShallow(int target) throws IOException {
+      return maxScoreUpTo;
+    }
+
+    @Override
+    public float getMaxScore(int upTo) throws IOException {
+      return maxScore;
+    }
+
+    @Override
+    public float score() throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String toString() {
+      return toString;
+    }
+  }
+
+  // This test simulates what happens over time for the query `the quick fox` as collection
+  // progresses and the minimum competitive score increases.
+  public void testPartition() throws IOException {
+    FakeScorer the = new FakeScorer("the");
+    the.cost = 9_000;
+    the.maxScore = 0.1f;
+    FakeScorer quick = new FakeScorer("quick");
+    quick.cost = 1_000;
+    quick.maxScore = 1f;
+    FakeScorer fox = new FakeScorer("fox");
+    fox.cost = 900;
+    fox.maxScore = 1.1f;
+
+    MaxScoreBulkScorer scorer = new MaxScoreBulkScorer(10_000, Arrays.asList(the, quick, fox));
+    the.docID = 4;
+    the.maxScoreUpTo = 130;
+    quick.docID = 4;
+    quick.maxScoreUpTo = 999;
+    fox.docID = 10;
+    fox.maxScoreUpTo = 1_200;
+
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(0, scorer.firstEssentialScorer); // all clauses are essential
+    assertEquals(3, scorer.firstRequiredScorer); // no required clauses
+
+    // less than the minimum score of every clause
+    scorer.minCompetitiveScore = 0.09f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(0, scorer.firstEssentialScorer); // all clauses are still essential
+    assertEquals(3, scorer.firstRequiredScorer); // no required clauses
+
+    // equal to the maximum score of `the`
+    scorer.minCompetitiveScore = 0.1f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(0, scorer.firstEssentialScorer); // all clauses are still essential
+    assertEquals(3, scorer.firstRequiredScorer); // no required clauses
+
+    // gt than the minimum score of `the`
+    scorer.minCompetitiveScore = 0.11f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(1, scorer.firstEssentialScorer); // the is non essential
+    assertEquals(3, scorer.firstRequiredScorer); // no required clauses
+    assertSame(the, scorer.allScorers[0].scorer);
+
+    // equal to the sum of the max scores of the and quick
+    scorer.minCompetitiveScore = 1.1f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(1, scorer.firstEssentialScorer); // the is non essential
+    assertEquals(3, scorer.firstRequiredScorer); // no required clauses
+    assertSame(the, scorer.allScorers[0].scorer);
+
+    // greater than the sum of the max scores of the and quick
+    scorer.minCompetitiveScore = 1.11f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(2, scorer.firstRequiredScorer); // fox is required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // equal to the sum of the max scores of the and fox
+    scorer.minCompetitiveScore = 1.2f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(2, scorer.firstRequiredScorer); // fox is required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // greater than the sum of the max scores of the and fox
+    scorer.minCompetitiveScore = 1.21f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(1, scorer.firstRequiredScorer); // quick and fox are required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // equal to the sum of the max scores of quick and fox
+    scorer.minCompetitiveScore = 2.1f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(1, scorer.firstRequiredScorer); // quick and fox are required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // greater than the sum of the max scores of quick and fox
+    scorer.minCompetitiveScore = 2.11f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(0, scorer.firstRequiredScorer); // all terms are required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // greater than the sum of the max scores of quick and fox
+    scorer.minCompetitiveScore = 2.11f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(0, scorer.firstRequiredScorer); // all terms are required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // equal to the sum of the max scores of all terms
+    scorer.minCompetitiveScore = 2.2f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertTrue(scorer.partitionScorers());
+    assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
+    assertEquals(0, scorer.firstRequiredScorer); // all terms are required
+    assertSame(the, scorer.allScorers[0].scorer);
+    assertSame(quick, scorer.allScorers[1].scorer);
+    assertSame(fox, scorer.allScorers[2].scorer);
+
+    // greater than the sum of the max scores of all terms
+    scorer.minCompetitiveScore = 2.21f;
+    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    scorer.updateMaxWindowScores(4, 100);
+    assertFalse(scorer.partitionScorers()); // no possible match in this window
   }
 }
