@@ -108,7 +108,7 @@ public class BKDWriter implements Closeable {
   final BytesRef scratchBytesRef2 = new BytesRef();
   final int[] commonPrefixLengths;
 
-  protected final FixedBitSet docsSeen;
+  protected FixedBitSet docsSeen;
 
   private PointWriter pointWriter;
   private boolean finished;
@@ -129,6 +129,9 @@ public class BKDWriter implements Closeable {
 
   private final int maxDoc;
   private final DocIdsWriter docIdsWriter;
+
+  /** -1 means the docCount is unknown */
+  private int docCount = -1;
 
   public BKDWriter(
       int maxDoc,
@@ -151,8 +154,6 @@ public class BKDWriter implements Closeable {
     this.comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim);
     this.equalsPredicate = BKDUtil.getEqualsPredicate(config.bytesPerDim);
     this.commonPrefixComparator = BKDUtil.getPrefixLengthComparator(config.bytesPerDim);
-
-    docsSeen = new FixedBitSet(maxDoc);
 
     scratchDiff = new byte[config.bytesPerDim];
     scratch = new byte[config.packedBytesLength];
@@ -234,6 +235,10 @@ public class BKDWriter implements Closeable {
     }
     pointWriter.append(packedValue, docID);
     pointCount++;
+    // the docCount is always -1
+    if (docsSeen == null) {
+      docsSeen = new FixedBitSet(maxDoc);
+    }
     docsSeen.set(docID);
   }
 
@@ -421,8 +426,10 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointTree reader)
+      MutablePointTree reader,
+      int docCount)
       throws IOException {
+    this.docCount = docCount;
     if (config.numDims == 1) {
       return writeField1Dim(metaOut, indexOut, dataOut, fieldName, reader);
     } else {
@@ -519,9 +526,8 @@ public class BKDWriter implements Closeable {
     // compute the min/max for this slice
     computePackedValueBounds(
         values, 0, Math.toIntExact(pointCount), minPackedValue, maxPackedValue, scratchBytesRef1);
-    for (int i = 0; i < Math.toIntExact(pointCount); ++i) {
-      docsSeen.set(values.getDocID(i));
-    }
+    // docCount has already been set by {@link BKDWriter#writeField}
+    assert docCount != -1;
 
     final long dataStartFP = dataOut.getFilePointer();
     final int[] parentSplits = new int[config.numIndexDims];
@@ -692,7 +698,12 @@ public class BKDWriter implements Closeable {
           leafCount * config.packedBytesLength,
           config.packedBytesLength);
       leafDocs[leafCount] = docID;
-      docsSeen.set(docID);
+      if (docCount == -1) {
+        if (docsSeen == null) {
+          docsSeen = new FixedBitSet(maxDoc);
+        }
+        docsSeen.set(docID);
+      }
       leafCount++;
 
       if (valueCount + leafCount > totalPointCount) {
@@ -1248,7 +1259,8 @@ public class BKDWriter implements Closeable {
     metaOut.writeBytes(maxPackedValue, 0, config.packedIndexBytesLength);
 
     metaOut.writeVLong(pointCount);
-    metaOut.writeVInt(docsSeen.cardinality());
+    assert docsSeen != null || docCount != -1;
+    metaOut.writeVInt(docCount == -1 ? docsSeen.cardinality() : docCount);
     metaOut.writeVInt(packedIndex.length);
     metaOut.writeLong(dataStartFP);
     // If metaOut and indexOut are the same file, we account for the fact that

@@ -202,7 +202,7 @@ public abstract class PointsWriter implements Closeable {
 
               @Override
               public int getDocCount() {
-                throw new UnsupportedOperationException();
+                return -1;
               }
             };
           }

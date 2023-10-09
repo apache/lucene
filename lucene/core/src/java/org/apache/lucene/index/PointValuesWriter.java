@@ -211,7 +211,7 @@ class PointValuesWriter {
 
               @Override
               public int getDocCount() {
-                throw new UnsupportedOperationException();
+                return getNumDocs();
               }
             };
           }

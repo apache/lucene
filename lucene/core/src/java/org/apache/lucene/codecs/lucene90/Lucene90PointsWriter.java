@@ -118,7 +118,8 @@ public class Lucene90PointsWriter extends PointsWriter {
   @Override
   public void writeField(FieldInfo fieldInfo, PointsReader reader) throws IOException {
 
-    PointValues.PointTree values = reader.getValues(fieldInfo.name).getPointTree();
+    PointValues pointValues = reader.getValues(fieldInfo.name);
+    PointValues.PointTree values = pointValues.getPointTree();
 
     BKDConfig config =
         new BKDConfig(
@@ -139,7 +140,8 @@ public class Lucene90PointsWriter extends PointsWriter {
       if (values instanceof MutablePointTree) {
         Runnable finalizer =
             writer.writeField(
-                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
+                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values,
+            pointValues.getDocCount());
         if (finalizer != null) {
           metaOut.writeInt(fieldInfo.number);
           finalizer.run();
