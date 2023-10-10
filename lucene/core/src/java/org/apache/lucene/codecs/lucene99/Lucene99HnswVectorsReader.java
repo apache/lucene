@@ -26,7 +26,9 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -36,7 +38,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -272,7 +273,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    return OffHeapFloatVectorValues.load(
+        fieldEntry.ordToDoc,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
   }
 
   @Override
@@ -287,7 +294,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapByteVectorValues.load(fieldEntry, vectorData);
+    return OffHeapByteVectorValues.load(
+        fieldEntry.ordToDoc,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
   }
 
   @Override
@@ -314,7 +327,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           getGraph(fieldEntry),
           vectorValues.getAcceptOrds(acceptDocs));
     } else {
-      OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+      OffHeapFloatVectorValues vectorValues =
+          OffHeapFloatVectorValues.load(
+              fieldEntry.ordToDoc,
+              fieldEntry.vectorEncoding,
+              fieldEntry.dimension,
+              fieldEntry.vectorDataOffset,
+              fieldEntry.vectorDataLength,
+              vectorData);
       RandomVectorScorer scorer =
           RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
       HnswGraphSearcher.search(
@@ -336,7 +356,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
 
-    OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
+    OffHeapByteVectorValues vectorValues =
+        OffHeapByteVectorValues.load(
+            fieldEntry.ordToDoc,
+            fieldEntry.vectorEncoding,
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData);
     RandomVectorScorer scorer =
         RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
     HnswGraphSearcher.search(
@@ -413,13 +440,13 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final long offsetsOffset;
     final int offsetsBlockShift;
     final long offsetsLength;
-    final OrdToDocDISReaderConfiguration ordToDoc;
+    final OrdToDocDISIReaderConfiguration ordToDoc;
 
     final float configuredQuantile, lowerQuantile, upperQuantile;
     final long quantizedVectorDataOffset, quantizedVectorDataLength;
     final ScalarQuantizer scalarQuantizer;
     final boolean isQuantized;
-    final OrdToDocDISReaderConfiguration quantizedOrdToDoc;
+    final OrdToDocDISIReaderConfiguration quantizedOrdToDoc;
 
     FieldEntry(
         IndexInput input,
@@ -452,11 +479,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       dimension = input.readVInt();
       size = input.readInt();
       if (isQuantized) {
-        quantizedOrdToDoc = OrdToDocDISReaderConfiguration.fromStoredMeta(input, size);
+        quantizedOrdToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
       } else {
         quantizedOrdToDoc = null;
       }
-      ordToDoc = OrdToDocDISReaderConfiguration.fromStoredMeta(input, size);
+      ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
 
       // read nodes by level
       M = input.readVInt();
@@ -504,122 +531,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           + RamUsageEstimator.sizeOf(ordToDoc)
           + (quantizedOrdToDoc == null ? 0 : RamUsageEstimator.sizeOf(quantizedOrdToDoc))
           + RamUsageEstimator.sizeOf(offsetsMeta);
-    }
-  }
-
-  static final class OrdToDocDISReaderConfiguration implements Accountable {
-    private static final long SHALLOW_SIZE =
-        RamUsageEstimator.shallowSizeOfInstance(OrdToDocDISReaderConfiguration.class);
-
-    static OrdToDocDISReaderConfiguration fromStoredMeta(IndexInput inputMeta, int size)
-        throws IOException {
-      long docsWithFieldOffset = inputMeta.readLong();
-      long docsWithFieldLength = inputMeta.readLong();
-      short jumpTableEntryCount = inputMeta.readShort();
-      byte denseRankPower = inputMeta.readByte();
-      long addressesOffset = 0;
-      int blockShift = 0;
-      DirectMonotonicReader.Meta meta = null;
-      long addressesLength = 0;
-      if (docsWithFieldOffset > -1) {
-        addressesOffset = inputMeta.readLong();
-        blockShift = inputMeta.readVInt();
-        meta = DirectMonotonicReader.loadMeta(inputMeta, size, blockShift);
-        addressesLength = inputMeta.readLong();
-      }
-      return new OrdToDocDISReaderConfiguration(
-          size,
-          jumpTableEntryCount,
-          addressesOffset,
-          addressesLength,
-          docsWithFieldOffset,
-          docsWithFieldLength,
-          denseRankPower,
-          meta);
-    }
-
-    final int size;
-    final short jumpTableEntryCount;
-    // the following four variables used to read docIds encoded by IndexDISI
-    // special values of docsWithFieldOffset are -1 and -2
-    // -1 : dense
-    // -2 : empty
-    // other: sparse
-    final long addressesOffset, addressesLength, docsWithFieldOffset, docsWithFieldLength;
-    final byte denseRankPower;
-    final DirectMonotonicReader.Meta meta;
-
-    OrdToDocDISReaderConfiguration(
-        int size,
-        short jumpTableEntryCount,
-        long addressesOffset,
-        long addressesLength,
-        long docsWithFieldOffset,
-        long docsWithFieldLength,
-        byte denseRankPower,
-        DirectMonotonicReader.Meta meta) {
-      this.size = size;
-      this.jumpTableEntryCount = jumpTableEntryCount;
-      this.addressesOffset = addressesOffset;
-      this.addressesLength = addressesLength;
-      this.docsWithFieldOffset = docsWithFieldOffset;
-      this.docsWithFieldLength = docsWithFieldLength;
-      this.denseRankPower = denseRankPower;
-      this.meta = meta;
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
-    }
-  }
-
-  static final class OrdToDocDISReader extends DocIdSetIterator {
-    private final DirectMonotonicReader ordToDoc;
-    private final IndexedDISI disi;
-
-    OrdToDocDISReader(OrdToDocDISReaderConfiguration configuration, IndexInput dataIn)
-        throws IOException {
-      final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
-      this.ordToDoc = DirectMonotonicReader.getInstance(configuration.meta, addressesData);
-      this.disi =
-          new IndexedDISI(
-              dataIn,
-              configuration.docsWithFieldOffset,
-              configuration.docsWithFieldLength,
-              configuration.jumpTableEntryCount,
-              configuration.denseRankPower,
-              configuration.size);
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
-    }
-
-    @Override
-    public long cost() {
-      return disi.cost();
-    }
-
-    int ordToDoc(int ord) {
-      return (int) ordToDoc.get(ord);
-    }
-
-    int index() {
-      return disi.index();
     }
   }
 

@@ -83,11 +83,13 @@ public class ScalarQuantizer {
    * @return the new offset
    */
   public float recalculateCorrectiveOffset(
-      byte[] quantizedVector, ScalarQuantizer oldQuantizer, VectorSimilarityFunction similarityFunction) {
+      byte[] quantizedVector,
+      ScalarQuantizer oldQuantizer,
+      VectorSimilarityFunction similarityFunction) {
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0f;
     }
-    //TODO this could probably be some simple algebra with the old offset
+    // TODO this could probably be some simple algebra with the old offset
     float correctiveOffset = 0f;
     for (int i = 0; i < quantizedVector.length; i++) {
       float v = (oldQuantizer.alpha * quantizedVector[i]) + oldQuantizer.minQuantile;
@@ -130,11 +132,14 @@ public class ScalarQuantizer {
 
   @Override
   public String toString() {
-    return "ScalarQuantizer{" +
-      "minQuantile=" + minQuantile +
-      ", maxQuantile=" + maxQuantile +
-      ", configuredQuantile=" + configuredQuantile +
-      '}';
+    return "ScalarQuantizer{"
+        + "minQuantile="
+        + minQuantile
+        + ", maxQuantile="
+        + maxQuantile
+        + ", configuredQuantile="
+        + configuredQuantile
+        + '}';
   }
 
   private static final Random random = new Random(42);

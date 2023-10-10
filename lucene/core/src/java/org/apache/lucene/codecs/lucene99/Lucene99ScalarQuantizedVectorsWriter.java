@@ -555,7 +555,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
           final QuantizedByteVectorValueSub sub;
           // Either our quantization parameters are way different than the merged ones
           // Or we have never been quantized.
-          if (reader == null || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
+          if (reader == null
+              || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
             sub =
                 new QuantizedByteVectorValueSub(
                     mergeState.docMaps[i],

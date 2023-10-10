@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.store.IndexInput;
 
@@ -70,7 +71,7 @@ public final class Lucene99ScalarQuantizedVectorsReader {
   }
 
   OffHeapQuantizedByteVectorValues getQuantizedVectorValues(
-      Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+      OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
       long quantizedVectorDataOffset,

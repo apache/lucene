@@ -19,8 +19,11 @@ package org.apache.lucene.codecs.lucene99;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
  * Read the quantized vector values and their score correction values from the index input. This
@@ -75,20 +78,20 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   }
 
   static OffHeapQuantizedByteVectorValues load(
-      Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+      OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
       long quantizedVectorDataOffset,
       long quantizedVectorDataLength,
       IndexInput vectorData)
       throws IOException {
-    if (configuration.docsWithFieldOffset == -2) {
+    if (configuration.isEmpty()) {
       return new EmptyOffHeapVectorValues(dimension);
     }
     IndexInput bytesSlice =
         vectorData.slice(
             "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
-    if (configuration.docsWithFieldOffset == -1) {
+    if (configuration.isDense()) {
       return new DenseOffHeapVectorValues(dimension, size, bytesSlice);
     } else {
       return new SparseOffHeapVectorValues(configuration, dimension, size, vectorData, bytesSlice);
@@ -141,14 +144,14 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
   }
 
   private static class SparseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
-    private final Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration;
-    private final Lucene99HnswVectorsReader.OrdToDocDISReader reader;
+    private final DirectMonotonicReader ordToDoc;
+    private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
     private final IndexInput dataIn;
-    private final int dimension, size;
+    private final OrdToDocDISIReaderConfiguration configuration;
 
     public SparseOffHeapVectorValues(
-        Lucene99HnswVectorsReader.OrdToDocDISReaderConfiguration configuration,
+        OrdToDocDISIReaderConfiguration configuration,
         int dimension,
         int size,
         IndexInput dataIn,
@@ -156,31 +159,30 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
         throws IOException {
       super(dimension, size, slice);
       this.configuration = configuration;
-      this.reader = new Lucene99HnswVectorsReader.OrdToDocDISReader(configuration, dataIn);
       this.dataIn = dataIn;
-      this.dimension = dimension;
-      this.size = size;
+      this.ordToDoc = configuration.getDirectMonotonicReader(dataIn);
+      this.disi = configuration.getIndexedDISI(dataIn);
     }
 
     @Override
     public byte[] vectorValue() throws IOException {
-      return vectorValue(reader.index());
+      return vectorValue(disi.index());
     }
 
     @Override
     public int docID() {
-      return reader.docID();
+      return disi.docID();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return reader.nextDoc();
+      return disi.nextDoc();
     }
 
     @Override
     public int advance(int target) throws IOException {
       assert docID() < target;
-      return reader.advance(target);
+      return disi.advance(target);
     }
 
     @Override
@@ -190,7 +192,7 @@ abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValue
 
     @Override
     public int ordToDoc(int ord) {
-      return reader.ordToDoc(ord);
+      return (int) ordToDoc.get(ord);
     }
 
     @Override
