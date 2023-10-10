@@ -37,7 +37,7 @@ configure(project(":lucene").subprojects) { prj ->
 
         lineEndings 'UNIX'
         endWithNewline()
-        googleJavaFormat('1.15.0')
+        googleJavaFormat('1.18.1')
 
         // Apply to all Java sources
         target "src/**/*.java"
