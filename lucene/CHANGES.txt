@@ -141,6 +141,8 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
+* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
+
 New Features
 ---------------------
 (No changes)
