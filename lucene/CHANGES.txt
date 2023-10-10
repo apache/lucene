@@ -200,6 +200,7 @@ Build
 ---------------------
 
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+* GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
 Other
 ---------------------
