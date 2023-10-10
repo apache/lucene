@@ -81,8 +81,13 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   /** Initial terms format. */
   public static final int VERSION_START = 0;
 
+  /**
+   * Version that encode output as MSB VLong for better outputs sharing in FST, see GITHUB#12620.
+   */
+  public static final int VERSION_MSB_VLONG_OUTPUT = 1;
+
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_START;
+  public static final int VERSION_CURRENT = VERSION_MSB_VLONG_OUTPUT;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";

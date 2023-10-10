@@ -161,6 +161,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+          slice.seek(pos);
+          slice.readBytes(bytes, offset, length);
+        }
+
+        @Override
         public short readShort(long pos) throws IOException {
           slice.seek(pos);
           return slice.readShort();
