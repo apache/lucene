@@ -54,10 +54,13 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene85FieldsIndex";
 
@@ -73,8 +76,10 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   static final int VERSION_START = 1;
   static final int VERSION_OFFHEAP_INDEX = 2;
+
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+
   /**
    * Version where numChunks is explicitly recorded in meta file and a dirty chunk bit is recorded
    * in each chunk

@@ -28,16 +28,22 @@ import java.io.OutputStream;
 class GeoNorthLatitudeZone extends GeoBaseBBox {
   /** The bottom latitude of the zone */
   protected final double bottomLat;
+
   /** Cosine of the bottom latitude of the zone */
   protected final double cosBottomLat;
+
   /** The bottom plane of the zone */
   protected final SidedPlane bottomPlane;
+
   /** An interior point of the zone */
   protected final GeoPoint interiorPoint;
+
   /** Notable points: none */
   protected static final GeoPoint[] planePoints = new GeoPoint[0];
+
   /** A point on the bottom boundary */
   protected final GeoPoint bottomBoundaryPoint;
+
   /** A reference to the point on the boundary */
   protected final GeoPoint[] edgePoints;
 

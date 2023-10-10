@@ -33,6 +33,7 @@ public class TestBengaliAnalyzer extends BaseTokenStreamTestCase {
     checkOneTerm(a, "বারী", "বার");
     a.close();
   }
+
   /** test Digits */
   public void testDigits() throws Exception {
     BengaliAnalyzer a = new BengaliAnalyzer();

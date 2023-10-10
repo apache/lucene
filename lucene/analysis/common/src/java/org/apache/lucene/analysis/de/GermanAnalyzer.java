@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.analysis.de;
+
 // This file is encoded in UTF-8
 
 import java.io.IOException;

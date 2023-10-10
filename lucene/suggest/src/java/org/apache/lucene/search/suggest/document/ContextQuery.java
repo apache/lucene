@@ -76,6 +76,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
   private IntsRefBuilder scratch = new IntsRefBuilder();
   private Map<IntsRef, ContextMetaData> contexts;
   private boolean matchAllContexts = false;
+
   /** Inner completion query */
   protected CompletionQuery innerQuery;
 
