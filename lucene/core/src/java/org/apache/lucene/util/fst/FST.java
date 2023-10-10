@@ -606,7 +606,7 @@ public final class FST<T> implements Accountable {
    * Gets the number of bytes required to flag the presence of each arc in the given label range,
    * one bit per arc.
    */
-  public static int getNumPresenceBytes(int labelRange) {
+  static int getNumPresenceBytes(int labelRange) {
     assert labelRange >= 0;
     return (labelRange + 7) >> 3;
   }
