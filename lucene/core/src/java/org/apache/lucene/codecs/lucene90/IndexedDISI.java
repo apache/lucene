@@ -306,7 +306,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   /**
    * This constructor always creates a new blockSlice and a new jumpTable from in, to ensure that
    * operations are independent from the caller. See {@link #IndexedDISI(IndexInput,
-   * RandomAccessInput, int, byte, long, boolean)} for re-use of blockSlice and jumpTable.
+   * RandomAccessInput, int, byte, long)} for re-use of blockSlice and jumpTable.
    *
    * @param in backing data.
    * @param offset starting offset for blocks in the backing data.
@@ -317,26 +317,7 @@ public final class IndexedDISI extends DocIdSetIterator {
    *     expressed as {@code 2^denseRankPower}. This must match the power given in {@link
    *     #writeBitSet(DocIdSetIterator, IndexOutput, byte)}
    * @param cost normally the number of logical docIDs.
-   * @param needIndex need the index() operation for IndexedDISI
    */
-  public IndexedDISI(
-      IndexInput in,
-      long offset,
-      long length,
-      int jumpTableEntryCount,
-      byte denseRankPower,
-      long cost,
-      boolean needIndex)
-      throws IOException {
-    this(
-        createBlockSlice(in, "docs", offset, length, jumpTableEntryCount),
-        createJumpTable(in, offset, length, jumpTableEntryCount),
-        jumpTableEntryCount,
-        denseRankPower,
-        cost,
-        needIndex);
-  }
-
   public IndexedDISI(
       IndexInput in,
       long offset,
@@ -345,7 +326,12 @@ public final class IndexedDISI extends DocIdSetIterator {
       byte denseRankPower,
       long cost)
       throws IOException {
-    this(in, offset, length, jumpTableEntryCount, denseRankPower, cost, true);
+    this(
+        createBlockSlice(in, "docs", offset, length, jumpTableEntryCount),
+        createJumpTable(in, offset, length, jumpTableEntryCount),
+        jumpTableEntryCount,
+        denseRankPower,
+        cost);
   }
 
   /**
@@ -367,8 +353,7 @@ public final class IndexedDISI extends DocIdSetIterator {
       RandomAccessInput jumpTable,
       int jumpTableEntryCount,
       byte denseRankPower,
-      long cost,
-      boolean needIndex)
+      long cost)
       throws IOException {
     if ((denseRankPower < 7 || denseRankPower > 15) && denseRankPower != -1) {
       throw new IllegalArgumentException(
@@ -388,12 +373,11 @@ public final class IndexedDISI extends DocIdSetIterator {
     this.denseRankTable =
         denseRankPower == -1 ? null : new byte[DENSE_BLOCK_LONGS >> rankIndexShift];
     this.cost = cost;
-    this.needIndex = needIndex;
   }
 
   /**
-   * Helper method for using {@link #IndexedDISI(IndexInput, RandomAccessInput, int, byte, long,
-   * boolean)}. Creates a disiSlice for the IndexedDISI data blocks, without the jump-table.
+   * Helper method for using {@link #IndexedDISI(IndexInput, RandomAccessInput, int, byte, long)}.
+   * Creates a disiSlice for the IndexedDISI data blocks, without the jump-table.
    *
    * @param slice backing data, holding both blocks and jump-table.
    * @param sliceDescription human readable slice designation.
@@ -411,8 +395,8 @@ public final class IndexedDISI extends DocIdSetIterator {
   }
 
   /**
-   * Helper method for using {@link #IndexedDISI(IndexInput, RandomAccessInput, int, byte, long,
-   * boolean)}. Creates a RandomAccessInput covering only the jump-table data or null.
+   * Helper method for using {@link #IndexedDISI(IndexInput, RandomAccessInput, int, byte, long)}.
+   * Creates a RandomAccessInput covering only the jump-table data or null.
    *
    * @param slice backing data, holding both blocks and jump-table.
    * @param offset relative to the backing data.
@@ -454,7 +438,6 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   // ALL variables
   int gap;
-  final boolean needIndex;
 
   @Override
   public int docID() {
@@ -527,7 +510,7 @@ public final class IndexedDISI extends DocIdSetIterator {
       blockEnd = slice.getFilePointer();
       gap = block - index - 1;
     } else {
-      method = needIndex ? Method.DENSE : Method.DENSE_WITHOUT_INDEX;
+      method = Method.DENSE;
       denseBitmapOffset =
           slice.getFilePointer() + (denseRankTable == null ? 0 : denseRankTable.length);
       blockEnd = denseBitmapOffset + (1 << 13);
@@ -681,48 +664,6 @@ public final class IndexedDISI extends DocIdSetIterator {
         return (leftBits & 1L) != 0;
       }
     },
-    DENSE_WITHOUT_INDEX {
-      @Override
-      boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
-        final int targetInBlock = target & 0xFFFF;
-        final int targetWordIndex = targetInBlock >>> 6;
-
-        for (int i = disi.wordIndex + 1; i <= targetWordIndex; ++i) {
-          disi.word = disi.slice.readLong();
-        }
-        disi.wordIndex = targetWordIndex;
-        long leftBits = disi.word >>> target;
-
-        if (leftBits != 0L) {
-          disi.doc = target + Long.numberOfTrailingZeros(leftBits);
-          return true;
-        }
-
-        // There were no set bits at the wanted position. Move forward until one is reached
-        while (++disi.wordIndex < 1024) {
-          disi.word = disi.slice.readLong();
-          if (disi.word != 0) {
-            disi.doc = disi.block | (disi.wordIndex << 6) | Long.numberOfTrailingZeros(disi.word);
-            return true;
-          }
-        }
-        // No set bits in the block at or after the wanted position.
-        return false;
-      }
-
-      @Override
-      boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
-        final int targetInBlock = target & 0xFFFF;
-        final int targetWordIndex = targetInBlock >>> 6;
-
-        for (int i = disi.wordIndex + 1; i <= targetWordIndex; ++i) {
-          disi.word = disi.slice.readLong();
-        }
-        disi.wordIndex = targetWordIndex;
-        long leftBits = disi.word >>> target;
-        return (leftBits & 1L) != 0;
-      }
-    },
     ALL {
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) {
@@ -781,9 +722,5 @@ public final class IndexedDISI extends DocIdSetIterator {
     disi.wordIndex = rankAlignedWordIndex;
     disi.word = rankWord;
     disi.numberOfOnes = disi.denseOrigoIndex + denseNOO;
-  }
-
-  public boolean needIndex() {
-    return needIndex;
   }
 }
