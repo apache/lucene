@@ -82,7 +82,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingCollector;
-import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -318,7 +317,7 @@ public class TestDrillSideways extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
-  public void testCollectionTerminated() throws Exception {
+  public void testLeafCollectorSingleFinishCall() throws Exception {
     try (Directory dir = newDirectory();
         Directory taxoDir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -332,7 +331,7 @@ public class TestDrillSideways extends FacetTestCase {
 
       try (IndexReader r = w.getReader();
           TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
-        IndexSearcher searcher = new AssertingIndexSearcher(random(), r);
+        IndexSearcher searcher = new IndexSearcher(r);
 
         Query baseQuery = new MatchAllDocsQuery();
         Query dimQ = new TermQuery(new Term("foo", "bar"));
