@@ -1127,9 +1127,9 @@ public class TestFSTs extends LuceneTestCase {
             int children = verifyStateAndBelow(fst, new FST.Arc<>().copyFrom(arc), depth + 1);
 
             assertEquals(
-                (depth <= FST.FIXED_LENGTH_ARC_SHALLOW_DEPTH
-                        && children >= FST.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
-                    || children >= FST.FIXED_LENGTH_ARC_DEEP_NUM_ARCS,
+                (depth <= FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH
+                        && children >= FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
+                    || children >= FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS,
                 expanded);
             if (arc.isLast()) break;
           }
@@ -1141,8 +1141,9 @@ public class TestFSTs extends LuceneTestCase {
     }
 
     // Sanity check.
-    assertTrue(FST.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FST.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
-    assertTrue(FST.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
+    assertTrue(
+        FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
+    assertTrue(FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
 
     SyntheticData s = new SyntheticData();
 
@@ -1210,7 +1211,7 @@ public class TestFSTs extends LuceneTestCase {
       node.isFinal = true;
       rootNode.addArc('a', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fst.addNode(fstCompiler, node);
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[0].nextFinalOutput = 17L;
       rootNode.arcs[0].isFinal = true;
       rootNode.arcs[0].output = nothing;
@@ -1223,13 +1224,13 @@ public class TestFSTs extends LuceneTestCase {
           new FSTCompiler.UnCompiledNode<>(fstCompiler, 0);
       rootNode.addArc('b', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fst.addNode(fstCompiler, node);
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[1].nextFinalOutput = nothing;
       rootNode.arcs[1].output = 42L;
       rootNode.arcs[1].target = frozen;
     }
 
-    fst.finish(fst.addNode(fstCompiler, rootNode));
+    fst.finish(fstCompiler.addNode(rootNode));
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));

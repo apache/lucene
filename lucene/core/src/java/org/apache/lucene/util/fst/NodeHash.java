@@ -139,7 +139,7 @@ final class NodeHash<T> {
       final long v = table.get(pos);
       if (v == 0) {
         // freeze & add
-        final long node = fst.addNode(fstCompiler, nodeIn);
+        final long node = fstCompiler.addNode(nodeIn);
         // System.out.println("  now freeze node=" + node);
         assert hash(node) == h : "frozenHash=" + hash(node) + " vs h=" + h;
         count++;
