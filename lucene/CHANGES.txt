@@ -178,6 +178,9 @@ Optimizations
 
 * GITHUB#12623: Use a MergeSorter taking advantage of extra storage for StableMSBRadixSorter. (Guo Feng)
 
+* GITHUB#12623: Write MSB VLong for better outputs sharing in block tree index, decreasing ~14% size
+  of .tip file. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
