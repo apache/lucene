@@ -81,6 +81,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingLeafCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -347,7 +348,16 @@ public class TestDrillSideways extends FacetTestCase {
                   @Override
                   public LeafCollector getLeafCollector(LeafReaderContext context)
                       throws IOException {
-                    return new FinishOnceLeafCollector();
+                    return new AssertingLeafCollector(
+                        new LeafCollector() {
+                          @Override
+                          public void setScorer(Scorable scorer) throws IOException {}
+
+                          @Override
+                          public void collect(int doc) throws IOException {}
+                        },
+                        0,
+                        1);
                   }
 
                   @Override
@@ -1540,22 +1550,6 @@ public class TestDrillSideways extends FacetTestCase {
           .map(cr -> new DocAndScore(cr.docAndScore))
           .limit(numDocs)
           .collect(Collectors.toList());
-    }
-  }
-
-  private static class FinishOnceLeafCollector implements LeafCollector {
-    boolean finished;
-
-    @Override
-    public void setScorer(Scorable scorer) throws IOException {}
-
-    @Override
-    public void collect(int doc) throws IOException {}
-
-    @Override
-    public void finish() throws IOException {
-      assertFalse(finished);
-      finished = true;
     }
   }
 
