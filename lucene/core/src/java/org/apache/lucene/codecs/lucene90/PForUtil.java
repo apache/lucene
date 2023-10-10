@@ -18,6 +18,8 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.internal.vectorization.ForUtil90;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.LongHeap;
@@ -26,20 +28,23 @@ import org.apache.lucene.util.packed.PackedInts;
 /** Utility class to encode sequences of 128 small positive integers. */
 final class PForUtil {
 
+  private static final VectorizationProvider VPROVIDER = VectorizationProvider.getInstance();
   private static final int MAX_EXCEPTIONS = 7;
-  private static final int HALF_BLOCK_SIZE = ForUtil.BLOCK_SIZE / 2;
+  private static final int HALF_BLOCK_SIZE = ForUtil90.BLOCK_SIZE / 2;
 
   // IDENTITY_PLUS_ONE[i] == i + 1
-  private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil.BLOCK_SIZE];
+  private static final long[] IDENTITY_PLUS_ONE = new long[ForUtil90.BLOCK_SIZE];
+  private static final int[] IDENTITY_ONE = new int[ForUtil90.BLOCK_SIZE];
 
   static {
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+    for (int i = 0; i < ForUtil90.BLOCK_SIZE; ++i) {
       IDENTITY_PLUS_ONE[i] = i + 1;
+      IDENTITY_ONE[i] = 1;
     }
   }
 
-  static boolean allEqual(long[] l) {
-    for (int i = 1; i < ForUtil.BLOCK_SIZE; ++i) {
+  static boolean allEqual(int[] l) {
+    for (int i = 1; i < ForUtil90.BLOCK_SIZE; ++i) {
       if (l[i] != l[0]) {
         return false;
       }
@@ -47,25 +52,26 @@ final class PForUtil {
     return true;
   }
 
-  private final ForUtil forUtil;
+  private final ForUtil90 forUtil;
   // buffer for reading exception data; each exception uses two bytes (pos + high-order bits of the
   // exception)
   private final byte[] exceptionBuff = new byte[MAX_EXCEPTIONS * 2];
 
-  PForUtil(ForUtil forUtil) {
-    assert ForUtil.BLOCK_SIZE <= 256 : "blocksize must fit in one byte. got " + ForUtil.BLOCK_SIZE;
-    this.forUtil = forUtil;
+  PForUtil() {
+    assert ForUtil90.BLOCK_SIZE <= 256
+        : "blocksize must fit in one byte. got " + ForUtil90.BLOCK_SIZE;
+    this.forUtil = VPROVIDER.newForUtil90();
   }
 
   /** Encode 128 integers from {@code longs} into {@code out}. */
-  void encode(long[] longs, DataOutput out) throws IOException {
+  void encode(int[] longs, DataOutput out) throws IOException {
     // Determine the top MAX_EXCEPTIONS + 1 values
     final LongHeap top = new LongHeap(MAX_EXCEPTIONS + 1);
     for (int i = 0; i <= MAX_EXCEPTIONS; ++i) {
       top.push(longs[i]);
     }
     long topValue = top.top();
-    for (int i = MAX_EXCEPTIONS + 1; i < ForUtil.BLOCK_SIZE; ++i) {
+    for (int i = MAX_EXCEPTIONS + 1; i < ForUtil90.BLOCK_SIZE; ++i) {
       if (longs[i] > topValue) {
         topValue = top.updateTop(longs[i]);
       }
@@ -90,7 +96,7 @@ final class PForUtil {
     final byte[] exceptions = new byte[numExceptions * 2];
     if (numExceptions > 0) {
       int exceptionCount = 0;
-      for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+      for (int i = 0; i < ForUtil90.BLOCK_SIZE; ++i) {
         if (longs[i] > maxUnpatchedValue) {
           exceptions[exceptionCount * 2] = (byte) i;
           exceptions[exceptionCount * 2 + 1] = (byte) (longs[i] >>> patchedBitsRequired);
@@ -117,18 +123,52 @@ final class PForUtil {
   }
 
   /** Decode 128 integers into {@code ints}. */
-  void decode(DataInput in, long[] longs) throws IOException {
+  void decode(DataInput in, int[] longs) throws IOException {
     final int token = Byte.toUnsignedInt(in.readByte());
     final int bitsPerValue = token & 0x1f;
     final int numExceptions = token >>> 5;
     if (bitsPerValue == 0) {
-      Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, in.readVLong());
+      Arrays.fill(longs, 0, ForUtil90.BLOCK_SIZE, (int) in.readVLong());
     } else {
       forUtil.decode(bitsPerValue, in, longs);
     }
     for (int i = 0; i < numExceptions; ++i) {
       longs[Byte.toUnsignedInt(in.readByte())] |=
           Byte.toUnsignedLong(in.readByte()) << bitsPerValue;
+    }
+  }
+
+  void postDecode(DataInput in, int[] longs) throws IOException {
+    final int token = Byte.toUnsignedInt(in.readByte());
+    final int bitsPerValue = token & 0x1f;
+    final int numExceptions = token >>> 5;
+    if (numExceptions == 0) {
+      // when there are no exceptions to apply, we can be a bit more efficient with our decoding
+      if (bitsPerValue == 0) {
+        // a bpv of zero indicates all delta values are the same
+        long val = in.readVLong();
+        if (val == 1) {
+          // this will often be the common case when working with doc IDs, so we special-case it to
+          // be slightly more efficient
+          System.arraycopy(IDENTITY_ONE, 0, longs, 0, ForUtil.BLOCK_SIZE);
+        } else {
+          Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, (int) val);
+        }
+      } else {
+        // decode the deltas then apply the prefix sum logic
+        forUtil.decode(bitsPerValue, in, longs);
+      }
+    } else {
+      // pack two values per long so we can apply prefixes two-at-a-time
+      if (bitsPerValue == 0) {
+        Arrays.fill(longs, 0, ForUtil.BLOCK_SIZE, (int) in.readVLong());
+      } else {
+        forUtil.decode(bitsPerValue, in, longs);
+      }
+      for (int i = 0; i < numExceptions; ++i) {
+        longs[Byte.toUnsignedInt(in.readByte())] |=
+            Byte.toUnsignedLong(in.readByte()) << bitsPerValue;
+      }
     }
   }
 
@@ -184,9 +224,9 @@ final class PForUtil {
    * there are no exceptions to apply.
    */
   private static void prefixSumOfOnes(long[] longs, long base) {
-    System.arraycopy(IDENTITY_PLUS_ONE, 0, longs, 0, ForUtil.BLOCK_SIZE);
+    System.arraycopy(IDENTITY_PLUS_ONE, 0, longs, 0, ForUtil90.BLOCK_SIZE);
     // This loop gets auto-vectorized
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
+    for (int i = 0; i < ForUtil90.BLOCK_SIZE; ++i) {
       longs[i] += base;
     }
   }
@@ -196,7 +236,7 @@ final class PForUtil {
    * this assumes there are no exceptions to apply.
    */
   private static void prefixSumOf(long[] longs, long base, long val) {
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; i++) {
+    for (int i = 0; i < ForUtil90.BLOCK_SIZE; i++) {
       longs[i] = (i + 1) * val + base;
     }
   }
@@ -232,7 +272,7 @@ final class PForUtil {
     innerPrefixSum32(longs);
     expand32(longs);
     final long l = longs[HALF_BLOCK_SIZE - 1];
-    for (int i = HALF_BLOCK_SIZE; i < ForUtil.BLOCK_SIZE; ++i) {
+    for (int i = HALF_BLOCK_SIZE; i < ForUtil90.BLOCK_SIZE; ++i) {
       longs[i] += l;
     }
   }
