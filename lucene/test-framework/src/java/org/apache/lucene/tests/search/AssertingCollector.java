@@ -25,7 +25,7 @@ import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Weight;
 
 /** A collector that asserts that it is used correctly. */
-class AssertingCollector extends FilterCollector {
+public class AssertingCollector extends FilterCollector {
 
   private boolean weightSet = false;
   private int maxDoc = -1;

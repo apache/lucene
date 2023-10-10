@@ -81,6 +81,8 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingCollector;
+import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.search.AssertingLeafCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -331,7 +333,7 @@ public class TestDrillSideways extends FacetTestCase {
 
       try (IndexReader r = w.getReader();
           TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
-        IndexSearcher searcher = new IndexSearcher(r);
+        IndexSearcher searcher = new AssertingIndexSearcher(random(), r);
 
         Query baseQuery = new MatchAllDocsQuery();
         Query dimQ = new TermQuery(new Term("foo", "bar"));
@@ -344,27 +346,24 @@ public class TestDrillSideways extends FacetTestCase {
             new CollectorManager<>() {
               @Override
               public Collector newCollector() throws IOException {
-                return new Collector() {
+                return AssertingCollector.wrap(new Collector() {
                   @Override
                   public LeafCollector getLeafCollector(LeafReaderContext context)
                       throws IOException {
-                    return new AssertingLeafCollector(
-                        new LeafCollector() {
-                          @Override
-                          public void setScorer(Scorable scorer) throws IOException {}
+                    return new LeafCollector() {
+                      @Override
+                      public void setScorer(Scorable scorer) throws IOException {}
 
-                          @Override
-                          public void collect(int doc) throws IOException {}
-                        },
-                        0,
-                        1);
+                      @Override
+                      public void collect(int doc) throws IOException {}
+                    };
                   }
 
                   @Override
                   public ScoreMode scoreMode() {
                     return ScoreMode.COMPLETE;
                   }
-                };
+                });
               }
 
               @Override
