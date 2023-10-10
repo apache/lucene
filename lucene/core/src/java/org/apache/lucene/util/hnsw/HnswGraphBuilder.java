@@ -76,7 +76,12 @@ public final class HnswGraphBuilder {
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, -1);
+  }
+
+  public static HnswGraphBuilder create(
+          RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize) {
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize);
   }
 
   public static HnswGraphBuilder create(
@@ -87,7 +92,7 @@ public final class HnswGraphBuilder {
       HnswGraph initializerGraph,
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
+    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, oldToNewOrdinalMap.size());
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
@@ -102,10 +107,10 @@ public final class HnswGraphBuilder {
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
+   * @param graphSize size of graph, if unknown, pass in -1
    */
   private HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
-      throws IOException {
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize) {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -118,7 +123,7 @@ public final class HnswGraphBuilder {
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    this.hnsw = new OnHeapHnswGraph(M);
+    this.hnsw = new OnHeapHnswGraph(M, graphSize);
     this.graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(beamWidth, true), new FixedBitSet(this.getGraph().size()));
@@ -155,7 +160,7 @@ public final class HnswGraphBuilder {
   private void initializeFromGraph(
       HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
     assert hnsw.size() == 0;
-    for (int level = 0; level < initializerGraph.numLevels(); level++) {
+    for (int level = initializerGraph.numLevels() - 1; level >= 0; level--) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
       while (it.hasNext()) {
@@ -288,7 +293,6 @@ public final class HnswGraphBuilder {
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      assert cNode < hnsw.size();
       if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }

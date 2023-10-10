@@ -438,7 +438,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     RandomVectorScorerSupplier.createBytes(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -453,7 +453,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     RandomVectorScorerSupplier.createFloats(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -488,10 +488,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       MergeState mergeState,
       FieldInfo fieldInfo,
       RandomVectorScorerSupplier scorerSupplier,
-      int initializerIndex)
+      int initializerIndex,
+      int graphSize)
       throws IOException {
     if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, graphSize);
     }
 
     HnswGraph initializerGraph =

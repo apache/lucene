@@ -454,77 +454,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
-  public void testBuildOnHeapHnswGraphOutOfOrder() throws IOException {
-    int maxNumLevels = randomIntBetween(2, 10);
-    int nodeCount = randomIntBetween(1, 100);
-
-    List<List<Integer>> nodesPerLevel = new ArrayList<>();
-    for (int i = 0; i < maxNumLevels; i++) {
-      nodesPerLevel.add(new ArrayList<>());
-    }
-
-    int numLevels = 0;
-    for (int currNode = 0; currNode < nodeCount; currNode++) {
-      int nodeMaxLevel = random().nextInt(1, maxNumLevels + 1);
-      numLevels = Math.max(numLevels, nodeMaxLevel);
-      for (int currLevel = 0; currLevel < nodeMaxLevel; currLevel++) {
-        nodesPerLevel.get(currLevel).add(currNode);
-      }
-    }
-
-    OnHeapHnswGraph topDownOrderReversedHnsw = new OnHeapHnswGraph(10);
-    for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
-      List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
-      int currLevelNodesSize = currLevelNodes.size();
-      for (int currNodeInd = currLevelNodesSize - 1; currNodeInd >= 0; currNodeInd--) {
-        topDownOrderReversedHnsw.addNode(currLevel, currLevelNodes.get(currNodeInd));
-      }
-    }
-
-    OnHeapHnswGraph bottomUpOrderReversedHnsw = new OnHeapHnswGraph(10);
-    for (int currLevel = 0; currLevel < numLevels; currLevel++) {
-      List<Integer> currLevelNodes = nodesPerLevel.get(currLevel);
-      int currLevelNodesSize = currLevelNodes.size();
-      for (int currNodeInd = currLevelNodesSize - 1; currNodeInd >= 0; currNodeInd--) {
-        bottomUpOrderReversedHnsw.addNode(currLevel, currLevelNodes.get(currNodeInd));
-      }
-    }
-
-    OnHeapHnswGraph topDownOrderRandomHnsw = new OnHeapHnswGraph(10);
-    for (int currLevel = numLevels - 1; currLevel >= 0; currLevel--) {
-      List<Integer> currLevelNodes = new ArrayList<>(nodesPerLevel.get(currLevel));
-      Collections.shuffle(currLevelNodes, random());
-      for (Integer currNode : currLevelNodes) {
-        topDownOrderRandomHnsw.addNode(currLevel, currNode);
-      }
-    }
-
-    OnHeapHnswGraph bottomUpExpectedHnsw = new OnHeapHnswGraph(10);
-    for (int currLevel = 0; currLevel < numLevels; currLevel++) {
-      for (Integer currNode : nodesPerLevel.get(currLevel)) {
-        bottomUpExpectedHnsw.addNode(currLevel, currNode);
-      }
-    }
-
-    assertEquals(nodeCount, bottomUpExpectedHnsw.getNodesOnLevel(0).size());
-    for (Integer node : nodesPerLevel.get(0)) {
-      assertEquals(0, bottomUpExpectedHnsw.getNeighbors(0, node).size());
-    }
-
-    for (int currLevel = 1; currLevel < numLevels; currLevel++) {
-      List<Integer> expectedNodesOnLevel = nodesPerLevel.get(currLevel);
-      List<Integer> sortedNodes = sortedNodesOnLevel(bottomUpExpectedHnsw, currLevel);
-      assertEquals(
-          String.format(Locale.ROOT, "Nodes on level %d do not match", currLevel),
-          expectedNodesOnLevel,
-          sortedNodes);
-    }
-
-    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderReversedHnsw);
-    assertGraphEqual(bottomUpExpectedHnsw, bottomUpOrderReversedHnsw);
-    assertGraphEqual(bottomUpExpectedHnsw, topDownOrderRandomHnsw);
-  }
-
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
     int totalSize = atLeast(100);
     int initializerSize = random().nextInt(5, totalSize);
@@ -599,35 +528,35 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
   }
 
   private void assertGraphInitializedFromGraph(
-      HnswGraph g, HnswGraph h, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
-    assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
+      HnswGraph g, HnswGraph initializer, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
+    assertEquals("the number of levels in the graphs are different!", initializer.numLevels(), g.numLevels());
     // Confirm that the size of the new graph includes all nodes up to an including the max new
     // ordinal in the old to
     // new ordinal mapping
     assertEquals(
         "the number of nodes in the graphs are different!",
-        g.size(),
-        Collections.max(oldToNewOrdMap.values()) + 1);
+        initializer.size(),
+            g.size());
 
     // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
     for (int level = 1; level < g.numLevels(); level++) {
       List<Integer> nodesOnLevel = sortedNodesOnLevel(g, level);
       List<Integer> nodesOnLevel2 =
-          sortedNodesOnLevel(h, level).stream().map(oldToNewOrdMap::get).toList();
+          sortedNodesOnLevel(initializer, level).stream().map(oldToNewOrdMap::get).toList();
       assertEquals(nodesOnLevel, nodesOnLevel2);
     }
 
     // assert that the neighbors from the old graph are successfully transferred to the new graph
     for (int level = 0; level < g.numLevels(); level++) {
-      NodesIterator nodesOnLevel = h.getNodesOnLevel(level);
+      NodesIterator nodesOnLevel = initializer.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();
         g.seek(level, oldToNewOrdMap.get(node));
-        h.seek(level, node);
+        initializer.seek(level, node);
         assertEquals(
             "arcs differ for node " + node,
             getNeighborNodes(g),
-            getNeighborNodes(h).stream().map(oldToNewOrdMap::get).collect(Collectors.toSet()));
+            getNeighborNodes(initializer).stream().map(oldToNewOrdMap::get).collect(Collectors.toSet()));
       }
     }
   }

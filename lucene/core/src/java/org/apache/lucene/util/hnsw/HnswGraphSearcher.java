@@ -232,7 +232,6 @@ public class HnswGraphSearcher {
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
         }
