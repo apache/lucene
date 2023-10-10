@@ -256,7 +256,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    return OffHeapFloatVectorValues.load(
+        fieldEntry.ordToDocVectorValues,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
   }
 
   @Override
@@ -271,7 +277,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapByteVectorValues.load(fieldEntry, vectorData);
+    return OffHeapByteVectorValues.load(
+        fieldEntry.ordToDocVectorValues,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
   }
 
   @Override
@@ -285,7 +297,14 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       return;
     }
 
-    OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    OffHeapFloatVectorValues vectorValues =
+        OffHeapFloatVectorValues.load(
+            fieldEntry.ordToDocVectorValues,
+            fieldEntry.vectorEncoding,
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData);
     RandomVectorScorer scorer =
         RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
     HnswGraphSearcher.search(
@@ -306,7 +325,14 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       return;
     }
 
-    OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
+    OffHeapByteVectorValues vectorValues =
+        OffHeapByteVectorValues.load(
+            fieldEntry.ordToDocVectorValues,
+            fieldEntry.vectorEncoding,
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData);
     RandomVectorScorer scorer =
         RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
     HnswGraphSearcher.search(
@@ -360,22 +386,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     final int offsetsBlockShift;
     final long offsetsLength;
 
-    // the following four variables used to read docIds encoded by IndexDISI
-    // special values of docsWithFieldOffset are -1 and -2
-    // -1 : dense
-    // -2 : empty
-    // other: sparse
-    final long docsWithFieldOffset;
-    final long docsWithFieldLength;
-    final short jumpTableEntryCount;
-    final byte denseRankPower;
-
-    // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
-    // note that only spare case needs to store ordToDoc
-    final long addressesOffset;
-    final int blockShift;
-    final DirectMonotonicReader.Meta meta;
-    final long addressesLength;
+    // Contains the configuration for reading sparse vectors and translating vector ordinals to
+    // docId
+    OrdToDocDISIReaderConfiguration ordToDocVectorValues;
 
     FieldEntry(
         IndexInput input,
@@ -391,24 +404,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       dimension = input.readVInt();
       size = input.readInt();
 
-      docsWithFieldOffset = input.readLong();
-      docsWithFieldLength = input.readLong();
-      jumpTableEntryCount = input.readShort();
-      denseRankPower = input.readByte();
-
-      // dense or empty
-      if (docsWithFieldOffset == -1 || docsWithFieldOffset == -2) {
-        addressesOffset = 0;
-        blockShift = 0;
-        meta = null;
-        addressesLength = 0;
-      } else {
-        // sparse
-        addressesOffset = input.readLong();
-        blockShift = input.readVInt();
-        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
-        addressesLength = input.readLong();
-      }
+      ordToDocVectorValues = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
 
       // read nodes by level
       M = input.readVInt();
@@ -449,7 +445,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     public long ramBytesUsed() {
       return SHALLOW_SIZE
           + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(meta)
+          + RamUsageEstimator.sizeOf(ordToDocVectorValues)
           + RamUsageEstimator.sizeOf(offsetsMeta);
     }
   }
