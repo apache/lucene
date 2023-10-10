@@ -1141,7 +1141,8 @@ public class TestFSTs extends LuceneTestCase {
     }
 
     // Sanity check.
-    assertTrue(FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
+    assertTrue(
+        FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
     assertTrue(FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
 
     SyntheticData s = new SyntheticData();

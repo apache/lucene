@@ -16,14 +16,6 @@
  */
 package org.apache.lucene.util.fst;
 
-import java.io.IOException;
-import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.fst.FST.INPUT_TYPE; // javadoc
-
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_BINARY_SEARCH;
 import static org.apache.lucene.util.fst.FST.ARCS_FOR_DIRECT_ADDRESSING;
 import static org.apache.lucene.util.fst.FST.BIT_ARC_HAS_FINAL_OUTPUT;
@@ -35,6 +27,14 @@ import static org.apache.lucene.util.fst.FST.BIT_TARGET_NEXT;
 import static org.apache.lucene.util.fst.FST.FINAL_END_NODE;
 import static org.apache.lucene.util.fst.FST.NON_FINAL_END_NODE;
 import static org.apache.lucene.util.fst.FST.getNumPresenceBytes;
+
+import java.io.IOException;
+import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.IntsRefBuilder;
+import org.apache.lucene.util.fst.FST.INPUT_TYPE; // javadoc
 
 // TODO: could we somehow stream an FST to disk while we
 // build it?
@@ -376,8 +376,7 @@ public class FSTCompiler<T> {
 
   // serializes new node by appending its bytes to the end
   // of the current byte[]
-  long addNode(FSTCompiler.UnCompiledNode<T> nodeIn)
-      throws IOException {
+  long addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
     T NO_OUTPUT = fst.outputs.getNoOutput();
 
     // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
@@ -388,7 +387,7 @@ public class FSTCompiler<T> {
         return NON_FINAL_END_NODE;
       }
     }
-    final long startAddress = fstWriter.getPosition();
+    final long startAddress = bytes.getPosition();
     // System.out.println("  startAddr=" + startAddress);
 
     final boolean doFixedLengthArcs = shouldExpandNodeWithFixedLengthArcs(nodeIn);
@@ -404,7 +403,7 @@ public class FSTCompiler<T> {
 
     final int lastArc = nodeIn.numArcs - 1;
 
-    long lastArcStart = fstWriter.getPosition();
+    long lastArcStart = bytes.getPosition();
     int maxBytesPerArc = 0;
     int maxBytesPerArcWithoutLabel = 0;
     for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
@@ -444,38 +443,38 @@ public class FSTCompiler<T> {
         flags += BIT_ARC_HAS_OUTPUT;
       }
 
-      fstWriter.writeByte((byte) flags);
-      long labelStart = fstWriter.getPosition();
-      writeLabel(fstWriter, arc.label);
-      int numLabelBytes = (int) (fstWriter.getPosition() - labelStart);
+      bytes.writeByte((byte) flags);
+      long labelStart = bytes.getPosition();
+      writeLabel(bytes, arc.label);
+      int numLabelBytes = (int) (bytes.getPosition() - labelStart);
 
       // System.out.println("  write arc: label=" + (char) arc.label + " flags=" + flags + "
       // target=" + target.node + " pos=" + bytes.getPosition() + " output=" +
       // outputs.outputToString(arc.output));
 
       if (arc.output != NO_OUTPUT) {
-        fst.outputs.write(arc.output, fstWriter);
+        fst.outputs.write(arc.output, bytes);
         // System.out.println("    write output");
       }
 
       if (arc.nextFinalOutput != NO_OUTPUT) {
         // System.out.println("    write final output");
-        fst.outputs.writeFinalOutput(arc.nextFinalOutput, fstWriter);
+        fst.outputs.writeFinalOutput(arc.nextFinalOutput, bytes);
       }
 
       if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
         assert target.node > 0;
         // System.out.println("    write target");
-        fstWriter.writeVLong(target.node);
+        bytes.writeVLong(target.node);
       }
 
       // just write the arcs "like normal" on first pass, but record how many bytes each one took
       // and max byte size:
       if (doFixedLengthArcs) {
-        int numArcBytes = (int) (fstWriter.getPosition() - lastArcStart);
+        int numArcBytes = (int) (bytes.getPosition() - lastArcStart);
         numBytesPerArc[arcIdx] = numArcBytes;
         numLabelBytesPerArc[arcIdx] = numLabelBytes;
-        lastArcStart = fstWriter.getPosition();
+        lastArcStart = bytes.getPosition();
         maxBytesPerArc = Math.max(maxBytesPerArc, numArcBytes);
         maxBytesPerArcWithoutLabel =
             Math.max(maxBytesPerArcWithoutLabel, numArcBytes - numLabelBytes);
@@ -511,8 +510,7 @@ public class FSTCompiler<T> {
       assert labelRange > 0;
       if (shouldExpandNodeWithDirectAddressing(
           nodeIn, maxBytesPerArc, maxBytesPerArcWithoutLabel, labelRange)) {
-        writeNodeForDirectAddressing(
-            nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange);
+        writeNodeForDirectAddressing(nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange);
         directAddressingNodeCount++;
       } else {
         writeNodeForBinarySearch(nodeIn, startAddress, maxBytesPerArc);
@@ -520,10 +518,23 @@ public class FSTCompiler<T> {
       }
     }
 
-    final long thisNodeAddress = fstWriter.getPosition() - 1;
-    fstWriter.reverse(startAddress, thisNodeAddress);
+    final long thisNodeAddress = bytes.getPosition() - 1;
+    bytes.reverse(startAddress, thisNodeAddress);
     nodeCount++;
     return thisNodeAddress;
+  }
+
+  private void writeLabel(DataOutput out, int v) throws IOException {
+    assert v >= 0 : "v=" + v;
+    if (fst.inputType == INPUT_TYPE.BYTE1) {
+      assert v <= 255 : "v=" + v;
+      out.writeByte((byte) v);
+    } else if (fst.inputType == INPUT_TYPE.BYTE2) {
+      assert v <= 65535 : "v=" + v;
+      out.writeShort((short) v);
+    } else {
+      out.writeVInt(v);
+    }
   }
 
   /**
@@ -537,8 +548,8 @@ public class FSTCompiler<T> {
   private boolean shouldExpandNodeWithFixedLengthArcs(FSTCompiler.UnCompiledNode<T> node) {
     return allowFixedLengthArcs
         && ((node.depth <= FIXED_LENGTH_ARC_SHALLOW_DEPTH
-        && node.numArcs >= FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
-        || node.numArcs >= FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
+                && node.numArcs >= FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
+            || node.numArcs >= FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
   }
 
   /**
@@ -564,8 +575,7 @@ public class FSTCompiler<T> {
 
     // Determine the allowed oversize compared to binary search.
     // This is defined by a parameter of FST Builder (default 1: no oversize).
-    int allowedOversize =
-        (int) (sizeForBinarySearch * getDirectAddressingMaxOversizingFactor());
+    int allowedOversize = (int) (sizeForBinarySearch * getDirectAddressingMaxOversizingFactor());
     int expansionCost = sizeForDirectAddressing - allowedOversize;
 
     // Select direct addressing if either:
@@ -578,8 +588,8 @@ public class FSTCompiler<T> {
     // (this is the DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR parameter).
     if (expansionCost <= 0
         || (directAddressingExpansionCredit >= expansionCost
-        && sizeForDirectAddressing
-        <= allowedOversize * DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR)) {
+            && sizeForDirectAddressing
+                <= allowedOversize * DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR)) {
       directAddressingExpansionCredit -= expansionCost;
       return true;
     }
@@ -587,10 +597,7 @@ public class FSTCompiler<T> {
   }
 
   private void writeNodeForBinarySearch(
-      FSTCompiler.UnCompiledNode<T> nodeIn,
-      long startAddress,
-      int maxBytesPerArc)
-      throws IOException {
+      FSTCompiler.UnCompiledNode<T> nodeIn, long startAddress, int maxBytesPerArc) {
     // Build the header in a buffer.
     // It is a false/special arc which is in fact a node header with node flags followed by node
     // metadata.
@@ -602,11 +609,11 @@ public class FSTCompiler<T> {
     int headerLen = fixedLengthArcsBuffer.getPosition();
 
     // Expand the arcs in place, backwards.
-    long srcPos = fstWriter.getPosition();
+    long srcPos = bytes.getPosition();
     long destPos = startAddress + headerLen + nodeIn.numArcs * (long) maxBytesPerArc;
     assert destPos >= srcPos;
     if (destPos > srcPos) {
-      fstWriter.skipBytes((int) (destPos - srcPos));
+      bytes.skipBytes((int) (destPos - srcPos));
       for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
         destPos -= maxBytesPerArc;
         int arcLen = numBytesPerArc[arcIdx];
@@ -614,33 +621,31 @@ public class FSTCompiler<T> {
         if (srcPos != destPos) {
           assert destPos > srcPos
               : "destPos="
-              + destPos
-              + " srcPos="
-              + srcPos
-              + " arcIdx="
-              + arcIdx
-              + " maxBytesPerArc="
-              + maxBytesPerArc
-              + " arcLen="
-              + arcLen
-              + " nodeIn.numArcs="
-              + nodeIn.numArcs;
-          fstWriter.copyBytes(srcPos, destPos, arcLen);
+                  + destPos
+                  + " srcPos="
+                  + srcPos
+                  + " arcIdx="
+                  + arcIdx
+                  + " maxBytesPerArc="
+                  + maxBytesPerArc
+                  + " arcLen="
+                  + arcLen
+                  + " nodeIn.numArcs="
+                  + nodeIn.numArcs;
+          bytes.copyBytes(srcPos, destPos, arcLen);
         }
       }
     }
 
     // Write the header.
-    fstWriter.writeBytes(
-        startAddress, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+    bytes.writeBytes(startAddress, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
   }
 
   private void writeNodeForDirectAddressing(
       FSTCompiler.UnCompiledNode<T> nodeIn,
       long startAddress,
       int maxBytesPerArcWithoutLabel,
-      int labelRange)
-      throws IOException {
+      int labelRange) {
     // Expand the arcs backwards in a buffer because we remove the labels.
     // So the obtained arcs might occupy less space. This is the reason why this
     // whole method is more complex.
@@ -648,9 +653,8 @@ public class FSTCompiler<T> {
     // the presence bits, and the first label. Keep the first label.
     int headerMaxLen = 11;
     int numPresenceBytes = getNumPresenceBytes(labelRange);
-    long srcPos = fstWriter.getPosition();
-    int totalArcBytes =
-        numLabelBytesPerArc[0] + nodeIn.numArcs * maxBytesPerArcWithoutLabel;
+    long srcPos = bytes.getPosition();
+    int totalArcBytes = numLabelBytesPerArc[0] + nodeIn.numArcs * maxBytesPerArcWithoutLabel;
     int bufferOffset = headerMaxLen + numPresenceBytes + totalArcBytes;
     byte[] buffer = fixedLengthArcsBuffer.ensureCapacity(bufferOffset).getBytes();
     // Copy the arcs to the buffer, dropping all labels except first one.
@@ -660,17 +664,16 @@ public class FSTCompiler<T> {
       srcPos -= srcArcLen;
       int labelLen = numLabelBytesPerArc[arcIdx];
       // Copy the flags.
-      fstWriter.copyBytes(srcPos, buffer, bufferOffset, 1);
+      bytes.copyBytes(srcPos, buffer, bufferOffset, 1);
       // Skip the label, copy the remaining.
       int remainingArcLen = srcArcLen - 1 - labelLen;
       if (remainingArcLen != 0) {
-        fstWriter.copyBytes(
-            srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
+        bytes.copyBytes(srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
       }
       if (arcIdx == 0) {
         // Copy the label of the first arc only.
         bufferOffset -= labelLen;
-        fstWriter.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
+        bytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
       }
     }
     assert bufferOffset == headerMaxLen + numPresenceBytes;
@@ -688,18 +691,17 @@ public class FSTCompiler<T> {
 
     // Prepare the builder byte store. Enlarge or truncate if needed.
     long nodeEnd = startAddress + headerLen + numPresenceBytes + totalArcBytes;
-    long currentPosition = fstWriter.getPosition();
+    long currentPosition = bytes.getPosition();
     if (nodeEnd >= currentPosition) {
-      fstWriter.skipBytes((int) (nodeEnd - currentPosition));
+      bytes.skipBytes((int) (nodeEnd - currentPosition));
     } else {
-      fstWriter.truncate(nodeEnd);
+      bytes.truncate(nodeEnd);
     }
-    assert fstWriter.getPosition() == nodeEnd;
+    assert bytes.getPosition() == nodeEnd;
 
     // Write the header.
     long writeOffset = startAddress;
-    fstWriter.writeBytes(
-        writeOffset, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
+    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), 0, headerLen);
     writeOffset += headerLen;
 
     // Write the presence bits
@@ -707,28 +709,11 @@ public class FSTCompiler<T> {
     writeOffset += numPresenceBytes;
 
     // Write the first label and the arcs.
-    fstWriter.writeBytes(
-        writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
-  }
-
-  private void writeLabel(DataOutput out, int v) throws IOException {
-    assert v >= 0 : "v=" + v;
-    if (fst.inputType == INPUT_TYPE.BYTE1) {
-      assert v <= 255 : "v=" + v;
-      out.writeByte((byte) v);
-    } else if (fst.inputType == INPUT_TYPE.BYTE2) {
-      assert v <= 65535 : "v=" + v;
-      out.writeShort((short) v);
-    } else {
-      out.writeVInt(v);
-    }
+    bytes.writeBytes(writeOffset, fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
   }
 
   private void writePresenceBits(
-      FSTCompiler.UnCompiledNode<T> nodeIn,
-      long dest,
-      int numPresenceBytes)
-      throws IOException {
+      FSTCompiler.UnCompiledNode<T> nodeIn, long dest, int numPresenceBytes) {
     long bytePos = dest;
     byte presenceBits = 1; // The first arc is always present.
     int presenceIndex = 0;
@@ -738,7 +723,7 @@ public class FSTCompiler<T> {
       assert label > previousLabel;
       presenceIndex += label - previousLabel;
       while (presenceIndex >= Byte.SIZE) {
-        fstWriter.writeByte(bytePos++, presenceBits);
+        bytes.writeByte(bytePos++, presenceBits);
         presenceBits = 0;
         presenceIndex -= Byte.SIZE;
       }
@@ -749,7 +734,7 @@ public class FSTCompiler<T> {
     assert presenceIndex == (nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label) % 8;
     assert presenceBits != 0; // The last byte is not 0.
     assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
-    fstWriter.writeByte(bytePos++, presenceBits);
+    bytes.writeByte(bytePos++, presenceBits);
     assert bytePos - dest == numPresenceBytes;
   }
 
