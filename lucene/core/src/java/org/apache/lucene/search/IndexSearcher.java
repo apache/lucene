@@ -92,6 +92,7 @@ public class IndexSearcher {
     final long maxRamBytesUsed = Math.min(1L << 25, Runtime.getRuntime().maxMemory() / 20);
     DEFAULT_QUERY_CACHE = new LRUQueryCache(maxCachedQueries, maxRamBytesUsed);
   }
+
   /**
    * By default we count hits accurately up to 1000. This makes sure that we don't spend most time
    * on computing hit counts
@@ -968,6 +969,7 @@ public class IndexSearcher {
     public TooManyClauses() {
       this("maxClauseCount is set to " + IndexSearcher.getMaxClauseCount());
     }
+
     /** The value of {@link IndexSearcher#getMaxClauseCount()} when this Exception was created */
     public int getMaxClauseCount() {
       return maxClauseCount;

@@ -525,6 +525,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
   public static class IOStats {
     /** Bytes written through flushes. */
     long flushBytesWritten;
+
     /** Bytes written through merges. */
     long mergeBytesWritten;
   }

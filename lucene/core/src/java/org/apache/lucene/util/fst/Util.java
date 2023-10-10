@@ -100,6 +100,7 @@ public final class Util {
   public static class FSTPath<T> {
     /** Holds the last arc appended to this path */
     public FST.Arc<T> arc;
+
     /** Holds cost plus any usage-specific output: */
     public T output;
 
@@ -446,6 +447,7 @@ public final class Util {
      * TopNSearcher} rejected too many results.
      */
     public final boolean isComplete;
+
     /** The top results */
     public final List<Result<T>> topN;
 

@@ -200,6 +200,7 @@ public class CustomFacetSetExample {
       return facets.getAllChildren("temperature");
     }
   }
+
   /** Counting documents which match a certain degrees value for any date. */
   private FacetResult rangeMatching() throws IOException {
     try (DirectoryReader indexReader = DirectoryReader.open(indexDir)) {

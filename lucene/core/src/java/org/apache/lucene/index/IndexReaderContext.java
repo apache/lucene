@@ -25,13 +25,16 @@ import java.util.List;
 public abstract sealed class IndexReaderContext permits CompositeReaderContext, LeafReaderContext {
   /** The reader context for this reader's immediate parent, or null if none */
   public final CompositeReaderContext parent;
+
   /**
    * {@code true} if this context struct represents the top level reader within the hierarchical
    * context
    */
   public final boolean isTopLevel;
+
   /** the doc base for this reader in the parent, {@code 0} if parent is null */
   public final int docBaseInParent;
+
   /** the ord for this reader in the parent, {@code 0} if parent is null */
   public final int ordInParent;
 
