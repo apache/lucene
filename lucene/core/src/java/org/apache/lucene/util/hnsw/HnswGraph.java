@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
@@ -59,11 +60,26 @@ public abstract class HnswGraph {
    *
    * @param level level of the graph
    * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
-   *     FloatVectorValues#size()}.
+   *     HnswGraph#size()}.
    */
   public abstract void seek(int level, int target) throws IOException;
 
-  /** Returns the number of nodes in the graph */
+  public interface NeighborIterator extends Closeable {
+    int nextNeighbor() throws IOException;
+    int size();
+  }
+
+  /**
+   * Retrieve an iterator over the neighbors of a graph node, acquiring a read lock. Closing the iterator
+   * releases the lock.
+   * @param level level of the graph
+   * @param node ordinal of a node in the graph, must be &ge; 0 and &lt; {@link HnswGraph#size()}.
+   */
+  public NeighborIterator lockNeighbors(int level, int node) throws IOException {
+    throw new UnsupportedOperationException("concurrent access not implemented");
+  }
+
+    /** Returns the number of nodes in the graph */
   public abstract int size();
 
   /**
@@ -100,6 +116,25 @@ public abstract class HnswGraph {
 
         @Override
         public void seek(int level, int target) {}
+
+        @Override
+        public NeighborIterator lockNeighbors(int level, int node) {
+          return new NeighborIterator() {
+            @Override
+            public int nextNeighbor() {
+              return NO_MORE_DOCS;
+            }
+
+            @Override
+            public int size() {
+              return 0;
+            }
+
+            @Override
+            public void close() {
+            }
+          };
+        }
 
         @Override
         public int size() {

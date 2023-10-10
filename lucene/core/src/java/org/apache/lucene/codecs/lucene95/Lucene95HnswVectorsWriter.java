@@ -29,6 +29,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
@@ -426,6 +428,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       if (docsWithField.cardinality() != 0) {
         // build graph
         int initializerIndex = selectGraphForInitialization(mergeState, fieldInfo);
+        ExecutorService executor = null;
+        if (docsWithField.cardinality() > 8 * 1024) {
+          // nocommit - size of thread pool and whether to use one at all
+          // should be managed externally or configured using IndexWriterConfig
+          executor = Executors.newFixedThreadPool(8);
+        }
         graph =
             switch (fieldInfo.getVectorEncoding()) {
               case BYTE -> {
@@ -441,7 +449,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 HnswGraphBuilder hnswGraphBuilder =
                     createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.size());
+                yield hnswGraphBuilder.build(vectorValues.size(), executor);
               }
               case FLOAT32 -> {
                 OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
@@ -456,7 +464,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 HnswGraphBuilder hnswGraphBuilder =
                     createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.size());
+                yield hnswGraphBuilder.build(vectorValues.size(), executor);
               }
             };
         vectorIndexNodeOffsets = writeGraph(graph);

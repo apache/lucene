@@ -447,7 +447,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  private static final class OffHeapHnswGraph extends HnswGraph implements HnswGraph.NeighborIterator {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -507,12 +507,22 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     }
 
     @Override
+    public OffHeapHnswGraph lockNeighbors(int level, int targetOrd) throws IOException {
+      seek(level, targetOrd);
+      return this;
+    }
+
+    @Override
+    public void close() {
+    }
+
+    @Override
     public int size() {
       return size;
     }
 
     @Override
-    public int nextNeighbor() throws IOException {
+    public int nextNeighbor() {
       if (arcUpTo >= arcCount) {
         return NO_MORE_DOCS;
       }

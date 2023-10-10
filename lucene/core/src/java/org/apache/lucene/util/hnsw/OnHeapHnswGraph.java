@@ -82,6 +82,31 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return levelMap.get(node);
   }
 
+  public NeighborIterator lockNeighbors(int level, int node) {
+    NeighborArray neighbors = getNeighbors(level, node);
+    neighbors.lock.readLock().lock();
+    return new NeighborIterator() {
+      private int upto;
+      @Override
+      public int nextNeighbor() {
+        if (++upto < neighbors.size()) {
+          return neighbors.node[upto];
+        }
+        return NO_MORE_DOCS;
+      }
+
+      @Override
+      public int size() {
+        return neighbors.size();
+      }
+
+      @Override
+      public void close() {
+        neighbors.lock.readLock().unlock();
+      }
+    };
+  }
+
   @Override
   public int size() {
     return graphLevel0.size(); // all nodes are located on the 0th level
@@ -131,6 +156,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
   @Override
   public int nextNeighbor() {
+    // NPE: cur == null when multiple threads use this
     if (++upto < cur.size()) {
       return cur.node[upto];
     }

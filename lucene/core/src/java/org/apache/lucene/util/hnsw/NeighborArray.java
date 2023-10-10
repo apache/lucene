@@ -19,6 +19,8 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -31,6 +33,8 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public class NeighborArray {
   private final boolean scoresDescOrder;
+  final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
   private int size;
   float[] score;
   int[] node;

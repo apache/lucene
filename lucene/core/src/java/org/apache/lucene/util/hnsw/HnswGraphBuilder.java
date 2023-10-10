@@ -21,12 +21,16 @@ import static java.lang.Math.log;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SplittableRandom;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
@@ -76,7 +80,7 @@ public final class HnswGraphBuilder {
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
+    return new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed);
   }
 
   public static HnswGraphBuilder create(
@@ -87,7 +91,7 @@ public final class HnswGraphBuilder {
       HnswGraph initializerGraph,
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
+    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed);
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
@@ -96,6 +100,7 @@ public final class HnswGraphBuilder {
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
+   * @param graph the graph to which new nodes will be added
    * @param scorerSupplier a supplier to create vector scorer from ordinals.
    * @param M – graph fanout parameter used to calculate the maximum number of connections a node
    *     can have – M on upper layers, and M * 2 on the lowest level.
@@ -104,8 +109,7 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   private HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
-      throws IOException {
+      OnHeapHnswGraph graph, RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed) {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -118,7 +122,7 @@ public final class HnswGraphBuilder {
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    this.hnsw = new OnHeapHnswGraph(M);
+    this.hnsw = graph;
     this.graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(beamWidth, true), new FixedBitSet(this.getGraph().size()));
@@ -127,6 +131,10 @@ public final class HnswGraphBuilder {
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     this.initializedNodes = new HashSet<>();
+  }
+
+  private HnswGraphBuilder copy() {
+    return new HnswGraphBuilder(hnsw, scorerSupplier, M, beamCandidates.k, randSeed);
   }
 
   /**
@@ -138,7 +146,44 @@ public final class HnswGraphBuilder {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
-    addVectors(maxOrd);
+    addVectors(0, maxOrd);
+    return hnsw;
+  }
+
+  /**
+   * Adds all nodes to the graph up to the provided {@code maxOrd} in concurrent batches using the provided ExecutorService.
+   * If any error occurs, the executor will be shutdown. In any event when this returns all of the tasks started in here
+   * will be running.
+   * @param maxOrd The maximum ordinal of the nodes to be added.
+   */
+  public OnHeapHnswGraph build(int maxOrd, ExecutorService executor) throws IOException {
+    if (executor == null) {
+      return build(maxOrd);
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
+    }
+    // insert in batches of 1024? Perhaps more given we create a builder for each task
+    List<Future<?>> futures = new ArrayList<>();
+    for (int i = 0; i < maxOrd; i += 1024) {
+      final int minOrd = i;
+      futures.add(executor.submit(() -> {
+            try {
+              copy().addVectors(minOrd, Math.min(minOrd + 1024, maxOrd));
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          }));
+    }
+    for (Future<?> future : futures) {
+      try {
+        future.get();
+      } catch (Exception e) {
+        // nocommit -- does this wait for all tasks to finish / terminate?
+        executor.shutdownNow();
+        throw new IOException(e);
+      }
+    }
     return hnsw;
   }
 
@@ -190,9 +235,9 @@ public final class HnswGraphBuilder {
     return hnsw;
   }
 
-  private void addVectors(int maxOrd) throws IOException {
+  private void addVectors(int minOrd, int maxOrd) throws IOException {
     long start = System.nanoTime(), t = start;
-    for (int node = 0; node < maxOrd; node++) {
+    for (int node = minOrd; node < maxOrd; node++) {
       if (initializedNodes.contains(node)) {
         continue;
       }
@@ -209,6 +254,7 @@ public final class HnswGraphBuilder {
     final int nodeLevel = getRandomGraphLevel(ml, random);
     int curMaxLevel = hnsw.numLevels() - 1;
 
+    // TODO lock nodes array
     // If entrynode is -1, then this should finish without adding neighbors
     if (hnsw.entryNode() == -1) {
       for (int level = nodeLevel; level >= 0; level--) {
@@ -218,6 +264,7 @@ public final class HnswGraphBuilder {
     }
     int[] eps = new int[] {hnsw.entryNode()};
 
+    // TODO lock nodes array
     // if a node introduces new levels to the graph, add this new node on new levels
     for (int level = nodeLevel; level > curMaxLevel; level--) {
       hnsw.addNode(level, node);
@@ -236,7 +283,9 @@ public final class HnswGraphBuilder {
       candidates.clear();
       graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
       eps = candidates.popUntilNearestKNodes();
+      // TODO lock nodes array
       hnsw.addNode(level, node);
+      // TODO lock node for writing
       addDiverseNeighbors(level, node, candidates);
     }
   }
@@ -261,22 +310,32 @@ public final class HnswGraphBuilder {
      * since the node is new and has no prior neighbors).
      */
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
-    assert neighbors.size() == 0; // new node
-    popToScratch(candidates);
-    int maxConnOnLevel = level == 0 ? M * 2 : M;
-    selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
+    neighbors.lock.writeLock().lock(); // TODO: we could downgrade to a readLock after the call to selectAndLinkDiverse
+    try {
+      assert neighbors.size() == 0; // new node
+      popToScratch(candidates);
+      int maxConnOnLevel = level == 0 ? M * 2 : M;
+      selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
 
-    // Link the selected nodes to the new node, and the new node to the selected nodes (again
-    // applying diversity heuristic)
-    int size = neighbors.size();
-    for (int i = 0; i < size; i++) {
-      int nbr = neighbors.node[i];
-      NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-      nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
-      if (nbrsOfNbr.size() > maxConnOnLevel) {
-        int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
-        nbrsOfNbr.removeIndex(indexToRemove);
+      // Link the selected nodes to the new node, and the new node to the selected nodes (again
+      // applying diversity heuristic)
+      int size = neighbors.size();
+      for (int i = 0; i < size; i++) {
+        int nbr = neighbors.node[i];
+        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
+        nbrsOfNbr.lock.readLock().lock();
+        try {
+          nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
+          if (nbrsOfNbr.size() > maxConnOnLevel) {
+            int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
+            nbrsOfNbr.removeIndex(indexToRemove);
+          }
+        } finally {
+          nbrsOfNbr.lock.readLock().unlock();
+        }
       }
+    } finally {
+      neighbors.lock.writeLock().unlock();
     }
   }
 

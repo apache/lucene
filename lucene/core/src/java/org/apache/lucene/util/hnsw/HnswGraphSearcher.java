@@ -86,8 +86,8 @@ public class HnswGraphSearcher {
       RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
       throws IOException {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
-    OnHeapHnswGraphSearcher graphSearcher =
-        new OnHeapHnswGraphSearcher(
+    HnswGraphSearcher graphSearcher =
+        new HnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(graph.size()));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     return knnCollector;
@@ -162,23 +162,24 @@ public class HnswGraphSearcher {
       // Keep searching the given level until we stop finding a better candidate entry point
       while (foundBetter) {
         foundBetter = false;
-        graphSeek(graph, level, currentEp);
-        int friendOrd;
-        while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-          assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-          if (visited.getAndSet(friendOrd)) {
-            continue;
-          }
-          if (visitedCount >= visitLimit) {
-            return new int[] {-1, visitedCount};
-          }
-          float friendSimilarity = scorer.score(friendOrd);
-          visitedCount++;
-          if (friendSimilarity > currentScore
-              || (friendSimilarity == currentScore && friendOrd < currentEp)) {
-            currentScore = friendSimilarity;
-            currentEp = friendOrd;
-            foundBetter = true;
+        try (HnswGraph.NeighborIterator friends = graph.lockNeighbors(level, currentEp)) {
+          int friendOrd;
+          while ((friendOrd = friends.nextNeighbor()) != NO_MORE_DOCS) {
+            assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
+            if (visited.getAndSet(friendOrd)) {
+              continue;
+            }
+            if (visitedCount >= visitLimit) {
+              return new int[]{-1, visitedCount};
+            }
+            float friendSimilarity = scorer.score(friendOrd);
+            visitedCount++;
+            if (friendSimilarity > currentScore
+                    || (friendSimilarity == currentScore && friendOrd < currentEp)) {
+              currentScore = friendSimilarity;
+              currentEp = friendOrd;
+              foundBetter = true;
+            }
           }
         }
       }
@@ -229,24 +230,25 @@ public class HnswGraphSearcher {
       }
 
       int topCandidateNode = candidates.pop();
-      graphSeek(graph, level, topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
-          continue;
-        }
+      try (HnswGraph.NeighborIterator friends = graph.lockNeighbors(level, topCandidateNode)) {
+        int friendOrd;
+        while ((friendOrd = friends.nextNeighbor()) != NO_MORE_DOCS) {
+          assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
+          if (visited.getAndSet(friendOrd)) {
+            continue;
+          }
 
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float friendSimilarity = scorer.score(friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity >= minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            if (results.collect(friendOrd, friendSimilarity)) {
-              minAcceptedSimilarity = results.minCompetitiveSimilarity();
+          if (results.earlyTerminated()) {
+            break;
+          }
+          float friendSimilarity = scorer.score(friendOrd);
+          results.incVisitedCount(1);
+          if (friendSimilarity >= minAcceptedSimilarity) {
+            candidates.add(friendOrd, friendSimilarity);
+            if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+              if (results.collect(friendOrd, friendSimilarity)) {
+                minAcceptedSimilarity = results.minCompetitiveSimilarity();
+              }
             }
           }
         }
@@ -260,59 +262,5 @@ public class HnswGraphSearcher {
       visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
     }
     visited.clear();
-  }
-
-  /**
-   * Seek a specific node in the given graph. The default implementation will just call {@link
-   * HnswGraph#seek(int, int)}
-   *
-   * @throws IOException when seeking the graph
-   */
-  void graphSeek(HnswGraph graph, int level, int targetNode) throws IOException {
-    graph.seek(level, targetNode);
-  }
-
-  /**
-   * Get the next neighbor from the graph, you must call {@link #graphSeek(HnswGraph, int, int)}
-   * before calling this method. The default implementation will just call {@link
-   * HnswGraph#nextNeighbor()}
-   *
-   * @return see {@link HnswGraph#nextNeighbor()}
-   * @throws IOException when advance neighbors
-   */
-  int graphNextNeighbor(HnswGraph graph) throws IOException {
-    return graph.nextNeighbor();
-  }
-
-  /**
-   * This class allows {@link OnHeapHnswGraph} to be searched in a thread-safe manner by avoiding
-   * the unsafe methods (seek and nextNeighbor, which maintain state in the graph object) and
-   * instead maintaining the state in the searcher object.
-   *
-   * <p>Note the class itself is NOT thread safe, but since each search will create a new Searcher,
-   * the search methods using this class are thread safe.
-   */
-  private static class OnHeapHnswGraphSearcher extends HnswGraphSearcher {
-
-    private NeighborArray cur;
-    private int upto;
-
-    private OnHeapHnswGraphSearcher(NeighborQueue candidates, BitSet visited) {
-      super(candidates, visited);
-    }
-
-    @Override
-    void graphSeek(HnswGraph graph, int level, int targetNode) {
-      cur = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
-      upto = -1;
-    }
-
-    @Override
-    int graphNextNeighbor(HnswGraph graph) {
-      if (++upto < cur.size()) {
-        return cur.node[upto];
-      }
-      return NO_MORE_DOCS;
-    }
   }
 }
