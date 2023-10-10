@@ -126,7 +126,8 @@ public interface LeafCollector {
    * counts on leaf ordinals to facet counts on global ordinals. The default implementation does
    * nothing.
    *
-   * <p>Note: It can be assumed that this method will only be called once per LeafCollector instance
+   * <p>Note: It can be assumed that this method will only be called once per LeafCollector
+   * instance.
    */
   default void finish() throws IOException {}
 }
