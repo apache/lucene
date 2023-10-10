@@ -24,12 +24,8 @@ import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 
-/**
- * Wraps another Collector and checks that order is respected.
- *
- * @lucene.internal
- */
-public class AssertingLeafCollector extends FilterLeafCollector {
+/** Wraps another Collector and checks that order is respected. */
+class AssertingLeafCollector extends FilterLeafCollector {
 
   private final int min;
   private final int max;
@@ -37,7 +33,7 @@ public class AssertingLeafCollector extends FilterLeafCollector {
   private int lastCollected = -1;
   private boolean finishCalled;
 
-  public AssertingLeafCollector(LeafCollector collector, int min, int max) {
+  AssertingLeafCollector(LeafCollector collector, int min, int max) {
     super(collector);
     this.min = min;
     this.max = max;

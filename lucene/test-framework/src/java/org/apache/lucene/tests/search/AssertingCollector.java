@@ -24,7 +24,11 @@ import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Weight;
 
-/** A collector that asserts that it is used correctly. */
+/**
+ * A collector that asserts that it is used correctly.
+ *
+ * @lucene.internal
+ */
 public class AssertingCollector extends FilterCollector {
 
   private boolean weightSet = false;

@@ -83,7 +83,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingCollector;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
-import org.apache.lucene.tests.search.AssertingLeafCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -346,24 +345,28 @@ public class TestDrillSideways extends FacetTestCase {
             new CollectorManager<>() {
               @Override
               public Collector newCollector() throws IOException {
-                return AssertingCollector.wrap(new Collector() {
-                  @Override
-                  public LeafCollector getLeafCollector(LeafReaderContext context)
-                      throws IOException {
-                    return new LeafCollector() {
+                // We don't need the collector to actually do anything; we just care about the logic
+                // in the AssertingCollector / AssertingLeafCollector (and AssertingIndexSearcher)
+                // to make sure #finish is called exactly once on the leaf collector:
+                return AssertingCollector.wrap(
+                    new Collector() {
                       @Override
-                      public void setScorer(Scorable scorer) throws IOException {}
+                      public LeafCollector getLeafCollector(LeafReaderContext context)
+                          throws IOException {
+                        return new LeafCollector() {
+                          @Override
+                          public void setScorer(Scorable scorer) throws IOException {}
+
+                          @Override
+                          public void collect(int doc) throws IOException {}
+                        };
+                      }
 
                       @Override
-                      public void collect(int doc) throws IOException {}
-                    };
-                  }
-
-                  @Override
-                  public ScoreMode scoreMode() {
-                    return ScoreMode.COMPLETE;
-                  }
-                });
+                      public ScoreMode scoreMode() {
+                        return ScoreMode.COMPLETE;
+                      }
+                    });
               }
 
               @Override
