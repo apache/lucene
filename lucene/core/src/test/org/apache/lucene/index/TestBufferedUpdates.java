@@ -62,10 +62,10 @@ public class TestBufferedUpdates extends LuceneTestCase {
   public void testDeletedTerms() {
     int iters = atLeast(10);
     String[] fields = new String[] {"a", "b", "c"};
+    BufferedUpdates.DeletedTerms actual = new BufferedUpdates.DeletedTerms();
     for (int iter = 0; iter < iters; iter++) {
 
       Map<Term, Integer> expected = new HashMap<>();
-      BufferedUpdates.DeletedTerms actual = new BufferedUpdates.DeletedTerms();
       assertTrue(actual.isEmpty());
 
       int termCount = atLeast(5000);
@@ -98,6 +98,11 @@ public class TestBufferedUpdates extends LuceneTestCase {
           }));
 
       assertEquals(expectedSorted, actualSorted);
+
+      actual.clear();
+      assertEquals(0, actual.size());
+      assertEquals(0, actual.ramBytesUsed());
+      assertNull(actual.getPool().buffer);
     }
   }
 }
