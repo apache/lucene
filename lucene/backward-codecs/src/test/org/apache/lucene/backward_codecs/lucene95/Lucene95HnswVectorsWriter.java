@@ -34,7 +34,6 @@ import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -743,43 +742,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     // write docIDs
     int count = docsWithField.cardinality();
     meta.writeInt(count);
-    if (count == 0) {
-      meta.writeLong(-2); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else if (count == maxDoc) {
-      meta.writeLong(-1); // docsWithFieldOffset
-      meta.writeLong(0L); // docsWithFieldLength
-      meta.writeShort((short) -1); // jumpTableEntryCount
-      meta.writeByte((byte) -1); // denseRankPower
-    } else {
-      long offset = vectorData.getFilePointer();
-      meta.writeLong(offset); // docsWithFieldOffset
-      final short jumpTableEntryCount =
-          IndexedDISI.writeBitSet(
-              docsWithField.iterator(), vectorData, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      meta.writeLong(vectorData.getFilePointer() - offset); // docsWithFieldLength
-      meta.writeShort(jumpTableEntryCount);
-      meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-
-      // write ordToDoc mapping
-      long start = vectorData.getFilePointer();
-      meta.writeLong(start);
-      meta.writeVInt(DIRECT_MONOTONIC_BLOCK_SHIFT);
-      // dense case and empty case do not need to store ordToMap mapping
-      final DirectMonotonicWriter ordToDocWriter =
-          DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
-      DocIdSetIterator iterator = docsWithField.iterator();
-      for (int doc = iterator.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = iterator.nextDoc()) {
-        ordToDocWriter.add(doc);
-      }
-      ordToDocWriter.finish();
-      meta.writeLong(vectorData.getFilePointer() - start);
-    }
-
+    OrdToDocDISIReaderConfiguration.writeStoredMeta(
+        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
     meta.writeVInt(M);
     // write graph nodes on each level
     if (graph == null) {

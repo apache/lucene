@@ -195,7 +195,7 @@ public class SearchFiles {
                 + " total matching documents collected.");
         System.out.println("Collect more (y/n) ?");
         String line = in.readLine();
-        if (line.length() == 0 || line.charAt(0) == 'n') {
+        if (line == null || line.length() == 0 || line.charAt(0) == 'n') {
           break;
         }
 
@@ -241,7 +241,7 @@ public class SearchFiles {
           System.out.println("(q)uit or enter number to jump to a page.");
 
           String line = in.readLine();
-          if (line.length() == 0 || line.charAt(0) == 'q') {
+          if (line == null || line.length() == 0 || line.charAt(0) == 'q') {
             quit = true;
             break;
           }
