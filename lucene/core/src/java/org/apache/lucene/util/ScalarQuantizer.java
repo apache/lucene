@@ -77,22 +77,26 @@ public class ScalarQuantizer {
   /**
    * Recalculate the old score corrective value given new current quantiles
    *
-   * @param oldOffset the old offset
+   * @param quantizedVector the old vector
    * @param oldQuantizer the old quantizer
    * @param similarityFunction the similarity function used to calculate the quantile
    * @return the new offset
    */
   public float recalculateCorrectiveOffset(
-      float oldOffset, ScalarQuantizer oldQuantizer, VectorSimilarityFunction similarityFunction) {
+      byte[] quantizedVector, ScalarQuantizer oldQuantizer, VectorSimilarityFunction similarityFunction) {
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0f;
     }
-    // TODO I am not 100% sure this is correct
-    return oldOffset
-        * (minQuantile
-            / oldQuantizer.minQuantile
-            * (maxQuantile - minQuantile)
-            / (oldQuantizer.maxQuantile - oldQuantizer.minQuantile));
+    //TODO this could probably be some simple algebra with the old offset
+    float correctiveOffset = 0f;
+    for (int i = 0; i < quantizedVector.length; i++) {
+      float v = (oldQuantizer.alpha * quantizedVector[i]) + oldQuantizer.minQuantile;
+      float dx = Math.max(minQuantile, Math.min(maxQuantile, v)) - minQuantile;
+      float dxs = scale * dx;
+      float dxq = Math.round(dxs) * alpha;
+      correctiveOffset += minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
+    }
+    return correctiveOffset;
   }
 
   /**
@@ -122,6 +126,15 @@ public class ScalarQuantizer {
 
   public float getConstantMultiplier() {
     return alpha * alpha;
+  }
+
+  @Override
+  public String toString() {
+    return "ScalarQuantizer{" +
+      "minQuantile=" + minQuantile +
+      ", maxQuantile=" + maxQuantile +
+      ", configuredQuantile=" + configuredQuantile +
+      '}';
   }
 
   private static final Random random = new Random(42);

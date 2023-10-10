@@ -339,11 +339,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return mergedQuantiles;
   }
 
-  static boolean shouldRequantize(
-      QuantizedVectorsReader reader, String fieldName, ScalarQuantizer newQuantiles) {
+  static boolean shouldRequantize(ScalarQuantizer existingQuantiles, ScalarQuantizer newQuantiles) {
     // Should this instead be 128f?
-    float tol = 0.2f * (newQuantiles.getUpperQuantile() - newQuantiles.getLowerQuantile()) / 256f;
-    ScalarQuantizer existingQuantiles = reader.getQuantizationState(fieldName);
+    float tol = 0.2f * (newQuantiles.getUpperQuantile() - newQuantiles.getLowerQuantile()) / 128f;
     if (Math.abs(existingQuantiles.getUpperQuantile() - newQuantiles.getUpperQuantile()) > tol) {
       return true;
     }
@@ -557,7 +555,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
           final QuantizedByteVectorValueSub sub;
           // Either our quantization parameters are way different than the merged ones
           // Or we have never been quantized.
-          if (reader == null || shouldRequantize(reader, fieldInfo.name, scalarQuantizer)) {
+          if (reader == null || shouldRequantize(reader.getQuantizationState(fieldInfo.name), scalarQuantizer)) {
             sub =
                 new QuantizedByteVectorValueSub(
                     mergeState.docMaps[i],
@@ -750,7 +748,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     @Override
     float getScoreCorrectionConstant() throws IOException {
       return scalarQuantizer.recalculateCorrectiveOffset(
-          in.getScoreCorrectionConstant(), oldScalarQuantizer, vectorSimilarityFunction);
+          in.vectorValue(), oldScalarQuantizer, vectorSimilarityFunction);
     }
 
     @Override
