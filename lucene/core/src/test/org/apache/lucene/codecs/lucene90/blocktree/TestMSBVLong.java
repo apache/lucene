@@ -25,10 +25,9 @@ import org.apache.lucene.util.ArrayUtil;
 public class TestMSBVLong extends LuceneTestCase {
 
   public void testMSBVLong() throws IOException {
-    assertMSBVLong(0);
     assertMSBVLong(Long.MAX_VALUE);
     int iter = atLeast(10000);
-    for (int i = 0; i < iter; i++) {
+    for (long i = 0; i < iter; i++) {
       assertMSBVLong(i);
     }
   }
