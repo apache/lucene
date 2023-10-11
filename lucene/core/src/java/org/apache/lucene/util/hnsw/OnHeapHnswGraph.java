@@ -19,10 +19,14 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -50,6 +54,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private final int nsize;
   private final int nsize0;
 
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
@@ -62,7 +68,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
     this.nsize = M + 1;
     this.nsize0 = (M * 2 + 1);
-
     this.graphUpperLevels = new ArrayList<>(numLevels);
     graphUpperLevels.add(null); // we don't need this for 0th level, as it contains all nodes
   }
@@ -83,8 +88,21 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   public NeighborIterator lockNeighbors(int level, int node) {
-    NeighborArray neighbors = getNeighbors(level, node);
-    neighbors.lock.readLock().lock();
+    NeighborArray neighbors;
+    lock.readLock().lock();
+    try {
+      neighbors = getNeighbors(level, node);
+    } finally {
+      lock.readLock().unlock();
+    }
+    try {
+      while (!neighbors.lock.readLock().tryLock(1, TimeUnit.SECONDS)) {
+        System.out.println("timed out waiting for lock owned by " + neighbors.lock.getOwner());
+      }
+    } catch (InterruptedException ex) {
+      throw new RuntimeException(ex);
+    }
+    //neighbors.lock.readLock().lock();
     return new NeighborIterator() {
       private int upto;
       @Override
@@ -230,6 +248,20 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       }
     }
     return total;
+  }
+
+  // nocommit - is this really necessary? seems like it shouldn't be needed. Although possibly if
+  // the graph List is being enlarged then array elements won't yet have been carried over, and is this
+  // done in a thread-safe manner??? We could make it safe by doing the array management ourselves
+  // but otherwise we must synchronize or rely on ArrayList implementation - is it safe to read
+  // concurrently with .add()?
+  Closeable withWriteLock() {
+    lock.writeLock().lock();
+    return () -> lock.writeLock().unlock();
+  }
+  Closeable withReadLock() {
+    lock.readLock().lock();
+    return () -> lock.readLock().unlock();
   }
 
   @Override

@@ -233,7 +233,12 @@ public class HnswGraphSearcher {
       try (HnswGraph.NeighborIterator friends = graph.lockNeighbors(level, topCandidateNode)) {
         int friendOrd;
         while ((friendOrd = friends.nextNeighbor()) != NO_MORE_DOCS) {
-          assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
+          // assert friendOrd < graph.size() : "friendOrd=" + friendOrd + "; size=" + size;
+          if (friendOrd >= size) {
+            // this can happen when there are concurrent builders
+            extendScratchState(friendOrd);
+            size = visited.length();
+          }
           if (visited.getAndSet(friendOrd)) {
             continue;
           }
@@ -259,8 +264,12 @@ public class HnswGraphSearcher {
   private void prepareScratchState(int capacity) {
     candidates.clear();
     if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+      extendScratchState(capacity);
     }
     visited.clear();
+  }
+
+  private void extendScratchState(int capacity) {
+    visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
   }
 }

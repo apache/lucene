@@ -33,8 +33,7 @@ import org.apache.lucene.util.ArrayUtil;
  */
 public class NeighborArray {
   private final boolean scoresDescOrder;
-  final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-
+  final NeighborLock lock = new NeighborLock();
   private int size;
   float[] score;
   int[] node;
@@ -51,6 +50,7 @@ public class NeighborArray {
    * nodes. This cannot be called after {@link #addOutOfOrder(int, float)}
    */
   public void addInOrder(int newNode, float newScore) {
+    // nocommit we are hitting this assertion
     assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
     if (size == node.length) {
       node = ArrayUtil.grow(node);
@@ -206,5 +206,11 @@ public class NeighborArray {
       else start = mid + 1;
     }
     return start;
+  }
+
+  static class NeighborLock extends ReentrantReadWriteLock {
+    public Thread getOwner() {
+      return super.getOwner();
+    }
   }
 }

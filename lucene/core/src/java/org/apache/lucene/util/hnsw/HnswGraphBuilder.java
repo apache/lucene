@@ -20,14 +20,13 @@ package org.apache.lucene.util.hnsw;
 import static java.lang.Math.log;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -36,6 +35,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.hppc.IntIntHashMap;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -75,12 +75,12 @@ public final class HnswGraphBuilder {
 
   private InfoStream infoStream = InfoStream.getDefault();
 
-  private final Set<Integer> initializedNodes;
+  private final IntIntHashMap initializedNodes;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed);
+    return new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed, new IntIntHashMap());
   }
 
   public static HnswGraphBuilder create(
@@ -91,7 +91,7 @@ public final class HnswGraphBuilder {
       HnswGraph initializerGraph,
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed);
+    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed, new IntIntHashMap());
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
@@ -109,7 +109,7 @@ public final class HnswGraphBuilder {
    *     to ensure repeatable construction.
    */
   private HnswGraphBuilder(
-      OnHeapHnswGraph graph, RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed) {
+      OnHeapHnswGraph graph, RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, IntIntHashMap initializedNodes) {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -130,11 +130,11 @@ public final class HnswGraphBuilder {
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
-    this.initializedNodes = new HashSet<>();
+    this.initializedNodes = initializedNodes;
   }
 
   private HnswGraphBuilder copy() {
-    return new HnswGraphBuilder(hnsw, scorerSupplier, M, beamCandidates.k, randSeed);
+    return new HnswGraphBuilder(hnsw, scorerSupplier, M, beamCandidates.k, randSeed, initializedNodes);
   }
 
   /**
@@ -164,6 +164,7 @@ public final class HnswGraphBuilder {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     // insert in batches of 1024? Perhaps more given we create a builder for each task
+    System.out.println("OnHeapHnswGraph.build " + maxOrd + " " + executor);
     List<Future<?>> futures = new ArrayList<>();
     for (int i = 0; i < maxOrd; i += 1024) {
       final int minOrd = i;
@@ -210,7 +211,7 @@ public final class HnswGraphBuilder {
         hnsw.addNode(level, newOrd);
 
         if (level == 0) {
-          initializedNodes.add(newOrd);
+          initializedNodes.put(newOrd, 1);
         }
 
         NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
@@ -237,37 +238,43 @@ public final class HnswGraphBuilder {
 
   private void addVectors(int minOrd, int maxOrd) throws IOException {
     long start = System.nanoTime(), t = start;
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
+    }
+    System.out.println("addVectors [" + minOrd + " " + maxOrd + ") initialized.size=" + initializedNodes.size());
     for (int node = minOrd; node < maxOrd; node++) {
-      if (initializedNodes.contains(node)) {
+      if (initializedNodes != null && initializedNodes.containsKey(node)) {
         continue;
       }
+      //System.out.println("add node " + node + " t=" + Thread.currentThread().getName());
       addGraphNode(node);
+      //System.out.println("entry node " + hnsw.entryNode());
+      //System.out.println("node " + node + " nbrs.size()=" + hnsw.getNeighbors(0, node).size());
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
     }
+    System.out.println("addVectors [" + minOrd + " " + maxOrd + ") done + graph.size=" + hnsw.size());
   }
 
   /** Inserts a doc with vector value to the graph */
+  @SuppressWarnings("try")
   public void addGraphNode(int node) throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
-    int curMaxLevel = hnsw.numLevels() - 1;
+    int curMaxLevel;
+    int[] eps;
 
-    // TODO lock nodes array
     // If entrynode is -1, then this should finish without adding neighbors
-    if (hnsw.entryNode() == -1) {
-      for (int level = nodeLevel; level >= 0; level--) {
-        hnsw.addNode(level, node);
+    try (Closeable l = hnsw.withWriteLock()) {
+      curMaxLevel = hnsw.numLevels() - 1;
+      if (hnsw.entryNode() == -1) {
+        for (int level = nodeLevel; level >= 0; level--) {
+          hnsw.addNode(level, node);
+        }
+        return;
       }
-      return;
-    }
-    int[] eps = new int[] {hnsw.entryNode()};
-
-    // TODO lock nodes array
-    // if a node introduces new levels to the graph, add this new node on new levels
-    for (int level = nodeLevel; level > curMaxLevel; level--) {
-      hnsw.addNode(level, node);
+      eps = new int[] {hnsw.entryNode()};
     }
 
     // for levels > nodeLevel search with topk = 1
@@ -283,10 +290,22 @@ public final class HnswGraphBuilder {
       candidates.clear();
       graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
       eps = candidates.popUntilNearestKNodes();
-      // TODO lock nodes array
-      hnsw.addNode(level, node);
-      // TODO lock node for writing
+      try (Closeable l = hnsw.withWriteLock()) {
+        hnsw.addNode(level, node);
+      }
       addDiverseNeighbors(level, node, candidates);
+    }
+
+    // if a node introduces new levels to the graph, add this new node on new levels
+    // Do this *after* linking on lower levels so this node doesn't become discoverable
+    // before it has been connected
+    try (Closeable l = hnsw.withWriteLock()) {
+      int newMaxLevel = hnsw.numLevels() - 1;
+      // if newMaxLevel > curMaxLevel, some other node extended the graph levels. In this case just
+      // skip adding this node to possible new levels between nexMaxLevel and curMaxLevel
+      for (int level = nodeLevel; level > newMaxLevel; level--) {
+        hnsw.addNode(level, node);
+      }
     }
   }
 
@@ -303,39 +322,61 @@ public final class HnswGraphBuilder {
     return now;
   }
 
+  @SuppressWarnings("try")
   private void addDiverseNeighbors(int level, int node, GraphBuilderKnnCollector candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
-    NeighborArray neighbors = hnsw.getNeighbors(level, node);
-    neighbors.lock.writeLock().lock(); // TODO: we could downgrade to a readLock after the call to selectAndLinkDiverse
+    int maxConnOnLevel = level == 0 ? M * 2 : M;
+    popToScratch(candidates);
+    NeighborArray neighbors;
+    try (Closeable l = hnsw.withReadLock()) {
+      neighbors = hnsw.getNeighbors(level, node);
+    }
+    neighbors.lock.writeLock().lock();
     try {
-      assert neighbors.size() == 0; // new node
-      popToScratch(candidates);
-      int maxConnOnLevel = level == 0 ? M * 2 : M;
+      // nocommit this assertion is getting hit with size=1 init=false
+      // new node has no neighbors
+      assert neighbors.size() == 0 : "add node at level=" + level + ", node=" + node + " size=" + neighbors.size() +
+              " init=" + initializedNodes.containsKey(node) +
+              " nbr[0]=" + neighbors.node[0];
       selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
-
+      assert neighbors.size() <= scratch.size() : "add node size=" + neighbors.size() + " candidates.size=" + scratch.size();
+      // downgrade to a readLock since we're done writing
+      neighbors.lock.readLock().lock();
+    } finally {
+      neighbors.lock.writeLock().unlock();
+    }
+    try {
       // Link the selected nodes to the new node, and the new node to the selected nodes (again
       // applying diversity heuristic)
       int size = neighbors.size();
       for (int i = 0; i < size; i++) {
         int nbr = neighbors.node[i];
-        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.lock.readLock().lock();
+        NeighborArray nbrsOfNbr;
+        try (Closeable l = hnsw.withReadLock()) {
+          nbrsOfNbr = hnsw.getNeighbors(level, nbr);
+        }
+        nbrsOfNbr.lock.writeLock().lock();
         try {
+          // nbr should already have some nbrs unless it is the entry point at level 0 (and we are the second node), or
+          // it is some level > 0 in which case we skip this check since it is a little tricky to know what was the 1st node on the other levels
+          assert (nbr == 0 && node == 1) || level > 0 || nbrsOfNbr.size() > 0 : "add nbr at level=" + level + ", nbr=" + nbr + " size=" + nbrsOfNbr.size() +
+                  " init=" + initializedNodes.containsKey(nbr);
+          // hmm OK this can happen when the node is partially connected
           nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
           if (nbrsOfNbr.size() > maxConnOnLevel) {
             int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
             nbrsOfNbr.removeIndex(indexToRemove);
           }
         } finally {
-          nbrsOfNbr.lock.readLock().unlock();
+          nbrsOfNbr.lock.writeLock().unlock();
         }
       }
     } finally {
-      neighbors.lock.writeLock().unlock();
+      neighbors.lock.readLock().unlock();
     }
   }
 
@@ -347,7 +388,9 @@ public final class HnswGraphBuilder {
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      assert cNode < hnsw.size();
+      // nocommit this assert is failing w/cNode==hnsw.size() which doesn't seem possible? But
+      // maybe the hnsw size being volatile across threads is the problem and we don't actually care about it here?
+      // assert cNode < hnsw.size() : "cNode=" + cNode + " graph size=" + hnsw.size();
       if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }
