@@ -90,7 +90,7 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
   }
 
   /** A MergeSorter taking advantage of temporary storage. */
-  protected static abstract class MergeSorter extends Sorter {
+  protected abstract static class MergeSorter extends Sorter {
     @Override
     public void sort(int from, int to) {
       checkRange(from, to);
@@ -111,7 +111,9 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
     /** Save the i-th value into the j-th position in temporary storage. */
     protected abstract void save(int i, int j);
 
-    /** Restore values between i-th and j-th(excluding) in temporary storage into original storage. */
+    /**
+     * Restore values between i-th and j-th(excluding) in temporary storage into original storage.
+     */
     protected abstract void restore(int i, int j);
 
     /**
