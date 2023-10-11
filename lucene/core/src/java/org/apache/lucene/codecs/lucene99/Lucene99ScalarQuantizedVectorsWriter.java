@@ -254,6 +254,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     float upperQuantile = 0f;
     int totalCount = 0;
     for (int i = 0; i < quantizationStates.size(); i++) {
+      if (quantizationStates.get(i) == null) {
+        return null;
+      }
       lowerQuantile += quantizationStates.get(i).getLowerQuantile() * segmentSizes.get(i);
       upperQuantile += quantizationStates.get(i).getUpperQuantile() * segmentSizes.get(i);
       totalCount += segmentSizes.get(i);
@@ -307,7 +310,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
       MergeState mergeState, FieldInfo fieldInfo, float quantile) throws IOException {
     List<ScalarQuantizer> quantizationStates = new ArrayList<>(mergeState.liveDocs.length);
     List<Integer> segmentSizes = new ArrayList<>(mergeState.liveDocs.length);
-    boolean missingQuantizationState = false;
     for (int i = 0; i < mergeState.liveDocs.length; i++) {
       FloatVectorValues fvv;
       if (mergeState.knnVectorsReaders[i] != null
@@ -316,12 +318,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
         ScalarQuantizer quantizationState =
             getQuantizedState(mergeState.knnVectorsReaders[i], fieldInfo.name);
         // If we have quantization state, we can utilize that to make merging cheaper
-        if (quantizationState != null) {
-          quantizationStates.add(quantizationState);
-          segmentSizes.add(fvv.size());
-        } else {
-          missingQuantizationState = true;
-        }
+        quantizationStates.add(quantizationState);
+        segmentSizes.add(fvv.size());
       }
     }
     ScalarQuantizer mergedQuantiles = mergeQuantiles(quantizationStates, segmentSizes, quantile);
@@ -330,8 +328,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     // To be safe, we should always recalculate given a sample set over all the float vectors in the
     // merged
     // segment view
-    if ((missingQuantizationState || mergedQuantiles == null)
-        || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
+    if (mergedQuantiles == null || shouldRecomputeQuantiles(mergedQuantiles, quantizationStates)) {
       FloatVectorValues vectorValues =
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
       mergedQuantiles = ScalarQuantizer.fromVectors(vectorValues, quantile);

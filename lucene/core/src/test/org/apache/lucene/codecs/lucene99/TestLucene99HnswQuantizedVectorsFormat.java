@@ -31,6 +31,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
@@ -52,7 +53,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
 
   public void testQuantizedVectorsWriteAndRead() throws Exception {
     // create lucene directory with codec
-    int numVectors = 1 + random().nextInt(100);
+    int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     int dim = random().nextInt(100) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);
@@ -70,12 +71,29 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       expectedCorrections[i] =
           scalarQuantizer.quantize(vectors.get(i), expectedVectors[i], similarityFunction);
     }
+    float[] randomlyReusedVector = new float[dim];
 
     try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter w =
+            new IndexWriter(
+                dir,
+                newIndexWriterConfig()
+                    // account for quantized vectors, hnsw, and raw vectors
+                    .setRAMBufferSizeMB(
+                        ((numVectors + 4) * dim + (numVectors + 32) * dim * 4.0) / 1024.0 / 1024.0)
+                    .setMergePolicy(NoMergePolicy.INSTANCE))) {
       for (int i = 0; i < numVectors; i++) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("f", vectors.get(i), similarityFunction));
+        // randomly reuse a vector, this ensures the underlying codec doesn't rely on the array
+        // reference
+        final float[] v;
+        if (random().nextBoolean()) {
+          System.arraycopy(vectors.get(i), 0, randomlyReusedVector, 0, dim);
+          v = randomlyReusedVector;
+        } else {
+          v = vectors.get(i);
+        }
+        doc.add(new KnnFloatVectorField("f", v, similarityFunction));
         w.addDocument(doc);
       }
       w.commit();
@@ -102,7 +120,6 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
           } else {
             fail("reader is not Lucene99HnswVectorsReader");
           }
-
         } else {
           fail("reader is not CodecReader");
         }

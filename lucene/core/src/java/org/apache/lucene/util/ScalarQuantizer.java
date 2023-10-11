@@ -189,13 +189,11 @@ public class ScalarQuantizer {
     // Reservoir sample the vector ordinals we want to read
     float[] values = new float[SCALAR_QUANTIZATION_SAMPLE_SIZE * dim];
     int[] vectorsToTake = IntStream.range(0, SCALAR_QUANTIZATION_SAMPLE_SIZE).toArray();
-    int curIndex = SCALAR_QUANTIZATION_SAMPLE_SIZE + 1;
-    while (curIndex < numFloatVecs) {
-      int j = random.nextInt(curIndex);
-      if (j < vectorsToTake.length) {
-        vectorsToTake[j] = curIndex;
+    for (int i = SCALAR_QUANTIZATION_SAMPLE_SIZE; i < numFloatVecs; i++) {
+      int j = random.nextInt(i + 1);
+      if (j < SCALAR_QUANTIZATION_SAMPLE_SIZE) {
+        vectorsToTake[j] = i;
       }
-      curIndex++;
     }
     Arrays.sort(vectorsToTake);
     int copyOffset = 0;
