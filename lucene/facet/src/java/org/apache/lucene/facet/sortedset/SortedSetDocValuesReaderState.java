@@ -28,11 +28,9 @@ import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Wraps a {@link IndexReader} and resolves ords using existing {@link SortedSetDocValues} APIs
- * without a separate taxonomy index. This only supports flat facets (dimension + label), and it
- * makes faceting a bit slower, adds some cost at reopen time, but avoids managing the separate
- * taxonomy index. It also requires less RAM than the taxonomy index, as it manages the flat
- * (2-level) hierarchy more efficiently. In addition, the tie-break during faceting is now
- * meaningful (in label sorted order).
+ * without a separate taxonomy index. This makes faceting a bit slower, adds some cost at reopen
+ * time, but avoids managing the separate taxonomy index. In addition, the tie-break during faceting
+ * is now meaningful (in label sorted order).
  *
  * <p><b>NOTE</b>: creating an instance of this class is somewhat costly, as it computes per-segment
  * ordinal maps, so you should create it once and re-use that one instance for a given {@link

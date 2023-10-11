@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
@@ -82,72 +81,91 @@ public class SimpleTextStoredFieldsWriter extends StoredFieldsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo info, IndexableField field) throws IOException {
+  public void writeField(FieldInfo info, int value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_INT);
+    newLine();
+
+    write(VALUE);
+    write(Integer.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, long value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_LONG);
+    newLine();
+
+    write(VALUE);
+    write(Long.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, float value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_FLOAT);
+    newLine();
+
+    write(VALUE);
+    write(Float.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, double value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_DOUBLE);
+    newLine();
+
+    write(VALUE);
+    write(Double.toString(value));
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, BytesRef value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_BINARY);
+    newLine();
+
+    write(VALUE);
+    write(value);
+    newLine();
+  }
+
+  @Override
+  public void writeField(FieldInfo info, String value) throws IOException {
+    writeField(info);
+
+    write(TYPE);
+    write(TYPE_STRING);
+    newLine();
+
+    write(VALUE);
+    write(value);
+    newLine();
+  }
+
+  private void writeField(FieldInfo info) throws IOException {
     write(FIELD);
     write(Integer.toString(info.number));
     newLine();
 
     write(NAME);
-    write(field.name());
+    write(info.name);
     newLine();
-
-    write(TYPE);
-    final Number n = field.numericValue();
-
-    if (n != null) {
-      if (n instanceof Byte || n instanceof Short || n instanceof Integer) {
-        write(TYPE_INT);
-        newLine();
-
-        write(VALUE);
-        write(Integer.toString(n.intValue()));
-        newLine();
-      } else if (n instanceof Long) {
-        write(TYPE_LONG);
-        newLine();
-
-        write(VALUE);
-        write(Long.toString(n.longValue()));
-        newLine();
-      } else if (n instanceof Float) {
-        write(TYPE_FLOAT);
-        newLine();
-
-        write(VALUE);
-        write(Float.toString(n.floatValue()));
-        newLine();
-      } else if (n instanceof Double) {
-        write(TYPE_DOUBLE);
-        newLine();
-
-        write(VALUE);
-        write(Double.toString(n.doubleValue()));
-        newLine();
-      } else {
-        throw new IllegalArgumentException("cannot store numeric type " + n.getClass());
-      }
-    } else {
-      BytesRef bytes = field.binaryValue();
-      if (bytes != null) {
-        write(TYPE_BINARY);
-        newLine();
-
-        write(VALUE);
-        write(bytes);
-        newLine();
-      } else if (field.stringValue() == null) {
-        throw new IllegalArgumentException(
-            "field "
-                + field.name()
-                + " is stored but does not have binaryValue, stringValue nor numericValue");
-      } else {
-        write(TYPE_STRING);
-        newLine();
-        write(VALUE);
-        write(field.stringValue());
-        newLine();
-      }
-    }
   }
 
   @Override

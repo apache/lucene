@@ -127,7 +127,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, EXTENSION);
-    try (ChecksumIndexInput input = directory.openChecksumInput(fileName, context)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(fileName)) {
       Throwable priorE = null;
       FieldInfo[] infos = null;
       try {

@@ -25,6 +25,7 @@ import java.io.PrintStream;
 import java.nio.file.NoSuchFileException;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DirectoryReader;
@@ -121,8 +122,8 @@ public abstract class Node implements Closeable {
           String.format(
               Locale.ROOT,
               "%5.3fs %5.1fs:           [%11s] %s",
-              (now - globalStartNS) / 1000000000.,
-              (now - localStartNS) / 1000000000.,
+              (now - globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+              (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
               Thread.currentThread().getName(),
               message));
     }
@@ -135,8 +136,8 @@ public abstract class Node implements Closeable {
           String.format(
               Locale.ROOT,
               "%5.3fs %5.1fs:         N%d [%11s] %s",
-              (now - globalStartNS) / 1000000000.,
-              (now - localStartNS) / 1000000000.,
+              (now - globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+              (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
               id,
               Thread.currentThread().getName(),
               message));
@@ -150,8 +151,8 @@ public abstract class Node implements Closeable {
           String.format(
               Locale.ROOT,
               "%5.3fs %5.1fs: %7s %2s [%11s] %s",
-              (now - globalStartNS) / 1000000000.,
-              (now - localStartNS) / 1000000000.,
+              (now - globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+              (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
               state,
               name(),
               Thread.currentThread().getName(),

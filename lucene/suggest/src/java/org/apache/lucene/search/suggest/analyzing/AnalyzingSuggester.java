@@ -494,8 +494,7 @@ public class AnalyzingSuggester extends Lookup {
 
       reader =
           new OfflineSorter.ByteSequencesReader(
-              tempDir.openChecksumInput(tempSortedFileName, IOContext.READONCE),
-              tempSortedFileName);
+              tempDir.openChecksumInput(tempSortedFileName), tempSortedFileName);
 
       PairOutputs<Long, BytesRef> outputs =
           new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());

@@ -19,7 +19,8 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
@@ -89,7 +90,7 @@ public class TestFieldsReader extends LuceneTestCase {
     assertTrue(dir != null);
     assertTrue(fieldInfos != null);
     IndexReader reader = DirectoryReader.open(dir);
-    Document doc = reader.document(0);
+    Document doc = reader.storedFields().document(0);
     assertTrue(doc != null);
     assertTrue(doc.getField(DocHelper.TEXT_FIELD_1_KEY) != null);
 
@@ -113,7 +114,7 @@ public class TestFieldsReader extends LuceneTestCase {
     assertTrue(field.fieldType().indexOptions() == IndexOptions.DOCS);
 
     DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor(DocHelper.TEXT_FIELD_3_KEY);
-    reader.document(0, visitor);
+    reader.storedFields().document(0, visitor);
     final List<IndexableField> fields = visitor.getDocument().getFields();
     assertEquals(1, fields.size());
     assertEquals(DocHelper.TEXT_FIELD_3_KEY, fields.get(0).name());
@@ -213,9 +214,10 @@ public class TestFieldsReader extends LuceneTestCase {
 
     boolean exc = false;
 
+    StoredFields storedFields = reader.storedFields();
     for (int i = 0; i < 2; i++) {
       try {
-        reader.document(i);
+        storedFields.document(i);
       } catch (
           @SuppressWarnings("unused")
           IOException ioe) {
@@ -223,7 +225,7 @@ public class TestFieldsReader extends LuceneTestCase {
         exc = true;
       }
       try {
-        reader.document(i);
+        storedFields.document(i);
       } catch (
           @SuppressWarnings("unused")
           IOException ioe) {

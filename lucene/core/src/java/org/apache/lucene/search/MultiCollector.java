@@ -108,7 +108,13 @@ public class MultiCollector implements Collector {
       if (scoreMode == null) {
         scoreMode = collector.scoreMode();
       } else if (scoreMode != collector.scoreMode()) {
-        return ScoreMode.COMPLETE;
+        // If score modes disagree, we don't try to be smart and just use one of the COMPLETE score
+        // modes depending on whether scores are needed or not.
+        if (scoreMode.needsScores() || collector.scoreMode().needsScores()) {
+          scoreMode = ScoreMode.COMPLETE;
+        } else {
+          scoreMode = ScoreMode.COMPLETE_NO_SCORES;
+        }
       }
     }
     return scoreMode;
@@ -144,8 +150,12 @@ public class MultiCollector implements Collector {
           && (scoreMode() == ScoreMode.TOP_SCORES || leafScoreMode != ScoreMode.TOP_SCORES)) {
         return leafCollectors.get(0);
       }
-      return new MultiLeafCollector(
-          leafCollectors, cacheScores, scoreMode() == ScoreMode.TOP_SCORES);
+      LeafCollector collector =
+          new MultiLeafCollector(leafCollectors, scoreMode() == ScoreMode.TOP_SCORES);
+      if (cacheScores) {
+        collector = ScoreCachingWrappingScorer.wrap(collector);
+      }
+      return collector;
     }
   }
 
@@ -163,24 +173,18 @@ public class MultiCollector implements Collector {
 
   private static class MultiLeafCollector implements LeafCollector {
 
-    private final boolean cacheScores;
     private final LeafCollector[] collectors;
     private final float[] minScores;
     private final boolean skipNonCompetitiveScores;
 
-    private MultiLeafCollector(
-        List<LeafCollector> collectors, boolean cacheScores, boolean skipNonCompetitive) {
+    private MultiLeafCollector(List<LeafCollector> collectors, boolean skipNonCompetitive) {
       this.collectors = collectors.toArray(new LeafCollector[collectors.size()]);
-      this.cacheScores = cacheScores;
       this.skipNonCompetitiveScores = skipNonCompetitive;
       this.minScores = this.skipNonCompetitiveScores ? new float[this.collectors.length] : null;
     }
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (cacheScores) {
-        scorer = ScoreCachingWrappingScorer.wrap(scorer);
-      }
       if (skipNonCompetitiveScores) {
         for (int i = 0; i < collectors.length; ++i) {
           final LeafCollector c = collectors[i];
@@ -207,6 +211,7 @@ public class MultiCollector implements Collector {
       }
     }
 
+    // NOTE: not propagating collect(DocIdStream) since DocIdStreams may only be consumed once.
     @Override
     public void collect(int doc) throws IOException {
       for (int i = 0; i < collectors.length; i++) {
@@ -217,11 +222,21 @@ public class MultiCollector implements Collector {
           } catch (
               @SuppressWarnings("unused")
               CollectionTerminatedException e) {
+            collectors[i].finish();
             collectors[i] = null;
             if (allCollectorsTerminated()) {
               throw new CollectionTerminatedException();
             }
           }
+        }
+      }
+    }
+
+    @Override
+    public void finish() throws IOException {
+      for (LeafCollector collector : collectors) {
+        if (collector != null) {
+          collector.finish();
         }
       }
     }

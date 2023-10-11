@@ -1547,8 +1547,9 @@ public class TestAddIndexes extends LuceneTestCase {
     IndexReader r3 = w.getReader();
     w.close();
     assertEquals(2, r3.numDocs());
+    StoredFields storedFields = r3.storedFields();
     for (int docID = 0; docID < 2; docID++) {
-      Document d = r3.document(docID);
+      Document d = storedFields.document(docID);
       if (d.get("id").equals("1")) {
         assertEquals("doc1 field1", d.get("f1"));
       } else {

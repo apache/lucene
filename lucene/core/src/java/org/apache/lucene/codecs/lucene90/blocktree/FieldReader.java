@@ -16,12 +16,15 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
+import static org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader.VERSION_MSB_VLONG_OUTPUT;
+
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -82,7 +85,7 @@ public final class FieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
     rootBlockFP =
-        (new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length)).readVLong()
+        readVLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     // Initialize FST always off-heap.
     final IndexInput clone = indexIn.clone();
@@ -97,6 +100,32 @@ public final class FieldReader extends Terms {
      w.close();
      }
     */
+  }
+
+  long readVLongOutput(DataInput in) throws IOException {
+    if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
+      return readMSBVLong(in);
+    } else {
+      return in.readVLong();
+    }
+  }
+
+  /**
+   * Decodes a variable length byte[] in MSB order back to long, as written by {@link
+   * Lucene90BlockTreeTermsWriter#writeMSBVLong}.
+   *
+   * <p>Package private for testing.
+   */
+  static long readMSBVLong(DataInput in) throws IOException {
+    long l = 0L;
+    while (true) {
+      byte b = in.readByte();
+      l = (l << 7) | (b & 0x7FL);
+      if ((b & 0x80) == 0) {
+        break;
+      }
+    }
+    return l;
   }
 
   @Override

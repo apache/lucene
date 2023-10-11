@@ -20,7 +20,13 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 
 import java.io.StringReader;
 import java.text.DateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
@@ -30,9 +36,22 @@ import org.apache.lucene.queryparser.charstream.CharStream;
 import org.apache.lucene.queryparser.charstream.FastCharStream;
 import org.apache.lucene.queryparser.classic.QueryParser.Operator;
 import org.apache.lucene.queryparser.flexible.standard.CommonQueryParserConfiguration;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher.TooManyClauses;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiPhraseQuery;
+import org.apache.lucene.search.MultiTermQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TermRangeQuery;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.QueryBuilder;
@@ -63,7 +82,8 @@ public abstract class QueryParserBase extends QueryBuilder
   /** The actual operator that parser uses to combine query terms */
   Operator operator = OR_OPERATOR;
 
-  MultiTermQuery.RewriteMethod multiTermRewriteMethod = MultiTermQuery.CONSTANT_SCORE_REWRITE;
+  MultiTermQuery.RewriteMethod multiTermRewriteMethod =
+      MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE;
   boolean allowLeadingWildcard = false;
 
   protected String field;
@@ -237,15 +257,6 @@ public abstract class QueryParserBase extends QueryBuilder
     return operator;
   }
 
-  /**
-   * By default QueryParser uses {@link
-   * org.apache.lucene.search.MultiTermQuery#CONSTANT_SCORE_REWRITE} when creating a {@link
-   * PrefixQuery}, {@link WildcardQuery} or {@link TermRangeQuery}. This implementation is generally
-   * preferable because it a) Runs faster b) Does not have the scarcity of terms unduly influence
-   * score c) avoids any {@link TooManyClauses} exception. However, if your application really needs
-   * to use the old-fashioned {@link BooleanQuery} expansion rewriting and the above points are not
-   * relevant then use this to change the rewrite method.
-   */
   @Override
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method) {
     multiTermRewriteMethod = method;

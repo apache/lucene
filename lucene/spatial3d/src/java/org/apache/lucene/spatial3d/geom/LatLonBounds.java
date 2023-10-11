@@ -363,4 +363,17 @@ public class LatLonBounds implements Bounds {
       rightLongitude = null;
     }
   }
+
+  @Override
+  public String toString() {
+    return "LatLonBounds [minLat="
+        + (noBottomLatitudeBound ? "no bound" : (minLatitude == null ? "null" : minLatitude))
+        + ", maxLat="
+        + (noTopLatitudeBound ? "no bound" : (maxLatitude == null ? "null" : maxLatitude))
+        + ", leftLon="
+        + (noLongitudeBound ? "no bound" : (leftLongitude == null ? "null" : leftLongitude))
+        + ", rightLon="
+        + (noLongitudeBound ? "no bound" : (rightLongitude == null ? "null" : rightLongitude))
+        + "]";
+  }
 }

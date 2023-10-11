@@ -19,13 +19,15 @@ package org.apache.lucene.luke.app.desktop;
 
 import static org.apache.lucene.luke.app.desktop.util.ExceptionHandler.handle;
 
-import java.awt.*;
+import java.awt.GraphicsEnvironment;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.UIManager;
 import org.apache.lucene.luke.app.desktop.components.LukeWindowProvider;
 import org.apache.lucene.luke.app.desktop.components.dialog.menubar.OpenIndexDialogFactory;
 import org.apache.lucene.luke.app.desktop.util.DialogOpener;
@@ -94,7 +96,7 @@ public class LukeMain {
     javax.swing.SwingUtilities.invokeLater(
         () -> {
           try {
-            long _start = System.nanoTime() / 1_000_000;
+            long _start = System.nanoTime();
             guiThreadResult.put(createGUI());
 
             // Show the initial dialog.
@@ -107,7 +109,10 @@ public class LukeMain {
                     (factory) -> {});
 
             long _end = System.nanoTime() / 1_000_000;
-            log.info("Elapsed time for initializing GUI: " + (_end - _start) + "msec");
+            log.info(
+                "Elapsed time for initializing GUI: "
+                    + TimeUnit.NANOSECONDS.toMillis(_end - _start)
+                    + " ms");
           } catch (Exception e) {
             throw new RuntimeException(e);
           }

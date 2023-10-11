@@ -17,7 +17,6 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
@@ -117,7 +116,8 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     }
     return new W(
         this,
-        toQuery.createWeight(searcher, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES, 1f));
+        toQuery.createWeight(searcher, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES, 1f),
+        boost);
   }
 
   @Override
@@ -169,13 +169,16 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
 
   final class W extends FilterWeight {
 
-    W(Query query, Weight approximationWeight) {
+    final float boost;
+
+    W(Query query, Weight approximationWeight, float boost) {
       super(query, approximationWeight);
+      this.boost = boost;
     }
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      SortedDocValues values = DocValues.getSorted(context.reader(), joinField);
+      SortedDocValues values = context.reader().getSortedDocValues(joinField);
       if (values == null) {
         return Explanation.noMatch("Not a match");
       }
@@ -197,12 +200,16 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       }
 
       float score = collector.score(ord);
-      return Explanation.match(score, "A match, join value " + Term.toString(joinValue));
+      if (boost == 1.0f) {
+        return Explanation.match(score, "A match, join value " + Term.toString(joinValue));
+      }
+      return Explanation.match(
+          score * boost, "A match, join value " + Term.toString(joinValue) + "^" + boost);
     }
 
     @Override
     public Scorer scorer(LeafReaderContext context) throws IOException {
-      SortedDocValues values = DocValues.getSorted(context.reader(), joinField);
+      SortedDocValues values = context.reader().getSortedDocValues(joinField);
       if (values == null) {
         return null;
       }
@@ -214,11 +221,13 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
         return new OrdinalMapScorer(
             this,
             collector,
+            boost,
             values,
             approximationScorer.iterator(),
             globalOrds.getGlobalOrds(context.ord));
       } else {
-        return new SegmentOrdinalScorer(this, collector, values, approximationScorer.iterator());
+        return new SegmentOrdinalScorer(
+            this, collector, values, boost, approximationScorer.iterator());
       }
     }
 
@@ -239,10 +248,11 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
     public OrdinalMapScorer(
         Weight weight,
         GlobalOrdinalsWithScoreCollector collector,
+        float boost,
         SortedDocValues values,
         DocIdSetIterator approximation,
         LongValues segmentOrdToGlobalOrdLookup) {
-      super(weight, values, approximation);
+      super(weight, values, approximation, boost);
       this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
       this.collector = collector;
     }
@@ -280,8 +290,9 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
         Weight weight,
         GlobalOrdinalsWithScoreCollector collector,
         SortedDocValues values,
+        float boost,
         DocIdSetIterator approximation) {
-      super(weight, values, approximation);
+      super(weight, values, approximation, boost);
       this.collector = collector;
     }
 

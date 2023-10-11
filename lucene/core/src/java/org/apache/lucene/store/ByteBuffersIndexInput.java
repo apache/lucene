@@ -170,6 +170,12 @@ public final class ByteBuffersIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+    ensureOpen();
+    in.readBytes(pos, bytes, offset, length);
+  }
+
+  @Override
   public short readShort(long pos) throws IOException {
     ensureOpen();
     return in.readShort(pos);

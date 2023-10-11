@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -701,7 +702,7 @@ final class ReadersAndUpdates {
               Locale.ROOT,
               "done write field updates for seg=%s; took %.3fs; new files: %s",
               info,
-              (System.nanoTime() - startTimeNS) / 1000000000.0,
+              (System.nanoTime() - startTimeNS) / (double) TimeUnit.SECONDS.toNanos(1),
               newDVFiles));
     }
     return true;

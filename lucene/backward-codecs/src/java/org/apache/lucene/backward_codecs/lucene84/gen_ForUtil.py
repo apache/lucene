@@ -414,7 +414,7 @@ def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, 
   i = 0
   remaining_bits = 0
   tmp_idx = 0
-  for i in range(num_values):
+  for i in range(int(num_values)):
     b = bpv
     if remaining_bits == 0:
       b -= remaining_bits_per_long

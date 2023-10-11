@@ -106,77 +106,26 @@ final class FixedLengthBytesRefArray implements SortableBytesRefArray {
       orderedEntries[i] = i;
     }
 
-    if (comp instanceof BytesRefComparator) {
-      BytesRefComparator bComp = (BytesRefComparator) comp;
-      new MSBRadixSorter(bComp.comparedBytesCount) {
+    new StringSorter(comp) {
 
-        BytesRef scratch;
+      {
+        scratchBytes1.length = valueLength;
+        scratchBytes2.length = valueLength;
+        pivot.length = valueLength;
+      }
 
-        {
-          scratch = new BytesRef();
-          scratch.length = valueLength;
-        }
-
-        @Override
-        protected void swap(int i, int j) {
-          int o = orderedEntries[i];
-          orderedEntries[i] = orderedEntries[j];
-          orderedEntries[j] = o;
-        }
-
-        @Override
-        protected int byteAt(int i, int k) {
-          int index1 = orderedEntries[i];
-          scratch.bytes = blocks[index1 / valuesPerBlock];
-          scratch.offset = (index1 % valuesPerBlock) * valueLength;
-          return bComp.byteAt(scratch, k);
-        }
-      }.sort(0, size());
-      return orderedEntries;
-    }
-
-    final BytesRef pivot = new BytesRef();
-    final BytesRef scratch1 = new BytesRef();
-    final BytesRef scratch2 = new BytesRef();
-    pivot.length = valueLength;
-    scratch1.length = valueLength;
-    scratch2.length = valueLength;
-
-    new IntroSorter() {
+      @Override
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        final int index = orderedEntries[i];
+        result.bytes = blocks[index / valuesPerBlock];
+        result.offset = (index % valuesPerBlock) * valueLength;
+      }
 
       @Override
       protected void swap(int i, int j) {
         int o = orderedEntries[i];
         orderedEntries[i] = orderedEntries[j];
         orderedEntries[j] = o;
-      }
-
-      @Override
-      protected int compare(int i, int j) {
-        int index1 = orderedEntries[i];
-        scratch1.bytes = blocks[index1 / valuesPerBlock];
-        scratch1.offset = (index1 % valuesPerBlock) * valueLength;
-
-        int index2 = orderedEntries[j];
-        scratch2.bytes = blocks[index2 / valuesPerBlock];
-        scratch2.offset = (index2 % valuesPerBlock) * valueLength;
-
-        return comp.compare(scratch1, scratch2);
-      }
-
-      @Override
-      protected void setPivot(int i) {
-        int index = orderedEntries[i];
-        pivot.bytes = blocks[index / valuesPerBlock];
-        pivot.offset = (index % valuesPerBlock) * valueLength;
-      }
-
-      @Override
-      protected int comparePivot(int j) {
-        final int index = orderedEntries[j];
-        scratch2.bytes = blocks[index / valuesPerBlock];
-        scratch2.offset = (index % valuesPerBlock) * valueLength;
-        return comp.compare(pivot, scratch2);
       }
     }.sort(0, size());
     return orderedEntries;

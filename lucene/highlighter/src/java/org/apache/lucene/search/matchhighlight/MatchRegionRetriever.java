@@ -293,7 +293,7 @@ public class MatchRegionRetriever {
 
     public DocumentFieldValueProvider(
         LeafReaderContext currentContext, int docId, Set<String> preloadFields) {
-      docSupplier = () -> currentContext.reader().document(docId, preloadFields);
+      docSupplier = () -> currentContext.reader().storedFields().document(docId, preloadFields);
     }
 
     @Override

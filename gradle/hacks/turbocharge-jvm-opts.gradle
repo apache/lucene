@@ -19,7 +19,8 @@
 allprojects {
     def vmOpts = [
         '-XX:+UseParallelGC',
-        '-XX:TieredStopAtLevel=1'
+        '-XX:TieredStopAtLevel=1',
+        '-XX:ActiveProcessorCount=1'
     ]
 
     // Inject vm options into custom javadoc rendering. We can't refer
@@ -37,5 +38,32 @@ allprojects {
         }
 
         jvmArgs += vmOpts
+    }
+
+    // Tweak javac to not be too resource-hungry.
+    // This applies to any JVM when javac runs forked (e.g. error-prone)
+    // Avoiding the fork entirely is best.
+    tasks.withType(JavaCompile) { JavaCompile task ->
+        task.options.forkOptions.jvmArgumentProviders.add(new CommandLineArgumentProvider() {
+            @Override
+            Iterable<String> asArguments() {
+                // Gradle bug: https://github.com/gradle/gradle/issues/22746
+                //
+                // Evaluation of this block is delayed until execution time when
+                // we know which "mode" java compiler task will pick and can set arguments
+                // accordingly.
+                //
+                // There is a side-effect to this that arguments passed via the provider
+                // are not part of up-to-date checks but these are internal JVM flags so we
+                // don't care.
+                //
+                // Pass VM options via -J only with a custom javaHome AND when java toolchains are not used.
+                if (task.options.forkOptions.javaHome != null && task.javaCompiler.getOrNull() == null) {
+                    return vmOpts.collect {"-J" + it}
+                } else {
+                    return vmOpts
+                }
+            }
+        })
     }
 }

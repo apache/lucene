@@ -435,8 +435,7 @@ final class DocumentsWriter implements Closeable, Accountable {
           flushControl.doOnAbort(dwpt);
         }
       }
-      final boolean isUpdate = delNode != null && delNode.isDelete();
-      flushingDWPT = flushControl.doAfterDocument(dwpt, isUpdate);
+      flushingDWPT = flushControl.doAfterDocument(dwpt);
     } finally {
       if (dwpt.isFlushPending() || dwpt.isAborted()) {
         dwpt.unlock();

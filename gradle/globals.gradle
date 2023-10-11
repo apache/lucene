@@ -113,6 +113,8 @@ allprojects {
               "code: ${result.exitValue}, " +
               "output at: ${outputFile} (and logged above).")
         }
+      } else {
+        logger.info(new String(outputFile.bytes))
       }
 
       return result

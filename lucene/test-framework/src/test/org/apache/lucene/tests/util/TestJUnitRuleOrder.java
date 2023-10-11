@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.tests.util;
 
-import java.util.Arrays;
-import java.util.Stack;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -35,7 +35,7 @@ import org.junit.runners.model.Statement;
  * This should be the case from JUnit 4.10 on.
  */
 public class TestJUnitRuleOrder extends WithNestedTests {
-  static Stack<String> stack;
+  static ArrayList<String> stack;
 
   public TestJUnitRuleOrder() {
     super(true);
@@ -44,12 +44,12 @@ public class TestJUnitRuleOrder extends WithNestedTests {
   public static class Nested extends WithNestedTests.AbstractNestedTest {
     @Before
     public void before() {
-      stack.push("@Before");
+      stack.add("@Before");
     }
 
     @After
     public void after() {
-      stack.push("@After");
+      stack.add("@After");
     }
 
     @Rule
@@ -60,9 +60,9 @@ public class TestJUnitRuleOrder extends WithNestedTests {
             return new Statement() {
               @Override
               public void evaluate() throws Throwable {
-                stack.push("@Rule before");
+                stack.add("@Rule before");
                 base.evaluate();
-                stack.push("@Rule after");
+                stack.add("@Rule after");
               }
             };
           }
@@ -75,12 +75,12 @@ public class TestJUnitRuleOrder extends WithNestedTests {
 
     @BeforeClass
     public static void beforeClassCleanup() {
-      stack = new Stack<>();
+      stack = new ArrayList<>();
     }
 
     @AfterClass
     public static void afterClassCheck() {
-      stack.push("@AfterClass");
+      stack.add("@AfterClass");
     }
   }
 
@@ -88,7 +88,6 @@ public class TestJUnitRuleOrder extends WithNestedTests {
   public void testRuleOrder() {
     JUnitCore.runClasses(Nested.class);
     Assert.assertEquals(
-        Arrays.toString(stack.toArray()),
-        "[@Rule before, @Before, @After, @Rule after, @AfterClass]");
+        List.of("@Rule before", "@Before", "@After", "@Rule after", "@AfterClass"), stack);
   }
 }

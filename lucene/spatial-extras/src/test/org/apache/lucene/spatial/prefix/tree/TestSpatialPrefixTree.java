@@ -106,7 +106,7 @@ public class TestSpatialPrefixTree extends SpatialTestCase {
     TopDocs search = indexSearcher.search(query, 10);
     ScoreDoc[] scoreDocs = search.scoreDocs;
     for (ScoreDoc scoreDoc : scoreDocs) {
-      System.out.println(indexSearcher.doc(scoreDoc.doc));
+      System.out.println(indexSearcher.storedFields().document(scoreDoc.doc));
     }
 
     assertEquals(1, search.totalHits.value);

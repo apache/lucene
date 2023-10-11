@@ -698,11 +698,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         int numDel = 0;
         final Bits liveDocs = MultiBits.getLiveDocs(reader);
         assertNotNull(liveDocs);
+        StoredFields storedFields = reader.storedFields();
+        TermVectors termVectors = reader.termVectors();
         for (int j = 0; j < reader.maxDoc(); j++) {
           if (!liveDocs.get(j)) numDel++;
           else {
-            reader.document(j);
-            reader.getTermVectors(j);
+            storedFields.document(j);
+            termVectors.get(j);
           }
         }
         assertEquals(1, numDel);
@@ -722,9 +724,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertEquals(expected, reader.maxDoc());
       int numDel = 0;
       assertNull(MultiBits.getLiveDocs(reader));
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
-        reader.document(j);
-        reader.getTermVectors(j);
+        storedFields.document(j);
+        termVectors.get(j);
       }
       reader.close();
       assertEquals(0, numDel);
@@ -879,11 +883,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       int numDel = 0;
       final Bits liveDocs = MultiBits.getLiveDocs(reader);
       assertNotNull(liveDocs);
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
         if (!liveDocs.get(j)) numDel++;
         else {
-          reader.document(j);
-          reader.getTermVectors(j);
+          storedFields.document(j);
+          termVectors.get(j);
         }
       }
       reader.close();
@@ -903,9 +909,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertEquals(expected, reader.docFreq(new Term("contents", "here")));
       assertEquals(expected, reader.maxDoc());
       assertNull(MultiBits.getLiveDocs(reader));
+      storedFields = reader.storedFields();
+      termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
-        reader.document(j);
-        reader.getTermVectors(j);
+        storedFields.document(j);
+        termVectors.get(j);
       }
       reader.close();
 
@@ -1489,13 +1497,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       doc.add(newStringField("id", docCount + "", Field.Store.NO));
       doc.add(newTextField("content", "silly content " + docCount, Field.Store.NO));
       if (docCount == 4) {
-        Field f = newTextField("crash", "", Field.Store.NO);
-        doc.add(f);
         MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
         tokenizer.setReader(new StringReader("crash me on the 4th token"));
         tokenizer.setEnableChecks(
             false); // disable workflow checking as we forcefully close() in exceptional cases.
-        f.setTokenStream(new CrashingFilter("crash", tokenizer));
+        Field f =
+            new Field("crash", new CrashingFilter("crash", tokenizer), TextField.TYPE_NOT_STORED);
+        doc.add(f);
       }
     }
 
@@ -1565,13 +1573,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       doc.add(newStringField("id", docCount + "", Field.Store.NO));
       doc.add(newTextField("content", "silly content " + docCount, Field.Store.NO));
       if (docCount == crashAt) {
-        Field f = newTextField("crash", "", Field.Store.NO);
-        doc.add(f);
         MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
         tokenizer.setReader(new StringReader("crash me on the 4th token"));
         tokenizer.setEnableChecks(
             false); // disable workflow checking as we forcefully close() in exceptional cases.
-        f.setTokenStream(new CrashingFilter("crash", tokenizer));
+        Field f =
+            new Field("crash", new CrashingFilter("crash", tokenizer), TextField.TYPE_NOT_STORED);
+        doc.add(f);
       }
     }
 

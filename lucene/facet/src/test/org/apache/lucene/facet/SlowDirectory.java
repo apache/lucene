@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.FilterDirectory;
+import org.apache.lucene.store.FilterIndexInput;
+import org.apache.lucene.store.FilterIndexOutput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -82,15 +84,13 @@ public class SlowDirectory extends FilterDirectory {
   }
 
   /** Delegate class to wrap an IndexInput and delay reading bytes by some specified time. */
-  private class SlowIndexInput extends IndexInput {
-    private IndexInput ii;
+  private class SlowIndexInput extends FilterIndexInput {
     private int numRead = 0;
     private Random rand;
 
     public SlowIndexInput(IndexInput ii) {
-      super("SlowIndexInput(" + ii + ")");
+      super("SlowIndexInput(" + ii + ")", ii);
       this.rand = forkRandom();
-      this.ii = ii;
     }
 
     @Override
@@ -100,7 +100,7 @@ public class SlowDirectory extends FilterDirectory {
         numRead = 0;
       }
       ++numRead;
-      return ii.readByte();
+      return in.readByte();
     }
 
     @Override
@@ -110,61 +110,28 @@ public class SlowDirectory extends FilterDirectory {
         numRead = 0;
       }
       numRead += len;
-      ii.readBytes(b, offset, len);
-    }
-
-    // TODO: is it intentional that clone doesnt wrap?
-    @Override
-    public IndexInput clone() {
-      return ii.clone();
-    }
-
-    @Override
-    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return ii.slice(sliceDescription, offset, length);
-    }
-
-    @Override
-    public void close() throws IOException {
-      ii.close();
+      in.readBytes(b, offset, len);
     }
 
     @Override
     public boolean equals(Object o) {
-      return ii.equals(o);
-    }
-
-    @Override
-    public long getFilePointer() {
-      return ii.getFilePointer();
+      return in.equals(o);
     }
 
     @Override
     public int hashCode() {
-      return ii.hashCode();
-    }
-
-    @Override
-    public long length() {
-      return ii.length();
-    }
-
-    @Override
-    public void seek(long pos) throws IOException {
-      ii.seek(pos);
+      return in.hashCode();
     }
   }
 
   /** Delegate class to wrap an IndexOutput and delay writing bytes by some specified time. */
-  private class SlowIndexOutput extends IndexOutput {
+  private class SlowIndexOutput extends FilterIndexOutput {
 
-    private IndexOutput io;
     private int numWrote;
     private final Random rand;
 
-    public SlowIndexOutput(IndexOutput io) {
-      super("SlowIndexOutput(" + io + ")", io.getName());
-      this.io = io;
+    public SlowIndexOutput(IndexOutput out) {
+      super("SlowIndexOutput(" + out + ")", out.getName(), out);
       this.rand = forkRandom();
     }
 
@@ -175,7 +142,7 @@ public class SlowDirectory extends FilterDirectory {
         numWrote = 0;
       }
       ++numWrote;
-      io.writeByte(b);
+      out.writeByte(b);
     }
 
     @Override
@@ -185,22 +152,7 @@ public class SlowDirectory extends FilterDirectory {
         numWrote = 0;
       }
       numWrote += length;
-      io.writeBytes(b, offset, length);
-    }
-
-    @Override
-    public void close() throws IOException {
-      io.close();
-    }
-
-    @Override
-    public long getFilePointer() {
-      return io.getFilePointer();
-    }
-
-    @Override
-    public long getChecksum() throws IOException {
-      return io.getChecksum();
+      out.writeBytes(b, offset, length);
     }
   }
 }

@@ -112,7 +112,7 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   private static class OrderedIntervalIterator extends ConjunctionIntervalIterator {
 
-    int start = -1, end = -1, i;
+    int start = -1, end = -1, i = 1;
     int slop;
     final MatchCallback onMatch;
 
@@ -136,7 +136,6 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
       start = end = slop = IntervalIterator.NO_MORE_INTERVALS;
       int lastStart = Integer.MAX_VALUE;
       boolean minimizing = false;
-      i = 1;
       while (true) {
         while (true) {
           if (subIterators.get(i - 1).end() >= lastStart) {

@@ -57,7 +57,7 @@ public class TernaryTreeNode {
       mem +=
           RamUsageEstimator.shallowSizeOf(token)
               + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-              + Character.BYTES * token.length();
+              + Character.BYTES * (long) token.length();
     }
     mem += RamUsageEstimator.shallowSizeOf(val);
     return mem;

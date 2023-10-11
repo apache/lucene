@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
@@ -202,7 +203,12 @@ public class Test2BTerms extends LuceneTestCase {
         final long t0 = System.nanoTime();
         w.addDocument(doc);
         System.out.println(
-            i + " of " + numDocs + " " + (System.nanoTime() - t0) / 1_000_000 + " msec");
+            i
+                + " of "
+                + numDocs
+                + " "
+                + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+                + " ms");
       }
       savedTerms = ts.savedTerms;
 
@@ -266,8 +272,7 @@ public class Test2BTerms extends LuceneTestCase {
         System.out.println("  FAILED: count=" + count);
         failed = true;
       }
-      final long t1 = System.nanoTime();
-      System.out.println("  took " + (t1 - t0) / 1_000_000 + " millis");
+      System.out.println("  took " + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0) + " ms");
 
       TermsEnum.SeekStatus result = termsEnum.seekCeil(term);
       if (result != TermsEnum.SeekStatus.FOUND) {

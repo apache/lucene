@@ -79,13 +79,11 @@ public final class DirectMonotonicWriter {
 
     final float avgInc =
         (float) ((double) (buffer[bufferSize - 1] - buffer[0]) / Math.max(1, bufferSize - 1));
+
+    long min = Long.MAX_VALUE;
     for (int i = 0; i < bufferSize; ++i) {
       final long expected = (long) (avgInc * (long) i);
       buffer[i] -= expected;
-    }
-
-    long min = buffer[0];
-    for (int i = 1; i < bufferSize; ++i) {
       min = Math.min(buffer[i], min);
     }
 

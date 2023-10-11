@@ -23,7 +23,7 @@ import java.util.Arrays;
  *
  * @lucene.internal
  */
-public final class IntBlockPool {
+public class IntBlockPool {
   public static final int INT_BLOCK_SHIFT = 13;
   public static final int INT_BLOCK_SIZE = 1 << INT_BLOCK_SHIFT;
   public static final int INT_BLOCK_MASK = INT_BLOCK_SIZE - 1;
@@ -101,8 +101,7 @@ public final class IntBlockPool {
   /**
    * Expert: Resets the pool to its initial state reusing the first buffer.
    *
-   * @param zeroFillBuffers if <code>true</code> the buffers are filled with <code>0</code>. This
-   *     should be set to <code>true</code> if this pool is used with {@link SliceWriter}.
+   * @param zeroFillBuffers if <code>true</code> the buffers are filled with <code>0</code>.
    * @param reuseFirst if <code>true</code> the first buffer will be reused and calling {@link
    *     IntBlockPool#nextBuffer()} is not needed after reset iff the block pool was used before ie.
    *     {@link IntBlockPool#nextBuffer()} was called before.
@@ -156,206 +155,6 @@ public final class IntBlockPool {
     bufferUpto++;
 
     intUpto = 0;
-    intOffset += INT_BLOCK_SIZE;
-  }
-
-  /**
-   * Creates a new int slice with the given starting size and returns the slices offset in the pool.
-   *
-   * @see SliceReader
-   */
-  private int newSlice(final int size) {
-    if (intUpto > INT_BLOCK_SIZE - size) {
-      nextBuffer();
-      assert assertSliceBuffer(buffer);
-    }
-
-    final int upto = intUpto;
-    intUpto += size;
-    buffer[intUpto - 1] = 16;
-    return upto;
-  }
-
-  private static boolean assertSliceBuffer(int[] buffer) {
-    int count = 0;
-    for (int i = 0; i < buffer.length; i++) {
-      count += buffer[i]; // for slices the buffer must only have 0 values
-    }
-    return count == 0;
-  }
-
-  // no need to make this public unless we support different sizes
-
-  /**
-   * An array holding the offset into the {@link IntBlockPool#LEVEL_SIZE_ARRAY} to quickly navigate
-   * to the next slice level.
-   */
-  private static final int[] NEXT_LEVEL_ARRAY = {1, 2, 3, 4, 5, 6, 7, 8, 9, 9};
-
-  /** An array holding the level sizes for int slices. */
-  private static final int[] LEVEL_SIZE_ARRAY = {2, 4, 8, 16, 16, 32, 32, 64, 64, 128};
-
-  /** The first level size for new slices */
-  private static final int FIRST_LEVEL_SIZE = LEVEL_SIZE_ARRAY[0];
-
-  /** Allocates a new slice from the given offset */
-  private int allocSlice(final int[] slice, final int sliceOffset) {
-    final int level = slice[sliceOffset] & 15;
-    final int newLevel = NEXT_LEVEL_ARRAY[level];
-    final int newSize = LEVEL_SIZE_ARRAY[newLevel];
-    // Maybe allocate another block
-    if (intUpto > INT_BLOCK_SIZE - newSize) {
-      nextBuffer();
-      assert assertSliceBuffer(buffer);
-    }
-
-    final int newUpto = intUpto;
-    final int offset = newUpto + intOffset;
-    intUpto += newSize;
-    // Write forwarding address at end of last slice:
-    slice[sliceOffset] = offset;
-
-    // Write new level:
-    buffer[intUpto - 1] = 16 | newLevel;
-
-    return newUpto;
-  }
-
-  /**
-   * A {@link SliceWriter} that allows to write multiple integer slices into a given {@link
-   * IntBlockPool}.
-   *
-   * @see SliceReader
-   * @lucene.internal
-   */
-  public static class SliceWriter {
-
-    private int offset;
-    private final IntBlockPool pool;
-
-    public SliceWriter(IntBlockPool pool) {
-      this.pool = pool;
-    }
-    /** */
-    public void reset(int sliceOffset) {
-      this.offset = sliceOffset;
-    }
-
-    /** Writes the given value into the slice and resizes the slice if needed */
-    public void writeInt(int value) {
-      int[] ints = pool.buffers[offset >> INT_BLOCK_SHIFT];
-      assert ints != null;
-      int relativeOffset = offset & INT_BLOCK_MASK;
-      if (ints[relativeOffset] != 0) {
-        // End of slice; allocate a new one
-        relativeOffset = pool.allocSlice(ints, relativeOffset);
-        ints = pool.buffer;
-        offset = relativeOffset + pool.intOffset;
-      }
-      ints[relativeOffset] = value;
-      offset++;
-    }
-
-    /**
-     * starts a new slice and returns the start offset. The returned value should be used as the
-     * start offset to initialize a {@link SliceReader}.
-     */
-    public int startNewSlice() {
-      return offset = pool.newSlice(FIRST_LEVEL_SIZE) + pool.intOffset;
-    }
-
-    /**
-     * Returns the offset of the currently written slice. The returned value should be used as the
-     * end offset to initialize a {@link SliceReader} once this slice is fully written or to reset
-     * the this writer if another slice needs to be written.
-     */
-    public int getCurrentOffset() {
-      return offset;
-    }
-  }
-
-  /**
-   * A {@link SliceReader} that can read int slices written by a {@link SliceWriter}
-   *
-   * @lucene.internal
-   */
-  public static final class SliceReader {
-
-    private final IntBlockPool pool;
-    private int upto;
-    private int bufferUpto;
-    private int bufferOffset;
-    private int[] buffer;
-    private int limit;
-    private int level;
-    private int end;
-
-    /** Creates a new {@link SliceReader} on the given pool */
-    public SliceReader(IntBlockPool pool) {
-      this.pool = pool;
-    }
-
-    /** Resets the reader to a slice give the slices absolute start and end offset in the pool */
-    public void reset(int startOffset, int endOffset) {
-      bufferUpto = startOffset / INT_BLOCK_SIZE;
-      bufferOffset = bufferUpto * INT_BLOCK_SIZE;
-      this.end = endOffset;
-      level = 0;
-
-      buffer = pool.buffers[bufferUpto];
-      upto = startOffset & INT_BLOCK_MASK;
-
-      final int firstSize = IntBlockPool.LEVEL_SIZE_ARRAY[0];
-      if (startOffset + firstSize >= endOffset) {
-        // There is only this one slice to read
-        limit = endOffset & INT_BLOCK_MASK;
-      } else {
-        limit = upto + firstSize - 1;
-      }
-    }
-
-    /**
-     * Returns <code>true</code> iff the current slice is fully read. If this method returns <code>
-     * true</code> {@link SliceReader#readInt()} should not be called again on this slice.
-     */
-    public boolean endOfSlice() {
-      assert upto + bufferOffset <= end;
-      return upto + bufferOffset == end;
-    }
-
-    /**
-     * Reads the next int from the current slice and returns it.
-     *
-     * @see SliceReader#endOfSlice()
-     */
-    public int readInt() {
-      assert !endOfSlice();
-      assert upto <= limit;
-      if (upto == limit) nextSlice();
-      return buffer[upto++];
-    }
-
-    private void nextSlice() {
-      // Skip to our next slice
-      final int nextIndex = buffer[limit];
-      level = NEXT_LEVEL_ARRAY[level];
-      final int newSize = LEVEL_SIZE_ARRAY[level];
-
-      bufferUpto = nextIndex / INT_BLOCK_SIZE;
-      bufferOffset = bufferUpto * INT_BLOCK_SIZE;
-
-      buffer = pool.buffers[bufferUpto];
-      upto = nextIndex & INT_BLOCK_MASK;
-
-      if (nextIndex + newSize >= end) {
-        // We are advancing to the final slice
-        assert end - nextIndex > 0;
-        limit = end - bufferOffset;
-      } else {
-        // This is not the final slice (subtract 4 for the
-        // forwarding address at the end of this new slice)
-        limit = upto + newSize - 1;
-      }
-    }
+    intOffset = Math.addExact(intOffset, INT_BLOCK_SIZE);
   }
 }

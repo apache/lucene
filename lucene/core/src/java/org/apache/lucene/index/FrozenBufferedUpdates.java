@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -30,7 +31,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
@@ -85,12 +85,9 @@ final class FrozenBufferedUpdates {
     this.privateSegment = privateSegment;
     assert privateSegment == null || updates.deleteTerms.isEmpty()
         : "segment private packet should only have del queries";
-    Term[] termsArray = updates.deleteTerms.keySet().toArray(new Term[updates.deleteTerms.size()]);
-    ArrayUtil.timSort(termsArray);
+
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    for (Term term : termsArray) {
-      builder.add(term);
-    }
+    updates.deleteTerms.forEachOrdered((term, doc) -> builder.add(term));
     deleteTerms = builder.finish();
 
     deleteQueries = new Query[updates.deleteQueries.size()];
@@ -111,7 +108,7 @@ final class FrozenBufferedUpdates {
 
     bytesUsed =
         (int)
-            ((deleteTerms.ramBytesUsed() + deleteQueries.length * BYTES_PER_DEL_QUERY)
+            ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
                 + updates.fieldUpdatesBytesUsed.get());
 
     numTermDeletes = updates.numTermDeletes.get();
@@ -216,7 +213,7 @@ final class FrozenBufferedUpdates {
           String.format(
               Locale.ROOT,
               "applyDocValuesUpdates %.1f msec for %d segments, %d field updates; %d new updates",
-              (System.nanoTime() - startNS) / 1000000.,
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
               segStates.length,
               fieldUpdatesCount,
               updateCount));
@@ -430,7 +427,7 @@ final class FrozenBufferedUpdates {
           String.format(
               Locale.ROOT,
               "applyQueryDeletes took %.2f msec for %d segments and %d queries; %d new deletions",
-              (System.nanoTime() - startNS) / 1000000.,
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
               segStates.length,
               deleteQueries.length,
               delCount));
@@ -493,7 +490,7 @@ final class FrozenBufferedUpdates {
           String.format(
               Locale.ROOT,
               "applyTermDeletes took %.2f msec for %d segments and %d del terms; %d new deletions",
-              (System.nanoTime() - startNS) / 1000000.,
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
               segStates.length,
               deleteTerms.size(),
               delCount));

@@ -178,6 +178,81 @@ public class XYZBounds implements Bounds {
 
   // Modification methods
 
+  /**
+   * Check if another XYZBounds object overlaps this one.
+   *
+   * @param bounds is the other bounds object.
+   * @return true if there is overlap.
+   */
+  public boolean overlaps(final XYZBounds bounds) {
+    // Overlap occurs when any one corner is inside the other bounds
+    // object, and visa versa
+    return isCornerInside(this, bounds) || isCornerInside(bounds, this);
+  }
+
+  private static boolean isCornerInside(final XYZBounds one, final XYZBounds other) {
+    if (one.minX == null
+        || one.maxX == null
+        || one.minY == null
+        || one.maxY == null
+        || one.minZ == null
+        || one.maxZ == null) {
+      return false;
+    }
+    if (other.minX == null
+        || other.maxX == null
+        || other.minY == null
+        || other.maxY == null
+        || other.minZ == null
+        || other.maxZ == null) {
+      return false;
+    }
+    return isPointInside(other, one.minX, one.minY, one.minZ)
+        || isPointInside(other, one.maxX, one.minY, one.minZ)
+        || isPointInside(other, one.minX, one.maxY, one.minZ)
+        || isPointInside(other, one.maxX, one.maxY, one.minZ)
+        || isPointInside(other, one.minX, one.minY, one.maxZ)
+        || isPointInside(other, one.maxX, one.minY, one.maxZ)
+        || isPointInside(other, one.minX, one.maxY, one.maxZ)
+        || isPointInside(other, one.maxX, one.maxY, one.maxZ);
+  }
+
+  private static boolean isPointInside(
+      final XYZBounds other, final double x, final double y, final double z) {
+    return other.minX <= x
+        && other.maxX >= x
+        && other.minY <= y
+        && other.maxY >= y
+        && other.minZ <= z
+        && other.maxZ >= z;
+  }
+
+  /**
+   * Add a fully-formed XYZBounds to the current one.
+   *
+   * @param bounds is the bounds object to modify
+   */
+  public void addBounds(final XYZBounds bounds) {
+    if (bounds.maxX == null || maxX > bounds.maxX) {
+      bounds.maxX = maxX;
+    }
+    if (bounds.minX == null || minX < bounds.minX) {
+      bounds.minX = minX;
+    }
+    if (bounds.maxY == null || maxY > bounds.maxY) {
+      bounds.maxY = maxY;
+    }
+    if (bounds.minY == null || minY < bounds.minY) {
+      bounds.minY = minY;
+    }
+    if (bounds.maxZ == null || maxZ > bounds.maxZ) {
+      bounds.maxZ = maxZ;
+    }
+    if (bounds.minZ == null || minZ < bounds.minZ) {
+      bounds.minZ = minZ;
+    }
+  }
+
   @Override
   public Bounds addPlane(
       final PlanetModel planetModel, final Plane plane, final Membership... bounds) {
@@ -340,6 +415,39 @@ public class XYZBounds implements Bounds {
     minZ = planetModel.getMinimumZValue();
     maxZ = planetModel.getMaximumZValue();
     return this;
+  }
+
+  /**
+   * Courtesy method to see if a point is within the bounds.
+   *
+   * @param v is the point/vector we want to check
+   * @return true if the bounds contains the vector
+   */
+  public boolean isWithin(final Vector v) {
+    return isWithin(v.x, v.y, v.z);
+  }
+
+  /**
+   * Courtesy method to see if a point is within the bounds.
+   *
+   * @param x is the x coordinate
+   * @param y is the y coordinate
+   * @param z is the z coordinate
+   * @return true if the bounds contains the vector
+   */
+  public boolean isWithin(final double x, final double y, final double z) {
+    return (minX != null
+        && x >= minX
+        && maxX != null
+        && x <= maxX
+        && minY != null
+        && y >= minY
+        && maxY != null
+        && y <= maxY
+        && minZ != null
+        && z >= minZ
+        && maxZ != null
+        && z <= maxZ);
   }
 
   @Override

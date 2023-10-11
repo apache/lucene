@@ -51,7 +51,7 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 public class TestTermInSetQuery extends LuceneTestCase {
 
-  public void testAllDocsTerm() throws IOException {
+  public void testAllDocsInFieldTerm() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
     String field = "f";
@@ -59,16 +59,19 @@ public class TestTermInSetQuery extends LuceneTestCase {
     BytesRef denseTerm = new BytesRef(TestUtil.randomAnalysisString(random(), 10, true));
 
     Set<BytesRef> randomTerms = new HashSet<>();
-    while (randomTerms.size() < TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {
+    while (randomTerms.size()
+        < AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD) {
       randomTerms.add(new BytesRef(TestUtil.randomAnalysisString(random(), 10, true)));
     }
-    assert randomTerms.size() == TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
+    assert randomTerms.size()
+        == AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
     BytesRef[] otherTerms = new BytesRef[randomTerms.size()];
     int idx = 0;
     for (BytesRef term : randomTerms) {
       otherTerms[idx++] = term;
     }
 
+    // Every doc with a value for `field` will contain `denseTerm`:
     int numDocs = 10 * otherTerms.length;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
@@ -76,6 +79,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
       BytesRef sparseTerm = otherTerms[i % otherTerms.length];
       doc.add(new StringField(field, sparseTerm, Store.NO));
       iw.addDocument(doc);
+    }
+
+    // Make sure there are some docs in the index that don't contain a value for the field at all:
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.NO));
     }
 
     IndexReader reader = iw.getReader();
@@ -231,7 +240,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final long actualRamBytesUsed = RamUsageTester.ramUsed(query);
     final long expectedRamBytesUsed = query.ramBytesUsed();
     // error margin within 5%
-    assertEquals(expectedRamBytesUsed, actualRamBytesUsed, actualRamBytesUsed / 20.d);
+    assertEquals(
+        (double) expectedRamBytesUsed, (double) actualRamBytesUsed, actualRamBytesUsed / 20.d);
   }
 
   private static class TermsCountingDirectoryReaderWrapper extends FilterDirectoryReader {
@@ -317,7 +327,10 @@ public class TestTermInSetQuery extends LuceneTestCase {
     final List<BytesRef> terms = new ArrayList<>();
     // enough terms to avoid the rewrite
     final int numTerms =
-        TestUtil.nextInt(random(), TermInSetQuery.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD + 1, 100);
+        TestUtil.nextInt(
+            random(),
+            AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD + 1,
+            100);
     for (int i = 0; i < numTerms; ++i) {
       final BytesRef term = newBytesRef(RandomStrings.randomUnicodeOfCodepointLength(random(), 10));
       terms.add(term);

@@ -36,7 +36,7 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
   private final String field;
   private final Analyzer analyzer;
 
-  OffsetsFromPositions(String field, Analyzer analyzer) {
+  public OffsetsFromPositions(String field, Analyzer analyzer) {
     this.field = field;
     this.analyzer = analyzer;
   }

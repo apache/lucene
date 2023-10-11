@@ -53,7 +53,7 @@ public class TestBinaryDocument extends LuceneTestCase {
 
     /** open a reader and fetch the document */
     IndexReader reader = writer.getReader();
-    Document docFromReader = reader.document(0);
+    Document docFromReader = reader.storedFields().document(0);
     assertTrue(docFromReader != null);
 
     /** fetch the binary stored field and compare its content with the original one */

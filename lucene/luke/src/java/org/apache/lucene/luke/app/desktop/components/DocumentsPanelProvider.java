@@ -1246,6 +1246,9 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           case EUCLIDEAN:
             sb.append("euc");
             break;
+          case MAXIMUM_INNER_PRODUCT:
+            sb.append("mip");
+            break;
           default:
             sb.append("???");
         }

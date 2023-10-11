@@ -220,9 +220,12 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     assertEquals(1, reader.numDocs());
     assertEquals(3, reader.maxDoc());
     Set<String> versions = new HashSet<>();
-    versions.add(reader.document(0, Collections.singleton("version")).get("version"));
-    versions.add(reader.document(1, Collections.singleton("version")).get("version"));
-    versions.add(reader.document(2, Collections.singleton("version")).get("version"));
+    versions.add(
+        reader.storedFields().document(0, Collections.singleton("version")).get("version"));
+    versions.add(
+        reader.storedFields().document(1, Collections.singleton("version")).get("version"));
+    versions.add(
+        reader.storedFields().document(2, Collections.singleton("version")).get("version"));
     assertTrue(versions.contains("5"));
     assertTrue(versions.contains("4"));
     assertTrue(versions.contains("3"));

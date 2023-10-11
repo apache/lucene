@@ -110,7 +110,7 @@ public class TestRegexpRandom2 extends LuceneTestCase {
     private final Automaton automaton;
 
     DumbRegexpQuery(Term term, int flags) {
-      super(term.field(), MultiTermQuery.CONSTANT_SCORE_REWRITE);
+      super(term.field(), MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
       RegExp re = new RegExp(term.text(), flags);
       automaton =
           Operations.determinize(re.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);

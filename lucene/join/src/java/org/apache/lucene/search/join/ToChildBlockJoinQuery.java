@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
@@ -305,12 +304,12 @@ public class ToChildBlockJoinQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    final Query parentRewrite = parentQuery.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    final Query parentRewrite = parentQuery.rewrite(indexSearcher);
     if (parentRewrite != parentQuery) {
       return new ToChildBlockJoinQuery(parentRewrite, parentsFilter);
     } else {
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
   }
 

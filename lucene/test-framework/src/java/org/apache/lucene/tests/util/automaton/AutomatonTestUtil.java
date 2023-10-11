@@ -46,6 +46,9 @@ public class AutomatonTestUtil {
   /** Default maximum number of states that {@link Operations#determinize} should create. */
   public static final int DEFAULT_MAX_DETERMINIZED_STATES = 1000000;
 
+  /** Maximum level of recursion allowed in recursive operations. */
+  public static final int MAX_RECURSION_LEVEL = 1000;
+
   /** Returns random string, including full unicode range. */
   public static String randomRegexp(Random r) {
     while (true) {
@@ -483,7 +486,7 @@ public class AutomatonTestUtil {
   // large automata could exceed java's stack so the maximum level of recursion is bounded to 1000
   private static boolean isFinite(
       Transition scratch, Automaton a, int state, BitSet path, BitSet visited, int level) {
-    if (level > Operations.MAX_RECURSION_LEVEL) {
+    if (level > MAX_RECURSION_LEVEL) {
       throw new IllegalArgumentException("input automaton is too large: " + level);
     }
     path.set(state);

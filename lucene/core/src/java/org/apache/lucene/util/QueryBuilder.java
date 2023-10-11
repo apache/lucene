@@ -65,13 +65,13 @@ public class QueryBuilder {
   /** Wraps a term and boost */
   public static class TermAndBoost {
     /** the term */
-    public final Term term;
+    public final BytesRef term;
     /** the boost */
     public final float boost;
 
     /** Creates a new TermAndBoost */
-    public TermAndBoost(Term term, float boost) {
-      this.term = term;
+    public TermAndBoost(BytesRef term, float boost) {
+      this.term = BytesRef.deepCopyOf(term);
       this.boost = boost;
     }
   }
@@ -390,21 +390,24 @@ public class QueryBuilder {
     stream.reset();
     List<TermAndBoost> terms = new ArrayList<>();
     while (stream.incrementToken()) {
-      terms.add(new TermAndBoost(new Term(field, termAtt.getBytesRef()), boostAtt.getBoost()));
+      terms.add(new TermAndBoost(termAtt.getBytesRef(), boostAtt.getBoost()));
     }
 
-    return newSynonymQuery(terms.toArray(new TermAndBoost[0]));
+    return newSynonymQuery(field, terms.toArray(TermAndBoost[]::new));
   }
 
   protected void add(
-      BooleanQuery.Builder q, List<TermAndBoost> current, BooleanClause.Occur operator) {
+      String field,
+      BooleanQuery.Builder q,
+      List<TermAndBoost> current,
+      BooleanClause.Occur operator) {
     if (current.isEmpty()) {
       return;
     }
     if (current.size() == 1) {
-      q.add(newTermQuery(current.get(0).term, current.get(0).boost), operator);
+      q.add(newTermQuery(new Term(field, current.get(0).term), current.get(0).boost), operator);
     } else {
-      q.add(newSynonymQuery(current.toArray(new TermAndBoost[0])), operator);
+      q.add(newSynonymQuery(field, current.toArray(TermAndBoost[]::new)), operator);
     }
   }
 
@@ -421,13 +424,12 @@ public class QueryBuilder {
     stream.reset();
     while (stream.incrementToken()) {
       if (posIncrAtt.getPositionIncrement() != 0) {
-        add(q, currentQuery, operator);
+        add(field, q, currentQuery, operator);
         currentQuery.clear();
       }
-      currentQuery.add(
-          new TermAndBoost(new Term(field, termAtt.getBytesRef()), boostAtt.getBoost()));
+      currentQuery.add(new TermAndBoost(termAtt.getBytesRef(), boostAtt.getBoost()));
     }
-    add(q, currentQuery, operator);
+    add(field, q, currentQuery, operator);
 
     return q.build();
   }
@@ -518,7 +520,7 @@ public class QueryBuilder {
       if (graph.hasSidePath(start)) {
         final Iterator<TokenStream> sidePathsIterator = graph.getFiniteStrings(start, end);
         Iterator<Query> queries =
-            new Iterator<Query>() {
+            new Iterator<>() {
               @Override
               public boolean hasNext() {
                 return sidePathsIterator.hasNext();
@@ -544,14 +546,14 @@ public class QueryBuilder {
                     s -> {
                       TermToBytesRefAttribute t = s.addAttribute(TermToBytesRefAttribute.class);
                       BoostAttribute b = s.addAttribute(BoostAttribute.class);
-                      return new TermAndBoost(new Term(field, t.getBytesRef()), b.getBoost());
+                      return new TermAndBoost(t.getBytesRef(), b.getBoost());
                     })
                 .toArray(TermAndBoost[]::new);
         assert terms.length > 0;
         if (terms.length == 1) {
-          positionalQuery = newTermQuery(terms[0].term, terms[0].boost);
+          positionalQuery = newTermQuery(new Term(field, terms[0].term), terms[0].boost);
         } else {
-          positionalQuery = newSynonymQuery(terms);
+          positionalQuery = newSynonymQuery(field, terms);
         }
       }
       if (positionalQuery != null) {
@@ -599,8 +601,8 @@ public class QueryBuilder {
    *
    * @return new Query instance
    */
-  protected Query newSynonymQuery(TermAndBoost[] terms) {
-    SynonymQuery.Builder builder = new SynonymQuery.Builder(terms[0].term.field());
+  protected Query newSynonymQuery(String field, TermAndBoost[] terms) {
+    SynonymQuery.Builder builder = new SynonymQuery.Builder(field);
     for (TermAndBoost t : terms) {
       builder.addTerm(t.term, t.boost);
     }

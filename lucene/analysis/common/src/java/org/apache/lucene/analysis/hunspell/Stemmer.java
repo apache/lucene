@@ -614,6 +614,8 @@ final class Stemmer {
       return false;
     }
 
+    if (innerSuffix >= 0) return true;
+
     int recursionDepth =
         (outerSuffix >= 0 ? 1 : 0) + (innerPrefix >= 0 ? 2 : outerPrefix >= 0 ? 1 : 0) - 1;
     if (dictionary.isCrossProduct(affix) && recursionDepth <= 1) {

@@ -170,6 +170,22 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     }
   }
 
+  /** Test the {@link BitSet#clear()} method. */
+  public void testClearAll() throws IOException {
+    Random random = random();
+    final int numBits = 1 + random.nextInt(100000);
+    for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
+      BitSet set1 = new JavaUtilBitSet(randomSet(numBits, percentSet), numBits);
+      T set2 = copyOf(set1, numBits);
+      final int iters = atLeast(random, 10);
+      for (int i = 0; i < iters; ++i) {
+        set1.clear();
+        set2.clear();
+        assertEquals(set1, set2, numBits);
+      }
+    }
+  }
+
   private DocIdSet randomCopy(BitSet set, int numBits) throws IOException {
     switch (random().nextInt(5)) {
       case 0:
@@ -239,6 +255,11 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     JavaUtilBitSet(java.util.BitSet bitSet, int numBits) {
       this.bitSet = bitSet;
       this.numBits = numBits;
+    }
+
+    @Override
+    public void clear() {
+      bitSet.clear();
     }
 
     @Override

@@ -43,6 +43,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
@@ -287,7 +288,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     long generation = generationFromSegmentsFileName(segmentFileName);
     // System.out.println(Thread.currentThread() + ": SegmentInfos.readCommit " + segmentFileName);
-    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName, IOContext.READ)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(segmentFileName)) {
       try {
         return readCommit(directory, input, generation, minSupportedMajorVersion);
       } catch (EOFException | NoSuchFileException | FileNotFoundException e) {
@@ -439,7 +440,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (numDVFields == 0) {
         dvUpdateFiles = Collections.emptyMap();
       } else {
-        Map<Integer, Set<String>> map = new HashMap<>(numDVFields);
+        Map<Integer, Set<String>> map = CollectionUtil.newHashMap(numDVFields);
         for (int i = 0; i < numDVFields; i++) {
           map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
         }
@@ -516,8 +517,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return readLatestCommit(directory, Version.MIN_SUPPORTED_MAJOR);
   }
 
-  static final SegmentInfos readLatestCommit(Directory directory, int minSupportedMajorVersion)
-      throws IOException {
+  /**
+   * Find the latest commit ({@code segments_N file}) and load all {@link SegmentCommitInfo}s, as
+   * long as the commit's {@link SegmentInfos#getIndexCreatedVersionMajor()} is strictly greater
+   * than the provided minimum supported major version. If the commit's version is older, an {@link
+   * IndexFormatTooOldException} will be thrown.
+   */
+  public static final SegmentInfos readLatestCommit(
+      Directory directory, int minSupportedMajorVersion) throws IOException {
     return new FindSegmentsFile<SegmentInfos>(directory) {
       @Override
       protected SegmentInfos doBody(String segmentFileName) throws IOException {

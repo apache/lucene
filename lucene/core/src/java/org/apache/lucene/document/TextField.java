@@ -45,6 +45,8 @@ public final class TextField extends Field {
 
   // TODO: add sugar for term vectors...?
 
+  private final StoredValue storedValue;
+
   /**
    * Creates a new un-stored TextField with Reader value.
    *
@@ -55,6 +57,7 @@ public final class TextField extends Field {
    */
   public TextField(String name, Reader reader) {
     super(name, reader, TYPE_NOT_STORED);
+    storedValue = null;
   }
 
   /**
@@ -67,6 +70,11 @@ public final class TextField extends Field {
    */
   public TextField(String name, String value, Store store) {
     super(name, value, store == Store.YES ? TYPE_STORED : TYPE_NOT_STORED);
+    if (store == Store.YES) {
+      storedValue = new StoredValue(value);
+    } else {
+      storedValue = null;
+    }
   }
 
   /**
@@ -79,5 +87,19 @@ public final class TextField extends Field {
    */
   public TextField(String name, TokenStream stream) {
     super(name, stream, TYPE_NOT_STORED);
+    storedValue = null;
+  }
+
+  @Override
+  public void setStringValue(String value) {
+    super.setStringValue(value);
+    if (storedValue != null) {
+      storedValue.setStringValue(value);
+    }
+  }
+
+  @Override
+  public StoredValue storedValue() {
+    return storedValue;
   }
 }

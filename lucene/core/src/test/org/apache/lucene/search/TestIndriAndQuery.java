@@ -21,6 +21,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.IndriDirichletSimilarity;
@@ -156,8 +157,9 @@ public class TestIndriAndQuery extends LuceneTestCase {
 
     System.err.println("------- " + test + " -------");
 
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < h.length; i++) {
-      Document d = searcher.doc(h[i].doc);
+      Document d = storedFields.document(h[i].doc);
       float score = h[i].score;
       System.err.println("#" + i + ": " + score + " - " + d.get("body"));
     }

@@ -21,9 +21,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * GeoShape representing a path across the surface of the globe, with a specified half-width. Path
@@ -109,7 +109,7 @@ class GeoDegeneratePath extends GeoBasePath {
       // Simple circle
       final GeoPoint point = points.get(0);
 
-      final SegmentEndpoint onlyEndpoint = new SegmentEndpoint(point);
+      final SegmentEndpoint onlyEndpoint = new SegmentEndpoint(planetModel, point);
       endPoints.add(onlyEndpoint);
       this.edgePoints = new GeoPoint[] {point};
       return;
@@ -122,7 +122,7 @@ class GeoDegeneratePath extends GeoBasePath {
       if (i == 0) {
         // Starting endpoint
         final SegmentEndpoint startEndpoint =
-            new SegmentEndpoint(currentSegment.start, currentSegment.startCutoffPlane);
+            new SegmentEndpoint(planetModel, currentSegment.start, currentSegment.startCutoffPlane);
         endPoints.add(startEndpoint);
         this.edgePoints = new GeoPoint[] {currentSegment.start};
         continue;
@@ -130,13 +130,14 @@ class GeoDegeneratePath extends GeoBasePath {
 
       endPoints.add(
           new SegmentEndpoint(
+              planetModel,
               currentSegment.start,
               segments.get(i - 1).endCutoffPlane,
               currentSegment.startCutoffPlane));
     }
     // Do final endpoint
     final PathSegment lastSegment = segments.get(segments.size() - 1);
-    endPoints.add(new SegmentEndpoint(lastSegment.end, lastSegment.endCutoffPlane));
+    endPoints.add(new SegmentEndpoint(planetModel, lastSegment.end, lastSegment.endCutoffPlane));
   }
 
   /**
@@ -162,8 +163,7 @@ class GeoDegeneratePath extends GeoBasePath {
     double closestDistance = Double.POSITIVE_INFINITY;
     // Segments first
     for (PathSegment segment : segments) {
-      final double segmentDistance =
-          segment.pathCenterDistance(planetModel, distanceStyle, x, y, z);
+      final double segmentDistance = segment.pathCenterDistance(distanceStyle, x, y, z);
       if (segmentDistance < closestDistance) {
         closestDistance = segmentDistance;
       }
@@ -186,6 +186,13 @@ class GeoDegeneratePath extends GeoBasePath {
     double bestDistance = Double.POSITIVE_INFINITY;
     int segmentIndex = 0;
 
+    // This is the old "legacy" computation: We find the segment endpoint or path
+    // segment with the closest pathCenterDistance, and keep track of the one where
+    // that's at a minimum. We then compute nearestPathDistance() if it's a segment
+    // and add that to fullPathDistance() computed along the entire path up to that
+    // point.
+    //
+    // So what we are minimizing is not what we are returning here.
     for (SegmentEndpoint endpoint : endPoints) {
       final double endpointPathCenterDistance = endpoint.pathCenterDistance(distanceStyle, x, y, z);
       if (endpointPathCenterDistance < minPathCenterDistance) {
@@ -196,21 +203,19 @@ class GeoDegeneratePath extends GeoBasePath {
       // Look at the following segment, if any
       if (segmentIndex < segments.size()) {
         final PathSegment segment = segments.get(segmentIndex++);
-        final double segmentPathCenterDistance =
-            segment.pathCenterDistance(planetModel, distanceStyle, x, y, z);
+        final double segmentPathCenterDistance = segment.pathCenterDistance(distanceStyle, x, y, z);
         if (segmentPathCenterDistance < minPathCenterDistance) {
           minPathCenterDistance = segmentPathCenterDistance;
           bestDistance =
               distanceStyle.aggregateDistances(
-                  currentDistance,
-                  segment.nearestPathDistance(planetModel, distanceStyle, x, y, z));
+                  currentDistance, segment.nearestPathDistance(distanceStyle, x, y, z));
         }
         currentDistance =
             distanceStyle.aggregateDistances(
                 currentDistance, segment.fullPathDistance(distanceStyle));
       }
     }
-    return bestDistance;
+    return distanceStyle.fromAggregationForm(bestDistance);
   }
 
   @Override
@@ -221,7 +226,7 @@ class GeoDegeneratePath extends GeoBasePath {
     // (2) If the point is within any of the segment end circles along the path, return that value.
     double currentDistance = 0.0;
     for (PathSegment segment : segments) {
-      double distance = segment.pathDistance(planetModel, distanceStyle, x, y, z);
+      double distance = segment.pathDistance(distanceStyle, x, y, z);
       if (distance != Double.POSITIVE_INFINITY)
         return distanceStyle.fromAggregationForm(
             distanceStyle.aggregateDistances(currentDistance, distance));
@@ -272,12 +277,12 @@ class GeoDegeneratePath extends GeoBasePath {
       }
     }
     for (final PathSegment segment : segments) {
-      final double newDistance = segment.outsideDistance(planetModel, distanceStyle, x, y, z);
+      final double newDistance = segment.outsideDistance(distanceStyle, x, y, z);
       if (newDistance < minDistance) {
         minDistance = newDistance;
       }
     }
-    return minDistance;
+    return distanceStyle.fromAggregationForm(minDistance);
   }
 
   @Override
@@ -317,11 +322,11 @@ class GeoDegeneratePath extends GeoBasePath {
     // Since the endpoints are included in the path segments, we only need to do this if there are
     // no path segments
     if (endPoints.size() == 1) {
-      return endPoints.get(0).intersects(planetModel, plane, notablePoints, bounds);
+      return endPoints.get(0).intersects(plane, notablePoints, bounds);
     }
 
     for (final PathSegment pathSegment : segments) {
-      if (pathSegment.intersects(planetModel, plane, notablePoints, bounds)) {
+      if (pathSegment.intersects(plane, notablePoints, bounds)) {
         return true;
       }
     }
@@ -353,10 +358,10 @@ class GeoDegeneratePath extends GeoBasePath {
     // never more than 180 degrees longitude at a pop or we risk having the
     // bounds object get itself inverted.  So do the edges first.
     for (PathSegment pathSegment : segments) {
-      pathSegment.getBounds(planetModel, bounds);
+      pathSegment.getBounds(bounds);
     }
     if (endPoints.size() == 1) {
-      endPoints.get(0).getBounds(planetModel, bounds);
+      endPoints.get(0).getBounds(bounds);
     }
   }
 
@@ -396,7 +401,7 @@ class GeoDegeneratePath extends GeoBasePath {
    *   <li>Intersection. There are two cutoff planes, one for each end of the intersection.
    * </ol>
    */
-  private static class SegmentEndpoint {
+  private static class SegmentEndpoint extends GeoBaseBounds {
     /** The center point of the endpoint */
     public final GeoPoint point;
     /** Pertinent cutoff planes from adjoining segments */
@@ -407,9 +412,11 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Constructor for case (1).
      *
+     * @param planetModel is the planet model.
      * @param point is the center point.
      */
-    public SegmentEndpoint(final GeoPoint point) {
+    public SegmentEndpoint(final PlanetModel planetModel, final GeoPoint point) {
+      super(planetModel);
       this.point = point;
       this.cutoffPlanes = NO_MEMBERSHIP;
     }
@@ -422,7 +429,9 @@ class GeoDegeneratePath extends GeoBasePath {
      * @param cutoffPlane is the plane from the adjoining path segment marking the boundary between
      *     this endpoint and that segment.
      */
-    public SegmentEndpoint(final GeoPoint point, final SidedPlane cutoffPlane) {
+    public SegmentEndpoint(
+        final PlanetModel planetModel, final GeoPoint point, final SidedPlane cutoffPlane) {
+      super(planetModel);
       this.point = point;
       this.cutoffPlanes = new Membership[] {new SidedPlane(cutoffPlane)};
     }
@@ -430,12 +439,17 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Constructor for case (3). Generate an endpoint, given two cutoff planes.
      *
+     * @param planetModel is the planet model.
      * @param point is the center.
      * @param cutoffPlane1 is one adjoining path segment cutoff plane.
      * @param cutoffPlane2 is another adjoining path segment cutoff plane.
      */
     public SegmentEndpoint(
-        final GeoPoint point, final SidedPlane cutoffPlane1, final SidedPlane cutoffPlane2) {
+        final PlanetModel planetModel,
+        final GeoPoint point,
+        final SidedPlane cutoffPlane1,
+        final SidedPlane cutoffPlane2) {
+      super(planetModel);
       this.point = point;
       this.cutoffPlanes =
           new Membership[] {new SidedPlane(cutoffPlane1), new SidedPlane(cutoffPlane2)};
@@ -447,10 +461,28 @@ class GeoDegeneratePath extends GeoBasePath {
      * @param x is the point x.
      * @param y is the point y.
      * @param z is the point z.
-     * @return true of within.
+     * @return true if within.
      */
+    @Override
     public boolean isWithin(final double x, final double y, final double z) {
       return this.point.isIdentical(x, y, z);
+    }
+
+    /**
+     * Check if point is within the section handled by this endpoint.
+     *
+     * @param x is the point x.
+     * @param y is the point y.
+     * @param z is the point z.
+     * @return true if within.
+     */
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      for (final Membership m : cutoffPlanes) {
+        if (!m.isWithin(x, y, z)) {
+          return false;
+        }
+      }
+      return true;
     }
 
     /**
@@ -482,12 +514,10 @@ class GeoDegeneratePath extends GeoBasePath {
      */
     public double pathCenterDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      for (final Membership m : cutoffPlanes) {
-        if (!m.isWithin(x, y, z)) {
-          return Double.POSITIVE_INFINITY;
-        }
+      if (!isWithinSection(x, y, z)) {
+        return Double.POSITIVE_INFINITY;
       }
-      return distanceStyle.computeDistance(this.point, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     /**
@@ -501,23 +531,19 @@ class GeoDegeneratePath extends GeoBasePath {
      */
     public double outsideDistance(
         final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-      return distanceStyle.computeDistance(this.point, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(this.point, x, y, z));
     }
 
     /**
      * Determine if this endpoint intersects a specified plane.
      *
-     * @param planetModel is the planet model.
      * @param p is the plane.
      * @param notablePoints are the points associated with the plane.
      * @param bounds are any bounds which the intersection must lie within.
      * @return true if there is a matching intersection.
      */
     public boolean intersects(
-        final PlanetModel planetModel,
-        final Plane p,
-        final GeoPoint[] notablePoints,
-        final Membership[] bounds) {
+        final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
       // If not on the plane, no intersection
       if (!p.evaluateIsZero(point)) {
         return false;
@@ -544,10 +570,10 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Get the bounds for a segment endpoint.
      *
-     * @param planetModel is the planet model.
      * @param bounds are the bounds to be modified.
      */
-    public void getBounds(final PlanetModel planetModel, Bounds bounds) {
+    @Override
+    public void getBounds(final Bounds bounds) {
       bounds.addPoint(point);
     }
 
@@ -567,18 +593,18 @@ class GeoDegeneratePath extends GeoBasePath {
 
     @Override
     public String toString() {
-      return point.toString();
+      return "SegmentEndpoint: " + point;
     }
   }
 
   /** This is the pre-calculated data for a path segment. */
-  private static class PathSegment {
+  private static class PathSegment extends GeoBaseBounds {
     /** Starting point of the segment */
     public final GeoPoint start;
     /** End point of the segment */
     public final GeoPoint end;
     /** Place to keep any complete segment distances we've calculated so far */
-    public final Map<DistanceStyle, Double> fullDistanceCache = new HashMap<>();
+    public final Map<DistanceStyle, Double> fullDistanceCache = new ConcurrentHashMap<>(1);
     /** Normalized plane connecting the two points and going through world center */
     public final Plane normalizedConnectingPlane;
     /** Plane going through the center and start point, marking the start edge of the segment */
@@ -601,13 +627,18 @@ class GeoDegeneratePath extends GeoBasePath {
         final GeoPoint start,
         final GeoPoint end,
         final Plane normalizedConnectingPlane) {
+      super(planetModel);
       this.start = start;
       this.end = end;
       this.normalizedConnectingPlane = normalizedConnectingPlane;
 
       // Cutoff planes use opposite endpoints as correct side examples
       startCutoffPlane = new SidedPlane(end, normalizedConnectingPlane, start);
+      assert startCutoffPlane.isWithin(end);
+      assert startCutoffPlane.isWithin(start);
       endCutoffPlane = new SidedPlane(start, normalizedConnectingPlane, end);
+      assert endCutoffPlane.isWithin(start);
+      assert endCutoffPlane.isWithin(end);
       connectingPlanePoints = new GeoPoint[] {start, end};
     }
 
@@ -618,16 +649,14 @@ class GeoDegeneratePath extends GeoBasePath {
      * @return the distance metric, in aggregation form.
      */
     public double fullPathDistance(final DistanceStyle distanceStyle) {
-      synchronized (fullDistanceCache) {
-        Double dist = fullDistanceCache.get(distanceStyle);
-        if (dist == null) {
-          dist =
-              distanceStyle.toAggregationForm(
-                  distanceStyle.computeDistance(start, end.x, end.y, end.z));
-          fullDistanceCache.put(distanceStyle, dist);
-        }
-        return dist.doubleValue();
+      Double dist = fullDistanceCache.get(distanceStyle);
+      if (dist == null) {
+        dist =
+            distanceStyle.toAggregationForm(
+                distanceStyle.computeDistance(start, end.x, end.y, end.z));
+        fullDistanceCache.put(distanceStyle, dist);
       }
+      return dist.doubleValue();
     }
 
     /**
@@ -638,16 +667,20 @@ class GeoDegeneratePath extends GeoBasePath {
      * @param z is the point z.
      * @return true of within.
      */
+    @Override
     public boolean isWithin(final double x, final double y, final double z) {
       return startCutoffPlane.isWithin(x, y, z)
           && endCutoffPlane.isWithin(x, y, z)
           && normalizedConnectingPlane.evaluateIsZero(x, y, z);
     }
 
+    public boolean isWithinSection(final double x, final double y, final double z) {
+      return startCutoffPlane.isWithin(x, y, z) && endCutoffPlane.isWithin(x, y, z);
+    }
+
     /**
-     * Compute path center distance.
+     * Compute path center distance (distance from path to current point).
      *
-     * @param planetModel is the planet model.
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
@@ -655,13 +688,9 @@ class GeoDegeneratePath extends GeoBasePath {
      * @return the distance metric, or Double.POSITIVE_INFINITY if outside this segment
      */
     public double pathCenterDistance(
-        final PlanetModel planetModel,
-        final DistanceStyle distanceStyle,
-        final double x,
-        final double y,
-        final double z) {
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
-      if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       // (1) Compute normalizedPerpPlane.  If degenerate, then there is no such plane, which means
@@ -700,13 +729,12 @@ class GeoDegeneratePath extends GeoBasePath {
               "Can't find world intersection for point x=" + x + " y=" + y + " z=" + z);
         }
       }
-      return distanceStyle.computeDistance(thePoint, x, y, z);
+      return distanceStyle.toAggregationForm(distanceStyle.computeDistance(thePoint, x, y, z));
     }
 
     /**
-     * Compute nearest path distance.
+     * Compute nearest path distance (distance from start of segment to center line point adjacent).
      *
-     * @param planetModel is the planet model.
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
@@ -715,13 +743,9 @@ class GeoDegeneratePath extends GeoBasePath {
      *     segment
      */
     public double nearestPathDistance(
-        final PlanetModel planetModel,
-        final DistanceStyle distanceStyle,
-        final double x,
-        final double y,
-        final double z) {
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       // First, if this point is outside the endplanes of the segment, return POSITIVE_INFINITY.
-      if (!startCutoffPlane.isWithin(x, y, z) || !endCutoffPlane.isWithin(x, y, z)) {
+      if (!isWithinSection(x, y, z)) {
         return Double.POSITIVE_INFINITY;
       }
       // (1) Compute normalizedPerpPlane.  If degenerate, then there is no such plane, which means
@@ -767,7 +791,6 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Compute interior path distance.
      *
-     * @param planetModel is the planet model.
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
@@ -775,11 +798,7 @@ class GeoDegeneratePath extends GeoBasePath {
      * @return the distance metric, in aggregation form.
      */
     public double pathDistance(
-        final PlanetModel planetModel,
-        final DistanceStyle distanceStyle,
-        final double x,
-        final double y,
-        final double z) {
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       if (!isWithin(x, y, z)) return Double.POSITIVE_INFINITY;
 
       // (1) Compute normalizedPerpPlane.  If degenerate, then return point distance from start to
@@ -831,7 +850,6 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Compute external distance.
      *
-     * @param planetModel is the planet model.
      * @param distanceStyle is the distance style.
      * @param x is the point x.
      * @param y is the point y.
@@ -839,11 +857,7 @@ class GeoDegeneratePath extends GeoBasePath {
      * @return the distance metric.
      */
     public double outsideDistance(
-        final PlanetModel planetModel,
-        final DistanceStyle distanceStyle,
-        final double x,
-        final double y,
-        final double z) {
+        final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       final double distance =
           distanceStyle.computeDistance(
               planetModel, normalizedConnectingPlane, x, y, z, startCutoffPlane, endCutoffPlane);
@@ -855,17 +869,13 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Determine if this endpoint intersects a specified plane.
      *
-     * @param planetModel is the planet model.
      * @param p is the plane.
      * @param notablePoints are the points associated with the plane.
      * @param bounds are any bounds which the intersection must lie within.
      * @return true if there is a matching intersection.
      */
     public boolean intersects(
-        final PlanetModel planetModel,
-        final Plane p,
-        final GeoPoint[] notablePoints,
-        final Membership[] bounds) {
+        final Plane p, final GeoPoint[] notablePoints, final Membership[] bounds) {
       return normalizedConnectingPlane.intersects(
           planetModel,
           p,
@@ -890,15 +900,21 @@ class GeoDegeneratePath extends GeoBasePath {
     /**
      * Get the bounds for a segment endpoint.
      *
-     * @param planetModel is the planet model.
      * @param bounds are the bounds to be modified.
      */
-    public void getBounds(final PlanetModel planetModel, Bounds bounds) {
+    @Override
+    public void getBounds(final Bounds bounds) {
+      super.getBounds(bounds);
       // We need to do all bounding planes as well as corner points
       bounds
           .addPoint(start)
           .addPoint(end)
           .addPlane(planetModel, normalizedConnectingPlane, startCutoffPlane, endCutoffPlane);
+    }
+
+    @Override
+    public String toString() {
+      return "PathSegment: " + start + " to " + end;
     }
   }
 }

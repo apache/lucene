@@ -72,7 +72,7 @@ Feel free to share your findings (especially if your implementation performs bet
 
 You can open a pull request at https://github.com/apache/lucene.
 
-Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
+Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
 
 ### Opening a pull request
 
