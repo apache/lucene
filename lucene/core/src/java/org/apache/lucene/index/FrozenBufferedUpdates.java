@@ -31,7 +31,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
@@ -86,12 +85,9 @@ final class FrozenBufferedUpdates {
     this.privateSegment = privateSegment;
     assert privateSegment == null || updates.deleteTerms.isEmpty()
         : "segment private packet should only have del queries";
-    Term[] termsArray = updates.deleteTerms.keySet().toArray(new Term[updates.deleteTerms.size()]);
-    ArrayUtil.timSort(termsArray);
+
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    for (Term term : termsArray) {
-      builder.add(term);
-    }
+    updates.deleteTerms.forEachOrdered((term, doc) -> builder.add(term));
     deleteTerms = builder.finish();
 
     deleteQueries = new Query[updates.deleteQueries.size()];

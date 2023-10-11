@@ -33,7 +33,6 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -44,7 +43,9 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -235,13 +236,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     OffHeapFloatVectorValues vectorValues = getOffHeapVectorValues(fieldEntry);
-
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
     HnswGraphSearcher.search(
-        target,
-        knnCollector,
-        vectorValues,
-        VectorEncoding.FLOAT32,
-        fieldEntry.similarityFunction,
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
         getAcceptOrds(acceptDocs, fieldEntry));
   }

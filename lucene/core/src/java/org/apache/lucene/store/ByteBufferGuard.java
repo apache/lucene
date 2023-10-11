@@ -85,6 +85,11 @@ final class ByteBufferGuard {
     }
   }
 
+  public void getBytes(ByteBuffer receiver, int pos, byte[] dst, int offset, int length) {
+    ensureValid();
+    receiver.get(pos, dst, offset, length);
+  }
+
   public void getBytes(ByteBuffer receiver, byte[] dst, int offset, int length) {
     ensureValid();
     receiver.get(dst, offset, length);

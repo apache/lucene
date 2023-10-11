@@ -593,6 +593,43 @@ public class TestLRUQueryCache extends LuceneTestCase {
     dir.close();
   }
 
+  public void testConsistencyWithAccountableQueries() throws IOException {
+    var queryCache = new LRUQueryCache(1, 10000000, context -> true, Float.POSITIVE_INFINITY);
+
+    var dir = newDirectory();
+    var writer = new RandomIndexWriter(random(), dir);
+    writer.addDocument(new Document());
+    var reader = writer.getReader();
+    var searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+    queryCache.assertConsistent();
+
+    var accountableQuery = new AccountableDummyQuery();
+    searcher.count(accountableQuery);
+    var expectedRamBytesUsed =
+        HASHTABLE_RAM_BYTES_PER_ENTRY
+            + LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY
+            + accountableQuery.ramBytesUsed()
+            + queryCache.getChildResources().iterator().next().ramBytesUsed();
+    assertEquals(expectedRamBytesUsed, queryCache.ramBytesUsed());
+    queryCache.assertConsistent();
+
+    queryCache.clearQuery(accountableQuery);
+    assertEquals(HASHTABLE_RAM_BYTES_PER_ENTRY, queryCache.ramBytesUsed());
+    queryCache.assertConsistent();
+
+    queryCache.clearCoreCacheKey(
+        reader.getContext().leaves().get(0).reader().getCoreCacheHelper().getKey());
+    assertEquals(0, queryCache.ramBytesUsed());
+    queryCache.assertConsistent();
+
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
   public void testOnUse() throws IOException {
     final LRUQueryCache queryCache =
         new LRUQueryCache(
