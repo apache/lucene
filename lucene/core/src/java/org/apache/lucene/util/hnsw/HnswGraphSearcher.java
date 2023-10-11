@@ -66,7 +66,7 @@ public class HnswGraphSearcher {
       throws IOException {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(graph.size()));
+            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
   }
 
@@ -88,7 +88,7 @@ public class HnswGraphSearcher {
     KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
-            new NeighborQueue(topK, true), new SparseFixedBitSet(graph.size()));
+            new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     return knnCollector;
   }
@@ -150,9 +150,9 @@ public class HnswGraphSearcher {
    */
   private int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, long visitLimit)
       throws IOException {
-    int size = graph.size();
+    int size = getGraphSize(graph);
     int visitedCount = 1;
-    prepareScratchState(graph.size());
+    prepareScratchState(size);
     int currentEp = graph.entryNode();
     float currentScore = scorer.score(currentEp);
     boolean foundBetter;
@@ -201,7 +201,9 @@ public class HnswGraphSearcher {
       Bits acceptOrds)
       throws IOException {
 
-    prepareScratchState(graph.size());
+    int size = getGraphSize(graph);
+
+    prepareScratchState(size);
 
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
@@ -231,6 +233,7 @@ public class HnswGraphSearcher {
       graphSeek(graph, level, topCandidateNode);
       int friendOrd;
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
         }
@@ -280,6 +283,13 @@ public class HnswGraphSearcher {
    */
   int graphNextNeighbor(HnswGraph graph) throws IOException {
     return graph.nextNeighbor();
+  }
+
+  private static int getGraphSize(HnswGraph graph) {
+    if (graph instanceof OnHeapHnswGraph) {
+      return ((OnHeapHnswGraph) graph).capacity();
+    }
+    return graph.size();
   }
 
   /**

@@ -476,10 +476,17 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
         HnswGraphBuilder.create(
-            finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
+            finalscorerSupplier,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            initializerOrdMap,
+            finalVectorValues.size());
 
     // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, finalBuilder.getGraph());
+    assertEquals(finalVectorValues.size(), finalBuilder.getGraph().capacity());
 
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
     assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
@@ -506,9 +513,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
         HnswGraphBuilder.create(
-            finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
+            finalscorerSupplier,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            initializerOrdMap,
+            finalVectorValues.size());
 
     assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
+    assertEquals(finalVectorValues.size(), finalBuilder.getGraph().capacity());
 
     // Confirm that the graph is appropriately constructed by checking that the nodes in the old
     // graph are present in the levels of the new graph

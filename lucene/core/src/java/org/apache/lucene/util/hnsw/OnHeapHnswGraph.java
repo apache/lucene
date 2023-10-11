@@ -48,11 +48,20 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int nonZeroLevelSize; // total number of NeighborArrays created that is not on level 0
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
+  private final boolean
+      noGrowth; // if an initial size is passed in, we don't expect the graph to grow itself
 
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
 
+  /**
+   * ctor
+   *
+   * @param numNodes number of nodes that will be added to this graph, passing in -1 means unbounded
+   *     while passing in a non-negative value will lock the whole graph and disable the graph from
+   *     growth itself (you cannot add a node with has id >= numNodes)
+   */
   OnHeapHnswGraph(int M, int numNodes) {
     this.numLevels = 1; // Implicitly start the graph with a single level
     this.entryNode = -1; // Entry node should be negative until a node is added
@@ -60,7 +69,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
     this.nsize = M + 1;
     this.nsize0 = (M * 2 + 1);
-    if (numNodes == -1) {
+    noGrowth = numNodes != -1;
+    if (noGrowth == false) {
       numNodes = INIT_SIZE;
     }
     this.graph = new NeighborArray[numNodes][];
@@ -83,6 +93,17 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   /**
+   * When we initialize from another graph, the capacity, which is length of internal buffer of
+   * graph, is different from {@link #size()}, which is number of nodes already inserted, such that
+   * we need two method to retrieve each
+   *
+   * @return length of internal representation of graph
+   */
+  public int capacity() {
+    return graph.length;
+  }
+
+  /**
    * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
    * preceded by the node inserted out of order are eventually added.
    *
@@ -97,6 +118,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     }
 
     if (node >= graph.length) {
+      if (noGrowth) {
+        throw new AssertionError(
+            "The graph does not expect to growth when an initial size is given");
+      }
       graph = ArrayUtil.grow(graph, node + 1);
     }
 
@@ -105,7 +130,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       entryNode = node;
     }
 
-    assert graph[node] == null || graph[node].length > level;
+    assert graph[node] == null || graph[node].length > level
+        : "node must be inserted from the top level";
     if (graph[node] == null) {
       graph[node] =
           new NeighborArray[level + 1]; // assumption: we always call this function from top level
@@ -196,12 +222,12 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     long neighborArrayBytes0 =
         (long) nsize0 * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
             + Integer.BYTES * 3;
     long neighborArrayBytes =
         (long) nsize * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
+            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2L
             + Integer.BYTES * 3;
     long total = 0;
     total +=

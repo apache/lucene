@@ -511,7 +511,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     Map<Integer, Integer> ordinalMapper =
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
     return HnswGraphBuilder.create(
-        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
+        scorerSupplier,
+        M,
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        initializerGraph,
+        ordinalMapper,
+        graphSize);
   }
 
   private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)

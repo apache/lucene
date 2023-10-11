@@ -90,10 +90,11 @@ public final class HnswGraphBuilder {
       int beamWidth,
       long seed,
       HnswGraph initializerGraph,
-      Map<Integer, Integer> oldToNewOrdinalMap)
+      Map<Integer, Integer> oldToNewOrdinalMap,
+      int graphSize)
       throws IOException {
     HnswGraphBuilder hnswGraphBuilder =
-        new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, oldToNewOrdinalMap.size());
+        new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize);
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
@@ -294,6 +295,7 @@ public final class HnswGraphBuilder {
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
+      assert cNode < hnsw.capacity();
       if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }
