@@ -80,7 +80,7 @@ public final class HnswGraphBuilder {
   }
 
   public static HnswGraphBuilder create(
-          RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize) {
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize) {
     return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize);
   }
 
@@ -92,7 +92,8 @@ public final class HnswGraphBuilder {
       HnswGraph initializerGraph,
       Map<Integer, Integer> oldToNewOrdinalMap)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, oldToNewOrdinalMap.size());
+    HnswGraphBuilder hnswGraphBuilder =
+        new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, oldToNewOrdinalMap.size());
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }

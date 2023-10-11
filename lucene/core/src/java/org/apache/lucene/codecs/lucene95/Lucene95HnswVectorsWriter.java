@@ -438,7 +438,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     RandomVectorScorerSupplier.createBytes(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
+                    createHnswGraphBuilder(
+                        mergeState,
+                        fieldInfo,
+                        scorerSupplier,
+                        initializerIndex,
+                        vectorValues.size());
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -453,7 +458,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     RandomVectorScorerSupplier.createFloats(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
+                    createHnswGraphBuilder(
+                        mergeState,
+                        fieldInfo,
+                        scorerSupplier,
+                        initializerIndex,
+                        vectorValues.size());
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size());
               }
@@ -492,7 +502,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       int graphSize)
       throws IOException {
     if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, graphSize);
+      return HnswGraphBuilder.create(
+          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, graphSize);
     }
 
     HnswGraph initializerGraph =

@@ -529,14 +529,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   private void assertGraphInitializedFromGraph(
       HnswGraph g, HnswGraph initializer, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
-    assertEquals("the number of levels in the graphs are different!", initializer.numLevels(), g.numLevels());
+    assertEquals(
+        "the number of levels in the graphs are different!",
+        initializer.numLevels(),
+        g.numLevels());
     // Confirm that the size of the new graph includes all nodes up to an including the max new
     // ordinal in the old to
     // new ordinal mapping
-    assertEquals(
-        "the number of nodes in the graphs are different!",
-        initializer.size(),
-            g.size());
+    assertEquals("the number of nodes in the graphs are different!", initializer.size(), g.size());
 
     // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
     for (int level = 1; level < g.numLevels(); level++) {
@@ -556,7 +556,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         assertEquals(
             "arcs differ for node " + node,
             getNeighborNodes(g),
-            getNeighborNodes(initializer).stream().map(oldToNewOrdMap::get).collect(Collectors.toSet()));
+            getNeighborNodes(initializer).stream()
+                .map(oldToNewOrdMap::get)
+                .collect(Collectors.toSet()));
       }
     }
   }

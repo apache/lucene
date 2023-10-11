@@ -42,7 +42,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // added to HnswBuilder, and the node values are the ordinals of those vectors.
   // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
   private NeighborArray[][] graph;
-  private  List<Integer>[] levelToNodes;
+  private List<Integer>[] levelToNodes;
   private int lastFreezeSize;
   private int size; // graph size, which is number of nodes in level 0
   private int nonZeroLevelSize; // total number of NeighborArrays created that is not on level 0
@@ -86,7 +86,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
    * preceded by the node inserted out of order are eventually added.
    *
-   * NOTE: You must add a node from the node's top level
+   * <p>NOTE: You must add a node from the node's top level
    *
    * @param level level to add a node on
    * @param node the node to add, represented as an ordinal on the level 0.
@@ -107,7 +107,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
     assert graph[node] == null || graph[node].length > level;
     if (graph[node] == null) {
-      graph[node] = new NeighborArray[level + 1]; // assumption: we always call this function from top level
+      graph[node] =
+          new NeighborArray[level + 1]; // assumption: we always call this function from top level
       size++;
     }
     if (level == 0) {
@@ -203,8 +204,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
             + Integer.BYTES * 3;
     long total = 0;
-    total += size * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-                    + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // for graph and level 0;
+    total +=
+        size * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+            + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // for graph and level 0;
     total += nonZeroLevelSize * neighborArrayBytes;
     return total;
   }
