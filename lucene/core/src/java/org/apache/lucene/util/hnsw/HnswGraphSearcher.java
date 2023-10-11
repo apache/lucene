@@ -201,7 +201,6 @@ public class HnswGraphSearcher {
       Bits acceptOrds)
       throws IOException {
 
-    int size = graph.size();
     prepareScratchState(graph.size());
 
     for (int ep : eps) {

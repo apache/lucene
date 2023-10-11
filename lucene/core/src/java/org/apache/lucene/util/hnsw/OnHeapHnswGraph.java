@@ -207,7 +207,18 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     total +=
         size * (neighborArrayBytes0 + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // for graph and level 0;
-    total += nonZeroLevelSize * neighborArrayBytes;
+    total += nonZeroLevelSize * neighborArrayBytes; // for non-zero level
+    total += 8 * Integer.BYTES; // all int fields
+    total += RamUsageEstimator.NUM_BYTES_OBJECT_REF; // field: cur
+    total += RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // field: levelToNodes
+    if (levelToNodes != null) {
+      total += (numLevels - 1) * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // no cost for level 0
+      total +=
+          nonZeroLevelSize
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+                  + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+                  + Integer.BYTES);
+    }
     return total;
   }
 
