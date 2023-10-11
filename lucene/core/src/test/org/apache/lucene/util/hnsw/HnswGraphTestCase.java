@@ -546,7 +546,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
-        HnswGraphBuilder.create(
+        new InitializedHnswGraphBuilder(
             finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
 
     // When offset is 0, the graphs should be identical before vectors are added
@@ -576,7 +576,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
-        HnswGraphBuilder.create(
+        new InitializedHnswGraphBuilder(
             finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
 
     assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
