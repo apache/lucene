@@ -83,14 +83,17 @@ public class TestKnnGraph extends LuceneTestCase {
     similarityFunction = VectorSimilarityFunction.values()[similarity];
     vectorEncoding = randomVectorEncoding();
 
-    Lucene99ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat = vectorEncoding.equals(VectorEncoding.FLOAT32) && randomBoolean() ?
-      new Lucene99ScalarQuantizedVectorsFormat(1f) : null;
+    Lucene99ScalarQuantizedVectorsFormat scalarQuantizedVectorsFormat =
+        vectorEncoding.equals(VectorEncoding.FLOAT32) && randomBoolean()
+            ? new Lucene99ScalarQuantizedVectorsFormat(1f)
+            : null;
 
     codec =
         new Lucene99Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
+            return new Lucene99HnswVectorsFormat(
+                M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
           }
         };
 

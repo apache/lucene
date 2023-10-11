@@ -36,7 +36,6 @@ import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -892,10 +891,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeInt(count);
     if (isQuantized) {
       OrdToDocDISIReaderConfiguration.writeStoredMeta(
-        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, quantizedVectorData, count, maxDoc, docsWithField);
+          DIRECT_MONOTONIC_BLOCK_SHIFT, meta, quantizedVectorData, count, maxDoc, docsWithField);
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
-      DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
+        DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
 
     meta.writeVInt(M);
     // write graph nodes on each level
