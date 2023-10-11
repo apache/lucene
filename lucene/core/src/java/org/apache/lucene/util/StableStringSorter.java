@@ -65,7 +65,17 @@ abstract class StableStringSorter extends StringSorter {
   @Override
   protected Sorter fallbackSorter(Comparator<BytesRef> cmp) {
     // TODO: Maybe tim sort is better?
-    return new InPlaceMergeSorter() {
+    return new StableMSBRadixSorter.MergeSorter() {
+      @Override
+      protected void save(int i, int j) {
+        StableStringSorter.this.save(i, j);
+      }
+
+      @Override
+      protected void restore(int i, int j) {
+        StableStringSorter.this.restore(i, j);
+      }
+
       @Override
       protected int compare(int i, int j) {
         return StableStringSorter.this.compare(i, j);
