@@ -194,12 +194,12 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public long ramBytesUsed() {
     long neighborArrayBytes0 =
-        nsize0 * (Integer.BYTES + Float.BYTES)
+        (long) nsize0 * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
             + Integer.BYTES * 3;
     long neighborArrayBytes =
-        nsize * (Integer.BYTES + Float.BYTES)
+        (long) nsize * (Integer.BYTES + Float.BYTES)
             + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
             + Integer.BYTES * 3;
@@ -212,9 +212,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     total += RamUsageEstimator.NUM_BYTES_OBJECT_REF; // field: cur
     total += RamUsageEstimator.NUM_BYTES_ARRAY_HEADER; // field: levelToNodes
     if (levelToNodes != null) {
-      total += (numLevels - 1) * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // no cost for level 0
       total +=
-          nonZeroLevelSize
+          (long) (numLevels - 1) * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // no cost for level 0
+      total +=
+          (long) nonZeroLevelSize
               * (RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
                   + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
                   + Integer.BYTES);
