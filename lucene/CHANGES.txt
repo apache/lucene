@@ -60,6 +60,8 @@ API Changes
 * GITHUB#12580: Remove deprecated IndexSearcher#getExecutor in favour of executing concurrent tasks using
   the TaskExecutor that the searcher holds, retrieved via IndexSearcher#getTaskExecutor (Luca Cavanna)
 
+* GITHUB#12599: Add RandomAccessInput#readBytes method to the RandomAccessInput interface. (Ignacio Vera)
+
 New Features
 ---------------------
 
@@ -141,14 +143,25 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
+* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
+
 New Features
 ---------------------
 (No changes)
 
 Improvements
 ---------------------
+* GITHUB#12523: TaskExecutor waits for all tasks to complete before returning when Exceptions
+  are thrown during concurrent operations (Michael Peterson)
+
 * GITHUB#12574: Make TaskExecutor public so that it can be retrieved from the searcher and used
   outside of the o.a.l.search package (Luca Cavanna)
+
+* GITHUB#12603: Simplify the TaskExecutor API by exposing a single invokeAll method that takes a
+  collection of callables, executes them and returns their results  (Luca Cavanna)
+
+* GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
+  order to simplify consumer's code (Luca Cavanna)
 
 Optimizations
 ---------------------
@@ -163,6 +176,14 @@ Optimizations
 
 * GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
 
+* GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
+  to reduce GC load during indexing. (Guo Feng)
+
+* GITHUB#12623: Use a MergeSorter taking advantage of extra storage for StableMSBRadixSorter. (Guo Feng)
+
+* GITHUB#12631: Write MSB VLong for better outputs sharing in block tree index, decreasing ~14% size
+  of .tip file. (Guo Feng)
+
 Changes in runtime behavior
 ---------------------
 
@@ -171,7 +192,16 @@ Changes in runtime behavior
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#12614: Make LRUQueryCache respect Accountable queries on eviction and consistency check
+  (Grigoriy Troitskiy)
+
+* GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
+
+Build
+---------------------
+
+* GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
 
 Other
 ---------------------

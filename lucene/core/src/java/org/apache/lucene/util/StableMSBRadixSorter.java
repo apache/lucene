@@ -38,7 +38,7 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
 
   @Override
   protected Sorter getFallbackSorter(int k) {
-    return new InPlaceMergeSorter() {
+    return new MergeSorter() {
       @Override
       protected void swap(int i, int j) {
         StableMSBRadixSorter.this.swap(i, j);
@@ -77,5 +77,65 @@ public abstract class StableMSBRadixSorter extends MSBRadixSorter {
       }
     }
     restore(from, to);
+  }
+
+  /** A MergeSorter taking advantage of temporary storage. */
+  protected abstract class MergeSorter extends Sorter {
+    @Override
+    public void sort(int from, int to) {
+      checkRange(from, to);
+      mergeSort(from, to);
+    }
+
+    private void mergeSort(int from, int to) {
+      if (to - from < BINARY_SORT_THRESHOLD) {
+        binarySort(from, to);
+      } else {
+        final int mid = (from + to) >>> 1;
+        mergeSort(from, mid);
+        mergeSort(mid, to);
+        merge(from, to, mid);
+      }
+    }
+
+    /**
+     * We tried to expose this to implementations to get a bulk copy optimization. But it did not
+     * bring a noticeable improvement in benchmark as {@code len} is usually small.
+     */
+    private void bulkSave(int from, int tmpFrom, int len) {
+      for (int i = 0; i < len; i++) {
+        save(from + i, tmpFrom + i);
+      }
+    }
+
+    private void merge(int from, int to, int mid) {
+      assert to > mid && mid > from;
+      if (compare(mid - 1, mid) <= 0) {
+        // already sorted.
+        return;
+      }
+      int left = from;
+      int right = mid;
+      int index = from;
+      while (true) {
+        int cmp = compare(left, right);
+        if (cmp <= 0) {
+          save(left++, index++);
+          if (left == mid) {
+            assert index == right;
+            bulkSave(right, index, to - right);
+            break;
+          }
+        } else {
+          save(right++, index++);
+          if (right == to) {
+            assert to - index == mid - left;
+            bulkSave(left, index, mid - left);
+            break;
+          }
+        }
+      }
+      restore(from, to);
+    }
   }
 }
