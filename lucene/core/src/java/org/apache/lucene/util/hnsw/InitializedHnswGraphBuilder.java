@@ -30,7 +30,7 @@ import org.apache.lucene.util.CollectionUtil;
  *
  * @lucene.internal
  */
-public class InitializedHnswGraphBuilder extends HnswGraphBuilder {
+public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   private final Set<Integer> initializedNodes;
 
   public InitializedHnswGraphBuilder(
