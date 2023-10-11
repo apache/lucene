@@ -330,10 +330,13 @@ public class BKDWriter60 implements Closeable {
     private final int packedBytesLength;
     private final MergeState.DocMap docMap;
     private final MergeIntersectsVisitor mergeIntersectsVisitor;
+
     /** Which doc in this block we are up to */
     private int docBlockUpto;
+
     /** Current doc ID */
     public int docID;
+
     /** Current packed value */
     public final byte[] packedValue;
 

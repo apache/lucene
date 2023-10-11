@@ -53,6 +53,7 @@ public final class FieldReader extends Terms {
   final Lucene90BlockTreeTermsReader parent;
 
   final FST<BytesRef> index;
+
   // private boolean DEBUG;
 
   FieldReader(

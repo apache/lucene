@@ -81,15 +81,19 @@ public class IntersectBlockReader extends BlockReader {
 
   /** Set this when our current mode is seeking to this term. Set to null after. */
   protected BytesRef seekTerm;
+
   /** Number of bytes accepted by the automaton when validating the current term. */
   protected int numMatchedBytes;
+
   /**
    * Automaton states reached when validating the current term, from 0 to {@link #numMatchedBytes} -
    * 1.
    */
   protected int[] states;
+
   /** Block iteration order determined when scanning the terms in the current block. */
   protected BlockIteration blockIteration;
+
   /**
    * Counter of the number of consecutively rejected terms. Depending on {@link
    * #NUM_CONSECUTIVELY_REJECTED_TERMS_THRESHOLD}, this may trigger a jump to a block away.

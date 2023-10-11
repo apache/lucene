@@ -57,6 +57,7 @@ class WordStorage {
   private static final int MAX_STORED_LENGTH = SUGGESTIBLE_MASK - 1;
   private final int maxEntryLength;
   private final boolean hasCustomMorphData;
+
   /**
    * A map from word's hash (modulo array's length) into an int containing:
    *

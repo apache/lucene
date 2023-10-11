@@ -48,10 +48,13 @@ import org.apache.lucene.util.fst.Util;
 public class SynonymMap {
   /** for multiword support, you must separate words with this separator */
   public static final char WORD_SEPARATOR = 0;
+
   /** map&lt;input word, list&lt;ord&gt;&gt; */
   public final FST<BytesRef> fst;
+
   /** map&lt;ord, outputword&gt; */
   public final BytesRefHash words;
+
   /** maxHorizontalContext: maximum context we need on the tokenstream */
   public final int maxHorizontalContext;
 

@@ -159,6 +159,7 @@ public class TestOperations extends LuceneTestCase {
       }
     }
   }
+
   /** tests against the original brics implementation. */
   public void testIsFinite() {
     int num = atLeast(200);

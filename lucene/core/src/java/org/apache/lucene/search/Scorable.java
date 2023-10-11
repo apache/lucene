@@ -74,6 +74,7 @@ public abstract class Scorable {
   public static class ChildScorable {
     /** Child Scorer. (note this is typically a direct child, and may itself also have children). */
     public final Scorable child;
+
     /** An arbitrary string relating this scorer to the parent. */
     public final String relationship;
 

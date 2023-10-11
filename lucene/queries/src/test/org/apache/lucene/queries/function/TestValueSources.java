@@ -878,6 +878,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertAllExist(ValueSource vs) {
     assertExists(ALL_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the {@link
    * ValueSource} is <b>false</b>.
@@ -885,6 +886,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertNoneExist(ValueSource vs) {
     assertExists(NONE_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the <code>actual
    * </code> {@link ValueSource} matches the {@link FunctionValues#exists} value from the <code>
@@ -976,6 +978,7 @@ public class TestValueSources extends LuceneTestCase {
    * @see ExistsValueSource
    */
   private static final ValueSource ALL_EXIST_VS = new ExistsValueSource(true);
+
   /**
    * @see ExistsValueSource
    */

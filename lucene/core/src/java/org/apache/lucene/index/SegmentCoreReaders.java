@@ -62,6 +62,7 @@ final class SegmentCoreReaders {
   final KnnVectorsReader knnVectorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
+
   /**
    * fieldinfos for this core: means gen=-1. this is the exact fieldinfos these codec components saw
    * at write. in the case of DV updates, SR may hold a newer version.

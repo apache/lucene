@@ -417,13 +417,16 @@ public class MultiPhraseQuery extends Query {
   public static class UnionPostingsEnum extends PostingsEnum {
     /** queue ordered by docid */
     final DocsQueue docsQueue;
+
     /** cost of this enum: sum of its subs */
     final long cost;
 
     /** queue ordered by position for current doc */
     final PositionsQueue posQueue = new PositionsQueue();
+
     /** current doc posQueue is working */
     int posQueueDoc = -2;
+
     /** list of subs (unordered) */
     final PostingsEnum[] subs;
 

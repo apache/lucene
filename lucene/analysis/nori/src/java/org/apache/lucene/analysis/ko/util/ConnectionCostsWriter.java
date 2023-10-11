@@ -34,6 +34,7 @@ final class ConnectionCostsWriter {
   // consecutively. maybe doesn't matter.
   private final int forwardSize;
   private final int backwardSize;
+
   /** Constructor for building. TODO: remove write access */
   ConnectionCostsWriter(int forwardSize, int backwardSize) {
     this.forwardSize = forwardSize;

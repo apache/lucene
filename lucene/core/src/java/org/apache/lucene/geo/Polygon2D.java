@@ -28,14 +28,19 @@ import org.apache.lucene.index.PointValues.Relation;
 final class Polygon2D implements Component2D {
   /** minimum Y of this geometry's bounding box area */
   private final double minY;
+
   /** maximum Y of this geometry's bounding box area */
   private final double maxY;
+
   /** minimum X of this geometry's bounding box area */
   private final double minX;
+
   /** maximum X of this geometry's bounding box area */
   private final double maxX;
+
   /** tree of holes, or null */
   protected final Component2D holes;
+
   /** Edges of the polygon represented as a 2-d interval tree. */
   final EdgeTree tree;
 

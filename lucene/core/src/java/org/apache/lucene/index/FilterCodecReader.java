@@ -47,6 +47,7 @@ public abstract class FilterCodecReader extends CodecReader {
     }
     return reader;
   }
+
   /** The underlying CodecReader instance. */
   protected final CodecReader in;
 

@@ -540,14 +540,19 @@ public final class UnicodeUtil {
 
   /** Shift value for lead surrogate to form a supplementary character. */
   private static final int LEAD_SURROGATE_SHIFT_ = 10;
+
   /** Mask to retrieve the significant value from a trail surrogate. */
   private static final int TRAIL_SURROGATE_MASK_ = 0x3FF;
+
   /** Trail surrogate minimum value */
   private static final int TRAIL_SURROGATE_MIN_VALUE = 0xDC00;
+
   /** Lead surrogate minimum value */
   private static final int LEAD_SURROGATE_MIN_VALUE = 0xD800;
+
   /** The minimum value for Supplementary code points */
   private static final int SUPPLEMENTARY_MIN_VALUE = 0x10000;
+
   /** Value that all lead surrogate starts with */
   private static final int LEAD_SURROGATE_OFFSET_ =
       LEAD_SURROGATE_MIN_VALUE - (SUPPLEMENTARY_MIN_VALUE >> LEAD_SURROGATE_SHIFT_);

@@ -51,12 +51,16 @@ import org.apache.lucene.util.BytesRef;
 abstract class ShapeDocValues {
   /** doc value format version; used to support bwc for any encoding changes */
   protected static final byte VERSION = 0;
+
   /** the binary doc value */
   private final BytesRef data;
+
   /** the geometry comparator used to check relations */
   protected final ShapeComparator shapeComparator;
+
   /** the centroid of the shape docvalue */
   protected final Geometry centroid;
+
   /** the bounding box of the shape docvalue */
   protected final Geometry boundingBox;
 
