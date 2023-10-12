@@ -113,9 +113,11 @@ public abstract class MultiLevelSkipListReader implements Closeable {
 
     // walk up the levels until highest level is found that has a skip
     // for this target
-    // TODO: start skip docs and postings at -1 instead of 0 to avoid this special case on skipDoc == 0?
+    // TODO: start skip docs and postings at -1 instead of 0 to avoid this special case on
+    // skipDoc == 0?
     int level = 0;
-    while (level < numberOfSkipLevels - 1 && (target > skipDoc[level + 1] || skipDoc[level + 1] == 0)) {
+    while (level < numberOfSkipLevels - 1
+        && (target > skipDoc[level + 1] || skipDoc[level + 1] == 0)) {
       level++;
     }
 
