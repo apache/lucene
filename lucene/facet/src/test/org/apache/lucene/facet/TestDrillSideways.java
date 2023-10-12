@@ -82,7 +82,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingCollector;
-import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -332,50 +331,40 @@ public class TestDrillSideways extends FacetTestCase {
 
       try (IndexReader r = w.getReader();
           TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
-        IndexSearcher searcher = new IndexSearcher(r) {
-          @Override
-          protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector) throws IOException {
-            AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
-            super.search(leaves, weight, assertingCollector);
-            assert assertingCollector.hasFinishedCollectingPreviousLeaf;
-          }
-        };
+
+        // We can't use AssertingIndexSearcher unfortunately since it may randomly decide to bulk
+        // score a sub-range of docs instead of all docs at once. This is incompatible will drill
+        // sideways, so we have to do our own check here. This just makes sure we call #finish on
+        // the last leaf. It's too bad we need to do this and maybe some day we can clean this up
+        // by rethinking drill-sideways:
+        IndexSearcher searcher =
+            new IndexSearcher(r) {
+              @Override
+              protected void search(
+                  List<LeafReaderContext> leaves, Weight weight, Collector collector)
+                  throws IOException {
+                AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
+                super.search(leaves, weight, assertingCollector);
+                assert assertingCollector.hasFinishedCollectingPreviousLeaf;
+              }
+            };
 
         Query baseQuery = new MatchAllDocsQuery();
-        Query dimQ = new TermQuery(new Term("foo", "bar"));
-
         DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
-        ddq.add("foo", dimQ);
+        ddq.add("foo", "bar");
         DrillSideways drillSideways = new DrillSideways(searcher, facetsConfig, taxoR);
 
-//        CollectorManager<?, ?> cm =
-//            new CollectorManager<>() {
-//              @Override
-//              public Collector newCollector() throws IOException {
-//                // We don't need the collector to actually do anything; we just care about the logic
-//                // in the AssertingCollector / AssertingLeafCollector (and AssertingIndexSearcher)
-//                // to make sure #finish is called exactly once on the leaf collector:
-//                return new org.apache.lucene.search.SimpleCollector() {
-//                  @Override
-//                  public void collect(int doc) throws IOException {}
-//
-//                  @Override
-//                  public ScoreMode scoreMode() {
-//                    return ScoreMode.COMPLETE;
-//                  }
-//                };
-//              }
-//
-//              @Override
-//              public Object reduce(Collection<Collector> collectors) throws IOException {
-//                return null;
-//              }
-//            };
-
+        // It doesn't really matter what we have our collector manager do here since all we care
+        // about for this test are the assertions provided by the "asserting" collectors/leaf
+        // collectors, etc. But we have this definition already for other tests and it's easy to
+        // use, so we'll use it here and do a little extra checking:
         SimpleCollectorManager cm =
             new SimpleCollectorManager(10, Comparator.comparingInt(a -> a.docAndScore.doc));
 
-        drillSideways.search(ddq, cm);
+        DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> result =
+            drillSideways.search(ddq, cm);
+
+        assertEquals(1, result.collectorResult.size());
       }
     }
   }
