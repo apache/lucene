@@ -43,115 +43,99 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  */
 public class IncrementalHnswGraphMerger {
 
-  private final MergeState mergeState;
+  private KnnVectorsReader curReader;
+  private MergeState.DocMap curDocMap;
+  private int curGraphSize;
   private final FieldInfo fieldInfo;
+  private final RandomVectorScorerSupplier scorerSupplier;
+  private final int M;
+  private final int beamWidth;
 
   /**
-   * @param mergeState MergeState containing the readers to merge
    * @param fieldInfo FieldInfo for the field being merged
    */
-  public IncrementalHnswGraphMerger(MergeState mergeState, FieldInfo fieldInfo) {
-    this.mergeState = mergeState;
+  public IncrementalHnswGraphMerger(
+      FieldInfo fieldInfo, RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth) {
     this.fieldInfo = fieldInfo;
+    this.scorerSupplier = scorerSupplier;
+    this.M = M;
+    this.beamWidth = beamWidth;
   }
 
   /**
-   * Selects the biggest Hnsw graph from the provided merge state and initializes a new
-   * HnswGraphBuilder with that graph as a starting point.
+   * Adds a reader to the graph merger if it meets the following criteria: 1. Does not contain any
+   * deleted docs 2. Is a HnswGraphProvider/PerFieldKnnVectorReader 3. Has the most docs of any
+   * previous reader that met the above criteria
    *
-   * @param scorerSupplier ScorerSupplier to use for scoring vectors
-   * @param M The number of connections to allow per node
-   * @param beamWidth The number of nodes to consider when searching for the nearest neighbor
-   * @return HnswGraphBuilder initialized with the biggest graph from the merge state
+   * @param reader KnnVectorsReader to add to the merger
+   * @param docMap MergeState.DocMap for the reader
+   * @param liveDocs Bits representing live docs, can be null
+   * @return this
    * @throws IOException If an error occurs while reading from the merge state
    */
-  public HnswGraphBuilder build(RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth)
-      throws IOException {
-    // Find the KnnVectorReader with the most docs that meets the following criteria:
-    //  1. Does not contain any deleted docs
-    //  2. Is a HnswGraphProvider/PerFieldKnnVectorReader
-    // If no readers exist that meet this criteria, return -1. If they do, return their index in
-    // merge state
-    int maxCandidateVectorCount = 0;
-    int initializerIndex = -1;
+  IncrementalHnswGraphMerger addReader(
+      KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
+    KnnVectorsReader currKnnVectorsReader = reader;
+    if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
+      currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
+    }
 
-    for (int i = 0; i < mergeState.liveDocs.length; i++) {
-      KnnVectorsReader currKnnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (mergeState.knnVectorsReaders[i]
-          instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-        currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
-      }
+    if (!(currKnnVectorsReader instanceof HnswGraphProvider) || !allMatch(liveDocs)) {
+      return this;
+    }
 
-      if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader instanceof HnswGraphProvider)) {
-        continue;
-      }
-
-      int candidateVectorCount = 0;
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> {
-          ByteVectorValues byteVectorValues =
-              currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
-          if (byteVectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = byteVectorValues.size();
+    int candidateVectorCount = 0;
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> {
+        ByteVectorValues byteVectorValues =
+            currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
+        if (byteVectorValues == null) {
+          return this;
         }
-        case FLOAT32 -> {
-          FloatVectorValues vectorValues =
-              currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
-          if (vectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = vectorValues.size();
-        }
+        candidateVectorCount = byteVectorValues.size();
       }
-
-      if (candidateVectorCount > maxCandidateVectorCount) {
-        maxCandidateVectorCount = candidateVectorCount;
-        initializerIndex = i;
+      case FLOAT32 -> {
+        FloatVectorValues vectorValues = currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
+        if (vectorValues == null) {
+          return this;
+        }
+        candidateVectorCount = vectorValues.size();
       }
     }
-    if (initializerIndex == -1) {
+    if (candidateVectorCount > curGraphSize) {
+      curReader = currKnnVectorsReader;
+      curDocMap = docMap;
+      curGraphSize = candidateVectorCount;
+    }
+    return this;
+  }
+
+  /**
+   * Builds a new HnswGraphBuilder using the biggest graph from the merge state as a starting point.
+   * If no valid readers were added to the merge state, a new graph is created.
+   *
+   * @param mergeState MergeState for the merge
+   * @return HnswGraphBuilder
+   * @throws IOException If an error occurs while reading from the merge state
+   */
+  public HnswGraphBuilder createBuilder(MergeState mergeState) throws IOException {
+    if (curReader == null) {
       return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     }
 
-    HnswGraph initializerGraph =
-        getHnswGraphFromReader(mergeState.knnVectorsReaders[initializerIndex]);
-    Map<Integer, Integer> ordinalMapper = getOldToNewOrdinalMap(initializerIndex);
+    HnswGraph initializerGraph = ((HnswGraphProvider) curReader).getGraph(fieldInfo.name);
+    Map<Integer, Integer> ordinalMapper = getOldToNewOrdinalMap(mergeState);
     return new InitializedHnswGraphBuilder(
         scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
   }
 
-  private HnswGraph getHnswGraphFromReader(KnnVectorsReader knnVectorsReader) throws IOException {
-    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
-        && perFieldReader.getFieldReader(fieldInfo.name) instanceof HnswGraphProvider fieldReader) {
-      return fieldReader.getGraph(fieldInfo.name);
-    }
-
-    if (knnVectorsReader instanceof HnswGraphProvider provider) {
-      return provider.getGraph(fieldInfo.name);
-    }
-
-    // We should not reach here because knnVectorsReader's type is checked in
-    // selectGraphForInitialization
-    throw new IllegalArgumentException(
-        "Invalid KnnVectorsReader type for field: "
-            + fieldInfo.name
-            + ". Must be Lucene95HnswVectorsReader or newer");
-  }
-
-  private Map<Integer, Integer> getOldToNewOrdinalMap(int initializerIndex) throws IOException {
+  private Map<Integer, Integer> getOldToNewOrdinalMap(MergeState mergeState) throws IOException {
 
     DocIdSetIterator initializerIterator = null;
     switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> initializerIterator =
-          mergeState.knnVectorsReaders[initializerIndex].getByteVectorValues(fieldInfo.name);
-      case FLOAT32 -> initializerIterator =
-          mergeState.knnVectorsReaders[initializerIndex].getFloatVectorValues(fieldInfo.name);
+      case BYTE -> initializerIterator = curReader.getByteVectorValues(fieldInfo.name);
+      case FLOAT32 -> initializerIterator = curReader.getFloatVectorValues(fieldInfo.name);
     }
-
-    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
 
     Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
     int oldOrd = 0;
@@ -162,7 +146,7 @@ public class IncrementalHnswGraphMerger {
       if (isCurrentVectorNull(initializerIterator)) {
         continue;
       }
-      int newId = initializerDocMap.get(oldId);
+      int newId = curDocMap.get(oldId);
       maxNewDocID = Math.max(newId, maxNewDocID);
       newIdToOldOrdinal.put(newId, oldOrd);
       oldOrd++;
@@ -189,7 +173,6 @@ public class IncrementalHnswGraphMerger {
       if (isCurrentVectorNull(vectorIterator)) {
         continue;
       }
-
       if (newIdToOldOrdinal.containsKey(newDocId)) {
         oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
       }

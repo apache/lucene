@@ -417,39 +417,42 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       OnHeapHnswGraph graph = null;
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
-        // build graph
-        IncrementalHnswGraphMerger merger = new IncrementalHnswGraphMerger(mergeState, fieldInfo);
-        graph =
-            switch (fieldInfo.getVectorEncoding()) {
-              case BYTE -> {
-                OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
+        final RandomVectorScorerSupplier scorerSupplier;
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE:
+            scorerSupplier =
+                RandomVectorScorerSupplier.createBytes(
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize);
-                RandomVectorScorerSupplier scorerSupplier =
-                    RandomVectorScorerSupplier.createBytes(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
-                HnswGraphBuilder hnswGraphBuilder = merger.build(scorerSupplier, M, beamWidth);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.size());
-              }
-              case FLOAT32 -> {
-                OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
+                        byteSize),
+                    fieldInfo.getVectorSimilarityFunction());
+            break;
+          case FLOAT32:
+            scorerSupplier =
+                RandomVectorScorerSupplier.createFloats(
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
                         vectorDataInput,
-                        byteSize);
-                RandomVectorScorerSupplier scorerSupplier =
-                    RandomVectorScorerSupplier.createFloats(
-                        vectorValues, fieldInfo.getVectorSimilarityFunction());
-                HnswGraphBuilder hnswGraphBuilder = merger.build(scorerSupplier, M, beamWidth);
-                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-                yield hnswGraphBuilder.build(vectorValues.size());
-              }
-            };
+                        byteSize),
+                    fieldInfo.getVectorSimilarityFunction());
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unsupported vector encoding: " + fieldInfo.getVectorEncoding());
+        }
+        // build graph
+        IncrementalHnswGraphMerger merger =
+            new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
+        for (int i = 0; i < mergeState.liveDocs.length; i++) {
+          merger.addReader(
+              mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+        }
+        HnswGraphBuilder hnswGraphBuilder = merger.createBuilder(mergeState);
+        hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+        graph = hnswGraphBuilder.build(docsWithField.cardinality());
         vectorIndexNodeOffsets = writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
