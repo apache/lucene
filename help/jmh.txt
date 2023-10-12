@@ -1,0 +1,15 @@
+benchmarks
+==========
+
+See the README.txt folder in lucene/benchmark-jmh for how to run benchmarks using the build system.
+
+
+hsdis setup
+===========
+
+In order to see disassembled instructions and not just binary instructions when using '-prof perfasm':
+
+  $ git clone --depth 1 https://github.com/openjdk/jdk/
+  $ curl https://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.gz | tar -zxf -
+  $ (cd jdk && bash ./configure --with-hsdis=binutils --with-binutils-src=../binutils-2.38 && make build-hsdis)
+  $ cp jdk/build/linux-x86_64-server-release/support/hsdis/hsdis-amd64.so $JAVA_HOME/lib/server
