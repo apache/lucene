@@ -82,6 +82,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.AssertingCollector;
+import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -331,7 +332,14 @@ public class TestDrillSideways extends FacetTestCase {
 
       try (IndexReader r = w.getReader();
           TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
-        IndexSearcher searcher = new IndexSearcher(r);
+        IndexSearcher searcher = new IndexSearcher(r) {
+          @Override
+          protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector) throws IOException {
+            AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
+            super.search(leaves, weight, assertingCollector);
+            assert assertingCollector.hasFinishedCollectingPreviousLeaf;
+          }
+        };
 
         Query baseQuery = new MatchAllDocsQuery();
         Query dimQ = new TermQuery(new Term("foo", "bar"));
@@ -340,39 +348,32 @@ public class TestDrillSideways extends FacetTestCase {
         ddq.add("foo", dimQ);
         DrillSideways drillSideways = new DrillSideways(searcher, facetsConfig, taxoR);
 
-        CollectorManager<?, ?> cm =
-            new CollectorManager<>() {
-              @Override
-              public Collector newCollector() throws IOException {
-                // We don't need the collector to actually do anything; we just care about the logic
-                // in the AssertingCollector / AssertingLeafCollector (and AssertingIndexSearcher)
-                // to make sure #finish is called exactly once on the leaf collector:
-                return AssertingCollector.wrap(
-                    new Collector() {
-                      @Override
-                      public LeafCollector getLeafCollector(LeafReaderContext context)
-                          throws IOException {
-                        return new LeafCollector() {
-                          @Override
-                          public void setScorer(Scorable scorer) throws IOException {}
+//        CollectorManager<?, ?> cm =
+//            new CollectorManager<>() {
+//              @Override
+//              public Collector newCollector() throws IOException {
+//                // We don't need the collector to actually do anything; we just care about the logic
+//                // in the AssertingCollector / AssertingLeafCollector (and AssertingIndexSearcher)
+//                // to make sure #finish is called exactly once on the leaf collector:
+//                return new org.apache.lucene.search.SimpleCollector() {
+//                  @Override
+//                  public void collect(int doc) throws IOException {}
+//
+//                  @Override
+//                  public ScoreMode scoreMode() {
+//                    return ScoreMode.COMPLETE;
+//                  }
+//                };
+//              }
+//
+//              @Override
+//              public Object reduce(Collection<Collector> collectors) throws IOException {
+//                return null;
+//              }
+//            };
 
-                          @Override
-                          public void collect(int doc) throws IOException {}
-                        };
-                      }
-
-                      @Override
-                      public ScoreMode scoreMode() {
-                        return ScoreMode.COMPLETE;
-                      }
-                    });
-              }
-
-              @Override
-              public Object reduce(Collection<Collector> collectors) throws IOException {
-                return null;
-              }
-            };
+        SimpleCollectorManager cm =
+            new SimpleCollectorManager(10, Comparator.comparingInt(a -> a.docAndScore.doc));
 
         drillSideways.search(ddq, cm);
       }

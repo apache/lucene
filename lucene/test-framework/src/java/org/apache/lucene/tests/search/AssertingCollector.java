@@ -34,7 +34,12 @@ public class AssertingCollector extends FilterCollector {
   private boolean weightSet = false;
   private int maxDoc = -1;
   private int previousLeafMaxDoc = 0;
-  boolean hasFinishedCollectingPreviousLeaf = true;
+
+  // public visibility for drill-sideways testing, since drill-sideways can't directly use
+  // AssertingIndexSearcher
+  // TODO: this is a pretty hacky workaround. It would be nice to rethink drill-sideways (for
+  // multiple reasons) and move this back to pkg-private at some point
+  public boolean hasFinishedCollectingPreviousLeaf = true;
 
   /** Wrap the given collector in order to add assertions. */
   public static AssertingCollector wrap(Collector in) {
