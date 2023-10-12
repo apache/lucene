@@ -156,6 +156,64 @@ public abstract class LongValuesSource implements SegmentCacheable {
     return new ConstantLongValuesSource(value);
   }
 
+  static class LongDoubleValuesSource extends LongValuesSource {
+
+    private final DoubleValuesSource inner;
+
+    LongDoubleValuesSource(DoubleValuesSource inner) {
+      this.inner = inner;
+    }
+
+    @Override
+    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      DoubleValues in = inner.getValues(ctx, scores);
+      return new LongValues() {
+        @Override
+        public long longValue() throws IOException {
+          return (long) in.doubleValue();
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return in.advanceExact(doc);
+        }
+      };
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return inner.isCacheable(ctx);
+    }
+
+    @Override
+    public boolean needsScores() {
+      return inner.needsScores();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      LongDoubleValuesSource that = (LongDoubleValuesSource) o;
+      return Objects.equals(inner, that.inner);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(inner);
+    }
+
+    @Override
+    public String toString() {
+      return "long(" + inner.toString() + ")";
+    }
+
+    @Override
+    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      return inner.rewrite(searcher).toLongValuesSource();
+    }
+  }
+
   /**
    * A ConstantLongValuesSource that always returns a constant value
    *

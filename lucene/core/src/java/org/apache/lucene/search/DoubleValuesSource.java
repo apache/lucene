@@ -18,13 +18,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.function.DoubleToLongFunction;
 import java.util.function.LongToDoubleFunction;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.comparators.DoubleComparator;
 
 /**
@@ -43,6 +40,9 @@ import org.apache.lucene.search.comparators.DoubleComparator;
  * {@link #fromScorer(Scorable)} and passing the resulting DoubleValues to {@link
  * #getValues(LeafReaderContext, DoubleValues)}. The scores can then be accessed using the {@link
  * #SCORES} DoubleValuesSource.
+ *
+ * <p>Also see {@link DoubleValuesSourceUtil} class that provides some concrete implementations of
+ * this class used by APIs defined in this class.
  */
 public abstract class DoubleValuesSource implements SegmentCacheable {
 
@@ -112,111 +112,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
   /** Convert to a LongValuesSource by casting the double values to longs */
   public final LongValuesSource toLongValuesSource() {
-    return new LongDoubleValuesSource(this);
-  }
-
-  private static class LongDoubleValuesSource extends LongValuesSource {
-
-    private final DoubleValuesSource inner;
-
-    private LongDoubleValuesSource(DoubleValuesSource inner) {
-      this.inner = inner;
-    }
-
-    @Override
-    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      DoubleValues in = inner.getValues(ctx, scores);
-      return new LongValues() {
-        @Override
-        public long longValue() throws IOException {
-          return (long) in.doubleValue();
-        }
-
-        @Override
-        public boolean advanceExact(int doc) throws IOException {
-          return in.advanceExact(doc);
-        }
-      };
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return inner.isCacheable(ctx);
-    }
-
-    @Override
-    public boolean needsScores() {
-      return inner.needsScores();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      LongDoubleValuesSource that = (LongDoubleValuesSource) o;
-      return Objects.equals(inner, that.inner);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(inner);
-    }
-
-    @Override
-    public String toString() {
-      return "long(" + inner.toString() + ")";
-    }
-
-    @Override
-    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return inner.rewrite(searcher).toLongValuesSource();
-    }
-  }
-
-  /**
-   * Returns a DoubleValues instance for computing the vector similarity score per document against
-   * the byte query vector
-   *
-   * @param ctx the context for which to return the DoubleValues
-   * @param queryVector byte query vector
-   * @param vectorField knn byte field name
-   * @return DoubleValues instance
-   * @throws IOException if an {@link IOException} occurs
-   */
-  public static DoubleValues similarityToQueryVector(
-      LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
-    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
-        != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "Field "
-              + vectorField
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.BYTE);
-    }
-    return new ByteVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
-  }
-
-  /**
-   * Returns a DoubleValues instance for computing the vector similarity score per document against
-   * the float query vector
-   *
-   * @param ctx the context for which to return the DoubleValues
-   * @param queryVector float query vector
-   * @param vectorField knn float field name
-   * @return DoubleValues instance
-   * @throws IOException if an {@link IOException} occurs
-   */
-  public static DoubleValues similarityToQueryVector(
-      LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
-    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
-        != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException(
-          "Field "
-              + vectorField
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.FLOAT32);
-    }
-    return new FloatVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+    return new LongValuesSource.LongDoubleValuesSource(this);
   }
 
   /**
@@ -226,7 +122,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    * @param decoder a function to convert the long-valued doc values to doubles
    */
   public static DoubleValuesSource fromField(String field, LongToDoubleFunction decoder) {
-    return new FieldValuesSource(field, decoder);
+    return new DoubleValuesSourceUtil.FieldValuesSource(field, decoder);
   }
 
   /** Creates a DoubleValuesSource that wraps a double-valued field */
@@ -256,119 +152,11 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    * null} as the {@link DoubleValues} parameter on {@link #getValues(LeafReaderContext,
    * DoubleValues)}
    */
-  public static final DoubleValuesSource SCORES =
-      new DoubleValuesSource() {
-        @Override
-        public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores)
-            throws IOException {
-          assert scores != null;
-          return scores;
-        }
-
-        @Override
-        public boolean needsScores() {
-          return true;
-        }
-
-        @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-          return false;
-        }
-
-        @Override
-        public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation) {
-          return scoreExplanation;
-        }
-
-        @Override
-        public int hashCode() {
-          return 0;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-          return obj == this;
-        }
-
-        @Override
-        public String toString() {
-          return "scores";
-        }
-
-        @Override
-        public DoubleValuesSource rewrite(IndexSearcher searcher) {
-          return this;
-        }
-      };
+  public static final DoubleValuesSource SCORES = DoubleValuesSourceUtil.SCORES;
 
   /** Creates a DoubleValuesSource that always returns a constant value */
   public static DoubleValuesSource constant(double value) {
-    return new ConstantValuesSource(value);
-  }
-
-  private static class ConstantValuesSource extends DoubleValuesSource {
-
-    private final DoubleValues doubleValues;
-    private final double value;
-
-    private ConstantValuesSource(double value) {
-      this.value = value;
-      this.doubleValues =
-          new DoubleValues() {
-            @Override
-            public double doubleValue() {
-              return value;
-            }
-
-            @Override
-            public boolean advanceExact(int doc) {
-              return true;
-            }
-          };
-    }
-
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) {
-      return this;
-    }
-
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      return doubleValues;
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return true;
-    }
-
-    @Override
-    public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation) {
-      return Explanation.match(value, "constant(" + value + ")");
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(value);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      ConstantValuesSource that = (ConstantValuesSource) o;
-      return Double.compare(that.value, value) == 0;
-    }
-
-    @Override
-    public String toString() {
-      return "constant(" + value + ")";
-    }
+    return new DoubleValuesSourceUtil.ConstantValuesSource(value);
   }
 
   /**
@@ -391,75 +179,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
         return true;
       }
     };
-  }
-
-  private static class FieldValuesSource extends DoubleValuesSource {
-
-    final String field;
-    final LongToDoubleFunction decoder;
-
-    private FieldValuesSource(String field, LongToDoubleFunction decoder) {
-      this.field = field;
-      this.decoder = decoder;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FieldValuesSource that = (FieldValuesSource) o;
-      return Objects.equals(field, that.field) && Objects.equals(decoder, that.decoder);
-    }
-
-    @Override
-    public String toString() {
-      return "double(" + field + ")";
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(field, decoder);
-    }
-
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      final NumericDocValues values = DocValues.getNumeric(ctx.reader(), field);
-      return new DoubleValues() {
-        @Override
-        public double doubleValue() throws IOException {
-          return decoder.applyAsDouble(values.longValue());
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return values.advanceExact(target);
-        }
-      };
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return DocValues.isCacheable(ctx, field);
-    }
-
-    @Override
-    public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation)
-        throws IOException {
-      DoubleValues values = getValues(ctx, null);
-      if (values.advanceExact(docId))
-        return Explanation.match(values.doubleValue(), this.toString());
-      else return Explanation.noMatch(this.toString());
-    }
-
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return this;
-    }
   }
 
   private static class DoubleValuesSortField extends SortField {
@@ -592,137 +311,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
   /** Create a DoubleValuesSource that returns the score of a particular query */
   public static DoubleValuesSource fromQuery(Query query) {
-    return new QueryDoubleValuesSource(query);
-  }
-
-  private static class QueryDoubleValuesSource extends DoubleValuesSource {
-
-    private final Query query;
-
-    private QueryDoubleValuesSource(Query query) {
-      this.query = query;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      QueryDoubleValuesSource that = (QueryDoubleValuesSource) o;
-      return Objects.equals(query, that.query);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(query);
-    }
-
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      throw new UnsupportedOperationException("This DoubleValuesSource must be rewritten");
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return new WeightDoubleValuesSource(
-          searcher.rewrite(query).createWeight(searcher, ScoreMode.COMPLETE, 1f));
-    }
-
-    @Override
-    public String toString() {
-      return "score(" + query.toString() + ")";
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
-  }
-
-  private static class WeightDoubleValuesSource extends DoubleValuesSource {
-
-    private final Weight weight;
-
-    private WeightDoubleValuesSource(Weight weight) {
-      this.weight = weight;
-    }
-
-    @Override
-    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      Scorer scorer = weight.scorer(ctx);
-      if (scorer == null) return DoubleValues.EMPTY;
-
-      return new DoubleValues() {
-        private final TwoPhaseIterator tpi = scorer.twoPhaseIterator();
-        private final DocIdSetIterator disi =
-            (tpi == null) ? scorer.iterator() : tpi.approximation();
-        private Boolean tpiMatch = null; // cache tpi.matches()
-
-        @Override
-        public double doubleValue() throws IOException {
-          return scorer.score();
-        }
-
-        @Override
-        public boolean advanceExact(int doc) throws IOException {
-          if (disi.docID() < doc) {
-            disi.advance(doc);
-            tpiMatch = null;
-          }
-          if (disi.docID() == doc) {
-            if (tpi == null) {
-              return true;
-            } else if (tpiMatch == null) {
-              tpiMatch = tpi.matches();
-            }
-            return tpiMatch;
-          }
-          return false;
-        }
-      };
-    }
-
-    @Override
-    public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation)
-        throws IOException {
-      return weight.explain(ctx, docId);
-    }
-
-    @Override
-    public boolean needsScores() {
-      return false;
-    }
-
-    @Override
-    public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return this;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      WeightDoubleValuesSource that = (WeightDoubleValuesSource) o;
-      return Objects.equals(weight, that.weight);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(weight);
-    }
-
-    @Override
-    public String toString() {
-      return "score(" + weight.parentQuery.toString() + ")";
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
+    return new DoubleValuesSourceUtil.QueryDoubleValuesSource(query);
   }
 }

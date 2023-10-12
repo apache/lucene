@@ -25,7 +25,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
- * A {@link DoubleValuesSource} which computes the vector similarity scores between the query vector
+ * A {@link DoubleValuesSource} that computes the vector similarity scores between the query vector
  * and the {@link org.apache.lucene.document.KnnByteVectorField} for documents.
  */
 class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {

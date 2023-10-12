@@ -149,7 +149,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     // Checks the computed similarity score between indexed vectors and query vector
     // using DVS is correct by passing indexed and query vector in #compare
     DoubleValues dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField1");
     assertTrue(
         dv.advanceExact(0)
@@ -168,7 +168,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
                     new float[] {1.f, 2.f, 3.f}, floatQueryVector));
 
     dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField5");
     assertTrue(
         dv.advanceExact(0)
@@ -189,7 +189,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     byte[] byteQueryVector = new byte[] {-128, 2, 127};
 
     dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField1");
     assertTrue(
         dv.advanceExact(0)
@@ -208,7 +208,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
                     new byte[] {-128, 0, 127}, byteQueryVector));
 
     dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField5");
     assertFalse(dv.advanceExact(0));
     assertFalse(dv.advanceExact(1));
@@ -225,7 +225,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     // Checks the computed similarity score between indexed vectors and query vector
     // using DVS is correct by passing indexed and query vector in #compare
     DoubleValues dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField2");
     assertTrue(
         dv.advanceExact(0)
@@ -246,7 +246,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     byte[] byteQueryVector = new byte[] {-128, 2, 127};
 
     dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField2");
     assertTrue(
         dv.advanceExact(0)
@@ -271,7 +271,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     // Checks the computed similarity score between indexed vectors and query vector
     // using DVS is correct by passing indexed and query vector in #compare
     DoubleValues dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField3");
     assertTrue(
         dv.advanceExact(0)
@@ -288,7 +288,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     byte[] byteQueryVector = new byte[] {-10, 8, 0};
 
     dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField3");
     assertTrue(
         dv.advanceExact(0)
@@ -311,7 +311,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     // Checks the computed similarity score between indexed vectors and query vector
     // using DVS is correct by passing indexed and query vector in #compare
     DoubleValues dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField4");
     assertTrue(
         dv.advanceExact(0)
@@ -324,7 +324,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     byte[] byteQueryVector = new byte[] {-127, 127, 127};
 
     dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), byteQueryVector, "knnByteField4");
     assertTrue(
         dv.advanceExact(0)
@@ -350,16 +350,16 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () ->
-            DoubleValuesSource.similarityToQueryVector(
+            VectorSimilarityValuesSource.similarityToQueryVector(
                 searcher.reader.leaves().get(0), floatQueryVector, "knnByteField1"));
     expectThrows(
         IllegalArgumentException.class,
         () ->
-            DoubleValuesSource.similarityToQueryVector(
+            VectorSimilarityValuesSource.similarityToQueryVector(
                 searcher.reader.leaves().get(0), byteQueryVector, "knnFloatField1"));
 
     DoubleValues dv =
-        DoubleValuesSource.similarityToQueryVector(
+        VectorSimilarityValuesSource.similarityToQueryVector(
             searcher.reader.leaves().get(0), floatQueryVector, "knnFloatField1");
     assertTrue(dv.advanceExact(0));
     assertEquals(

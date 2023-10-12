@@ -208,7 +208,8 @@ Build
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12671: Move some private static classes or functions out of DoubleValuesSource. (Shubham Chaudhary)
 
 ======================== Lucene 9.8.0 =======================
 
