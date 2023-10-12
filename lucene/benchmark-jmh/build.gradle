@@ -41,7 +41,7 @@ tasks.matching { it.name in [
 }
 
 
-// Configure classpath-mode entry point and dependencies.
+// Assemble benchmark JAR and its dependencies here.
 File dependenciesDir = project.layout.buildDirectory.dir("benchmarks").get().asFile
 def syncDependencies = tasks.register("copyDependencies", Sync, {
   from configurations.runtimeClasspath
@@ -50,6 +50,8 @@ def syncDependencies = tasks.register("copyDependencies", Sync, {
   into dependenciesDir
 })
 
+// Module entry point. For some reason can't be a package from outside the module
+// so I wrote a simple redirecting delegate.
 tasks.compileJava.configure {
   options.javaModuleMainClass.set("org.apache.lucene.benchmark.jmh.Main")
 }
