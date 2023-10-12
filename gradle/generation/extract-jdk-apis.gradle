@@ -38,7 +38,7 @@ configure(project(":lucene:core")) {
     apiextractor "org.ow2.asm:asm:${scriptDepVersions['asm']}"
   }
 
-  for (jdkVersion : mrjarJavaVersions) {
+  mrjarJavaVersions.each { jdkVersion ->
     def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
       description "Regenerate the API-only JAR file with public Panama Foreign & Vector API from JDK ${jdkVersion}"
       group "generation"

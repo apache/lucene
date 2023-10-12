@@ -43,6 +43,7 @@ final class OrdsFieldReader extends Terms {
   final OrdsBlockTreeTermsReader parent;
 
   final FST<Output> index;
+
   // private boolean DEBUG;
 
   OrdsFieldReader(

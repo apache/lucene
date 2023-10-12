@@ -54,6 +54,7 @@ public interface RandomAccessInput {
    * @see BitUtil#VH_LE_SHORT
    */
   public short readShort(long pos) throws IOException;
+
   /**
    * Reads an integer (LE byte order) at the given position in the file
    *
@@ -61,6 +62,7 @@ public interface RandomAccessInput {
    * @see BitUtil#VH_LE_INT
    */
   public int readInt(long pos) throws IOException;
+
   /**
    * Reads a long (LE byte order) at the given position in the file
    *

@@ -349,6 +349,7 @@ public class HnswGraphBuilder {
     private final NeighborQueue queue;
     private final int k;
     private long visitedCount;
+
     /**
      * @param k the number of neighbors to collect
      */

@@ -60,6 +60,7 @@ public class MergingCodecReader extends FilterCodecReader {
           }
         }
       };
+
   // TODO: other formats too
 
   /** Wrap the given instance. */
