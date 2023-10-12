@@ -429,6 +429,7 @@ public class BKDWriter implements Closeable {
       MutablePointTree reader,
       int docCount)
       throws IOException {
+    assert docCount != -1;
     this.docCount = docCount;
     if (config.numDims == 1) {
       return writeField1Dim(metaOut, indexOut, dataOut, fieldName, reader);
@@ -1259,7 +1260,7 @@ public class BKDWriter implements Closeable {
     metaOut.writeBytes(maxPackedValue, 0, config.packedIndexBytesLength);
 
     metaOut.writeVLong(pointCount);
-    assert docsSeen != null || docCount != -1;
+    assert docsSeen != null ^ docCount != -1;
     metaOut.writeVInt(docCount == -1 ? docsSeen.cardinality() : docCount);
     metaOut.writeVInt(packedIndex.length);
     metaOut.writeLong(dataStartFP);

@@ -140,8 +140,12 @@ public class Lucene90PointsWriter extends PointsWriter {
       if (values instanceof MutablePointTree) {
         Runnable finalizer =
             writer.writeField(
-                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values,
-            pointValues.getDocCount());
+                metaOut,
+                indexOut,
+                dataOut,
+                fieldInfo.name,
+                (MutablePointTree) values,
+                pointValues.getDocCount());
         if (finalizer != null) {
           metaOut.writeInt(fieldInfo.number);
           finalizer.run();
