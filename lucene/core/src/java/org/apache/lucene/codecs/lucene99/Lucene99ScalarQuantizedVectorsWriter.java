@@ -52,6 +52,7 @@ import org.apache.lucene.util.ScalarQuantizer;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
  * Writes quantized vector values and metadata to index segments.
@@ -759,6 +760,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     @Override
     public RandomVectorScorer scorer(int ord) throws IOException {
       return supplier.scorer(ord);
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return supplier.copy();
     }
 
     @Override
