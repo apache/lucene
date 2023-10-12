@@ -23,6 +23,21 @@ def withCoverage = gradle.startParameter.taskNames.contains("coverage") ||
     Boolean.parseBoolean(propertyOrDefault("tests.coverage", "false"))
 
 if (withCoverage) {
+  configure(rootProject) {
+    plugins.apply("org.barfuin.gradle.jacocolog")
+
+    // Synthetic task to enable test coverage (and aggregated reports).
+    task coverage() {
+      dependsOn jacocoAggregatedReport
+    }
+
+    configure(jacocoAggregatedReport) {
+      doLast {
+        logger.lifecycle("Code coverage report at: ${reports.html.entryPoint}\n")
+      }
+    }
+  }
+
   allprojects {
     plugins.withType(JavaPlugin) {
       // Apply jacoco once we know the project has a Java plugin too.
@@ -47,7 +62,7 @@ if (withCoverage) {
 
       configure(jacocoTestReport) {
         doLast {
-          logger.lifecycle("Code coverage report at: ${reports.html.destination}.\n")
+          logger.lifecycle("Code coverage report at: ${reports.html.entryPoint}.\n")
         }
       }
     }
