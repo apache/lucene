@@ -46,7 +46,7 @@ configure(project(":lucene:core")) {
     }
     
     tasks.named('jar').configure {
-      for (jdkVersion : mrjarJavaVersions) {
+      mrjarJavaVersions.each { jdkVersion ->
         into("META-INF/versions/${jdkVersion}") {
           from sourceSets["main${jdkVersion}"].output
         }
