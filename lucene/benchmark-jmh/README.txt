@@ -19,3 +19,11 @@ You can pass any JMH options to the above command, for example:
   -l      list available benchmarks
   -lp     list benchmarks that pass the filter and their parameters
   regexp  execute all benchmark containing regexp
+
+Here is an example running a single benchmark:
+
+java --module-path lucene\benchmark-jmh\build\benchmarks --module org.apache.lucene.benchmark.jmh org.apache.lucene.benchmark.jmh.BinaryCosineBenchmark.cosineDistanceNew
+
+Or running all of BinaryCosineBenchmark
+
+java --module-path lucene\benchmark-jmh\build\benchmarks --module org.apache.lucene.benchmark.jmh org.apache.lucene.benchmark.jmh.BinaryCosineBenchmark
