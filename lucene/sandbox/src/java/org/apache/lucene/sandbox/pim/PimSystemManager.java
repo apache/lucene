@@ -69,7 +69,7 @@ public class PimSystemManager {
   private final QueryRunner queryRunner;
   private volatile boolean indexLoaded;
   private PimIndexInfo pimIndexInfo;
-  private PimMatchCache dpuResultsCache;
+  private ThreadLocal<PimMatchCache> dpuResultsCache = ThreadLocal.withInitial(PimMatchCache::new);
 
   private PimSystemManager() throws DpuException {
     if (USE_SOFTWARE_MODEL) {
@@ -80,7 +80,6 @@ public class PimSystemManager {
     queryQueue = new ArrayBlockingQueue<>(MAX_NUM_QUERIES);
     queryRunner = new QueryRunner();
     pimIndexInfo = null;
-    dpuResultsCache = new PimMatchCache();
     Thread t =
         new Thread(
             queryRunner, getClass().getSimpleName() + "-" + queryRunner.getClass().getSimpleName());
@@ -240,12 +239,12 @@ public class PimSystemManager {
     // Hence the actual search is performed the first time this method is called, the subsequent
     // searches for the same query in a different leaf are answered from the cache
     boolean remove = context.ord == (pimIndexInfo.getNumSegments() - 1);
-    DpuResultsReader cacheRes = dpuResultsCache.get(query, remove);
+    DpuResultsReader cacheRes = dpuResultsCache.get().get(query, remove);
 
     if (cacheRes == null) {
       // if not run the query on PIM
       runSearchQuery(query);
-      cacheRes = dpuResultsCache.get(query, remove);
+      cacheRes = dpuResultsCache.get().get(query, remove);
     }
 
     // this may happen if the cache was full and the results could not
@@ -277,7 +276,7 @@ public class PimSystemManager {
     }
 
     try {
-      dpuResultsCache.put(query, queryBuffer.waitForResults());
+      dpuResultsCache.get().put(query, queryBuffer.waitForResults());
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
