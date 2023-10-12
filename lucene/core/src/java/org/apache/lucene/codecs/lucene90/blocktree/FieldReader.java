@@ -118,13 +118,11 @@ public final class FieldReader extends Terms {
    * <p>Package private for testing.
    */
   static long readMSBVLong(DataInput in) throws IOException {
-    long l = 0L;
-    while (true) {
-      byte b = in.readByte();
+    byte b = in.readByte();
+    long l = b & 0x7FL;
+    while (b < 0) {
+      b = in.readByte();
       l = (l << 7) | (b & 0x7FL);
-      if ((b & 0x80) == 0) {
-        break;
-      }
     }
     return l;
   }
