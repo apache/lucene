@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene90.Lucene90ScoreSkipReader.MutableImpactList;
 import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
+import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -52,7 +53,7 @@ public class TestLucene90PostingsFormat extends BasePostingsFormatTestCase {
   public void testFinalBlock() throws Exception {
     Directory d = newDirectory();
     IndexWriter w = new IndexWriter(d, new IndexWriterConfig(new MockAnalyzer(random())));
-    for (int i = 0; i < 25; i++) {
+    for (int i = 0; i < Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE; i++) {
       Document doc = new Document();
       doc.add(newStringField("field", Character.toString((char) (97 + i)), Field.Store.NO));
       doc.add(newStringField("field", "z" + Character.toString((char) (97 + i)), Field.Store.NO));
