@@ -183,6 +183,9 @@ Optimizations
 * GITHUB#12631: Write MSB VLong for better outputs sharing in block tree index, decreasing ~14% size
   of .tip file. (Guo Feng)
 
+* GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
+  (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
