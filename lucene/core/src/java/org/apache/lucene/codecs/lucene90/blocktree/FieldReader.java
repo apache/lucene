@@ -116,7 +116,7 @@ public final class FieldReader extends Terms {
    *
    * <p>Package private for testing.
    */
-  static long readMSBVLong(ByteArrayDataInput in) throws IOException {
+  static long readMSBVLong(ByteArrayDataInput in) {
     byte b = in.readByte();
     long l = b & 0x7FL;
     while (b < 0) {

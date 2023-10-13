@@ -873,7 +873,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
   }
 
-  private static void append(BytesRef output, BytesRef arc) {
+  static void append(BytesRef output, BytesRef arc) {
     assert output.offset == 0;
     if (arc == Lucene90BlockTreeTermsReader.NO_OUTPUT) {
       return;
