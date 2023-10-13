@@ -40,8 +40,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -70,6 +70,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -154,10 +155,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new Lucene95Codec() {
+                  new FilterCodec(
+                      TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
                     @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene95HnswVectorsFormat(M, beamWidth);
+                    public KnnVectorsFormat knnVectorsFormat() {
+                      return new PerFieldKnnVectorsFormat() {
+                        @Override
+                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                          return new Lucene95HnswVectorsFormat(M, beamWidth);
+                        }
+                      };
                     }
                   });
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -210,19 +217,29 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     IndexWriterConfig iwc =
         new IndexWriterConfig()
             .setCodec(
-                new Lucene95Codec() {
+                new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
                   @Override
-                  public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                    return new Lucene95HnswVectorsFormat(M, beamWidth);
+                  public KnnVectorsFormat knnVectorsFormat() {
+                    return new PerFieldKnnVectorsFormat() {
+                      @Override
+                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                        return new Lucene95HnswVectorsFormat(M, beamWidth);
+                      }
+                    };
                   }
                 });
     IndexWriterConfig iwc2 =
         new IndexWriterConfig()
             .setCodec(
-                new Lucene95Codec() {
+                new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
                   @Override
-                  public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                    return new Lucene95HnswVectorsFormat(M, beamWidth);
+                  public KnnVectorsFormat knnVectorsFormat() {
+                    return new PerFieldKnnVectorsFormat() {
+                      @Override
+                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                        return new Lucene95HnswVectorsFormat(M, beamWidth);
+                      }
+                    };
                   }
                 })
             .setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
