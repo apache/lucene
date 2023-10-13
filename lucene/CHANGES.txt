@@ -147,7 +147,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#12548: Added similarityToQueryVector API to compute vector similarity scores
+  with DoubleValuesSource. (Shubham Chaudhary)
 
 Improvements
 ---------------------
