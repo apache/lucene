@@ -164,6 +164,10 @@ Improvements
 * GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
   order to simplify consumer's code (Luca Cavanna)
 
+* GITHUB#12676: Improve logging of vector support if vector module was enabled but Java version
+  is too old. It also logs partial vectorization support if old CPU or disabled AVX.
+  (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
