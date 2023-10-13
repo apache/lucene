@@ -21,7 +21,6 @@ import static java.lang.Math.log;
 
 import java.io.IOException;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
@@ -74,18 +73,6 @@ public class HnswGraphBuilder {
     return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
   }
 
-  public static HnswGraphBuilder create(
-      RandomVectorScorerSupplier scorerSupplier,
-      int M,
-      int beamWidth,
-      long seed,
-      HnswGraph initializerGraph,
-      Map<Integer, Integer> oldToNewOrdinalMap)
-      throws IOException {
-    return new InitializedHnswGraphBuilder(
-        scorerSupplier, M, beamWidth, seed, initializerGraph, oldToNewOrdinalMap);
-  }
-
   /**
    * Reads all the vectors from vector values, builds a graph connecting them by their dense
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
@@ -100,6 +87,28 @@ public class HnswGraphBuilder {
   protected HnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
+    this(scorerSupplier, M, beamWidth, seed, new OnHeapHnswGraph(M));
+  }
+
+  /**
+   * Reads all the vectors from vector values, builds a graph connecting them by their dense
+   * ordinals, using the given hyperparameter settings, and returns the resulting graph.
+   *
+   * @param scorerSupplier a supplier to create vector scorer from ordinals.
+   * @param M – graph fanout parameter used to calculate the maximum number of connections a node
+   *     can have – M on upper layers, and M * 2 on the lowest level.
+   * @param beamWidth the size of the beam search to use when finding nearest neighbors.
+   * @param seed the seed for a random number generator used during graph construction. Provide this
+   *     to ensure repeatable construction.
+   * @param hnsw the graph to build, can be previously initialized
+   */
+  protected HnswGraphBuilder(
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      long seed,
+      OnHeapHnswGraph hnsw)
+      throws IOException {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
     }
@@ -112,7 +121,7 @@ public class HnswGraphBuilder {
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    this.hnsw = new OnHeapHnswGraph(M);
+    this.hnsw = hnsw;
     this.graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(beamWidth, true), new FixedBitSet(this.getGraph().size()));

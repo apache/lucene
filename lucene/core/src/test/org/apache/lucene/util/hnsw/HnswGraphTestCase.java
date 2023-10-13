@@ -26,11 +26,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -61,6 +59,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
@@ -541,19 +540,23 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     AbstractMockVectorValues<T> finalVectorValues =
         vectorValues(totalSize, dim, initializerVectors, docIdOffset);
 
-    Map<Integer, Integer> initializerOrdMap =
-        createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
-
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
-        new InitializedHnswGraphBuilder(
-            finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
+        InitializedHnswGraphBuilder.fromGraph(
+            finalscorerSupplier,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            docIdOffset,
+            BitSet.of(
+                DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1));
 
     // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, finalBuilder.getGraph());
 
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
-    assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
+    assertGraphContainsGraph(finalGraph, initializerGraph, docIdOffset);
   }
 
   public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() throws IOException {
@@ -571,85 +574,74 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     AbstractMockVectorValues<T> finalVectorValues =
         vectorValues(totalSize, dim, initializerVectors.copy(), docIdOffset);
-    Map<Integer, Integer> initializerOrdMap =
-        createOffsetOrdinalMap(initializerSize, finalVectorValues.copy(), docIdOffset);
 
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
-        new InitializedHnswGraphBuilder(
-            finalscorerSupplier, 10, 30, seed, initializerGraph, initializerOrdMap);
+        InitializedHnswGraphBuilder.fromGraph(
+            finalscorerSupplier,
+            10,
+            30,
+            seed,
+            initializerGraph,
+            docIdOffset,
+            BitSet.of(
+                DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1));
 
-    assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
+    assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, docIdOffset);
 
     // Confirm that the graph is appropriately constructed by checking that the nodes in the old
     // graph are present in the levels of the new graph
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
-    assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
+    assertGraphContainsGraph(finalGraph, initializerGraph, docIdOffset);
   }
 
-  private void assertGraphContainsGraph(
-      HnswGraph g, HnswGraph h, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
+  private void assertGraphContainsGraph(HnswGraph g, HnswGraph h, int offset) throws IOException {
     for (int i = 0; i < h.numLevels(); i++) {
       int[] finalGraphNodesOnLevel = nodesIteratorToArray(g.getNodesOnLevel(i));
       int[] initializerGraphNodesOnLevel =
-          mapArrayAndSort(nodesIteratorToArray(h.getNodesOnLevel(i)), oldToNewOrdMap);
+          mapArrayAndSort(nodesIteratorToArray(h.getNodesOnLevel(i)), offset);
       int overlap = computeOverlap(finalGraphNodesOnLevel, initializerGraphNodesOnLevel);
       assertEquals(initializerGraphNodesOnLevel.length, overlap);
     }
   }
 
   private void assertGraphInitializedFromGraph(
-      HnswGraph g, HnswGraph h, Map<Integer, Integer> oldToNewOrdMap) throws IOException {
-    assertEquals("the number of levels in the graphs are different!", g.numLevels(), h.numLevels());
+      HnswGraph finalGraph, HnswGraph initialGraph, int offset) throws IOException {
+    assertEquals(
+        "the number of levels in the graphs are different!",
+        finalGraph.numLevels(),
+        finalGraph.numLevels());
     // Confirm that the size of the new graph includes all nodes up to an including the max new
     // ordinal in the old to
     // new ordinal mapping
     assertEquals(
         "the number of nodes in the graphs are different!",
-        g.size(),
-        Collections.max(oldToNewOrdMap.values()) + 1);
+        finalGraph.size(),
+        initialGraph.size() + offset);
 
     // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
-    for (int level = 1; level < g.numLevels(); level++) {
-      List<Integer> nodesOnLevel = sortedNodesOnLevel(g, level);
+    for (int level = 1; level < finalGraph.numLevels(); level++) {
+      List<Integer> nodesOnLevel = sortedNodesOnLevel(finalGraph, level);
       List<Integer> nodesOnLevel2 =
-          sortedNodesOnLevel(h, level).stream().map(oldToNewOrdMap::get).toList();
+          sortedNodesOnLevel(initialGraph, level).stream().map(n -> n + offset).toList();
       assertEquals(nodesOnLevel, nodesOnLevel2);
     }
 
     // assert that the neighbors from the old graph are successfully transferred to the new graph
-    for (int level = 0; level < g.numLevels(); level++) {
-      NodesIterator nodesOnLevel = h.getNodesOnLevel(level);
+    for (int level = 0; level < finalGraph.numLevels(); level++) {
+      NodesIterator nodesOnLevel = initialGraph.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();
-        g.seek(level, oldToNewOrdMap.get(node));
-        h.seek(level, node);
+        finalGraph.seek(level, node + offset);
+        initialGraph.seek(level, node);
         assertEquals(
             "arcs differ for node " + node,
-            getNeighborNodes(g),
-            getNeighborNodes(h).stream().map(oldToNewOrdMap::get).collect(Collectors.toSet()));
+            getNeighborNodes(finalGraph),
+            getNeighborNodes(initialGraph).stream()
+                .map(n -> n + offset)
+                .collect(Collectors.toSet()));
       }
     }
-  }
-
-  private Map<Integer, Integer> createOffsetOrdinalMap(
-      int docIdSize, AbstractMockVectorValues<T> totalVectorValues, int docIdOffset) {
-    // Compute the offset for the ordinal map to be the number of non-null vectors in the total
-    // vector values
-    // before the docIdOffset
-    int ordinalOffset = 0;
-    while (totalVectorValues.nextDoc() < docIdOffset) {
-      ordinalOffset++;
-    }
-
-    Map<Integer, Integer> offsetOrdinalMap = new HashMap<>();
-    for (int curr = 0;
-        totalVectorValues.docID() < docIdOffset + docIdSize;
-        totalVectorValues.nextDoc()) {
-      offsetOrdinalMap.put(curr, ordinalOffset + curr++);
-    }
-
-    return offsetOrdinalMap;
   }
 
   private int[] nodesIteratorToArray(NodesIterator nodesIterator) {
@@ -661,10 +653,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return arr;
   }
 
-  private int[] mapArrayAndSort(int[] arr, Map<Integer, Integer> map) {
+  private int[] mapArrayAndSort(int[] arr, int offset) {
     int[] mappedA = new int[arr.length];
     for (int i = 0; i < arr.length; i++) {
-      mappedA[i] = map.get(arr[i]);
+      mappedA[i] = arr[i] + offset;
     }
     Arrays.sort(mappedA);
     return mappedA;

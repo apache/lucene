@@ -19,9 +19,6 @@ package org.apache.lucene.codecs.lucene95;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -31,6 +28,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
@@ -43,9 +41,9 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
  */
 public class IncrementalHnswGraphMerger {
 
-  private KnnVectorsReader curReader;
-  private MergeState.DocMap curDocMap;
-  private int curGraphSize;
+  private KnnVectorsReader initReader;
+  private MergeState.DocMap initDocMap;
+  private int initGraphSize;
   private final FieldInfo fieldInfo;
   private final RandomVectorScorerSupplier scorerSupplier;
   private final int M;
@@ -102,10 +100,10 @@ public class IncrementalHnswGraphMerger {
         candidateVectorCount = vectorValues.size();
       }
     }
-    if (candidateVectorCount > curGraphSize) {
-      curReader = currKnnVectorsReader;
-      curDocMap = docMap;
-      curGraphSize = candidateVectorCount;
+    if (candidateVectorCount > initGraphSize) {
+      initReader = currKnnVectorsReader;
+      initDocMap = docMap;
+      initGraphSize = candidateVectorCount;
     }
     return this;
   }
@@ -119,44 +117,41 @@ public class IncrementalHnswGraphMerger {
    * @throws IOException If an error occurs while reading from the merge state
    */
   public HnswGraphBuilder createBuilder(MergeState mergeState) throws IOException {
-    if (curReader == null) {
+    if (initReader == null) {
       return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     }
 
-    HnswGraph initializerGraph = ((HnswGraphProvider) curReader).getGraph(fieldInfo.name);
-    Map<Integer, Integer> ordinalMapper = getOldToNewOrdinalMap(mergeState);
-    return new InitializedHnswGraphBuilder(
-        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
+    HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
+    int ordBaseline = getNewOrdOffset(mergeState);
+    BitSet initializedNodes =
+        BitSet.of(
+            DocIdSetIterator.range(ordBaseline, initGraphSize + ordBaseline),
+            mergeState.segmentInfo.maxDoc() + 1);
+    return InitializedHnswGraphBuilder.fromGraph(
+        scorerSupplier,
+        M,
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        initializerGraph,
+        ordBaseline,
+        initializedNodes);
   }
 
-  private Map<Integer, Integer> getOldToNewOrdinalMap(MergeState mergeState) throws IOException {
+  private int getNewOrdOffset(MergeState mergeState) throws IOException {
+    final DocIdSetIterator initializerIterator =
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE -> initReader.getByteVectorValues(fieldInfo.name);
+          case FLOAT32 -> initReader.getFloatVectorValues(fieldInfo.name);
+        };
 
-    DocIdSetIterator initializerIterator = null;
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> initializerIterator = curReader.getByteVectorValues(fieldInfo.name);
-      case FLOAT32 -> initializerIterator = curReader.getFloatVectorValues(fieldInfo.name);
+    // minDoc is just the first doc in the main segment containing our graph
+    // we don't need to worry about deleted documents as deletions are not allowed when selecting
+    // the best graph
+    int minDoc = initializerIterator.nextDoc();
+    if (minDoc == NO_MORE_DOCS) {
+      return -1;
     }
-
-    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
-    int oldOrd = 0;
-    int maxNewDocID = -1;
-    for (int oldId = initializerIterator.nextDoc();
-        oldId != NO_MORE_DOCS;
-        oldId = initializerIterator.nextDoc()) {
-      if (isCurrentVectorNull(initializerIterator)) {
-        continue;
-      }
-      int newId = curDocMap.get(oldId);
-      maxNewDocID = Math.max(newId, maxNewDocID);
-      newIdToOldOrdinal.put(newId, oldOrd);
-      oldOrd++;
-    }
-
-    if (maxNewDocID == -1) {
-      return Collections.emptyMap();
-    }
-
-    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
+    minDoc = initDocMap.get(minDoc);
 
     DocIdSetIterator vectorIterator = null;
     switch (fieldInfo.getVectorEncoding()) {
@@ -166,32 +161,17 @@ public class IncrementalHnswGraphMerger {
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
     }
 
-    int newOrd = 0;
+    // Since there are no deleted documents in our chosen segment, we can assume that the ordinals
+    // are unchanged
+    // meaning we only need to know what ordinal offset to select and apply it
+    int ordBaseline = 0;
     for (int newDocId = vectorIterator.nextDoc();
-        newDocId <= maxNewDocID;
+        newDocId < minDoc;
         newDocId = vectorIterator.nextDoc()) {
-      if (isCurrentVectorNull(vectorIterator)) {
-        continue;
-      }
-      if (newIdToOldOrdinal.containsKey(newDocId)) {
-        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
-      }
-      newOrd++;
+      ordBaseline++;
     }
 
-    return oldToNewOrdinalMap;
-  }
-
-  private static boolean isCurrentVectorNull(DocIdSetIterator docIdSetIterator) throws IOException {
-    if (docIdSetIterator instanceof FloatVectorValues) {
-      return ((FloatVectorValues) docIdSetIterator).vectorValue() == null;
-    }
-
-    if (docIdSetIterator instanceof ByteVectorValues) {
-      return ((ByteVectorValues) docIdSetIterator).vectorValue() == null;
-    }
-
-    return true;
+    return ordBaseline;
   }
 
   private static boolean allMatch(Bits bits) {

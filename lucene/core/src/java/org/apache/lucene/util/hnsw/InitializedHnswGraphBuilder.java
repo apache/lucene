@@ -20,9 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
-import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.BitSet;
 
 /**
  * This creates a graph builder that is initialized with the provided HnswGraph. This is useful for
@@ -31,46 +29,68 @@ import org.apache.lucene.util.CollectionUtil;
  * @lucene.internal
  */
 public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
-  private final Set<Integer> initializedNodes;
+
+  /**
+   * Create a new HnswGraphBuilder that is initialized with the provided HnswGraph.
+   *
+   * @param scorerSupplier
+   * @param M
+   * @param beamWidth
+   * @param seed
+   * @param initializerGraph
+   * @param newOrdOffset the offset to add to the ord of each node in the initializerGraph
+   * @param initializedNodes a bitset of nodes that are already initialized in the initializerGraph
+   * @return
+   * @throws IOException
+   */
+  public static InitializedHnswGraphBuilder fromGraph(
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      long seed,
+      HnswGraph initializerGraph,
+      int newOrdOffset,
+      BitSet initializedNodes)
+      throws IOException {
+    OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M);
+    for (int level = 0; level < initializerGraph.numLevels(); level++) {
+      HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
+      while (it.hasNext()) {
+        int oldOrd = it.nextInt();
+        int newOrd = oldOrd + newOrdOffset;
+        hnsw.addNode(level, newOrd);
+        NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);
+        initializerGraph.seek(level, oldOrd);
+        for (int oldNeighbor = initializerGraph.nextNeighbor();
+            oldNeighbor != NO_MORE_DOCS;
+            oldNeighbor = initializerGraph.nextNeighbor()) {
+          int newNeighbor = oldNeighbor + newOrdOffset;
+          // we will compute these scores later when we need to pop out the non-diverse nodes
+          newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
+        }
+      }
+    }
+    return new InitializedHnswGraphBuilder(
+        scorerSupplier, M, beamWidth, seed, hnsw, initializedNodes);
+  }
+
+  private final BitSet initializedNodes;
 
   public InitializedHnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier,
       int M,
       int beamWidth,
       long seed,
-      HnswGraph initializerGraph,
-      Map<Integer, Integer> oldToNewOrdinalMap)
+      OnHeapHnswGraph initializedGraph,
+      BitSet initializedNodes)
       throws IOException {
-    super(scorerSupplier, M, beamWidth, seed);
-    this.initializedNodes = CollectionUtil.newHashSet(initializerGraph.size());
-    for (int level = 0; level < initializerGraph.numLevels(); level++) {
-      HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
-      while (it.hasNext()) {
-        int oldOrd = it.nextInt();
-        int newOrd = oldToNewOrdinalMap.get(oldOrd);
-
-        hnsw.addNode(level, newOrd);
-
-        if (level == 0) {
-          initializedNodes.add(newOrd);
-        }
-
-        NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
-        initializerGraph.seek(level, oldOrd);
-        for (int oldNeighbor = initializerGraph.nextNeighbor();
-            oldNeighbor != NO_MORE_DOCS;
-            oldNeighbor = initializerGraph.nextNeighbor()) {
-          int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          // we will compute these scores later when we need to pop out the non-diverse nodes
-          newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
-        }
-      }
-    }
+    super(scorerSupplier, M, beamWidth, seed, initializedGraph);
+    this.initializedNodes = initializedNodes;
   }
 
   @Override
   public void addGraphNode(int node) throws IOException {
-    if (initializedNodes.contains(node)) {
+    if (initializedNodes.get(node)) {
       return;
     }
     super.addGraphNode(node);
