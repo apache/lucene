@@ -85,17 +85,20 @@ allprojects {
           [propName: 'tests.timezone', value: "random", description: "Sets the default time zone tests should run with."],
           // filtering
           [propName: 'tests.filter', value: null, description: "Applies a test filter (see :helpTests)."],
-          [propName: 'tests.slow', value: true, description: "Enables or disables @Slow tests."],
           [propName: 'tests.nightly', value: false, description: "Enables or disables @Nightly tests."],
           [propName: 'tests.weekly', value: false, description: "Enables or disables @Weekly tests."],
           [propName: 'tests.monster', value: false, description: "Enables or disables @Monster tests."],
           [propName: 'tests.awaitsfix', value: null, description: "Enables or disables @AwaitsFix tests."],
-          [propName: 'tests.badapples', value: null, description: "Enables or disables @BadApple tests."],
+          [propName: 'tests.gui',
+            value: {  ->
+              return rootProject.ext.isCIBuild
+            },
+            description: "Enables or disables @RequiresGUI tests."],
           [propName: 'tests.file.encoding',
-           value: { ->
-             RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])
-           },
-           description: "Sets the default file.encoding on test JVM.", buildOnly: true],
+            value: { ->
+              RandomPicks.randomFrom(new Random(projectSeedLong), ["US-ASCII", "ISO-8859-1", "UTF-8"])
+            },
+            description: "Sets the default file.encoding on test JVM.", buildOnly: true],
           // Test data file used.
           [propName: 'tests.linedocsfile', value: 'europarl.lines.txt.gz', description: "Test data file path."],
           // miscellaneous; some of them very weird.
@@ -163,16 +166,18 @@ allprojects {
 
         // Enable security manager, if requested. We could move the selection of security manager and security policy
         // to each project's build/ configuration but it seems compact enough to keep it here for now.
+        def securityArgumentProvider = new SecurityArgumentProvider(commonDir: project(":lucene").layout.projectDirectory)
         if (Boolean.parseBoolean(testOptionsResolved["tests.useSecurityManager"])) {
-          if (project.path == ":lucene:replicator") {
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/replicator-tests.policy")
+          if (project.path.endsWith(".tests")) {
+            // LUCENE-10301: for now, do not use the security manager for modular tests (test framework is not available).
+          } else if (project.path == ":lucene:replicator") {
+            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
+            securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/replicator-tests.policy")
           } else if (project.path.startsWith(":lucene")) {
-            systemProperty 'java.security.manager', "org.apache.lucene.util.TestSecurityManager"
-            systemProperty 'java.security.policy', file("${resources}/policies/tests.policy")
+            systemProperty 'java.security.manager', "org.apache.lucene.tests.util.TestSecurityManager"
+            securityArgumentProvider.javaSecurityPolicy = layout.projectDirectory.file("${resources}/policies/tests.policy")
           }
-
-          systemProperty 'common.dir', commonDir
+          jvmArgumentProviders.add(securityArgumentProvider)
 
           def gradleUserHome = project.gradle.getGradleUserHomeDir()
           systemProperty 'gradle.lib.dir', Paths.get(project.class.location.toURI()).parent.toAbsolutePath().toString().replace('\\', '/')
@@ -219,5 +224,24 @@ allprojects {
         }
       }
     }
+  }
+}
+
+class SecurityArgumentProvider implements CommandLineArgumentProvider {
+  @Internal
+  Directory commonDir
+
+  @InputFile
+  @Optional
+  @PathSensitive(PathSensitivity.RELATIVE)
+  RegularFile javaSecurityPolicy
+
+  @Override
+  Iterable<String> asArguments() {
+    def args = ["-Dcommon.dir=${commonDir.getAsFile()}"]
+    if (javaSecurityPolicy) {
+      args.add("-Djava.security.policy=${javaSecurityPolicy.getAsFile()}")
+    }
+    return args
   }
 }

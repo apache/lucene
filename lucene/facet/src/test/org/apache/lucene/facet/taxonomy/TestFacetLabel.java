@@ -19,8 +19,8 @@ package org.apache.lucene.facet.taxonomy;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Test;
 
 public class TestFacetLabel extends FacetTestCase {
@@ -236,11 +236,6 @@ public class TestFacetLabel extends FacetTestCase {
         IllegalArgumentException.class,
         () -> {
           new SortedSetDocValuesFacetField("", "abc");
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new SortedSetDocValuesFacetField("dim", null);
         });
     expectThrows(
         IllegalArgumentException.class,

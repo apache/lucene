@@ -86,6 +86,11 @@ final class XYPointInGeometryQuery extends Query {
       }
 
       @Override
+      public void visit(DocIdSetIterator iterator) throws IOException {
+        adder.add(iterator);
+      }
+
+      @Override
       public void visit(int docID, byte[] packedValue) {
         double x = XYEncodingUtils.decode(packedValue, 0);
         double y = XYEncodingUtils.decode(packedValue, Integer.BYTES);
@@ -99,10 +104,7 @@ final class XYPointInGeometryQuery extends Query {
         double x = XYEncodingUtils.decode(packedValue, 0);
         double y = XYEncodingUtils.decode(packedValue, Integer.BYTES);
         if (tree.contains(x, y)) {
-          int docID;
-          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            visit(docID);
-          }
+          adder.add(iterator);
         }
       }
 

@@ -17,54 +17,28 @@
 
 package org.apache.lucene.luke.util;
 
-import java.nio.charset.StandardCharsets;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.Appender;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.appender.FileAppender;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
-import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
-import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.apache.lucene.luke.app.desktop.util.TextAreaAppender;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/** Logger factory. This programmatically configurates logger context (Appenders etc.) */
+/** Logger factory. This configures log interceptors for the GUI. */
 public class LoggerFactory {
+  public static CircularLogBufferHandler circularBuffer;
 
-  public static void initGuiLogging(String logFile) {
-    ConfigurationBuilder<BuiltConfiguration> builder =
-        ConfigurationBuilderFactory.newConfigurationBuilder();
-    builder.add(builder.newRootLogger(Level.INFO));
-    LoggerContext context = Configurator.initialize(builder.build());
+  public static void initGuiLogging() {
+    if (circularBuffer != null) {
+      throw new RuntimeException("Double-initialization?");
+    }
 
-    PatternLayout layout =
-        PatternLayout.newBuilder()
-            .withPattern("[%d{ISO8601}] %5p (%F:%L) - %m%n")
-            .withCharset(StandardCharsets.UTF_8)
-            .build();
+    circularBuffer = new CircularLogBufferHandler();
+    circularBuffer.setLevel(Level.FINEST);
 
-    Appender fileAppender =
-        FileAppender.newBuilder()
-            .setName("File")
-            .setLayout(layout)
-            .withFileName(logFile)
-            .withAppend(false)
-            .build();
-    fileAppender.start();
-
-    Appender textAreaAppender =
-        TextAreaAppender.newBuilder().setName("TextArea").setLayout(layout).build();
-    textAreaAppender.start();
-
-    context.getRootLogger().addAppender(fileAppender);
-    context.getRootLogger().addAppender(textAreaAppender);
-    context.updateLoggers();
+    // Only capture events from Lucene logger hierarchy.
+    var luceneRoot = Logger.getLogger("org.apache.lucene");
+    luceneRoot.setLevel(Level.FINEST);
+    luceneRoot.addHandler(circularBuffer);
   }
 
   public static Logger getLogger(Class<?> clazz) {
-    return LogManager.getLogger(clazz);
+    return Logger.getLogger(clazz.getName());
   }
 }

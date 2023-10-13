@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -39,13 +38,16 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.DocHelper;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.Assume;
 
@@ -64,16 +66,17 @@ public class TestDirectoryReader extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(dir);
     assertTrue(reader != null);
     assertTrue(reader instanceof StandardDirectoryReader);
+    StoredFields storedFields = reader.storedFields();
 
-    Document newDoc1 = reader.document(0);
+    Document newDoc1 = storedFields.document(0);
     assertTrue(newDoc1 != null);
     assertTrue(
         DocHelper.numFields(newDoc1) == DocHelper.numFields(doc1) - DocHelper.unstored.size());
-    Document newDoc2 = reader.document(1);
+    Document newDoc2 = storedFields.document(1);
     assertTrue(newDoc2 != null);
     assertTrue(
         DocHelper.numFields(newDoc2) == DocHelper.numFields(doc2) - DocHelper.unstored.size());
-    Terms vector = reader.getTermVectors(0).terms(DocHelper.TEXT_FIELD_2_KEY);
+    Terms vector = reader.termVectors().get(0).terms(DocHelper.TEXT_FIELD_2_KEY);
     assertNotNull(vector);
 
     reader.close();
@@ -391,7 +394,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.addDocument(doc);
     writer.close();
     DirectoryReader reader = DirectoryReader.open(dir);
-    Document doc2 = reader.document(reader.maxDoc() - 1);
+    Document doc2 = reader.storedFields().document(reader.maxDoc() - 1);
     IndexableField[] fields = doc2.getFields("bin1");
     assertNotNull(fields);
     assertEquals(1, fields.length);
@@ -414,7 +417,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.forceMerge(1);
     writer.close();
     reader = DirectoryReader.open(dir);
-    doc2 = reader.document(reader.maxDoc() - 1);
+    doc2 = reader.storedFields().document(reader.maxDoc() - 1);
     fields = doc2.getFields("bin1");
     assertNotNull(fields);
     assertEquals(1, fields.length);
@@ -610,10 +613,12 @@ public class TestDirectoryReader extends LuceneTestCase {
     }
 
     // check stored fields
+    StoredFields storedFields1 = index1.storedFields();
+    StoredFields storedFields2 = index2.storedFields();
     for (int i = 0; i < index1.maxDoc(); i++) {
       if (liveDocs1 == null || liveDocs1.get(i)) {
-        Document doc1 = index1.document(i);
-        Document doc2 = index2.document(i);
+        Document doc1 = storedFields1.document(i);
+        Document doc2 = storedFields2.document(i);
         List<IndexableField> field1 = doc1.getFields();
         List<IndexableField> field2 = doc2.getFields();
         assertEquals(
@@ -874,7 +879,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     Document d = new Document();
     d.add(newTextField("f", "a a b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls totalTermFreq (eg PreFlex doesn't)
@@ -897,7 +902,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -918,7 +923,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "a", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -939,7 +944,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     d = new Document();
     d.add(newTextField("f", "a a b", Field.Store.NO));
     writer.addDocument(d);
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
     try {
       // Make sure codec impls getSumDocFreq (eg PreFlex doesn't)
@@ -963,7 +968,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     writer.addDocument(new Document());
     writer.commit();
-    final DirectoryReader reader = writer.getReader();
+    final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
     final IndexReader.ClosedListener listener =
         new IndexReader.ClosedListener() {
@@ -994,13 +999,13 @@ public class TestDirectoryReader extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     writer.addDocument(new Document());
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     writer.close();
-    r.document(0);
+    r.storedFields().document(0);
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          r.document(1);
+          r.storedFields().document(1);
         });
     r.close();
     dir.close();
@@ -1082,9 +1087,9 @@ public class TestDirectoryReader extends LuceneTestCase {
     DirectoryReader r = writer.getReader();
     writer.close();
     Set<String> fieldsToLoad = new HashSet<>();
-    assertEquals(0, r.document(0, fieldsToLoad).getFields().size());
+    assertEquals(0, r.storedFields().document(0, fieldsToLoad).getFields().size());
     fieldsToLoad.add("field1");
-    Document doc2 = r.document(0, fieldsToLoad);
+    Document doc2 = r.storedFields().document(0, fieldsToLoad);
     assertEquals(1, doc2.getFields().size());
     assertEquals("foobar", doc2.get("field1"));
     r.close();

@@ -32,7 +32,7 @@ public class FacetLabel implements Comparable<FacetLabel> {
   /*
    * copied from DocumentWriterPerThread -- if a FacetLabel is resolved to a
    * drill-down term which is encoded to a larger term than that length, it is
-   * silently dropped! Therefore we limit the number of characters to MAX/4 to
+   * silently dropped! Therefore, we limit the number of characters to MAX/4 to
    * be on the safe side.
    */
   /** The maximum number of characters a {@link FacetLabel} can have. */
@@ -48,10 +48,10 @@ public class FacetLabel implements Comparable<FacetLabel> {
   /** The number of components of this {@link FacetLabel}. */
   public final int length;
 
-  // Used by subpath
+  // Used by sub-path
   private FacetLabel(final FacetLabel copyFrom, final int prefixLen) {
-    // while the code which calls this method is safe, at some point a test
-    // tripped on AIOOBE in toString, but we failed to reproduce. adding the
+    // While the code which calls this method is safe, at some point a test
+    // tripped on AIOOBE in toString, but we failed to reproduce. Adding
     // assert as a safety check.
     assert prefixLen >= 0 && prefixLen <= copyFrom.components.length
         : "prefixLen cannot be negative nor larger than the given components' length: prefixLen="
@@ -103,7 +103,7 @@ public class FacetLabel implements Comparable<FacetLabel> {
   /** Compares this path with another {@link FacetLabel} for lexicographic order. */
   @Override
   public int compareTo(FacetLabel other) {
-    final int len = length < other.length ? length : other.length;
+    final int len = Math.min(length, other.length);
     for (int i = 0, j = 0; i < len; i++, j++) {
       int cmp = components[i].compareTo(other.components[j]);
       if (cmp < 0) {
@@ -120,7 +120,7 @@ public class FacetLabel implements Comparable<FacetLabel> {
 
   @Override
   public boolean equals(Object obj) {
-    if (!(obj instanceof FacetLabel)) {
+    if (obj instanceof FacetLabel == false) {
       return false;
     }
 

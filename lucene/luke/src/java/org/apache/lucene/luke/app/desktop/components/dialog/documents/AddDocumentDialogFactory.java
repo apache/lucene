@@ -33,6 +33,8 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.swing.BorderFactory;
@@ -51,7 +53,6 @@ import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -399,15 +400,15 @@ public final class AddDocumentDialogFactory
           doc.add(toIndexableField(nf));
         }
       } catch (NumberFormatException ex) {
-        log.error("Error converting field value", e);
+        log.log(Level.SEVERE, "Error converting field value", e);
         throw new LukeException("Invalid value: " + ex.getMessage(), ex);
       } catch (Exception ex) {
-        log.error("Error converting field value", e);
+        log.log(Level.SEVERE, "Error converting field value", e);
         throw new LukeException(ex.getMessage(), ex);
       }
 
       addDocument(doc);
-      log.info("Added document: {}", doc);
+      log.info("Added document: " + doc);
     }
 
     @SuppressWarnings("unchecked")

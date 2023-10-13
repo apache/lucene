@@ -18,17 +18,26 @@ package org.apache.lucene.index;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
-import org.apache.lucene.document.*;
+import org.apache.lucene.document.BinaryPoint;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.index.BaseTestCheckIndex;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.junit.Test;
 
@@ -87,8 +96,8 @@ public class TestCheckIndex extends BaseTestCheckIndex {
           doc.add(new StoredField("field", "value" + TestUtil.randomSimpleString(random())));
 
           // vector
-          doc.add(new KnnVectorField("v1", randomVector(3)));
-          doc.add(new KnnVectorField("v2", randomVector(3)));
+          doc.add(new KnnFloatVectorField("v1", randomVector(3)));
+          doc.add(new KnnFloatVectorField("v2", randomVector(3)));
 
           // doc value
           doc.add(new NumericDocValuesField("dv", random().nextLong()));

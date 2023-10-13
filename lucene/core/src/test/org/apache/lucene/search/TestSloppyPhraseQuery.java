@@ -17,19 +17,22 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
+import java.util.Collection;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingScorable;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSloppyPhraseQuery extends LuceneTestCase {
 
@@ -155,12 +158,11 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     IndexReader reader = writer.getReader();
 
     IndexSearcher searcher = newSearcher(reader);
-    MaxFreqCollector c = new MaxFreqCollector();
-    searcher.search(query, c);
+    Result result = searcher.search(query, new MaxFreqCollectorManager());
     assertEquals(
         "slop: " + slop + "  query: " + query + "  doc: " + doc + "  Wrong number of hits",
         expectedNumResults,
-        c.totalHits);
+        result.totalHits);
 
     // QueryUtils.check(query,searcher);
     writer.close();
@@ -170,7 +172,7 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
     // returns the max Scorer.freq() found, because even though norms are omitted, many index stats
     // are different
     // with these different tokens/distributions/lengths.. otherwise this test is very fragile.
-    return c.max;
+    return result.max;
   }
 
   private static Document makeDocument(String docText) {
@@ -185,6 +187,28 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
   private static PhraseQuery makePhraseQuery(String terms) {
     String[] t = terms.split(" +");
     return new PhraseQuery("f", t);
+  }
+
+  static class Result {
+    float max;
+    int totalHits;
+  }
+
+  static class MaxFreqCollectorManager implements CollectorManager<MaxFreqCollector, Result> {
+    @Override
+    public MaxFreqCollector newCollector() throws IOException {
+      return new MaxFreqCollector();
+    }
+
+    @Override
+    public Result reduce(Collection<MaxFreqCollector> collectors) throws IOException {
+      Result result = new Result();
+      for (MaxFreqCollector collector : collectors) {
+        result.max = Math.max(result.max, collector.max);
+        result.totalHits += collector.totalHits;
+      }
+      return result;
+    }
   }
 
   static class MaxFreqCollector extends SimpleCollector {
@@ -218,22 +242,32 @@ public class TestSloppyPhraseQuery extends LuceneTestCase {
   private void assertSaneScoring(PhraseQuery pq, IndexSearcher searcher) throws Exception {
     searcher.search(
         pq,
-        new SimpleCollector() {
-          Scorer scorer;
-
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              Scorer scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) {
+                this.scorer = (Scorer) AssertingScorable.unwrap(scorer);
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                assertFalse(Float.isInfinite(scorer.score()));
+              }
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE;
+              }
+            };
           }
 
           @Override
-          public void collect(int doc) throws IOException {
-            assertFalse(Float.isInfinite(scorer.score()));
-          }
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
           }
         });
     QueryUtils.check(random(), pq, searcher);

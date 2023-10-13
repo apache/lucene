@@ -124,11 +124,15 @@ final class NRTSuggesterBuilder {
    * <p>TODO: is there a better way to make the fst built to be more TopNSearcher friendly?
    */
   private static int maxNumArcsForDedupByte(int currentNumDedupBytes) {
-    int maxArcs = 1 + (2 * currentNumDedupBytes);
+    long maxArcs = 2 * (long) currentNumDedupBytes + 1;
+    // return immediately when maxArcs is greater than 255 to prevent integer overflow
+    if (maxArcs >= 255) {
+      return 255;
+    }
     if (currentNumDedupBytes > 5) {
       maxArcs *= currentNumDedupBytes;
     }
-    return Math.min(maxArcs, 255);
+    return (int) Math.min(maxArcs, 255);
   }
 
   private static final class Entry implements Comparable<Entry> {

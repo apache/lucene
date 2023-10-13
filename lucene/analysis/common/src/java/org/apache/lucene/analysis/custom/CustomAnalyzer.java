@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,6 +41,7 @@ import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilterFactory;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.util.FilesystemResourceLoader;
 import org.apache.lucene.util.ClasspathResourceLoader;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.SetOnce;
@@ -594,11 +594,9 @@ public final class CustomAnalyzer extends Analyzer {
     }
 
     private Map<String, String> applyDefaultParams(Map<String, String> map) {
-      if (defaultMatchVersion.get() != null
-          && !map.containsKey(AbstractAnalysisFactory.LUCENE_MATCH_VERSION_PARAM)) {
-        map.put(
-            AbstractAnalysisFactory.LUCENE_MATCH_VERSION_PARAM,
-            defaultMatchVersion.get().toString());
+      Version v = defaultMatchVersion.get();
+      if (v != null) {
+        map.putIfAbsent(AbstractAnalysisFactory.LUCENE_MATCH_VERSION_PARAM, v.toString());
       }
       return map;
     }
@@ -608,7 +606,7 @@ public final class CustomAnalyzer extends Analyzer {
         throw new IllegalArgumentException(
             "Key-value pairs expected, so the number of params must be even.");
       }
-      final Map<String, String> map = new HashMap<>();
+      final Map<String, String> map = CollectionUtil.newHashMap(params.length);
       for (int i = 0; i < params.length; i += 2) {
         Objects.requireNonNull(params[i], "Key of param may not be null.");
         map.put(params[i], params[i + 1]);

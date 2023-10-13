@@ -22,11 +22,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -38,7 +36,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.xml.sax.SAXException;
 
@@ -315,7 +316,7 @@ public class TestCoreParser extends LuceneTestCase {
   }
 
   protected Query rewrite(Query q) throws IOException {
-    return q.rewrite(reader());
+    return q.rewrite(searcher());
   }
 
   protected void dumpResults(String qType, Query q, int numDocs) throws IOException {
@@ -346,8 +347,9 @@ public class TestCoreParser extends LuceneTestCase {
     }
     if (VERBOSE) {
       ScoreDoc[] scoreDocs = hits.scoreDocs;
+      StoredFields storedFields = searcher.storedFields();
       for (int i = 0; i < Math.min(numDocs, hits.totalHits.value); i++) {
-        Document ldoc = searcher.doc(scoreDocs[i].doc);
+        Document ldoc = storedFields.document(scoreDocs[i].doc);
         System.out.println("[" + ldoc.get("date") + "]" + ldoc.get("contents"));
       }
       System.out.println();

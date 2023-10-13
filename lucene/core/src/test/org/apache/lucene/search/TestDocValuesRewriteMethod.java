@@ -20,20 +20,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
-import org.apache.lucene.util.automaton.AutomatonTestUtil;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /** Tests the DocValuesRewriteMethod */
@@ -112,8 +115,14 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
 
   /** check that the # of hits is the same as if the query is run against the inverted index */
   protected void assertSame(String regexp) throws IOException {
-    RegexpQuery docValues = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
-    docValues.setRewriteMethod(new DocValuesRewriteMethod());
+    RegexpQuery docValues =
+        new RegexpQuery(
+            new Term(fieldName, regexp),
+            RegExp.NONE,
+            0,
+            name -> null,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            new DocValuesRewriteMethod());
     RegexpQuery inverted = new RegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
 
     TopDocs invertedDocs = searcher1.search(inverted, 25);
@@ -123,17 +132,42 @@ public class TestDocValuesRewriteMethod extends LuceneTestCase {
   }
 
   public void testEquals() throws Exception {
-    RegexpQuery a1 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
-    RegexpQuery a2 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
-    RegexpQuery b = new RegexpQuery(new Term(fieldName, "[bB]"), RegExp.NONE);
-    assertEquals(a1, a2);
-    assertFalse(a1.equals(b));
+    {
+      RegexpQuery a1 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
+      RegexpQuery a2 = new RegexpQuery(new Term(fieldName, "[aA]"), RegExp.NONE);
+      RegexpQuery b = new RegexpQuery(new Term(fieldName, "[bB]"), RegExp.NONE);
+      assertEquals(a1, a2);
+      assertFalse(a1.equals(b));
+    }
 
-    a1.setRewriteMethod(new DocValuesRewriteMethod());
-    a2.setRewriteMethod(new DocValuesRewriteMethod());
-    b.setRewriteMethod(new DocValuesRewriteMethod());
-    assertEquals(a1, a2);
-    assertFalse(a1.equals(b));
-    QueryUtils.check(a1);
+    {
+      RegexpQuery a1 =
+          new RegexpQuery(
+              new Term(fieldName, "[aA]"),
+              RegExp.NONE,
+              0,
+              name -> null,
+              Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+              new DocValuesRewriteMethod());
+      RegexpQuery a2 =
+          new RegexpQuery(
+              new Term(fieldName, "[aA]"),
+              RegExp.NONE,
+              0,
+              name -> null,
+              Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+              new DocValuesRewriteMethod());
+      RegexpQuery b =
+          new RegexpQuery(
+              new Term(fieldName, "[bB]"),
+              RegExp.NONE,
+              0,
+              name -> null,
+              Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+              new DocValuesRewriteMethod());
+      assertEquals(a1, a2);
+      assertFalse(a1.equals(b));
+      QueryUtils.check(a1);
+    }
   }
 }

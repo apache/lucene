@@ -18,12 +18,14 @@ package org.apache.lucene.analysis.synonym;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.util.StringMockResourceLoader;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.Version;
 
-/** @since solr 1.4 */
+/**
+ * @since solr 1.4
+ */
 public class TestMultiWordSynonyms extends BaseTokenStreamFactoryTestCase {
 
   public void testMultiWordSynonyms() throws Exception {

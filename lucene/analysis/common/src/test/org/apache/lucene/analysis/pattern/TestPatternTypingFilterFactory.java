@@ -17,12 +17,12 @@
 
 package org.apache.lucene.analysis.pattern;
 
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.util.StringMockResourceLoader;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.Version;
 
 /** This test just ensures the factory works */

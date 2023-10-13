@@ -65,7 +65,7 @@ public class KnnVectorDict implements Closeable {
     long size = vectors.length();
     vectors.seek(size - Integer.BYTES);
     dimension = vectors.readInt();
-    if ((size - Integer.BYTES) % (dimension * Float.BYTES) != 0) {
+    if ((size - Integer.BYTES) % (dimension * (long) Float.BYTES) != 0) {
       throw new IllegalStateException(
           "vector file size " + size + " is not consonant with the vector dimension " + dimension);
     }

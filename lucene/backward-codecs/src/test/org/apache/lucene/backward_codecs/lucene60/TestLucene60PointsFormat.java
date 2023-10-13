@@ -18,32 +18,34 @@ package org.apache.lucene.backward_codecs.lucene60;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.lucene60.bkd.BKDWriter60;
 import org.apache.lucene.backward_codecs.lucene84.Lucene84RWCodec;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.BasePointsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.MockRandomMergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.bkd.BKDConfig;
+import org.apache.lucene.tests.index.BasePointsFormatTestCase;
+import org.apache.lucene.tests.index.MockRandomMergePolicy;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene60PointsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
   private final Codec codec;
   private final int maxPointsInLeafNode;
 
   public TestLucene60PointsFormat() {
     codec = new Lucene84RWCodec();
-    maxPointsInLeafNode = BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+    maxPointsInLeafNode = BKDWriter60.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
   }
 
   @Override
@@ -51,6 +53,8 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
     return codec;
   }
 
+  // TODO: clean up the math/estimation here rather than suppress so many warnings
+  @SuppressWarnings({"NarrowCalculation", "LongDoubleConversion"})
   public void testEstimatePointCount() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
@@ -66,9 +70,11 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
     final int numDocs =
         TEST_NIGHTLY ? atLeast(10000) : atLeast(500); // at night, make sure we have several leaves
     final boolean multiValues = random().nextBoolean();
+    int totalValues = 0;
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       if (i == numDocs / 2) {
+        totalValues++;
         doc.add(new BinaryPoint("f", uniquePointValue));
       } else {
         final int numValues = (multiValues) ? TestUtil.nextInt(random(), 2, 100) : 1;
@@ -77,6 +83,7 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
             random().nextBytes(pointValue);
           } while (Arrays.equals(pointValue, uniquePointValue));
           doc.add(new BinaryPoint("f", pointValue));
+          totalValues++;
         }
       }
       w.addDocument(doc);
@@ -86,9 +93,6 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
     w.close();
     final LeafReader lr = getOnlyLeafReader(r);
     PointValues points = lr.getPointValues("f");
-
-    // If all points match, then the point count is numLeaves * maxPointsInLeafNode
-    final int numLeaves = (int) Math.ceil((double) points.size() / maxPointsInLeafNode);
 
     IntersectVisitor allPointsVisitor =
         new IntersectVisitor() {
@@ -104,7 +108,7 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
           }
         };
 
-    assertEquals(numLeaves * maxPointsInLeafNode, points.estimatePointCount(allPointsVisitor));
+    assertEquals(totalValues, points.estimatePointCount(allPointsVisitor));
     assertEquals(numDocs, points.estimateDocCount(allPointsVisitor));
 
     IntersectVisitor noPointsVisitor =
@@ -146,11 +150,16 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
     // If only one point matches, then the point count is (maxPointsInLeafNode + 1) / 2
     // in general, or maybe 2x that if the point is a split value
     final long pointCount = points.estimatePointCount(onePointMatchVisitor);
+    final long lastNodePointCount = totalValues % maxPointsInLeafNode;
     assertTrue(
         "" + pointCount,
-        pointCount == (maxPointsInLeafNode + 1) / 2
-            || // common case
-            pointCount == 2 * ((maxPointsInLeafNode + 1) / 2)); // if the point is a split value
+        pointCount == (maxPointsInLeafNode + 1) / 2 // common case
+            || pointCount == (lastNodePointCount + 1) / 2 // not fully populated leaf
+            || pointCount == 2 * ((maxPointsInLeafNode + 1) / 2) // if the point is a split value
+            || pointCount
+                == ((maxPointsInLeafNode + 1) / 2)
+                    + ((lastNodePointCount + 1)
+                        / 2)); // if the point is a split value and one leaf is not fully populated
 
     final long docCount = points.estimateDocCount(onePointMatchVisitor);
 
@@ -171,6 +180,8 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
 
   // The tree is always balanced in the N dims case, and leaves are
   // not all full so things are a bit different
+  // TODO: clean up the math/estimation here rather than suppress so many warnings
+  @SuppressWarnings({"NarrowCalculation", "LongDoubleConversion"})
   public void testEstimatePointCount2Dims() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -187,10 +198,12 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
             ? atLeast(10000)
             : atLeast(1000); // in nightly, make sure we have several leaves
     final boolean multiValues = random().nextBoolean();
+    int totalValues = 0;
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       if (i == numDocs / 2) {
         doc.add(new BinaryPoint("f", uniquePointValue));
+        totalValues++;
       } else {
         final int numValues = (multiValues) ? TestUtil.nextInt(random(), 2, 100) : 1;
         for (int j = 0; j < numValues; j++) {
@@ -200,6 +213,7 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
           } while (Arrays.equals(pointValue[0], uniquePointValue[0])
               || Arrays.equals(pointValue[1], uniquePointValue[1]));
           doc.add(new BinaryPoint("f", pointValue));
+          totalValues++;
         }
       }
       w.addDocument(doc);
@@ -224,10 +238,7 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
           }
         };
 
-    // If all points match, then the point count is numLeaves * maxPointsInLeafNode
-    final int numLeaves = (int) Math.ceil((double) points.size() / maxPointsInLeafNode);
-
-    assertEquals(numLeaves * maxPointsInLeafNode, points.estimatePointCount(allPointsVisitor));
+    assertEquals(totalValues, points.estimatePointCount(allPointsVisitor));
     assertEquals(numDocs, points.estimateDocCount(allPointsVisitor));
 
     IntersectVisitor noPointsVisitor =
@@ -273,11 +284,23 @@ public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
         };
 
     final long pointCount = points.estimatePointCount(onePointMatchVisitor);
-    // The number of matches needs to be multiple of count per leaf
-    final long countPerLeaf = (maxPointsInLeafNode + 1) / 2;
-    assertTrue("" + pointCount, pointCount % countPerLeaf == 0);
-    // in extreme cases, a point can be be shared by 4 leaves
-    assertTrue("" + pointCount, pointCount / countPerLeaf <= 4 && pointCount / countPerLeaf >= 1);
+    // With >1 dims, the tree is balanced
+    long actualMaxPointsInLeafNode = points.size();
+    while (actualMaxPointsInLeafNode > maxPointsInLeafNode) {
+      actualMaxPointsInLeafNode = (actualMaxPointsInLeafNode + 1) / 2;
+    }
+    final long countPerFullLeaf = (actualMaxPointsInLeafNode + 1) / 2;
+    final long countPerNotFullLeaf = (actualMaxPointsInLeafNode) / 2;
+    assertTrue(
+        pointCount + " vs " + actualMaxPointsInLeafNode,
+        // common case, point in one leaf.
+        pointCount >= countPerNotFullLeaf && pointCount <= countPerFullLeaf
+            ||
+            // one dimension is a split value
+            pointCount >= 2 * countPerNotFullLeaf && pointCount <= 2 * countPerFullLeaf
+            ||
+            // both dimensions are split values
+            pointCount >= 4 * countPerNotFullLeaf && pointCount <= 4 * countPerFullLeaf);
 
     final long docCount = points.estimateDocCount(onePointMatchVisitor);
     if (multiValues) {

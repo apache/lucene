@@ -57,10 +57,7 @@ grant {
   permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   // needed by cyberneko usage by benchmarks on J9
   permission java.lang.RuntimePermission "accessClassInPackage.org.apache.xerces.util";
-  // needed by org.apache.logging.log4j
-  permission java.lang.RuntimePermission "getenv.*";
   permission java.lang.RuntimePermission "getClassLoader";
-  permission java.lang.RuntimePermission "setContextClassLoader";
 
   // Needed for loading native library (lucene:misc:native) in lucene:misc
   permission java.lang.RuntimePermission "getFileStoreAttributes";

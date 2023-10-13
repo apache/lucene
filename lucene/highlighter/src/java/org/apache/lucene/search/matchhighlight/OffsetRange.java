@@ -71,7 +71,9 @@ public class OffsetRange implements Cloneable {
     return new OffsetRange(from, to);
   }
 
-  /** @return {@code true} if this range contains or is equal to {@code other}. */
+  /**
+   * @return {@code true} if this range contains or is equal to {@code other}.
+   */
   public boolean contains(OffsetRange other) {
     return from <= other.from && to >= other.to;
   }

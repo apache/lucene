@@ -17,12 +17,13 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestEarlyTermination extends LuceneTestCase {
 
@@ -56,37 +57,45 @@ public class TestEarlyTermination extends LuceneTestCase {
 
     for (int i = 0; i < iters; ++i) {
       final IndexSearcher searcher = newSearcher(reader);
-      final Collector collector =
-          new SimpleCollector() {
-
-            boolean collectionTerminated = true;
-
+      searcher.search(
+          new MatchAllDocsQuery(),
+          new CollectorManager<SimpleCollector, Void>() {
             @Override
-            public void collect(int doc) throws IOException {
-              assertFalse(collectionTerminated);
-              if (rarely()) {
-                collectionTerminated = true;
-                throw new CollectionTerminatedException();
-              }
+            public SimpleCollector newCollector() {
+              return new SimpleCollector() {
+                boolean collectionTerminated = true;
+
+                @Override
+                public void collect(int doc) {
+                  assertFalse(collectionTerminated);
+                  if (rarely()) {
+                    collectionTerminated = true;
+                    throw new CollectionTerminatedException();
+                  }
+                }
+
+                @Override
+                protected void doSetNextReader(LeafReaderContext context) {
+                  if (random().nextBoolean()) {
+                    collectionTerminated = true;
+                    throw new CollectionTerminatedException();
+                  } else {
+                    collectionTerminated = false;
+                  }
+                }
+
+                @Override
+                public ScoreMode scoreMode() {
+                  return ScoreMode.COMPLETE_NO_SCORES;
+                }
+              };
             }
 
             @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              if (random().nextBoolean()) {
-                collectionTerminated = true;
-                throw new CollectionTerminatedException();
-              } else {
-                collectionTerminated = false;
-              }
+            public Void reduce(Collection<SimpleCollector> collectors) {
+              return null;
             }
-
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE_NO_SCORES;
-            }
-          };
-
-      searcher.search(new MatchAllDocsQuery(), collector);
+          });
     }
     reader.close();
   }

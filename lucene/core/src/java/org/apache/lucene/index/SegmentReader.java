@@ -29,6 +29,8 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.internal.tests.SegmentReaderAccess;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
@@ -245,13 +247,17 @@ public final class SegmentReader extends CodecReader {
   @Override
   public TermVectorsReader getTermVectorsReader() {
     ensureOpen();
-    return core.termVectorsLocal.get();
+    if (core.termVectorsReaderOrig == null) {
+      return null;
+    } else {
+      return core.termVectorsReaderOrig.clone();
+    }
   }
 
   @Override
   public StoredFieldsReader getFieldsReader() {
     ensureOpen();
-    return core.fieldsReaderLocal.get();
+    return core.fieldsReaderOrig.clone();
   }
 
   @Override
@@ -311,7 +317,7 @@ public final class SegmentReader extends CodecReader {
   private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
 
   @Override
-  void notifyReaderClosedListeners() throws IOException {
+  protected void notifyReaderClosedListeners() throws IOException {
     synchronized (readerClosedListeners) {
       IOUtils.applyToAll(readerClosedListeners, l -> l.onClose(readerCacheHelper.getKey()));
     }
@@ -392,5 +398,15 @@ public final class SegmentReader extends CodecReader {
     if (core.cfsReader != null) {
       core.cfsReader.checkIntegrity();
     }
+  }
+
+  static {
+    TestSecrets.setSegmentReaderAccess(
+        new SegmentReaderAccess() {
+          @Override
+          public Object getCore(SegmentReader segmentReader) {
+            return segmentReader.core;
+          }
+        });
   }
 }

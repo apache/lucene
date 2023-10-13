@@ -42,6 +42,10 @@ import org.apache.lucene.util.DocIdSetBuilder;
  * but in this case you must override both of these methods.
  */
 public abstract class NumericComparator<T extends Number> extends FieldComparator<T> {
+
+  // MIN_SKIP_INTERVAL and MAX_SKIP_INTERVAL both should be powers of 2
+  private static final int MIN_SKIP_INTERVAL = 32;
+  private static final int MAX_SKIP_INTERVAL = 8192;
   protected final T missingValue;
   protected final String field;
   protected final boolean reverse;
@@ -55,12 +59,12 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   private boolean canSkipDocuments;
 
   protected NumericComparator(
-      String field, T missingValue, boolean reverse, int sortPos, int bytesCount) {
+      String field, T missingValue, boolean reverse, boolean enableSkipping, int bytesCount) {
     this.field = field;
     this.missingValue = missingValue;
     this.reverse = reverse;
     // skipping functionality is only relevant for primary sort
-    this.canSkipDocuments = (sortPos == 0);
+    this.canSkipDocuments = enableSkipping;
     this.bytesCount = bytesCount;
     this.bytesComparator = ArrayUtil.getUnsignedComparator(bytesCount);
   }
@@ -87,17 +91,20 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
-    private final byte[] minValueAsBytes;
-    private final byte[] maxValueAsBytes;
+    private byte[] minValueAsBytes;
+    private byte[] maxValueAsBytes;
 
     private DocIdSetIterator competitiveIterator;
-    private long iteratorCost;
+    private long iteratorCost = -1;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
+    private int currentSkipInterval = MIN_SKIP_INTERVAL;
+    // helps to be conservative about increasing the sampling interval
+    private int tryUpdateFailCount = 0;
 
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.docValues = getNumericDocValues(context, field);
-      this.pointValues = canSkipDocuments ? getPointValues(context, field) : null;
+      this.pointValues = canSkipDocuments ? context.reader().getPointValues(field) : null;
       if (pointValues != null) {
         FieldInfo info = context.reader().getFieldInfos().fieldInfo(field);
         if (info == null || info.getPointDimensionCount() == 0) {
@@ -121,27 +128,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
-        this.maxValueAsBytes =
-            reverse == false ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
-        this.minValueAsBytes =
-            reverse ? new byte[bytesCount] : topValueSet ? new byte[bytesCount] : null;
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
-        this.iteratorCost = maxDoc;
       } else {
         this.enableSkipping = false;
         this.maxDoc = 0;
-        this.maxValueAsBytes = null;
-        this.minValueAsBytes = null;
       }
     }
 
     /**
      * Retrieves the NumericDocValues for the field in this segment
      *
-     * <p>If you override this method, you must also override {@link
-     * #getPointValues(LeafReaderContext, String)} This class uses sort optimization that leverages
-     * points to filter out non-competitive matches, which relies on the assumption that points and
-     * doc values record the same information.
+     * <p>If you override this method, you should probably always disable skipping as the comparator
+     * uses values from the points index to build its competitive iterators, and assumes that the
+     * values in doc values and points are the same.
      *
      * @param context – reader context
      * @param field - field name
@@ -151,26 +150,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     protected NumericDocValues getNumericDocValues(LeafReaderContext context, String field)
         throws IOException {
       return DocValues.getNumeric(context.reader(), field);
-    }
-
-    /**
-     * Retrieves point values for the field in this segment
-     *
-     * <p>If you override this method, you must also override {@link
-     * #getNumericDocValues(LeafReaderContext, String)} This class uses sort optimization that
-     * leverages points to filter out non-competitive matches, which relies on the assumption that
-     * points and doc values record the same information. Return {@code null} even if no points
-     * implementation is available, in this case sort optimization with points will be disabled.
-     *
-     * @param context – reader context
-     * @param field - field name
-     * @return point values for the field in this segment if they are available or {@code null} if
-     *     sort optimization with points should be disabled.
-     * @throws IOException If there is a low-level I/O error
-     */
-    protected PointValues getPointValues(LeafReaderContext context, String field)
-        throws IOException {
-      return context.reader().getPointValues(field);
     }
 
     @Override
@@ -186,9 +165,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
-      if (scorer instanceof Scorer) {
-        iteratorCost =
-            ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+      if (iteratorCost == -1) {
+        if (scorer instanceof Scorer) {
+          iteratorCost =
+              ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+        } else {
+          iteratorCost = maxDoc;
+        }
         updateCompetitiveIterator(); // update an iterator when we have a new segment
       }
     }
@@ -202,25 +185,36 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     // update its iterator to include possibly only docs that are "stronger" than the current bottom
     // entry
     private void updateCompetitiveIterator() throws IOException {
-      if (enableSkipping == false || hitsThresholdReached == false || queueFull == false) return;
+      if (enableSkipping == false
+          || hitsThresholdReached == false
+          || (queueFull == false && topValueSet == false)) return;
       // if some documents have missing points, check that missing values prohibits optimization
       if ((pointValues.getDocCount() < maxDoc) && isMissingValueCompetitive()) {
         return; // we can't filter out documents, as documents with missing values are competitive
       }
 
       updateCounter++;
+      // Start sampling if we get called too much
       if (updateCounter > 256
-          && (updateCounter & 0x1f) != 0x1f) { // Start sampling if we get called too much
+          && (updateCounter & (currentSkipInterval - 1)) != currentSkipInterval - 1) {
         return;
       }
       if (reverse == false) {
-        encodeBottom(maxValueAsBytes);
+        if (queueFull) { // bottom is avilable only when queue is full
+          maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
+          encodeBottom(maxValueAsBytes);
+        }
         if (topValueSet) {
+          minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
           encodeTop(minValueAsBytes);
         }
       } else {
-        encodeBottom(minValueAsBytes);
+        if (queueFull) { // bottom is avilable only when queue is full
+          minValueAsBytes = minValueAsBytes == null ? new byte[bytesCount] : minValueAsBytes;
+          encodeBottom(minValueAsBytes);
+        }
         if (topValueSet) {
+          maxValueAsBytes = maxValueAsBytes == null ? new byte[bytesCount] : maxValueAsBytes;
           encodeTop(maxValueAsBytes);
         }
       }
@@ -290,11 +284,49 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       if (estimatedNumberOfMatches >= threshold) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
+        updateSkipInterval(false);
         return;
       }
       pointValues.intersect(visitor);
       competitiveIterator = result.build().iterator();
       iteratorCost = competitiveIterator.cost();
+      updateSkipInterval(true);
+    }
+
+    private void updateSkipInterval(boolean success) {
+      if (updateCounter > 256) {
+        if (success) {
+          currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
+          tryUpdateFailCount = 0;
+        } else {
+          if (tryUpdateFailCount >= 3) {
+            currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
+            tryUpdateFailCount = 0;
+          } else {
+            tryUpdateFailCount++;
+          }
+        }
+      }
+    }
+
+    private boolean isMissingValueCompetitive() {
+      // if queue is full, always compare with bottom,
+      // if not, check if we can compare with topValue
+      if (queueFull) {
+        int result = compareMissingValueWithBottomValue();
+        // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
+        // in asc sort missingValue is competitive when it's smaller or equal to bottom
+        return reverse ? (result >= 0) : (result <= 0);
+      } else if (topValueSet) {
+        int result = compareMissingValueWithTopValue();
+        // in reverse (desc) sort missingValue is competitive when it's smaller or equal to
+        // topValue,
+        // in asc sort missingValue is competitive when it's greater or equal to topValue
+        return reverse ? (result <= 0) : (result >= 0);
+      } else {
+        // by default competitive
+        return true;
+      }
     }
 
     @Override
@@ -325,7 +357,9 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       };
     }
 
-    protected abstract boolean isMissingValueCompetitive();
+    protected abstract int compareMissingValueWithTopValue();
+
+    protected abstract int compareMissingValueWithBottomValue();
 
     protected abstract void encodeBottom(byte[] packedValue);
 

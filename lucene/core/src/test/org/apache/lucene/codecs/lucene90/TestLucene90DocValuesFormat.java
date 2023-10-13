@@ -24,15 +24,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -43,7 +42,6 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.BaseCompressingDocValuesFormatTestCase;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
@@ -54,11 +52,11 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -66,9 +64,14 @@ import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.index.BaseCompressingDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.CollectionUtil;
 
 /** Tests Lucene90DocValuesFormat */
 public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatTestCase {
@@ -98,7 +101,6 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     }
   }
 
-  @Slow
   public void testSortedVariableLengthBigVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -161,7 +163,6 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     }
   }
 
-  @Slow
   public void testSparseDocValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -235,8 +236,9 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
       final SortedSetDocValues sortedSet = DocValues.getSortedSet(reader, "sorted_set");
 
+      StoredFields storedFields = reader.storedFields();
       for (int i = 0; i < reader.maxDoc(); ++i) {
-        final Document doc = reader.document(i);
+        final Document doc = storedFields.document(i);
         final IndexableField valueField = doc.getField("value");
         final Long value = valueField == null ? null : valueField.numericValue().longValue();
 
@@ -267,16 +269,12 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
             assertTrue(valueSet.contains(sortedNumeric.nextValue()));
           }
           assertEquals(i, sortedSet.nextDoc());
-          int sortedSetCount = 0;
-          while (true) {
+
+          assertEquals(valueSet.size(), sortedSet.docValueCount());
+          for (int j = 0; j < sortedSet.docValueCount(); ++j) {
             long ord = sortedSet.nextOrd();
-            if (ord == SortedSetDocValues.NO_MORE_ORDS) {
-              break;
-            }
             assertTrue(valueSet.contains(Long.parseLong(sortedSet.lookupOrd(ord).utf8ToString())));
-            sortedSetCount++;
           }
-          assertEquals(valueSet.size(), sortedSetCount);
         }
       }
     }
@@ -490,6 +488,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       for (int i = 0; i < maxDoc; ++i) {
         assertEquals(i, values.nextDoc());
         final int numValues = in.readVInt();
+        assertEquals(numValues, values.docValueCount());
 
         for (int j = 0; j < numValues; ++j) {
           b.setLength(in.readVInt());
@@ -497,8 +496,6 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
           in.readBytes(b.bytes(), 0, b.length());
           assertEquals(b.get(), values.lookupOrd(values.nextOrd()));
         }
-
-        assertEquals(SortedSetDocValues.NO_MORE_ORDS, values.nextOrd());
       }
       r.close();
       dir.close();
@@ -681,11 +678,12 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(r, "dv");
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < r.maxDoc(); i++) {
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String[] expectedStored = r.document(i).getValues("stored");
+        String[] expectedStored = storedFields.document(i).getValues("stored");
         if (i < docValues.docID()) {
           assertEquals(0, expectedStored.length);
         } else {
@@ -753,6 +751,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
+      StoredFields storedFields = r.storedFields();
 
       for (int jump = jumpStep; jump < r.maxDoc(); jump += jumpStep) {
         // Create a new instance each time to ensure jumps from the beginning
@@ -767,7 +766,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
                   + jump
                   + " from #"
                   + (docID - jump);
-          String storedValue = r.document(docID).get("stored");
+          String storedValue = storedFields.document(docID).get("stored");
           if (storedValue == null) {
             assertFalse("There should be no DocValue for " + base, docValues.advanceExact(docID));
           } else {
@@ -785,7 +784,7 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
 
   public void testReseekAfterSkipDecompression() throws IOException {
     final int CARDINALITY = (Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE << 1) + 11;
-    Set<String> valueSet = new HashSet<>(CARDINALITY);
+    Set<String> valueSet = CollectionUtil.newHashSet(CARDINALITY);
     for (int i = 0; i < CARDINALITY; i++) {
       valueSet.add(TestUtil.randomSimpleString(random(), 64));
     }
@@ -864,5 +863,157 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       assertEquals(valuesCount, ssdvMulti.getValueCount());
       ireader.close();
     }
+  }
+
+  public void testSortedTermsDictLookupOrd() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    SortedDocValuesField field = new SortedDocValuesField("foo", new BytesRef());
+    doc.add(field);
+    final int numDocs = atLeast(Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE + 1);
+    for (int i = 0; i < numDocs; ++i) {
+      field.setBytesValue(new BytesRef("" + i));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(writer);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    doTestTermsDictLookupOrd(leafReader.getSortedDocValues("foo").termsEnum());
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  public void testSortedSetTermsDictLookupOrd() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    SortedSetDocValuesField field = new SortedSetDocValuesField("foo", new BytesRef());
+    doc.add(field);
+    final int numDocs = atLeast(2 * Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE + 1);
+    for (int i = 0; i < numDocs; ++i) {
+      field.setBytesValue(new BytesRef("" + i));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(writer);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    doTestTermsDictLookupOrd(leafReader.getSortedSetDocValues("foo").termsEnum());
+    reader.close();
+    writer.close();
+    dir.close();
+  }
+
+  private void doTestTermsDictLookupOrd(TermsEnum te) throws IOException {
+    List<BytesRef> terms = new ArrayList<>();
+    for (BytesRef term = te.next(); term != null; term = te.next()) {
+      terms.add(BytesRef.deepCopyOf(term));
+    }
+
+    // iterate in order
+    for (int i = 0; i < terms.size(); ++i) {
+      te.seekExact(i);
+      assertEquals(terms.get(i), te.term());
+    }
+
+    // iterate in reverse order
+    for (int i = terms.size() - 1; i >= 0; --i) {
+      te.seekExact(i);
+      assertEquals(terms.get(i), te.term());
+    }
+
+    // iterate in forward order with random gaps
+    for (int i = random().nextInt(5); i < terms.size(); i += random().nextInt(5)) {
+      te.seekExact(i);
+      assertEquals(terms.get(i), te.term());
+    }
+  }
+
+  // Exercise the logic that leverages the first term of a block as a dictionary for suffixes of
+  // other terms
+  public void testTermsEnumDictionary() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig();
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, conf);
+    Document doc = new Document();
+    SortedDocValuesField field = new SortedDocValuesField("field", new BytesRef("abc0defghijkl"));
+    doc.add(field);
+    iwriter.addDocument(doc);
+    field.setBytesValue(new BytesRef("abc1defghijkl"));
+    iwriter.addDocument(doc);
+    field.setBytesValue(new BytesRef("abc2defghijkl"));
+    iwriter.addDocument(doc);
+    iwriter.forceMerge(1);
+    iwriter.close();
+
+    IndexReader reader = DirectoryReader.open(directory);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    SortedDocValues values = leafReader.getSortedDocValues("field");
+    TermsEnum termsEnum = values.termsEnum();
+    assertEquals(new BytesRef("abc0defghijkl"), termsEnum.next());
+    assertEquals(new BytesRef("abc1defghijkl"), termsEnum.next());
+    assertEquals(new BytesRef("abc2defghijkl"), termsEnum.next());
+    assertNull(termsEnum.next());
+
+    reader.close();
+    directory.close();
+  }
+
+  // Testing termsEnum seekCeil edge case, where inconsistent internal state led to
+  // IndexOutOfBoundsException
+  // see https://github.com/apache/lucene/pull/12555 for details
+  public void testTermsEnumConsistency() throws IOException {
+    int numTerms =
+        Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SIZE
+            + 10; // need more than one block of unique terms.
+    Directory directory = newDirectory();
+    IndexWriterConfig conf = newIndexWriterConfig();
+    RandomIndexWriter iwriter = new RandomIndexWriter(random(), directory, conf);
+    Document doc = new Document();
+
+    // for simplicity, we will generate sorted list of terms which are a) unique b) all greater than
+    // the term that we want to use for the test
+    char termA = 'A';
+    Function<Integer, String> stringSupplier =
+        (Integer n) -> {
+          assert n < 25 * 25;
+          char[] chars = new char[] {(char) (termA + 1 + n / 25), (char) (termA + 1 + n % 25)};
+          return new String(chars);
+        };
+    SortedDocValuesField field =
+        new SortedDocValuesField("field", new BytesRef(stringSupplier.apply(0)));
+    doc.add(field);
+    iwriter.addDocument(doc);
+    for (int i = 1; i < numTerms; i++) {
+      field.setBytesValue(new BytesRef(stringSupplier.apply(i)));
+      iwriter.addDocument(doc);
+    }
+    // merging to one segment to make sure we have more than one block (TERMS_DICT_BLOCK_LZ4_SIZE)
+    // in a segment, to trigger next block decompression.
+    iwriter.forceMerge(1);
+    iwriter.close();
+
+    IndexReader reader = DirectoryReader.open(directory);
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    SortedDocValues values = leafReader.getSortedDocValues("field");
+    TermsEnum termsEnum = values.termsEnum();
+
+    // Position terms enum at 0
+    termsEnum.seekExact(0L);
+    assertEquals(0, termsEnum.ord());
+    // seekCeil to a term which doesn't exist in the index
+    assertEquals(SeekStatus.NOT_FOUND, termsEnum.seekCeil(new BytesRef("A")));
+    // ... and before any other term in the index
+    assertEquals(0, termsEnum.ord());
+
+    assertEquals(new BytesRef(stringSupplier.apply(0)), termsEnum.term());
+    // read more than one block of terms to trigger next block decompression
+    for (int i = 1; i < numTerms; i++) {
+      assertEquals(new BytesRef(stringSupplier.apply(i)), termsEnum.next());
+    }
+    assertNull(termsEnum.next());
+    reader.close();
+    directory.close();
   }
 }

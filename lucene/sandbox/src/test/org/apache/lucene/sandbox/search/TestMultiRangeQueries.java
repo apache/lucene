@@ -17,25 +17,87 @@
 
 package org.apache.lucene.sandbox.search;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.sandbox.document.DoublePointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.FloatPointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.IntPointMultiRangeBuilder;
 import org.apache.lucene.sandbox.document.LongPointMultiRangeBuilder;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 
 public class TestMultiRangeQueries extends LuceneTestCase {
+
+  public void testDuelWithStandardDisjunction() throws IOException {
+    int iterations = LuceneTestCase.TEST_NIGHTLY ? atLeast(100) : 10;
+    for (int iter = 0; iter < iterations; iter++) {
+      Directory dir = newDirectory();
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+      int dims = RandomNumbers.randomIntBetween(random(), 1, 8);
+
+      long[] scratch = new long[dims];
+      for (int i = 0; i < 100; i++) {
+        int numPoints = RandomNumbers.randomIntBetween(random(), 1, 10);
+        Document doc = new Document();
+        for (int j = 0; j < numPoints; j++) {
+          for (int v = 0; v < dims; v++) {
+            scratch[v] = RandomNumbers.randomLongBetween(random(), 0, 100);
+          }
+          doc.add(new LongPoint("point", scratch));
+        }
+        w.addDocument(doc);
+      }
+
+      IndexReader reader = w.getReader();
+      IndexSearcher searcher = newSearcher(reader);
+
+      int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
+      LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+      for (int i = 0; i < numRanges; i++) {
+        long[] lower = new long[dims];
+        long[] upper = new long[dims];
+        for (int j = 0; j < dims; j++) {
+          lower[j] = RandomNumbers.randomLongBetween(random(), -100, 200);
+          upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 100);
+        }
+        builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
+      }
+
+      Query query1 = builder1.build();
+      Query query2 = builder2.build();
+      TopDocs result1 = searcher.search(query1, 10, Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, 10, Sort.INDEXORDER);
+      assertEquals(result2.totalHits, result1.totalHits);
+      assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
+      for (int i = 0; i < result2.scoreDocs.length; i++) {
+        assertEquals(result2.scoreDocs[i].doc, result1.scoreDocs[i].doc);
+      }
+
+      IOUtils.close(reader, w, dir);
+    }
+  }
 
   public void testDoubleRandomMultiRangeQuery() throws IOException {
     final int numDims = TestUtil.nextInt(random(), 1, 3);
@@ -123,9 +185,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None match
-    double[] nonMatchingFirstRangeLower = {1.3, 3.5, 2.7};
-    double[] nonMatchingFirstRangeUpper = {5.2, 8.3, 7.8};
+    // None match (one dimension is in range but the rest aren't)
+    double[] nonMatchingFirstRangeLower = {111.3, 3.5, 2.7};
+    double[] nonMatchingFirstRangeUpper = {117.3, 8.3, 7.8};
 
     double[] nonMatchingSecondRangeLower = {11246.3, 19388.7, 21248.4};
     double[] nonMatchingSecondRangeUpper = {13242.9, 20214.2, 23236.5};
@@ -244,9 +306,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None match
-    long[] nonMatchingFirstRangeLower = {1, 3, 2};
-    long[] nonMatchingFirstRangeUpper = {5, 8, 7};
+    // None match (one dimension is in range but the rest aren't)
+    long[] nonMatchingFirstRangeLower = {111, 3, 2};
+    long[] nonMatchingFirstRangeUpper = {117, 8, 7};
 
     long[] nonMatchingSecondRangeLower = {11246, 19388, 21248};
     long[] nonMatchingSecondRangeUpper = {13242, 20214, 23236};
@@ -365,9 +427,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None Match
-    float[] nonMatchingFirstRangeLower = {1.4f, 3.3f, 2.7f};
-    float[] nonMatchingFirstRangeUpper = {5.4f, 8.2f, 7.3f};
+    // None match (one dimension is in range but the rest aren't)
+    float[] nonMatchingFirstRangeLower = {111.3f, 3.3f, 2.7f};
+    float[] nonMatchingFirstRangeUpper = {117.3f, 8.2f, 7.3f};
 
     float[] nonMatchingSecondRangeLower = {11246.2f, 19388.6f, 21248.3f};
     float[] nonMatchingSecondRangeUpper = {13242.4f, 20214.7f, 23236.3f};
@@ -486,9 +548,9 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
     assertEquals(searcher.count(query), 2);
 
-    // None match
-    int[] nonMatchingFirstRangeLower = {1, 3, 2};
-    int[] nonMatchingFirstRangeUpper = {5, 8, 7};
+    // None match (one dimension is in range but the rest aren't)
+    int[] nonMatchingFirstRangeLower = {111, 3, 2};
+    int[] nonMatchingFirstRangeUpper = {117, 8, 7};
 
     int[] nonMatchingSecondRangeLower = {11246, 19388, 21248};
     int[] nonMatchingSecondRangeUpper = {13242, 20214, 23236};
@@ -590,5 +652,202 @@ public class TestMultiRangeQueries extends LuceneTestCase {
     assertEquals(
         "point:{[111 TO 117],[294 TO 301],[502 TO 514]},{[15 TO 200],[412 TO 567],[415 TO 642]}",
         query.toString());
+  }
+
+  public void testEqualsAndHashCode() {
+    {
+      double[] firstDoubleLowerRange = {111, 294.3, 502.4};
+      double[] firstDoubleUpperRange = {117.3, 301.8, 514.3};
+
+      double[] secondDoubleLowerRange = {15.3, 412.8, 415.1};
+      double[] secondDoubleUpperRange = {200.4, 567.4, 642.2};
+
+      DoublePointMultiRangeBuilder doublePointBuilder1 =
+          new DoublePointMultiRangeBuilder("point", 3);
+
+      doublePointBuilder1.add(firstDoubleLowerRange, firstDoubleUpperRange);
+      doublePointBuilder1.add(secondDoubleLowerRange, secondDoubleUpperRange);
+
+      Query query1 = doublePointBuilder1.build();
+
+      QueryUtils.check(query1);
+
+      DoublePointMultiRangeBuilder doublePointBuilder2 =
+          new DoublePointMultiRangeBuilder("point", 3);
+
+      doublePointBuilder2.add(firstDoubleLowerRange, firstDoubleUpperRange);
+      doublePointBuilder2.add(secondDoubleLowerRange, secondDoubleUpperRange);
+
+      Query query2 = doublePointBuilder2.build();
+
+      QueryUtils.checkEqual(query1, query2);
+      assertEquals(query1.hashCode(), query2.hashCode());
+
+      DoublePointMultiRangeBuilder doublePointBuilder3 =
+          new DoublePointMultiRangeBuilder("point", 3);
+
+      doublePointBuilder3.add(firstDoubleLowerRange, firstDoubleUpperRange);
+
+      Query query3 = doublePointBuilder3.build();
+
+      QueryUtils.checkUnequal(query1, query3);
+      assertNotEquals(query1.hashCode(), query3.hashCode());
+    }
+    {
+      long[] firstLongLowerRange = {111, 294, 502};
+      long[] firstLongUpperRange = {117, 301, 514};
+
+      long[] secondLongLowerRange = {15, 412, 415};
+      long[] secondLongUpperRange = {200, 567, 642};
+
+      LongPointMultiRangeBuilder longPointBuilder1 = new LongPointMultiRangeBuilder("point", 3);
+
+      longPointBuilder1.add(firstLongLowerRange, firstLongUpperRange);
+      longPointBuilder1.add(secondLongLowerRange, secondLongUpperRange);
+
+      Query query1 = longPointBuilder1.build();
+
+      QueryUtils.check(query1);
+
+      LongPointMultiRangeBuilder longPointBuilder2 = new LongPointMultiRangeBuilder("point", 3);
+
+      longPointBuilder2.add(firstLongLowerRange, firstLongUpperRange);
+      longPointBuilder2.add(secondLongLowerRange, secondLongUpperRange);
+
+      Query query2 = longPointBuilder2.build();
+
+      QueryUtils.checkEqual(query1, query2);
+      assertEquals(query1.hashCode(), query2.hashCode());
+
+      LongPointMultiRangeBuilder longPointBuilder3 = new LongPointMultiRangeBuilder("point", 3);
+
+      longPointBuilder3.add(firstLongLowerRange, firstLongUpperRange);
+
+      Query query3 = longPointBuilder3.build();
+
+      QueryUtils.checkUnequal(query1, query3);
+      assertNotEquals(query1.hashCode(), query3.hashCode());
+    }
+    {
+      float[] firstFloatUpperRange = {111.3f, 294.4f, 502.2f};
+      float[] firstLongUpperRange = {117.7f, 301.2f, 514.4f};
+
+      float[] secondFloatLowerRange = {111.3f, 294.4f, 502.2f};
+      float[] secondFloatUpperRange = {200.2f, 567.4f, 642.3f};
+
+      FloatPointMultiRangeBuilder floatPointBuilder1 = new FloatPointMultiRangeBuilder("point", 3);
+
+      floatPointBuilder1.add(firstFloatUpperRange, firstLongUpperRange);
+      floatPointBuilder1.add(secondFloatLowerRange, secondFloatUpperRange);
+
+      Query query1 = floatPointBuilder1.build();
+
+      QueryUtils.check(query1);
+
+      FloatPointMultiRangeBuilder floatPointBuilder2 = new FloatPointMultiRangeBuilder("point", 3);
+
+      floatPointBuilder2.add(firstFloatUpperRange, firstLongUpperRange);
+      floatPointBuilder2.add(secondFloatLowerRange, secondFloatUpperRange);
+
+      Query query2 = floatPointBuilder2.build();
+
+      QueryUtils.checkEqual(query1, query2);
+      assertEquals(query1.hashCode(), query2.hashCode());
+
+      FloatPointMultiRangeBuilder floatPointBuilder3 = new FloatPointMultiRangeBuilder("point", 3);
+
+      floatPointBuilder3.add(firstFloatUpperRange, firstLongUpperRange);
+
+      Query query3 = floatPointBuilder3.build();
+
+      QueryUtils.checkUnequal(query1, query3);
+      assertNotEquals(query1.hashCode(), query3.hashCode());
+    }
+  }
+
+  private void addRandomDocs(RandomIndexWriter w) throws IOException {
+    Random random = random();
+    for (int i = 0, end = random.nextInt(100, 500); i < end; i++) {
+      int numPoints = RandomNumbers.randomIntBetween(random(), 1, 200);
+      long value = RandomNumbers.randomLongBetween(random(), 0, 2000);
+      for (int j = 0; j < numPoints; j++) {
+        Document doc = new Document();
+        doc.add(new LongPoint("point", value));
+        w.addDocument(doc);
+      }
+    }
+    w.flush();
+    w.forceMerge(1);
+  }
+
+  /** The hit doc count of the rewritten query should be the same as origin query's */
+  public void testRandomRewrite() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int dims = 1;
+    addRandomDocs(w);
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    int numIters = atLeast(100);
+
+    for (int n = 0; n < numIters; n++) {
+      int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
+      LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+      for (int i = 0; i < numRanges; i++) {
+        long[] lower = new long[dims];
+        long[] upper = new long[dims];
+        for (int j = 0; j < dims; j++) {
+          lower[j] = RandomNumbers.randomLongBetween(random(), 0, 2000);
+          upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 2000);
+        }
+        builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
+      }
+
+      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(searcher);
+      BooleanQuery booleanQuery = builder2.build();
+      int count = searcher.search(multiRangeQuery, DummyTotalHitCountCollector.createManager());
+      int booleanCount = searcher.search(booleanQuery, DummyTotalHitCountCollector.createManager());
+      assertEquals(booleanCount, count);
+    }
+    IOUtils.close(reader, w, dir);
+  }
+
+  public void testOneDimensionCount() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int dims = 1;
+    addRandomDocs(w);
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    int numIters = atLeast(100);
+    for (int n = 0; n < numIters; n++) {
+      int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
+      LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
+      BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
+      for (int i = 0; i < numRanges; i++) {
+        long[] lower = new long[dims];
+        long[] upper = new long[dims];
+        for (int j = 0; j < dims; j++) {
+          lower[j] = RandomNumbers.randomLongBetween(random(), 0, 2000);
+          upper[j] = lower[j] + RandomNumbers.randomLongBetween(random(), 0, 2000);
+        }
+        builder1.add(lower, upper);
+        builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
+      }
+
+      MultiRangeQuery multiRangeQuery = (MultiRangeQuery) builder1.build().rewrite(searcher);
+      BooleanQuery booleanQuery = builder2.build();
+      int count =
+          multiRangeQuery
+              .createWeight(searcher, ScoreMode.COMPLETE, 1.0f)
+              .count(searcher.getLeafContexts().get(0));
+      int booleanCount = searcher.count(booleanQuery);
+      assertEquals(booleanCount, count);
+    }
+    IOUtils.close(reader, w, dir);
   }
 }

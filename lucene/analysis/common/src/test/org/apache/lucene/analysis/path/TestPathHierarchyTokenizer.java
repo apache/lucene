@@ -23,10 +23,10 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
 

@@ -23,19 +23,20 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
-import org.apache.lucene.search.CheckHits;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SloppyMath;
 
 public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
@@ -100,9 +101,9 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 10, 10, pivotDistance);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(2, null, 1);
-    searcher.search(q, collector);
-    TopDocs topHits = collector.topDocs();
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
+    TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
     double distance1 =
@@ -140,9 +141,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
             9);
 
     q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 9, 9, pivotDistance);
-    collector = TopScoreDocCollector.create(2, null, 1);
-    searcher.search(q, collector);
-    topHits = collector.topDocs();
+    manager = TopScoreDocCollector.createSharedManager(2, null, 1);
+    topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);
 
@@ -198,9 +198,9 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 0, 179, pivotDistance);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(2, null, 1);
-    searcher.search(q, collector);
-    TopDocs topHits = collector.topDocs();
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
+    TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
     double distance1 =
@@ -265,9 +265,9 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 10, 10, 5);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(3, null, 1);
-    searcher.search(q, collector);
-    TopDocs topHits = collector.topDocs();
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(3, null, 1);
+    TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
     double distance1 =
@@ -345,9 +345,9 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 0, 0, 200);
-    TopScoreDocCollector collector = TopScoreDocCollector.create(2, null, 1);
-    searcher.search(q, collector);
-    TopDocs topHits = collector.topDocs();
+    CollectorManager<TopScoreDocCollector, TopDocs> manager =
+        TopScoreDocCollector.createSharedManager(2, null, 1);
+    TopDocs topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
 
     double distance1 =
@@ -372,9 +372,8 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
         topHits.scoreDocs);
 
     q = LatLonPoint.newDistanceFeatureQuery("foo", 3, -90, 0, 10000.);
-    collector = TopScoreDocCollector.create(2, null, 1);
-    searcher.search(q, collector);
-    topHits = collector.topDocs();
+    manager = TopScoreDocCollector.createSharedManager(2, null, 1);
+    topHits = searcher.search(q, manager);
     assertEquals(2, topHits.scoreDocs.length);
     CheckHits.checkExplanations(q, "", searcher);
 

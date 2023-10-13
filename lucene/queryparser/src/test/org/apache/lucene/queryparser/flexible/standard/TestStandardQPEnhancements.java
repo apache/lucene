@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.StringReader;
 import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.queryparser.charstream.FastCharStream;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfigHandler;
@@ -28,7 +27,8 @@ import org.apache.lucene.queryparser.flexible.standard.nodes.IntervalQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.parser.StandardSyntaxParser;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -106,6 +106,9 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
   @Test
   public void testWildcard() throws Exception {
     checkIntervalQueryNode("fn:wildcard(foo*)");
+
+    // Explicit maxExpansions.
+    checkIntervalQueryNode("fn:wildcard(foo* 128)");
   }
 
   @Test
@@ -171,6 +174,15 @@ public class TestStandardQPEnhancements extends LuceneTestCase {
   @Test
   public void testExtend() throws Exception {
     checkIntervalQueryNode("fn:extend(fn:ordered(big foo) 2 5)");
+  }
+
+  @Test
+  public void testFuzzy() throws Exception {
+    checkIntervalQueryNode("fn:fuzzyTerm(dfe)");
+    // Explicit maxEdits
+    checkIntervalQueryNode("fn:fuzzyTerm(dfe 2)");
+    // Explicit maxExpansions
+    checkIntervalQueryNode("fn:fuzzyTerm(dfe 2 128)");
   }
 
   protected void checkIntervalQueryNode(String query) throws Exception {

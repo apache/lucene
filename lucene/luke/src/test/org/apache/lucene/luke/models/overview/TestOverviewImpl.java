@@ -72,7 +72,7 @@ public class TestOverviewImpl extends OverviewTestBase {
   @Test
   public void testIsOptimized() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
-    assertTrue(overview.isOptimized().orElse(false));
+    assertTrue(overview.isOptimized().isPresent());
   }
 
   @Test

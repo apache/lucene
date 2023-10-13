@@ -814,7 +814,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
             int numBytes = payIn.readVInt();
 
             if (numBytes > payloadBytes.length) {
-              payloadBytes = ArrayUtil.grow(payloadBytes, numBytes);
+              payloadBytes = ArrayUtil.growNoCopy(payloadBytes, numBytes);
             }
             payIn.readBytes(payloadBytes, 0, numBytes);
           } else {
@@ -1143,7 +1143,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
       if (left >= BLOCK_SIZE) {
         pforUtil.decodeAndPrefixSum(docIn, accum, docBuffer);
         if (indexHasFreqs) {
-          pforUtil.decode(docIn, freqBuffer);
+          isFreqsRead = false;
         }
         blockUpto += BLOCK_SIZE;
       } else {
@@ -1799,7 +1799,7 @@ public final class Lucene90PostingsReader extends PostingsReaderBase {
             int numBytes = payIn.readVInt();
 
             if (numBytes > payloadBytes.length) {
-              payloadBytes = ArrayUtil.grow(payloadBytes, numBytes);
+              payloadBytes = ArrayUtil.growNoCopy(payloadBytes, numBytes);
             }
             payIn.readBytes(payloadBytes, 0, numBytes);
           } else {

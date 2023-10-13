@@ -239,7 +239,7 @@ public class SortableSingleDocSource extends SingleDocSource {
         "Cook Islands",
         "Palau",
         "Marshall Islands",
-        "S�o Tom� and Pr�ncipe",
+        "São Tomé and Príncipe",
         "Anguilla",
         "Kiribati",
         "Tuvalu",

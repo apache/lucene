@@ -20,7 +20,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.QueryUtils;
+import org.apache.lucene.tests.search.QueryUtils;
 
 /** Some utility methods used for testing span queries */
 public class SpanTestUtil {

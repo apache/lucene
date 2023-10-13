@@ -19,8 +19,8 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.MatchesTestBase;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.tests.search.MatchesTestBase;
 
 public class TestSpanMatches extends MatchesTestBase {
 

@@ -18,9 +18,9 @@ package org.apache.lucene.document;
 
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoEncodingUtils;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.tests.geo.GeoTestUtil;
 
 /** Test case for LatLonShape encoding */
 public class TestLatLonShapeEncoding extends BaseShapeEncodingTestCase {

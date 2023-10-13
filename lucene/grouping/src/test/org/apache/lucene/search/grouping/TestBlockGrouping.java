@@ -25,7 +25,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -37,6 +36,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 
 public class TestBlockGrouping extends AbstractGroupingTestCase {
@@ -61,7 +61,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     assertEquals(topDoc.scoreDocs[0].doc, tg.groups[0].scoreDocs[0].doc);
 
     for (int i = 0; i < tg.groups.length; i++) {
-      String bookName = searcher.doc(tg.groups[i].scoreDocs[0].doc).get("book");
+      String bookName = searcher.storedFields().document(tg.groups[i].scoreDocs[0].doc).get("book");
       // The contents of each group should be equal to the results of a search for
       // that group alone
       Query filtered =
@@ -99,7 +99,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     assertEquals(((FieldDoc) topDoc.scoreDocs[0]).fields[0], tg.groups[0].groupSortValues[0]);
 
     for (int i = 0; i < tg.groups.length; i++) {
-      String bookName = searcher.doc(tg.groups[i].scoreDocs[0].doc).get("book");
+      String bookName = searcher.storedFields().document(tg.groups[i].scoreDocs[0].doc).get("book");
       // The contents of each group should be equal to the results of a search for
       // that group alone, sorted by score
       Query filtered =
@@ -140,7 +140,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     assertEquals(topDoc.scoreDocs[0].score, (float) tg.groups[0].groupSortValues[0], 0);
 
     for (int i = 0; i < tg.groups.length; i++) {
-      String bookName = searcher.doc(tg.groups[i].scoreDocs[0].doc).get("book");
+      String bookName = searcher.storedFields().document(tg.groups[i].scoreDocs[0].doc).get("book");
       // The contents of each group should be equal to the results of a search for
       // that group alone, sorted by length
       Query filtered =

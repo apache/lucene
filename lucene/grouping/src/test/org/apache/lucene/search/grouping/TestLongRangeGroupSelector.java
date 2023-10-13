@@ -22,7 +22,7 @@ import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -51,7 +51,7 @@ public class TestLongRangeGroupSelector extends BaseGroupSelectorTestCase<LongRa
     if (groupValue == null) {
       return new BooleanQuery.Builder()
           .add(new MatchAllDocsQuery(), BooleanClause.Occur.FILTER)
-          .add(new DocValuesFieldExistsQuery("long"), BooleanClause.Occur.MUST_NOT)
+          .add(new FieldExistsQuery("long"), BooleanClause.Occur.MUST_NOT)
           .build();
     }
     return LongPoint.newRangeQuery("long", groupValue.min, groupValue.max - 1);

@@ -26,10 +26,11 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.taxonomy.AssociationAggregationFunction;
 import org.apache.lucene.facet.taxonomy.FloatAssociationFacetField;
 import org.apache.lucene.facet.taxonomy.IntAssociationFacetField;
-import org.apache.lucene.facet.taxonomy.TaxonomyFacetSumFloatAssociations;
-import org.apache.lucene.facet.taxonomy.TaxonomyFacetSumIntAssociations;
+import org.apache.lucene.facet.taxonomy.TaxonomyFacetFloatAssociations;
+import org.apache.lucene.facet.taxonomy.TaxonomyFacetIntAssociations;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -41,6 +42,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Shows example usage of category associations. */
 public class AssociationsFacetsExample {
@@ -85,8 +87,7 @@ public class AssociationsFacetsExample {
     doc.add(new FloatAssociationFacetField(0.34f, "genre", "software"));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
-    indexWriter.close();
-    taxoWriter.close();
+    IOUtils.close(indexWriter, taxoWriter);
   }
 
   /** User runs a query and aggregates facets by summing their association values. */
@@ -102,16 +103,19 @@ public class AssociationsFacetsExample {
     // you'd use a "normal" query:
     FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
 
-    Facets tags = new TaxonomyFacetSumIntAssociations("$tags", taxoReader, config, fc);
-    Facets genre = new TaxonomyFacetSumFloatAssociations("$genre", taxoReader, config, fc);
+    Facets tags =
+        new TaxonomyFacetIntAssociations(
+            "$tags", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+    Facets genre =
+        new TaxonomyFacetFloatAssociations(
+            "$genre", taxoReader, config, fc, AssociationAggregationFunction.SUM);
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();
     results.add(tags.getTopChildren(10, "tags"));
     results.add(genre.getTopChildren(10, "genre"));
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return results;
   }
@@ -132,11 +136,12 @@ public class AssociationsFacetsExample {
     FacetsCollector.search(searcher, q, 10, fc);
 
     // Retrieve results
-    Facets facets = new TaxonomyFacetSumFloatAssociations("$genre", taxoReader, config, fc);
+    Facets facets =
+        new TaxonomyFacetFloatAssociations(
+            "$genre", taxoReader, config, fc, AssociationAggregationFunction.SUM);
     FacetResult result = facets.getTopChildren(10, "genre");
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return result;
   }

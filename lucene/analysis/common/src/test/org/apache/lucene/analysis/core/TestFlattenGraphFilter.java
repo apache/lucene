@@ -26,22 +26,22 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.AutomatonToTokenStream;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.StopFilter;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.TokenStreamToAutomaton;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
 
@@ -611,6 +611,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
         new int[] {1, 1, 3, 1, 2, 1, 1, 1},
         7);
   }
+
   // This graph can create a disconnected input node that is farther ahead in the output than its
   // subsequent input node.
   // Exceptions: Free too early or dropped tokens.
@@ -780,7 +781,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     acceptStrings.sort(Comparator.naturalOrder());
 
     acceptStrings = acceptStrings.stream().limit(wordCount).collect(Collectors.toList());
-    Automaton nonFlattenedAutomaton = DaciukMihovAutomatonBuilder.build(acceptStrings);
+    Automaton nonFlattenedAutomaton = Automata.makeStringUnion(acceptStrings);
 
     TokenStream ts = AutomatonToTokenStream.toTokenStream(nonFlattenedAutomaton);
     TokenStream flattenedTokenStream = new FlattenGraphFilter(ts);

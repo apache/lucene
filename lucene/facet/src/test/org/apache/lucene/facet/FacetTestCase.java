@@ -25,19 +25,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
-import org.apache.lucene.facet.taxonomy.CachedOrdinalsReader;
-import org.apache.lucene.facet.taxonomy.DocValuesOrdinalsReader;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
-import org.apache.lucene.facet.taxonomy.OrdinalsReader;
-import org.apache.lucene.facet.taxonomy.TaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels.FacetLabelReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public abstract class FacetTestCase extends LuceneTestCase {
 
@@ -49,18 +45,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
   public Facets getTaxonomyFacetCounts(
       TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector c, String indexFieldName)
       throws IOException {
-    Facets facets;
-    if (random().nextBoolean()) {
-      facets = new FastTaxonomyFacetCounts(indexFieldName, taxoReader, config, c);
-    } else {
-      OrdinalsReader ordsReader = new DocValuesOrdinalsReader(indexFieldName);
-      if (random().nextBoolean()) {
-        ordsReader = new CachedOrdinalsReader(ordsReader);
-      }
-      facets = new TaxonomyFacetCounts(ordsReader, taxoReader, config, c);
-    }
-
-    return facets;
+    return new FastTaxonomyFacetCounts(indexFieldName, taxoReader, config, c);
   }
 
   /**
@@ -238,7 +223,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
             } else if (b.value.doubleValue() > a.value.doubleValue()) {
               return 1;
             } else {
-              return 0;
+              return a.dim.compareTo(b.dim);
             }
           }
         });
@@ -269,14 +254,38 @@ public abstract class FacetTestCase extends LuceneTestCase {
     assertEquals(a.dim, b.dim);
     assertTrue(Arrays.equals(a.path, b.path));
     assertEquals(a.childCount, b.childCount);
-    assertEquals(a.value.floatValue(), b.value.floatValue(), a.value.floatValue() / 1e5);
+    assertNumericValuesEquals(a.value, b.value);
     assertEquals(a.labelValues.length, b.labelValues.length);
     for (int i = 0; i < a.labelValues.length; i++) {
       assertEquals(a.labelValues[i].label, b.labelValues[i].label);
-      assertEquals(
-          a.labelValues[i].value.floatValue(),
-          b.labelValues[i].value.floatValue(),
-          a.labelValues[i].value.floatValue() / 1e5);
+      assertNumericValuesEquals(a.labelValues[i].value, b.labelValues[i].value);
     }
+  }
+
+  protected void assertNumericValuesEquals(Number a, Number b) {
+    assertTrue(a.getClass().isInstance(b));
+    if (a instanceof Float) {
+      assertEquals(a.floatValue(), b.floatValue(), a.floatValue() / 1e5);
+    } else if (a instanceof Double) {
+      assertEquals(a.doubleValue(), b.doubleValue(), a.doubleValue() / 1e5);
+    } else {
+      assertEquals(a, b);
+    }
+  }
+
+  protected void assertFacetResult(
+      FacetResult result,
+      String expectedDim,
+      String[] expectedPath,
+      int expectedChildCount,
+      Number expectedValue,
+      LabelAndValue... expectedChildren) {
+    assertEquals(expectedDim, result.dim);
+    assertArrayEquals(expectedPath, result.path);
+    assertEquals(expectedChildCount, result.childCount);
+    assertNumericValuesEquals(expectedValue, result.value);
+    assertEquals(expectedChildren.length, result.labelValues.length);
+    // assert children equal with no assumption of the children ordering
+    assertTrue(Arrays.asList(result.labelValues).containsAll(Arrays.asList(expectedChildren)));
   }
 }

@@ -708,19 +708,19 @@ if (splitOnWhitespace == false) {
     finally { jj_save(2, xla); }
   }
 
-  private boolean jj_3R_6()
+  private boolean jj_3R_MultiTerm_391_3_6()
  {
     return false;
   }
 
-  private boolean jj_3R_5()
+  private boolean jj_3R_Clause_308_9_5()
  {
     if (jj_scan_token(STAR)) return true;
     if (jj_scan_token(COLON)) return true;
     return false;
   }
 
-  private boolean jj_3R_4()
+  private boolean jj_3R_Clause_307_7_4()
  {
     if (jj_scan_token(TERM)) return true;
     if (jj_scan_token(COLON)) return true;
@@ -729,17 +729,17 @@ if (splitOnWhitespace == false) {
 
   private boolean jj_3_2()
  {
-    if (jj_3R_3()) return true;
+    if (jj_3R_MultiTerm_383_3_3()) return true;
     return false;
   }
 
   private boolean jj_3_1()
  {
-    if (jj_3R_3()) return true;
+    if (jj_3R_MultiTerm_383_3_3()) return true;
     return false;
   }
 
-  private boolean jj_3R_7()
+  private boolean jj_3R_MultiTerm_393_5_7()
  {
     if (jj_scan_token(TERM)) return true;
     return false;
@@ -749,25 +749,25 @@ if (splitOnWhitespace == false) {
  {
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3R_4()) {
+    if (jj_3R_Clause_307_7_4()) {
     jj_scanpos = xsp;
-    if (jj_3R_5()) return true;
+    if (jj_3R_Clause_308_9_5()) return true;
     }
     return false;
   }
 
-  private boolean jj_3R_3()
+  private boolean jj_3R_MultiTerm_383_3_3()
  {
     if (jj_scan_token(TERM)) return true;
     jj_lookingAhead = true;
     jj_semLA = getToken(1).kind == TERM && allowedPostMultiTerm(getToken(2).kind);
     jj_lookingAhead = false;
-    if (!jj_semLA || jj_3R_6()) return true;
+    if (!jj_semLA || jj_3R_MultiTerm_391_3_6()) return true;
     Token xsp;
-    if (jj_3R_7()) return true;
+    if (jj_3R_MultiTerm_393_5_7()) return true;
     while (true) {
       xsp = jj_scanpos;
-      if (jj_3R_7()) { jj_scanpos = xsp; break; }
+      if (jj_3R_MultiTerm_393_5_7()) { jj_scanpos = xsp; break; }
     }
     return false;
   }
@@ -868,8 +868,13 @@ if (splitOnWhitespace == false) {
   }
 
   @SuppressWarnings("serial")
-  static private final class LookaheadSuccess extends java.lang.Error { }
-  static final private LookaheadSuccess jj_ls = new LookaheadSuccess();
+  static private final class LookaheadSuccess extends java.lang.Error {
+    @Override
+    public Throwable fillInStackTrace() {
+      return this;
+    }
+  }
+  static private final LookaheadSuccess jj_ls = new LookaheadSuccess();
   private boolean jj_scan_token(int kind) {
      if (jj_scanpos == jj_lastpos) {
        jj_la--;
@@ -999,7 +1004,6 @@ if (splitOnWhitespace == false) {
      return new ParseException(token, exptokseq, tokenImage);
   }
 
-  private int trace_indent = 0;
   private boolean trace_enabled;
 
 /** Trace enabled. */

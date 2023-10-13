@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestArrayUtil extends LuceneTestCase {
 
@@ -162,7 +164,6 @@ public class TestArrayUtil extends LuceneTestCase {
 
   // This is a test for LUCENE-3054 (which fails without the merge sort fall back with stack
   // overflow in most cases)
-  @Slow
   public void testQuickToHeapSortFallback() {
     int num = atLeast(10);
     for (int i = 0; i < num; i++) {

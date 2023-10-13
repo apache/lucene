@@ -28,6 +28,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
 import org.junit.Before;
 import org.junit.Test;

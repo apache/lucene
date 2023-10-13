@@ -20,6 +20,7 @@ import static org.apache.lucene.search.SortField.FIELD_SCORE;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -32,13 +33,14 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.FieldValueHitQueue.Entry;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestTopFieldCollector extends LuceneTestCase {
   private IndexSearcher is;
@@ -67,16 +69,16 @@ public class TestTopFieldCollector extends LuceneTestCase {
     super.tearDown();
   }
 
-  private TopFieldCollector doSearchWithThreshold(
+  private static TopDocs doSearchWithThreshold(
       int numResults, int thresHold, Query q, Sort sort, IndexReader indexReader)
       throws IOException {
     IndexSearcher searcher = newSearcher(indexReader);
-    TopFieldCollector tdc = TopFieldCollector.create(sort, numResults, thresHold);
-    searcher.search(q, tdc);
-    return tdc;
+    CollectorManager<TopFieldCollector, TopFieldDocs> manager =
+        TopFieldCollector.createSharedManager(sort, numResults, null, thresHold);
+    return searcher.search(q, manager);
   }
 
-  private TopDocs doConcurrentSearchWithThreshold(
+  private static TopDocs doConcurrentSearchWithThreshold(
       int numResults, int threshold, Query q, Sort sort, IndexReader indexReader)
       throws IOException {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
@@ -99,11 +101,10 @@ public class TestTopFieldCollector extends LuceneTestCase {
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
       Query q = new MatchAllDocsQuery();
-      TopDocsCollector<Entry> tdc = TopFieldCollector.create(sort[i], 10, Integer.MAX_VALUE);
 
-      is.search(q, tdc);
-
-      ScoreDoc[] sd = tdc.topDocs().scoreDocs;
+      ScoreDoc[] sd =
+          is.search(q, TopFieldCollector.createSharedManager(sort[i], 10, null, Integer.MAX_VALUE))
+              .scoreDocs;
       for (int j = 1; j < sd.length; j++) {
         assertTrue(sd[j].doc != sd[j - 1].doc);
       }
@@ -116,12 +117,10 @@ public class TestTopFieldCollector extends LuceneTestCase {
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
       Query q = new MatchAllDocsQuery();
-      TopDocsCollector<Entry> tdc = TopFieldCollector.create(sort[i], 10, Integer.MAX_VALUE);
 
-      is.search(q, tdc);
-
-      TopDocs td = tdc.topDocs();
-      ScoreDoc[] sd = td.scoreDocs;
+      ScoreDoc[] sd =
+          is.search(q, TopFieldCollector.createSharedManager(sort[i], 10, null, Integer.MAX_VALUE))
+              .scoreDocs;
       for (int j = 0; j < sd.length; j++) {
         assertTrue(Float.isNaN(sd[j].score));
       }
@@ -130,19 +129,20 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
   public void testSharedHitcountCollector() throws Exception {
     IndexSearcher concurrentSearcher = newSearcher(ir, true, true, true);
+    IndexSearcher singleThreadedSearcher = newSearcher(ir, true, true, false);
 
     // Two Sort criteria to instantiate the multi/single comparators.
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
       Query q = new MatchAllDocsQuery();
-      TopDocsCollector<Entry> tdc = TopFieldCollector.create(sort[i], 10, Integer.MAX_VALUE);
 
-      is.search(q, tdc);
+      TopDocs td =
+          singleThreadedSearcher.search(
+              q, TopFieldCollector.createSharedManager(sort[i], 10, null, Integer.MAX_VALUE));
 
       CollectorManager<TopFieldCollector, TopFieldDocs> tsdc =
           TopFieldCollector.createSharedManager(sort[i], 10, null, Integer.MAX_VALUE);
 
-      TopDocs td = tdc.topDocs();
       TopDocs td2 = concurrentSearcher.search(q, tsdc);
       ScoreDoc[] sd = td.scoreDocs;
       for (int j = 0; j < sd.length; j++) {
@@ -159,17 +159,16 @@ public class TestTopFieldCollector extends LuceneTestCase {
       Query q = new MatchAllDocsQuery();
       // check that setting trackTotalHits to false does not throw an NPE because
       // the index is not sorted
-      TopDocsCollector<Entry> tdc;
+      CollectorManager<TopFieldCollector, TopFieldDocs> manager;
       if (i % 2 == 0) {
-        tdc = TopFieldCollector.create(sort, 10, 1);
+        manager = TopFieldCollector.createSharedManager(sort, 10, null, 1);
       } else {
         FieldDoc fieldDoc = new FieldDoc(1, Float.NaN, new Object[] {1});
-        tdc = TopFieldCollector.create(sort, 10, fieldDoc, 1);
+        manager = TopFieldCollector.createSharedManager(sort, 10, fieldDoc, 1);
       }
 
-      is.search(q, tdc);
+      TopDocs td = is.search(q, manager);
 
-      TopDocs td = tdc.topDocs();
       ScoreDoc[] sd = td.scoreDocs;
       for (int j = 0; j < sd.length; j++) {
         assertTrue(Float.isNaN(sd[j].score));
@@ -196,23 +195,20 @@ public class TestTopFieldCollector extends LuceneTestCase {
     for (int totalHitsThreshold = 0; totalHitsThreshold < 20; ++totalHitsThreshold) {
       for (FieldDoc after : new FieldDoc[] {null, new FieldDoc(4, Float.NaN, new Object[] {2L})}) {
         TopFieldCollector collector = TopFieldCollector.create(sort, 2, after, totalHitsThreshold);
-        ScoreAndDoc scorer = new ScoreAndDoc();
+        Score scorer = new Score();
 
         LeafCollector leafCollector1 = collector.getLeafCollector(reader.leaves().get(0));
         leafCollector1.setScorer(scorer);
 
-        scorer.doc = 0;
         scorer.score = 3;
         leafCollector1.collect(0);
 
-        scorer.doc = 1;
         scorer.score = 3;
         leafCollector1.collect(1);
 
         LeafCollector leafCollector2 = collector.getLeafCollector(reader.leaves().get(1));
         leafCollector2.setScorer(scorer);
 
-        scorer.doc = 1;
         scorer.score = 3;
         if (totalHitsThreshold < 3) {
           expectThrows(CollectionTerminatedException.class, () -> leafCollector2.collect(1));
@@ -224,7 +220,6 @@ public class TestTopFieldCollector extends LuceneTestCase {
           leafCollector2.collect(1);
         }
 
-        scorer.doc = 5;
         scorer.score = 4;
         if (totalHitsThreshold == 3) {
           expectThrows(CollectionTerminatedException.class, () -> leafCollector2.collect(1));
@@ -245,19 +240,13 @@ public class TestTopFieldCollector extends LuceneTestCase {
     dir.close();
   }
 
-  private static class ScoreAndDoc extends Scorable {
-    int doc = -1;
+  private static class Score extends Scorable {
     float score;
     Float minCompetitiveScore = null;
 
     @Override
     public void setMinCompetitiveScore(float minCompetitiveScore) {
       this.minCompetitiveScore = minCompetitiveScore;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override
@@ -281,51 +270,44 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     Sort sort = new Sort(FIELD_SCORE, new SortField("foo", SortField.Type.LONG));
     TopFieldCollector collector = TopFieldCollector.create(sort, 2, null, 2);
-    ScoreAndDoc scorer = new ScoreAndDoc();
+    Score scorer = new Score();
 
     LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
     leafCollector.setScorer(scorer);
     assertNull(scorer.minCompetitiveScore);
 
-    scorer.doc = 0;
     scorer.score = 1;
     leafCollector.collect(0);
     assertNull(scorer.minCompetitiveScore);
 
-    scorer.doc = 1;
     scorer.score = 2;
     leafCollector.collect(1);
     assertNull(scorer.minCompetitiveScore);
 
-    scorer.doc = 2;
     scorer.score = 3;
     leafCollector.collect(2);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
 
-    scorer.doc = 3;
     scorer.score = 0.5f;
     // Make sure we do not call setMinCompetitiveScore for non-competitive hits
     scorer.minCompetitiveScore = Float.NaN;
     leafCollector.collect(3);
     assertTrue(Float.isNaN(scorer.minCompetitiveScore));
 
-    scorer.doc = 4;
     scorer.score = 4;
     leafCollector.collect(4);
     assertEquals(3f, scorer.minCompetitiveScore, 0f);
 
     // Make sure the min score is set on scorers on new segments
-    scorer = new ScoreAndDoc();
+    scorer = new Score();
     leafCollector = collector.getLeafCollector(reader.leaves().get(1));
     leafCollector.setScorer(scorer);
     assertEquals(3f, scorer.minCompetitiveScore, 0f);
 
-    scorer.doc = 0;
     scorer.score = 1;
     leafCollector.collect(0);
     assertEquals(3f, scorer.minCompetitiveScore, 0f);
 
-    scorer.doc = 1;
     scorer.score = 4;
     leafCollector.collect(1);
     assertEquals(4f, scorer.minCompetitiveScore, 0f);
@@ -350,27 +332,23 @@ public class TestTopFieldCollector extends LuceneTestCase {
     for (int totalHitsThreshold = 0; totalHitsThreshold < 20; ++totalHitsThreshold) {
       Sort sort = new Sort(FIELD_SCORE, new SortField("foo", SortField.Type.LONG));
       TopFieldCollector collector = TopFieldCollector.create(sort, 2, null, totalHitsThreshold);
-      ScoreAndDoc scorer = new ScoreAndDoc();
+      Score scorer = new Score();
 
       LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
       leafCollector.setScorer(scorer);
 
-      scorer.doc = 0;
       scorer.score = 3;
       leafCollector.collect(0);
 
-      scorer.doc = 1;
       scorer.score = 3;
       leafCollector.collect(1);
 
       leafCollector = collector.getLeafCollector(reader.leaves().get(1));
       leafCollector.setScorer(scorer);
 
-      scorer.doc = 1;
       scorer.score = 3;
       leafCollector.collect(1);
 
-      scorer.doc = 5;
       scorer.score = 4;
       leafCollector.collect(1);
 
@@ -425,44 +403,66 @@ public class TestTopFieldCollector extends LuceneTestCase {
             .add(bar, Occur.SHOULD)
             .add(baz, Occur.SHOULD)
             .build();
-    final IndexSearcher searcher = new IndexSearcher(reader);
+    final IndexSearcher searcher = newSearcher(reader);
     for (Sort sort :
         new Sort[] {new Sort(FIELD_SCORE), new Sort(new SortField("f", SortField.Type.SCORE))}) {
-      final TopFieldCollector topCollector =
-          TopFieldCollector.create(sort, TestUtil.nextInt(random(), 1, 2), Integer.MAX_VALUE);
-      final Collector assertingCollector =
-          new Collector() {
+      int numHits = TestUtil.nextInt(random(), 1, 2);
+      searcher.search(
+          query,
+          new CollectorManager<Collector, Void>() {
             @Override
-            public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-              final LeafCollector in = topCollector.getLeafCollector(context);
-              return new FilterLeafCollector(in) {
+            public Collector newCollector() {
+              return new Collector() {
+                final TopFieldCollector topCollector =
+                    TopFieldCollector.create(sort, numHits, Integer.MAX_VALUE);
+
                 @Override
-                public void setScorer(final Scorable scorer) throws IOException {
-                  Scorable s =
-                      new FilterScorable(scorer) {
+                public LeafCollector getLeafCollector(LeafReaderContext context)
+                    throws IOException {
+                  final LeafCollector in = topCollector.getLeafCollector(context);
+                  return new FilterLeafCollector(in) {
 
-                        int lastComputedDoc = -1;
+                    int currentDoc = -1;
 
-                        @Override
-                        public float score() throws IOException {
-                          if (lastComputedDoc == docID()) {
-                            throw new AssertionError("Score computed twice on " + docID());
-                          }
-                          lastComputedDoc = docID();
-                          return scorer.score();
-                        }
-                      };
-                  super.setScorer(s);
+                    @Override
+                    public void collect(int doc) throws IOException {
+                      currentDoc = doc;
+                      super.collect(doc);
+                    }
+
+                    @Override
+                    public void setScorer(final Scorable scorer) throws IOException {
+                      Scorable s =
+                          new FilterScorable(scorer) {
+
+                            int lastComputedDoc = -1;
+
+                            @Override
+                            public float score() throws IOException {
+                              if (lastComputedDoc == currentDoc) {
+                                throw new AssertionError("Score computed twice on " + currentDoc);
+                              }
+                              lastComputedDoc = currentDoc;
+                              return scorer.score();
+                            }
+                          };
+                      super.setScorer(s);
+                    }
+                  };
+                }
+
+                @Override
+                public ScoreMode scoreMode() {
+                  return ScoreMode.COMPLETE;
                 }
               };
             }
 
             @Override
-            public ScoreMode scoreMode() {
-              return topCollector.scoreMode();
+            public Void reduce(Collection<Collector> collectors) {
+              return null;
             }
-          };
-      searcher.search(query, assertingCollector);
+          });
     }
     reader.close();
     w.close();
@@ -555,62 +555,54 @@ public class TestTopFieldCollector extends LuceneTestCase {
     // force the check of the global minimum score on every round
     minValueChecker.modInterval = 0;
 
-    ScoreAndDoc scorer = new ScoreAndDoc();
-    ScoreAndDoc scorer2 = new ScoreAndDoc();
+    Score scorer = new Score();
+    Score scorer2 = new Score();
 
     LeafCollector leafCollector = collector.getLeafCollector(reader.leaves().get(0));
     leafCollector.setScorer(scorer);
     LeafCollector leafCollector2 = collector2.getLeafCollector(reader.leaves().get(1));
     leafCollector2.setScorer(scorer2);
 
-    scorer.doc = 0;
     scorer.score = 3;
     leafCollector.collect(0);
     assertNull(minValueChecker.get());
     assertNull(scorer.minCompetitiveScore);
 
-    scorer2.doc = 0;
     scorer2.score = 6;
     leafCollector2.collect(0);
     assertNull(minValueChecker.get());
     assertNull(scorer2.minCompetitiveScore);
 
-    scorer.doc = 1;
     scorer.score = 2;
     leafCollector.collect(1);
     assertEquals(2f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertNull(scorer2.minCompetitiveScore);
 
-    scorer2.doc = 1;
     scorer2.score = 9;
     leafCollector2.collect(1);
     assertEquals(6f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertEquals(6f, scorer2.minCompetitiveScore, 0f);
 
-    scorer2.doc = 2;
     scorer2.score = 7;
     leafCollector2.collect(2);
     assertEquals(7f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
-    scorer2.doc = 3;
     scorer2.score = 1;
     leafCollector2.collect(3);
     assertEquals(7f, minValueChecker.get().score, 0f);
     assertEquals(2f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
-    scorer.doc = 2;
     scorer.score = 10;
     leafCollector.collect(2);
     assertEquals(7f, minValueChecker.get().score, 0f);
     assertEquals(7f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
-    scorer.doc = 3;
     scorer.score = 11;
     leafCollector.collect(3);
     assertEquals(10f, minValueChecker.get().score, 0f);
@@ -619,17 +611,15 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     TopFieldCollector collector3 = manager.newCollector();
     LeafCollector leafCollector3 = collector3.getLeafCollector(reader.leaves().get(2));
-    ScoreAndDoc scorer3 = new ScoreAndDoc();
+    Score scorer3 = new Score();
     leafCollector3.setScorer(scorer3);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
-    scorer3.doc = 0;
     scorer3.score = 1f;
     leafCollector3.collect(0);
     assertEquals(10f, minValueChecker.get().score, 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
-    scorer.doc = 4;
     scorer.score = 11;
     leafCollector.collect(4);
     assertEquals(11f, minValueChecker.get().score, 0f);
@@ -637,7 +627,6 @@ public class TestTopFieldCollector extends LuceneTestCase {
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
-    scorer3.doc = 1;
     scorer3.score = 2f;
     leafCollector3.collect(1);
     assertEquals(11f, minValueChecker.get().score, 0f);
@@ -691,9 +680,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
         };
     for (Query query : queries) {
       Sort sort = new Sort(new SortField[] {SortField.FIELD_SCORE, SortField.FIELD_DOC});
-      TopFieldCollector fieldCollector = doSearchWithThreshold(5, 0, query, sort, indexReader);
+      TopDocs tdc2 = doSearchWithThreshold(5, 0, query, sort, indexReader);
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, sort, indexReader);
-      TopDocs tdc2 = fieldCollector.topDocs();
 
       assertTrue(tdc.totalHits.value > 0);
       assertTrue(tdc2.totalHits.value > 0);
@@ -718,20 +706,26 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(w)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopFieldCollector collector = TopFieldCollector.create(sort, 2, 10);
-        searcher.search(new TermQuery(new Term("f", "foo")), collector);
-        assertEquals(10, collector.totalHits);
-        assertEquals(TotalHits.Relation.EQUAL_TO, collector.totalHitsRelation);
+        TopFieldDocs topDocs =
+            searcher.search(
+                new TermQuery(new Term("f", "foo")),
+                TopFieldCollector.createSharedManager(sort, 2, null, 10));
+        assertEquals(10, topDocs.totalHits.value);
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
 
-        collector = TopFieldCollector.create(sort, 2, 2);
-        searcher.search(new TermQuery(new Term("f", "foo")), collector);
-        assertTrue(10 >= collector.totalHits);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, collector.totalHitsRelation);
+        topDocs =
+            searcher.search(
+                new TermQuery(new Term("f", "foo")),
+                TopFieldCollector.createSharedManager(sort, 2, null, 2));
+        assertTrue(10 >= topDocs.totalHits.value);
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
 
-        collector = TopFieldCollector.create(sort, 10, 2);
-        searcher.search(new TermQuery(new Term("f", "foo")), collector);
-        assertEquals(10, collector.totalHits);
-        assertEquals(TotalHits.Relation.EQUAL_TO, collector.totalHitsRelation);
+        topDocs =
+            searcher.search(
+                new TermQuery(new Term("f", "foo")),
+                TopFieldCollector.createSharedManager(sort, 10, null, 2));
+        assertEquals(10, topDocs.totalHits.value);
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
       }
     }
   }

@@ -60,6 +60,7 @@ public class RegexCompletionQuery extends CompletionQuery {
   public RegexCompletionQuery(Term term, BitsProducer filter) {
     this(term, RegExp.ALL, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, filter);
   }
+
   /**
    * Calls {@link RegexCompletionQuery#RegexCompletionQuery(Term, int, int, BitsProducer)} with no
    * filter
@@ -74,7 +75,7 @@ public class RegexCompletionQuery extends CompletionQuery {
    * @param term query is run against {@link Term#field()} and {@link Term#text()} is interpreted as
    *     a regular expression
    * @param flags used as syntax_flag in {@link RegExp#RegExp(String, int)}
-   * @param determinizeWorkLimit used in {@link RegExp#toAutomaton(int)}
+   * @param determinizeWorkLimit used in {@link Operations#determinize(Automaton, int)}
    * @param filter used to query on a sub set of documents
    */
   public RegexCompletionQuery(Term term, int flags, int determinizeWorkLimit, BitsProducer filter) {
@@ -91,7 +92,8 @@ public class RegexCompletionQuery extends CompletionQuery {
     Automaton automaton =
         getTerm().text().isEmpty()
             ? Automata.makeEmpty()
-            : new RegExp(getTerm().text(), flags).toAutomaton(determinizeWorkLimit);
+            : Operations.determinize(
+                new RegExp(getTerm().text(), flags).toAutomaton(), determinizeWorkLimit);
     return new CompletionWeight(this, automaton);
   }
 

@@ -16,14 +16,15 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.analysis.CannedBinaryTokenStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedBinaryTokenStream;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestTerms extends LuceneTestCase {
 
@@ -50,8 +51,6 @@ public class TestTerms extends LuceneTestCase {
     BytesRef maxTerm = null;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      Field field = new TextField("field", "", Field.Store.NO);
-      doc.add(field);
       // System.out.println("  doc " + i);
       CannedBinaryTokenStream.BinaryToken[] tokens =
           new CannedBinaryTokenStream.BinaryToken[atLeast(10)];
@@ -70,7 +69,9 @@ public class TestTerms extends LuceneTestCase {
         }
         tokens[j] = new CannedBinaryTokenStream.BinaryToken(tokenBytes);
       }
-      field.setTokenStream(new CannedBinaryTokenStream(tokens));
+      Field field =
+          new Field("field", new CannedBinaryTokenStream(tokens), TextField.TYPE_NOT_STORED);
+      doc.add(field);
       w.addDocument(doc);
     }
 

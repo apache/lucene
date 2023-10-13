@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import org.apache.lucene.tests.search.CheckHits;
+
 /** subclass of TestSimpleExplanations that verifies non matches. */
 public class TestComplexExplanationsOfNonMatches extends TestComplexExplanations {
 

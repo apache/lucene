@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,8 +33,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.Document;
@@ -41,10 +40,13 @@ import org.apache.lucene.search.suggest.Input;
 import org.apache.lucene.search.suggest.InputArrayIterator;
 import org.apache.lucene.search.suggest.InputIterator;
 import org.apache.lucene.search.suggest.Lookup.LookupResult;
+import org.apache.lucene.search.suggest.SuggestRebuildTestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Ignore;
 
 public class TestFreeTextSuggester extends LuceneTestCase {
@@ -90,6 +92,29 @@ public class TestFreeTextSuggester extends LuceneTestCase {
       is.close();
       assertEquals(2, sug.getCount());
     }
+    a.close();
+  }
+
+  public void testLookupsDuringReBuild() throws Exception {
+    Analyzer a = new MockAnalyzer(random());
+    FreeTextSuggester sug = new FreeTextSuggester(a, a, 2, (byte) 0x20);
+    SuggestRebuildTestUtil.testLookupsDuringReBuild(
+        sug,
+        Arrays.asList(new Input("foo bar baz blah", 50)),
+        s -> {
+          assertEquals(1, s.getCount());
+          List<LookupResult> result = s.lookup("foo ", true, 5);
+          assertEquals(1, result.size());
+          assertEquals("foo bar", result.get(0).key.toString());
+        },
+        Arrays.asList(new Input("boo foo bar foo bee", 20)),
+        s -> {
+          assertEquals(2, s.getCount());
+          List<LookupResult> result = s.lookup("foo ", true, 5);
+          assertEquals(2, result.size());
+          assertEquals("foo bar", result.get(0).key.toString());
+          assertEquals("foo bee", result.get(1).key.toString());
+        });
     a.close();
   }
 

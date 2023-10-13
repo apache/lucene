@@ -19,16 +19,17 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageTester;
-import org.apache.lucene.util.TestUtil;
 
 public class TestOrdinalMap extends LuceneTestCase {
 
@@ -134,7 +135,7 @@ public class TestOrdinalMap extends LuceneTestCase {
     }
     iw.commit();
 
-    DirectoryReader r = iw.getReader();
+    DirectoryReader r = DirectoryReader.open(iw);
     SortedDocValues sdv = MultiDocValues.getSortedValues(r, "sdv");
     assertNotNull(sdv);
     assertTrue(sdv instanceof MultiDocValues.MultiSortedDocValues);

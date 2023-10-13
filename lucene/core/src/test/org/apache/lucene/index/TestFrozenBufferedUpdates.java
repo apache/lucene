@@ -30,13 +30,13 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.FrozenBufferedUpdates.TermDocsIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefArray;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestFrozenBufferedUpdates extends LuceneTestCase {
 

@@ -27,7 +27,7 @@ import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessor
 import org.apache.lucene.queryparser.flexible.standard.parser.StandardSyntaxParser;
 import org.apache.lucene.queryparser.flexible.standard.processors.WildcardQueryNodeProcessor;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * This test case demonstrates how the new query parser can be used.<br>

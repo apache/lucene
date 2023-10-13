@@ -17,7 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.store.DataOutput;
@@ -66,7 +66,7 @@ class PointValuesWriter {
 
     if (docIDs.length == numPoints) {
       docIDs = ArrayUtil.grow(docIDs, numPoints + 1);
-      iwBytesUsed.addAndGet((docIDs.length - numPoints) * Integer.BYTES);
+      iwBytesUsed.addAndGet((docIDs.length - numPoints) * (long) Integer.BYTES);
     }
     final long bytesRamBytesUsedBefore = bytes.ramBytesUsed();
     bytesOut.writeBytes(value.bytes, value.offset, value.length);
@@ -92,8 +92,8 @@ class PointValuesWriter {
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, PointsWriter writer)
       throws IOException {
     final PagedBytes.Reader bytesReader = bytes.freeze(false);
-    PointValues points =
-        new MutablePointValues() {
+    MutablePointTree points =
+        new MutablePointTree() {
           final int[] ords = new int[numPoints];
           int[] temp;
 
@@ -104,7 +104,12 @@ class PointValuesWriter {
           }
 
           @Override
-          public void intersect(IntersectVisitor visitor) throws IOException {
+          public long size() {
+            return numPoints;
+          }
+
+          @Override
+          public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
             final BytesRef scratch = new BytesRef();
             final byte[] packedValue = new byte[packedBytesLength];
             for (int i = 0; i < numPoints; i++) {
@@ -113,46 +118,6 @@ class PointValuesWriter {
               System.arraycopy(scratch.bytes, scratch.offset, packedValue, 0, packedBytesLength);
               visitor.visit(getDocID(i), packedValue);
             }
-          }
-
-          @Override
-          public long estimatePointCount(IntersectVisitor visitor) {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public byte[] getMinPackedValue() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public byte[] getMaxPackedValue() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getNumDimensions() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getNumIndexDimensions() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public int getBytesPerDimension() {
-            throw new UnsupportedOperationException();
-          }
-
-          @Override
-          public long size() {
-            return numPoints;
-          }
-
-          @Override
-          public int getDocCount() {
-            return numDocs;
           }
 
           @Override
@@ -195,11 +160,11 @@ class PointValuesWriter {
           }
         };
 
-    final PointValues values;
+    final PointValues.PointTree values;
     if (sortMap == null) {
       values = points;
     } else {
-      values = new MutableSortingPointValues((MutablePointValues) points, sortMap);
+      values = new MutableSortingPointValues(points, sortMap);
     }
     PointsReader reader =
         new PointsReader() {
@@ -208,7 +173,47 @@ class PointValuesWriter {
             if (fieldName.equals(fieldInfo.name) == false) {
               throw new IllegalArgumentException("fieldName must be the same");
             }
-            return values;
+            return new PointValues() {
+              @Override
+              public PointTree getPointTree() throws IOException {
+                return values;
+              }
+
+              @Override
+              public byte[] getMinPackedValue() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public byte[] getMaxPackedValue() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getNumDimensions() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getNumIndexDimensions() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getBytesPerDimension() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public long size() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int getDocCount() {
+                throw new UnsupportedOperationException();
+              }
+            };
           }
 
           @Override
@@ -222,20 +227,25 @@ class PointValuesWriter {
     writer.writeField(fieldInfo, reader);
   }
 
-  static final class MutableSortingPointValues extends MutablePointValues {
+  static final class MutableSortingPointValues extends MutablePointTree {
 
-    private final MutablePointValues in;
+    private final MutablePointTree in;
     private final Sorter.DocMap docMap;
 
-    public MutableSortingPointValues(final MutablePointValues in, Sorter.DocMap docMap) {
+    public MutableSortingPointValues(final MutablePointTree in, Sorter.DocMap docMap) {
       this.in = in;
       this.docMap = docMap;
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      in.intersect(
-          new IntersectVisitor() {
+    public long size() {
+      return in.size();
+    }
+
+    @Override
+    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+      in.visitDocValues(
+          new PointValues.IntersectVisitor() {
             @Override
             public void visit(int docID) throws IOException {
               visitor.visit(docMap.oldToNew(docID));
@@ -247,50 +257,10 @@ class PointValuesWriter {
             }
 
             @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+            public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               return visitor.compare(minPackedValue, maxPackedValue);
             }
           });
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      return in.estimatePointCount(visitor);
-    }
-
-    @Override
-    public byte[] getMinPackedValue() throws IOException {
-      return in.getMinPackedValue();
-    }
-
-    @Override
-    public byte[] getMaxPackedValue() throws IOException {
-      return in.getMaxPackedValue();
-    }
-
-    @Override
-    public int getNumDimensions() throws IOException {
-      return in.getNumDimensions();
-    }
-
-    @Override
-    public int getNumIndexDimensions() throws IOException {
-      return in.getNumIndexDimensions();
-    }
-
-    @Override
-    public int getBytesPerDimension() throws IOException {
-      return in.getBytesPerDimension();
-    }
-
-    @Override
-    public long size() {
-      return in.size();
-    }
-
-    @Override
-    public int getDocCount() {
-      return in.getDocCount();
     }
 
     @Override

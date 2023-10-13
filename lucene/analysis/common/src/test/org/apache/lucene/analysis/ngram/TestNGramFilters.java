@@ -18,11 +18,11 @@ package org.apache.lucene.analysis.ngram;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.payloads.PayloadHelper;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.util.BytesRef;
 
 /** Simple tests to ensure the NGram filter factories are working. */

@@ -24,9 +24,9 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestInputIterator extends LuceneTestCase {
 

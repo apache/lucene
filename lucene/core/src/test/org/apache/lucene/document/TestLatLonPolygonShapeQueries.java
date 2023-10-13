@@ -38,7 +38,7 @@ public class TestLatLonPolygonShapeQueries extends BaseLatLonShapeTestCase {
     return new PolygonValidator(this.ENCODER);
   }
 
-  protected static class PolygonValidator extends Validator {
+  public static class PolygonValidator extends Validator {
     protected PolygonValidator(Encoder encoder) {
       super(encoder);
     }

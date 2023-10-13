@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.classification;
 
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.classification.utils.ConfusionMatrixGenerator;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
@@ -24,7 +23,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Tests for {@link KNearestFuzzyClassifier} */
@@ -42,9 +43,7 @@ public class TestKNearestFuzzyClassifier extends ClassificationTestBase<BytesRef
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
       checkCorrectClassification(classifier, POLITICS_INPUT, POLITICS_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -60,9 +59,7 @@ public class TestKNearestFuzzyClassifier extends ClassificationTestBase<BytesRef
               leafReader, null, analyzer, query, 3, categoryFieldName, textFieldName);
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

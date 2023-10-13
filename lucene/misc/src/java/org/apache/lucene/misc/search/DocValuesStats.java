@@ -403,9 +403,8 @@ public abstract class DocValuesStats<T> {
 
     @Override
     protected void doAccumulate(int count) throws IOException {
-      long ord;
-      while ((ord = ssdv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-        BytesRef val = ssdv.lookupOrd(ord);
+      for (int i = 0; i < ssdv.docValueCount(); i++) {
+        BytesRef val = ssdv.lookupOrd(ssdv.nextOrd());
         if (max == null || val.compareTo(max) > 0) {
           max = copyFrom(val, max);
         }

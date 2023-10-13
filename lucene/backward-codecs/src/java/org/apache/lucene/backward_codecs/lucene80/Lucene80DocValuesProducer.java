@@ -1560,8 +1560,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       return new BaseSortedSetDocValues(entry, data) {
 
         int doc = -1;
-        long start;
-        long end;
+        long curr;
+        int count;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1583,25 +1583,29 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           if (target >= maxDoc) {
             return doc = NO_MORE_DOCS;
           }
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
+          curr = addresses.get(target);
+          long end = addresses.get(target + 1L);
+          count = (int) (end - curr);
           return doc = target;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
+          curr = addresses.get(target);
+          long end = addresses.get(target + 1L);
+          count = (int) (end - curr);
           doc = target;
           return true;
         }
 
         @Override
         public long nextOrd() throws IOException {
-          if (start == end) {
-            return NO_MORE_ORDS;
-          }
-          return ords.get(start++);
+          return ords.get(curr++);
+        }
+
+        @Override
+        public int docValueCount() {
+          return count;
         }
       };
     } else {
@@ -1617,8 +1621,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       return new BaseSortedSetDocValues(entry, data) {
 
         boolean set;
-        long start;
-        long end = 0;
+        long curr;
+        int count;
 
         @Override
         public int nextDoc() throws IOException {
@@ -1648,20 +1652,26 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           return disi.advanceExact(target);
         }
 
-        @Override
-        public long nextOrd() throws IOException {
+        private void set() {
           if (set == false) {
             final int index = disi.index();
-            final long start = addresses.get(index);
-            this.start = start + 1;
-            end = addresses.get(index + 1L);
+            curr = addresses.get(index);
+            long end = addresses.get(index + 1L);
+            count = (int) (end - curr);
             set = true;
-            return ords.get(start);
-          } else if (start == end) {
-            return NO_MORE_ORDS;
-          } else {
-            return ords.get(start++);
           }
+        }
+
+        @Override
+        public long nextOrd() throws IOException {
+          set();
+          return ords.get(curr++);
+        }
+
+        @Override
+        public int docValueCount() {
+          set();
+          return count;
         }
       };
     }

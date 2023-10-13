@@ -20,10 +20,10 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthFilterFactory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.junit.Test;
 
 public class TestJapaneseCompletionFilterFactory extends BaseTokenStreamFactoryTestCase {

@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestByteBlockPool extends LuceneTestCase {
 
@@ -98,5 +100,72 @@ public class TestByteBlockPool extends LuceneTestCase {
       assertTrue(Arrays.equals(expected, actual));
       position += expected.length;
     }
+  }
+
+  public void testAllocKnowSizeSlice() throws IOException {
+    Counter bytesUsed = Counter.newCounter();
+    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
+    pool.nextBuffer();
+    for (int i = 0; i < 100; i++) {
+      int size;
+      if (random().nextBoolean()) {
+        size = TestUtil.nextInt(random(), 100, 1000);
+      } else {
+        size = TestUtil.nextInt(random(), 50000, 100000);
+      }
+      byte[] randomData = new byte[size];
+      random().nextBytes(randomData);
+
+      int upto = pool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
+
+      for (int offset = 0; offset < size; ) {
+        if ((pool.buffer[upto] & 16) == 0) {
+          pool.buffer[upto++] = randomData[offset++];
+        } else {
+          int offsetAndLength = pool.allocKnownSizeSlice(pool.buffer, upto);
+          int sliceLength = offsetAndLength & 0xff;
+          upto = offsetAndLength >> 8;
+          assertNotEquals(0, pool.buffer[upto + sliceLength - 1]);
+          assertEquals(0, pool.buffer[upto]);
+          int writeLength = Math.min(sliceLength - 1, size - offset);
+          System.arraycopy(randomData, offset, pool.buffer, upto, writeLength);
+          offset += writeLength;
+          upto += writeLength;
+        }
+      }
+    }
+  }
+
+  public void testTooManyAllocs() {
+    // Use a mock allocator that doesn't waste memory
+    ByteBlockPool pool =
+        new ByteBlockPool(
+            new ByteBlockPool.Allocator(0) {
+              final byte[] buffer = new byte[0];
+
+              @Override
+              public void recycleByteBlocks(byte[][] blocks, int start, int end) {}
+
+              @Override
+              public byte[] getByteBlock() {
+                return buffer;
+              }
+            });
+    pool.nextBuffer();
+
+    boolean throwsException = false;
+    for (int i = 0; i < Integer.MAX_VALUE / ByteBlockPool.BYTE_BLOCK_SIZE + 1; i++) {
+      try {
+        pool.nextBuffer();
+      } catch (
+          @SuppressWarnings("unused")
+          ArithmeticException ignored) {
+        // The offset overflows on the last attempt to call nextBuffer()
+        throwsException = true;
+        break;
+      }
+    }
+    assertTrue(throwsException);
+    assertTrue(pool.byteOffset + ByteBlockPool.BYTE_BLOCK_SIZE < pool.byteOffset);
   }
 }

@@ -19,6 +19,7 @@ package org.apache.lucene.analysis.pattern;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.charfilter.BaseCharFilter;
@@ -46,8 +47,8 @@ public class PatternReplaceCharFilter extends BaseCharFilter {
 
   public PatternReplaceCharFilter(Pattern pattern, String replacement, Reader in) {
     super(in);
-    this.pattern = pattern;
-    this.replacement = replacement;
+    this.pattern = Objects.requireNonNull(pattern, "pattern");
+    this.replacement = Objects.requireNonNull(replacement, "replacement");
   }
 
   @Override

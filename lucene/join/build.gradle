@@ -20,6 +20,6 @@ apply plugin: 'java-library'
 description = 'Index-time and Query-time joins for normalized content'
 
 dependencies {
-  api project(':lucene:core')
-  testImplementation project(':lucene:test-framework')
+  moduleApi project(':lucene:core')
+  moduleTestImplementation project(':lucene:test-framework')
 }

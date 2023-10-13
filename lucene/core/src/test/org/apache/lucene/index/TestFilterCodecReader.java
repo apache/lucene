@@ -21,7 +21,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterCodecReader extends LuceneTestCase {
 
@@ -34,7 +34,7 @@ public class TestFilterCodecReader extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       w.addDocument(new Document());
-      try (DirectoryReader reader = w.getReader()) {
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
         FilterCodecReader r =
             FilterCodecReader.wrapLiveDocs(
                 (CodecReader) reader.getSequentialSubReaders().get(0), null, 1);

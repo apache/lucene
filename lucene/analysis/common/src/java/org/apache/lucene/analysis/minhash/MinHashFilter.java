@@ -333,7 +333,7 @@ public class MinHashFilter extends TokenFilter {
     public boolean add(final E toAdd) {
       if (capacity <= size()) {
         final E lastElm = last();
-        if (toAdd.compareTo(lastElm) > -1) {
+        if (toAdd.compareTo(lastElm) >= 0) {
           return false;
         } else {
           pollLast();

@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.util.automaton;
 
-// import java.io.IOException;
-// import java.io.PrintWriter;
-
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -46,7 +43,7 @@ import org.apache.lucene.util.Sorter;
  *
  * @lucene.experimental
  */
-public class Automaton implements Accountable {
+public class Automaton implements Accountable, TransitionAccessor {
 
   /**
    * Where we next write to the int[] states; this increments by 2 for each added state because we
@@ -340,7 +337,7 @@ public class Automaton implements Accountable {
     return nextTransition / 3;
   }
 
-  /** How many transitions this state has. */
+  @Override
   public int getNumTransitions(int state) {
     assert state >= 0;
     int count = states[2 * state + 1];
@@ -475,11 +472,7 @@ public class Automaton implements Accountable {
         }
       };
 
-  /**
-   * Initialize the provided Transition to iterate through all transitions leaving the specified
-   * state. You must call {@link #getNextTransition} to get each transition. Returns the number of
-   * transitions leaving this state.
-   */
+  @Override
   public int initTransition(int state, Transition t) {
     assert state < nextState / 2 : "state=" + state + " nextState=" + nextState;
     t.source = state;
@@ -487,7 +480,7 @@ public class Automaton implements Accountable {
     return getNumTransitions(state);
   }
 
-  /** Iterate to the next transition after the provided one */
+  @Override
   public void getNextTransition(Transition t) {
     // Make sure there is still a transition left:
     assert (t.transitionUpto + 3 - states[2 * t.source]) <= 3 * states[2 * t.source + 1];
@@ -535,9 +528,7 @@ public class Automaton implements Accountable {
     return false;
   }
 
-  /**
-   * Fill the provided {@link Transition} with the index'th transition leaving the specified state.
-   */
+  @Override
   public void getTransition(int state, int index, Transition t) {
     int i = states[2 * state] + 3 * index;
     t.source = state;
@@ -582,8 +573,6 @@ public class Automaton implements Accountable {
    * visualizing the automaton.
    */
   public String toDot() {
-    // TODO: breadth first search so we can get layered output...
-
     StringBuilder b = new StringBuilder();
     b.append("digraph Automaton {\n");
     b.append("  rankdir = LR\n");
@@ -630,7 +619,7 @@ public class Automaton implements Accountable {
   }
 
   /** Returns sorted array of all interval start points. */
-  int[] getStartPoints() {
+  public int[] getStartPoints() {
     Set<Integer> pointset = new HashSet<>();
     pointset.add(Character.MIN_CODE_POINT);
     // System.out.println("getStartPoints");
@@ -952,7 +941,7 @@ public class Automaton implements Accountable {
         + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + (isAccept.size() / 8)
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF
         + 3 * Integer.BYTES
         + 1;
   }

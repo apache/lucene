@@ -24,15 +24,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.MutablePointValues;
+import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -88,6 +88,7 @@ public class BKDWriter implements Closeable {
 
   /** Number of splits before we compute the exact bounding box of an inner node. */
   private static final int SPLITS_BEFORE_EXACT_BOUNDS = 4;
+
   /** Default maximum heap to use, before spilling to (slower) disk */
   public static final float DEFAULT_MAX_MB_SORT_IN_HEAP = 16.0f;
 
@@ -103,8 +104,7 @@ public class BKDWriter implements Closeable {
   final double maxMBSortInHeap;
 
   final byte[] scratchDiff;
-  final byte[] scratch1;
-  final byte[] scratch2;
+  final byte[] scratch;
   final BytesRef scratchBytesRef1 = new BytesRef();
   final BytesRef scratchBytesRef2 = new BytesRef();
   final int[] commonPrefixLengths;
@@ -129,6 +129,7 @@ public class BKDWriter implements Closeable {
   private final long totalPointCount;
 
   private final int maxDoc;
+  private final DocIdsWriter docIdsWriter;
 
   public BKDWriter(
       int maxDoc,
@@ -155,8 +156,7 @@ public class BKDWriter implements Closeable {
     docsSeen = new FixedBitSet(maxDoc);
 
     scratchDiff = new byte[config.bytesPerDim];
-    scratch1 = new byte[config.packedBytesLength];
-    scratch2 = new byte[config.packedBytesLength];
+    scratch = new byte[config.packedBytesLength];
     commonPrefixLengths = new int[config.numDims];
 
     minPackedValue = new byte[config.packedIndexBytesLength];
@@ -164,7 +164,7 @@ public class BKDWriter implements Closeable {
 
     // Maximum number of points we hold in memory at any time
     maxPointsSortInHeap = (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc));
-
+    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode);
     // Finally, we must be able to hold at least the leaf node in heap during build:
     if (maxPointsSortInHeap < config.maxPointsInLeafNode) {
       throw new IllegalArgumentException(
@@ -239,83 +239,45 @@ public class BKDWriter implements Closeable {
   }
 
   private static class MergeReader {
-    final BKDReader bkd;
-    final BKDReader.IntersectState state;
-    final MergeState.DocMap docMap;
-
-    /** Current doc ID */
-    public int docID;
+    private final PointValues.PointTree pointTree;
+    private final int packedBytesLength;
+    private final MergeState.DocMap docMap;
+    private final MergeIntersectsVisitor mergeIntersectsVisitor;
 
     /** Which doc in this block we are up to */
     private int docBlockUpto;
 
-    /** How many docs in the current block */
-    private int docsInBlock;
+    /** Current doc ID */
+    public int docID;
 
-    /** Which leaf block we are up to */
-    private int blockID;
+    /** Current packed value */
+    public final byte[] packedValue;
 
-    private final byte[] packedValues;
-
-    public MergeReader(BKDReader bkd, MergeState.DocMap docMap) throws IOException {
-      this.bkd = bkd;
-      state = new BKDReader.IntersectState(bkd.in.clone(), bkd.config, null, null);
+    public MergeReader(PointValues pointValues, MergeState.DocMap docMap) throws IOException {
+      this.packedBytesLength = pointValues.getBytesPerDimension() * pointValues.getNumDimensions();
+      this.pointTree = pointValues.getPointTree();
+      this.mergeIntersectsVisitor = new MergeIntersectsVisitor(packedBytesLength);
+      // move to first child of the tree and collect docs
+      while (pointTree.moveToChild()) {}
+      pointTree.visitDocValues(mergeIntersectsVisitor);
       this.docMap = docMap;
-      state.in.seek(bkd.getMinLeafBlockFP());
-      this.packedValues = new byte[bkd.config.maxPointsInLeafNode * bkd.config.packedBytesLength];
+      this.packedValue = new byte[packedBytesLength];
     }
 
     public boolean next() throws IOException {
       // System.out.println("MR.next this=" + this);
       while (true) {
-        if (docBlockUpto == docsInBlock) {
-          if (blockID == bkd.leafNodeOffset) {
-            // System.out.println("  done!");
+        if (docBlockUpto == mergeIntersectsVisitor.docsInBlock) {
+          if (collectNextLeaf() == false) {
+            assert mergeIntersectsVisitor.docsInBlock == 0;
             return false;
           }
-          // System.out.println("  new block @ fp=" + state.in.getFilePointer());
-          docsInBlock = bkd.readDocIDs(state.in, state.in.getFilePointer(), state.scratchIterator);
-          assert docsInBlock > 0;
+          assert mergeIntersectsVisitor.docsInBlock > 0;
           docBlockUpto = 0;
-          bkd.visitDocValues(
-              state.commonPrefixLengths,
-              state.scratchDataPackedValue,
-              state.scratchMinIndexPackedValue,
-              state.scratchMaxIndexPackedValue,
-              state.in,
-              state.scratchIterator,
-              docsInBlock,
-              new IntersectVisitor() {
-                int i = 0;
-
-                @Override
-                public void visit(int docID) {
-                  throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public void visit(int docID, byte[] packedValue) {
-                  assert docID == state.scratchIterator.docIDs[i];
-                  System.arraycopy(
-                      packedValue,
-                      0,
-                      packedValues,
-                      i * bkd.config.packedBytesLength,
-                      bkd.config.packedBytesLength);
-                  i++;
-                }
-
-                @Override
-                public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-                  return Relation.CELL_CROSSES_QUERY;
-                }
-              });
-
-          blockID++;
         }
 
         final int index = docBlockUpto++;
-        int oldDocID = state.scratchIterator.docIDs[index];
+        int oldDocID = mergeIntersectsVisitor.docIDs[index];
 
         int mappedDocID;
         if (docMap == null) {
@@ -328,19 +290,85 @@ public class BKDWriter implements Closeable {
           // Not deleted!
           docID = mappedDocID;
           System.arraycopy(
-              packedValues,
-              index * bkd.config.packedBytesLength,
-              state.scratchDataPackedValue,
+              mergeIntersectsVisitor.packedValues,
+              index * packedBytesLength,
+              packedValue,
               0,
-              bkd.config.packedBytesLength);
+              packedBytesLength);
           return true;
         }
       }
     }
+
+    private boolean collectNextLeaf() throws IOException {
+      assert pointTree.moveToChild() == false;
+      mergeIntersectsVisitor.reset();
+      do {
+        if (pointTree.moveToSibling()) {
+          // move to first child of this node and collect docs
+          while (pointTree.moveToChild()) {}
+          pointTree.visitDocValues(mergeIntersectsVisitor);
+          return true;
+        }
+      } while (pointTree.moveToParent());
+      return false;
+    }
+  }
+
+  private static class MergeIntersectsVisitor implements IntersectVisitor {
+
+    int docsInBlock = 0;
+    byte[] packedValues;
+    int[] docIDs;
+    private final int packedBytesLength;
+
+    MergeIntersectsVisitor(int packedBytesLength) {
+      this.docIDs = new int[0];
+      this.packedValues = new byte[0];
+      this.packedBytesLength = packedBytesLength;
+    }
+
+    void reset() {
+      docsInBlock = 0;
+    }
+
+    @Override
+    public void grow(int count) {
+      assert docsInBlock == 0;
+      if (docIDs.length < count) {
+        docIDs = ArrayUtil.grow(docIDs, count);
+        int packedValuesSize = Math.toIntExact(docIDs.length * (long) packedBytesLength);
+        if (packedValuesSize > ArrayUtil.MAX_ARRAY_LENGTH) {
+          throw new IllegalStateException(
+              "array length must be <= to "
+                  + ArrayUtil.MAX_ARRAY_LENGTH
+                  + " but was: "
+                  + packedValuesSize);
+        }
+        packedValues = ArrayUtil.growExact(packedValues, packedValuesSize);
+      }
+    }
+
+    @Override
+    public void visit(int docID) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) {
+      System.arraycopy(
+          packedValue, 0, packedValues, docsInBlock * packedBytesLength, packedBytesLength);
+      docIDs[docsInBlock++] = docID;
+    }
+
+    @Override
+    public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      return Relation.CELL_CROSSES_QUERY;
+    }
   }
 
   private static class BKDMergeQueue extends PriorityQueue<MergeReader> {
-    private final ByteArrayComparator comparator;
+    private final ArrayUtil.ByteArrayComparator comparator;
 
     public BKDMergeQueue(int bytesPerDim, int maxSize) {
       super(maxSize);
@@ -351,8 +379,8 @@ public class BKDWriter implements Closeable {
     public boolean lessThan(MergeReader a, MergeReader b) {
       assert a != b;
 
-      int cmp =
-          comparator.compare(a.state.scratchDataPackedValue, 0, b.state.scratchDataPackedValue, 0);
+      int cmp = comparator.compare(a.packedValue, 0, b.packedValue, 0);
+
       if (cmp < 0) {
         return true;
       } else if (cmp > 0) {
@@ -368,17 +396,20 @@ public class BKDWriter implements Closeable {
   private interface BKDTreeLeafNodes {
     /** number of leaf nodes */
     int numLeaves();
+
     /**
      * pointer to the leaf node previously written. Leaves are order from left to right, so leaf at
-     * {@code index} 0 is the leftmost leaf and the the leaf at {@code numleaves()} -1 is the
-     * rightmost leaf
+     * {@code index} 0 is the leftmost leaf and the leaf at {@code numleaves()} -1 is the rightmost
+     * leaf
      */
     long getLeafLP(int index);
+
     /**
      * split value between two leaves. The split value at position n corresponds to the leaves at (n
      * -1) and n.
      */
     BytesRef getSplitValue(int index);
+
     /**
      * split dimension between two leaves. The split dimension at position n corresponds to the
      * leaves at (n -1) and n.
@@ -387,7 +418,7 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * Write a field from a {@link MutablePointValues}. This way of writing points is faster than
+   * Write a field from a {@link MutablePointTree}. This way of writing points is faster than
    * regular writes with {@link BKDWriter#add} since there is opportunity for reordering points
    * before writing them to disk. This method does not use transient disk in order to reorder
    * points.
@@ -397,7 +428,7 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues reader)
+      MutablePointTree reader)
       throws IOException {
     if (config.numDims == 1) {
       return writeField1Dim(metaOut, indexOut, dataOut, fieldName, reader);
@@ -407,7 +438,7 @@ public class BKDWriter implements Closeable {
   }
 
   private void computePackedValueBounds(
-      MutablePointValues values,
+      MutablePointTree values,
       int from,
       int to,
       byte[] minPackedValue,
@@ -425,8 +456,14 @@ public class BKDWriter implements Closeable {
       values.getValue(i, scratch);
       for (int dim = 0; dim < config.numIndexDims; dim++) {
         final int startOffset = dim * config.bytesPerDim;
-        if (comparator.compare(
-                scratch.bytes, scratch.offset + startOffset, minPackedValue, startOffset)
+        final int endOffset = startOffset + config.bytesPerDim;
+        if (Arrays.compareUnsigned(
+                scratch.bytes,
+                scratch.offset + startOffset,
+                scratch.offset + endOffset,
+                minPackedValue,
+                startOffset,
+                endOffset)
             < 0) {
           System.arraycopy(
               scratch.bytes,
@@ -434,8 +471,13 @@ public class BKDWriter implements Closeable {
               minPackedValue,
               startOffset,
               config.bytesPerDim);
-        } else if (comparator.compare(
-                scratch.bytes, scratch.offset + startOffset, maxPackedValue, startOffset)
+        } else if (Arrays.compareUnsigned(
+                scratch.bytes,
+                scratch.offset + startOffset,
+                scratch.offset + endOffset,
+                maxPackedValue,
+                startOffset,
+                endOffset)
             > 0) {
           System.arraycopy(
               scratch.bytes,
@@ -455,7 +497,7 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues values)
+      MutablePointTree values)
       throws IOException {
     if (pointCount != 0) {
       throw new IllegalStateException("cannot mix add and writeField");
@@ -477,7 +519,7 @@ public class BKDWriter implements Closeable {
 
     checkMaxLeafNodeCount(numLeaves);
 
-    final byte[] splitPackedValues = new byte[numSplits * config.bytesPerDim];
+    final byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
     final byte[] splitDimensionValues = new byte[numSplits];
     final long[] leafBlockFPs = new long[numLeaves];
 
@@ -509,37 +551,7 @@ public class BKDWriter implements Closeable {
     scratchBytesRef1.length = config.bytesPerDim;
     scratchBytesRef1.bytes = splitPackedValues;
 
-    BKDTreeLeafNodes leafNodes =
-        new BKDTreeLeafNodes() {
-          @Override
-          public long getLeafLP(int index) {
-            return leafBlockFPs[index];
-          }
-
-          @Override
-          public BytesRef getSplitValue(int index) {
-            scratchBytesRef1.offset = index * config.bytesPerDim;
-            return scratchBytesRef1;
-          }
-
-          @Override
-          public int getSplitDimension(int index) {
-            return splitDimensionValues[index] & 0xff;
-          }
-
-          @Override
-          public int numLeaves() {
-            return leafBlockFPs.length;
-          }
-        };
-
-    return () -> {
-      try {
-        writeIndex(metaOut, indexOut, config.maxPointsInLeafNode, leafNodes, dataStartFP);
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-    };
+    return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
   }
 
   /* In the 1D case, we can simply sort points in ascending order and use the
@@ -549,14 +561,14 @@ public class BKDWriter implements Closeable {
       IndexOutput indexOut,
       IndexOutput dataOut,
       String fieldName,
-      MutablePointValues reader)
+      MutablePointTree reader)
       throws IOException {
-    MutablePointsReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
 
     final OneDimensionBKDWriter oneDimWriter =
         new OneDimensionBKDWriter(metaOut, indexOut, dataOut);
 
-    reader.intersect(
+    reader.visitDocValues(
         new IntersectVisitor() {
 
           @Override
@@ -579,30 +591,33 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * More efficient bulk-add for incoming {@link BKDReader}s. This does a merge sort of the already
-   * sorted values and currently only works when numDims==1. This returns -1 if all documents
-   * containing dimensional values were deleted.
+   * More efficient bulk-add for incoming {@link PointValues}s. This does a merge sort of the
+   * already sorted values and currently only works when numDims==1. This returns -1 if all
+   * documents containing dimensional values were deleted.
    */
   public Runnable merge(
       IndexOutput metaOut,
       IndexOutput indexOut,
       IndexOutput dataOut,
       List<MergeState.DocMap> docMaps,
-      List<BKDReader> readers)
+      List<PointValues> readers)
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
     BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim, readers.size());
 
     for (int i = 0; i < readers.size(); i++) {
-      BKDReader bkd = readers.get(i);
+      PointValues pointValues = readers.get(i);
+      assert pointValues.getNumDimensions() == config.numDims
+          && pointValues.getBytesPerDimension() == config.bytesPerDim
+          && pointValues.getNumIndexDimensions() == config.numIndexDims;
       MergeState.DocMap docMap;
       if (docMaps == null) {
         docMap = null;
       } else {
         docMap = docMaps.get(i);
       }
-      MergeReader reader = new MergeReader(bkd, docMap);
+      MergeReader reader = new MergeReader(pointValues, docMap);
       if (reader.next()) {
         queue.add(reader);
       }
@@ -614,7 +629,7 @@ public class BKDWriter implements Closeable {
       MergeReader reader = queue.top();
       // System.out.println("iter reader=" + reader);
 
-      oneDimWriter.add(reader.state.scratchDataPackedValue, reader.docID);
+      oneDimWriter.add(reader.packedValue, reader.docID);
 
       if (reader.next()) {
         queue.updateTop();
@@ -790,12 +805,9 @@ public class BKDWriter implements Closeable {
       scratchBytesRef1.bytes = leafValues;
 
       final IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
-            @Override
-            public BytesRef apply(int i) {
-              scratchBytesRef1.offset = config.packedBytesLength * i;
-              return scratchBytesRef1;
-            }
+          i -> {
+            scratchBytesRef1.offset = config.packedBytesLength * i;
+            return scratchBytesRef1;
           };
       assert valuesInOrderAndBounds(
           config,
@@ -905,7 +917,7 @@ public class BKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.toIntExact(numSplits * config.bytesPerDim)];
+    byte[] splitPackedValues = new byte[Math.multiplyExact(numSplits, config.bytesPerDim)];
     byte[] splitDimensionValues = new byte[numSplits];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
@@ -947,8 +959,8 @@ public class BKDWriter implements Closeable {
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
-      // long t2 = System.nanoTime();
-      // System.out.println("write time: " + ((t2-t1)/1000000.0) + " msec");
+      // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
+      //   TimeUnit.SECONDS.toNanos(1)) + " ms");
 
       success = true;
     } finally {
@@ -959,6 +971,15 @@ public class BKDWriter implements Closeable {
 
     scratchBytesRef1.bytes = splitPackedValues;
     scratchBytesRef1.length = config.bytesPerDim;
+    return makeWriter(metaOut, indexOut, splitDimensionValues, leafBlockFPs, dataStartFP);
+  }
+
+  private Runnable makeWriter(
+      IndexOutput metaOut,
+      IndexOutput indexOut,
+      byte[] splitDimensionValues,
+      long[] leafBlockFPs,
+      long dataStartFP) {
     BKDTreeLeafNodes leafNodes =
         new BKDTreeLeafNodes() {
           @Override
@@ -1248,7 +1269,7 @@ public class BKDWriter implements Closeable {
       throws IOException {
     assert count > 0 : "config.maxPointsInLeafNode=" + config.maxPointsInLeafNode;
     out.writeVInt(count);
-    DocIdsWriter.writeDocIds(docIDs, start, count, out);
+    docIdsWriter.writeDocIds(docIDs, start, count, out);
   }
 
   private void writeLeafBlockPackedValues(
@@ -1307,21 +1328,21 @@ public class BKDWriter implements Closeable {
       writeActualBounds(out, commonPrefixLengths, count, packedValues);
     }
     BytesRef value = packedValues.apply(0);
-    System.arraycopy(value.bytes, value.offset, scratch1, 0, config.packedBytesLength);
+    System.arraycopy(value.bytes, value.offset, scratch, 0, config.packedBytesLength);
     int cardinality = 1;
     for (int i = 1; i < count; i++) {
       value = packedValues.apply(i);
       for (int dim = 0; dim < config.numDims; dim++) {
         final int start = dim * config.bytesPerDim;
-        if (equalsPredicate.test(value.bytes, value.offset + start, scratch1, start) == false) {
+        if (equalsPredicate.test(value.bytes, value.offset + start, scratch, start) == false) {
           out.writeVInt(cardinality);
           for (int j = 0; j < config.numDims; j++) {
             out.writeBytes(
-                scratch1,
+                scratch,
                 j * config.bytesPerDim + commonPrefixLengths[j],
                 config.bytesPerDim - commonPrefixLengths[j]);
           }
-          System.arraycopy(value.bytes, value.offset, scratch1, 0, config.packedBytesLength);
+          System.arraycopy(value.bytes, value.offset, scratch, 0, config.packedBytesLength);
           cardinality = 1;
           break;
         } else if (dim == config.numDims - 1) {
@@ -1332,7 +1353,7 @@ public class BKDWriter implements Closeable {
     out.writeVInt(cardinality);
     for (int i = 0; i < config.numDims; i++) {
       out.writeBytes(
-          scratch1,
+          scratch,
           i * config.bytesPerDim + commonPrefixLengths[i],
           config.bytesPerDim - commonPrefixLengths[i]);
     }
@@ -1491,7 +1512,7 @@ public class BKDWriter implements Closeable {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
       if (tempDir.getCreatedFiles().contains(tempFileName)) {
-        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
           CodecUtil.checkFooter(in, priorException);
         }
       }
@@ -1529,8 +1550,8 @@ public class BKDWriter implements Closeable {
     int splitDim = -1;
     for (int dim = 0; dim < config.numIndexDims; dim++) {
       NumericUtils.subtract(config.bytesPerDim, dim, maxPackedValue, minPackedValue, scratchDiff);
-      if (splitDim == -1 || comparator.compare(scratchDiff, 0, scratch1, 0) > 0) {
-        System.arraycopy(scratchDiff, 0, scratch1, 0, config.bytesPerDim);
+      if (splitDim == -1 || comparator.compare(scratchDiff, 0, scratch, 0) > 0) {
+        System.arraycopy(scratchDiff, 0, scratch, 0, config.bytesPerDim);
         splitDim = dim;
       }
     }
@@ -1561,7 +1582,7 @@ public class BKDWriter implements Closeable {
   private void build(
       int leavesOffset,
       int numLeaves,
-      MutablePointValues reader,
+      MutablePointTree reader,
       int from,
       int to,
       IndexOutput out,
@@ -1626,7 +1647,7 @@ public class BKDWriter implements Closeable {
       }
 
       // sort by sortedDim
-      MutablePointsReaderUtils.sortByDim(
+      MutablePointTreeReaderUtils.sortByDim(
           config,
           sortedDim,
           commonPrefixLengths,
@@ -1672,17 +1693,14 @@ public class BKDWriter implements Closeable {
       // Write the common prefixes:
       reader.getValue(from, scratchBytesRef1);
       System.arraycopy(
-          scratchBytesRef1.bytes, scratchBytesRef1.offset, scratch1, 0, config.packedBytesLength);
-      writeCommonPrefixes(out, commonPrefixLengths, scratch1);
+          scratchBytesRef1.bytes, scratchBytesRef1.offset, scratch, 0, config.packedBytesLength);
+      writeCommonPrefixes(out, commonPrefixLengths, scratch);
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
-            @Override
-            public BytesRef apply(int i) {
-              reader.getValue(from + i, scratchBytesRef1);
-              return scratchBytesRef1;
-            }
+          i -> {
+            reader.getValue(from + i, scratchBytesRef1);
+            return scratchBytesRef1;
           };
       assert valuesInOrderAndBounds(
           config, count, sortedDim, minPackedValue, maxPackedValue, packedValues, docIDs, 0);
@@ -1722,7 +1740,7 @@ public class BKDWriter implements Closeable {
               maxPackedValue,
               splitDim * config.bytesPerDim);
 
-      MutablePointsReaderUtils.partition(
+      MutablePointTreeReaderUtils.partition(
           config,
           maxDoc,
           splitDim,
@@ -1873,8 +1891,8 @@ public class BKDWriter implements Closeable {
 
       int from = Math.toIntExact(points.start);
       int to = Math.toIntExact(points.start + points.count);
-      // we store common prefix on scratch1
-      computeCommonPrefixLength(heapSource, scratch1, from, to);
+      // we store common prefix on scratch
+      computeCommonPrefixLength(heapSource, scratch, from, to);
 
       int sortedDim = 0;
       int sortedDimCardinality = Integer.MAX_VALUE;
@@ -1929,23 +1947,11 @@ public class BKDWriter implements Closeable {
       // from the index, much like how terms dict does so from the FST:
 
       // Write the common prefixes:
-      writeCommonPrefixes(out, commonPrefixLengths, scratch1);
+      writeCommonPrefixes(out, commonPrefixLengths, scratch);
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
-            final BytesRef scratch = new BytesRef();
-
-            {
-              scratch.length = config.packedBytesLength;
-            }
-
-            @Override
-            public BytesRef apply(int i) {
-              PointValue value = heapSource.getPackedValueSlice(from + i);
-              return value.packedValue();
-            }
-          };
+          i -> heapSource.getPackedValueSlice(from + i).packedValue();
       assert valuesInOrderAndBounds(
           config, count, sortedDim, minPackedValue, maxPackedValue, packedValues, docIDs, 0);
       writeLeafBlockPackedValues(
@@ -1977,7 +1983,7 @@ public class BKDWriter implements Closeable {
       // How many leaves will be in the left tree:
       final int numLeftLeafNodes = getNumLeftLeafNodes(numLeaves);
       // How many points will be in the left tree:
-      final long leftCount = numLeftLeafNodes * config.maxPointsInLeafNode;
+      final long leftCount = numLeftLeafNodes * (long) config.maxPointsInLeafNode;
 
       BKDRadixSelector.PathSlice[] slices = new BKDRadixSelector.PathSlice[2];
 

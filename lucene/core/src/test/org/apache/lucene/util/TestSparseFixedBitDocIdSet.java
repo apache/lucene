@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 
 public class TestSparseFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet> {
 

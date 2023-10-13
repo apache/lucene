@@ -23,16 +23,16 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.mockfile.ExtrasFS;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestSegmentInfos extends LuceneTestCase {

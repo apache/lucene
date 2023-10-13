@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
+
 public class TestCloseableThreadLocal extends LuceneTestCase {
   public static final String TEST_VALUE = "initvaluetest";
 

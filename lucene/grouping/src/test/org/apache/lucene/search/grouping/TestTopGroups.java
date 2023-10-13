@@ -19,7 +19,7 @@ package org.apache.lucene.search.grouping;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTopGroups extends LuceneTestCase {
 

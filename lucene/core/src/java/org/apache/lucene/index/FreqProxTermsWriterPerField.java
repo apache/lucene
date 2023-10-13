@@ -144,7 +144,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
 
     if (!hasFreq) {
       assert postings.termFreqs == null;
-      if (termFreqAtt.getTermFrequency() != 1) {
+      if (termFreqAtt != null && termFreqAtt.getTermFrequency() != 1) {
         throw new IllegalStateException(
             "field \""
                 + getFieldName()
@@ -203,7 +203,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
   }
 
   private int getTermFreq() {
-    int freq = termFreqAtt.getTermFrequency();
+    int freq = termFreqAtt == null ? 1 : termFreqAtt.getTermFrequency();
     if (freq != 1) {
       if (hasProx) {
         throw new IllegalStateException(

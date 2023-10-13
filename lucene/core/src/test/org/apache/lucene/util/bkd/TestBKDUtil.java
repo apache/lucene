@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.util.bkd;
 
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestBKDUtil extends LuceneTestCase {
 

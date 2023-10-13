@@ -22,8 +22,6 @@ import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.MockVariableLengthPayloadFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -37,14 +35,16 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper.Failure;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.MockVariableLengthPayloadFilter;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper.Failure;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.Rethrow;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.Rethrow;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Causes a bunch of fake VM errors and checks that no other exceptions are delivered instead, no
@@ -280,8 +280,6 @@ public class TestIndexWriterOnVMError extends LuceneTestCase {
   }
 
   @Nightly
-  // commented out on: 01-Apr-2019
-  // @BadApple(bugUrl="https://issues.apache.org/jira/browse/SOLR-12028") // 14-Oct-2018
   public void testCheckpoint() throws Exception {
     final Random r = new Random(random().nextLong());
     doTest(

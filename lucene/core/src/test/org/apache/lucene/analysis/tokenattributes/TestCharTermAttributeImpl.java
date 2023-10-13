@@ -21,10 +21,10 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestCharTermAttributeImpl extends LuceneTestCase {
 
@@ -50,7 +50,6 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
         });
   }
 
-  @Slow
   public void testGrow() {
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     StringBuilder buf = new StringBuilder("ab");

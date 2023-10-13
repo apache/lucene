@@ -16,16 +16,17 @@
  */
 package org.apache.lucene.geo;
 
-import static org.apache.lucene.geo.GeoTestUtil.createRegularPolygon;
-import static org.apache.lucene.geo.GeoTestUtil.nextLatitude;
-import static org.apache.lucene.geo.GeoTestUtil.nextLongitude;
-import static org.apache.lucene.geo.GeoTestUtil.nextPointNear;
-import static org.apache.lucene.geo.GeoTestUtil.nextPolygon;
+import static org.apache.lucene.tests.geo.GeoTestUtil.createRegularPolygon;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextLatitude;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextLongitude;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextPointNear;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextPolygon;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Test Polygon2D impl */
 public class TestPolygon2D extends LuceneTestCase {

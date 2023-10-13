@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -31,13 +30,15 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MockRandomMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.MockRandomMergePolicy;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
 
@@ -133,9 +134,10 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           after = null;
         }
-        final TopFieldCollector collector1 =
-            TopFieldCollector.create(sort, numHits, after, Integer.MAX_VALUE);
-        final TopFieldCollector collector2 = TopFieldCollector.create(sort, numHits, after, 1);
+        CollectorManager<TopFieldCollector, TopFieldDocs> manager1 =
+            TopFieldCollector.createSharedManager(sort, numHits, after, Integer.MAX_VALUE);
+        CollectorManager<TopFieldCollector, TopFieldDocs> manager2 =
+            TopFieldCollector.createSharedManager(sort, numHits, after, 1);
 
         final Query query;
         if (random().nextBoolean()) {
@@ -143,17 +145,15 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           query = new MatchAllDocsQuery();
         }
-        searcher.search(query, collector1);
-        searcher.search(query, collector2);
-        TopDocs td1 = collector1.topDocs();
-        TopDocs td2 = collector2.topDocs();
+        TopDocs td1 = searcher.search(query, manager1);
+        TopDocs td2 = searcher.search(query, manager2);
 
-        assertFalse(collector1.isEarlyTerminated());
+        assertNotEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td1.totalHits.relation);
         if (paging == false && maxSegmentSize > numHits && query instanceof MatchAllDocsQuery) {
           // Make sure that we sometimes early terminate
-          assertTrue(collector2.isEarlyTerminated());
+          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td2.totalHits.relation);
         }
-        if (collector2.isEarlyTerminated()) {
+        if (td2.totalHits.relation == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO) {
           assertTrue(td2.totalHits.value >= td1.scoreDocs.length);
           assertTrue(td2.totalHits.value <= reader.maxDoc());
         } else {

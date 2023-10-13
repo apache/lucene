@@ -215,6 +215,7 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
 
     @Override
     public int nextInterval() throws IOException {
+      lead = null;
       // first, find a matching interval beyond the current start
       while (this.proximityQueue.size() == minShouldMatch
           && proximityQueue.top().start() == start) {
@@ -258,7 +259,9 @@ class MinimumShouldMatchIntervalsSource extends IntervalsSource {
 
     Collection<IntervalIterator> getCurrentIterators() {
       currentIterators.clear();
-      currentIterators.add(lead);
+      if (lead != null) {
+        currentIterators.add(lead);
+      }
       for (IntervalIterator it : this.proximityQueue) {
         if (it.end() <= end) {
           currentIterators.add(it);

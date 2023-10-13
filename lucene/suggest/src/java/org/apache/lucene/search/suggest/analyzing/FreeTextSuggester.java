@@ -140,7 +140,7 @@ public class FreeTextSuggester extends Lookup {
   private final byte separator;
 
   /** Number of entries the lookup was built with */
-  private long count = 0;
+  private volatile long count = 0;
 
   /**
    * The default character used to join multiple tokens into a single ngram token. The input tokens
@@ -273,7 +273,7 @@ public class FreeTextSuggester extends Lookup {
     IndexReader reader = null;
 
     boolean success = false;
-    count = 0;
+    long newCount = 0;
     try {
       while (true) {
         BytesRef surfaceForm = iterator.next();
@@ -282,7 +282,7 @@ public class FreeTextSuggester extends Lookup {
         }
         field.setStringValue(surfaceForm.utf8ToString());
         writer.addDocument(doc);
-        count++;
+        newCount++;
       }
       reader = DirectoryReader.open(writer);
 
@@ -320,10 +320,13 @@ public class FreeTextSuggester extends Lookup {
         fstCompiler.add(Util.toIntsRef(term, scratchInts), encodeWeight(termsEnum.totalTermFreq()));
       }
 
-      fst = fstCompiler.compile();
-      if (fst == null) {
+      final FST<Long> newFst = fstCompiler.compile();
+      if (newFst == null) {
         throw new IllegalArgumentException("need at least one suggestion");
       }
+      fst = newFst;
+      count = newCount;
+
       // System.out.println("FST: " + fst.getNodeCount() + " nodes");
 
       /*

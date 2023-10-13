@@ -25,8 +25,6 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.docvalues.LongDocValues;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
-import org.apache.lucene.util.mutable.MutableValue;
-import org.apache.lucene.util.mutable.MutableValueLong;
 
 /**
  * Obtains long field values from {@link org.apache.lucene.index.LeafReader#getNumericDocValues} and
@@ -69,7 +67,17 @@ public class LongFieldSource extends FieldCacheSource {
     return new LongDocValues(this) {
       int lastDocID;
 
-      private long getValueForDoc(int doc) throws IOException {
+      @Override
+      public long longVal(int doc) throws IOException {
+        if (exists(doc)) {
+          return arr.longValue();
+        } else {
+          return 0;
+        }
+      }
+
+      @Override
+      public boolean exists(int doc) throws IOException {
         if (doc < lastDocID) {
           throw new IllegalArgumentException(
               "docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
@@ -79,28 +87,13 @@ public class LongFieldSource extends FieldCacheSource {
         if (doc > curDocID) {
           curDocID = arr.advance(doc);
         }
-        if (doc == curDocID) {
-          return arr.longValue();
-        } else {
-          return 0;
-        }
-      }
-
-      @Override
-      public long longVal(int doc) throws IOException {
-        return getValueForDoc(doc);
-      }
-
-      @Override
-      public boolean exists(int doc) throws IOException {
-        getValueForDoc(doc);
-        return arr.docID() == doc;
+        return doc == curDocID;
       }
 
       @Override
       public Object objectVal(int doc) throws IOException {
-        long value = getValueForDoc(doc);
-        if (arr.docID() == doc) {
+        if (exists(doc)) {
+          long value = longVal(doc);
           return longToObject(value);
         } else {
           return null;
@@ -109,8 +102,8 @@ public class LongFieldSource extends FieldCacheSource {
 
       @Override
       public String strVal(int doc) throws IOException {
-        long value = getValueForDoc(doc);
-        if (arr.docID() == doc) {
+        if (exists(doc)) {
+          long value = longVal(doc);
           return longToString(value);
         } else {
           return null;
@@ -121,34 +114,12 @@ public class LongFieldSource extends FieldCacheSource {
       protected long externalToLong(String extVal) {
         return LongFieldSource.this.externalToLong(extVal);
       }
-
-      @Override
-      public ValueFiller getValueFiller() {
-        return new ValueFiller() {
-          private final MutableValueLong mval = newMutableValueLong();
-
-          @Override
-          public MutableValue getValue() {
-            return mval;
-          }
-
-          @Override
-          public void fillValue(int doc) throws IOException {
-            mval.value = getValueForDoc(doc);
-            mval.exists = arr.docID() == doc;
-          }
-        };
-      }
     };
   }
 
   protected NumericDocValues getNumericDocValues(
       Map<Object, Object> context, LeafReaderContext readerContext) throws IOException {
     return DocValues.getNumeric(readerContext.reader(), field);
-  }
-
-  protected MutableValueLong newMutableValueLong() {
-    return new MutableValueLong();
   }
 
   @Override

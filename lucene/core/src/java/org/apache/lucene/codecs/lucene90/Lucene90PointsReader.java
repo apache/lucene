@@ -27,6 +27,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDReader;
@@ -35,7 +36,7 @@ import org.apache.lucene.util.bkd.BKDReader;
 public class Lucene90PointsReader extends PointsReader {
   final IndexInput indexIn, dataIn;
   final SegmentReadState readState;
-  final Map<Integer, BKDReader> readers = new HashMap<>();
+  final Map<Integer, PointValues> readers = new HashMap<>();
 
   /** Sole constructor */
   public Lucene90PointsReader(SegmentReadState readState) throws IOException {
@@ -59,7 +60,7 @@ public class Lucene90PointsReader extends PointsReader {
 
     boolean success = false;
     try {
-      indexIn = readState.directory.openInput(indexFileName, readState.context);
+      indexIn = readState.directory.openInput(indexFileName, IOContext.LOAD);
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene90PointsFormat.INDEX_CODEC_NAME,
@@ -67,6 +68,7 @@ public class Lucene90PointsReader extends PointsReader {
           Lucene90PointsFormat.VERSION_CURRENT,
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
+      CodecUtil.retrieveChecksum(indexIn);
 
       dataIn = readState.directory.openInput(dataFileName, readState.context);
       CodecUtil.checkIndexHeader(
@@ -76,10 +78,10 @@ public class Lucene90PointsReader extends PointsReader {
           Lucene90PointsFormat.VERSION_CURRENT,
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
+      CodecUtil.retrieveChecksum(dataIn);
 
       long indexLength = -1, dataLength = -1;
-      try (ChecksumIndexInput metaIn =
-          readState.directory.openChecksumInput(metaFileName, readState.context)) {
+      try (ChecksumIndexInput metaIn = readState.directory.openChecksumInput(metaFileName)) {
         Throwable priorE = null;
         try {
           CodecUtil.checkIndexHeader(
@@ -97,7 +99,7 @@ public class Lucene90PointsReader extends PointsReader {
             } else if (fieldNumber < 0) {
               throw new CorruptIndexException("Illegal field number: " + fieldNumber, metaIn);
             }
-            BKDReader reader = new BKDReader(metaIn, indexIn, dataIn);
+            PointValues reader = new BKDReader(metaIn, indexIn, dataIn);
             readers.put(fieldNumber, reader);
           }
           indexLength = metaIn.readLong();

@@ -27,6 +27,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,21 +39,22 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.SuppressForbidden;
-import org.apache.lucene.util.TestRuleIgnoreTestSuites;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /*
@@ -114,7 +116,6 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *
  * <p>Slow network is simulated with a RateLimiter.
  */
-
 // MockRandom's .sd file has no index header/footer:
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
@@ -313,14 +314,9 @@ public class TestStressNRTReplication extends LuceneTestCase {
       }
 
       message(
-          "PG="
-              + (primary == null ? "X" : primaryGen)
-              + " "
-              + liveCount
-              + " (of "
-              + nodes.length
-              + ") nodes running: "
-              + sb);
+          ("PG=" + (primary == null ? "X" : primaryGen))
+              + (" " + liveCount)
+              + (" (of " + nodes.length + ") nodes running: " + sb));
 
       // Commit a random node, primary or replica
 
@@ -531,8 +527,8 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long t1 = System.nanoTime();
     message(
         "top: done translog replay; took "
-            + ((t1 - t0) / 1000000.0)
-            + " msec; now publish primary");
+            + ((t1 - t0) / (double) TimeUnit.MILLISECONDS.toNanos(1))
+            + " ms; now publish primary");
 
     // Publish new primary only after translog has succeeded in replaying; this is important, for
     // this test anyway, so we keep a "linear"
@@ -559,12 +555,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
     NodeProcess curPrimary = primary;
 
-    cmd.add(
-        System.getProperty("java.home")
-            + System.getProperty("file.separator")
-            + "bin"
-            + System.getProperty("file.separator")
-            + "java");
+    cmd.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
     cmd.add("-Xmx512m");
 
     if (curPrimary != null) {
@@ -617,12 +608,12 @@ public class TestStressNRTReplication extends LuceneTestCase {
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+    cmd.add("-Djava.io.tmpdir=" + childTempDir.toFile());
+    cmd.addAll(getJvmForkArguments());
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
-    Writer childLog;
+    final Writer childLog;
 
     if (SEPARATE_CHILD_OUTPUT) {
       Path childOut = childTempDir.resolve(id + ".log");
@@ -912,7 +903,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
           long nowNS = System.nanoTime();
           for (int i = 0; i < nodes.length; i++) {
             b.append(' ');
-            double sec = (nowNS - nodeTimeStamps[i]) / 1000000000.0;
+            double sec = (nowNS - nodeTimeStamps[i]) / (double) TimeUnit.SECONDS.toNanos(1);
             String prefix;
             if (nodes[i] == null) {
               downNodes.add(i);
@@ -1304,7 +1295,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
 
           if (random().nextInt(100) == 17) {
             int pauseMS = TestUtil.nextInt(random(), 500, 2000);
-            System.out.println("Indexer: now pause for " + pauseMS + " msec...");
+            System.out.println("Indexer: now pause for " + pauseMS + " ms...");
             Thread.sleep(pauseMS);
             System.out.println("Indexer: done pause for a bit...");
           }
@@ -1346,7 +1337,7 @@ public class TestStressNRTReplication extends LuceneTestCase {
         String.format(
             Locale.ROOT,
             "%5.3fs       :     parent [%11s] %s",
-            (now - Node.globalStartNS) / 1000000000.,
+            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
             Thread.currentThread().getName(),
             message));
   }
@@ -1357,8 +1348,8 @@ public class TestStressNRTReplication extends LuceneTestCase {
         String.format(
             Locale.ROOT,
             "%5.3fs %5.1fs:     parent [%11s] %s",
-            (now - Node.globalStartNS) / 1000000000.,
-            (now - localStartNS) / 1000000000.,
+            (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+            (now - localStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
             Thread.currentThread().getName(),
             message));
   }

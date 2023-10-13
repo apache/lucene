@@ -20,12 +20,13 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.FilterDirectoryReader.SubReaderWrapper;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestFilterDirectoryReader extends LuceneTestCase {
 
@@ -141,6 +142,59 @@ public class TestFilterDirectoryReader extends LuceneTestCase {
     assertEquals(1L, numDocsCallCount.get());
 
     directoryReader.close();
+    dir.close();
+  }
+
+  private static class DummyLastingFilterDirectoryReader extends FilterDirectoryReader {
+    private final CacheHelper cacheHelper;
+
+    public DummyLastingFilterDirectoryReader(DirectoryReader in) throws IOException {
+      super(in, new DummySubReaderWrapper());
+      cacheHelper =
+          (in.getReaderCacheHelper() == null)
+              ? null
+              : new DelegatingCacheHelper(in.getReaderCacheHelper());
+    }
+
+    @Override
+    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+      return new DummyFilterDirectoryReader(in);
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return cacheHelper;
+    }
+  }
+
+  public void testDelegatingCacheHelper() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    w.addDocument(new Document());
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    DirectoryReader wrapped = new DummyLastingFilterDirectoryReader(reader);
+
+    assertNotEquals(reader.getReaderCacheHelper(), wrapped.getReaderCacheHelper());
+    assertNotEquals(
+        reader.getReaderCacheHelper().getKey(), wrapped.getReaderCacheHelper().getKey());
+
+    AtomicInteger closeCalledCounter = new AtomicInteger(0);
+
+    wrapped
+        .getReaderCacheHelper()
+        .addClosedListener(
+            key -> {
+              closeCalledCounter.incrementAndGet();
+              assertSame(key, wrapped.getReaderCacheHelper().getKey());
+            });
+
+    reader.close();
+    assertEquals(1, closeCalledCounter.get());
+    wrapped.close();
+    assertEquals(1, closeCalledCounter.get());
+
+    w.close();
     dir.close();
   }
 }

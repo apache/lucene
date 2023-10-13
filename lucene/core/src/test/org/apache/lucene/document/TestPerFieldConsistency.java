@@ -34,8 +34,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestPerFieldConsistency extends LuceneTestCase {
 
@@ -94,7 +94,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();
     }
-    return new KnnVectorField(fieldName, values, similarityFunction);
+    return new KnnFloatVectorField(fieldName, values, similarityFunction);
   }
 
   private static Field[] randomFieldsWithTheSameName(String fieldName) {

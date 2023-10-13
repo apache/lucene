@@ -30,7 +30,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -52,20 +51,22 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.bkd.BKDConfig;
 import org.junit.BeforeClass;
 
@@ -572,28 +573,8 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final BitSet hits = new BitSet();
-                s.search(
-                    query,
-                    new SimpleCollector() {
-
-                      private int docBase;
-
-                      @Override
-                      public ScoreMode scoreMode() {
-                        return ScoreMode.COMPLETE_NO_SCORES;
-                      }
-
-                      @Override
-                      protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                        docBase = context.docBase;
-                      }
-
-                      @Override
-                      public void collect(int doc) {
-                        hits.set(docBase + doc);
-                      }
-                    });
+                final FixedBitSet hits =
+                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(
@@ -870,28 +851,8 @@ public class TestPointQueries extends LuceneTestCase {
                   System.out.println(Thread.currentThread().getName() + ":  using query: " + query);
                 }
 
-                final BitSet hits = new BitSet();
-                s.search(
-                    query,
-                    new SimpleCollector() {
-
-                      private int docBase;
-
-                      @Override
-                      public ScoreMode scoreMode() {
-                        return ScoreMode.COMPLETE_NO_SCORES;
-                      }
-
-                      @Override
-                      protected void doSetNextReader(LeafReaderContext context) throws IOException {
-                        docBase = context.docBase;
-                      }
-
-                      @Override
-                      public void collect(int doc) {
-                        hits.set(docBase + doc);
-                      }
-                    });
+                final FixedBitSet hits =
+                    s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
                 if (VERBOSE) {
                   System.out.println(
@@ -2188,6 +2149,60 @@ public class TestPointQueries extends LuceneTestCase {
     weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
     scorer = weight.scorer(searcher.getIndexReader().leaves().get(0));
     assertFalse(DocIdSetIterator.all(1).getClass().equals(scorer.iterator().getClass()));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testPointRangeWeightCount() throws IOException {
+    // the optimization for Weight#count kicks in only when the number of dimensions is 1
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numPoints = random().nextInt(1, 10);
+    int[] points = new int[numPoints];
+
+    int numQueries = random().nextInt(1, 10);
+    int[] lowerBound = new int[numQueries];
+    int[] upperBound = new int[numQueries];
+    int[] expectedCount = new int[numQueries];
+
+    for (int i = 0; i < numQueries; i++) {
+      // generate random queries
+      lowerBound[i] = random().nextInt(1, 10);
+      // allow malformed ranges where upperBound could be less than lowerBound
+      upperBound[i] = random().nextInt(1, 10);
+    }
+
+    for (int i = 0; i < numPoints; i++) {
+      // generate random 1D points
+      points[i] = random().nextInt(1, 10);
+      if (random().nextBoolean()) {
+        // the doc may have at-most 1 point
+        Document doc = new Document();
+        doc.add(new IntPoint("point", points[i]));
+        w.addDocument(doc);
+        for (int j = 0; j < numQueries; j++) {
+          // calculate the number of points that lie within the query range
+          if (lowerBound[j] <= points[i] && points[i] <= upperBound[j]) {
+            expectedCount[j]++;
+          }
+        }
+      }
+    }
+    w.commit();
+    w.forceMerge(1);
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    if (searcher.leafContexts.isEmpty() == false) { // we need at least 1 leaf in the segment
+      for (int i = 0; i < numQueries; i++) {
+        Query query = IntPoint.newRangeQuery("point", lowerBound[i], upperBound[i]);
+        Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
+        assertEquals(expectedCount[i], weight.count(searcher.leafContexts.get(0)));
+      }
+    }
 
     reader.close();
     w.close();

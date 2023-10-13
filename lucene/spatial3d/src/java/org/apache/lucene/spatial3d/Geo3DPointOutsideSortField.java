@@ -41,7 +41,7 @@ final class Geo3DPointOutsideSortField extends SortField {
   }
 
   @Override
-  public FieldComparator<?> getComparator(int numHits, int sortPos) {
+  public FieldComparator<?> getComparator(int numHits, boolean enableSkipping) {
     return new Geo3DPointOutsideDistanceComparator(getField(), planetModel, distanceShape, numHits);
   }
 

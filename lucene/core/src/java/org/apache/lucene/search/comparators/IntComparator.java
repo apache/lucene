@@ -32,8 +32,8 @@ public class IntComparator extends NumericComparator<Integer> {
   protected int bottom;
 
   public IntComparator(
-      int numHits, String field, Integer missingValue, boolean reverse, int sortPos) {
-    super(field, missingValue != null ? missingValue : 0, reverse, sortPos, Integer.BYTES);
+      int numHits, String field, Integer missingValue, boolean reverse, boolean enableSkipping) {
+    super(field, missingValue != null ? missingValue : 0, reverse, enableSkipping, Integer.BYTES);
     values = new int[numHits];
   }
 
@@ -96,11 +96,13 @@ public class IntComparator extends NumericComparator<Integer> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Integer.compare(missingValue, bottom);
-      // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
-      // in asc sort missingValue is competitive when it's smaller or equal to bottom
-      return reverse ? (result >= 0) : (result <= 0);
+    protected int compareMissingValueWithBottomValue() {
+      return Integer.compare(missingValue, bottom);
+    }
+
+    @Override
+    protected int compareMissingValueWithTopValue() {
+      return Integer.compare(missingValue, topValue);
     }
 
     @Override

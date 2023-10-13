@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -29,7 +28,8 @@ import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.RegexpQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Tests for {@link SpanMultiTermQueryWrapper}, wrapping a few MultiTermQueries. */
@@ -232,7 +232,8 @@ public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
     wrapper.setRewriteMethod(
         new SpanMultiTermQueryWrapper.SpanRewriteMethod() {
           @Override
-          public SpanQuery rewrite(IndexReader reader, MultiTermQuery query) throws IOException {
+          public SpanQuery rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
+              throws IOException {
             return null;
           }
         });

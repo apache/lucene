@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
+
 public class TestStringHelper extends LuceneTestCase {
 
   public void testBytesDifference() {

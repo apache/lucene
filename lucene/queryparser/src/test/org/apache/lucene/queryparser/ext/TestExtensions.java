@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.queryparser.ext;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Testcase for the {@link Extensions} class */
 public class TestExtensions extends LuceneTestCase {

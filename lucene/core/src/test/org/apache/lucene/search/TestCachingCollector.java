@@ -17,7 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCachingCollector extends LuceneTestCase {
 
@@ -27,11 +27,6 @@ public class TestCachingCollector extends LuceneTestCase {
 
     @Override
     public float score() {
-      return 0;
-    }
-
-    @Override
-    public int docID() {
       return 0;
     }
   }
@@ -57,6 +52,7 @@ public class TestCachingCollector extends LuceneTestCase {
       for (int i = 0; i < 1000; i++) {
         acc.collect(i);
       }
+      acc.finish();
 
       // now replay them
       cc.replay(
@@ -127,6 +123,7 @@ public class TestCachingCollector extends LuceneTestCase {
       acc.collect(0);
 
       assertTrue(cc.isCached());
+      acc.finish();
       cc.replay(new NoOpCollector());
     }
   }

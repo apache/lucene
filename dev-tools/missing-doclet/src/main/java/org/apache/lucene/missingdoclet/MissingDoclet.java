@@ -331,7 +331,7 @@ public class MissingDoclet extends StandardDoclet {
     if (hasOverrides) {
       // If an element has explicit @Overrides annotation, assume it does
       // have inherited javadocs somewhere.
-      reporter.print(Diagnostic.Kind.NOTE, element, "javadoc empty but @Override declared, skipping.");
+      // reporter.print(Diagnostic.Kind.NOTE, element, "javadoc empty but @Override declared, skipping.");
       return true;
     }
 
@@ -348,7 +348,7 @@ public class MissingDoclet extends StandardDoclet {
             // We could check supMethod for non-empty javadoc here. Don't know if this makes
             // sense though as all methods will be verified in the end so it'd fail on the
             // top of the hierarchy (if empty) anyway.
-            reporter.print(Diagnostic.Kind.NOTE, element, "javadoc empty but method overrides another, skipping.");
+            // reporter.print(Diagnostic.Kind.NOTE, element, "javadoc empty but method overrides another, skipping.");
             return true;
           }
         }

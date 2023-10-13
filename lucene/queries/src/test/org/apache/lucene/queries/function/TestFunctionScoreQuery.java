@@ -30,6 +30,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -40,12 +41,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -360,5 +361,20 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
         assertEquals(1, new IndexSearcher(reader).search(q, 10).totalHits.value);
       }
     }
+  }
+
+  // Weight#count is delegated to the inner weight
+  public void testQueryMatchesCount() throws Exception {
+    TermQuery query = new TermQuery(new Term(TEXT_FIELD, "first"));
+    FunctionScoreQuery fq =
+        FunctionScoreQuery.boostByValue(query, DoubleValuesSource.fromIntField("iii"));
+
+    final int searchCount = searcher.count(fq);
+    final Weight weight = searcher.createWeight(fq, ScoreMode.COMPLETE, 1);
+    int weightCount = 0;
+    for (LeafReaderContext leafReaderContext : reader.leaves()) {
+      weightCount += weight.count(leafReaderContext);
+    }
+    assertEquals(searchCount, weightCount);
   }
 }

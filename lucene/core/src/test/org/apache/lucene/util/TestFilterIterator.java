@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterIterator extends LuceneTestCase {
 

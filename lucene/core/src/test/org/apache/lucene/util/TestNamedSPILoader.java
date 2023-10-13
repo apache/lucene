@@ -18,6 +18,8 @@ package org.apache.lucene.util;
 
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 // TODO: maybe we should test this with mocks, but it's easy
 // enough to test the basics via Codec

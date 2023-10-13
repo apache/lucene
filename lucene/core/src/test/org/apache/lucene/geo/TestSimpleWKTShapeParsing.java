@@ -17,7 +17,7 @@
 package org.apache.lucene.geo;
 
 import org.apache.lucene.geo.SimpleWKTShapeParser.ShapeType;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** simple WKT parsing tests */
 public class TestSimpleWKTShapeParsing extends LuceneTestCase {

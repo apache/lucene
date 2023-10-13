@@ -59,6 +59,15 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
 
   protected abstract IntervalIterator combine(List<IntervalIterator> iterators);
 
+  /**
+   * Create matches iterator from an advanced and validated interval iterator and a list of matches
+   * iterator of all the sub-sources
+   */
+  protected IntervalMatchesIterator createMatchesIterator(
+      IntervalIterator it, List<IntervalMatchesIterator> subs) {
+    return new ConjunctionMatchesIterator(it, subs);
+  }
+
   @Override
   public final IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
       throws IOException {
@@ -81,6 +90,6 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
     if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
       return null;
     }
-    return new ConjunctionMatchesIterator(it, subs);
+    return createMatchesIterator(it, subs);
   }
 }

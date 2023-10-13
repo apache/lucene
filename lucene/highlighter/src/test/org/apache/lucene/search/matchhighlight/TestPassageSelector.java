@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -101,6 +101,18 @@ public class TestPassageSelector extends LuceneTestCase {
     String value = "0123456789a";
     checkPassages(">0123<...", value, 4, 1, new OffsetRange(0, value.length()));
     checkPassages("...>123456<...", value, 6, 1, new OffsetRange(1, value.length()));
+  }
+
+  @Test
+  public void overlappingResultsDontPushOutLowerScoringResults() {
+    String value =
+        "a fair amount of space and then two matches here and then two big long spaces for matches";
+    checkPassages(
+        "...and then >two< >matches<...|...and then >two< big lon...",
+        value,
+        20,
+        2,
+        ranges(new OffsetRange(32, 35), new OffsetRange(36, 43), new OffsetRange(58, 61)));
   }
 
   @Test
@@ -286,11 +298,12 @@ public class TestPassageSelector extends LuceneTestCase {
     ArrayList<OffsetRange> highlights = new ArrayList<>();
     ArrayList<OffsetRange> permittedRanges = new ArrayList<>();
 
-    for (int i = 0; i < 5000; i++) {
+    for (int i = 0; i < 100; i++) {
       String value =
           randomBoolean()
               ? randomAsciiLettersOfLengthBetween(0, 100)
               : randomRealisticUnicodeOfCodepointLengthBetween(0, 1000);
+
       int maxLength = value.length();
 
       permittedRanges.clear();
@@ -335,7 +348,13 @@ public class TestPassageSelector extends LuceneTestCase {
           });
 
       List<String> format = formatter.format(value, passages, permittedRanges);
-      MatcherAssert.assertThat(format, Matchers.not(Matchers.hasItem("><")));
+
+      // Check that the formatted value doesn't have an 'empty range' marker.
+      // If the original value contained such a sequence of characters, omit the check
+      // (can happen on random inputs, see https://github.com/apache/lucene/issues/12562)
+      if (!value.contains("><")) {
+        MatcherAssert.assertThat(format, Matchers.not(Matchers.hasItem("><")));
+      }
     }
   }
 

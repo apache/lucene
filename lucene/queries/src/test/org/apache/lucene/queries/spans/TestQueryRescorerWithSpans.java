@@ -20,7 +20,6 @@ package org.apache.lucene.queries.spans;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -30,7 +29,8 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestQueryRescorerWithSpans extends LuceneTestCase {
 
@@ -67,8 +67,8 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Resort using SpanNearQuery:
     SpanTermQuery t1 = new SpanTermQuery(new Term("field", "wizard"));
@@ -79,8 +79,8 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
 
     // Resorting changed the order:
     assertEquals(2, hits3.totalHits.value);
-    assertEquals("1", searcher.doc(hits3.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits3.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits3.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits3.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -110,8 +110,8 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
 
     TopDocs hits = searcher.search(bq.build(), 10);
     assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Resort using SpanNearQuery:
     SpanTermQuery t1 = new SpanTermQuery(new Term("field", "wizard"));
@@ -122,8 +122,8 @@ public class TestQueryRescorerWithSpans extends LuceneTestCase {
 
     // Resorting changed the order:
     assertEquals(2, hits3.totalHits.value);
-    assertEquals("1", searcher.doc(hits3.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits3.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits3.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits3.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();

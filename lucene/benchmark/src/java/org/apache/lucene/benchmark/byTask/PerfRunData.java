@@ -163,10 +163,8 @@ public class PerfRunData implements Closeable {
 
   @Override
   public void close() throws IOException {
-    if (indexWriter != null) {
-      indexWriter.close();
-    }
     IOUtils.close(
+        indexWriter,
         indexReader,
         directory,
         taxonomyWriter,
@@ -190,10 +188,7 @@ public class PerfRunData implements Closeable {
   public void reinit(boolean eraseIndex) throws Exception {
 
     // cleanup index
-    if (indexWriter != null) {
-      indexWriter.close();
-    }
-    IOUtils.close(indexReader, directory);
+    IOUtils.close(indexWriter, indexReader, directory);
     indexWriter = null;
     indexReader = null;
 
@@ -258,27 +253,37 @@ public class PerfRunData implements Closeable {
     return startTimeMillis;
   }
 
-  /** @return Start time in milliseconds */
+  /**
+   * @return Start time in milliseconds
+   */
   public long getStartTimeMillis() {
     return startTimeMillis;
   }
 
-  /** @return Returns the points. */
+  /**
+   * @return Returns the points.
+   */
   public Points getPoints() {
     return points;
   }
 
-  /** @return Returns the directory. */
+  /**
+   * @return Returns the directory.
+   */
   public Directory getDirectory() {
     return directory;
   }
 
-  /** @param directory The directory to set. */
+  /**
+   * @param directory The directory to set.
+   */
   public void setDirectory(Directory directory) {
     this.directory = directory;
   }
 
-  /** @return Returns the taxonomy directory */
+  /**
+   * @return Returns the taxonomy directory
+   */
   public Directory getTaxonomyDir() {
     return taxonomyDir;
   }
@@ -315,7 +320,9 @@ public class PerfRunData implements Closeable {
     return taxonomyReader;
   }
 
-  /** @param taxoWriter The taxonomy writer to set. */
+  /**
+   * @param taxoWriter The taxonomy writer to set.
+   */
   public void setTaxonomyWriter(TaxonomyWriter taxoWriter) {
     this.taxonomyWriter = taxoWriter;
   }
@@ -376,17 +383,23 @@ public class PerfRunData implements Closeable {
     }
   }
 
-  /** @return Returns the indexWriter. */
+  /**
+   * @return Returns the indexWriter.
+   */
   public IndexWriter getIndexWriter() {
     return indexWriter;
   }
 
-  /** @param indexWriter The indexWriter to set. */
+  /**
+   * @param indexWriter The indexWriter to set.
+   */
   public void setIndexWriter(IndexWriter indexWriter) {
     this.indexWriter = indexWriter;
   }
 
-  /** @return Returns the analyzer. */
+  /**
+   * @return Returns the analyzer.
+   */
   public Analyzer getAnalyzer() {
     return analyzer;
   }
@@ -410,17 +423,23 @@ public class PerfRunData implements Closeable {
     return facetSource;
   }
 
-  /** @return the locale */
+  /**
+   * @return the locale
+   */
   public Locale getLocale() {
     return locale;
   }
 
-  /** @param locale the locale to set */
+  /**
+   * @param locale the locale to set
+   */
   public void setLocale(Locale locale) {
     this.locale = locale;
   }
 
-  /** @return Returns the config. */
+  /**
+   * @return Returns the config.
+   */
   public Config getConfig() {
     return config;
   }
@@ -440,7 +459,9 @@ public class PerfRunData implements Closeable {
     }
   }
 
-  /** @return Returns the queryMaker by read task type (class) */
+  /**
+   * @return Returns the queryMaker by read task type (class)
+   */
   public synchronized QueryMaker getQueryMaker(ReadTask readTask) {
     // mapping the query maker by task class allows extending/adding new search/read tasks
     // without needing to modify this class.

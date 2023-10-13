@@ -18,8 +18,8 @@
 package org.apache.lucene.sandbox.search;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * A record of timings for the various operations that may happen during query execution. A node's
@@ -44,7 +44,7 @@ class QueryProfilerBreakdown {
 
   /** Build a timing count breakdown. */
   public final Map<String, Long> toBreakdownMap() {
-    Map<String, Long> map = new HashMap<>(timers.length * 2);
+    Map<String, Long> map = CollectionUtil.newHashMap(timers.length * 2);
     for (QueryProfilerTimingType type : QueryProfilerTimingType.values()) {
       map.put(type.toString(), timers[type.ordinal()].getApproximateTiming());
       map.put(type.toString() + "_count", timers[type.ordinal()].getCount());

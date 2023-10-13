@@ -18,6 +18,7 @@ package org.apache.lucene.analysis;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /** Removes stop words from a token stream. */
@@ -35,7 +36,7 @@ public class StopFilter extends FilteringTokenFilter {
    */
   public StopFilter(TokenStream in, CharArraySet stopWords) {
     super(in);
-    this.stopWords = stopWords;
+    this.stopWords = Objects.requireNonNull(stopWords, "stopWords");
   }
 
   /**
@@ -72,9 +73,7 @@ public class StopFilter extends FilteringTokenFilter {
    * @return a Set containing the words
    */
   public static CharArraySet makeStopSet(String[] stopWords, boolean ignoreCase) {
-    CharArraySet stopSet = new CharArraySet(stopWords.length, ignoreCase);
-    stopSet.addAll(Arrays.asList(stopWords));
-    return stopSet;
+    return makeStopSet(Arrays.asList(Objects.requireNonNull(stopWords, "stopWords")), ignoreCase);
   }
 
   /**
@@ -86,6 +85,7 @@ public class StopFilter extends FilteringTokenFilter {
    * @return A Set ({@link CharArraySet}) containing the words
    */
   public static CharArraySet makeStopSet(List<?> stopWords, boolean ignoreCase) {
+    Objects.requireNonNull(stopWords, "stopWords");
     CharArraySet stopSet = new CharArraySet(stopWords.size(), ignoreCase);
     stopSet.addAll(stopWords);
     return stopSet;

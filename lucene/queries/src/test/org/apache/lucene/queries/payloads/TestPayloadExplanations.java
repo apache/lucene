@@ -21,7 +21,7 @@ import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
-import org.apache.lucene.search.BaseExplanationTestCase;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 
 /** TestExplanations subclass focusing on payload queries */
 public class TestPayloadExplanations extends BaseExplanationTestCase {

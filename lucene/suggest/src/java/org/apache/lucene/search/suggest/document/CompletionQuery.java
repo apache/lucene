@@ -20,11 +20,11 @@ import static org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter.SE
 import static org.apache.lucene.search.suggest.document.CompletionAnalyzer.HOLE_CHARACTER;
 
 import java.io.IOException;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.suggest.BitsProducer;
 
@@ -83,11 +83,11 @@ public abstract class CompletionQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     byte type = 0;
     boolean first = true;
     Terms terms;
-    for (LeafReaderContext context : reader.leaves()) {
+    for (LeafReaderContext context : indexSearcher.getLeafContexts()) {
       LeafReader leafReader = context.reader();
       try {
         if ((terms = leafReader.terms(getField())) == null) {
@@ -124,7 +124,7 @@ public abstract class CompletionQuery extends Query {
         }
       }
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

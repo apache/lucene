@@ -23,17 +23,19 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 
 /** trivial test of ICUCollationDocValuesField */
 public class TestICUCollationDocValuesField extends LuceneTestCase {
@@ -64,10 +66,10 @@ public class TestICUCollationDocValuesField extends LuceneTestCase {
     SortField sortField = new SortField("collated", SortField.Type.STRING);
 
     TopDocs td = is.search(new MatchAllDocsQuery(), 5, new Sort(sortField));
-    assertEquals("abc", ir.document(td.scoreDocs[0].doc).get("field"));
-    assertEquals("ABC", ir.document(td.scoreDocs[1].doc).get("field"));
-    ir.close();
-    dir.close();
+    StoredFields storedFields = ir.storedFields();
+    assertEquals("abc", storedFields.document(td.scoreDocs[0].doc).get("field"));
+    assertEquals("ABC", storedFields.document(td.scoreDocs[1].doc).get("field"));
+    IOUtils.close(ir, dir);
   }
 
   public void testRanges() throws Exception {
@@ -105,8 +107,7 @@ public class TestICUCollationDocValuesField extends LuceneTestCase {
       doTestRanges(is, start, end, lowerVal, upperVal, collator);
     }
 
-    ir.close();
-    dir.close();
+    IOUtils.close(ir, dir);
   }
 
   private void doTestRanges(
@@ -118,8 +119,9 @@ public class TestICUCollationDocValuesField extends LuceneTestCase {
       Collator collator)
       throws Exception {
     SortedDocValues dvs = MultiDocValues.getSortedValues(is.getIndexReader(), "collated");
+    StoredFields storedFields = is.storedFields();
     for (int docID = 0; docID < is.getIndexReader().maxDoc(); docID++) {
-      Document doc = is.doc(docID);
+      Document doc = storedFields.document(docID);
       String s = doc.getField("field").stringValue();
       boolean collatorAccepts =
           collator.compare(s, startPoint) >= 0 && collator.compare(s, endPoint) <= 0;

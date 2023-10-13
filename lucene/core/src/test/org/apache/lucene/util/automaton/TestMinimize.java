@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 /** This test builds some randomish NFA/DFA and minimizes them. */
 public class TestMinimize extends LuceneTestCase {
@@ -61,6 +62,8 @@ public class TestMinimize extends LuceneTestCase {
   /** n^2 space usage in Hopcroft minimization? */
   @Nightly
   public void testMinimizeHuge() {
-    new RegExp("+-*(A|.....|BC)*]", RegExp.NONE).toAutomaton(1000000);
+    Automaton a = new RegExp("+-*(A|.....|BC)*]", RegExp.NONE).toAutomaton();
+    Automaton b = MinimizationOperations.minimize(a, 1000000);
+    assertTrue(b.isDeterministic());
   }
 }

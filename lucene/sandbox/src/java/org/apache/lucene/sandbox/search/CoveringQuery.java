@@ -22,13 +22,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Multiset;
@@ -123,18 +124,33 @@ public final class CoveringQuery extends Query implements Accountable {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    if (minimumNumberMatch instanceof LongValuesSource.ConstantLongValuesSource) {
+      final long constantMin =
+          ((LongValuesSource.ConstantLongValuesSource) minimumNumberMatch).getValue();
+      if (constantMin > queries.size()) {
+        return new MatchNoDocsQuery(
+            "More clauses are required to match than the number of clauses");
+      }
+      BooleanQuery.Builder builder =
+          new BooleanQuery.Builder().setMinimumNumberShouldMatch((int) Math.max(constantMin, 1));
+      for (Query query : queries) {
+        Query r = query.rewrite(indexSearcher);
+        builder.add(r, BooleanClause.Occur.SHOULD);
+      }
+      return builder.build();
+    }
     Multiset<Query> rewritten = new Multiset<>();
     boolean actuallyRewritten = false;
     for (Query query : queries) {
-      Query r = query.rewrite(reader);
+      Query r = query.rewrite(indexSearcher);
       rewritten.add(r);
       actuallyRewritten |= query != r;
     }
     if (actuallyRewritten) {
       return new CoveringQuery(rewritten, minimumNumberMatch);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

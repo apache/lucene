@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Tokenizer for path-like hierarchies.
@@ -40,6 +41,7 @@ import org.apache.lucene.util.AttributeFactory;
  *  /something/something/else
  * </pre>
  */
+@IgnoreRandomChains(reason = "broken offsets")
 public class PathHierarchyTokenizer extends Tokenizer {
 
   public PathHierarchyTokenizer() {

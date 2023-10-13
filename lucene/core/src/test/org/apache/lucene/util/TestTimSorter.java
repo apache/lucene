@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.util.Comparator;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestTimSorter extends BaseSortTestCase {
 

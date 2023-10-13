@@ -21,10 +21,10 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -202,6 +202,42 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     assertEquals(len, o.size());
     Assert.assertArrayEquals(
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len), o.toArrayCopy());
+  }
+
+  @Test
+  public void testCopyBytesOnHeap() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    ByteBuffersDataOutput o =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP,
+            ByteBuffersDataOutput.NO_REUSE);
+    o.copyBytes(in, len);
+    Assert.assertArrayEquals(
+        o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
+  }
+
+  @Test
+  public void testCopyBytesOnDirectByteBuffer() throws IOException {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    int len = bytes.length - offset;
+    ByteArrayDataInput in = new ByteArrayDataInput(bytes, offset, len);
+    ByteBuffersDataOutput o =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            ByteBuffer::allocateDirect,
+            ByteBuffersDataOutput.NO_REUSE);
+    o.copyBytes(in, len);
+    Assert.assertArrayEquals(
+        o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
   @Test

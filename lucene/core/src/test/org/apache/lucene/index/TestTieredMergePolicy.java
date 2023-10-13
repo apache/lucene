@@ -24,15 +24,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.apache.lucene.analysis.MockAnalyzer;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.MergePolicy.MergeContext;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
@@ -52,6 +55,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     int totalDelCount = 0;
     int totalMaxDoc = 0;
     long totalBytes = 0;
+    List<Long> segmentSizes = new ArrayList<>();
     for (SegmentCommitInfo sci : infos) {
       totalDelCount += sci.getDelCount();
       totalMaxDoc += sci.info.maxDoc();
@@ -59,6 +63,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       double liveRatio = 1 - (double) sci.getDelCount() / sci.info.maxDoc();
       long weightedByteSize = (long) (liveRatio * byteSize);
       totalBytes += weightedByteSize;
+      segmentSizes.add(weightedByteSize);
       minSegmentBytes = Math.min(minSegmentBytes, weightedByteSize);
     }
 
@@ -88,6 +93,25 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
     allowedSegCount = Math.max(allowedSegCount, tmp.getSegmentsPerTier());
 
+    // It's ok to be over the allowed segment count if none of the most balanced merges are balanced
+    // enough
+    Collections.sort(segmentSizes);
+    boolean hasBalancedMerges = false;
+    for (int i = 0; i < segmentSizes.size() - mergeFactor; ++i) {
+      long maxMergeSegmentSize = segmentSizes.get(i + mergeFactor - 1);
+      if (maxMergeSegmentSize >= maxMergedSegmentBytes / 2) {
+        break;
+      }
+      long totalMergeSize = 0;
+      for (int j = 0; j < i + mergeFactor; ++j) {
+        totalMergeSize += segmentSizes.get(j);
+      }
+      if (maxMergedSegmentBytes * 1.5 <= totalMergeSize) {
+        hasBalancedMerges = true;
+        break;
+      }
+    }
+
     int numSegments = infos.asList().size();
     assertTrue(
         String.format(
@@ -103,7 +127,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             totalBytes,
             delPercentage,
             tmp.getDeletesPctAllowed()),
-        numSegments <= allowedSegCount);
+        numSegments <= allowedSegCount || hasBalancedMerges == false);
   }
 
   @Override
@@ -241,7 +265,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
 
     w.forceMerge(1);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     assertEquals(numDocs, r.maxDoc());
     assertEquals(numDocs, r.numDocs());
     r.close();
@@ -252,14 +276,14 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     w.deleteDocuments(new Term("id", "" + (42 + 17)));
 
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     assertEquals(numDocs, r.maxDoc());
     assertEquals(numDocs - 1, r.numDocs());
     r.close();
 
     w.forceMergeDeletes();
 
-    r = w.getReader();
+    r = DirectoryReader.open(w);
     assertEquals(numDocs - 1, r.maxDoc());
     assertEquals(numDocs - 1, r.numDocs());
     r.close();
@@ -288,6 +312,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     tmp.setMaxMergedSegmentMB(mbSize);
     conf.setMaxBufferedDocs(100);
     conf.setMergePolicy(tmp);
+    conf.setMergeScheduler(new SerialMergeScheduler());
 
     final IndexWriter w = new IndexWriter(dir, conf);
 
@@ -730,11 +755,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     tmp.setMaxMergedSegmentMB(Double.POSITIVE_INFINITY);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
 
-    tmp.setMaxMergedSegmentMB(Long.MAX_VALUE / 1024 / 1024.);
+    tmp.setMaxMergedSegmentMB(Long.MAX_VALUE / 1024. / 1024.);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxMergedSegmentMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -746,10 +771,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertEquals(2.0, tmp.getFloorSegmentMB(), EPSILON);
 
     tmp.setFloorSegmentMB(Double.POSITIVE_INFINITY);
-    assertEquals(Long.MAX_VALUE / 1024 / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
+    assertEquals(Long.MAX_VALUE / 1024. / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
 
-    tmp.setFloorSegmentMB(Long.MAX_VALUE / 1024 / 1024.);
-    assertEquals(Long.MAX_VALUE / 1024 / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
+    tmp.setFloorSegmentMB(Long.MAX_VALUE / 1024. / 1024.);
+    assertEquals(Long.MAX_VALUE / 1024. / 1024., tmp.getFloorSegmentMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -762,11 +787,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     tmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
-    tmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024 / 1024.);
+    tmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024. / 1024.);
     assertEquals(
-        Long.MAX_VALUE / 1024 / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
+        Long.MAX_VALUE / 1024. / 1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
 
     expectThrows(
         IllegalArgumentException.class,
@@ -894,5 +919,32 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     mergePolicy.setMaxMergedSegmentMB(TestUtil.nextInt(random(), 1024, 10 * 1024));
     int numDocs = TEST_NIGHTLY ? atLeast(10_000_000) : atLeast(1_000_000);
     doTestSimulateUpdates(mergePolicy, numDocs, 2500);
+  }
+
+  public void testFullFlushMerges() throws IOException {
+    AtomicLong segNameGenerator = new AtomicLong();
+    IOStats stats = new IOStats();
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+    SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
+
+    TieredMergePolicy mp = new TieredMergePolicy();
+
+    for (int i = 0; i < 11; ++i) {
+      segmentInfos.add(
+          makeSegmentCommitInfo(
+              "_" + segNameGenerator.getAndIncrement(),
+              1,
+              0,
+              Double.MIN_VALUE,
+              IndexWriter.SOURCE_FLUSH));
+    }
+    MergeSpecification spec =
+        mp.findFullFlushMerges(MergeTrigger.FULL_FLUSH, segmentInfos, mergeContext);
+    assertNotNull(spec);
+    for (OneMerge merge : spec.merges) {
+      segmentInfos =
+          applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
+    }
+    assertEquals(2, segmentInfos.size());
   }
 }

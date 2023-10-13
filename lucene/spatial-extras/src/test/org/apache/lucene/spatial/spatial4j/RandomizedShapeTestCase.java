@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.spatial.spatial4j;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.locationtech.spatial4j.context.SpatialContext;
 
 /** A base test class with utility methods to help test shapes. Extends from RandomizedTest. */

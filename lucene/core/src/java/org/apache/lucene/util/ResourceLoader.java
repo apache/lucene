@@ -30,5 +30,12 @@ public interface ResourceLoader {
 
   /** Creates an instance of the name and expected type */
   // TODO: fix exception handling
-  public <T> T newInstance(String cname, Class<T> expectedType);
+  public default <T> T newInstance(String cname, Class<T> expectedType) {
+    Class<? extends T> clazz = findClass(cname, expectedType);
+    try {
+      return clazz.getConstructor().newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException("Cannot create instance: " + cname, e);
+    }
+  }
 }

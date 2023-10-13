@@ -20,7 +20,8 @@ package org.apache.lucene.luke.app;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.logging.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.luke.util.LoggerFactory;
 
 /** Abstract handler class */
@@ -32,8 +33,8 @@ public abstract class AbstractHandler<T extends Observer> {
 
   public void addObserver(T observer) {
     observers.add(observer);
-    if (log.isDebugEnabled()) {
-      log.debug("{} registered.", observer.getClass().getName());
+    if (log.isLoggable(Level.FINE)) {
+      log.fine(observer.getClass().getName() + " registered.");
     }
   }
 

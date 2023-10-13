@@ -102,6 +102,7 @@ allprojects {
                     break
 
                 case ":lucene:analysis:common":
+                case ":lucene:analysis.tests":
                     exclude "src/**/*.aff"
                     exclude "src/**/*.dic"
                     exclude "src/**/*.good"
@@ -139,6 +140,7 @@ class RatTask extends DefaultTask {
     def generateReport(File reportFile) {
         // Set up ant rat task.
         def ratClasspath = project.rootProject.configurations.ratDeps.asPath
+        ant.setLifecycleLogLevel(AntBuilder.AntMessagePriority.ERROR)
         ant.taskdef(resource: 'org/apache/rat/anttasks/antlib.xml', classpath: ratClasspath)
 
         // Collect all output files for debugging.

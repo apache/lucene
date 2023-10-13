@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TotalHits;
@@ -64,9 +65,12 @@ public final class SearchResults {
     Objects.requireNonNull(docs);
     Objects.requireNonNull(searcher);
 
+    StoredFields storedFields = searcher.storedFields();
     for (ScoreDoc sd : docs) {
       Document luceneDoc =
-          (fieldsToLoad == null) ? searcher.doc(sd.doc) : searcher.doc(sd.doc, fieldsToLoad);
+          (fieldsToLoad == null)
+              ? storedFields.document(sd.doc)
+              : storedFields.document(sd.doc, fieldsToLoad);
       res.hits.add(Doc.of(sd.doc, sd.score, luceneDoc));
       res.offset = offset;
     }

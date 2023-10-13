@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -33,9 +32,11 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Tests DocValues integration into IndexWriter */
 public class TestDocValuesIndexing extends LuceneTestCase {
@@ -177,7 +178,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     bytes[0] = 1;
     w.addDocument(doc);
     w.forceMerge(1);
-    DirectoryReader r = w.getReader();
+    DirectoryReader r = DirectoryReader.open(w);
     SortedDocValues s = DocValues.getSorted(getOnlyLeafReader(r), "field");
     assertEquals(0, s.nextDoc());
     BytesRef bytes1 = s.lookupOrd(s.ordValue());
@@ -206,15 +207,16 @@ public class TestDocValuesIndexing extends LuceneTestCase {
       doc.add(new TextField("docId", "" + i, Field.Store.YES));
       writer.addDocument(doc);
     }
-    DirectoryReader r = writer.getReader();
+    DirectoryReader r = DirectoryReader.open(writer);
     FieldInfos fi = FieldInfos.getMergedFieldInfos(r);
     FieldInfo dvInfo = fi.fieldInfo("dv");
     assertTrue(dvInfo.getDocValuesType() != DocValuesType.NONE);
     NumericDocValues dv = MultiDocValues.getNumericValues(r, "dv");
+    StoredFields storedFields = r.storedFields();
     for (int i = 0; i < 50; i++) {
       assertEquals(i, dv.nextDoc());
       assertEquals(i, dv.longValue());
-      Document d = r.document(i);
+      Document d = storedFields.document(i);
       // cannot use d.get("dv") due to another bug!
       assertNull(d.getField("dv"));
       assertEquals(Integer.toString(i), d.get("docId"));
@@ -239,7 +241,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           w.addDocument(doc);
         });
 
-    IndexReader ir = w.getReader();
+    IndexReader ir = DirectoryReader.open(w);
     assertEquals(1, ir.numDocs());
     ir.close();
     w.close();
@@ -262,7 +264,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           w.addDocument(doc2);
         });
 
-    IndexReader ir = w.getReader();
+    IndexReader ir = DirectoryReader.open(w);
     assertEquals(1, ir.numDocs());
     ir.close();
     w.close();
@@ -288,7 +290,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           iwriter.addDocument(doc);
         });
 
-    IndexReader ir = iwriter.getReader();
+    IndexReader ir = DirectoryReader.open(iwriter);
     assertEquals(1, ir.numDocs());
     ir.close();
     iwriter.close();
@@ -314,7 +316,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           iwriter.addDocument(doc);
         });
 
-    IndexReader ir = iwriter.getReader();
+    IndexReader ir = DirectoryReader.open(iwriter);
     assertEquals(1, ir.numDocs());
     ir.close();
 
@@ -341,7 +343,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           iwriter.addDocument(doc);
         });
 
-    IndexReader ir = iwriter.getReader();
+    IndexReader ir = DirectoryReader.open(iwriter);
     assertEquals(1, ir.numDocs());
     ir.close();
     iwriter.close();
@@ -371,7 +373,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           iwriter.addDocument(hugeDoc);
         });
 
-    IndexReader ir = iwriter.getReader();
+    IndexReader ir = DirectoryReader.open(iwriter);
     assertEquals(1, ir.numDocs());
     ir.close();
     iwriter.close();
@@ -401,7 +403,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           iwriter.addDocument(hugeDoc);
         });
 
-    IndexReader ir = iwriter.getReader();
+    IndexReader ir = DirectoryReader.open(iwriter);
     assertEquals(1, ir.numDocs());
     ir.close();
     iwriter.close();
@@ -639,7 +641,7 @@ public class TestDocValuesIndexing extends LuceneTestCase {
           writer.addDocument(doc2);
         });
 
-    IndexReader ir = writer.getReader();
+    IndexReader ir = DirectoryReader.open(writer);
     assertEquals(1, ir.numDocs());
     ir.close();
     writer.close();
@@ -878,17 +880,21 @@ public class TestDocValuesIndexing extends LuceneTestCase {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
-    FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+    FieldType ft = new FieldType(StringField.TYPE_NOT_STORED);
     ft.setDocValuesType(DocValuesType.SORTED);
     ft.freeze();
-    Field field = new Field("test", "value", ft);
-    field.setTokenStream(
-        new TokenStream() {
+    Field field =
+        new Field("test", new BytesRef("value"), ft) {
           @Override
-          public boolean incrementToken() {
-            throw new RuntimeException("no");
+          public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
+            return new TokenStream() {
+              @Override
+              public boolean incrementToken() throws IOException {
+                throw new RuntimeException();
+              }
+            };
           }
-        });
+        };
     doc.add(field);
     expectThrows(
         RuntimeException.class,

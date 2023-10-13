@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Tests for {@link DocumentsWriterStallControl} */
@@ -62,7 +62,7 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
             @Override
             public void run() {
 
-              int iters = atLeast(1000);
+              int iters = atLeast(100);
               for (int j = 0; j < iters; j++) {
                 ctrl.updateStalled(random().nextInt(stallProbability) == 0);
                 if (random().nextInt(5) == 0) { // thread 0 only updates
@@ -73,12 +73,12 @@ public class TestDocumentsWriterStallControl extends LuceneTestCase {
           };
     }
     start(stallThreads);
-    long time = System.currentTimeMillis();
     /*
-     * use a 100 sec timeout to make sure we not hang forever. join will fail in
+     * use a 100 maximum iterations check to make sure we not hang forever. join will fail in
      * that case
      */
-    while ((System.currentTimeMillis() - time) < 100 * 1000 && !terminated(stallThreads)) {
+    int iterations = 0;
+    while (++iterations < 100 && !terminated(stallThreads)) {
       ctrl.updateStalled(false);
       if (random().nextBoolean()) {
         Thread.yield();

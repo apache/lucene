@@ -212,10 +212,10 @@ public final class IndexReaderFunctions {
 
     @Override
     public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-      Terms terms = ctx.reader().terms(term.field());
-      TermsEnum te = terms == null ? null : terms.iterator();
+      Terms terms = Terms.getTerms(ctx.reader(), term.field());
+      TermsEnum te = terms.iterator();
 
-      if (te == null || te.seekExact(term.bytes()) == false) {
+      if (te.seekExact(term.bytes()) == false) {
         return DoubleValues.EMPTY;
       }
 

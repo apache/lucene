@@ -1,0 +1,562 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+
+// Configure miscellaneous aspects required for supporting the java module system layer.
+
+// Debugging utilities.
+apply from: buildscript.sourceFile.toPath().resolveSibling("modules-debugging.gradle")
+
+allprojects {
+  plugins.withType(JavaPlugin) {
+    // We won't be using gradle's built-in automatic module finder.
+    java {
+      modularity.inferModulePath.set(false)
+    }
+
+    //
+    // Configure modular extensions for each source set.
+    //
+    project.sourceSets.all { SourceSet sourceSet ->
+      // Create and register a source set extension for manipulating classpath/ module-path
+      ModularPathsExtension modularPaths = new ModularPathsExtension(project, sourceSet)
+      sourceSet.extensions.add("modularPaths", modularPaths)
+
+      // LUCENE-10344: We have to provide a special-case extension for ECJ because it does not
+      // support all of the module-specific javac options.
+      ModularPathsExtension modularPathsForEcj = modularPaths
+      if (sourceSet.name == SourceSet.TEST_SOURCE_SET_NAME && project.path in [
+          ":lucene:spatial-extras",
+          ":lucene:spatial3d",
+      ]) {
+        modularPathsForEcj = modularPaths.cloneWithMode(ModularPathsExtension.Mode.CLASSPATH_ONLY)
+      }
+      sourceSet.extensions.add("modularPathsForEcj", modularPathsForEcj)
+
+      // TODO: the tests of these projects currently don't compile or work in
+      // module-path mode. Make the modular paths extension use class path only.
+      if (sourceSet.name == SourceSet.TEST_SOURCE_SET_NAME && project.path in [
+        // Circular dependency between artifacts or source set outputs,
+        // causing package split issues at runtime.
+        ":lucene:core",
+        ":lucene:codecs",
+        ":lucene:test-framework",
+      ]) {
+        modularPaths.mode = ModularPathsExtension.Mode.CLASSPATH_ONLY
+      }
+
+      // Configure the JavaCompile task associated with this source set.
+      tasks.named(sourceSet.getCompileJavaTaskName()).configure({ JavaCompile task ->
+        task.dependsOn modularPaths.compileModulePathConfiguration
+
+        // LUCENE-10327: don't allow gradle to emit an empty sourcepath as it would break
+        // compilation of modules.
+        task.options.setSourcepath(sourceSet.java.sourceDirectories)
+
+        // Add modular dependencies and their transitive dependencies to module path.
+        task.options.compilerArgumentProviders.add(modularPaths.compilationArguments)
+
+        // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
+        // dependencies, don't know why.
+        if (!rootProject.ext.isIdeaSync) {
+          task.classpath = modularPaths.compilationClasspath
+        }
+
+        doFirst {
+          modularPaths.logCompilationPaths(logger)
+        }
+      })
+
+      // For source sets that contain a module descriptor, configure a jar task that combines
+      // classes and resources into a single module.
+      if (sourceSet.name != SourceSet.MAIN_SOURCE_SET_NAME) {
+        tasks.maybeCreate(sourceSet.getJarTaskName(), org.gradle.jvm.tasks.Jar).configure({
+          archiveClassifier = sourceSet.name
+          from(sourceSet.output)
+        })
+      }
+    }
+
+    // Connect modular configurations between their "test" and "main" source sets, this reflects
+    // the conventions set by the Java plugin.
+    project.configurations {
+      moduleTestApi.extendsFrom moduleApi
+      moduleTestImplementation.extendsFrom moduleImplementation
+      moduleTestRuntimeOnly.extendsFrom moduleRuntimeOnly
+      moduleTestCompileOnly.extendsFrom moduleCompileOnly
+    }
+
+    // Gradle's java plugin sets the compile and runtime classpath to be a combination
+    // of configuration dependencies and source set's outputs. For source sets with modules,
+    // this leads to split class and resource folders.
+    //
+    // We tweak the default source set path configurations here by assembling jar task outputs
+    // of the respective source set, instead of their source set output folders. We also attach
+    // the main source set's jar to the modular test implementation configuration.
+    SourceSet mainSourceSet = project.sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
+    boolean mainIsModular = mainSourceSet.modularPaths.hasModuleDescriptor()
+    boolean mainIsEmpty = mainSourceSet.allJava.isEmpty()
+    SourceSet testSourceSet = project.sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME)
+    boolean testIsModular = testSourceSet.modularPaths.hasModuleDescriptor()
+
+    // LUCENE-10304: if we modify the classpath here, IntelliJ no longer sees the dependencies as compile-time
+    // dependencies, don't know why.
+    if (!rootProject.ext.isIdeaSync) {
+      def jarTask = project.tasks.getByName(mainSourceSet.getJarTaskName())
+      def testJarTask = project.tasks.getByName(testSourceSet.getJarTaskName())
+
+      // Consider various combinations of module/classpath configuration between the main and test source set.
+      if (testIsModular) {
+        if (mainIsModular || mainIsEmpty) {
+          // If the main source set is empty, skip the jar task.
+          def jarTaskOutputs = mainIsEmpty ? [] :  jarTask.outputs
+
+          // Fully modular tests - must have no split packages, proper access, etc.
+          // Work around the split classes/resources problem by adjusting classpaths to
+          // rely on JARs rather than source set output folders.
+          testSourceSet.compileClasspath = project.objects.fileCollection().from(
+              jarTaskOutputs,
+              project.configurations.getByName(testSourceSet.getCompileClasspathConfigurationName()),
+          )
+          testSourceSet.runtimeClasspath = project.objects.fileCollection().from(
+              jarTaskOutputs,
+              testJarTask.outputs,
+              project.configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName()),
+          )
+
+          project.dependencies {
+            moduleTestImplementation files(jarTaskOutputs)
+            moduleTestRuntimeOnly files(testJarTask.outputs)
+          }
+        } else {
+          // This combination simply does not make any sense (in my opinion).
+          throw GradleException("Test source set is modular and main source set is class-based, this makes no sense: " + project.path)
+        }
+      } else {
+        if (mainIsModular) {
+          // This combination is a potential candidate for patching the main sourceset's module with test classes. I could
+          // not resolve all the difficulties that arise when you try to do it though:
+          // - either a separate module descriptor is needed that opens test packages, adds dependencies via requires clauses
+          // or a series of jvm arguments (--add-reads, --add-opens, etc.) has to be generated and maintained. This is
+          // very low-level (ECJ doesn't support a full set of these instructions, for example).
+          //
+          // Fall back to classpath mode.
+        } else {
+          // This is the 'plain old classpath' mode: neither the main source set nor the test set are modular.
+        }
+      }
+    }
+
+    //
+    // Configures a Test task associated with the provided source set to use module paths.
+    //
+    // There is no explicit connection between source sets and test tasks so there is no way (?)
+    // to do this automatically, convention-style.
+    //
+    // This closure can be used to configure a different task, with a different source set, should we
+    // have the need for it.
+    Closure<Void> configureTestTaskForSourceSet = { Test task, SourceSet sourceSet ->
+      task.configure {
+        def forkProperties = file("${task.temporaryDir}/jvm-forking.properties")
+
+        ModularPathsExtension modularPaths = sourceSet.modularPaths
+
+        dependsOn modularPaths
+
+        // Add modular dependencies and their transitive dependencies to module path.
+        jvmArgumentProviders.add(modularPaths.runtimeArguments)
+
+        // Modify the default classpath.
+        classpath = modularPaths.runtimeClasspath
+
+        doFirst {
+          modularPaths.logRuntimePaths(logger)
+        }
+
+        // Pass all the required properties for tests which fork the JVM. We don't use
+        // regular system properties here because this could affect task up-to-date checks.
+        jvmArgumentProviders.add(new CommandLineArgumentProvider() {
+          @Override
+          Iterable<String> asArguments() {
+            return ["-Dtests.jvmForkArgsFile=" + forkProperties.absolutePath]
+          }
+        })
+        doFirst {
+          List<String> args = new ArrayList<>(modularPaths.runtimeArguments.asArguments().collect())
+          def cp = modularPaths.runtimeClasspath.asPath
+          if (!cp.isBlank()) {
+            args.addAll(["-cp", cp])
+          }
+
+          // Sanity check.
+          args.forEach(s -> {
+            if (s.contains("\n")) {
+              throw new RuntimeException("LF in forked jvm property?: " + s)
+            }
+          })
+
+          Files.createDirectories(forkProperties.toPath().getParent())
+          Files.writeString(forkProperties.toPath(), String.join("\n", args), StandardCharsets.UTF_8)
+        }
+      }
+    }
+
+    // Configure (tasks.test, sourceSets.test)
+    tasks.matching { it.name ==~ /test(_[0-9]+)?/ }.all { Test task ->
+      configureTestTaskForSourceSet(task, task.project.sourceSets.test)
+    }
+
+    // Configure module versions.
+    tasks.withType(JavaCompile).configureEach { task ->
+      // TODO: LUCENE-10267: workaround for gradle bug. Remove when the corresponding issue is fixed.
+      task.options.compilerArgumentProviders.add((CommandLineArgumentProvider) { ->
+        if (task.getClasspath().isEmpty()) {
+          return ["--module-version", project.version.toString()]
+        } else {
+          return []
+        }
+      })
+
+      task.options.javaModuleVersion.set(provider {
+        return project.version.toString()
+      })
+    }
+  }
+}
+
+
+//
+// For a source set, create explicit configurations for declaring modular dependencies.
+//
+// These "modular" configurations correspond 1:1 to Gradle's conventions but have a 'module' prefix
+// and a capitalized remaining part of the conventional name. For example, an 'api' configuration in
+// the main source set would have a corresponding 'moduleApi' configuration for declaring modular
+// dependencies.
+//
+// Gradle's java plugin "convention" configurations extend from their modular counterparts
+// so all dependencies end up on classpath by default for backward compatibility with other
+// tasks and gradle infrastructure.
+//
+// At the same time, we also know which dependencies (and their transitive graph of dependencies!)
+// should be placed on module-path only.
+//
+// Note that an explicit configuration of modular dependencies also opens up the possibility of automatically
+// validating whether the dependency configuration for a gradle project is consistent with the information in
+// the module-info descriptor because there is a (nearly?) direct correspondence between the two:
+//
+// moduleApi            - 'requires transitive'
+// moduleImplementation - 'requires'
+// moduleCompileOnly    - 'requires static'
+//
+class ModularPathsExtension implements Cloneable, Iterable<Object> {
+  /**
+   * Determines how paths are split between module path and classpath.
+   */
+  enum Mode {
+    /**
+     * Dependencies and source set outputs are placed on classpath, even if declared on modular
+     * configurations. This would be the 'default' backward-compatible mode.
+     */
+    CLASSPATH_ONLY,
+
+    /**
+     * Dependencies from modular configurations are placed on module path. Source set outputs
+     * are placed on classpath.
+     */
+    DEPENDENCIES_ON_MODULE_PATH
+  }
+
+  Project project
+  SourceSet sourceSet
+  Configuration compileModulePathConfiguration
+  Configuration runtimeModulePathConfiguration
+  Configuration modulePatchOnlyConfiguration
+
+  // The mode of splitting paths for this source set.
+  Mode mode = Mode.DEPENDENCIES_ON_MODULE_PATH
+
+  // More verbose debugging for paths.
+  private boolean debugPaths
+
+  /**
+   * A list of module name - path provider entries that will be converted
+   * into {@code --patch-module} options.
+   */
+  private List<Map.Entry<String, Provider<Path>>> modulePatches = new ArrayList<>()
+
+  ModularPathsExtension(Project project, SourceSet sourceSet) {
+    this.project = project
+    this.sourceSet = sourceSet
+
+    debugPaths = Boolean.parseBoolean(project.propertyOrDefault('build.debug.paths', 'false'))
+
+    ConfigurationContainer configurations = project.configurations
+
+    // Create modular configurations for gradle's java plugin convention configurations.
+    Configuration moduleApi = createModuleConfigurationForConvention(sourceSet.apiConfigurationName)
+    Configuration moduleImplementation = createModuleConfigurationForConvention(sourceSet.implementationConfigurationName)
+    Configuration moduleRuntimeOnly = createModuleConfigurationForConvention(sourceSet.runtimeOnlyConfigurationName)
+    Configuration moduleCompileOnly = createModuleConfigurationForConvention(sourceSet.compileOnlyConfigurationName)
+
+
+    // Apply hierarchy relationships to modular configurations.
+    moduleImplementation.extendsFrom(moduleApi)
+
+    // Patched modules have to end up in the implementation configuration for IDEs, which
+    // otherwise get terribly confused.
+    Configuration modulePatchOnly = createModuleConfigurationForConvention(
+        SourceSet.isMain(sourceSet) ? "patchOnly" : sourceSet.name + "PatchOnly")
+    modulePatchOnly.canBeResolved(true)
+    moduleImplementation.extendsFrom(modulePatchOnly)
+    this.modulePatchOnlyConfiguration = modulePatchOnly
+
+    // This part of convention configurations seems like a very esoteric use case, leave out for now.
+    // sourceSet.compileOnlyApiConfigurationName
+
+    // We have to ensure configurations are using assembled resources and classes (jar variant) as a single
+    // module can't be expanded into multiple folders.
+    Closure<Void> ensureJarVariant = { Configuration c ->
+      c.attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, LibraryElements.JAR))
+    }
+
+    // Set up compilation module path configuration combining corresponding convention configurations.
+    Closure<Configuration> createResolvableModuleConfiguration = { String configurationName ->
+      Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+      Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(conventionConfiguration.name))
+      moduleConfiguration.canBeConsumed(false)
+      moduleConfiguration.canBeResolved(true)
+      ensureJarVariant(moduleConfiguration)
+
+      project.logger.info("Created resolvable module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+      return moduleConfiguration
+    }
+
+    ensureJarVariant(configurations.maybeCreate(sourceSet.compileClasspathConfigurationName))
+    ensureJarVariant(configurations.maybeCreate(sourceSet.runtimeClasspathConfigurationName))
+
+    this.compileModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.compileClasspathConfigurationName)
+    compileModulePathConfiguration.extendsFrom(moduleCompileOnly, moduleImplementation)
+
+    this.runtimeModulePathConfiguration = createResolvableModuleConfiguration(sourceSet.runtimeClasspathConfigurationName)
+    runtimeModulePathConfiguration.extendsFrom(moduleRuntimeOnly, moduleImplementation)
+  }
+
+  /**
+   * Adds {@code --patch-module} option for the provided module name and the provider of a
+   * folder or JAR file.
+   *
+   * @param moduleName
+   * @param pathProvider
+   */
+  void patchModule(String moduleName, Provider<Path> pathProvider) {
+    modulePatches.add(Map.entry(moduleName, pathProvider));
+  }
+
+  private FileCollection getCompilationModulePath() {
+    if (mode == Mode.CLASSPATH_ONLY) {
+      return project.files()
+    }
+    return compileModulePathConfiguration - modulePatchOnlyConfiguration
+  }
+
+  private FileCollection getRuntimeModulePath() {
+    if (mode == Mode.CLASSPATH_ONLY) {
+      if (hasModuleDescriptor()) {
+        // The source set is itself a module.
+        throw new GradleException("Source set contains a module but classpath-only" +
+            " dependencies requested: ${project.path}, source set '${sourceSet.name}'")
+      }
+
+      return project.files()
+    }
+
+    return runtimeModulePathConfiguration - modulePatchOnlyConfiguration
+  }
+
+  FileCollection getCompilationClasspath() {
+    if (mode == Mode.CLASSPATH_ONLY) {
+      return sourceSet.compileClasspath
+    }
+
+    // Modify the default classpath by removing anything already placed on module path.
+    // Use a lazy provider to delay computation.
+    project.files({ ->
+      return sourceSet.compileClasspath - compileModulePathConfiguration - modulePatchOnlyConfiguration
+    })
+  }
+
+  CommandLineArgumentProvider getCompilationArguments() {
+    return new CommandLineArgumentProvider() {
+      @Override
+      Iterable<String> asArguments() {
+        FileCollection modulePath = ModularPathsExtension.this.compilationModulePath
+
+        if (modulePath.isEmpty()) {
+          return []
+        }
+
+        ArrayList<String> extraArgs = []
+        extraArgs += ["--module-path", modulePath.join(File.pathSeparator)]
+
+        if (!hasModuleDescriptor()) {
+          // We're compiling what appears to be a non-module source set so we'll
+          // bring everything on module path in the resolution graph,
+          // otherwise modular dependencies wouldn't be part of the resolved module graph and this
+          // would result in class-not-found compilation problems.
+          extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+        }
+
+        // Add module-patching.
+        extraArgs += getPatchModuleArguments(modulePatches)
+
+        return extraArgs
+      }
+    }
+  }
+
+  FileCollection getRuntimeClasspath() {
+    if (mode == Mode.CLASSPATH_ONLY) {
+      return sourceSet.runtimeClasspath
+    }
+
+    // Modify the default classpath by removing anything already placed on module path.
+    // Use a lazy provider to delay computation.
+    project.files({ ->
+      return sourceSet.runtimeClasspath - runtimeModulePath - modulePatchOnlyConfiguration
+    })
+  }
+
+  CommandLineArgumentProvider getRuntimeArguments() {
+    return new CommandLineArgumentProvider() {
+      @Override
+      Iterable<String> asArguments() {
+        FileCollection modulePath = ModularPathsExtension.this.runtimeModulePath
+
+        if (modulePath.isEmpty()) {
+          return []
+        }
+
+        def extraArgs = []
+
+        // Add source set outputs to module path.
+        extraArgs += ["--module-path", modulePath.files.join(File.pathSeparator)]
+
+        // Ideally, we should only add the sourceset's module here, everything else would be resolved via the
+        // module descriptor. But this would require parsing the module descriptor and may cause JVM version conflicts
+        // so keeping it simple.
+        extraArgs += ["--add-modules", "ALL-MODULE-PATH"]
+
+        // Add module-patching.
+        extraArgs += getPatchModuleArguments(modulePatches)
+
+        return extraArgs
+      }
+    }
+  }
+
+  boolean hasModuleDescriptor() {
+    return sourceSet.allJava.srcDirs.stream()
+        .map(dir -> new File(dir, "module-info.java"))
+        .anyMatch(file -> file.exists())
+  }
+
+  private List<String> getPatchModuleArguments(List<Map.Entry<String, Provider<Path>>> patches) {
+    def args = []
+    patches.each {
+      args.add("--patch-module");
+      args.add(it.key + "=" + it.value.get())
+    }
+    return args
+  }
+
+  private static String toList(FileCollection files) {
+    return files.isEmpty() ? " [empty]" : ("\n    " + files.sort().join("\n    "))
+  }
+
+  private static String toList(List<Map.Entry<String, Provider<Path>>> patches) {
+    return patches.isEmpty() ? " [empty]" : ("\n    " + patches.collect {"${it.key}=${it.value.get()}"}.join("\n    "))
+  }
+
+  public void logCompilationPaths(Logger logger) {
+    def value = "Modular extension, compilation paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
+        "  Module path:${toList(compilationModulePath)}\n" +
+        "  Class path: ${toList(compilationClasspath)}\n" +
+        "  Patches:    ${toList(modulePatches)}"
+
+    if (debugPaths) {
+      logger.lifecycle(value)
+    } else {
+      logger.info(value)
+    }
+  }
+
+  public void logRuntimePaths(Logger logger) {
+    def value = "Modular extension, runtime paths, source set=${sourceSet.name}${hasModuleDescriptor() ? " (module)" : ""}, mode=${mode}:\n" +
+        "  Module path:${toList(runtimeModulePath)}\n" +
+        "  Class path: ${toList(runtimeClasspath)}\n" +
+        "  Patches   : ${toList(modulePatches)}"
+
+    if (debugPaths) {
+      logger.lifecycle(value)
+    } else {
+      logger.info(value)
+    }
+  }
+
+  public ModularPathsExtension clone() {
+    return (ModularPathsExtension) super.clone()
+  }
+
+  ModularPathsExtension cloneWithMode(Mode newMode) {
+    def cloned = this.clone()
+    cloned.mode = newMode
+    return cloned
+  }
+
+  // Map convention configuration names to "modular" corresponding configurations.
+  static String moduleConfigurationNameFor(String configurationName) {
+    return "module" + configurationName.capitalize().replace("Classpath", "Path")
+  }
+
+  // Create module configuration for the corresponding convention configuration.
+  private Configuration createModuleConfigurationForConvention(String configurationName) {
+    ConfigurationContainer configurations = project.configurations
+    Configuration conventionConfiguration = configurations.maybeCreate(configurationName)
+    Configuration moduleConfiguration = configurations.maybeCreate(moduleConfigurationNameFor(configurationName))
+    moduleConfiguration.canBeConsumed(false)
+    moduleConfiguration.canBeResolved(false)
+    conventionConfiguration.extendsFrom(moduleConfiguration)
+
+    project.logger.info("Created module configuration for '${conventionConfiguration.name}': ${moduleConfiguration.name}")
+    return moduleConfiguration
+  }
+
+  /**
+   * Provide internal dependencies for tasks willing to depend on this modular paths object.
+   */
+  @Override
+  Iterator<Object> iterator() {
+    return [
+        compileModulePathConfiguration,
+        runtimeModulePathConfiguration
+    ].iterator()
+  }
+}

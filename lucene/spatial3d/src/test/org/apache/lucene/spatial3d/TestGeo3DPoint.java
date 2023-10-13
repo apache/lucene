@@ -37,7 +37,7 @@ import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.geo.GeoTestUtil;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.DirectoryReader;
@@ -45,20 +45,16 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.spatial3d.geom.GeoArea;
 import org.apache.lucene.spatial3d.geom.GeoAreaFactory;
 import org.apache.lucene.spatial3d.geom.GeoBBoxFactory;
@@ -75,12 +71,15 @@ import org.apache.lucene.spatial3d.geom.XYZBounds;
 import org.apache.lucene.spatial3d.geom.XYZSolid;
 import org.apache.lucene.spatial3d.geom.XYZSolidFactory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestGeo3DPoint extends LuceneTestCase {
 
@@ -610,8 +609,9 @@ public class TestGeo3DPoint extends LuceneTestCase {
 
     boolean haveRealDoc = false;
 
+    Random random = random();
     for (int docID = 0; docID < numPoints; docID++) {
-      int x = random().nextInt(20);
+      int x = random.nextInt(20);
       if (x == 17) {
         // Some docs don't have a point:
         lats[docID] = Double.NaN;
@@ -624,7 +624,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
       if (docID > 0 && x < 3 && haveRealDoc) {
         int oldDocID;
         while (true) {
-          oldDocID = random().nextInt(docID);
+          oldDocID = random.nextInt(docID);
           if (Double.isNaN(lats[oldDocID]) == false) {
             break;
           }
@@ -992,7 +992,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, iwc);
     for (int id = 0; id < points.length; id++) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + id, Field.Store.NO));
+      doc.add(new StringField("id", "" + id, Field.Store.NO));
       doc.add(new NumericDocValuesField("id", id));
       GeoPoint point = points[id];
       if (point != null) {
@@ -1039,29 +1039,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
         System.err.println("  using query: " + query);
       }
 
-      final FixedBitSet hits = new FixedBitSet(r.maxDoc());
-
-      s.search(
-          query,
-          new SimpleCollector() {
-
-            private int docBase;
-
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE_NO_SCORES;
-            }
-
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              docBase = context.docBase;
-            }
-
-            @Override
-            public void collect(int doc) {
-              hits.set(docBase + doc);
-            }
-          });
+      final FixedBitSet hits = s.search(query, FixedBitSetCollector.createManager(r.maxDoc()));
 
       if (VERBOSE) {
         System.err.println("  hitCount: " + hits.cardinality());

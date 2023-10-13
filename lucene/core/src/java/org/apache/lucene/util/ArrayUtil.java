@@ -191,17 +191,21 @@ public final class ArrayUtil {
           return newSize;
       }
     } else {
-      // round up to 4 byte alignment in 64bit env
+      // In 32bit jvm, it's still 8-byte aligned,
+      // but the array header is 12 bytes, not a multiple of 8.
+      // So saving 4,12,20,28... bytes of data is the most cost-effective.
       switch (bytesPerElement) {
-        case 2:
-          // round up to multiple of 2
-          return (newSize + 1) & 0x7ffffffe;
         case 1:
-          // round up to multiple of 4
-          return (newSize + 3) & 0x7ffffffc;
+          // align with size of 4,12,20,28...
+          return ((newSize + 3) & 0x7ffffff8) + 4;
+        case 2:
+          // align with size of 6,10,14,18...
+          return ((newSize + 1) & 0x7ffffffc) + 2;
         case 4:
+          // align with size of 5,7,9,11...
+          return (newSize & 0x7ffffffe) + 1;
         case 8:
-          // no rounding
+          // no processing required
         default:
           // odd (invalid?) size
           return newSize;
@@ -221,6 +225,11 @@ public final class ArrayUtil {
             : (T[]) Array.newInstance(type.getComponentType(), newLength);
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
+  }
+
+  /** Returns a larger array, generally over-allocating exponentially */
+  public static <T> T[] grow(T[] array) {
+    return grow(array, 1 + array.length);
   }
 
   /**
@@ -332,6 +341,17 @@ public final class ArrayUtil {
     } else return array;
   }
 
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static int[] growNoCopy(int[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new int[oversize(minSize, Integer.BYTES)];
+    } else return array;
+  }
+
   /** Returns a larger array, generally over-allocating exponentially */
   public static int[] grow(int[] array) {
     return grow(array, 1 + array.length);
@@ -357,6 +377,17 @@ public final class ArrayUtil {
     } else return array;
   }
 
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static long[] growNoCopy(long[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new long[oversize(minSize, Long.BYTES)];
+    } else return array;
+  }
+
   /** Returns a larger array, generally over-allocating exponentially */
   public static long[] grow(long[] array) {
     return grow(array, 1 + array.length);
@@ -379,6 +410,17 @@ public final class ArrayUtil {
     assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
     if (array.length < minSize) {
       return growExact(array, oversize(minSize, Byte.BYTES));
+    } else return array;
+  }
+
+  /**
+   * Returns an array whose size is at least {@code minSize}, generally over-allocating
+   * exponentially, and it will not copy the origin data to the new array
+   */
+  public static byte[] growNoCopy(byte[] array, int minSize) {
+    assert minSize >= 0 : "size must be positive (got " + minSize + "): likely integer overflow?";
+    if (array.length < minSize) {
+      return new byte[oversize(minSize, Byte.BYTES)];
     } else return array;
   }
 
@@ -432,6 +474,7 @@ public final class ArrayUtil {
    * Sorts the given array slice using the {@link Comparator}. This method uses the intro sort
    * algorithm, but falls back to insertion sort for small arrays.
    *
+   * @see IntroSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -443,6 +486,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array using the {@link Comparator}. This method uses the intro sort algorithm,
    * but falls back to insertion sort for small arrays.
+   *
+   * @see IntroSorter
    */
   public static <T> void introSort(T[] a, Comparator<? super T> comp) {
     introSort(a, 0, a.length, comp);
@@ -452,6 +497,7 @@ public final class ArrayUtil {
    * Sorts the given array slice in natural order. This method uses the intro sort algorithm, but
    * falls back to insertion sort for small arrays.
    *
+   * @see IntroSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -464,6 +510,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array in natural order. This method uses the intro sort algorithm, but falls
    * back to insertion sort for small arrays.
+   *
+   * @see IntroSorter
    */
   public static <T extends Comparable<? super T>> void introSort(T[] a) {
     introSort(a, 0, a.length);
@@ -475,6 +523,7 @@ public final class ArrayUtil {
    * Sorts the given array slice using the {@link Comparator}. This method uses the Tim sort
    * algorithm, but falls back to binary sort for small arrays.
    *
+   * @see TimSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -486,6 +535,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array using the {@link Comparator}. This method uses the Tim sort algorithm,
    * but falls back to binary sort for small arrays.
+   *
+   * @see TimSorter
    */
   public static <T> void timSort(T[] a, Comparator<? super T> comp) {
     timSort(a, 0, a.length, comp);
@@ -495,6 +546,7 @@ public final class ArrayUtil {
    * Sorts the given array slice in natural order. This method uses the Tim sort algorithm, but
    * falls back to binary sort for small arrays.
    *
+   * @see TimSorter
    * @param fromIndex start index (inclusive)
    * @param toIndex end index (exclusive)
    */
@@ -506,6 +558,8 @@ public final class ArrayUtil {
   /**
    * Sorts the given array in natural order. This method uses the Tim sort algorithm, but falls back
    * to binary sort for small arrays.
+   *
+   * @see TimSorter
    */
   public static <T extends Comparable<? super T>> void timSort(T[] a) {
     timSort(a, 0, a.length);

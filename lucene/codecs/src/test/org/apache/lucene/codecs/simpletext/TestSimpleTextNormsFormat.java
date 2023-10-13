@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseNormsFormatTestCase;
+import org.apache.lucene.tests.index.BaseNormsFormatTestCase;
 
 /** Tests SimpleTextNormsFormat */
 public class TestSimpleTextNormsFormat extends BaseNormsFormatTestCase {

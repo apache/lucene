@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.CharFilterFactory;
 import org.apache.lucene.analysis.LowerCaseFilter;
@@ -41,6 +40,7 @@ import org.apache.lucene.analysis.core.WhitespaceTokenizerFactory;
 import org.apache.lucene.analysis.miscellaneous.ASCIIFoldingFilterFactory;
 import org.apache.lucene.analysis.reverse.ReverseStringFilterFactory;
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SetOnce.AlreadySetException;
@@ -266,7 +266,13 @@ public class TestCustomAnalyzer extends BaseTokenStreamTestCase {
         CustomAnalyzer.builder(this.getDataPath(""))
             .withTokenizer("whitespace")
             .addTokenFilter(
-                "stop", "ignoreCase", "true", "words", "teststop.txt", "format", "wordset")
+                "stop",
+                "ignoreCase",
+                "true",
+                "words",
+                this.getDataPath("teststop.txt").toString(),
+                "format",
+                "wordset")
             .build();
     assertAnalyzesTo(a, "foo Foo Bar", new String[0]);
     a.close();

@@ -1,3 +1,6 @@
+import java.util.jar.JarFile
+import java.util.regex.Matcher
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -43,12 +46,11 @@ subprojects {
             if (snapshotBuild) {
               return "${project.version} ${gitRev} [snapshot build, details omitted]"
             } else {
-              return "${project.version} ${gitRev} - ${System.properties['user.name']} - ${buildDate} ${buildTime}"
+              return "${project.version} ${gitRev} - ${buildDate} ${buildTime}"
             }
           }
 
-          manifest {
-            attributes([
+          def manifestAttrs = [
               "Extension-Name"        : implementationTitle,
 
               "Implementation-Vendor" : "The Apache Software Foundation",
@@ -64,10 +66,11 @@ subprojects {
               "X-Compile-Target-JDK"  : "${-> project.targetCompatibility}",
 
               "X-Build-JDK"           : "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
-              "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}",
+              "X-Build-OS"            : "${System.properties['os.name']} ${System.properties['os.arch']} ${System.properties['os.version']}"
+          ]
 
-              "Automatic-Module-Name" : "${-> project.path.replaceFirst(":", "").replace(':', '.').replace("-", "_")}"
-            ])
+          manifest {
+            attributes(manifestAttrs)
           }
 
           // Copy legalese into META-INF.

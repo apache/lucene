@@ -43,6 +43,11 @@ public abstract class FilterLeafCollector implements LeafCollector {
   }
 
   @Override
+  public void finish() throws IOException {
+    in.finish();
+  }
+
+  @Override
   public String toString() {
     String name = getClass().getSimpleName();
     if (name.length() == 0) {

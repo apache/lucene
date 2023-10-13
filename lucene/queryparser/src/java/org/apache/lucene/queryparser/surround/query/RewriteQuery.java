@@ -18,7 +18,7 @@ package org.apache.lucene.queryparser.surround.query;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 
 abstract class RewriteQuery<SQ extends SrndQuery> extends Query {
@@ -33,7 +33,7 @@ abstract class RewriteQuery<SQ extends SrndQuery> extends Query {
   }
 
   @Override
-  public abstract Query rewrite(IndexReader reader) throws IOException;
+  public abstract Query rewrite(IndexSearcher indexSearcher) throws IOException;
 
   @Override
   public String toString(String field) {

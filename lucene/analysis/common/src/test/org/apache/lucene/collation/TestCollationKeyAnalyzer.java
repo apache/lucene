@@ -19,7 +19,7 @@ package org.apache.lucene.collation;
 import java.text.Collator;
 import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CollationTestBase;
+import org.apache.lucene.tests.analysis.CollationTestBase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestCollationKeyAnalyzer extends CollationTestBase {

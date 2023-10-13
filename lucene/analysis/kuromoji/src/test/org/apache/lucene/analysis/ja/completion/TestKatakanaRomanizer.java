@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.ja.completion;
 
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestKatakanaRomanizer extends LuceneTestCase {

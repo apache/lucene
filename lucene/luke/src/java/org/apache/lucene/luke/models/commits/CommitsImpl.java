@@ -26,8 +26,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
@@ -98,7 +98,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
 
     if (ic == null) {
       String msg = String.format(Locale.ENGLISH, "Commit generation %d not exists.", commitGen);
-      log.warn(msg);
+      log.warning(msg);
       return Optional.empty();
     }
 
@@ -111,7 +111,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
 
     if (ic == null) {
       String msg = String.format(Locale.ENGLISH, "Commit generation %d not exists.", commitGen);
-      log.warn(msg);
+      log.warning(msg);
       return Collections.emptyList();
     }
 

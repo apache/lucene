@@ -31,7 +31,8 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.taxonomy.TaxonomyFacetSumValueSource;
+import org.apache.lucene.facet.taxonomy.AssociationAggregationFunction;
+import org.apache.lucene.facet.taxonomy.TaxonomyFacetFloatAssociations;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
@@ -44,6 +45,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /** Shows facets aggregation by an expression. */
 public class ExpressionAggregationFacetsExample {
@@ -76,8 +78,7 @@ public class ExpressionAggregationFacetsExample {
     doc.add(new FacetField("A", "C"));
     indexWriter.addDocument(config.build(taxoWriter, doc));
 
-    indexWriter.close();
-    taxoWriter.close();
+    IOUtils.close(indexWriter, taxoWriter);
   }
 
   /** User runs a query and aggregates facets. */
@@ -105,12 +106,15 @@ public class ExpressionAggregationFacetsExample {
 
     // Retrieve results
     Facets facets =
-        new TaxonomyFacetSumValueSource(
-            taxoReader, config, fc, expr.getDoubleValuesSource(bindings));
+        new TaxonomyFacetFloatAssociations(
+            taxoReader,
+            config,
+            fc,
+            AssociationAggregationFunction.SUM,
+            expr.getDoubleValuesSource(bindings));
     FacetResult result = facets.getTopChildren(10, "A");
 
-    indexReader.close();
-    taxoReader.close();
+    IOUtils.close(indexReader, taxoReader);
 
     return result;
   }

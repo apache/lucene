@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+
 public class TestCharsRefBuilder extends LuceneTestCase {
 
   public void testAppend() {

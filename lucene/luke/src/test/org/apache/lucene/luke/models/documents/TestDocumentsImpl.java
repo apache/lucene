@@ -23,7 +23,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.luke.models.util.IndexUtils;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
 import org.junit.Test;
 
@@ -68,6 +68,7 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(DocValuesType.NONE, f1.getDvType());
     assertEquals(0, f1.getPointDimensionCount());
     assertEquals(0, f1.getPointNumBytes());
+    assertEquals(0, f1.getVectorDimension());
 
     DocumentField f2 = fields.get(1);
     assertEquals("author", f2.getName());
@@ -83,6 +84,7 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(DocValuesType.NONE, f2.getDvType());
     assertEquals(0, f2.getPointDimensionCount());
     assertEquals(0, f2.getPointNumBytes());
+    assertEquals(0, f2.getVectorDimension());
 
     DocumentField f3 = fields.get(2);
     assertEquals("text", f3.getName());
@@ -98,6 +100,7 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(DocValuesType.NONE, f3.getDvType());
     assertEquals(0, f3.getPointDimensionCount());
     assertEquals(0, f3.getPointNumBytes());
+    assertEquals(0, f3.getVectorDimension());
 
     DocumentField f4 = fields.get(3);
     assertEquals("subject", f4.getName());
@@ -113,6 +116,7 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(DocValuesType.SORTED_SET, f4.getDvType());
     assertEquals(0, f4.getPointDimensionCount());
     assertEquals(0, f4.getPointNumBytes());
+    assertEquals(0, f4.getVectorDimension());
 
     DocumentField f5 = fields.get(4);
     assertEquals("downloads", f5.getName());

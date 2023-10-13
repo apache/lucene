@@ -16,6 +16,4 @@
 // specific language governing permissions and limitations
 // under the License.
 
-This directory includes information for the Lucene project overall.
-
-Also look in `lucene/dev-docs` for Lucene developer information and `solr/dev-docs` for Solr developer information.
+This directory includes information for Lucene developers.

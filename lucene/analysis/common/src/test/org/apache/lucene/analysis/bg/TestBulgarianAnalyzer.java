@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.bg;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test the Bulgarian analyzer */
 public class TestBulgarianAnalyzer extends BaseTokenStreamTestCase {

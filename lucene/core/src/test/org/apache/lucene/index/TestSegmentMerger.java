@@ -26,12 +26,13 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.MergeInfo;
+import org.apache.lucene.tests.index.DocHelper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -116,12 +117,12 @@ public class TestSegmentMerger extends LuceneTestCase {
             newIOContext(random()));
     assertTrue(mergedReader != null);
     assertTrue(mergedReader.numDocs() == 2);
-    Document newDoc1 = mergedReader.document(0);
+    Document newDoc1 = mergedReader.storedFields().document(0);
     assertTrue(newDoc1 != null);
     // There are 2 unstored fields on the document
     assertTrue(
         DocHelper.numFields(newDoc1) == DocHelper.numFields(doc1) - DocHelper.unstored.size());
-    Document newDoc2 = mergedReader.document(1);
+    Document newDoc2 = mergedReader.storedFields().document(1);
     assertTrue(newDoc2 != null);
     assertTrue(
         DocHelper.numFields(newDoc2) == DocHelper.numFields(doc2) - DocHelper.unstored.size());
@@ -142,7 +143,7 @@ public class TestSegmentMerger extends LuceneTestCase {
     // System.out.println("stored size: " + stored.size());
     assertEquals("We do not have 3 fields that were indexed with term vector", 3, tvCount);
 
-    Terms vector = mergedReader.getTermVectors(0).terms(DocHelper.TEXT_FIELD_2_KEY);
+    Terms vector = mergedReader.termVectors().get(0).terms(DocHelper.TEXT_FIELD_2_KEY);
     assertNotNull(vector);
     assertEquals(3, vector.size());
     TermsEnum termsEnum = vector.iterator();

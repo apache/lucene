@@ -23,8 +23,8 @@ import java.text.CharacterIterator;
 import org.apache.lucene.analysis.opennlp.tools.NLPSentenceDetectorOp;
 import org.apache.lucene.analysis.opennlp.tools.OpenNLPOpsFactory;
 import org.apache.lucene.analysis.util.CharArrayIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.BeforeClass;
 
 public class TestOpenNLPSentenceBreakIterator extends LuceneTestCase {

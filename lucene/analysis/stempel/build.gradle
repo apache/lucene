@@ -20,8 +20,8 @@ apply plugin: 'java-library'
 description = 'Analyzer for indexing Polish'
 
 dependencies {
-  api project(':lucene:core')
-  api project(':lucene:analysis:common')
+  moduleApi project(':lucene:core')
+  moduleApi project(':lucene:analysis:common')
 
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }

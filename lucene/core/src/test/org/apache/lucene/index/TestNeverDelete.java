@@ -19,12 +19,13 @@ package org.apache.lucene.index;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.store.BaseDirectoryWrapper;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 // Make sure if you use NoDeletionPolicy that no file
 // referenced by a commit point is ever deleted
@@ -45,7 +46,7 @@ public class TestNeverDelete extends LuceneTestCase {
 
     w.commit();
     Thread[] indexThreads = new Thread[random().nextInt(4)];
-    final long stopTime = System.currentTimeMillis() + atLeast(1000);
+    final int stopIterations = atLeast(100);
     for (int x = 0; x < indexThreads.length; x++) {
       indexThreads[x] =
           new Thread() {
@@ -53,7 +54,7 @@ public class TestNeverDelete extends LuceneTestCase {
             public void run() {
               try {
                 int docCount = 0;
-                while (System.currentTimeMillis() < stopTime) {
+                while (docCount < stopIterations) {
                   final Document doc = new Document();
                   doc.add(newStringField("dc", "" + docCount, Field.Store.YES));
                   doc.add(newTextField("field", "here is some text", Field.Store.YES));
@@ -76,7 +77,8 @@ public class TestNeverDelete extends LuceneTestCase {
     final Set<String> allFiles = new HashSet<>();
 
     DirectoryReader r = DirectoryReader.open(d);
-    while (System.currentTimeMillis() < stopTime) {
+    int iterations = 0;
+    while (++iterations < stopIterations) {
       final IndexCommit ic = r.getIndexCommit();
       if (VERBOSE) {
         System.out.println("TEST: check files: " + ic.getFileNames());

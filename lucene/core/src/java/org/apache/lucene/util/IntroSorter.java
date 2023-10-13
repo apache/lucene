@@ -24,8 +24,9 @@ package org.apache.lucene.util;
  * median-of-medians, and partitions using Bentley-McIlroy 3-way partitioning. Small ranges are
  * sorted with insertion sort.
  *
- * <p>This sort algorithm is fast on most data shapes, especially with low cardinality. If the data
- * to sort is known to be strictly ascending or descending, prefer {@link TimSorter}.
+ * <p>This algorithm is <b>NOT</b> stable. It's fast on most data shapes, especially with low
+ * cardinality. If the data to sort is known to be strictly ascending or descending, prefer {@link
+ * TimSorter}.
  *
  * @lucene.internal
  */

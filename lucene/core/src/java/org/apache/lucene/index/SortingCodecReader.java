@@ -31,9 +31,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -82,29 +82,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void intersect(IntersectVisitor visitor) throws IOException {
-      in.intersect(
-          new IntersectVisitor() {
-            @Override
-            public void visit(int docID) throws IOException {
-              visitor.visit(docMap.oldToNew(docID));
-            }
-
-            @Override
-            public void visit(int docID, byte[] packedValue) throws IOException {
-              visitor.visit(docMap.oldToNew(docID), packedValue);
-            }
-
-            @Override
-            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-              return visitor.compare(minPackedValue, maxPackedValue);
-            }
-          });
-    }
-
-    @Override
-    public long estimatePointCount(IntersectVisitor visitor) {
-      return in.estimatePointCount(visitor);
+    public PointTree getPointTree() throws IOException {
+      return new SortingPointTree(in.getPointTree(), docMap);
     }
 
     @Override
@@ -143,6 +122,205 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
+  private static class SortingPointTree implements PointValues.PointTree {
+
+    private final PointValues.PointTree indexTree;
+    private final Sorter.DocMap docMap;
+    private final SortingIntersectVisitor sortingIntersectVisitor;
+
+    SortingPointTree(PointValues.PointTree indexTree, Sorter.DocMap docMap) {
+      this.indexTree = indexTree;
+      this.docMap = docMap;
+      this.sortingIntersectVisitor = new SortingIntersectVisitor(docMap);
+    }
+
+    @Override
+    public PointValues.PointTree clone() {
+      return new SortingPointTree(indexTree.clone(), docMap);
+    }
+
+    @Override
+    public boolean moveToChild() throws IOException {
+      return indexTree.moveToChild();
+    }
+
+    @Override
+    public boolean moveToSibling() throws IOException {
+      return indexTree.moveToSibling();
+    }
+
+    @Override
+    public boolean moveToParent() throws IOException {
+      return indexTree.moveToParent();
+    }
+
+    @Override
+    public byte[] getMinPackedValue() {
+      return indexTree.getMinPackedValue();
+    }
+
+    @Override
+    public byte[] getMaxPackedValue() {
+      return indexTree.getMaxPackedValue();
+    }
+
+    @Override
+    public long size() {
+      return indexTree.size();
+    }
+
+    @Override
+    public void visitDocIDs(PointValues.IntersectVisitor visitor) throws IOException {
+      sortingIntersectVisitor.setIntersectVisitor(visitor);
+      indexTree.visitDocIDs(sortingIntersectVisitor);
+    }
+
+    @Override
+    public void visitDocValues(PointValues.IntersectVisitor visitor) throws IOException {
+      sortingIntersectVisitor.setIntersectVisitor(visitor);
+      indexTree.visitDocValues(sortingIntersectVisitor);
+    }
+  }
+
+  private static class SortingIntersectVisitor implements PointValues.IntersectVisitor {
+
+    private final Sorter.DocMap docMap;
+
+    private PointValues.IntersectVisitor visitor;
+
+    SortingIntersectVisitor(Sorter.DocMap docMap) {
+      this.docMap = docMap;
+    }
+
+    private void setIntersectVisitor(PointValues.IntersectVisitor visitor) {
+      this.visitor = visitor;
+    }
+
+    @Override
+    public void visit(int docID) throws IOException {
+      visitor.visit(docMap.oldToNew(docID));
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) throws IOException {
+      visitor.visit(docMap.oldToNew(docID), packedValue);
+    }
+
+    @Override
+    public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      return visitor.compare(minPackedValue, maxPackedValue);
+    }
+  }
+
+  /** Sorting FloatVectorValues that iterate over documents in the order of the provided sortMap */
+  private static class SortingFloatVectorValues extends FloatVectorValues {
+    final int size;
+    final int dimension;
+    final FixedBitSet docsWithField;
+    final float[][] vectors;
+
+    private int docId = -1;
+
+    SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.size = delegate.size();
+      this.dimension = delegate.dimension();
+      docsWithField = new FixedBitSet(sortMap.size());
+      vectors = new float[sortMap.size()][];
+      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
+        int newDocID = sortMap.oldToNew(doc);
+        docsWithField.set(newDocID);
+        vectors[newDocID] = delegate.vectorValue().clone();
+      }
+    }
+
+    @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docId + 1);
+    }
+
+    @Override
+    public float[] vectorValue() throws IOException {
+      return vectors[docId];
+    }
+
+    @Override
+    public int dimension() {
+      return dimension;
+    }
+
+    @Override
+    public int size() {
+      return size;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= docsWithField.length()) {
+        return NO_MORE_DOCS;
+      }
+      return docId = docsWithField.nextSetBit(target);
+    }
+  }
+
+  private static class SortingByteVectorValues extends ByteVectorValues {
+    final int size;
+    final int dimension;
+    final FixedBitSet docsWithField;
+    final byte[][] vectors;
+
+    private int docId = -1;
+
+    SortingByteVectorValues(ByteVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.size = delegate.size();
+      this.dimension = delegate.dimension();
+      docsWithField = new FixedBitSet(sortMap.size());
+      vectors = new byte[sortMap.size()][];
+      for (int doc = delegate.nextDoc(); doc != NO_MORE_DOCS; doc = delegate.nextDoc()) {
+        int newDocID = sortMap.oldToNew(doc);
+        docsWithField.set(newDocID);
+        vectors[newDocID] = delegate.vectorValue().clone();
+      }
+    }
+
+    @Override
+    public int docID() {
+      return docId;
+    }
+
+    @Override
+    public int nextDoc() throws IOException {
+      return advance(docId + 1);
+    }
+
+    @Override
+    public byte[] vectorValue() throws IOException {
+      return vectors[docId];
+    }
+
+    @Override
+    public int dimension() {
+      return dimension;
+    }
+
+    @Override
+    public int size() {
+      return size;
+    }
+
+    @Override
+    public int advance(int target) throws IOException {
+      if (target >= docsWithField.length()) {
+        return NO_MORE_DOCS;
+      }
+      return docId = docsWithField.nextSetBit(target);
+    }
+  }
+
   /**
    * Return a sorted view of <code>reader</code> according to the order defined by <code>sort</code>
    * . If the reader is already sorted, this method might return the reader as-is.
@@ -155,7 +333,7 @@ public final class SortingCodecReader extends FilterCodecReader {
    * Expert: same as {@link #wrap(org.apache.lucene.index.CodecReader, Sort)} but operates directly
    * on a {@link Sorter.DocMap}.
    */
-  static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
+  public static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
     LeafMetaData metaData = reader.getMetaData();
     LeafMetaData newMetaData =
         new LeafMetaData(metaData.getCreatedVersionMajor(), metaData.getMinVersion(), sort);
@@ -248,8 +426,8 @@ public final class SortingCodecReader extends FilterCodecReader {
   private StoredFieldsReader newStoredFieldsReader(StoredFieldsReader delegate) {
     return new StoredFieldsReader() {
       @Override
-      public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
-        delegate.visitDocument(docMap.newToOld(docID), visitor);
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        delegate.document(docMap.newToOld(docID), visitor);
       }
 
       @Override
@@ -310,12 +488,22 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public VectorValues getVectorValues(String field) throws IOException {
-        return new VectorValuesWriter.SortingVectorValues(delegate.getVectorValues(field), docMap);
+      public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+        return new SortingFloatVectorValues(delegate.getFloatVectorValues(field), docMap);
       }
 
       @Override
-      public TopDocs search(String field, float[] target, int k, Bits acceptDocs) {
+      public ByteVectorValues getByteVectorValues(String field) throws IOException {
+        return new SortingByteVectorValues(delegate.getByteVectorValues(field), docMap);
+      }
+
+      @Override
+      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
         throw new UnsupportedOperationException();
       }
 
@@ -413,7 +601,11 @@ public final class SortingCodecReader extends FilterCodecReader {
                 field.name,
                 () ->
                     new SortedSetDocValuesWriter.DocOrds(
-                        maxDoc(), docMap, oldDocValues, PackedInts.FAST)));
+                        maxDoc(),
+                        docMap,
+                        oldDocValues,
+                        PackedInts.FAST,
+                        SortedSetDocValuesWriter.DocOrds.START_BITS_PER_VALUE)));
       }
 
       @Override

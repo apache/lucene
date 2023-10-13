@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Tokenizer for domain-like hierarchies.
@@ -43,6 +44,7 @@ import org.apache.lucene.util.AttributeFactory;
  * uk
  * </pre>
  */
+@IgnoreRandomChains(reason = "broken offsets")
 public class ReversePathHierarchyTokenizer extends Tokenizer {
 
   public ReversePathHierarchyTokenizer() {

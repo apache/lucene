@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestVectorUtil extends LuceneTestCase {
 
@@ -79,6 +81,8 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testSelfCosine() {
     // the dot product of a vector with itself is always equal to 1
     float[] v = randomVector();
+    // ensure the vector is non-zero so that cosine is defined
+    v[0] = random().nextFloat() + 0.01f;
     assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
   }
 
@@ -86,7 +90,8 @@ public class TestVectorUtil extends LuceneTestCase {
     // the cosine of two perpendicular vectors is 0
     float[] v = new float[2];
     v[0] = random().nextInt(100);
-    v[1] = random().nextInt(100);
+    // ensure the vector is non-zero so that cosine is defined
+    v[1] = random().nextInt(1, 100);
     float[] u = new float[2];
     u[0] = v[1];
     u[1] = -v[0];
@@ -126,6 +131,23 @@ public class TestVectorUtil extends LuceneTestCase {
     return u;
   }
 
+  private static byte[] negative(byte[] v) {
+    byte[] u = new byte[v.length];
+    for (int i = 0; i < v.length; i++) {
+      // what is (byte) -(-128)? 127?
+      u[i] = (byte) -v[i];
+    }
+    return u;
+  }
+
+  private static float l2(byte[] v) {
+    float l2 = 0;
+    for (int i = 0; i < v.length; i++) {
+      l2 += v[i] * v[i];
+    }
+    return l2;
+  }
+
   private static float[] randomVector() {
     return randomVector(random().nextInt(100) + 1);
   }
@@ -137,5 +159,107 @@ public class TestVectorUtil extends LuceneTestCase {
       v[i] = random.nextFloat();
     }
     return v;
+  }
+
+  private static byte[] randomVectorBytes() {
+    BytesRef v = TestUtil.randomBinaryTerm(random(), TestUtil.nextInt(random(), 1, 100));
+    // clip at -127 to avoid overflow
+    for (int i = v.offset; i < v.offset + v.length; i++) {
+      if (v.bytes[i] == -128) {
+        v.bytes[i] = -127;
+      }
+    }
+    assert v.offset == 0;
+    return v.bytes;
+  }
+
+  public static byte[] randomVectorBytes(int dim) {
+    BytesRef v = TestUtil.randomBinaryTerm(random(), dim);
+    // clip at -127 to avoid overflow
+    for (int i = v.offset; i < v.offset + v.length; i++) {
+      if (v.bytes[i] == -128) {
+        v.bytes[i] = -127;
+      }
+    }
+    return v.bytes;
+  }
+
+  public void testBasicDotProductBytes() {
+    byte[] a = new byte[] {1, 2, 3};
+    byte[] b = new byte[] {-10, 0, 5};
+    assertEquals(5, VectorUtil.dotProduct(a, b), 0);
+    float denom = a.length * (1 << 15);
+    assertEquals(0.5 + 5 / denom, VectorUtil.dotProductScore(a, b), DELTA);
+
+    // dot product 0 maps to dotProductScore 0.5
+    byte[] zero = new byte[] {0, 0, 0};
+    assertEquals(0.5, VectorUtil.dotProductScore(a, zero), DELTA);
+
+    byte[] min = new byte[] {-128, -128};
+    byte[] max = new byte[] {127, 127};
+    // minimum dot product score is not quite zero because 127 < 128
+    assertEquals(0.0039, VectorUtil.dotProductScore(min, max), DELTA);
+
+    // maximum dot product score
+    assertEquals(1, VectorUtil.dotProductScore(min, min), DELTA);
+  }
+
+  public void testSelfDotProductBytes() {
+    // the dot product of a vector with itself is equal to the sum of the squares of its components
+    byte[] v = randomVectorBytes();
+    assertEquals(l2(v), VectorUtil.dotProduct(v, v), DELTA);
+  }
+
+  public void testOrthogonalDotProductBytes() {
+    // the dot product of two perpendicular vectors is 0
+    byte[] a = new byte[2];
+    a[0] = (byte) random().nextInt(100);
+    a[1] = (byte) random().nextInt(100);
+    byte[] b = new byte[2];
+    b[0] = a[1];
+    b[1] = (byte) -a[0];
+    assertEquals(0, VectorUtil.dotProduct(a, b), DELTA);
+  }
+
+  public void testSelfSquareDistanceBytes() {
+    // the l2 distance of a vector with itself is zero
+    byte[] v = randomVectorBytes();
+    assertEquals(0, VectorUtil.squareDistance(v, v), DELTA);
+  }
+
+  public void testBasicSquareDistanceBytes() {
+    assertEquals(12, VectorUtil.squareDistance(new byte[] {1, 2, 3}, new byte[] {-1, 0, 5}), 0);
+  }
+
+  public void testRandomSquareDistanceBytes() {
+    // the square distance of a vector with its inverse is equal to four times the sum of squares of
+    // its components
+    byte[] v = randomVectorBytes();
+    byte[] u = negative(v);
+    assertEquals(4 * l2(v), VectorUtil.squareDistance(u, v), DELTA);
+  }
+
+  public void testBasicCosineBytes() {
+    assertEquals(0.11952f, VectorUtil.cosine(new byte[] {1, 2, 3}, new byte[] {-10, 0, 5}), DELTA);
+  }
+
+  public void testSelfCosineBytes() {
+    // the dot product of a vector with itself is always equal to 1
+    byte[] v = randomVectorBytes();
+    // ensure the vector is non-zero so that cosine is defined
+    v[0] = (byte) (random().nextInt(126) + 1);
+    assertEquals(1.0f, VectorUtil.cosine(v, v), DELTA);
+  }
+
+  public void testOrthogonalCosineBytes() {
+    // the cosine of two perpendicular vectors is 0
+    float[] v = new float[2];
+    v[0] = random().nextInt(100);
+    // ensure the vector is non-zero so that cosine is defined
+    v[1] = random().nextInt(1, 100);
+    float[] u = new float[2];
+    u[0] = v[1];
+    u[1] = -v[0];
+    assertEquals(0, VectorUtil.cosine(u, v), DELTA);
   }
 }

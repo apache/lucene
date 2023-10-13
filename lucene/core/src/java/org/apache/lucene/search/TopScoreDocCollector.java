@@ -254,12 +254,15 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
    * shared {@link MaxScoreAccumulator} to propagate the minimum score accross segments
    */
   public static CollectorManager<TopScoreDocCollector, TopDocs> createSharedManager(
-      int numHits, FieldDoc after, int totalHitsThreshold) {
+      int numHits, ScoreDoc after, int totalHitsThreshold) {
+
+    int totalHitsMax = Math.max(totalHitsThreshold, numHits);
     return new CollectorManager<>() {
 
       private final HitsThresholdChecker hitsThresholdChecker =
-          HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits));
-      private final MaxScoreAccumulator minScoreAcc = new MaxScoreAccumulator();
+          HitsThresholdChecker.createShared(totalHitsMax);
+      private final MaxScoreAccumulator minScoreAcc =
+          totalHitsMax == Integer.MAX_VALUE ? null : new MaxScoreAccumulator();
 
       @Override
       public TopScoreDocCollector newCollector() throws IOException {

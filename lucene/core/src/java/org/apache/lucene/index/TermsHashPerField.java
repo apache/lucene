@@ -230,9 +230,29 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   }
 
   final void writeBytes(int stream, byte[] b, int offset, int len) {
-    // TODO: optimize
     final int end = offset + len;
-    for (int i = offset; i < end; i++) writeByte(stream, b[i]);
+    int streamAddress = streamAddressOffset + stream;
+    int upto = termStreamAddressBuffer[streamAddress];
+    byte[] slice = bytePool.buffers[upto >> ByteBlockPool.BYTE_BLOCK_SHIFT];
+    assert slice != null;
+    int sliceOffset = upto & ByteBlockPool.BYTE_BLOCK_MASK;
+
+    while (slice[sliceOffset] == 0 && offset < end) {
+      slice[sliceOffset++] = b[offset++];
+      (termStreamAddressBuffer[streamAddress])++;
+    }
+
+    while (offset < end) {
+      int offsetAndLength = bytePool.allocKnownSizeSlice(slice, sliceOffset);
+      sliceOffset = offsetAndLength >> 8;
+      int sliceLength = offsetAndLength & 0xff;
+      slice = bytePool.buffer;
+      int writeLength = Math.min(sliceLength - 1, end - offset);
+      System.arraycopy(b, offset, slice, sliceOffset, writeLength);
+      sliceOffset += writeLength;
+      offset += writeLength;
+      termStreamAddressBuffer[streamAddress] = sliceOffset + bytePool.byteOffset;
+    }
   }
 
   final void writeVInt(int stream, int i) {
@@ -267,7 +287,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       if (perField.postingsArray == null) {
         perField.postingsArray = perField.createPostingsArray(2);
         perField.newPostingsArray();
-        bytesUsed.addAndGet(perField.postingsArray.size * perField.postingsArray.bytesPerPosting());
+        bytesUsed.addAndGet(
+            perField.postingsArray.size * (long) perField.postingsArray.bytesPerPosting());
       }
       return perField.postingsArray.textStarts;
     }
@@ -278,7 +299,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       final int oldSize = perField.postingsArray.size;
       postingsArray = perField.postingsArray = postingsArray.grow();
       perField.newPostingsArray();
-      bytesUsed.addAndGet((postingsArray.bytesPerPosting() * (postingsArray.size - oldSize)));
+      bytesUsed.addAndGet(postingsArray.bytesPerPosting() * (long) (postingsArray.size - oldSize));
       return postingsArray.textStarts;
     }
 

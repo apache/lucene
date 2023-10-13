@@ -18,8 +18,8 @@
 package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
-import org.apache.lucene.search.MatchesTestBase;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.tests.search.MatchesTestBase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestComplexMatches extends MatchesTestBase {

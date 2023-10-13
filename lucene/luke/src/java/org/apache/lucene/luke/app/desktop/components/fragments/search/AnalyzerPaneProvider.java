@@ -37,19 +37,19 @@ import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.luke.app.desktop.components.ComponentOperatorRegistry;
 import org.apache.lucene.luke.app.desktop.components.TabSwitcherProxy;
 import org.apache.lucene.luke.app.desktop.components.TabbedPaneProvider;
 import org.apache.lucene.luke.app.desktop.util.FontUtils;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
+import org.apache.lucene.luke.models.analysis.AnalysisFactory;
 
 /** Provider of the Analyzer pane */
 public final class AnalyzerPaneProvider implements AnalyzerTabOperator {
 
   private final TabSwitcherProxy tabSwitcher;
 
-  private final JLabel analyzerNameLbl = new JLabel(StandardAnalyzer.class.getName());
+  private final JLabel analyzerNameLbl = new JLabel();
 
   private final JList<String> charFilterList = new JList<>();
 
@@ -59,6 +59,8 @@ public final class AnalyzerPaneProvider implements AnalyzerTabOperator {
 
   public AnalyzerPaneProvider() {
     this.tabSwitcher = TabSwitcherProxy.getInstance();
+    this.analyzerNameLbl.setText(
+        new AnalysisFactory().newInstance().currentAnalyzer().getClass().getName());
 
     ComponentOperatorRegistry.getInstance().register(AnalyzerTabOperator.class, this);
   }

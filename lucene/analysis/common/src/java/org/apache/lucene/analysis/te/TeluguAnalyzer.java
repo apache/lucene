@@ -24,10 +24,12 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.core.DecimalDigitFilter;
 import org.apache.lucene.analysis.in.IndicNormalizationFilter;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Analyzer for Telugu.
@@ -61,7 +63,11 @@ public final class TeluguAnalyzer extends StopwordAnalyzerBase {
     static {
       try {
         DEFAULT_STOP_SET =
-            loadStopwordSet(false, TeluguAnalyzer.class, DEFAULT_STOPWORD_FILE, STOPWORDS_COMMENT);
+            WordlistLoader.getWordSet(
+                IOUtils.requireResourceNonNull(
+                    TeluguAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE),
+                STOPWORDS_COMMENT);
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         throw new UncheckedIOException("Unable to load default stopword set", ex);

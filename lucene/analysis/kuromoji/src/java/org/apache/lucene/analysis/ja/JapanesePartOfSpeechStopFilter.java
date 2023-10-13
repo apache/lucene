@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.ja;
 
+import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -34,7 +35,7 @@ public final class JapanesePartOfSpeechStopFilter extends FilteringTokenFilter {
    */
   public JapanesePartOfSpeechStopFilter(TokenStream input, Set<String> stopTags) {
     super(input);
-    this.stopTags = stopTags;
+    this.stopTags = Objects.requireNonNull(stopTags, "stopTags");
   }
 
   @Override

@@ -17,10 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.StringReader;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
@@ -29,8 +25,13 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestPayloadsOnVectors extends LuceneTestCase {
 
@@ -46,10 +47,9 @@ public class TestPayloadsOnVectors extends LuceneTestCase {
     customType.setStoreTermVectorPositions(true);
     customType.setStoreTermVectorPayloads(true);
     customType.setStoreTermVectorOffsets(random().nextBoolean());
-    Field field = new Field("field", "", customType);
     TokenStream ts = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     ((Tokenizer) ts).setReader(new StringReader("here we go"));
-    field.setTokenStream(ts);
+    Field field = new Field("field", ts, customType);
     doc.add(field);
     writer.addDocument(doc);
 
@@ -66,7 +66,7 @@ public class TestPayloadsOnVectors extends LuceneTestCase {
     writer.addDocument(doc);
 
     DirectoryReader reader = writer.getReader();
-    Terms terms = reader.getTermVector(1, "field");
+    Terms terms = reader.termVectors().get(1, "field");
     assert terms != null;
     TermsEnum termsEnum = terms.iterator();
     assertTrue(termsEnum.seekExact(new BytesRef("withPayload")));
@@ -89,26 +89,23 @@ public class TestPayloadsOnVectors extends LuceneTestCase {
     customType.setStoreTermVectorPositions(true);
     customType.setStoreTermVectorPayloads(true);
     customType.setStoreTermVectorOffsets(random().nextBoolean());
-    Field field = new Field("field", "", customType);
     TokenStream ts = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     ((Tokenizer) ts).setReader(new StringReader("here we go"));
-    field.setTokenStream(ts);
+    Field field = new Field("field", ts, customType);
     doc.add(field);
-    Field field2 = new Field("field", "", customType);
     Token withPayload = new Token("withPayload", 0, 11);
     withPayload.setPayload(new BytesRef("test"));
     ts = new CannedTokenStream(withPayload);
     assertTrue(ts.hasAttribute(PayloadAttribute.class));
-    field2.setTokenStream(ts);
+    Field field2 = new Field("field", ts, customType);
     doc.add(field2);
-    Field field3 = new Field("field", "", customType);
     ts = new MockTokenizer(MockTokenizer.WHITESPACE, true);
     ((Tokenizer) ts).setReader(new StringReader("nopayload"));
-    field3.setTokenStream(ts);
+    Field field3 = new Field("field", ts, customType);
     doc.add(field3);
     writer.addDocument(doc);
     DirectoryReader reader = writer.getReader();
-    Terms terms = reader.getTermVector(0, "field");
+    Terms terms = reader.termVectors().get(0, "field");
     assert terms != null;
     TermsEnum termsEnum = terms.iterator();
     assertTrue(termsEnum.seekExact(new BytesRef("withPayload")));

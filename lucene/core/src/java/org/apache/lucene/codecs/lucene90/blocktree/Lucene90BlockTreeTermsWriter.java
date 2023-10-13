@@ -52,6 +52,7 @@ import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Util;
+import org.apache.lucene.util.packed.PackedInts;
 
 /*
   TODO:
@@ -113,8 +114,8 @@ import org.apache.lucene.util.fst.Util;
  * Metadata sections.
  *
  * <ul>
- *   <li>TermsDict (.tim) --&gt; Header, <i>PostingsHeader</i>, NodeBlock<sup>NumBlocks</sup>,
- *       Footer
+ *   <li>TermsDict (.tim) --&gt; Header, FieldDict<sup>NumFields</sup>, Footer
+ *   <li>FieldDict --&gt; <i>PostingsHeader</i>, NodeBlock<sup>NumBlocks</sup>
  *   <li>NodeBlock --&gt; (OuterNode | InnerNode)
  *   <li>OuterNode --&gt; EntryCount, SuffixLength, Byte<sup>SuffixLength</sup>, StatsLength, &lt;
  *       TermStats &gt;<sup>EntryCount</sup>, MetaLength,
@@ -429,6 +430,25 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     return brToString(new BytesRef(b));
   }
 
+  /**
+   * Encodes long value to variable length byte[], in MSB order. Use {@link
+   * FieldReader#readMSBVLong} to decode.
+   *
+   * <p>Package private for testing
+   */
+  static void writeMSBVLong(long l, DataOutput scratchBytes) throws IOException {
+    assert l >= 0;
+    // Keep zero bits on most significant byte to have more chance to get prefix bytes shared.
+    // e.g. we expect 0x7FFF stored as [0x81, 0xFF, 0x7F] but not [0xFF, 0xFF, 0x40]
+    final int bytesNeeded = (Long.SIZE - Long.numberOfLeadingZeros(l) - 1) / 7 + 1;
+    l <<= Long.SIZE - bytesNeeded * 7;
+    for (int i = 1; i < bytesNeeded; i++) {
+      scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL) | 0x80));
+      l = l << 7;
+    }
+    scratchBytes.writeByte((byte) (((l >>> 57) & 0x7FL)));
+  }
+
   private static final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
@@ -471,10 +491,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert scratchBytes.size() == 0;
 
-      // TODO: try writing the leading vLong in MSB order
-      // (opposite of what Lucene does today), for better
-      // outputs sharing in the FST
-      scratchBytes.writeVLong(encodeOutput(fp, hasTerms, isFloor));
+      // write the leading vLong in MSB order for better outputs sharing in the FST
+      writeMSBVLong(encodeOutput(fp, hasTerms, isFloor), scratchBytes);
       if (isFloor) {
         scratchBytes.writeVInt(blocks.size() - 1);
         for (int i = 1; i < blocks.size(); i++) {
@@ -490,10 +508,22 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
+      long estimateSize = prefix.length;
+      for (PendingBlock block : blocks) {
+        if (block.subIndices != null) {
+          for (FST<BytesRef> subIndex : block.subIndices) {
+            estimateSize += subIndex.numBytes();
+          }
+        }
+      }
+      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
+      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
+
       final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
       final FSTCompiler<BytesRef> fstCompiler =
           new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
               .shouldShareNonSingletonNodes(false)
+              .bytesPageBits(pageBits)
               .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
@@ -969,7 +999,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       // Write suffix lengths
       final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
-      spareBytes = ArrayUtil.grow(spareBytes, numSuffixBytes);
+      spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
       suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
       suffixLengthsWriter.reset();
       if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {

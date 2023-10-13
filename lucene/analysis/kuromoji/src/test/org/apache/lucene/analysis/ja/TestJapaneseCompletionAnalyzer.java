@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ja;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.junit.Test;
 
 public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {

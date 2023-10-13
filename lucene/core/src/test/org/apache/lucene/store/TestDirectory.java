@@ -25,8 +25,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.lucene.mockfile.ExtrasFS;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDirectory extends LuceneTestCase {
 
@@ -65,7 +65,7 @@ public class TestDirectory extends LuceneTestCase {
         assertEquals(1 + largeBuffer.length, d2.fileLength(fname));
 
         // don't do read tests if unmapping is not supported!
-        if (d2 instanceof MMapDirectory && !((MMapDirectory) d2).getUseUnmap()) continue;
+        if (d2 instanceof MMapDirectory && !MMapDirectory.UNMAP_SUPPORTED) continue;
 
         IndexInput input = d2.openInput(fname, newIOContext(random()));
         assertEquals((byte) i, input.readByte());

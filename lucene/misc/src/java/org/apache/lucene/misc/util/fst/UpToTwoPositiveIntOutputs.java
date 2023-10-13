@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Outputs;
 
@@ -40,7 +39,6 @@ import org.apache.lucene.util.fst.Outputs;
  *
  * @lucene.experimental
  */
-@SuppressForbidden(reason = "Uses a Long instance as a marker")
 public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
 
   /** Holds two long outputs. */
@@ -76,9 +74,7 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
     }
   }
 
-  // Ignore the deprecated constructor. We do want a unique object here.
-  @SuppressWarnings({"all"})
-  private static final Long NO_OUTPUT = new Long(0);
+  private static final Long NO_OUTPUT = 0L;
 
   private final boolean doShare;
 

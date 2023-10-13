@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.ShapeTestUtil;
 import org.apache.lucene.geo.XYPoint;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
 
 /**
  * random cartesian bounding box, line, and polygon query tests for random indexed arrays of {@code
@@ -95,7 +95,6 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

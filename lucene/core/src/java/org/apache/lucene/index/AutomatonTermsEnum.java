@@ -23,10 +23,10 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 
 /**
  * A FilteredTermsEnum that enumerates terms based upon what is accepted by a DFA.
@@ -47,16 +47,16 @@ import org.apache.lucene.util.automaton.Transition;
  */
 public class AutomatonTermsEnum extends FilteredTermsEnum {
   // a tableized array-based form of the DFA
-  private final ByteRunAutomaton runAutomaton;
+  private final ByteRunnable byteRunnable;
   // common suffix of the automaton
   private final BytesRef commonSuffixRef;
   // true if the automaton accepts a finite language
   private final boolean finite;
   // array of sorted transitions for each state, indexed by state number
-  private final Automaton automaton;
+  private final TransitionAccessor transitionAccessor;
   // Used for visited state tracking: each short records gen when we last
   // visited the state; we use gens to avoid having to clear
-  private final short[] visited;
+  private short[] visited;
   private short curGen;
   // the reference used for seeking forwards through the term dictionary
   private final BytesRefBuilder seekBytesRef = new BytesRefBuilder();
@@ -82,25 +82,27 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
     this.finite = compiled.finite;
-    this.runAutomaton = compiled.runAutomaton;
-    assert this.runAutomaton != null;
+    this.byteRunnable = compiled.getByteRunnable();
+    this.transitionAccessor = compiled.getTransitionAccessor();
     this.commonSuffixRef = compiled.commonSuffixRef;
-    this.automaton = compiled.automaton;
 
     // No need to track visited states for a finite language without loops.
-    visited = finite ? null : new short[runAutomaton.getSize()];
+    visited = finite ? null : new short[byteRunnable.getSize()];
   }
 
   /** Records the given state has been visited. */
   private void setVisited(int state) {
     if (!finite) {
+      if (state >= visited.length) {
+        visited = ArrayUtil.grow(visited, state + 1);
+      }
       visited[state] = curGen;
     }
   }
 
   /** Indicates whether the given state has been visited. */
   private boolean isVisited(int state) {
-    return !finite && visited[state] == curGen;
+    return !finite && state < visited.length && visited[state] == curGen;
   }
 
   /**
@@ -110,7 +112,7 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
   @Override
   protected AcceptStatus accept(final BytesRef term) {
     if (commonSuffixRef == null || StringHelper.endsWith(term, commonSuffixRef)) {
-      if (runAutomaton.run(term.bytes, term.offset, term.length))
+      if (byteRunnable.run(term.bytes, term.offset, term.length))
         return linear ? AcceptStatus.YES : AcceptStatus.YES_AND_SEEK;
       else
         return (linear && term.compareTo(linearUpperBound) < 0)
@@ -129,7 +131,7 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
     if (term == null) {
       assert seekBytesRef.length() == 0;
       // return the empty term, as it's valid
-      if (runAutomaton.isAccept(0)) {
+      if (byteRunnable.isAccept(0)) {
         return seekBytesRef.get();
       }
     } else {
@@ -155,13 +157,13 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
     int maxInterval = 0xff;
     // System.out.println("setLinear pos=" + position + " seekbytesRef=" + seekBytesRef);
     for (int i = 0; i < position; i++) {
-      state = runAutomaton.step(state, seekBytesRef.byteAt(i) & 0xff);
+      state = byteRunnable.step(state, seekBytesRef.byteAt(i) & 0xff);
       assert state >= 0 : "state=" + state;
     }
-    final int numTransitions = automaton.getNumTransitions(state);
-    automaton.initTransition(state, transition);
+    final int numTransitions = transitionAccessor.getNumTransitions(state);
+    transitionAccessor.initTransition(state, transition);
     for (int i = 0; i < numTransitions; i++) {
-      automaton.getNextTransition(transition);
+      transitionAccessor.getNextTransition(transition);
       if (transition.min <= (seekBytesRef.byteAt(position) & 0xff)
           && (seekBytesRef.byteAt(position) & 0xff) <= transition.max) {
         maxInterval = transition.max;
@@ -206,7 +208,7 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
       // walk the automaton until a character is rejected.
       for (state = savedStates.intAt(pos); pos < seekBytesRef.length(); pos++) {
         setVisited(state);
-        int nextState = runAutomaton.step(state, seekBytesRef.byteAt(pos) & 0xff);
+        int nextState = byteRunnable.step(state, seekBytesRef.byteAt(pos) & 0xff);
         if (nextState == -1) break;
         savedStates.setIntAt(pos + 1, nextState);
         // we found a loop, record it for faster enumeration
@@ -227,8 +229,8 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
           return false;
         }
         final int newState =
-            runAutomaton.step(savedStates.intAt(pos), seekBytesRef.byteAt(pos) & 0xff);
-        if (newState >= 0 && runAutomaton.isAccept(newState)) {
+            byteRunnable.step(savedStates.intAt(pos), seekBytesRef.byteAt(pos) & 0xff);
+        if (newState >= 0 && byteRunnable.isAccept(newState)) {
           /* String is good to go as-is */
           return true;
         }
@@ -274,12 +276,12 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
     seekBytesRef.setLength(position);
     setVisited(state);
 
-    final int numTransitions = automaton.getNumTransitions(state);
-    automaton.initTransition(state, transition);
+    final int numTransitions = transitionAccessor.getNumTransitions(state);
+    transitionAccessor.initTransition(state, transition);
     // find the minimal path (lexicographic order) that is >= c
 
     for (int i = 0; i < numTransitions; i++) {
-      automaton.getNextTransition(transition);
+      transitionAccessor.getNextTransition(transition);
       if (transition.max >= c) {
         int nextChar = Math.max(c, transition.min);
         // append either the next sequential char, or the minimum transition
@@ -290,15 +292,15 @@ public class AutomatonTermsEnum extends FilteredTermsEnum {
          * as long as is possible, continue down the minimal path in
          * lexicographic order. if a loop or accept state is encountered, stop.
          */
-        while (!isVisited(state) && !runAutomaton.isAccept(state)) {
+        while (!isVisited(state) && !byteRunnable.isAccept(state)) {
           setVisited(state);
           /*
            * Note: we work with a DFA with no transitions to dead states.
            * so the below is ok, if it is not an accept state,
            * then there MUST be at least one transition.
            */
-          automaton.initTransition(state, transition);
-          automaton.getNextTransition(transition);
+          transitionAccessor.initTransition(state, transition);
+          transitionAccessor.getNextTransition(transition);
           state = transition.dest;
 
           // append the minimum transition

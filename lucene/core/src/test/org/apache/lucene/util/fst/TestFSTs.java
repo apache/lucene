@@ -16,9 +16,9 @@
  */
 package org.apache.lucene.util.fst;
 
-import static org.apache.lucene.util.fst.FSTTester.getRandomString;
-import static org.apache.lucene.util.fst.FSTTester.simpleRandomString;
-import static org.apache.lucene.util.fst.FSTTester.toIntsRef;
+import static org.apache.lucene.tests.util.fst.FSTTester.getRandomString;
+import static org.apache.lucene.tests.util.fst.FSTTester.simpleRandomString;
+import static org.apache.lucene.tests.util.fst.FSTTester.toIntsRef;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -40,8 +40,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -49,7 +49,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -60,18 +59,21 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.fst.FSTTester;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.RegExp;
 import org.apache.lucene.util.fst.BytesRefFSTEnum.InputOutput;
 import org.apache.lucene.util.fst.FST.Arc;
 import org.apache.lucene.util.fst.FST.BytesReader;
@@ -309,7 +311,6 @@ public class TestFSTs extends LuceneTestCase {
 
   // Build FST for all unique terms in the test line docs
   // file, up until a doc limit
-  @Slow
   public void testRealTerms() throws Exception {
 
     final LineFileDocs docs = new LineFileDocs(random());
@@ -352,7 +353,7 @@ public class TestFSTs extends LuceneTestCase {
       BytesRef term;
       int ord = 0;
 
-      Automaton automaton = new RegExp(".*", RegExp.NONE).toAutomaton();
+      Automaton automaton = Automata.makeAnyString();
       final TermsEnum termsEnum2 =
           terms.intersect(new CompiledAutomaton(automaton, false, false), null);
 
@@ -528,7 +529,7 @@ public class TestFSTs extends LuceneTestCase {
       BufferedReader is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
       try {
         final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
-        long tStart = System.currentTimeMillis();
+        long tStart = System.nanoTime();
         int ord = 0;
         while (true) {
           String w = is.readLine();
@@ -543,7 +544,7 @@ public class TestFSTs extends LuceneTestCase {
             System.out.printf(
                 Locale.ROOT,
                 "%6.2fs: %9d...",
-                ((System.currentTimeMillis() - tStart) / 1000.0),
+                (System.nanoTime() - tStart) / (double) TimeUnit.SECONDS.toNanos(1),
                 ord);
           }
           if (ord >= limit) {
@@ -551,13 +552,15 @@ public class TestFSTs extends LuceneTestCase {
           }
         }
 
-        long tMid = System.currentTimeMillis();
-        System.out.println(((tMid - tStart) / 1000.0) + " sec to add all terms");
+        long tMid = System.nanoTime();
+        System.out.println(
+            ((tMid - tStart) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to add all terms");
 
         assert fstCompiler.getTermCount() == ord;
         FST<T> fst = fstCompiler.compile();
-        long tEnd = System.currentTimeMillis();
-        System.out.println(((tEnd - tMid) / 1000.0) + " sec to finish/pack");
+        long tEnd = System.nanoTime();
+        System.out.println(
+            ((tEnd - tMid) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to finish/pack");
         if (fst == null) {
           System.out.println("FST was fully pruned!");
           System.exit(0);
@@ -598,7 +601,7 @@ public class TestFSTs extends LuceneTestCase {
         is = Files.newBufferedReader(wordsFileIn, StandardCharsets.UTF_8);
 
         ord = 0;
-        tStart = System.currentTimeMillis();
+        tStart = System.nanoTime();
         while (true) {
           String w = is.readLine();
           if (w == null) {
@@ -622,14 +625,17 @@ public class TestFSTs extends LuceneTestCase {
           ord++;
           if (ord % 500000 == 0) {
             System.out.println(
-                ((System.currentTimeMillis() - tStart) / 1000.0) + "s: " + ord + "...");
+                (System.nanoTime() - tStart) / (double) TimeUnit.SECONDS.toNanos(1)
+                    + "sec: "
+                    + ord
+                    + "...");
           }
           if (ord >= limit) {
             break;
           }
         }
 
-        double totSec = ((System.currentTimeMillis() - tStart) / 1000.0);
+        double totSec = (System.nanoTime() - tStart) / (double) TimeUnit.SECONDS.toNanos(1);
         System.out.println(
             "Verify took "
                 + totSec
@@ -1121,9 +1127,9 @@ public class TestFSTs extends LuceneTestCase {
             int children = verifyStateAndBelow(fst, new FST.Arc<>().copyFrom(arc), depth + 1);
 
             assertEquals(
-                (depth <= FST.FIXED_LENGTH_ARC_SHALLOW_DEPTH
-                        && children >= FST.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
-                    || children >= FST.FIXED_LENGTH_ARC_DEEP_NUM_ARCS,
+                (depth <= FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH
+                        && children >= FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
+                    || children >= FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS,
                 expanded);
             if (arc.isLast()) break;
           }
@@ -1135,8 +1141,9 @@ public class TestFSTs extends LuceneTestCase {
     }
 
     // Sanity check.
-    assertTrue(FST.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FST.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
-    assertTrue(FST.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
+    assertTrue(
+        FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS < FSTCompiler.FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
+    assertTrue(FSTCompiler.FIXED_LENGTH_ARC_SHALLOW_DEPTH >= 0);
 
     SyntheticData s = new SyntheticData();
 
@@ -1204,7 +1211,7 @@ public class TestFSTs extends LuceneTestCase {
       node.isFinal = true;
       rootNode.addArc('a', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fst.addNode(fstCompiler, node);
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[0].nextFinalOutput = 17L;
       rootNode.arcs[0].isFinal = true;
       rootNode.arcs[0].output = nothing;
@@ -1217,13 +1224,13 @@ public class TestFSTs extends LuceneTestCase {
           new FSTCompiler.UnCompiledNode<>(fstCompiler, 0);
       rootNode.addArc('b', node);
       final FSTCompiler.CompiledNode frozen = new FSTCompiler.CompiledNode();
-      frozen.node = fst.addNode(fstCompiler, node);
+      frozen.node = fstCompiler.addNode(node);
       rootNode.arcs[1].nextFinalOutput = nothing;
       rootNode.arcs[1].output = 42L;
       rootNode.arcs[1].target = frozen;
     }
 
-    fst.finish(fst.addNode(fstCompiler, rootNode));
+    fst.finish(fstCompiler.addNode(rootNode));
 
     StringWriter w = new StringWriter();
     // Writer w = new OutputStreamWriter(new FileOutputStream("/x/tmp3/out.dot"));

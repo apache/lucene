@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.codecs.Codec;
@@ -209,7 +210,8 @@ final class DocumentsWriterPerThread implements Accountable {
   long updateDocuments(
       Iterable<? extends Iterable<? extends IndexableField>> docs,
       DocumentsWriterDeleteQueue.Node<?> deleteNode,
-      DocumentsWriter.FlushNotifications flushNotifications)
+      DocumentsWriter.FlushNotifications flushNotifications,
+      Runnable onNewDocOnRAM)
       throws IOException {
     try {
       testPoint("DocumentsWriterPerThread addDocuments start");
@@ -236,7 +238,11 @@ final class DocumentsWriterPerThread implements Accountable {
           // it's very hard to fix (we can't easily distinguish aborting
           // vs non-aborting exceptions):
           reserveOneDoc();
-          indexingChain.processDocument(numDocsInRAM++, doc);
+          try {
+            indexingChain.processDocument(numDocsInRAM++, doc);
+          } finally {
+            onNewDocOnRAM.run();
+          }
         }
         allDocsIndexed = true;
         return finishDocuments(deleteNode, docsInRamBefore);
@@ -468,7 +474,10 @@ final class DocumentsWriterPerThread implements Accountable {
       sealFlushedSegment(fs, sortMap, flushNotifications);
       if (infoStream.isEnabled("DWPT")) {
         infoStream.message(
-            "DWPT", "flush time " + ((System.nanoTime() - t0) / 1000000.0) + " msec");
+            "DWPT",
+            "flush time "
+                + ((System.nanoTime() - t0) / (double) TimeUnit.MILLISECONDS.toNanos(1))
+                + " ms");
       }
       return fs;
     } catch (Throwable t) {
@@ -611,7 +620,7 @@ final class DocumentsWriterPerThread implements Accountable {
   @Override
   public long ramBytesUsed() {
     assert lock.isHeldByCurrentThread();
-    return (deleteDocIDs.length * Integer.BYTES)
+    return (deleteDocIDs.length * (long) Integer.BYTES)
         + pendingUpdates.ramBytesUsed()
         + indexingChain.ramBytesUsed();
   }

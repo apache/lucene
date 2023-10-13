@@ -25,21 +25,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.ParallelLeafReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -47,7 +43,10 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +64,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
   private Directory dir;
 
   @Before
-  public void doBefore() throws IOException {
+  public void doBefore() {
     indexAnalyzer =
         new MockAnalyzer(
             random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
@@ -106,8 +105,9 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     IndexReader ir = new AssertOnceTermVecDirectoryReader(originalReader);
     iw.close();
 
-    IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
+    IndexSearcher searcher =
+        newSearcher(ir, false); // wrapping the reader messes up our counting logic
+    UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
     BooleanQuery.Builder queryBuilder = new BooleanQuery.Builder();
     for (String field : fields) {
       queryBuilder.add(new TermQuery(new Term(field, "test")), BooleanClause.Occur.MUST);
@@ -123,7 +123,7 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
       assertArrayEquals(expectedSnippetsByDoc, fieldToSnippets.get(field));
     }
 
-    ir.document(0); // ensure this works because the ir hasn't been closed
+    ir.storedFields().document(0); // ensure this works because the ir hasn't been closed
     ir.close();
   }
 
@@ -133,20 +133,20 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
           @Override
           public LeafReader wrap(LeafReader reader) {
             return new FilterLeafReader(reader) {
-              BitSet seenDocIDs = new BitSet();
+              final BitSet seenDocIDs = new BitSet();
 
               @Override
-              public Fields getTermVectors(int docID) throws IOException {
-                // if we're invoked by ParallelLeafReader then we can't do our assertion. TODO see
-                // LUCENE-6868
-                if (callStackContains(ParallelLeafReader.class) == false
-                    && callStackContains(CheckIndex.class) == false) {
-                  assertFalse(
-                      "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
-                  seenDocIDs.set(docID);
-                }
-
-                return super.getTermVectors(docID);
+              public TermVectors termVectors() throws IOException {
+                TermVectors orig = in.termVectors();
+                return new TermVectors() {
+                  @Override
+                  public Fields get(int docID) throws IOException {
+                    assertFalse(
+                        "Should not request TVs for doc more than once.", seenDocIDs.get(docID));
+                    seenDocIDs.set(docID);
+                    return orig.get(docID);
+                  }
+                };
               }
 
               @Override
@@ -192,8 +192,9 @@ public class TestUnifiedHighlighterTermVec extends LuceneTestCase {
     iw.close();
 
     IndexSearcher searcher = newSearcher(ir);
+    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
+        new UnifiedHighlighter(uhBuilder) {
           @Override
           protected Set<HighlightFlag> getFlags(String field) {
             return Collections.emptySet(); // no WEIGHT_MATCHES

@@ -47,17 +47,11 @@ public abstract class CachingCollector extends FilterCollector {
     // the outer class does not incur access check by the JVM. The same
     // situation would be if they were defined in the outer class as private
     // members.
-    int doc;
     float score;
 
     @Override
     public final float score() {
       return score;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
   }
 
@@ -66,7 +60,6 @@ public abstract class CachingCollector extends FilterCollector {
     List<LeafReaderContext> contexts;
     List<int[]> docs;
     int maxDocsToCache;
-    NoScoreCachingLeafCollector lastCollector;
 
     NoScoreCachingCollector(Collector in, int maxDocsToCache) {
       super(in);
@@ -76,7 +69,7 @@ public abstract class CachingCollector extends FilterCollector {
     }
 
     protected NoScoreCachingLeafCollector wrap(LeafCollector in, int maxDocsToCache) {
-      return new NoScoreCachingLeafCollector(in, maxDocsToCache);
+      return new NoScoreCachingLeafCollector(in, maxDocsToCache, this);
     }
 
     // note: do *not* override needScore to say false. Just because we aren't caching the score
@@ -85,13 +78,12 @@ public abstract class CachingCollector extends FilterCollector {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      postCollection();
       final LeafCollector in = this.in.getLeafCollector(context);
-      if (contexts != null) {
-        contexts.add(context);
-      }
       if (maxDocsToCache >= 0) {
-        return lastCollector = wrap(in, maxDocsToCache);
+        if (contexts != null) {
+          contexts.add(context);
+        }
+        return wrap(in, maxDocsToCache);
       } else {
         return in;
       }
@@ -103,33 +95,16 @@ public abstract class CachingCollector extends FilterCollector {
       this.docs = null;
     }
 
-    protected void postCollect(NoScoreCachingLeafCollector collector) {
-      final int[] docs = collector.cachedDocs();
-      maxDocsToCache -= docs.length;
-      this.docs.add(docs);
-    }
-
-    private void postCollection() {
-      if (lastCollector != null) {
-        if (!lastCollector.hasCache()) {
-          invalidate();
-        } else {
-          postCollect(lastCollector);
-        }
-        lastCollector = null;
-      }
-    }
-
     protected void collect(LeafCollector collector, int i) throws IOException {
       final int[] docs = this.docs.get(i);
       for (int doc : docs) {
         collector.collect(doc);
       }
+      collector.finish();
     }
 
     @Override
     public void replay(Collector other) throws IOException {
-      postCollection();
       if (!isCached()) {
         throw new IllegalStateException(
             "cannot replay: cache was cleared because too much RAM was required");
@@ -154,14 +129,7 @@ public abstract class CachingCollector extends FilterCollector {
 
     @Override
     protected NoScoreCachingLeafCollector wrap(LeafCollector in, int maxDocsToCache) {
-      return new ScoreCachingLeafCollector(in, maxDocsToCache);
-    }
-
-    @Override
-    protected void postCollect(NoScoreCachingLeafCollector collector) {
-      final ScoreCachingLeafCollector coll = (ScoreCachingLeafCollector) collector;
-      super.postCollect(coll);
-      scores.add(coll.cachedScores());
+      return new ScoreCachingLeafCollector(in, maxDocsToCache, this);
     }
 
     /**
@@ -181,9 +149,8 @@ public abstract class CachingCollector extends FilterCollector {
       final CachedScorable scorer = new CachedScorable();
       collector.setScorer(scorer);
       for (int j = 0; j < docs.length; ++j) {
-        scorer.doc = docs[j];
         scorer.score = scores[j];
-        collector.collect(scorer.doc);
+        collector.collect(docs[j]);
       }
     }
   }
@@ -191,12 +158,15 @@ public abstract class CachingCollector extends FilterCollector {
   private class NoScoreCachingLeafCollector extends FilterLeafCollector {
 
     final int maxDocsToCache;
+    final NoScoreCachingCollector collector;
     int[] docs;
     int docCount;
 
-    NoScoreCachingLeafCollector(LeafCollector in, int maxDocsToCache) {
+    NoScoreCachingLeafCollector(
+        LeafCollector in, int maxDocsToCache, NoScoreCachingCollector collector) {
       super(in);
       this.maxDocsToCache = maxDocsToCache;
+      this.collector = collector;
       docs = new int[Math.min(maxDocsToCache, INITIAL_ARRAY_SIZE)];
       docCount = 0;
     }
@@ -235,6 +205,21 @@ public abstract class CachingCollector extends FilterCollector {
       super.collect(doc);
     }
 
+    protected void postCollect() {
+      final int[] docs = cachedDocs();
+      collector.maxDocsToCache -= docs.length;
+      collector.docs.add(docs);
+    }
+
+    @Override
+    public void finish() {
+      if (!hasCache()) {
+        collector.invalidate();
+      } else {
+        postCollect();
+      }
+    }
+
     boolean hasCache() {
       return docs != null;
     }
@@ -249,8 +234,9 @@ public abstract class CachingCollector extends FilterCollector {
     Scorable scorer;
     float[] scores;
 
-    ScoreCachingLeafCollector(LeafCollector in, int maxDocsToCache) {
-      super(in, maxDocsToCache);
+    ScoreCachingLeafCollector(
+        LeafCollector in, int maxDocsToCache, ScoreCachingCollector collector) {
+      super(in, maxDocsToCache, collector);
       scores = new float[docs.length];
     }
 
@@ -280,6 +266,12 @@ public abstract class CachingCollector extends FilterCollector {
 
     float[] cachedScores() {
       return docs == null ? null : ArrayUtil.copyOfSubArray(scores, 0, docCount);
+    }
+
+    @Override
+    protected void postCollect() {
+      super.postCollect();
+      ((ScoreCachingCollector) collector).scores.add(cachedScores());
     }
   }
 

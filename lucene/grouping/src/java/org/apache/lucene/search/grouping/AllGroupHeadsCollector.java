@@ -109,7 +109,9 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     return docHeads;
   }
 
-  /** @return the number of group heads found for a query. */
+  /**
+   * @return the number of group heads found for a query.
+   */
   public int groupHeadsSize() {
     return getCollectedGroupHeads().size();
   }
@@ -258,7 +260,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
       comparators = new FieldComparator[sortFields.length];
       leafComparators = new LeafFieldComparator[sortFields.length];
       for (int i = 0; i < sortFields.length; i++) {
-        comparators[i] = sortFields[i].getComparator(1, i);
+        comparators[i] = sortFields[i].getComparator(1, false);
         leafComparators[i] = comparators[i].getLeafComparator(context);
         leafComparators[i].setScorer(scorer);
         leafComparators[i].copy(0, doc);
@@ -318,7 +320,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     protected ScoringGroupHead(Scorable scorer, T groupValue, int doc, int docBase)
         throws IOException {
       super(groupValue, doc, docBase);
-      assert scorer.docID() == doc;
       this.scorer = scorer;
       this.topScore = scorer.score();
     }
@@ -330,7 +331,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
 
     @Override
     protected int compare(int compIDX, int doc) throws IOException {
-      assert scorer.docID() == doc;
       assert compIDX == 0;
       float score = scorer.score();
       int c = Float.compare(score, topScore);

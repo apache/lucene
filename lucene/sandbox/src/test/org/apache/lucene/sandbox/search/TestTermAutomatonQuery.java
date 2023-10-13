@@ -26,10 +26,6 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -40,13 +36,14 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -60,13 +57,18 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Transition;
@@ -587,8 +589,9 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
 
   private Set<String> toDocIDs(IndexSearcher s, TopDocs hits) throws IOException {
     Set<String> result = new HashSet<>();
+    StoredFields storedFields = s.storedFields();
     for (ScoreDoc hit : hits.scoreDocs) {
-      result.add(s.doc(hit.doc).get("id"));
+      result.add(storedFields.document(hit.doc).get("id"));
     }
     return result;
   }
@@ -785,7 +788,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    assertTrue(q.rewrite(r) instanceof MatchNoDocsQuery);
+    assertTrue(q.rewrite(newSearcher(r)) instanceof MatchNoDocsQuery);
     IOUtils.close(w, r, dir);
   }
 
@@ -804,7 +807,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof TermQuery);
     assertEquals(new Term("field", "foo"), ((TermQuery) rewrite).getTerm());
     IOUtils.close(w, r, dir);
@@ -827,7 +830,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof PhraseQuery);
     Term[] terms = ((PhraseQuery) rewrite).getTerms();
     assertEquals(new Term("field", "foo"), terms[0]);
@@ -836,6 +839,97 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     int[] positions = ((PhraseQuery) rewrite).getPositions();
     assertEquals(0, positions[0]);
     assertEquals(1, positions[1]);
+
+    IOUtils.close(w, r, dir);
+  }
+
+  /* Implement a custom term automaton query to ensure that rewritten queries
+   *  do not get rewritten to primitive queries. The custom extension will allow
+   *  the following explain tests to evaluate Explain for the query we intend to
+   *  test, TermAutomatonQuery.
+   * */
+
+  private static class CustomTermAutomatonQuery extends TermAutomatonQuery {
+    public CustomTermAutomatonQuery(String field) {
+      super(field);
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher searcher) throws IOException {
+      return this;
+    }
+  }
+
+  public void testExplainNoMatchingDocument() throws Exception {
+    CustomTermAutomatonQuery q = new CustomTermAutomatonQuery("field");
+    int initState = q.createState();
+    int s1 = q.createState();
+    q.addTransition(initState, s1, "xml");
+    q.setAccept(s1, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(newTextField("field", "protobuf", Field.Store.NO));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrittenQuery = q.rewrite(searcher);
+    assertTrue(rewrittenQuery instanceof TermAutomatonQuery);
+
+    TopDocs topDocs = searcher.search(rewrittenQuery, 10);
+    assertEquals(0, topDocs.totalHits.value);
+
+    Explanation explanation = searcher.explain(rewrittenQuery, 0);
+    assertFalse("Explanation should indicate no match", explanation.isMatch());
+
+    IOUtils.close(w, r, dir);
+  }
+
+  // TODO: improve experience of working with explain
+  public void testExplainMatchingDocuments() throws Exception {
+    CustomTermAutomatonQuery q = new CustomTermAutomatonQuery("field");
+
+    int initState = q.createState();
+    int s1 = q.createState();
+    int s2 = q.createState();
+    q.addTransition(initState, s1, "xml");
+    q.addTransition(s1, s2, "json");
+    q.addTransition(s1, s2, "protobuf");
+    q.setAccept(s2, true);
+    q.finish();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    Document doc1 = new Document();
+    doc1.add(newTextField("field", "xml json", Field.Store.NO));
+    w.addDocument(doc1);
+
+    Document doc2 = new Document();
+    doc2.add(newTextField("field", "xml protobuf", Field.Store.NO));
+    w.addDocument(doc2);
+
+    Document doc3 = new Document();
+    doc3.add(newTextField("field", "xml qux", Field.Store.NO));
+    w.addDocument(doc3);
+
+    IndexReader r = w.getReader();
+    IndexSearcher searcher = newSearcher(r);
+    Query rewrittenQuery = q.rewrite(searcher);
+    assertTrue(
+        "Rewritten query should be an instance of TermAutomatonQuery",
+        rewrittenQuery instanceof TermAutomatonQuery);
+    TopDocs topDocs = searcher.search(q, 10);
+    assertEquals(2, topDocs.totalHits.value);
+
+    for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+      Explanation explanation = searcher.explain(q, scoreDoc.doc);
+      assertNotNull("Explanation should not be null", explanation);
+      assertTrue("Explanation should indicate a match", explanation.isMatch());
+    }
 
     IOUtils.close(w, r, dir);
   }
@@ -859,7 +953,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof PhraseQuery);
     Term[] terms = ((PhraseQuery) rewrite).getTerms();
     assertEquals(new Term("field", "foo"), terms[0]);
@@ -888,7 +982,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof MultiPhraseQuery);
     Term[][] terms = ((MultiPhraseQuery) rewrite).getTermArrays();
     assertEquals(1, terms.length);
@@ -923,7 +1017,7 @@ public class TestTermAutomatonQuery extends LuceneTestCase {
     w.addDocument(doc);
 
     IndexReader r = w.getReader();
-    Query rewrite = q.rewrite(r);
+    Query rewrite = q.rewrite(newSearcher(r));
     assertTrue(rewrite instanceof MultiPhraseQuery);
     Term[][] terms = ((MultiPhraseQuery) rewrite).getTermArrays();
     assertEquals(2, terms.length);

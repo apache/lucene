@@ -18,7 +18,7 @@ package org.apache.lucene.queries.function.docvalues;
 
 import java.io.IOException;
 import org.apache.lucene.queries.function.FunctionValues;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * Sanity check that {@link FunctionValues#boolVal} behaves as expected for trivial subclasses of

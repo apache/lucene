@@ -19,6 +19,7 @@ package org.apache.lucene.store;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Supplier;
+import org.apache.lucene.tests.store.BaseChunkedDirectoryTestCase;
 import org.apache.lucene.util.BitUtil;
 
 /** Tests ByteBuffersDirectory's chunking */
