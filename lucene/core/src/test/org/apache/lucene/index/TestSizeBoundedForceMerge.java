@@ -44,7 +44,8 @@ public class TestSizeBoundedForceMerge extends LuceneTestCase {
 
   private static IndexWriterConfig newWriterConfig() {
     IndexWriterConfig conf = newIndexWriterConfig(null);
-    // Force using the default codec and not e.g. SimpleText which has a non-deterministic byte size of its segment info due to escape characters.
+    // Force using the default codec and not e.g. SimpleText which has a non-deterministic byte size
+    // of its segment info due to escape characters.
     conf.setCodec(TestUtil.getDefaultCodec());
     conf.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
     conf.setRAMBufferSizeMB(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB);
