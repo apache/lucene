@@ -18,6 +18,7 @@ package org.apache.lucene.internal.vectorization;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -72,10 +73,12 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
 
     var log = Logger.getLogger(getClass().getName());
     log.info(
-        "Java vector incubator API enabled"
-            + (testMode ? " (test mode)" : "")
-            + "; uses preferredBitSize="
-            + intPreferredBitSize);
+        String.format(
+            Locale.ENGLISH,
+            "Java vector incubator API enabled%s; uses preferredBitSize=%d%s",
+            testMode ? " (test mode)" : "",
+            intPreferredBitSize,
+            hasFastIntegerVectors ? "" : "; floating-point vectors only"));
   }
 
   @Override
