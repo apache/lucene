@@ -103,7 +103,7 @@ public final class FieldReader extends Terms {
     */
   }
 
-  long readVLongOutput(DataInput in) throws IOException {
+  long readVLongOutput(ByteArrayDataInput in) throws IOException {
     if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
       return readMSBVLong(in);
     } else {
@@ -117,7 +117,7 @@ public final class FieldReader extends Terms {
    *
    * <p>Package private for testing.
    */
-  static long readMSBVLong(DataInput in) throws IOException {
+  static long readMSBVLong(ByteArrayDataInput in) throws IOException {
     byte b = in.readByte();
     long l = b & 0x7FL;
     while (b < 0) {
