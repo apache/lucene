@@ -32,7 +32,6 @@ dependencies {
 // Exclude JMH-generated files and certain classes that require incubating classes
 // from forbiddenapis validation.
 tasks.matching { it.name == "forbiddenApisMain" }.configureEach {
-  failOnMissingClasses = false
   patternSet.exclude([
       "**/jmh_generated/**"
   ])
