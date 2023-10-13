@@ -492,7 +492,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       currentFrame =
           pushFrame(
-              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()), 0);
+              arc,
+              Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
+                  normalize(output), arc.nextFinalOutput()),
+              0);
     }
 
     // if (DEBUG) {
@@ -569,7 +572,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           currentFrame =
               pushFrame(
                   arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()),
+                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
+                      normalize(output), arc.nextFinalOutput()),
                   targetUpto);
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
@@ -770,7 +774,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       currentFrame =
           pushFrame(
-              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()), 0);
+              arc,
+              Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
+                  normalize(output), arc.nextFinalOutput()),
+              0);
     }
 
     // if (DEBUG) {
@@ -847,7 +854,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           currentFrame =
               pushFrame(
                   arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()),
+                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
+                      normalize(output), arc.nextFinalOutput()),
                   targetUpto);
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
