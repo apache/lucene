@@ -344,7 +344,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef();
+    BytesRef output = new BytesRef(8);
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -634,7 +634,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef();
+    BytesRef output = new BytesRef(8);
 
     targetBeforeCurrentLength = currentFrame.ord;
 
