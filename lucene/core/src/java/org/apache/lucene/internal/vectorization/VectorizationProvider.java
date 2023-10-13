@@ -120,6 +120,10 @@ public abstract class VectorizationProvider {
     } else if (runtimeVersion >= 22) {
       LOG.warning(
           "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
+    } else if (vectorModulePresentAndReadable()) {
+      LOG.warning(
+          "Java vector incubator module was enabled by command line flags, but your Java version is too old: "
+              + runtimeVersion);
     }
     return new DefaultVectorizationProvider();
   }
