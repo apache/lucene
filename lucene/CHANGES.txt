@@ -183,6 +183,9 @@ Optimizations
 * GITHUB#12631: Write MSB VLong for better outputs sharing in block tree index, decreasing ~14% size
   of .tip file. (Guo Feng)
 
+* GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
+  (Adrien Grand)
+
 Changes in runtime behavior
 ---------------------
 
@@ -196,6 +199,8 @@ Bug Fixes
   (Grigoriy Troitskiy)
 
 * GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
+
+* GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
 
 Build
 ---------------------
