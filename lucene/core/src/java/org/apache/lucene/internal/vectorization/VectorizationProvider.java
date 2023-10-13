@@ -25,7 +25,9 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.VectorUtil;
@@ -82,7 +84,7 @@ public abstract class VectorizationProvider {
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
-      if (!vectorModulePresentAndReadable()) {
+      if (!vectorModulePresent(Module::addReads)) {
         LOG.warning(
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
         return new DefaultVectorizationProvider();
@@ -120,7 +122,7 @@ public abstract class VectorizationProvider {
     } else if (runtimeVersion >= 22) {
       LOG.warning(
           "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
-    } else if (vectorModulePresentAndReadable()) {
+    } else if (vectorModulePresent(Objects::equals)) {
       LOG.warning(
           "Java vector incubator module was enabled by command line flags, but your Java version is too old: "
               + runtimeVersion);
@@ -128,16 +130,14 @@ public abstract class VectorizationProvider {
     return new DefaultVectorizationProvider();
   }
 
-  private static boolean vectorModulePresentAndReadable() {
+  private static boolean vectorModulePresent(BiConsumer<Module, Module> combiner) {
+    var thisMod = VectorizationProvider.class.getModule();
     var opt =
-        ModuleLayer.boot().modules().stream()
-            .filter(m -> m.getName().equals("jdk.incubator.vector"))
-            .findFirst();
-    if (opt.isPresent()) {
-      VectorizationProvider.class.getModule().addReads(opt.get());
-      return true;
-    }
-    return false;
+        Optional.ofNullable(thisMod.getLayer())
+            .orElse(ModuleLayer.boot())
+            .findModule("jdk.incubator.vector");
+    opt.ifPresent(m -> combiner.accept(thisMod, m));
+    return opt.isPresent();
   }
 
   /**
