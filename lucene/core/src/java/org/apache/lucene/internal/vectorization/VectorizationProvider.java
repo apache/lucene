@@ -130,6 +130,11 @@ public abstract class VectorizationProvider {
     return new DefaultVectorizationProvider();
   }
 
+  /**
+   * Check if this class can see the vector module in its {@link ModuleLayer} or the root layer, if
+   * unnamed. When the module is found, a combiner ({@link BiConsumer}) which accepts this and the
+   * found vector module, can be used to add reads.
+   */
   private static boolean vectorModulePresent(BiConsumer<Module, Module> combiner) {
     var thisMod = VectorizationProvider.class.getModule();
     var opt =
