@@ -542,6 +542,7 @@ public class QueryUtils {
         new SimpleCollector() {
           private Scorable scorer;
           private int leafPtr;
+          private long intervalTimes32 = 1 * 32;
 
           @Override
           public void setScorer(Scorable scorer) {
@@ -552,10 +553,14 @@ public class QueryUtils {
           public void collect(int doc) throws IOException {
             float score = scorer.score();
             try {
-              long startNS = System.nanoTime();
-              for (int i = lastDoc[0] + 1; i <= doc; i++) {
+              // The below loop makes sure that both lastDoc+1 and doc get tested, plus some docs
+              // in-between depending on how many times this check has already been performed.
+              for (int i = lastDoc[0] + 1;
+                  i <= doc;
+                  i = Math.min(doc, (int) (i + intervalTimes32 / 32))) {
                 Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-                Scorer scorer = w.scorer(context.get(leafPtr));
+                ScorerSupplier supplier = w.scorerSupplier(context.get(leafPtr));
+                Scorer scorer = supplier.get(1L); // only checking one doc, so leadCost = 1
                 assertTrue(
                     "query collected " + doc + " but advance(" + i + ") says no more docs!",
                     scorer.iterator().advance(i) != DocIdSetIterator.NO_MORE_DOCS);
@@ -579,12 +584,9 @@ public class QueryUtils {
                     score,
                     advanceScore,
                     maxDiff);
-
-                // Hurry things along if they are going slow (eg
-                // if you got SimpleText codec this will kick in):
-                if (i < doc && System.nanoTime() - startNS > 5_000_000) {
-                  i = doc - 1;
-                }
+                // increase the interval between two checks over time to keep the runtime of this
+                // check under control
+                intervalTimes32++;
               }
               lastDoc[0] = doc;
             } catch (IOException e) {
