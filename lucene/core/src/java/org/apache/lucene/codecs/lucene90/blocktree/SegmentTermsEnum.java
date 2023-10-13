@@ -344,7 +344,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output;
+    BytesRef output = new BytesRef();
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -363,7 +363,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      output = arc.output();
+      append(output, arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -395,7 +395,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
         if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
+          append(output, arc.output());
         }
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
@@ -484,7 +484,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       //   System.out.println("    no seek state; push root frame");
       // }
 
-      output = arc.output();
+      append(output, arc.output());
 
       currentFrame = staticFrame;
 
@@ -492,7 +492,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       currentFrame =
           pushFrame(
-              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()), 0);
+              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()), 0);
     }
 
     // if (DEBUG) {
@@ -555,7 +555,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // Aggregate output as we go:
         assert arc.output() != null;
         if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
+          append(output, arc.output());
         }
 
         // if (DEBUG) {
@@ -569,7 +569,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           currentFrame =
               pushFrame(
                   arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()),
+                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()),
                   targetUpto);
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
@@ -630,7 +630,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output;
+    BytesRef output = new BytesRef();
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -649,7 +649,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      output = arc.output();
+      append(output, arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -658,9 +658,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       final int targetLimit = Math.min(target.length, validIndexPrefix);
 
       int cmp = 0;
-
-      // TODO: we should write our vLong backwards (MSB
-      // first) to get better sharing from the FST
 
       // First compare up to valid seek frames:
       while (targetUpto < targetLimit) {
@@ -680,13 +677,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + (char) arc.label()
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
-        // TODO: we could save the outputs in local
-        // byte[][] instead of making new objs ever
-        // seek; but, often the FST doesn't have any
-        // shared bytes (but this could change if we
-        // reverse vLong byte order)
+
         if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
+          append(output, arc.output());
         }
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
@@ -769,7 +762,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // System.out.println("    no seek state; push root frame");
       // }
 
-      output = arc.output();
+      append(output, arc.output());
 
       currentFrame = staticFrame;
 
@@ -777,7 +770,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       targetUpto = 0;
       currentFrame =
           pushFrame(
-              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()), 0);
+              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()), 0);
     }
 
     // if (DEBUG) {
@@ -840,7 +833,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // Aggregate output as we go:
         assert arc.output() != null;
         if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
+          append(output, arc.output());
         }
 
         // if (DEBUG) {
@@ -854,7 +847,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           currentFrame =
               pushFrame(
                   arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()),
+                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(normalize(output), arc.nextFinalOutput()),
                   targetUpto);
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
@@ -888,6 +881,21 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     } else {
       return result;
     }
+  }
+
+  private static void append(BytesRef output, BytesRef arc) {
+    assert output.offset == 0;
+    byte[] outputBytes = output.bytes;
+    int newLen = arc.length + output.length;
+    if (outputBytes.length < newLen) {
+      output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, ArrayUtil.oversize(newLen, 1));
+    }
+    System.arraycopy(arc.bytes, arc.offset, outputBytes, output.length, arc.length);
+    output.length = newLen;
+  }
+
+  private static BytesRef normalize(BytesRef output) {
+    return output.length == 0 ? Lucene90BlockTreeTermsReader.FST_OUTPUTS.getNoOutput() : output;
   }
 
   @SuppressWarnings("unused")
