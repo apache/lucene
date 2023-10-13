@@ -16,6 +16,12 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
+
+import java.io.IOException;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteOrder;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
@@ -24,6 +30,8 @@ import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
+import org.apache.lucene.store.MemorySegmentIndexInput;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
@@ -47,10 +55,105 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
+  static final ValueLayout.OfFloat LAYOUT_LE_FLOAT =
+      ValueLayout.JAVA_FLOAT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+
   private final boolean useIntegerVectors;
 
   PanamaVectorUtilSupport(boolean useIntegerVectors) {
     this.useIntegerVectors = useIntegerVectors;
+  }
+
+  @Override
+  public float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOrd)
+      throws IOException {
+    assert b.dimension() == a.length;
+    try {
+      if (b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
+        final int vecByteSize = b.byteSize();
+        final long bOffset = (long) bOrd * vecByteSize;
+        var ms = bIndex.getSegmentFor(bOffset, vecByteSize);
+        return dotProduct(a, ms, bIndex.maskedPosition(bOffset));
+      }
+    } catch (UnsupportedOperationException e) {
+      // take the slower path for values ranging over multiple segment slices
+    }
+    return dotProduct(a, b.vectorValue(bOrd));
+  }
+
+  private float dotProduct(float[] a, MemorySegment b, long bOffset) {
+    int i = 0;
+    float res = 0;
+    FloatVector acc = FloatVector.zero(PREF_FLOAT_SPECIES);
+    int upperBound = PREF_FLOAT_SPECIES.loopBound(a.length);
+    for (; i < upperBound; i += PREF_FLOAT_SPECIES.length()) {
+      FloatVector va = FloatVector.fromArray(PREF_FLOAT_SPECIES, a, i);
+      FloatVector vb =
+          FloatVector.fromMemorySegment(
+              PREF_FLOAT_SPECIES, b, bOffset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+      acc = acc.add(va.mul(vb));
+      // TODO: evaluate whether or not to add some hand unrolling
+    }
+    // reduce
+    res += acc.reduceLanes(VectorOperators.ADD);
+
+    for (; i < a.length; i++) {
+      res += a[i] * b.get(LAYOUT_LE_FLOAT, bOffset + (long) i * Float.BYTES);
+    }
+    return res;
+  }
+
+  @Override
+  public float dotProduct(
+      RandomAccessVectorValues<float[]> a, int aOrd, RandomAccessVectorValues<float[]> b, int bOrd)
+      throws IOException {
+    assert a.dimension() == b.dimension();
+    try {
+      if (a.getIndexInput() instanceof MemorySegmentIndexInput aIndex
+          && b.getIndexInput() instanceof MemorySegmentIndexInput bIndex) {
+        final int vecByteSize = a.byteSize();
+        final long aOffset = (long) aOrd * vecByteSize;
+        final long bOffset = (long) bOrd * vecByteSize;
+        var msa = aIndex.getSegmentFor(aOffset, vecByteSize);
+        var msb = bIndex.getSegmentFor(bOffset, vecByteSize);
+        return dotProduct(
+            msa,
+            aIndex.maskedPosition(aOffset),
+            msb,
+            bIndex.maskedPosition(bOffset),
+            a.dimension());
+      }
+    } catch (UnsupportedOperationException e) {
+      // take the slower path for values ranging over multiple segment slices
+    }
+    return dotProduct(a.vectorValue(aOrd), b.vectorValue(bOrd));
+  }
+
+  private float dotProduct(
+      MemorySegment a, long aOffset, MemorySegment b, long bOffset, int length) {
+    int i = 0;
+    float res = 0;
+    FloatVector acc = FloatVector.zero(PREF_FLOAT_SPECIES);
+    int upperBound = PREF_FLOAT_SPECIES.loopBound(length);
+    for (; i < upperBound; i += PREF_FLOAT_SPECIES.length()) {
+      FloatVector va =
+          FloatVector.fromMemorySegment(
+              PREF_FLOAT_SPECIES, a, aOffset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+      FloatVector vb =
+          FloatVector.fromMemorySegment(
+              PREF_FLOAT_SPECIES, b, bOffset + (long) i * Float.BYTES, LITTLE_ENDIAN);
+      acc = acc.add(va.mul(vb));
+      // TODO: evaluate whether or not to add some hand unrolling
+    }
+    // reduce
+    res += acc.reduceLanes(VectorOperators.ADD);
+
+    for (; i < length; i++) {
+      res +=
+          a.get(LAYOUT_LE_FLOAT, aOffset + (long) i * Float.BYTES)
+              * b.get(LAYOUT_LE_FLOAT, bOffset + (long) i * Float.BYTES);
+    }
+    return res;
   }
 
   @Override

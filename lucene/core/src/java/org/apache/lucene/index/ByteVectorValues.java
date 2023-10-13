@@ -41,6 +41,11 @@ public abstract class ByteVectorValues extends DocIdSetIterator {
    */
   public abstract int size();
 
+  /** Return the number of bytes per individual vector. */
+  public int byteSize() {
+    return dimension() * Byte.BYTES;
+  }
+
   @Override
   public final long cost() {
     return size();

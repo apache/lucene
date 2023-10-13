@@ -17,9 +17,28 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+
 final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   DefaultVectorUtilSupport() {}
+
+  @Override
+  public float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOffset)
+      throws IOException {
+    return dotProduct(a, b.vectorValue(bOffset));
+  }
+
+  @Override
+  public float dotProduct(
+      RandomAccessVectorValues<float[]> a,
+      int aOffset,
+      RandomAccessVectorValues<float[]> b,
+      int bOffset)
+      throws IOException {
+    return dotProduct(a.vectorValue(aOffset), b.vectorValue(bOffset));
+  }
 
   @Override
   public float dotProduct(float[] a, float[] b) {

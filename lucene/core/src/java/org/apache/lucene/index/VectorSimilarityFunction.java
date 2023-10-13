@@ -22,6 +22,9 @@ import static org.apache.lucene.util.VectorUtil.dotProductScore;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
+import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
  * vector. This is a label describing the method used during indexing and searching of the vectors
@@ -53,6 +56,22 @@ public enum VectorSimilarityFunction {
     @Override
     public float compare(float[] v1, float[] v2) {
       return (1 + dotProduct(v1, v2)) / 2;
+    }
+
+    @Override
+    public float compare(float[] v1, RandomAccessVectorValues<float[]> v2, int v2TargetOrd)
+        throws IOException {
+      return (1 + dotProduct(v1, v2, v2TargetOrd)) / 2;
+    }
+
+    @Override
+    public float compare(
+        RandomAccessVectorValues<float[]> v1,
+        int v1TargetOrd,
+        RandomAccessVectorValues<float[]> v2,
+        int v2TargetOrd)
+        throws IOException {
+      return (1 + dotProduct(v1, v1TargetOrd, v2, v2TargetOrd)) / 2;
     }
 
     @Override
@@ -105,6 +124,24 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(float[] v1, float[] v2);
+
+  /** Calculates a similarity score between ... TODO */
+  public float compare(float[] v1, RandomAccessVectorValues<float[]> v2, int v2TargetOrd)
+      throws IOException {
+    return compare(v1, v2.vectorValue(v2TargetOrd));
+  }
+
+  /** Calculates a similarity score between ... TODO */
+  public float compare(
+      RandomAccessVectorValues<float[]> v1,
+      int v1TargetOrd,
+      RandomAccessVectorValues<float[]> v2,
+      int v2TargetOrd)
+      throws IOException {
+    return compare(v1.vectorValue(v1TargetOrd), v2.vectorValue(v2TargetOrd));
+  }
+
+  // ^^^ do the same with byte
 
   /**
    * Calculates a similarity score between the two vectors with a specified function. Higher

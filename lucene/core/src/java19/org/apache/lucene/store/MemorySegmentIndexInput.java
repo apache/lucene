@@ -32,6 +32,7 @@ import org.apache.lucene.util.ArrayUtil;
  * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
  * chunkSizePower</code>).
  */
+// TODO: ensure and verify that we don't need to do anything for JDK 19
 @SuppressWarnings("preview")
 abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;

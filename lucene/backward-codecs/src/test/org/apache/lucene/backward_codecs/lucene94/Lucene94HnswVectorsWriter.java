@@ -657,7 +657,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
-      RandomAccessVectorValues<T> raVectors = new RAVectorValues<>(vectors, dim);
+      RandomAccessVectorValues<T> raVectors =
+          new RAVectorValues<>(vectors, dim, fieldInfo.getVectorEncoding().byteSize);
       RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE -> RandomVectorScorerSupplier.createBytes(
@@ -713,15 +714,22 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private static class RAVectorValues<T> implements RandomAccessVectorValues<T> {
     private final List<T> vectors;
     private final int dim;
+    private final int byteSize;
 
-    RAVectorValues(List<T> vectors, int dim) {
+    RAVectorValues(List<T> vectors, int dim, int elementSize) {
       this.vectors = vectors;
       this.dim = dim;
+      this.byteSize = dim * elementSize;
     }
 
     @Override
     public int size() {
       return vectors.size();
+    }
+
+    @Override
+    public int byteSize() {
+      return byteSize;
     }
 
     @Override

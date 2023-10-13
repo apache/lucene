@@ -17,6 +17,9 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+
 /**
  * Interface for implementations of VectorUtil support.
  *
@@ -26,6 +29,15 @@ public interface VectorUtilSupport {
 
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);
+
+  float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOffset) throws IOException;
+
+  float dotProduct(
+      RandomAccessVectorValues<float[]> a,
+      int aOffset,
+      RandomAccessVectorValues<float[]> b,
+      int bOffset)
+      throws IOException;
 
   /** Returns the cosine similarity between the two vectors. */
   float cosine(float[] v1, float[] v2);

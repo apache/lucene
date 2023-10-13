@@ -33,7 +33,7 @@ import org.apache.lucene.util.ArrayUtil;
  * chunkSizePower</code>).
  */
 @SuppressWarnings("preview")
-abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
+public abstract class MemorySegmentIndexInput extends IndexInput implements RandomAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -278,6 +278,27 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
+  /**
+   * Returns the segment that backs the given position, iff the segment size is at least length
+   * greater than the give position, when adjusted for chunking. Otherwise, throws
+   * UnsupportedOperationException, since the position and length will span across segments.
+   */
+  public MemorySegment getSegmentFor(long pos, int length) throws IOException {
+    final int si = (int) (pos >> chunkSizePower);
+    final MemorySegment seg = segments[si];
+    try {
+      Objects.checkIndex((pos & chunkSizeMask) + length, seg.byteSize() + 1);
+      return seg;
+    } catch (IndexOutOfBoundsException e) {
+      throw new UnsupportedOperationException("segment boundary");
+    }
+  }
+
+  /** Returns the masked position - the offset into the backing chunk. */
+  public long maskedPosition(long pos) {
+    return pos & chunkSizeMask;
+  }
+
   @Override
   public byte readByte(long pos) throws IOException {
     try {
@@ -497,6 +518,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
 
     @Override
+    public MemorySegment getSegmentFor(long pos, int length) throws IOException {
+      try {
+        Objects.checkIndex(pos + length, this.length + 1);
+        return curSegment;
+      } catch (IndexOutOfBoundsException e) {
+        throw handlePositionalIOOBE(e, "getSegmentFor", pos);
+      }
+    }
+
+    @Override
     public long getFilePointer() {
       ensureOpen();
       return curPosition;
@@ -589,6 +620,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     public void seek(long pos) throws IOException {
       assert pos >= 0L : "negative position";
       super.seek(pos + offset);
+    }
+
+    public MemorySegment getSegmentFor(long pos, int length) throws IOException {
+      return super.getSegmentFor(pos + offset, length);
+    }
+
+    public long maskedPosition(long pos) {
+      return super.maskedPosition(pos + offset);
     }
 
     @Override

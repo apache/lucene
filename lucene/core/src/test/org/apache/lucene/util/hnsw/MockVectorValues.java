@@ -42,6 +42,11 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
   }
 
   @Override
+  public int byteSize() {
+    return dimension * Float.BYTES;
+  }
+
+  @Override
   public MockVectorValues copy() {
     return new MockVectorValues(
         ArrayUtil.copyOfSubArray(values, 0, values.length),
