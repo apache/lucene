@@ -1006,7 +1006,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public float[] vectorValue() {
+    public float[] vectorFloatValue() {
       return vectorValue(doc);
     }
 
@@ -1067,7 +1067,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public byte[] vectorValue() {
+    public byte[] vectorByteValue() {
       return vectorValue(doc);
     }
 

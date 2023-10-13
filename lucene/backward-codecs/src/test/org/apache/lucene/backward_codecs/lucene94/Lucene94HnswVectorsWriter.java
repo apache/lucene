@@ -587,7 +587,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         docV != NO_MORE_DOCS;
         docV = byteVectorValues.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue();
+      byte[] binaryValue = byteVectorValues.vectorByteValue();
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
@@ -608,7 +608,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
       // write vector
-      float[] vectorValue = floatVectorValues.vectorValue();
+      float[] vectorValue = floatVectorValues.vectorFloatValue();
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);

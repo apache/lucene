@@ -415,7 +415,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
+    public float[] vectorFloatValue() throws IOException {
       dataIn.seek((long) ord * byteSize);
       dataIn.readFloats(value, 0, value.length);
       return value;

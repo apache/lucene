@@ -2657,14 +2657,16 @@ public final class CheckIndex implements Closeable {
       // search the first maxNumSearches vectors to exercise the graph
       if (values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
+        codecReader
+            .getVectorReader()
+            .search(fieldInfo.name, values.vectorFloatValue(), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorFloatValue().length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2701,14 +2703,16 @@ public final class CheckIndex implements Closeable {
       // search the first maxNumSearches vectors to exercise the graph
       if (values.docID() % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
+        codecReader
+            .getVectorReader()
+            .search(fieldInfo.name, values.vectorByteValue(), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorByteValue().length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""

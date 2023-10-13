@@ -50,7 +50,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
       @Override
       public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return vectorValues.vectorValue();
+          return vectorValues.vectorFloatValue();
         } else {
           return null;
         }

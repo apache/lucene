@@ -199,7 +199,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       currentParent = parentBitSet.nextSetBit(nextChild);
       do {
         values.advance(nextChild);
-        float score = similarity.compare(query, values.vectorValue());
+        float score = similarity.compare(query, values.vectorByteValue());
         if (score > currentScore) {
           bestChild = nextChild;
           currentScore = score;

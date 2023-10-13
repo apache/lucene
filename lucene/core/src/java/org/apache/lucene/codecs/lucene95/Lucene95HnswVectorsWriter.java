@@ -524,25 +524,15 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         continue;
       }
 
-      int candidateVectorCount = 0;
+      VectorValues vectorValues = null;
       switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> {
-          ByteVectorValues byteVectorValues =
-              currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
-          if (byteVectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = byteVectorValues.size();
-        }
-        case FLOAT32 -> {
-          FloatVectorValues vectorValues =
-              currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
-          if (vectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = vectorValues.size();
-        }
+        case BYTE -> vectorValues = currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
+        case FLOAT32 -> vectorValues = currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
       }
+      if (vectorValues == null) {
+        continue;
+      }
+      int candidateVectorCount = vectorValues.size();
 
       if (candidateVectorCount > maxCandidateVectorCount) {
         maxCandidateVectorCount = candidateVectorCount;
@@ -631,12 +621,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   private boolean isCurrentVectorNull(DocIdSetIterator docIdSetIterator) throws IOException {
-    if (docIdSetIterator instanceof FloatVectorValues) {
-      return ((FloatVectorValues) docIdSetIterator).vectorValue() == null;
+    if (docIdSetIterator instanceof FloatVectorValues fv) {
+      return fv.vectorFloatValue() == null;
     }
 
-    if (docIdSetIterator instanceof ByteVectorValues) {
-      return ((ByteVectorValues) docIdSetIterator).vectorValue() == null;
+    if (docIdSetIterator instanceof ByteVectorValues bv) {
+      return bv.vectorByteValue() == null;
     }
 
     return true;
@@ -784,7 +774,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         docV != NO_MORE_DOCS;
         docV = byteVectorValues.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue();
+      byte[] binaryValue = byteVectorValues.vectorByteValue();
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
@@ -805,7 +795,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         docV != NO_MORE_DOCS;
         docV = floatVectorValues.nextDoc()) {
       // write vector
-      float[] value = floatVectorValues.vectorValue();
+      float[] value = floatVectorValues.vectorFloatValue();
       buffer.asFloatBuffer().put(value);
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);

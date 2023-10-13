@@ -87,7 +87,7 @@ abstract class VectorScorer {
 
     @Override
     public float score() throws IOException {
-      return similarity.compare(query, values.vectorValue());
+      return similarity.compare(query, values.vectorByteValue());
     }
   }
 
@@ -117,7 +117,7 @@ abstract class VectorScorer {
 
     @Override
     public float score() throws IOException {
-      return similarity.compare(query, values.vectorValue());
+      return similarity.compare(query, values.vectorFloatValue());
     }
   }
 }

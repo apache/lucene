@@ -77,7 +77,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     while (vectorValues.nextDoc() != NO_MORE_DOCS) {
       vectors[vectorValues.docID()] =
           ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
+              vectorValues.vectorFloatValue(), 0, vectorValues.vectorFloatValue().length);
     }
     return MockVectorValues.fromValues(vectors);
   }
