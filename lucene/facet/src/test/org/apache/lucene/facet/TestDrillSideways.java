@@ -81,6 +81,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.AssertingCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -314,6 +315,58 @@ public class TestDrillSideways extends FacetTestCase {
 
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
+  }
+
+  public void testLeafCollectorSingleFinishCall() throws Exception {
+    try (Directory dir = newDirectory();
+        Directory taxoDir = newDirectory();
+        RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+        DirectoryTaxonomyWriter taxoW =
+            new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE)) {
+      FacetsConfig facetsConfig = new FacetsConfig();
+
+      Document d = new Document();
+      d.add(new FacetField("foo", "bar"));
+      w.addDocument(facetsConfig.build(taxoW, d));
+
+      try (IndexReader r = w.getReader();
+          TaxonomyReader taxoR = new DirectoryTaxonomyReader(taxoW)) {
+
+        // We can't use AssertingIndexSearcher unfortunately since it may randomly decide to bulk
+        // score a sub-range of docs instead of all docs at once. This is incompatible will drill
+        // sideways, so we have to do our own check here. This just makes sure we call #finish on
+        // the last leaf. It's too bad we need to do this and maybe some day we can clean this up
+        // by rethinking drill-sideways:
+        IndexSearcher searcher =
+            new IndexSearcher(r) {
+              @Override
+              protected void search(
+                  List<LeafReaderContext> leaves, Weight weight, Collector collector)
+                  throws IOException {
+                AssertingCollector assertingCollector = AssertingCollector.wrap(collector);
+                super.search(leaves, weight, assertingCollector);
+                assert assertingCollector.hasFinishedCollectingPreviousLeaf;
+              }
+            };
+
+        Query baseQuery = new MatchAllDocsQuery();
+        DrillDownQuery ddq = new DrillDownQuery(facetsConfig, baseQuery);
+        ddq.add("foo", "bar");
+        DrillSideways drillSideways = new DrillSideways(searcher, facetsConfig, taxoR);
+
+        // It doesn't really matter what we have our collector manager do here since all we care
+        // about for this test are the assertions provided by the "asserting" collectors/leaf
+        // collectors, etc. But we have this definition already for other tests and it's easy to
+        // use, so we'll use it here and do a little extra checking:
+        SimpleCollectorManager cm =
+            new SimpleCollectorManager(10, Comparator.comparingInt(a -> a.docAndScore.doc));
+
+        DrillSideways.ConcurrentDrillSidewaysResult<List<DocAndScore>> result =
+            drillSideways.search(ddq, cm);
+
+        assertEquals(1, result.collectorResult.size());
+      }
+    }
   }
 
   private void runDrillSidewaysTestCases(FacetsConfig config, DrillSideways ds) throws Exception {
@@ -1504,7 +1557,6 @@ public class TestDrillSideways extends FacetTestCase {
           .collect(Collectors.toList());
     }
   }
-  ;
 
   private int[] getTopNOrds(final int[] counts, final String[] values, int topN) {
     final int[] ids = new int[counts.length];
