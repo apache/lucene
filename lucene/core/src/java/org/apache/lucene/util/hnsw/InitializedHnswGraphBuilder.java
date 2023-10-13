@@ -33,15 +33,15 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
   /**
    * Create a new HnswGraphBuilder that is initialized with the provided HnswGraph.
    *
-   * @param scorerSupplier
-   * @param M
-   * @param beamWidth
-   * @param seed
-   * @param initializerGraph
+   * @param scorerSupplier the scorer to use for vectors
+   * @param M the number of connections to keep per node
+   * @param beamWidth the number of nodes to explore in the search
+   * @param seed the seed for the random number generator
+   * @param initializerGraph the graph to initialize the new graph builder
    * @param newOrdOffset the offset to add to the ord of each node in the initializerGraph
    * @param initializedNodes a bitset of nodes that are already initialized in the initializerGraph
-   * @return
-   * @throws IOException
+   * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
+   * @throws IOException when reading the graph fails
    */
   public static InitializedHnswGraphBuilder fromGraph(
       RandomVectorScorerSupplier scorerSupplier,

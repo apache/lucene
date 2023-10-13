@@ -1139,7 +1139,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   static float[][] createRandomFloatVectors(int size, int dimension, Random random) {
     float[][] vectors = new float[size][];
-    for (int offset = 0; offset < size; offset += random.nextInt(3) + 1) {
+    for (int offset = 0; offset < size; offset++) {
       vectors[offset] = randomVector(random, dimension);
     }
     return vectors;
@@ -1147,7 +1147,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   static byte[][] createRandomByteVectors(int size, int dimension, Random random) {
     byte[][] vectors = new byte[size][];
-    for (int offset = 0; offset < size; offset += random.nextInt(3) + 1) {
+    for (int offset = 0; offset < size; offset++) {
       vectors[offset] = randomVector8(random, dimension);
     }
     return vectors;
