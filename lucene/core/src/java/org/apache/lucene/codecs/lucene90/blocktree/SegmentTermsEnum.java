@@ -344,7 +344,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef(8);
+    BytesRef output = new BytesRef(16);
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -373,9 +373,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       int cmp = 0;
 
-      // TODO: reverse vLong byte order for better FST
-      // prefix output sharing
-
       // First compare up to valid seek frames:
       while (targetUpto < targetLimit) {
         cmp = (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto] & 0xFF);
@@ -394,9 +391,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + (char) arc.label()
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          append(output, arc.output());
-        }
+        append(output, arc.output());
+
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
@@ -490,12 +486,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       // term.length = 0;
       targetUpto = 0;
-      currentFrame =
-          pushFrame(
-              arc,
-              Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
-                  normalize(output), arc.nextFinalOutput()),
-              0);
+      BytesRef nextFinalOutput = arc.nextFinalOutput();
+      append(output, nextFinalOutput);
+      currentFrame = pushFrame(arc, output, 0);
+      output.length -= nextFinalOutput.length;
     }
 
     // if (DEBUG) {
@@ -557,9 +551,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         term.setByteAt(targetUpto, (byte) targetLabel);
         // Aggregate output as we go:
         assert arc.output() != null;
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          append(output, arc.output());
-        }
+        append(output, arc.output());
 
         // if (DEBUG) {
         //   System.out.println("    index: follow label=" + toHex(target.bytes[target.offset +
@@ -569,12 +561,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
-          currentFrame =
-              pushFrame(
-                  arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
-                      normalize(output), arc.nextFinalOutput()),
-                  targetUpto);
+          BytesRef nextFinalOutput = arc.nextFinalOutput();
+          append(output, nextFinalOutput);
+          currentFrame = pushFrame(arc, output, targetUpto);
+          output.length -= nextFinalOutput.length;
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -634,7 +624,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef(8);
+    BytesRef output = new BytesRef(16);
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -682,9 +672,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          append(output, arc.output());
-        }
+        append(output, arc.output());
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
@@ -772,12 +760,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       // term.length = 0;
       targetUpto = 0;
-      currentFrame =
-          pushFrame(
-              arc,
-              Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
-                  normalize(output), arc.nextFinalOutput()),
-              0);
+      BytesRef nextFinalOutput = arc.nextFinalOutput();
+      append(output, nextFinalOutput);
+      currentFrame = pushFrame(arc, output, 0);
+      output.length -= nextFinalOutput.length;
     }
 
     // if (DEBUG) {
@@ -839,9 +825,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = nextArc;
         // Aggregate output as we go:
         assert arc.output() != null;
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          append(output, arc.output());
-        }
+        append(output, arc.output());
 
         // if (DEBUG) {
         // System.out.println("    index: follow label=" + (target.bytes[target.offset +
@@ -851,12 +835,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
-          currentFrame =
-              pushFrame(
-                  arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(
-                      normalize(output), arc.nextFinalOutput()),
-                  targetUpto);
+          BytesRef nextFinalOutput = arc.nextFinalOutput();
+          append(output, nextFinalOutput);
+          currentFrame = pushFrame(arc, output, targetUpto);
+          output.length -= nextFinalOutput.length;
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -893,6 +875,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   private static void append(BytesRef output, BytesRef arc) {
     assert output.offset == 0;
+    if (arc == Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+      return;
+    }
     byte[] outputBytes = output.bytes;
     int newLen = arc.length + output.length;
     if (outputBytes.length < newLen) {
@@ -900,10 +885,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
     System.arraycopy(arc.bytes, arc.offset, outputBytes, output.length, arc.length);
     output.length = newLen;
-  }
-
-  private static BytesRef normalize(BytesRef output) {
-    return output.length == 0 ? Lucene90BlockTreeTermsReader.FST_OUTPUTS.getNoOutput() : output;
   }
 
   @SuppressWarnings("unused")
