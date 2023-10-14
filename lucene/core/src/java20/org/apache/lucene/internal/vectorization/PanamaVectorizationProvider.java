@@ -21,22 +21,12 @@ import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
-import jdk.incubator.vector.IntVector;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
 final class PanamaVectorizationProvider extends VectorizationProvider {
 
   private final VectorUtilSupport vectorUtilSupport;
-
-  /**
-   * x86 and less than 256-bit vectors.
-   *
-   * <p>it could be that it has only AVX1 and integer vectors are fast. it could also be that it has
-   * no AVX and integer vectors are extremely slow. don't use integer vectors to avoid landmines.
-   */
-  private final boolean hasFastIntegerVectors;
 
   // Extracted to a method to be able to apply the SuppressForbidden annotation
   @SuppressWarnings("removal")
@@ -45,13 +35,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     return AccessController.doPrivileged(action);
   }
 
-  PanamaVectorizationProvider(boolean testMode) {
-    final int intPreferredBitSize = IntVector.SPECIES_PREFERRED.vectorBitSize();
-    if (!testMode && intPreferredBitSize < 128) {
-      throw new UnsupportedOperationException(
-          "Vector bit size is less than 128: " + intPreferredBitSize);
-    }
-
+  PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
     try {
       doPrivileged(
@@ -65,20 +49,22 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
           "We hit initialization failure described in JDK-8309727: " + se);
     }
 
-    // check if the system is x86 and less than 256-bit vectors:
-    var isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && intPreferredBitSize < 256;
-    this.hasFastIntegerVectors = testMode || false == isAMD64withoutAVX2;
+    if (PanamaVectorUtilSupport.VECTOR_BITSIZE < 128) {
+      throw new UnsupportedOperationException(
+          "Vector bit size is less than 128: " + PanamaVectorUtilSupport.VECTOR_BITSIZE);
+    }
 
-    this.vectorUtilSupport = new PanamaVectorUtilSupport(hasFastIntegerVectors);
+    this.vectorUtilSupport = new PanamaVectorUtilSupport();
 
     var log = Logger.getLogger(getClass().getName());
     log.info(
         String.format(
             Locale.ENGLISH,
-            "Java vector incubator API enabled%s; uses preferredBitSize=%d%s",
-            testMode ? " (test mode)" : "",
-            intPreferredBitSize,
-            hasFastIntegerVectors ? "" : "; floating-point vectors only"));
+            "Java vector incubator API enabled; uses preferredBitSize=%d%s",
+            PanamaVectorUtilSupport.VECTOR_BITSIZE,
+            PanamaVectorUtilSupport.HAS_FAST_INTEGER_VECTORS
+                ? ""
+                : "; floating-point vectors only"));
   }
 
   @Override

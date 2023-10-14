@@ -98,10 +98,9 @@ public abstract class VectorizationProvider {
         final var cls =
             lookup.findClass(
                 "org.apache.lucene.internal.vectorization.PanamaVectorizationProvider");
-        final var constr =
-            lookup.findConstructor(cls, MethodType.methodType(void.class, boolean.class));
+        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
-          return (VectorizationProvider) constr.invoke(testMode);
+          return (VectorizationProvider) constr.invoke();
         } catch (UnsupportedOperationException uoe) {
           // not supported because preferred vector size too small or similar
           LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
