@@ -27,7 +27,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.VectorUtil;
@@ -84,7 +83,7 @@ public abstract class VectorizationProvider {
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
-      if (!vectorModulePresent(Module::addReads)) {
+      if (!vectorModulePresent(true)) {
         LOG.warning(
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
         return new DefaultVectorizationProvider();
@@ -122,7 +121,7 @@ public abstract class VectorizationProvider {
     } else if (runtimeVersion >= 22) {
       LOG.warning(
           "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
-    } else if (vectorModulePresent(Objects::equals)) {
+    } else if (vectorModulePresent(false)) {
       LOG.warning(
           "Java vector incubator module was enabled by command line flags, but your Java version is too old: "
               + runtimeVersion);
@@ -132,16 +131,17 @@ public abstract class VectorizationProvider {
 
   /**
    * Check if this class can see the vector module in its {@link ModuleLayer} or the root layer, if
-   * unnamed. When the module is found, a combiner ({@link BiConsumer}) which accepts this and the
-   * found vector module, can be used to add reads.
+   * unnamed. When the module is found, the method optionally adds it to reads.
    */
-  private static boolean vectorModulePresent(BiConsumer<Module, Module> combiner) {
+  private static boolean vectorModulePresent(boolean doAddReads) {
     var thisMod = VectorizationProvider.class.getModule();
     var opt =
         Optional.ofNullable(thisMod.getLayer())
             .orElse(ModuleLayer.boot())
             .findModule("jdk.incubator.vector");
-    opt.ifPresent(m -> combiner.accept(thisMod, m));
+    if (doAddReads) {
+      opt.ifPresent(thisMod::addReads);
+    }
     return opt.isPresent();
   }
 
