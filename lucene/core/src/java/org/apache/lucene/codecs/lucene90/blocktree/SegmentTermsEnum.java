@@ -879,11 +879,18 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return;
     }
     byte[] outputBytes = output.bytes;
-    int newLen = arc.length + output.length;
+    int arcLen = arc.length;
+    int newLen = arcLen + output.length;
     if (outputBytes.length < newLen) {
-      output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, ArrayUtil.oversize(newLen, 1));
+      // no need oversize
+      output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, newLen);
     }
-    System.arraycopy(arc.bytes, arc.offset, outputBytes, output.length, arc.length);
+    if (arcLen == 1) {
+      // common case
+      outputBytes[output.length] = arc.bytes[arc.offset];
+    } else {
+      System.arraycopy(arc.bytes, arc.offset, outputBytes, output.length, arc.length);
+    }
     output.length = newLen;
   }
 
