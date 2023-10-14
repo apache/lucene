@@ -48,9 +48,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       lastFreezeSize; // remember the size we are at last time to freeze the graph and generate
   // levelToNodes
   private int size; // graph size, which is number of nodes in level 0
-  // total number of NeighborArrays created that is not on level 0, for now it is only used to
-  // account memory usage
-  private int nonZeroLevelSize;
+  private int
+      nonZeroLevelSize; // total number of NeighborArrays created that is not on level 0, for now it
+  // is only used to account memory usage
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
   private final boolean
