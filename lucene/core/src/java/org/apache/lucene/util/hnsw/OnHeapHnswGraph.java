@@ -36,16 +36,21 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int numLevels; // the current number of levels in the graph
   private int entryNode; // the current graph entry node on the top level. -1 if not set
 
-  // Level 0 is represented as List<NeighborArray> – nodes' connections on level 0.
-  // Each entry in the list has the top maxConn/maxConn0 neighbors of a node. The nodes correspond
-  // to vectors
-  // added to HnswBuilder, and the node values are the ordinals of those vectors.
-  // Thus, on all levels, neighbors expressed as the level 0's nodes' ordinals.
+  // the internal graph representation where the first dimension is node id and second dimension is
+  // level
+  // e.g. graph[1][2] is all the neighbours of node 1 at level 2
   private NeighborArray[][] graph;
+  // essentially another 2d map which the first dimension is level and second dimension is node id,
+  // this is only
+  // generated on demand when there's someone calling getNodeOnLevel on a non-zero level
   private List<Integer>[] levelToNodes;
-  private int lastFreezeSize;
+  private int
+      lastFreezeSize; // remember the size we are at last time to freeze the graph and generate
+  // levelToNodes
   private int size; // graph size, which is number of nodes in level 0
-  private int nonZeroLevelSize; // total number of NeighborArrays created that is not on level 0
+  // total number of NeighborArrays created that is not on level 0, for now it is only used to
+  // account memory usage
+  private int nonZeroLevelSize;
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
   private final boolean
@@ -180,6 +185,17 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return entryNode;
   }
 
+  /**
+   * WARN: calling this method will essentially iterate through all nodes at level 0 (even if you're
+   * not getting node at level 0), we have built some caching mechanism such that if graph is not
+   * changed only the first non-zero level call will pay the cost. So it is highly NOT recommended
+   * to call this method while the graph is still building.
+   *
+   * <p>NOTE: if the node is not inserted in order (e.g. we're init'd from another graph) such that
+   * there are some node in middle are not inserted. (e.g. the largest node inserted is 10 but node
+   * 5 is not yet inserted) Calling getNodesOnLevel(0) will lead to a wrong behavior because it is a
+   * simple iterating over range(size) TODO: maybe we should fix the above behavior?
+   */
   @Override
   public NodesIterator getNodesOnLevel(int level) {
     if (level == 0) {
