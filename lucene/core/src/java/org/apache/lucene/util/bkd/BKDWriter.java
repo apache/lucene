@@ -429,7 +429,6 @@ public class BKDWriter implements Closeable {
       MutablePointTree reader,
       int docCount)
       throws IOException {
-    assert docCount != -1;
     this.docCount = docCount;
     if (config.numDims == 1) {
       return writeField1Dim(metaOut, indexOut, dataOut, fieldName, reader);
@@ -527,8 +526,14 @@ public class BKDWriter implements Closeable {
     // compute the min/max for this slice
     computePackedValueBounds(
         values, 0, Math.toIntExact(pointCount), minPackedValue, maxPackedValue, scratchBytesRef1);
-    // docCount has already been set by {@link BKDWriter#writeField}
-    assert docCount != -1;
+    if (docCount == -1) {
+      if (docsSeen == null) {
+        docsSeen = new FixedBitSet(maxDoc);
+      }
+      for (int i = 0; i < Math.toIntExact(pointCount); ++i) {
+        docsSeen.set(values.getDocID(i));
+      }
+    }
 
     final long dataStartFP = dataOut.getFilePointer();
     final int[] parentSplits = new int[config.numIndexDims];
