@@ -105,6 +105,13 @@ allprojects {
           // miscellaneous; some of them very weird.
           [propName: 'tests.LUCENE_VERSION', value: baseVersion, description: "Base Lucene version."],
           [propName: 'tests.bwcdir', value: null, description: "Data for backward-compatibility indexes."],
+          // vectorization related
+          [propName: 'tests.vectorsize',
+             value: { ->
+               RandomPicks.randomFrom(new Random(projectSeedLong), ["128", "256", "512"])
+             },
+             description: "Sets preferred vector size in bits."],
+          [propName: 'tests.forceintegervectors', value: "true", description: "Forces use of integer vectors even when slow."],
       ]
     }
   }
