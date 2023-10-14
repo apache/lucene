@@ -34,14 +34,10 @@ import org.apache.lucene.util.Constants;
  * VectorUtil methods implemented with Panama incubating vector API.
  *
  * <p>Supports two system properties for correctness testing purposes only:
- * <li>
- *
- *     <ul>
- *       tests.vectorsize (int)
- * </ul>
  *
  * <ul>
- *   tests.forceintegervectors (boolean)
+ *   <li>tests.vectorsize (int)
+ *   <li>tests.forceintegervectors (boolean)
  * </ul>
  *
  * Setting these properties will make this code run EXTREMELY slow!
