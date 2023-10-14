@@ -83,7 +83,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     boolean hasFastIntegerVectors = isAMD64withoutAVX2 == false;
     try {
       hasFastIntegerVectors =
-          Boolean.parseBoolean(System.getProperty("tests.forceintegervectors", Boolean.toString(hasFastIntegerVectors)));
+          Boolean.parseBoolean(
+              System.getProperty(
+                  "tests.forceintegervectors", Boolean.toString(hasFastIntegerVectors)));
     } catch (SecurityException ignored) {
     }
     HAS_FAST_INTEGER_VECTORS = hasFastIntegerVectors;
