@@ -83,7 +83,7 @@ public abstract class VectorizationProvider {
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
-      var vectorMod = lookupVectorModule();
+      final var vectorMod = lookupVectorModule();
       if (vectorMod.isEmpty()) {
         LOG.warning(
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
