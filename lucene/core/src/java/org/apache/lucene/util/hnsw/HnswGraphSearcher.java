@@ -232,13 +232,16 @@ public class HnswGraphSearcher {
       int topCandidateNode = candidates.pop();
       try (HnswGraph.NeighborIterator friends = graph.lockNeighbors(level, topCandidateNode)) {
         int friendOrd;
+        assert friends.size() > 0 || topCandidateNode == eps[0]: "candidate " + topCandidateNode + " has no friends";
         while ((friendOrd = friends.nextNeighbor()) != NO_MORE_DOCS) {
-          // assert friendOrd < graph.size() : "friendOrd=" + friendOrd + "; size=" + size;
+          assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
+          /*
           if (friendOrd >= size) {
             // this can happen when there are concurrent builders
             extendScratchState(friendOrd);
             size = visited.length();
           }
+          */
           if (visited.getAndSet(friendOrd)) {
             continue;
           }
@@ -253,6 +256,12 @@ public class HnswGraphSearcher {
             if (acceptOrds == null || acceptOrds.get(friendOrd)) {
               if (results.collect(friendOrd, friendSimilarity)) {
                 minAcceptedSimilarity = results.minCompetitiveSimilarity();
+                // nocommit we need to figure out where these friendless results are coming from?
+                /*
+                try (HnswGraph.NeighborIterator friendFriends = graph.lockNeighbors(level, friendOrd)) {
+                  assert friendFriends.size() > 0 : "FUCKME " + friendOrd;
+                }
+                */
               }
             }
           }

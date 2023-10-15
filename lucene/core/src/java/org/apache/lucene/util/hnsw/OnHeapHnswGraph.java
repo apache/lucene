@@ -21,10 +21,12 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.lucene.util.Accountable;
@@ -35,9 +37,6 @@ import org.apache.lucene.util.RamUsageEstimator;
  * construct the HNSW graph before it's written to the index.
  */
 public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
-
-  private int numLevels; // the current number of levels in the graph
-  private int entryNode; // the current graph entry node on the top level. -1 if not set
 
   // Level 0 is represented as List<NeighborArray> – nodes' connections on level 0.
   // Each entry in the list has the top maxConn/maxConn0 neighbors of a node. The nodes correspond
@@ -54,22 +53,45 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private final int nsize;
   private final int nsize0;
 
+  private final AtomicReference<EntryNode> entryNode;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   // KnnGraphValues iterator members
   private int upto;
   private NeighborArray cur;
 
-  OnHeapHnswGraph(int M) {
-    this.numLevels = 1; // Implicitly start the graph with a single level
-    this.graphLevel0 = new ArrayList<>();
-    this.entryNode = -1; // Entry node should be negative until a node is added
+  private OnHeapHnswGraph(int M, List<NeighborArray> level0) {
+    entryNode = new AtomicReference<>(new EntryNode(-1, 1)); // Entry node is negative until a node is added
     // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
-    this.nsize = M + 1;
-    this.nsize0 = (M * 2 + 1);
-    this.graphUpperLevels = new ArrayList<>(numLevels);
-    graphUpperLevels.add(null); // we don't need this for 0th level, as it contains all nodes
+    nsize = M + 1;
+    nsize0 = nsize0(M);
+    graphUpperLevels = new ArrayList<>(16);
+    for (int i = 0; i < 16; i++) {
+      // add more levels than we will ever need in order to avoid having to update
+      graphUpperLevels.add(new ConcurrentHashMap<>());
+    }
+    graphLevel0 = level0;
+  }
+
+  OnHeapHnswGraph(int M) {
+    this(M, new ArrayList<>());
+  }
+
+  OnHeapHnswGraph(int M, int graphSize) {
+    this (M, preallocate(graphSize, nsize0(M)));
+  }
+
+  private static List<NeighborArray> preallocate(int size, int nsize0) {
+    NeighborArray[] na = new NeighborArray[size];
+    for (int i = 0; i < size; i++) {
+      na[i] = new NeighborArray(nsize0, true);
+    }
+    return Arrays.asList(na);
+  }
+
+  private static int nsize0(int M) {
+    return M * 2 + 1;
   }
 
   /**
@@ -88,13 +110,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   public NeighborIterator lockNeighbors(int level, int node) {
-    NeighborArray neighbors;
-    lock.readLock().lock();
-    try {
-      neighbors = getNeighbors(level, node);
-    } finally {
-      lock.readLock().unlock();
-    }
+    NeighborArray neighbors = getNeighbors(level, node);
+    // nocommit we were deadlocking? replace with simple lock()
     try {
       while (!neighbors.lock.readLock().tryLock(1, TimeUnit.SECONDS)) {
         System.out.println("timed out waiting for lock owned by " + neighbors.lock.getOwner());
@@ -138,21 +155,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param node the node to add, represented as an ordinal on the level 0.
    */
   public void addNode(int level, int node) {
-    if (entryNode == -1) {
-      entryNode = node;
-    }
-
     if (level > 0) {
-      // if the new node introduces a new level, add more levels to the graph,
-      // and make this node the graph's new entry point
-      if (level >= numLevels) {
-        for (int i = numLevels; i <= level; i++) {
-          graphUpperLevels.add(new HashMap<>());
-        }
-        numLevels = level + 1;
-        entryNode = node;
-      }
-
       graphUpperLevels.get(level).put(node, new NeighborArray(nsize, true));
     } else {
       // Add nodes all the way up to and including "node" in the new graph on level 0. This will
@@ -188,7 +191,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public int numLevels() {
-    return numLevels;
+    return entryNode.get().level + 1;
   }
 
   /**
@@ -199,7 +202,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public int entryNode() {
-    return entryNode;
+    return entryNode.get().node;
   }
 
   @Override
@@ -224,7 +227,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 2
             + Integer.BYTES * 3;
     long total = 0;
-    for (int l = 0; l < numLevels; l++) {
+    for (int l = 0; l < numLevels(); l++) {
       if (l == 0) {
         total +=
             graphLevel0.size() * neighborArrayBytes0
@@ -263,15 +266,42 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     lock.readLock().lock();
     return () -> lock.readLock().unlock();
   }
+  public boolean trySetNewEntryNode(int node, int level) {
+    EntryNode current = entryNode.get();
+    if (current.node == -1) {
+      return entryNode.compareAndSet(current, new EntryNode(node, level));
+    }
+    return false;
+  }
+
+  public boolean tryPromoteNewEntryNode(int node, int level, int expectOldLevel) {
+    EntryNode currentEntry = entryNode.get();
+    if (currentEntry.level == expectOldLevel) {
+      return entryNode.compareAndSet(currentEntry, new EntryNode(node, level));
+    }
+    return false;
+  }
 
   @Override
   public String toString() {
     return "OnHeapHnswGraph(size="
         + size()
         + ", numLevels="
-        + numLevels
+        + numLevels()
         + ", entryNode="
         + entryNode
         + ")";
   }
-}
+  public NeighborArray getCur() {
+    return cur;
+  }
+
+  private final class EntryNode {
+    private final int node;
+    private final int level;
+
+    private EntryNode(int node, int level) {
+      this.node = node;
+      this.level = level;
+    }
+  }}

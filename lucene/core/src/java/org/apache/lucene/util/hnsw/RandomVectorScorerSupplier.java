@@ -49,11 +49,7 @@ public interface RandomVectorScorerSupplier {
     // We copy the provided random accessor just once during the supplier's initialization
     // and then reuse it consistently across all scorers for conducting vector comparisons.
     final RandomAccessVectorValues<float[]> vectorsCopy = vectors.copy();
-    return queryOrd ->
-        (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+    return new RVSSFloat(vectorsCopy, similarityFunction);
   }
 
   /**
@@ -74,10 +70,60 @@ public interface RandomVectorScorerSupplier {
     // We copy the provided random accessor just once during the supplier's initialization
     // and then reuse it consistently across all scorers for conducting vector comparisons.
     final RandomAccessVectorValues<byte[]> vectorsCopy = vectors.copy();
-    return queryOrd ->
-        (RandomVectorScorer)
-            cand ->
-                similarityFunction.compare(
-                    vectors.vectorValue(queryOrd), vectorsCopy.vectorValue(cand));
+    return new RVSSByte(vectors, similarityFunction);
+  }
+
+  RandomVectorScorerSupplier copy() throws IOException;
+
+  class RVSSByte implements RandomVectorScorerSupplier {
+    private final RandomAccessVectorValues<byte[]> vectors;
+    private final RandomAccessVectorValues<byte[]> vectors1;
+    private final RandomAccessVectorValues<byte[]> vectors2;
+    private final VectorSimilarityFunction similarityFunction;
+
+    RVSSByte(RandomAccessVectorValues<byte[]> vectors, VectorSimilarityFunction similarityFunction) throws IOException {
+      this.vectors = vectors;
+      vectors1 = vectors.copy();
+      vectors2 = vectors.copy();
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      return cand -> similarityFunction.compare(
+              vectors1.vectorValue(ord), vectors2.vectorValue(cand)
+      );
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new RVSSByte(vectors, similarityFunction);
+    }
+  }
+
+  class RVSSFloat implements RandomVectorScorerSupplier {
+    private final RandomAccessVectorValues<float[]> vectors;
+    private final RandomAccessVectorValues<float[]> vectors1;
+    private final RandomAccessVectorValues<float[]> vectors2;
+    private final VectorSimilarityFunction similarityFunction;
+
+    RVSSFloat(RandomAccessVectorValues<float[]> vectors, VectorSimilarityFunction similarityFunction) throws IOException {
+      this.vectors = vectors;
+      vectors1 = vectors.copy();
+      vectors2 = vectors.copy();
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public RandomVectorScorer scorer(int ord) throws IOException {
+      return cand -> similarityFunction.compare(
+              vectors1.vectorValue(ord), vectors2.vectorValue(cand)
+      );
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new RVSSFloat(vectors, similarityFunction);
+    }
   }
 }

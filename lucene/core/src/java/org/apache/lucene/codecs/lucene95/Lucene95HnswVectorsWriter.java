@@ -432,7 +432,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         if (docsWithField.cardinality() > 8 * 1024) {
           // nocommit - size of thread pool and whether to use one at all
           // should be managed externally or configured using IndexWriterConfig
-          executor = Executors.newFixedThreadPool(8);
+          //executor = Executors.newFixedThreadPool(8);
+          executor = Executors.newFixedThreadPool(2);
         }
         graph =
             switch (fieldInfo.getVectorEncoding()) {
@@ -447,7 +448,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     RandomVectorScorerSupplier.createBytes(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size(), executor);
               }
@@ -462,12 +463,15 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     RandomVectorScorerSupplier.createFloats(
                         vectorValues, fieldInfo.getVectorSimilarityFunction());
                 HnswGraphBuilder hnswGraphBuilder =
-                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+                    createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
                 hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
                 yield hnswGraphBuilder.build(vectorValues.size(), executor);
               }
             };
         vectorIndexNodeOffsets = writeGraph(graph);
+        if (executor != null) {
+          executor.shutdown();
+        }
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
       writeMeta(
@@ -497,7 +501,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       MergeState mergeState,
       FieldInfo fieldInfo,
       RandomVectorScorerSupplier scorerSupplier,
-      int initializerIndex)
+      int initializerIndex, int graphSize)
       throws IOException {
     if (initializerIndex == -1) {
       return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -508,7 +512,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     Map<Integer, Integer> ordinalMapper =
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
     return HnswGraphBuilder.create(
-        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
+        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper, graphSize);
   }
 
   private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)

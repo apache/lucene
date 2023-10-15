@@ -167,6 +167,7 @@ public class NeighborArray {
   public void removeLast() {
     size--;
     sortedNodeSize = Math.min(sortedNodeSize, size);
+    assert size > 0;
   }
 
   public void removeIndex(int idx) {
@@ -176,6 +177,7 @@ public class NeighborArray {
       sortedNodeSize--;
     }
     size--;
+    assert size > 0;
   }
 
   @Override

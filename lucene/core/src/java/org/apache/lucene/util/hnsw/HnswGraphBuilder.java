@@ -23,6 +23,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
@@ -89,9 +90,9 @@ public final class HnswGraphBuilder {
       int beamWidth,
       long seed,
       HnswGraph initializerGraph,
-      Map<Integer, Integer> oldToNewOrdinalMap)
+      Map<Integer, Integer> oldToNewOrdinalMap, int graphSize)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(new OnHeapHnswGraph(M), scorerSupplier, M, beamWidth, seed, new IntIntHashMap());
+    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(new OnHeapHnswGraph(M, graphSize), scorerSupplier, M, beamWidth, seed, new IntIntHashMap());
     hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
     return hnswGraphBuilder;
   }
@@ -121,11 +122,12 @@ public final class HnswGraphBuilder {
         Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null");
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
+    // TODO: split the random?
     this.random = new SplittableRandom(seed);
     this.hnsw = graph;
     this.graphSearcher =
         new HnswGraphSearcher(
-            new NeighborQueue(beamWidth, true), new FixedBitSet(this.getGraph().size()));
+            new NeighborQueue(beamWidth, true), new FixedBitSet(graph.size()));
     // in scratch we store candidates in reverse order: worse candidates are first
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
     entryCandidates = new GraphBuilderKnnCollector(1);
@@ -182,6 +184,7 @@ public final class HnswGraphBuilder {
       } catch (Exception e) {
         // nocommit -- does this wait for all tasks to finish / terminate?
         executor.shutdownNow();
+        e.printStackTrace();
         throw new IOException(e);
       }
     }
@@ -200,7 +203,7 @@ public final class HnswGraphBuilder {
    */
   private void initializeFromGraph(
       HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
-    assert hnsw.size() == 0;
+    assert hnsw.size() == 0 || hnsw.getNeighbors(0, 0).size() == 0;
     for (int level = 0; level < initializerGraph.numLevels(); level++) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
 
@@ -262,37 +265,35 @@ public final class HnswGraphBuilder {
   public void addGraphNode(int node) throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
-    int curMaxLevel;
-    int[] eps;
+    int curMaxLevel = hnsw.numLevels() - 1;
 
     // If entrynode is -1, then this should finish without adding neighbors
+    if (hnsw.trySetNewEntryNode(node, nodeLevel)) {
+      return;
+    }
+
     try (Closeable l = hnsw.withWriteLock()) {
-      curMaxLevel = hnsw.numLevels() - 1;
-      if (hnsw.entryNode() == -1) {
         for (int level = nodeLevel; level >= 0; level--) {
           hnsw.addNode(level, node);
         }
-        return;
-      }
-      eps = new int[] {hnsw.entryNode()};
     }
+    int[] eps = new int[]{hnsw.entryNode()};
 
     // for levels > nodeLevel search with topk = 1
     GraphBuilderKnnCollector candidates = entryCandidates;
     for (int level = curMaxLevel; level > nodeLevel; level--) {
       candidates.clear();
       graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-      eps = new int[] {candidates.popNode()};
+      eps[0] = candidates.popNode();
     }
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     candidates = beamCandidates;
+    candidates.graphSize = hnsw.size();
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates.clear();
       graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-      eps = candidates.popUntilNearestKNodes();
-      try (Closeable l = hnsw.withWriteLock()) {
-        hnsw.addNode(level, node);
-      }
+      candidates.popUntilNearestKNodes();
+      hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
 
@@ -306,6 +307,7 @@ public final class HnswGraphBuilder {
       for (int level = nodeLevel; level > newMaxLevel; level--) {
         hnsw.addNode(level, node);
       }
+      hnsw.tryPromoteNewEntryNode(node, nodeLevel, hnsw.numLevels() + 1);
     }
   }
 
@@ -331,10 +333,22 @@ public final class HnswGraphBuilder {
      */
     int maxConnOnLevel = level == 0 ? M * 2 : M;
     popToScratch(candidates);
-    NeighborArray neighbors;
-    try (Closeable l = hnsw.withReadLock()) {
-      neighbors = hnsw.getNeighbors(level, node);
+    // nocommit assert all the candidates have neighbors
+    if (level == 0 && node > 10000) {
+      //System.out.print("add " + node);
+      for (int i = 0; i < scratch.size(); i++) {
+        int newNode = scratch.node[i];
+        //System.out.print(" " + newNode);
+        try (HnswGraph.NeighborIterator nn = hnsw.lockNeighbors(0, newNode)) {
+          assert nn.size() > 0 : "addDiverse node " + newNode + " has no friends when adding nbrs to " + node;
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      //System.out.println();
     }
+
+    NeighborArray neighbors = hnsw.getNeighbors(level, node);
     neighbors.lock.writeLock().lock();
     try {
       // nocommit this assertion is getting hit with size=1 init=false
@@ -343,7 +357,7 @@ public final class HnswGraphBuilder {
               " init=" + initializedNodes.containsKey(node) +
               " nbr[0]=" + neighbors.node[0];
       selectAndLinkDiverse(neighbors, scratch, maxConnOnLevel);
-      assert neighbors.size() <= scratch.size() : "add node size=" + neighbors.size() + " candidates.size=" + scratch.size();
+      assert neighbors.size() > 0 && neighbors.size() <= scratch.size() : "add node size=" + neighbors.size() + " candidates.size=" + scratch.size();
       // downgrade to a readLock since we're done writing
       neighbors.lock.readLock().lock();
     } finally {
@@ -355,17 +369,15 @@ public final class HnswGraphBuilder {
       int size = neighbors.size();
       for (int i = 0; i < size; i++) {
         int nbr = neighbors.node[i];
-        NeighborArray nbrsOfNbr;
-        try (Closeable l = hnsw.withReadLock()) {
-          nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        }
+        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
         nbrsOfNbr.lock.writeLock().lock();
         try {
           // nbr should already have some nbrs unless it is the entry point at level 0 (and we are the second node), or
           // it is some level > 0 in which case we skip this check since it is a little tricky to know what was the 1st node on the other levels
-          assert (nbr == 0 && node == 1) || level > 0 || nbrsOfNbr.size() > 0 : "add nbr at level=" + level + ", nbr=" + nbr + " size=" + nbrsOfNbr.size() +
-                  " init=" + initializedNodes.containsKey(nbr);
-          // hmm OK this can happen when the node is partially connected
+          /*
+          assert (nbr == 0 && node == 1) || level > 0 || nbrsOfNbr.size() > 0 :
+                  "new nbr " + nbr + " has no friends at level=" + level + " adding to node " + node;
+          */
           nbrsOfNbr.addOutOfOrder(node, neighbors.score[i]);
           if (nbrsOfNbr.size() > maxConnOnLevel) {
             int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
@@ -390,10 +402,17 @@ public final class HnswGraphBuilder {
       float cScore = candidates.score[i];
       // nocommit this assert is failing w/cNode==hnsw.size() which doesn't seem possible? But
       // maybe the hnsw size being volatile across threads is the problem and we don't actually care about it here?
-      // assert cNode < hnsw.size() : "cNode=" + cNode + " graph size=" + hnsw.size();
+      assert cNode < getHnswSize() : "cNode=" + cNode + " graph size(best effort)=" + getHnswSize();
       if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }
+    }
+  }
+
+  @SuppressWarnings("try")
+  int getHnswSize() throws IOException {
+    try (Closeable l = hnsw.withReadLock()) {
+      return hnsw.size();
     }
   }
 
@@ -500,6 +519,8 @@ public final class HnswGraphBuilder {
     private final NeighborQueue queue;
     private final int k;
     private long visitedCount;
+    private int graphSize = Integer.MAX_VALUE; // nocommit, temp for assertions
+
     /**
      * @param k the number of neighbors to collect
      */
@@ -559,6 +580,7 @@ public final class HnswGraphBuilder {
 
     @Override
     public boolean collect(int docId, float similarity) {
+      assert docId < graphSize : "node overflow " + docId + " >= " + graphSize;
       return queue.insertWithOverflow(docId, similarity);
     }
 
