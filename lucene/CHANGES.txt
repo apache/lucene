@@ -82,6 +82,8 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
+* GITHUB#12681: Speed up panama vector support and test improvements. (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 
