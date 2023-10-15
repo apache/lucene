@@ -44,6 +44,9 @@ Improvements
   is too old. It also logs partial vectorization support if old CPU or disabled AVX.
   (Uwe Schindler, Robert Muir)
 
+* GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
+  (Uwe Schindler)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
