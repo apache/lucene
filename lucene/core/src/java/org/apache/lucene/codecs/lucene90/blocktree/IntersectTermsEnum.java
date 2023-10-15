@@ -184,8 +184,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc = currentFrame.arc;
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
-    BytesRef output = new BytesRef(16);
-    SegmentTermsEnum.append(output, currentFrame.outputPrefix);
+    BytesRef output = new BytesRef(SegmentTermsEnum.OUT_PUT_INIT_LEN);
+    SegmentTermsEnum.appendArc(output, currentFrame.outputPrefix);
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -193,7 +193,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // passed to findTargetArc
       arc = fr.index.findTargetArc(target, arc, getArc(1 + idx), fstReader);
       assert arc != null;
-      SegmentTermsEnum.append(output, arc.output());
+      SegmentTermsEnum.appendArc(output, arc.output());
       idx++;
     }
 
@@ -201,7 +201,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.outputPrefix = output;
     assert arc.isFinal();
     BytesRef nextFinalOutput = arc.nextFinalOutput();
-    SegmentTermsEnum.append(output, nextFinalOutput);
+    SegmentTermsEnum.appendArc(output, nextFinalOutput);
     f.load(output);
     output.length -= nextFinalOutput.length;
     return f;

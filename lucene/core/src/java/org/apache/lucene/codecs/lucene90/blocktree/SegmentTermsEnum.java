@@ -35,6 +35,8 @@ import org.apache.lucene.util.fst.Util;
 /** Iterates through terms in this field. */
 final class SegmentTermsEnum extends BaseTermsEnum {
 
+  static final int OUT_PUT_INIT_LEN = 128;
+
   // Lazy init:
   IndexInput in;
 
@@ -344,7 +346,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef(16);
+    BytesRef output = new BytesRef(OUT_PUT_INIT_LEN);
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -363,7 +365,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      append(output, arc.output());
+      appendArc(output, arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -391,7 +393,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + (char) arc.label()
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
-        append(output, arc.output());
+        appendArc(output, arc.output());
 
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
@@ -480,14 +482,14 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       //   System.out.println("    no seek state; push root frame");
       // }
 
-      append(output, arc.output());
+      appendArc(output, arc.output());
 
       currentFrame = staticFrame;
 
       // term.length = 0;
       targetUpto = 0;
       BytesRef nextFinalOutput = arc.nextFinalOutput();
-      append(output, nextFinalOutput);
+      appendArc(output, nextFinalOutput);
       currentFrame = pushFrame(arc, output, 0);
       output.length -= nextFinalOutput.length;
     }
@@ -551,7 +553,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         term.setByteAt(targetUpto, (byte) targetLabel);
         // Aggregate output as we go:
         assert arc.output() != null;
-        append(output, arc.output());
+        appendArc(output, arc.output());
 
         // if (DEBUG) {
         //   System.out.println("    index: follow label=" + toHex(target.bytes[target.offset +
@@ -562,7 +564,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
           BytesRef nextFinalOutput = arc.nextFinalOutput();
-          append(output, nextFinalOutput);
+          appendArc(output, nextFinalOutput);
           currentFrame = pushFrame(arc, output, targetUpto);
           output.length -= nextFinalOutput.length;
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
@@ -624,7 +626,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef(16);
+    BytesRef output = new BytesRef(OUT_PUT_INIT_LEN);
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -643,7 +645,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      append(output, arc.output());
+      appendArc(output, arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -672,7 +674,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
-        append(output, arc.output());
+        appendArc(output, arc.output());
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
@@ -754,14 +756,14 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // System.out.println("    no seek state; push root frame");
       // }
 
-      append(output, arc.output());
+      appendArc(output, arc.output());
 
       currentFrame = staticFrame;
 
       // term.length = 0;
       targetUpto = 0;
       BytesRef nextFinalOutput = arc.nextFinalOutput();
-      append(output, nextFinalOutput);
+      appendArc(output, nextFinalOutput);
       currentFrame = pushFrame(arc, output, 0);
       output.length -= nextFinalOutput.length;
     }
@@ -825,7 +827,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = nextArc;
         // Aggregate output as we go:
         assert arc.output() != null;
-        append(output, arc.output());
+        appendArc(output, arc.output());
 
         // if (DEBUG) {
         // System.out.println("    index: follow label=" + (target.bytes[target.offset +
@@ -836,7 +838,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
           BytesRef nextFinalOutput = arc.nextFinalOutput();
-          append(output, nextFinalOutput);
+          appendArc(output, nextFinalOutput);
           currentFrame = pushFrame(arc, output, targetUpto);
           output.length -= nextFinalOutput.length;
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
@@ -873,18 +875,20 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
   }
 
-  static void append(BytesRef output, BytesRef arc) {
+  static void appendArc(BytesRef output, BytesRef arc) {
     assert output.offset == 0;
+    assert output.bytes.length >= OUT_PUT_INIT_LEN;
     if (arc == Lucene90BlockTreeTermsReader.NO_OUTPUT) {
       return;
     }
     byte[] outputBytes = output.bytes;
     int arcLen = arc.length;
-    int newLen = arcLen + output.length;
+    int outputLen = output.length;
+    int newLen = arcLen + outputLen;
     if (outputBytes.length < newLen) {
       output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, newLen);
     }
-    System.arraycopy(arc.bytes, arc.offset, outputBytes, output.length, arc.length);
+    System.arraycopy(arc.bytes, arc.offset, outputBytes, outputLen, arcLen);
     output.length = newLen;
   }
 
