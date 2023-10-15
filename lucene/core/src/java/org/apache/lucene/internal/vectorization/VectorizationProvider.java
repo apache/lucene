@@ -25,6 +25,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
 import org.apache.lucene.util.SuppressForbidden;
@@ -82,11 +83,14 @@ public abstract class VectorizationProvider {
       }
       // is the incubator module present and readable (JVM providers may to exclude them or it is
       // build with jlink)
-      if (!vectorModulePresentAndReadable()) {
+      final var vectorMod = lookupVectorModule();
+      if (vectorMod.isEmpty()) {
         LOG.warning(
             "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
         return new DefaultVectorizationProvider();
       }
+      vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
+      // check if client VM
       if (!testMode && isClientVM()) {
         LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
         return new DefaultVectorizationProvider();
@@ -119,7 +123,7 @@ public abstract class VectorizationProvider {
     } else if (runtimeVersion >= 22) {
       LOG.warning(
           "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
-    } else if (vectorModulePresentAndReadable()) {
+    } else if (lookupVectorModule().isPresent()) {
       LOG.warning(
           "Java vector incubator module was enabled by command line flags, but your Java version is too old: "
               + runtimeVersion);
@@ -127,16 +131,13 @@ public abstract class VectorizationProvider {
     return new DefaultVectorizationProvider();
   }
 
-  private static boolean vectorModulePresentAndReadable() {
-    var opt =
-        ModuleLayer.boot().modules().stream()
-            .filter(m -> m.getName().equals("jdk.incubator.vector"))
-            .findFirst();
-    if (opt.isPresent()) {
-      VectorizationProvider.class.getModule().addReads(opt.get());
-      return true;
-    }
-    return false;
+  /**
+   * Looks up the vector module from Lucene's {@link ModuleLayer} or the root layer (if unnamed).
+   */
+  private static Optional<Module> lookupVectorModule() {
+    return Optional.ofNullable(VectorizationProvider.class.getModule().getLayer())
+        .orElse(ModuleLayer.boot())
+        .findModule("jdk.incubator.vector");
   }
 
   /**
