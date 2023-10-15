@@ -35,7 +35,7 @@ import org.apache.lucene.util.fst.Util;
 /** Iterates through terms in this field. */
 final class SegmentTermsEnum extends BaseTermsEnum {
 
-  static final int OUT_PUT_INIT_LEN = 128;
+  static final int OUT_PUT_INIT_LEN = 16;
   // Lazy init:
   IndexInput in;
 
