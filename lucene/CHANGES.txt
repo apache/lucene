@@ -47,6 +47,9 @@ Improvements
 * GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
   (Uwe Schindler)
 
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
+  and test improvements. (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
