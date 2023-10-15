@@ -26,8 +26,11 @@ import java.security.PrivilegedAction;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.VectorUtil;
 
@@ -39,6 +42,35 @@ import org.apache.lucene.util.VectorUtil;
  * @lucene.internal
  */
 public abstract class VectorizationProvider {
+
+  static final OptionalInt TESTS_VECTOR_SIZE;
+  static final boolean TESTS_FORCE_INTEGER_VECTORS;
+
+  static {
+    var vs = OptionalInt.empty();
+    try {
+      vs =
+          Stream.ofNullable(System.getProperty("tests.vectorsize"))
+              .filter(Predicate.not(String::isEmpty))
+              .mapToInt(Integer::parseInt)
+              .findAny();
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // ignored
+    }
+    TESTS_VECTOR_SIZE = vs;
+
+    boolean enforce = false;
+    try {
+      enforce = Boolean.getBoolean("tests.forceintegervectors");
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // ignored
+    }
+    TESTS_FORCE_INTEGER_VECTORS = enforce;
+  }
 
   /**
    * Returns the default instance of the provider matching vectorization possibilities of actual
@@ -90,10 +122,17 @@ public abstract class VectorizationProvider {
         return new DefaultVectorizationProvider();
       }
       vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
-      // check if client VM
-      if (!testMode && isClientVM()) {
-        LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
-        return new DefaultVectorizationProvider();
+      // check for testMode and otherwise fallback to default if slowness could happen
+      if (!testMode) {
+        if (TESTS_VECTOR_SIZE.isPresent() || TESTS_FORCE_INTEGER_VECTORS) {
+          LOG.warning(
+              "Vector bitsize and/or integer vectors enforcement; using default vectorization provider outside of testMode");
+          return new DefaultVectorizationProvider();
+        }
+        if (isClientVM()) {
+          LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
+          return new DefaultVectorizationProvider();
+        }
       }
       try {
         // we use method handles with lookup, so we do not need to deal with setAccessible as we
