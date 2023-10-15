@@ -36,7 +36,6 @@ import org.apache.lucene.util.fst.Util;
 final class SegmentTermsEnum extends BaseTermsEnum {
 
   static final int OUT_PUT_INIT_LEN = 128;
-
   // Lazy init:
   IndexInput in;
 
@@ -50,6 +49,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
+  private final BytesRef outputScratch = new BytesRef(OUT_PUT_INIT_LEN);
   private final ByteArrayDataInput scratchReader = new ByteArrayDataInput();
 
   // What prefix of the current term was present in the index; when we only next() through the
@@ -346,7 +346,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef(OUT_PUT_INIT_LEN);
+    BytesRef output = outputScratch;
+    output.offset = output.length = 0;
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -626,7 +627,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = new BytesRef(OUT_PUT_INIT_LEN);
+    BytesRef output = outputScratch;
+    output.offset = output.length = 0;
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -882,9 +884,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return;
     }
     byte[] outputBytes = output.bytes;
-    int arcLen = arc.length;
-    int outputLen = output.length;
-    int newLen = arcLen + outputLen;
+    final int arcLen = arc.length;
+    final int outputLen = output.length;
+    final int newLen = arcLen + outputLen;
     if (outputBytes.length < newLen) {
       output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, newLen);
     }

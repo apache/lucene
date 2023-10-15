@@ -55,7 +55,7 @@ final class IntersectTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  byte[] floorData = new byte[32];
+  final BytesRef floorDataReaderBytes = new BytesRef(SegmentTermsEnum.OUT_PUT_INIT_LEN);
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block

@@ -46,7 +46,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
   final IndexInput in;
-  static final Outputs<BytesRef> fstOutputs = ByteSequenceOutputs.getSingleton();
 
   IntersectTermsEnumFrame[] stack;
 
@@ -184,7 +183,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc = currentFrame.arc;
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
-    BytesRef output = new BytesRef(SegmentTermsEnum.OUT_PUT_INIT_LEN);
+
+    BytesRef output = f.floorDataReaderBytes;
+    output.length = output.offset = 0;
     SegmentTermsEnum.appendArc(output, currentFrame.outputPrefix);
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
