@@ -29,14 +29,22 @@ import org.apache.lucene.index.LeafReaderContext;
  * @lucene.experimental
  */
 abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
-  private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
-
   protected final float traversalThreshold, resultThreshold;
 
+  /**
+   * Abstract query for performing radius-based vector searches.
+   *
+   * @param field a field that has been indexed as a vector field.
+   * @param traversalThreshold similarity score corresponding to outer radius of graph traversal.
+   * @param resultThreshold similarity score corresponding to inner radius of result collection.
+   * @param filter a filter applied before the vector search.
+   */
   public AbstractRnnVectorQuery(
       String field, float traversalThreshold, float resultThreshold, Query filter) {
     super(field, Integer.MAX_VALUE, filter);
-    assert traversalThreshold <= resultThreshold;
+    if (traversalThreshold > resultThreshold) {
+      throw new IllegalArgumentException("traversalThreshold should be <= resultThreshold");
+    }
     this.traversalThreshold = traversalThreshold;
     this.resultThreshold = resultThreshold;
   }
@@ -48,7 +56,7 @@ abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getVectorDimension() == 0) {
       // The field does not exist or does not index vectors
-      return NO_RESULTS;
+      return TopDocsCollector.EMPTY_TOPDOCS;
     }
 
     VectorScorer vectorScorer = createVectorScorer(context, fi);
@@ -70,13 +78,13 @@ abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   @Override
-  // Segment-level results are not sorted (because we do not want to maintain the topK), just
-  // concatenate them
   protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
     long value = 0;
     TotalHits.Relation relation = TotalHits.Relation.EQUAL_TO;
     List<ScoreDoc> scoreDocList = new ArrayList<>();
 
+    // Segment-level results are not sorted (because we do not want to maintain the topK), just
+    // concatenate them
     for (TopDocs topDocs : perLeafResults) {
       value += topDocs.totalHits.value;
       if (topDocs.totalHits.relation == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO) {
@@ -90,12 +98,9 @@ abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    AbstractRnnVectorQuery that = (AbstractRnnVectorQuery) o;
-    return Float.compare(that.traversalThreshold, traversalThreshold) == 0
-        && Float.compare(that.resultThreshold, resultThreshold) == 0;
+    return sameClassAs(o)
+        && Float.compare(((AbstractRnnVectorQuery) o).traversalThreshold, traversalThreshold) == 0
+        && Float.compare(((AbstractRnnVectorQuery) o).resultThreshold, resultThreshold) == 0;
   }
 
   @Override

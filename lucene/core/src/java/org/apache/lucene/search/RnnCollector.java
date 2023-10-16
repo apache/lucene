@@ -37,8 +37,10 @@ public class RnnCollector extends AbstractKnnCollector {
    * @param visitLimit limit of graph nodes to visit.
    */
   public RnnCollector(float traversalThreshold, float resultThreshold, long visitLimit) {
-    super(Integer.MAX_VALUE, visitLimit);
-    assert traversalThreshold <= resultThreshold;
+    super(1, visitLimit);
+    if (traversalThreshold > resultThreshold) {
+      throw new IllegalArgumentException("traversalThreshold should be <= resultThreshold");
+    }
     this.traversalThreshold = traversalThreshold;
     this.resultThreshold = resultThreshold;
     this.scoreDocList = new ArrayList<>();
@@ -58,9 +60,9 @@ public class RnnCollector extends AbstractKnnCollector {
   }
 
   @Override
-  // This does not return results in a sorted order to prevent unnecessary calculations (because we
-  // do not want to maintain the topK)
   public TopDocs topDocs() {
+    // This does not return results in a sorted order to prevent unnecessary calculations (because
+    // we do not want to maintain the topK)
     TotalHits.Relation relation =
         earlyTerminated()
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO

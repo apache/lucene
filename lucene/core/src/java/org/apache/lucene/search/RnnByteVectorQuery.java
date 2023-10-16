@@ -81,11 +81,7 @@ public class RnnByteVectorQuery extends AbstractRnnVectorQuery {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    RnnByteVectorQuery that = (RnnByteVectorQuery) o;
-    return Arrays.equals(target, that.target);
+    return sameClassAs(o) && Arrays.equals(target, ((RnnByteVectorQuery) o).target);
   }
 
   @Override
