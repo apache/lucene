@@ -141,7 +141,7 @@ public enum VectorSimilarityFunction {
     return compare(v1.vectorValue(v1TargetOrd), v2.vectorValue(v2TargetOrd));
   }
 
-  // ^^^ do the same with byte
+  // ^^^ TODO do the same with byte
 
   /**
    * Calculates a similarity score between the two vectors with a specified function. Higher

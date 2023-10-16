@@ -114,11 +114,13 @@ public final class ByteBlockPool implements Accountable {
 
   /** index into the buffers array pointing to the current buffer used as the head */
   private int bufferUpto = -1; // Which buffer we are upto
+
   /** Where we are in head buffer */
   public int byteUpto = BYTE_BLOCK_SIZE;
 
   /** Current head buffer */
   public byte[] buffer;
+
   /** Current head offset */
   public int byteOffset = -BYTE_BLOCK_SIZE;
 

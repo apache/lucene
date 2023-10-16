@@ -756,6 +756,7 @@ public final class MoreLikeThis {
     }
     return createQueue(field2termFreqMap);
   }
+
   /**
    * Adds terms and frequencies found in vector into the Map termFreqMap
    *

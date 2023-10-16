@@ -61,6 +61,7 @@ public abstract class FunctionValues {
   public double doubleVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
   }
+
   // TODO: should we make a termVal, returns BytesRef?
   public String strVal(int doc) throws IOException {
     throw new UnsupportedOperationException();
