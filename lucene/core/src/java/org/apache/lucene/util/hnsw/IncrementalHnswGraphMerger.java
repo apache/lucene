@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene95;
+package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
@@ -33,10 +33,6 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.hnsw.HnswGraph;
-import org.apache.lucene.util.hnsw.HnswGraphBuilder;
-import org.apache.lucene.util.hnsw.InitializedHnswGraphBuilder;
-import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
  * This selects the biggest Hnsw graph from the provided merge state and initializes a new
@@ -76,7 +72,7 @@ public class IncrementalHnswGraphMerger {
    * @return this
    * @throws IOException If an error occurs while reading from the merge state
    */
-  IncrementalHnswGraphMerger addReader(
+  public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
     KnnVectorsReader currKnnVectorsReader = reader;
     if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
