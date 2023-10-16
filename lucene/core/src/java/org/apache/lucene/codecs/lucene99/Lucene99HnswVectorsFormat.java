@@ -135,6 +135,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * numbers here will use an inordinate amount of heap
    */
   private static final int MAXIMUM_MAX_CONN = 512;
+
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
 
@@ -144,6 +145,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    * 3200`
    */
   private static final int MAXIMUM_BEAM_WIDTH = 3200;
+
   /**
    * Default number of the size of the queue maintained while searching during a graph construction.
    */
