@@ -26,7 +26,7 @@ import org.apache.lucene.util.BitSet;
  * This creates a graph builder that is initialized with the provided HnswGraph. This is useful for
  * merging HnswGraphs from multiple segments.
  *
- * @lucene.internal
+ * @lucene.experimental
  */
 public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
 
@@ -38,7 +38,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param beamWidth the number of nodes to explore in the search
    * @param seed the seed for the random number generator
    * @param initializerGraph the graph to initialize the new graph builder
-   * @param newOrdOffset the offset to add to the ord of each node in the initializerGraph
+   * @param newOrdMap a mapping from the old node ordinal to the new node ordinal
    * @param initializedNodes a bitset of nodes that are already initialized in the initializerGraph
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
@@ -49,7 +49,7 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       int beamWidth,
       long seed,
       HnswGraph initializerGraph,
-      int newOrdOffset,
+      int[] newOrdMap,
       BitSet initializedNodes)
       throws IOException {
     OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M);
@@ -57,14 +57,14 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
       while (it.hasNext()) {
         int oldOrd = it.nextInt();
-        int newOrd = oldOrd + newOrdOffset;
+        int newOrd = newOrdMap[oldOrd];
         hnsw.addNode(level, newOrd);
         NeighborArray newNeighbors = hnsw.getNeighbors(level, newOrd);
         initializerGraph.seek(level, oldOrd);
         for (int oldNeighbor = initializerGraph.nextNeighbor();
             oldNeighbor != NO_MORE_DOCS;
             oldNeighbor = initializerGraph.nextNeighbor()) {
-          int newNeighbor = oldNeighbor + newOrdOffset;
+          int newNeighbor = newOrdMap[oldNeighbor];
           // we will compute these scores later when we need to pop out the non-diverse nodes
           newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
         }

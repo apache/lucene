@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene95;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -30,6 +31,8 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.InitializedHnswGraphBuilder;
@@ -38,6 +41,8 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 /**
  * This selects the biggest Hnsw graph from the provided merge state and initializes a new
  * HnswGraphBuilder with that graph as a starting point.
+ *
+ * @lucene.experimental
  */
 public class IncrementalHnswGraphMerger {
 
@@ -122,11 +127,8 @@ public class IncrementalHnswGraphMerger {
     }
 
     HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-    int ordBaseline = getNewOrdOffset(mergeState);
-    BitSet initializedNodes =
-        BitSet.of(
-            DocIdSetIterator.range(ordBaseline, initGraphSize + ordBaseline),
-            mergeState.segmentInfo.maxDoc() + 1);
+    BitSet initializedNodes = new FixedBitSet(mergeState.segmentInfo.maxDoc() + 1);
+    int[] ordBaseline = getNewOrdOffset(mergeState, initializedNodes);
     return InitializedHnswGraphBuilder.fromGraph(
         scorerSupplier,
         M,
@@ -137,21 +139,31 @@ public class IncrementalHnswGraphMerger {
         initializedNodes);
   }
 
-  private int getNewOrdOffset(MergeState mergeState) throws IOException {
-    final DocIdSetIterator initializerIterator =
-        switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> initReader.getByteVectorValues(fieldInfo.name);
-          case FLOAT32 -> initReader.getFloatVectorValues(fieldInfo.name);
-        };
+  private int[] getNewOrdOffset(MergeState mergeState, BitSet initializedNodes) throws IOException {
+    DocIdSetIterator initializerIterator = null;
 
-    // minDoc is just the first doc in the main segment containing our graph
-    // we don't need to worry about deleted documents as deletions are not allowed when selecting
-    // the best graph
-    int minDoc = initializerIterator.nextDoc();
-    if (minDoc == NO_MORE_DOCS) {
-      return -1;
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name);
+      case FLOAT32 -> initializerIterator = initReader.getFloatVectorValues(fieldInfo.name);
     }
-    minDoc = initDocMap.get(minDoc);
+
+    Map<Integer, Integer> newIdToOldOrdinal = CollectionUtil.newHashMap(initGraphSize);
+    int oldOrd = 0;
+    int maxNewDocID = -1;
+    for (int oldId = initializerIterator.nextDoc();
+        oldId != NO_MORE_DOCS;
+        oldId = initializerIterator.nextDoc()) {
+      int newId = initDocMap.get(oldId);
+      maxNewDocID = Math.max(newId, maxNewDocID);
+      newIdToOldOrdinal.put(newId, oldOrd);
+      oldOrd++;
+    }
+
+    if (maxNewDocID == -1) {
+      return new int[0];
+    }
+
+    int[] oldToNewOrdinalMap = new int[initGraphSize];
 
     DocIdSetIterator vectorIterator = null;
     switch (fieldInfo.getVectorEncoding()) {
@@ -161,17 +173,17 @@ public class IncrementalHnswGraphMerger {
           KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
     }
 
-    // Since there are no deleted documents in our chosen segment, we can assume that the ordinals
-    // are unchanged
-    // meaning we only need to know what ordinal offset to select and apply it
-    int ordBaseline = 0;
+    int newOrd = 0;
     for (int newDocId = vectorIterator.nextDoc();
-        newDocId < minDoc;
+        newDocId <= maxNewDocID;
         newDocId = vectorIterator.nextDoc()) {
-      ordBaseline++;
+      if (newIdToOldOrdinal.containsKey(newDocId)) {
+        initializedNodes.set(newOrd);
+        oldToNewOrdinalMap[newIdToOldOrdinal.get(newDocId)] = newOrd;
+      }
+      newOrd++;
     }
-
-    return ordBaseline;
+    return oldToNewOrdinalMap;
   }
 
   private static boolean allMatch(Bits bits) {

@@ -47,6 +47,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -57,6 +58,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -129,6 +131,73 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       case FLOAT32 -> RandomVectorScorer.createFloats(
           (RandomAccessVectorValues<float[]>) vectorsCopy, similarityFunction, (float[]) query);
     };
+  }
+
+  // Tests writing segments of various sizes and merging to ensure there are no errors
+  // in the HNSW graph merging logic.
+  public void testRandomReadWriteAndMerge() throws IOException {
+    int dim = random().nextInt(100) + 1;
+    int[] segmentSizes =
+        new int[] {random().nextInt(20) + 1, random().nextInt(10) + 30, random().nextInt(10) + 20};
+    // Randomly delete vector documents
+    boolean[] addDeletes =
+        new boolean[] {random().nextBoolean(), random().nextBoolean(), random().nextBoolean()};
+    // randomly index other documents besides vector docs
+    boolean[] isSparse =
+        new boolean[] {random().nextBoolean(), random().nextBoolean(), random().nextBoolean()};
+    int numVectors = segmentSizes[0] + segmentSizes[1] + segmentSizes[2];
+    int M = random().nextInt(4) + 2;
+    int beamWidth = random().nextInt(10) + 5;
+    long seed = random().nextLong();
+    AbstractMockVectorValues<T> vectors = vectorValues(numVectors, dim);
+    HnswGraphBuilder.randSeed = seed;
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  new Lucene95Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene95HnswVectorsFormat(M, beamWidth);
+                    }
+                  })
+              // set a random merge policy
+              .setMergePolicy(newMergePolicy(random()));
+      try (IndexWriter iw = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < segmentSizes.length; i++) {
+          int size = segmentSizes[i];
+          while (vectors.nextDoc() < size) {
+            if (isSparse[i] && random().nextBoolean()) {
+              int d = random().nextInt(10) + 1;
+              for (int j = 0; j < d; j++) {
+                Document doc = new Document();
+                iw.addDocument(doc);
+              }
+            }
+            Document doc = new Document();
+            doc.add(knnVectorField("field", vectors.vectorValue(), similarityFunction));
+            doc.add(new StringField("id", Integer.toString(vectors.docID()), Field.Store.NO));
+            iw.addDocument(doc);
+          }
+          iw.commit();
+          if (addDeletes[i] && size > 1) {
+            for (int d = 0; d < size; d += random().nextInt(5) + 1) {
+              iw.deleteDocuments(new Term("id", Integer.toString(d)));
+            }
+            iw.commit();
+          }
+        }
+        iw.commit();
+        iw.forceMerge(1);
+      }
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          AbstractMockVectorValues<T> values = vectorValues(ctx.reader(), "field");
+          assertEquals(dim, values.dimension());
+        }
+      }
+    }
   }
 
   // test writing out and reading in a graph gives the expected graph
@@ -539,6 +608,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     AbstractMockVectorValues<T> finalVectorValues =
         vectorValues(totalSize, dim, initializerVectors, docIdOffset);
+    int[] initializerOrdMap =
+        createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
 
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
@@ -548,7 +619,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             30,
             seed,
             initializerGraph,
-            docIdOffset,
+            initializerOrdMap,
             BitSet.of(
                 DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1));
 
@@ -574,6 +645,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     AbstractMockVectorValues<T> finalVectorValues =
         vectorValues(totalSize, dim, initializerVectors.copy(), docIdOffset);
+    int[] initializerOrdMap =
+        createOffsetOrdinalMap(initializerSize, finalVectorValues, docIdOffset);
 
     RandomVectorScorerSupplier finalscorerSupplier = buildScorerSupplier(finalVectorValues);
     HnswGraphBuilder finalBuilder =
@@ -583,7 +656,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             30,
             seed,
             initializerGraph,
-            docIdOffset,
+            initializerOrdMap,
             BitSet.of(
                 DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1));
 
@@ -660,6 +733,26 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
     Arrays.sort(mappedA);
     return mappedA;
+  }
+
+  private int[] createOffsetOrdinalMap(
+      int docIdSize, AbstractMockVectorValues<T> totalVectorValues, int docIdOffset) {
+    // Compute the offset for the ordinal map to be the number of non-null vectors in the total
+    // vector values
+    // before the docIdOffset
+    int ordinalOffset = 0;
+    while (totalVectorValues.nextDoc() < docIdOffset) {
+      ordinalOffset++;
+    }
+    int[] offsetOrdinalMap = new int[docIdSize];
+
+    for (int curr = 0;
+        totalVectorValues.docID() < docIdOffset + docIdSize;
+        totalVectorValues.nextDoc()) {
+      offsetOrdinalMap[curr] = ordinalOffset + curr++;
+    }
+
+    return offsetOrdinalMap;
   }
 
   @SuppressWarnings("unchecked")
