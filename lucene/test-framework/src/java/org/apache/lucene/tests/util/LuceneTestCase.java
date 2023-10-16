@@ -107,49 +107,8 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.BinaryDocValues;
-import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.CompositeReader;
-import org.apache.lucene.index.ConcurrentMergeScheduler;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.LiveIndexWriterConfig;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
-import org.apache.lucene.index.LogDocMergePolicy;
-import org.apache.lucene.index.LogMergePolicy;
-import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.MergeScheduler;
-import org.apache.lucene.index.MultiBits;
-import org.apache.lucene.index.MultiDocValues;
-import org.apache.lucene.index.MultiTerms;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.ParallelCompositeReader;
-import org.apache.lucene.index.ParallelLeafReader;
-import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.QueryTimeout;
-import org.apache.lucene.index.SerialMergeScheduler;
-import org.apache.lucene.index.SimpleMergedSegmentWarmer;
-import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.index.TermVectors;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.index.*;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
-import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -923,6 +882,13 @@ public abstract class LuceneTestCase extends Assert {
   public static void dumpArray(String label, Object[] objs, PrintStream stream) {
     Iterator<?> iter = (null == objs) ? null : Arrays.asList(objs).iterator();
     dumpIterator(label, iter, stream);
+  }
+
+  /** create a new index writer config with a snapshot deletion policy */
+  public static IndexWriterConfig newSnapshotIndexWriterConfig(Analyzer analyzer) {
+    IndexWriterConfig c = newIndexWriterConfig(analyzer);
+    c.setIndexDeletionPolicy(new SnapshotDeletionPolicy(NoDeletionPolicy.INSTANCE));
+    return c;
   }
 
   /** create a new index writer config with random defaults */

@@ -1996,6 +1996,41 @@ public class TestIndexWriter extends LuceneTestCase {
     dir.close();
   }
 
+  @Test
+  public void testGetCommitDataFromOldSnapshot() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null));
+    writer.setLiveCommitData(
+            new HashMap<String, String>() {
+              {
+                put("key", "value");
+              }
+            }.entrySet());
+    assertEquals("value", getLiveCommitData(writer).get("key"));
+    writer.commit();
+    // Snapshot this commit to open later
+    IndexCommit indexCommit = ((SnapshotDeletionPolicy) writer.getConfig().getIndexDeletionPolicy()).snapshot();
+    writer.close();
+
+    // Modify the commit data and commit on close so the most recent commit data is different
+    writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null));
+    writer.setLiveCommitData(
+            new HashMap<String, String>() {
+              {
+                put("key", "value2");
+              }
+            }.entrySet());
+    assertEquals("value2", getLiveCommitData(writer).get("key"));
+    writer.close();
+
+    // validate that when opening writer from older snapshotted index commit, the old commit data is visible
+    writer = new IndexWriter(dir, newSnapshotIndexWriterConfig(null).setOpenMode(OpenMode.APPEND).setIndexCommit(indexCommit));
+    assertEquals("value", getLiveCommitData(writer).get("key"));
+    writer.close();
+
+    dir.close();
+  }
+
   public void testNullAnalyzer() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwConf = newIndexWriterConfig(null);
