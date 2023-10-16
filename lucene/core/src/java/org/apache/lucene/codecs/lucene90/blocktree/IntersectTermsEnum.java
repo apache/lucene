@@ -30,9 +30,7 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.Transition;
 import org.apache.lucene.util.automaton.TransitionAccessor;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.Outputs;
 
 /**
  * This is used to implement efficient {@link Terms#intersect} for block-tree. Note that it cannot
@@ -185,7 +183,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     assert currentFrame.suffix > 0;
 
     BytesRef output = f.floorDataReaderBytes;
-    output.length = output.offset = 0;
+    output.length = 0;
     SegmentTermsEnum.appendArc(output, currentFrame.outputPrefix);
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;

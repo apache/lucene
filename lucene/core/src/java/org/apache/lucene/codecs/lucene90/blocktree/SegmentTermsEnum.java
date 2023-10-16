@@ -35,7 +35,8 @@ import org.apache.lucene.util.fst.Util;
 /** Iterates through terms in this field. */
 final class SegmentTermsEnum extends BaseTermsEnum {
 
-  static final int OUT_PUT_INIT_LEN = 16;
+  // Most VLong need less than 8 bytes
+  static final int OUT_PUT_INIT_LEN = 8;
   // Lazy init:
   IndexInput in;
 
@@ -347,7 +348,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc;
     int targetUpto;
     BytesRef output = outputScratch;
-    output.offset = output.length = 0;
+    output.length = 0;
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -628,7 +629,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc;
     int targetUpto;
     BytesRef output = outputScratch;
-    output.offset = output.length = 0;
+    output.length = 0;
 
     targetBeforeCurrentLength = currentFrame.ord;
 
@@ -880,6 +881,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   static void appendArc(BytesRef output, BytesRef arc) {
     assert output.offset == 0;
     assert output.bytes.length >= OUT_PUT_INIT_LEN;
+    // TODO: This should be wrapped by {@link org.apache.lucene.util.fst.Outputs} interface
     if (arc == Lucene90BlockTreeTermsReader.NO_OUTPUT) {
       return;
     }
@@ -888,7 +890,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     final int outputLen = output.length;
     final int newLen = arcLen + outputLen;
     if (outputBytes.length < newLen) {
-      output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, newLen);
+      output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, ArrayUtil.oversize(newLen, 1));
     }
     System.arraycopy(arc.bytes, arc.offset, outputBytes, outputLen, arcLen);
     output.length = newLen;
