@@ -1630,7 +1630,7 @@ public class TestBKD extends LuceneTestCase {
         IllegalStateException.class,
         () -> {
           try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-            w.writeField(out, out, out, "test_field_name", reader, -1);
+            w.writeField(out, out, out, "test_field_name", reader);
           } finally {
             w.close();
             dir.close();
@@ -1749,7 +1749,7 @@ public class TestBKD extends LuceneTestCase {
           expectThrows(
               IllegalStateException.class,
               () -> {
-                w.writeField(out, out, out, "", val, -1);
+                w.writeField(out, out, out, "", val);
               });
       assertEquals(
           "totalPointCount=10 was passed when we were created, but we just hit 11 values",

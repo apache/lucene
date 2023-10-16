@@ -211,7 +211,7 @@ class PointValuesWriter {
 
               @Override
               public int getDocCount() {
-                return getNumDocs();
+                throw new UnsupportedOperationException();
               }
             };
           }
@@ -224,6 +224,7 @@ class PointValuesWriter {
           @Override
           public void close() {}
         };
+    writer.setDocCount(getNumDocs());
     writer.writeField(fieldInfo, reader);
   }
 
