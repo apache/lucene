@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.codecs.lucene90.radomaccess;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -22,6 +22,9 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
+import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
 import org.apache.lucene.codecs.lucene90.radomaccess.Lucene90RandomAccessTermsReader;
 import org.apache.lucene.codecs.lucene90.radomaccess.Lucene90RandomAccessTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
