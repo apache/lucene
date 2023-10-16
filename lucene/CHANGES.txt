@@ -164,6 +164,16 @@ Improvements
 * GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
   order to simplify consumer's code (Luca Cavanna)
 
+* GITHUB#12676: Improve logging of vector support if vector module was enabled but Java version
+  is too old. It also logs partial vectorization support if old CPU or disabled AVX.
+  (Uwe Schindler, Robert Muir)
+
+* GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
+  (Uwe Schindler)
+
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
+  and test improvements. (Uwe Schindler, Robert Muir)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
