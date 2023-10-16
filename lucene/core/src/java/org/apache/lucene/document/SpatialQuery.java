@@ -59,6 +59,7 @@ import org.apache.lucene.util.FixedBitSet;
 abstract class SpatialQuery extends Query {
   /** field name */
   final String field;
+
   /**
    * query relation disjoint: {@link QueryRelation#DISJOINT}, intersects: {@link
    * QueryRelation#INTERSECTS}, within: {@link QueryRelation#DISJOINT}, contains: {@link

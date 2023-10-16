@@ -33,8 +33,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 public final class PhoneticFilter extends TokenFilter {
   /** true if encoded tokens should be added as synonyms */
   protected boolean inject = true;
+
   /** phonetic encoder */
   protected Encoder encoder = null;
+
   /** captured state, non-null when <code>inject=true</code> and a token is buffered */
   protected State save = null;
 

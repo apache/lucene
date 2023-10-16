@@ -151,6 +151,7 @@ public final class StemmerOverrideFilter extends TokenFilter {
       return matchOutput;
     }
   }
+
   /** This builder builds an {@link FST} for the {@link StemmerOverrideFilter} */
   public static class Builder {
     private final BytesRefHash hash = new BytesRefHash();

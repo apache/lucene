@@ -57,10 +57,13 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene90FieldsIndex";
 
