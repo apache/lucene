@@ -72,7 +72,7 @@ public class IndexToFST {
       System.exit(1);
     }
     
-    int suffixHashSize = Integer.parseInt(args[1]);
+    long suffixHashSizeLimit = Long.parseLong(args[1]);
     
     try (Directory dir = FSDirectory.open(Paths.get(args[0]));
          IndexReader r = DirectoryReader.open(dir)) {
@@ -83,11 +83,7 @@ public class IndexToFST {
 
       Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
       FSTCompiler.Builder<Long> builder = new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs);
-      if (suffixHashSize == 0) {
-        builder.suffixHashSize(suffixHashSize);
-      } else {
-        builder.suffixHashSize(suffixHashSize);
-      }
+      builder.suffixHashSizeLimit(suffixHashSizeLimit);
 
       FSTCompiler<Long> fstBuilder = builder.build();
 

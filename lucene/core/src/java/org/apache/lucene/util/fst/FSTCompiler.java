@@ -124,12 +124,13 @@ public class FSTCompiler<T> {
    * tuning and tweaking, see {@link Builder}.
    */
   public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
+    // nocommit what default for suffix hash size?
     this(inputType, 16384, outputs, true, 15, 1f);
   }
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
-      int suffixHashSize, // pass 0 to disable suffix compression/trie; must be power of two
+      long suffixHashSizeLimit, // pass 0 to disable suffix compression/trie; must be power of two
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
@@ -139,8 +140,8 @@ public class FSTCompiler<T> {
     fst = new FST<>(inputType, outputs, bytesPageBits);
     bytes = fst.bytes;
     assert bytes != null;
-    if (suffixHashSize > 0) {
-      dedupHash = new NodeHash<>(fst, suffixHashSize, bytes.getReverseReader(false));
+    if (suffixHashSizeLimit > 0) {
+      dedupHash = new NodeHash<>(fst, suffixHashSizeLimit, bytes.getReverseReader(false));
     } else {
       dedupHash = null;
     }
@@ -164,7 +165,8 @@ public class FSTCompiler<T> {
 
     private final INPUT_TYPE inputType;
     private final Outputs<T> outputs;
-    private int suffixHashSize = 16384;
+    // nocommit what default?
+    private long suffixHashSizeLimit = 16384;
     private boolean allowFixedLengthArcs = true;
     private int bytesPageBits = 15;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
@@ -189,8 +191,8 @@ public class FSTCompiler<T> {
      *
      * <p>Default = {@code 16384}.
      */
-    public Builder<T> suffixHashSize(int suffixHashSize) {
-      this.suffixHashSize = suffixHashSize;
+    public Builder<T> suffixHashSizeLimit(long suffixHashSizeLimit) {
+      this.suffixHashSizeLimit = suffixHashSizeLimit;
       return this;
     }
 
@@ -242,7 +244,7 @@ public class FSTCompiler<T> {
       FSTCompiler<T> fstCompiler =
           new FSTCompiler<>(
               inputType,
-              suffixHashSize,
+              suffixHashSizeLimit,
               outputs,
               allowFixedLengthArcs,
               bytesPageBits,
