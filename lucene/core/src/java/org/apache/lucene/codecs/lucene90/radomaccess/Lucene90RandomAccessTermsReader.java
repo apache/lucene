@@ -22,7 +22,7 @@ import java.util.Iterator;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.index.Terms;
 
-public class Lucene90RandomAccessTermsReader extends FieldsProducer {
+class Lucene90RandomAccessTermsReader extends FieldsProducer {
   @Override
   public void close() throws IOException {}
 

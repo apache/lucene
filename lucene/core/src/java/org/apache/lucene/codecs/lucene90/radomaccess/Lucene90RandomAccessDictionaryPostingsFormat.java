@@ -25,8 +25,6 @@ import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PostingsWriter;
-import org.apache.lucene.codecs.lucene90.radomaccess.Lucene90RandomAccessTermsReader;
-import org.apache.lucene.codecs.lucene90.radomaccess.Lucene90RandomAccessTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
@@ -36,14 +34,14 @@ import org.apache.lucene.util.IOUtils;
  *
  * @lucene.experimental
  */
-public final class Lucene90RandomAcessDictionaryPostingsFormat extends PostingsFormat {
+public final class Lucene90RandomAccessDictionaryPostingsFormat extends PostingsFormat {
 
   // Increment version to change it
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
-  /** Creates {@code Lucene90RandomAcessDictionaryPostingsFormat} */
-  public Lucene90RandomAcessDictionaryPostingsFormat() {
+  /** Creates {@code Lucene90RandomAccessDictionaryPostingsFormat} */
+  public Lucene90RandomAccessDictionaryPostingsFormat() {
     super("Lucene90RandomAccess");
   }
 

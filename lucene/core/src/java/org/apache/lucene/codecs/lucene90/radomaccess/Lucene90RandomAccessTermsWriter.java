@@ -21,7 +21,7 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.Fields;
 
-public class Lucene90RandomAccessTermsWriter extends FieldsConsumer {
+class Lucene90RandomAccessTermsWriter extends FieldsConsumer {
   @Override
   public void write(Fields fields, NormsProducer norms) throws IOException {}
 
