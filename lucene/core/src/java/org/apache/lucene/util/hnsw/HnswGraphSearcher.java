@@ -286,10 +286,7 @@ public class HnswGraphSearcher {
   }
 
   private static int getGraphSize(HnswGraph graph) {
-    if (graph instanceof OnHeapHnswGraph) {
-      return ((OnHeapHnswGraph) graph).capacity();
-    }
-    return graph.size();
+    return graph.maxNodeId() + 1;
   }
 
   /**

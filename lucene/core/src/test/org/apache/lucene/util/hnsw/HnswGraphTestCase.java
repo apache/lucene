@@ -195,7 +195,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
-  // test that sorted index returns the same search results are unsorted
+  // test that sorted index returns the same search results as unsorted
   public void testSortedAndUnsortedIndicesReturnSameResults() throws IOException {
     int dim = random().nextInt(10) + 3;
     int nDoc = random().nextInt(200) + 100;
@@ -486,7 +486,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
     // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, finalBuilder.getGraph());
-    assertEquals(finalVectorValues.size(), finalBuilder.getGraph().capacity());
 
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
     assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
@@ -522,7 +521,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             finalVectorValues.size());
 
     assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
-    assertEquals(finalVectorValues.size(), finalBuilder.getGraph().capacity());
 
     // Confirm that the graph is appropriately constructed by checking that the nodes in the old
     // graph are present in the levels of the new graph
@@ -552,15 +550,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // new ordinal mapping
     assertEquals("the number of nodes in the graphs are different!", initializer.size(), g.size());
 
-    // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
-    for (int level = 1; level < g.numLevels(); level++) {
-      List<Integer> nodesOnLevel = sortedNodesOnLevel(g, level);
-      List<Integer> nodesOnLevel2 =
-          sortedNodesOnLevel(initializer, level).stream().map(oldToNewOrdMap::get).toList();
-      assertEquals(nodesOnLevel, nodesOnLevel2);
-    }
-
-    // assert that the neighbors from the old graph are successfully transferred to the new graph
+    // assert that all the node from initializer graph can be found in the new graph and
+    // the neighbors from the old graph are successfully transferred to the new graph
     for (int level = 0; level < g.numLevels(); level++) {
       NodesIterator nodesOnLevel = initializer.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {

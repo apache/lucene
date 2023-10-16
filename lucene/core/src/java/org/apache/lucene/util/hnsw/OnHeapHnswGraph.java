@@ -51,6 +51,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int
       nonZeroLevelSize; // total number of NeighborArrays created that is not on level 0, for now it
   // is only used to account memory usage
+  private int maxNodeId;
   private final int nsize; // neighbour array size at non-zero level
   private final int nsize0; // neighbour array size at zero level
   private final boolean
@@ -65,13 +66,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    *
    * @param numNodes number of nodes that will be added to this graph, passing in -1 means unbounded
    *     while passing in a non-negative value will lock the whole graph and disable the graph from
-   *     growth itself (you cannot add a node with has id >= numNodes)
+   *     growing itself (you cannot add a node with has id >= numNodes)
    */
   OnHeapHnswGraph(int M, int numNodes) {
     this.numLevels = 1; // Implicitly start the graph with a single level
     this.entryNode = -1; // Entry node should be negative until a node is added
     // Neighbours' size on upper levels (nsize) and level 0 (nsize0)
     // We allocate extra space for neighbours, but then prune them to keep allowed maximum
+    this.maxNodeId = -1;
     this.nsize = M + 1;
     this.nsize0 = (M * 2 + 1);
     noGrowth = numNodes != -1;
@@ -88,7 +90,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
    */
   public NeighborArray getNeighbors(int level, int node) {
-    assert graph.length > node && graph[node] != null && graph[node][level] != null;
+    assert graph[node][level] != null;
     return graph[node][level];
   }
 
@@ -98,21 +100,21 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   /**
-   * When we initialize from another graph, the capacity, which is length of internal buffer of
-   * graph, is different from {@link #size()}, which is number of nodes already inserted, such that
-   * we need two method to retrieve each
+   * When we initialize from another graph, the max node id is different from {@link #size()},
+   * because we will add nodes out of order, such that we need two method for each
    *
-   * @return length of internal representation of graph
+   * @return max node id (inclusive)
    */
-  public int capacity() {
-    return graph.length;
+  @Override
+  public int maxNodeId() {
+    return maxNodeId;
   }
 
   /**
    * Add node on the given level. Nodes can be inserted out of order, but it requires that the nodes
    * preceded by the node inserted out of order are eventually added.
    *
-   * <p>NOTE: You must add a node from the node's top level
+   * <p>NOTE: You must add a node starting from the node's top level
    *
    * @param level level to add a node on
    * @param node the node to add, represented as an ordinal on the level 0.
@@ -124,8 +126,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
 
     if (node >= graph.length) {
       if (noGrowth) {
-        throw new AssertionError(
-            "The graph does not expect to growth when an initial size is given");
+        throw new IllegalStateException(
+            "The graph does not expect to grow when an initial size is given");
       }
       graph = ArrayUtil.grow(graph, node + 1);
     }
@@ -148,6 +150,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph[node][level] = new NeighborArray(nsize, true);
       nonZeroLevelSize++;
     }
+    maxNodeId = Math.max(maxNodeId, node);
   }
 
   @Override
@@ -198,6 +201,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public NodesIterator getNodesOnLevel(int level) {
+    if (size() != maxNodeId() + 1) {
+      throw new IllegalStateException(
+          "graph build not complete, size=" + size() + " maxNodeId=" + maxNodeId());
+    }
     if (level == 0) {
       return new ArrayNodesIterator(size());
     } else {
