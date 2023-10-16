@@ -194,10 +194,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * changed only the first non-zero level call will pay the cost. So it is highly NOT recommended
    * to call this method while the graph is still building.
    *
-   * <p>NOTE: if the node is not inserted in order (e.g. we're init'd from another graph) such that
-   * there are some node in middle are not inserted. (e.g. the largest node inserted is 10 but node
-   * 5 is not yet inserted) Calling getNodesOnLevel(0) will lead to a wrong behavior because it is a
-   * simple iterating over range(size) TODO: maybe we should fix the above behavior?
+   * <p>NOTE: calling this method while the graph is still building is prohibited
    */
   @Override
   public NodesIterator getNodesOnLevel(int level) {
