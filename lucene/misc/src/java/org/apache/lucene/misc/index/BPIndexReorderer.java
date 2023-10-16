@@ -74,7 +74,9 @@ import org.apache.lucene.util.OfflineSorter.BufferSize;
  *
  * Directory targetDir = FSDirectory.open(targetPath);
  * BPIndexReorderer reorderer = new BPIndexReorderer();
- * reorderer.setForkJoinPool(ForkJoinPool.commonPool());
+ * ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors(),
+ *     p -&gt; new ForkJoinWorkerThread(p) {}, null, false);
+ * reorderer.setForkJoinPool(pool);
  * reorderer.setFields(Collections.singleton("body"));
  * CodecReader reorderedReaderView = reorderer.reorder(SlowCodecReaderWrapper.wrap(reader), targetDir);
  * try (IndexWriter w = new IndexWriter(targetDir, new IndexWriterConfig().setOpenMode(OpenMode.CREATE))) {
@@ -291,9 +293,7 @@ public final class BPIndexReorderer {
       int[] leftDocFreqs = state.leftDocFreqs;
       int[] rightDocFreqs = state.rightDocFreqs;
 
-      Arrays.fill(leftDocFreqs, 0);
       computeDocFreqs(left, forwardIndex, leftDocFreqs);
-      Arrays.fill(rightDocFreqs, 0);
       computeDocFreqs(right, forwardIndex, rightDocFreqs);
 
       for (int iter = 0; iter < maxIters; ++iter) {
@@ -677,7 +677,7 @@ public final class BPIndexReorderer {
               }
 
               @Override
-              public int compare(BytesRef o1, BytesRef o2) {
+              public int compare(BytesRef o1, BytesRef o2, int k) {
                 assert o1.length == 2 * Integer.BYTES;
                 assert o2.length == 2 * Integer.BYTES;
                 return ArrayUtil.compareUnsigned8(o1.bytes, o1.offset, o2.bytes, o2.offset);
@@ -919,7 +919,7 @@ public final class BPIndexReorderer {
   }
 
   /** An approximate log() function in base 2 which trades accuracy for much better performance. */
-  static final float fastLog2(int i) {
+  static float fastLog2(int i) {
     assert i > 0 : "Cannot compute log of i=" + i;
     // floorLog2 would be the exponent in the float representation of i
     int floorLog2 = 31 - Integer.numberOfLeadingZeros(i);

@@ -57,6 +57,7 @@ public abstract class SpatialOperation implements Serializable {
           return indexedShape.getBoundingBox().relate(queryShape).intersects();
         }
       };
+
   /** Bounding box of the *indexed* shape, then {@link #IsWithin}. */
   public static final SpatialOperation BBoxWithin =
       new SpatialOperation("BBoxWithin") {
@@ -70,6 +71,7 @@ public abstract class SpatialOperation implements Serializable {
           return bbox.relate(queryShape) == SpatialRelation.WITHIN || bbox.equals(queryShape);
         }
       };
+
   /** Meets the "Covers" OGC definition (boundary-neutral). */
   public static final SpatialOperation Contains =
       new SpatialOperation("Contains") {
@@ -83,6 +85,7 @@ public abstract class SpatialOperation implements Serializable {
               || indexedShape.equals(queryShape);
         }
       };
+
   /** Meets the "Intersects" OGC definition. */
   public static final SpatialOperation Intersects =
       new SpatialOperation("Intersects") {
@@ -91,6 +94,7 @@ public abstract class SpatialOperation implements Serializable {
           return indexedShape.relate(queryShape).intersects();
         }
       };
+
   /** Meets the "Equals" OGC definition. */
   public static final SpatialOperation IsEqualTo =
       new SpatialOperation("Equals") {
@@ -103,6 +107,7 @@ public abstract class SpatialOperation implements Serializable {
           return indexedShape.equals(queryShape);
         }
       };
+
   /** Meets the "Disjoint" OGC definition. */
   public static final SpatialOperation IsDisjointTo =
       new SpatialOperation("Disjoint") {
@@ -115,6 +120,7 @@ public abstract class SpatialOperation implements Serializable {
           return !indexedShape.relate(queryShape).intersects();
         }
       };
+
   /** Meets the "CoveredBy" OGC definition (boundary-neutral). */
   public static final SpatialOperation IsWithin =
       new SpatialOperation("Within") {
@@ -129,6 +135,7 @@ public abstract class SpatialOperation implements Serializable {
               || indexedShape.equals(queryShape);
         }
       };
+
   /** Almost meets the "Overlaps" OGC definition, but boundary-neutral (boundary==interior). */
   public static final SpatialOperation Overlaps =
       new SpatialOperation("Overlaps") {

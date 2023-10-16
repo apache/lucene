@@ -1158,7 +1158,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                .setRAMBufferSizeMB(0.1f)
+                .setRAMBufferSizeMB(0.5f)
                 .setMaxBufferedDocs(1000)
                 .setMergePolicy(NoMergePolicy.INSTANCE)
                 .setReaderPooling(false));

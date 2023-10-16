@@ -33,8 +33,10 @@ package org.apache.lucene.geo;
 public final class Circle extends LatLonGeometry {
   /** Center latitude */
   private final double lat;
+
   /** Center longitude */
   private final double lon;
+
   /** radius in meters */
   private final double radiusMeters;
 

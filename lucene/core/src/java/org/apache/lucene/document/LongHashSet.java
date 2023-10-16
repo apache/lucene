@@ -35,8 +35,10 @@ final class LongHashSet implements Accountable {
   final int mask;
   final boolean hasMissingValue;
   final int size;
+
   /** minimum value in the set, or Long.MAX_VALUE for an empty set */
   final long minValue;
+
   /** maximum value in the set, or Long.MIN_VALUE for an empty set */
   final long maxValue;
 

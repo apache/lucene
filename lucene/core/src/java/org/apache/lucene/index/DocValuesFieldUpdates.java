@@ -115,6 +115,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
         }
       };
     }
+
     /** Wraps the given iterator as a NumericDocValues instance. */
     static NumericDocValues asNumericDocValues(Iterator iterator) {
       return new NumericDocValues() {

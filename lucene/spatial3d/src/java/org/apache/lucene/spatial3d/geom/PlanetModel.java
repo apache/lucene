@@ -44,32 +44,45 @@ public class PlanetModel implements SerializableObject {
   // instead.
   /** Semi-major axis */
   public final double a;
+
   /** Semi-minor axis */
   public final double b;
+
   /** The x/y scaling factor */
   public final double xyScaling;
+
   /** The z scaling factor */
   public final double zScaling;
+
   /** The inverse of xyScaling */
   public final double inverseXYScaling;
+
   /** The inverse of zScaling */
   public final double inverseZScaling;
+
   /** The square of the inverse of xyScaling */
   public final double inverseXYScalingSquared;
+
   /** The square of the inverse of zScaling */
   public final double inverseZScalingSquared;
+
   /** The scaled flattening value */
   public final double scaledFlattening;
+
   /** The square ratio */
   public final double squareRatio;
+
   /** The mean radius of the planet */
   // Computed as (2a + b) / 3 from: "Geodetic Reference System 1980" by H. Moritz
   // ftp://athena.fsv.cvut.cz/ZFG/grs80-Moritz.pdf
   public final double meanRadius;
+
   /** The scale of the planet */
   public final double scale;
+
   /** The inverse of scale */
   public final double inverseScale;
+
   /** The mean radius of the planet model */
 
   // We do NOT include radius, because all computations in geo3d are in radians, not meters.
@@ -78,32 +91,44 @@ public class PlanetModel implements SerializableObject {
 
   /** North pole */
   public final GeoPoint NORTH_POLE;
+
   /** South pole */
   public final GeoPoint SOUTH_POLE;
+
   /** Min X pole */
   public final GeoPoint MIN_X_POLE;
+
   /** Max X pole */
   public final GeoPoint MAX_X_POLE;
+
   /** Min Y pole */
   public final GeoPoint MIN_Y_POLE;
+
   /** Max Y pole */
   public final GeoPoint MAX_Y_POLE;
+
   /** Minimum surface distance between poles */
   public final double minimumPoleDistance;
 
   // ENCODING / DECODING CONSTANTS
   /** bit space for integer encoding */
   private static final int BITS = 32;
+
   /** maximum magnitude value for *this* planet model */
   public final double MAX_VALUE;
+
   /** numeric space (buckets) for mapping double values into integer range */
   private final double MUL;
+
   /** scalar value used to decode from integer back into double space */
   public final double DECODE;
+
   /** Max encoded value */
   public final int MAX_ENCODED_VALUE;
+
   /** Min encoded value */
   public final int MIN_ENCODED_VALUE;
+
   /** utility class used to encode/decode from lat/lon (decimal degrees) into doc value integers */
   public final DocValueEncoder docValueEncoder;
 

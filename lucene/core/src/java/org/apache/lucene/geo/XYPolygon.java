@@ -31,12 +31,16 @@ public final class XYPolygon extends XYGeometry {
 
   /** minimum x of this polygon's bounding box area */
   public final float minX;
+
   /** maximum x of this polygon's bounding box area */
   public final float maxX;
+
   /** minimum y of this polygon's bounding box area */
   public final float minY;
+
   /** maximum y of this polygon's bounding box area */
   public final float maxY;
+
   /** winding order of the vertices */
   private final GeoUtils.WindingOrder windingOrder;
 

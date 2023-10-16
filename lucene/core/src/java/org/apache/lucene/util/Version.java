@@ -105,9 +105,16 @@ public final class Version {
   /**
    * Match settings and bugs in Lucene's 9.8.0 release.
    *
-   * @deprecated Use latest
+   * @deprecated (9.9.0) Use latest
    */
   @Deprecated public static final Version LUCENE_9_8_0 = new Version(9, 8, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 9.9.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_9_9_0 = new Version(9, 9, 0);
 
   /**
    * Match settings and bugs in Lucene's 10.0.0 release.
@@ -303,10 +310,13 @@ public final class Version {
 
   /** Major version, the difference between stable and trunk */
   public final int major;
+
   /** Minor version, incremented within the stable branch */
   public final int minor;
+
   /** Bugfix number, incremented on release branches */
   public final int bugfix;
+
   /** Prerelease version, currently 0 (alpha), 1 (beta), or 2 (final) */
   public final int prerelease;
 
