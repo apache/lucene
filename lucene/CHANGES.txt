@@ -71,6 +71,8 @@ Optimizations
 
 * GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
   (Adrien Grand)
+  
+* GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
 Changes in runtime behavior
 ---------------------

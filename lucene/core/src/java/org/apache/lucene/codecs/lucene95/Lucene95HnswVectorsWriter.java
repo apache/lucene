@@ -459,7 +459,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                     bytesValues, fieldInfo.getVectorSimilarityFunction());
             HnswGraphBuilder bytesGraphBuilder =
                 createHnswGraphBuilder(
-                    mergeState, fieldInfo, scorerBytesSupplier, initializerIndex);
+                    mergeState,
+                    fieldInfo,
+                    scorerBytesSupplier,
+                    initializerIndex,
+                    bytesValues.size());
             bytesGraphBuilder.setInfoStream(segmentWriteState.infoStream);
             graph = bytesGraphBuilder.build(bytesValues.size());
             break;
@@ -475,7 +479,8 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                 RandomVectorScorerSupplier.createFloats(
                     vectorValues, fieldInfo.getVectorSimilarityFunction());
             HnswGraphBuilder hnswGraphBuilder =
-                createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+                createHnswGraphBuilder(
+                    mergeState, fieldInfo, scorerSupplier, initializerIndex, vectorValues.size());
             hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
             graph = hnswGraphBuilder.build(vectorValues.size());
             break;
@@ -510,10 +515,12 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       MergeState mergeState,
       FieldInfo fieldInfo,
       RandomVectorScorerSupplier scorerSupplier,
-      int initializerIndex)
+      int initializerIndex,
+      int graphSize)
       throws IOException {
     if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+      return HnswGraphBuilder.create(
+          scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, graphSize);
     }
 
     HnswGraph initializerGraph =
@@ -521,7 +528,13 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     Map<Integer, Integer> ordinalMapper =
         getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
     return HnswGraphBuilder.create(
-        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
+        scorerSupplier,
+        M,
+        beamWidth,
+        HnswGraphBuilder.randSeed,
+        initializerGraph,
+        ordinalMapper,
+        graphSize);
   }
 
   private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
