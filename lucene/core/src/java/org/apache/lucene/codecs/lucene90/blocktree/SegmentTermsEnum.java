@@ -631,8 +631,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc;
     int targetUpto;
 
-    accumulator.reset();
     targetBeforeCurrentLength = currentFrame.ord;
+    accumulator.reset();
 
     if (currentFrame != staticFrame) {
 

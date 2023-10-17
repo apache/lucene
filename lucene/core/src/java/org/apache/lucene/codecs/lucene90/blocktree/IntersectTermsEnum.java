@@ -185,7 +185,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     assert currentFrame.suffix > 0;
 
     accumulator.reset();
-    ;
     accumulator.push(arc.output());
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
