@@ -19,6 +19,7 @@ permissions:
 jobs:
   test:
     name: Run distribution tests
+    timeout-minutes: 15
 
     runs-on: ${{ matrix.os }}
     strategy:
