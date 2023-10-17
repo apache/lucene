@@ -51,7 +51,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
   private final OutputAccumulator accumulator = new OutputAccumulator();
-  private final ByteArrayDataInput scratchReader = new ByteArrayDataInput();
 
   // What prefix of the current term was present in the index; when we only next() through the
   // index, this stays at 0.  It's only set when
