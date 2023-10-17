@@ -70,7 +70,13 @@ public class HnswGraphBuilder {
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, -1);
+  }
+
+  public static HnswGraphBuilder create(
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
+      throws IOException {
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize);
   }
 
   /**
@@ -83,11 +89,12 @@ public class HnswGraphBuilder {
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
+   * @param graphSize size of graph, if unknown, pass in -1
    */
   protected HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
       throws IOException {
-    this(scorerSupplier, M, beamWidth, seed, new OnHeapHnswGraph(M));
+    this(scorerSupplier, M, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
   }
 
   /**
@@ -248,7 +255,7 @@ public class HnswGraphBuilder {
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      assert cNode < hnsw.size();
+      assert cNode <= hnsw.maxNodeId();
       if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }

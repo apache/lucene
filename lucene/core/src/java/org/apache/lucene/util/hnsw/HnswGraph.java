@@ -67,6 +67,11 @@ public abstract class HnswGraph {
   /** Returns the number of nodes in the graph */
   public abstract int size();
 
+  /** Returns max node id, inclusive, normally this value will be size - 1 */
+  public int maxNodeId() {
+    return size() - 1;
+  }
+
   /**
    * Iterates over the neighbor list. It is illegal to call this method after it returns
    * NO_MORE_DOCS without calling {@link #seek(int, int)}, which resets the iterator.
