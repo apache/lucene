@@ -35,6 +35,7 @@ public final class XYPoint extends XYGeometry {
 
   /** latitude coordinate */
   private final float x;
+
   /** longitude coordinate */
   private final float y;
 

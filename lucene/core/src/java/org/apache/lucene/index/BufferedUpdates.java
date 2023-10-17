@@ -221,6 +221,7 @@ class BufferedUpdates implements Accountable {
     }
 
     void clear() {
+      pool.reset(false, false);
       bytesUsed.addAndGet(-bytesUsed.get());
       deleteTerms.clear();
       termsSize = 0;
@@ -271,11 +272,17 @@ class BufferedUpdates implements Accountable {
       }
     }
 
+    /** Visible for testing. */
+    ByteBlockPool getPool() {
+      return pool;
+    }
+
     @Override
     public long ramBytesUsed() {
       return bytesUsed.get();
     }
 
+    /** Used for {@link BufferedUpdates#VERBOSE_DELETES}. */
     @Override
     public String toString() {
       return keySet().stream()

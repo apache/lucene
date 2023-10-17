@@ -149,9 +149,7 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] sort() {
     final int[] compact = compact();
-    new StringMSBRadixSorter() {
-
-      BytesRef scratch = new BytesRef();
+    new StringSorter(BytesRefComparator.NATURAL) {
 
       @Override
       protected void swap(int i, int j) {
@@ -161,9 +159,8 @@ public final class BytesRefHash implements Accountable {
       }
 
       @Override
-      protected BytesRef get(int i) {
-        pool.setBytesRef(scratch, bytesStart[compact[i]]);
-        return scratch;
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        pool.setBytesRef(result, bytesStart[compact[i]]);
       }
     }.sort(0, count);
     return compact;

@@ -40,8 +40,9 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final DocIdSetIterator lead;
   private final DocAndScore scorable = new DocAndScore();
   private final double[] sumOfOtherClauses;
+  private final int maxDoc;
 
-  BlockMaxConjunctionBulkScorer(List<Scorer> scorers) throws IOException {
+  BlockMaxConjunctionBulkScorer(int maxDoc, List<Scorer> scorers) throws IOException {
     if (scorers.size() <= 1) {
       throw new IllegalArgumentException("Expected 2 or more scorers, got " + scorers.size());
     }
@@ -51,6 +52,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
     lead = iterators[0];
     this.sumOfOtherClauses = new double[this.scorers.length];
+    this.maxDoc = maxDoc;
   }
 
   @Override
@@ -79,7 +81,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       windowMin = Math.max(lead.docID(), windowMax + 1);
     }
 
-    return windowMin;
+    return windowMin >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : windowMin;
   }
 
   private void scoreWindow(
@@ -115,7 +117,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       for (int i = 1; i < iterators.length; ++i) {
         // First check if we have a chance of having a match
         if (hasMinCompetitiveScore
-            && MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length)
+            && (float) MathUtil.sumUpperBound(currentScore + sumOfOtherClauses[i], scorers.length)
                 < scorable.minCompetitiveScore) {
           doc = lead.nextDoc();
           continue advanceHead;

@@ -29,10 +29,13 @@ public abstract class ICUTokenizerConfig {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   public ICUTokenizerConfig() {}
+
   /** Return a breakiterator capable of processing a given script. */
   public abstract RuleBasedBreakIterator getBreakIterator(int script);
+
   /** Return a token type value for a given script and BreakIterator rule status. */
   public abstract String getType(int script, int ruleStatus);
+
   /** true if Han, Hiragana, and Katakana scripts should all be returned as Japanese */
   public abstract boolean combineCJ();
 }

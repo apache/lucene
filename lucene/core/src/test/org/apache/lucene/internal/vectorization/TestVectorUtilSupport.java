@@ -17,6 +17,7 @@
 package org.apache.lucene.internal.vectorization;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.util.Arrays;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.IntStream;
@@ -57,6 +58,35 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     var b = new byte[size];
     random().nextBytes(a);
     random().nextBytes(b);
+    assertIntReturningProviders(p -> p.dotProduct(a, b));
+    assertIntReturningProviders(p -> p.squareDistance(a, b));
+    assertFloatReturningProviders(p -> p.cosine(a, b));
+  }
+
+  public void testBinaryVectorsBoundaries() {
+    var a = new byte[size];
+    var b = new byte[size];
+
+    Arrays.fill(a, Byte.MIN_VALUE);
+    Arrays.fill(b, Byte.MIN_VALUE);
+    assertIntReturningProviders(p -> p.dotProduct(a, b));
+    assertIntReturningProviders(p -> p.squareDistance(a, b));
+    assertFloatReturningProviders(p -> p.cosine(a, b));
+
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    assertIntReturningProviders(p -> p.dotProduct(a, b));
+    assertIntReturningProviders(p -> p.squareDistance(a, b));
+    assertFloatReturningProviders(p -> p.cosine(a, b));
+
+    Arrays.fill(a, Byte.MIN_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    assertIntReturningProviders(p -> p.dotProduct(a, b));
+    assertIntReturningProviders(p -> p.squareDistance(a, b));
+    assertFloatReturningProviders(p -> p.cosine(a, b));
+
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MIN_VALUE);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));

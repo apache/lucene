@@ -17,11 +17,14 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -50,55 +53,59 @@ public class TestTaskExecutor extends LuceneTestCase {
 
   public void testUnwrapIOExceptionFromExecutionException() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new IOException("io exception");
-            });
     IOException ioException =
         expectThrows(
-            IOException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            IOException.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new IOException("io exception");
+                        })));
     assertEquals("io exception", ioException.getMessage());
   }
 
   public void testUnwrapRuntimeExceptionFromExecutionException() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new RuntimeException("runtime");
-            });
     RuntimeException runtimeException =
         expectThrows(
-            RuntimeException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            RuntimeException.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new RuntimeException("runtime");
+                        })));
     assertEquals("runtime", runtimeException.getMessage());
     assertNull(runtimeException.getCause());
   }
 
   public void testUnwrapErrorFromExecutionException() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new OutOfMemoryError("oom");
-            });
     OutOfMemoryError outOfMemoryError =
         expectThrows(
-            OutOfMemoryError.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            OutOfMemoryError.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new OutOfMemoryError("oom");
+                        })));
     assertEquals("oom", outOfMemoryError.getMessage());
     assertNull(outOfMemoryError.getCause());
   }
 
   public void testUnwrappedExceptions() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    TaskExecutor.Task<?> task =
-        taskExecutor.createTask(
-            () -> {
-              throw new Exception("exc");
-            });
     RuntimeException runtimeException =
         expectThrows(
-            RuntimeException.class, () -> taskExecutor.invokeAll(Collections.singletonList(task)));
+            RuntimeException.class,
+            () ->
+                taskExecutor.invokeAll(
+                    Collections.singletonList(
+                        () -> {
+                          throw new Exception("exc");
+                        })));
     assertEquals("exc", runtimeException.getCause().getMessage());
   }
 
@@ -128,21 +135,18 @@ public class TestTaskExecutor extends LuceneTestCase {
                     return new LeafCollector() {
                       @Override
                       public void setScorer(Scorable scorer) throws IOException {
-                        TaskExecutor.Task<Void> task =
-                            searcher
-                                .getTaskExecutor()
-                                .createTask(
+                        searcher
+                            .getTaskExecutor()
+                            .invokeAll(
+                                Collections.singletonList(
                                     () -> {
                                       // make sure that we don't miss disabling concurrency one
                                       // level deeper
-                                      TaskExecutor.Task<Object> anotherTask =
-                                          searcher.getTaskExecutor().createTask(() -> null);
                                       searcher
                                           .getTaskExecutor()
-                                          .invokeAll(Collections.singletonList(anotherTask));
+                                          .invokeAll(Collections.singletonList(() -> null));
                                       return null;
-                                    });
-                        searcher.getTaskExecutor().invokeAll(Collections.singletonList(task));
+                                    }));
                       }
 
                       @Override
@@ -197,9 +201,9 @@ public class TestTaskExecutor extends LuceneTestCase {
                         // TaskExecutor, the safeguard is shared among all the searchers that get
                         // the same executor
                         IndexSearcher indexSearcher = new IndexSearcher(reader, executorService);
-                        TaskExecutor.Task<Void> task =
-                            indexSearcher.getTaskExecutor().createTask(() -> null);
-                        searcher.getTaskExecutor().invokeAll(Collections.singletonList(task));
+                        indexSearcher
+                            .getTaskExecutor()
+                            .invokeAll(Collections.singletonList(() -> null));
                       }
 
                       @Override
@@ -221,5 +225,64 @@ public class TestTaskExecutor extends LuceneTestCase {
             });
       }
     }
+  }
+
+  public void testInvokeAllDoesNotLeaveTasksBehind() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    AtomicInteger tasksExecuted = new AtomicInteger(0);
+    List<Callable<Void>> callables = new ArrayList<>();
+    callables.add(
+        () -> {
+          throw new RuntimeException();
+        });
+    int tasksWithNormalExit = 99;
+    for (int i = 0; i < tasksWithNormalExit; i++) {
+      callables.add(
+          () -> {
+            tasksExecuted.incrementAndGet();
+            return null;
+          });
+    }
+    expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
+    assertEquals(tasksWithNormalExit, tasksExecuted.get());
+  }
+
+  /**
+   * Ensures that all invokeAll catches all exceptions thrown by Callables and adds subsequent ones
+   * as suppressed exceptions to the first one caught.
+   */
+  public void testInvokeAllCatchesMultipleExceptions() {
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    AtomicInteger tasksExecuted = new AtomicInteger(0);
+    List<Callable<Void>> callables = new ArrayList<>();
+    callables.add(
+        () -> {
+          throw new RuntimeException("exception A");
+        });
+    int tasksWithNormalExit = 50;
+    for (int i = 0; i < tasksWithNormalExit; i++) {
+      callables.add(
+          () -> {
+            tasksExecuted.incrementAndGet();
+            return null;
+          });
+    }
+    callables.add(
+        () -> {
+          throw new IllegalStateException("exception B");
+        });
+
+    RuntimeException exc =
+        expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
+    Throwable[] suppressed = exc.getSuppressed();
+    assertEquals(1, suppressed.length);
+    if (exc.getMessage().equals("exception A")) {
+      assertEquals("exception B", suppressed[0].getMessage());
+    } else {
+      assertEquals("exception A", suppressed[0].getMessage());
+      assertEquals("exception B", exc.getMessage());
+    }
+
+    assertEquals(tasksWithNormalExit, tasksExecuted.get());
   }
 }
