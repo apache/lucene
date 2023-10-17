@@ -24,7 +24,12 @@ class MockVectorValues extends AbstractMockVectorValues<float[]> {
   private final float[] scratch;
 
   static MockVectorValues fromValues(float[][] values) {
-    int dimension = values[0].length;
+    float[] firstNonNull = null;
+    int j = 0;
+    while (firstNonNull == null && j < values.length) {
+      firstNonNull = values[j++];
+    }
+    int dimension = firstNonNull.length;
     int maxDoc = values.length;
     float[][] denseValues = new float[maxDoc][];
     int count = 0;
