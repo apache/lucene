@@ -84,6 +84,9 @@ import org.apache.lucene.util.fst.FST.BytesReader;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
 import org.apache.lucene.util.fst.Util.Result;
 
+// nocommit make random test that gives random suffixHashRAMLmitMB, and sometimes Double.POSITIVE_INFINITY too
+
+
 @SuppressCodecs({"SimpleText", "Direct"})
 public class TestFSTs extends LuceneTestCase {
 

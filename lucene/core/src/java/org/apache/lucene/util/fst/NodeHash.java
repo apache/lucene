@@ -32,17 +32,18 @@ import org.apache.lucene.util.packed.PackedInts;;
 // TODO: couldn't we prune natrually babck until we see a transition with an output?  it's highly unlikely (mostly impossible) such suffixes
 // can be shared?
 
-// nocommit: switch to growable packed thingy to store the double-barrel hash?
-
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
+
+  // nocommit
+  private static final boolean DO_PRINT_HASH_RAM = true;
 
   // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then we move it to fallback
   private PagedGrowableHash primaryTable;
 
   // how many nodes are allowed to store in both primary and fallback tables; when primary gets full (tableSizeLimit/2), we move it to the
   // fallback table
-  private final long tableSizeLimit;
+  private final long ramLimitBytes;
 
   // fallback table.  if we fallback and find the frozen node here, we promote it to primary table, for a simplistic and lowish-RAM-overhead
   // (compared to e.g. LinkedHashMap) LRU behaviour
@@ -52,21 +53,21 @@ final class NodeHash<T> {
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   private final FST.BytesReader in;
 
-  // nocommit just make huge tableSizeLimit to get minimality ... since it grows on demand, that's safe
-  // nocommit hmm should i take a ramMBLimit instead of count limit?  much more intuitive to user...
-  
-  /** If tableSizeLimit is -1, we hold all node suffixes in the hash, and the FST is purely minimal.  If it's 0, we don't hash anything and the
-   *  FST shares no suffixes.  If it's > 0, we create a simple LRU cache and the FST is "somewhat" minimal, moreso the larger the tableSizeLimit. */
-  public NodeHash(FST<T> fst, long tableSizeLimit, FST.BytesReader in) {
-    if (tableSizeLimit < 4) {
-      // 2 is a power of 2, but does not work because the rehash logic (at 2/3 capacity) becomes over-quantized, and the hash
-      // table becomes 100% full before moving to fallback, and then looking up an entry in 100% full hash table spins forever
-      throw new IllegalArgumentException("tableSizeLimit must be at least 4; got: " + tableSizeLimit);
+  /** ramLimitMB is the max RAM we can use for recording suffixes. If we hit this limit, the least recently used suffixes are discarded, and
+   *  the FST is no longer minimalI.  Still, larger ramLimitMB will make the FST smaller (closer to minimal). */
+  public NodeHash(FST<T> fst, double ramLimitMB, FST.BytesReader in) {
+    if (ramLimitMB <= 0) {
+      throw new IllegalArgumentException("ramLimitMB must be > 0; got: " + ramLimitMB);
     }
-    // nocommit should i insist specific limits (power of 2?) for most efficient RAM usage?  we want to push primary to fallback just before a rehash would
-    // have occurred?
+    double asBytes = ramLimitMB * 1024 * 1024;
+    if (asBytes >= Long.MAX_VALUE) {
+      // quietly truncate to Long.MAX_VALUE in bytes too
+      ramLimitBytes = Long.MAX_VALUE;
+    } else {
+      ramLimitBytes = (long) asBytes;
+    }
+    
     primaryTable = new PagedGrowableHash();
-    this.tableSizeLimit = tableSizeLimit;
     this.fst = fst;
     this.in = in;
   }
@@ -113,7 +114,6 @@ final class NodeHash<T> {
         if (node != 0) {
           // it was already in fallback -- promote to primary
           primaryTable.set(pos, node);
-          // System.out.println("promote; count=" + primaryTable.count);
         } else {
           // not in fallback either -- freeze & add the incoming node
         
@@ -127,17 +127,44 @@ final class NodeHash<T> {
           assert hash(node) == hash : "mismatch frozenHash=" + hash(node) + " vs hash=" + hash;
 
           primaryTable.set(pos, node);
-          // System.out.println("add not promote; count=" + primaryTable.count);
         }
 
-        if (primaryTable.count >= tableSizeLimit / 2) {
-          // primary table is now too big -- swap to fallback table
-          // nocommit -- when we do this, just allocate primary table to full hash size?  why pay cost of all the rehashing over and over?
-          System.out.println("now fallback at count=" + primaryTable.count);
-          fallbackTable = primaryTable;
-          primaryTable = new PagedGrowableHash(node, primaryTable.entries.size());
-          long ramBytesUsed = fallbackTable.entries.ramBytesUsed() + primaryTable.entries.ramBytesUsed();;
-          System.out.println("RAM: " + ramBytesUsed + " bytes");
+        if (primaryTable.count > primaryTable.entries.size() * (3f / 4)) {
+          // rehash at 3/4 occupancy
+
+          // NOTE that this is still not perfect, e.g. if we are able to rehash, but then bpv increases for newly inserted nodes into the
+          // primary hash), then the primary hash can use more than 2X its current RAM
+          
+          long ramUsedAfterRehash = 2 * primaryTable.entries.ramBytesUsed();
+          if (fallbackTable != null) {
+            ramUsedAfterRehash += fallbackTable.entries.ramBytesUsed();
+          } else {
+            // when primary becomes fallback after this pending rehash, both will use this much RAM: (because on fallback we size the
+            // new primary to 1/2 of the current primary)
+            ramUsedAfterRehash += 0.5 * primaryTable.entries.ramBytesUsed();;
+          }
+          System.out.println("if we were to rehash from ram=" + primaryTable.entries.ramBytesUsed() + ": " + String.format(Locale.ROOT, "%.1f", (ramUsedAfterRehash / 1024. / 1024.)));
+          if (ramUsedAfterRehash >= ramLimitBytes) {
+            // rehashing will just immediately force fallback, so we just fallback now instead
+            fallbackTable = primaryTable;
+            // make the new primary table half sized to stay under the alloted RAM budget since fallbackTable will grow in RAM mb, even at
+            // fixed size, since bpv is increasing as node addresses get bigger
+            primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()/2));
+
+            long estNumBytesPrimary = primaryTable.entries.size() * PackedInts.bitsRequired(node) / 8;
+            
+            System.out.println("fallback: RAM " + (fallbackTable.entries.ramBytesUsed() + estNumBytesPrimary));
+          } else {
+            // we still have room to grow, so we rehash the primary table and do not drop any LRU entries, yet
+            primaryTable.rehash(node);
+            if (DO_PRINT_HASH_RAM) {
+              long ramUsed = primaryTable.entries.ramBytesUsed();
+              if (fallbackTable != null) {
+                ramUsed += fallbackTable.entries.ramBytesUsed();
+              }
+              System.out.println("rehash: RAM " + ramUsed + " bytes");
+            }
+          }
         }
 
         return node;
@@ -258,16 +285,18 @@ final class NodeHash<T> {
     private long count;
     private long mask;
 
+    // nocommi this used to be 1 << 27, which seems too big -- all values in a block must use the same bpv?
+    // 256K blocks, but note that the final block is sized only as needed so it won't use the full block size when just a few elements were
+    // written to it
+    private static final int BLOCK_SIZE_BYTES = 1 << 18;
+
     public PagedGrowableHash() {
-      // nocommit should we reduce this 1 << 27 page size!?
-      // allocate initially to store 16 elements, with page size 1 << 27 (128 MB!?), with 8 bits per value
-      // nocommit this allocates a small block as the final block, but, what is the reallocation strategy as we append values beyond the end?
-      entries = new PagedGrowableWriter(16, 1 << 27, 8, PackedInts.COMPACT);
+      entries = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
       mask = 15;
     }
 
     public PagedGrowableHash(long lastNodeAddress, long size) {
-      entries = new PagedGrowableWriter(size, 1 << 27, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
+      entries = new PagedGrowableWriter(size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
       mask = size - 1;
       assert (mask % size) == 0;
     }
@@ -279,20 +308,18 @@ final class NodeHash<T> {
     public void set(long index, long pointer) throws IOException {
       entries.set(index, pointer);
       count++;
-      if (count > entries.size() * (2f / 3)) {
-        // rehash at 2/3 occupancy
-        rehash(pointer);
-      }
     }
 
     private void rehash(long lastNodeAddress) throws IOException {
       // double hash table size on each rehash
       PagedGrowableWriter newEntries = new PagedGrowableWriter(
                                                                2 * entries.size(),
-                                                               1 << 27,
+                                                               BLOCK_SIZE_BYTES,
                                                                PackedInts.bitsRequired(lastNodeAddress),
                                                                PackedInts.COMPACT);
-      System.out.println("rehash primary to " + newEntries.size() + " entries");
+      if (DO_PRINT_HASH_RAM) {
+        System.out.println("rehash primary to " + newEntries.size() + " entries");
+      }
                          
       long newMask = newEntries.size() - 1;
       for (long idx = 0; idx < entries.size(); idx++) {
@@ -314,11 +341,6 @@ final class NodeHash<T> {
 
       mask = newMask;
       entries = newEntries;
-      long ramBytesUsed = entries.ramBytesUsed();
-      if (fallbackTable != null) {
-        ramBytesUsed += fallbackTable.entries.ramBytesUsed();
-      }
-      System.out.println("RAM: " + ramBytesUsed + " bytes");
     }
   }
 }

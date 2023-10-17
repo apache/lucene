@@ -5,7 +5,7 @@ import subprocess
 import re
 import pickle
 
-size = 4
+ram_mb = 4
 
 print('Build jars...')
 subprocess.check_call(['./gradlew', 'jar'])
@@ -17,8 +17,8 @@ results = []
 
 while True:
 
-  print(f'\nTest size={size}')
-  stdout = subprocess.check_output(f'java -cp .:lucene/core/build/libs/lucene-core-10.0.0-SNAPSHOT.jar IndexToFST /l/indices/wikimediumall.trunk.facets.taxonomy:Date.taxonomy:Month.taxonomy:DayOfYear.taxonomy:RandomLabel.taxonomy.sortedset:Date.sortedset:Month.sortedset:DayOfYear.sortedset:RandomLabel.sortedset.Lucene90.Lucene90.dvfields.nd33.3326M/index {size}', shell=True)
+  print(f'\nTest ram_mb={ram_mb}')
+  stdout = subprocess.check_output(f'java -cp .:lucene/core/build/libs/lucene-core-10.0.0-SNAPSHOT.jar IndexToFST /l/indices/wikimediumall.trunk.facets.taxonomy:Date.taxonomy:Month.taxonomy:DayOfYear.taxonomy:RandomLabel.taxonomy.sortedset:Date.sortedset:Month.sortedset:DayOfYear.sortedset:RandomLabel.sortedset.Lucene90.Lucene90.dvfields.nd33.3326M/index {ram_mb}', shell=True)
 
   stdout = stdout.decode('utf-8')
   
@@ -26,21 +26,26 @@ while True:
   fst_mb = int(m.group(1))/1024/1024
   fst_build_sec = float(m.group(2))
 
-  ram_mb = int(re.findall('^RAM: (\d+) bytes$', stdout, re.MULTILINE)[-1])/1024/1024
+  actual_ram_mb = 0
+  
+  for s in re.findall('RAM (\d+) bytes$', stdout, re.MULTILINE):
+    actual_ram_mb = max(actual_ram_mb, int(s) / 1024 / 1024)
 
-  print(f'{size}: {ram_mb:.2f} MB, {fst_build_sec:.3f} sec')
+  if actual_ram_mb > ram_mb:
+    print(f'WARNING: ram_mb={ram_mb} but actual_ram_mb={actual_ram_mb}')
+    
+  print(f'{ram_mb}: {actual_ram_mb:.2f} MB, {fst_build_sec:.3f} sec')
   fst_build_sec = float(fst_build_sec)
 
-  results.append((size, fst_mb, fst_build_sec, ram_mb))
+  results.append((ram_mb, fst_mb, fst_build_sec, actual_ram_mb))
 
   pickle.dump(results, open('results.pk', 'wb'))
 
-  print(f'hash_size,fst_mb,fst_build_sec,ram_mb')
-  for size, fst_mb, fst_build_sec, ram_mb in results:
-    print(f'{size},{fst_mb:.3f},{fst_build_sec:.3f},{ram_mb:.3f}')
+  print(f'ram_mb,fst_mb,fst_build_sec,actual_ram_mb')
+  for ram_mb, fst_mb, fst_build_sec, actual_ram_mb in results:
+    print(f'{ram_mb},{fst_mb:.3f},{fst_build_sec:.3f},{actual_ram_mb:.3f}')
 
-  # don't test beyond 1 B
-  if size == 1073741824:
+  if ram_mb > 256:
     break
 
-  size *= 2
+  ram_mb += 4
