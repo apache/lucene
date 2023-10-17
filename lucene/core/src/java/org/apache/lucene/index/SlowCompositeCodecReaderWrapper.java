@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -95,6 +96,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     liveDocs = MultiBits.getLiveDocs(multiReader);
   }
 
+  private int docIdToReaderId(int doc) {
+    Objects.checkIndex(doc, docStarts[docStarts.length - 1]);
+    int readerId = Arrays.binarySearch(docStarts, doc);
+    if (readerId < 0) {
+      readerId = -2 - readerId;
+    }
+    return readerId;
+  }
+
   @Override
   public StoredFieldsReader getFieldsReader() {
     StoredFieldsReader[] readers =
@@ -143,10 +153,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-      int readerId = Arrays.binarySearch(docStarts, docID);
-      if (readerId < 0) {
-        readerId = -2 - readerId;
-      }
+      int readerId = docIdToReaderId(docID);
       readers[readerId].document(
           docID - docStarts[readerId],
           new StoredFieldVisitor() {
@@ -198,7 +205,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     return new SlowCompositeTermVectorsReaderWrapper(readers, docStarts);
   }
 
-  private static class SlowCompositeTermVectorsReaderWrapper extends TermVectorsReader {
+  private class SlowCompositeTermVectorsReaderWrapper extends TermVectorsReader {
 
     private final TermVectorsReader[] readers;
     private final int[] docStarts;
@@ -231,10 +238,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public Fields get(int doc) throws IOException {
-      int readerId = Arrays.binarySearch(docStarts, doc);
-      if (readerId < 0) {
-        readerId = -2 - readerId;
-      }
+      int readerId = docIdToReaderId(doc);
       TermVectorsReader reader = readers[readerId];
       if (reader == null) {
         return null;
@@ -589,13 +593,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     @Override
     public PointValues getValues(String field) throws IOException {
       List<PointValuesSub> values = new ArrayList<>();
-      int i = 0;
-      for (CodecReader reader : codecReaders) {
-        PointValues v = reader.getPointValues(field);
-        if (v != null) {
+      for (int i = 0; i < readers.length; ++i) {
+        FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);
+        if (fi.getPointDimensionCount() > 0) {
+          PointValues v = readers[i].getValues(field);
           values.add(new PointValuesSub(v, docStarts[i]));
         }
-        i++;
       }
       if (values.isEmpty()) {
         return null;
@@ -977,6 +980,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
   @Override
   public synchronized int numDocs() {
+    // Compute the number of docs lazily, in case some leaves need to recompute it the first time it
+    // is called, see BaseCompositeReader#numDocs.
     if (numDocs == -1) {
       numDocs = 0;
       for (CodecReader reader : codecReaders) {

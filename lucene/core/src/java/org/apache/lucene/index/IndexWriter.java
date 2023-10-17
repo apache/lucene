@@ -5156,13 +5156,13 @@ public class IndexWriter
           int docBase = 0;
           int i = 0;
           for (CodecReader reader : mergeReaders) {
-            final int finalDocBase = docBase;
+            final int currentDocBase = docBase;
             reorderDocMaps[i] =
                 new MergeState.DocMap() {
                   @Override
                   public int get(int docID) {
                     Objects.checkIndex(docID, reader.maxDoc());
-                    return docMap.oldToNew(finalDocBase + docID);
+                    return docMap.oldToNew(currentDocBase + docID);
                   }
                 };
             i++;
@@ -5186,6 +5186,9 @@ public class IndexWriter
       if (reorderDocMaps == null) {
         docMaps = mergeState.docMaps;
       } else {
+        // Since the reader was reordered, we passed a merged view to MergeState and from its
+        // perspective there is a single input segment to the merge and the
+        // SlowCompositeCodecReaderWrapper is effectively doing the merge.
         assert mergeState.docMaps.length == 1;
         MergeState.DocMap compactionDocMap = mergeState.docMaps[0];
         docMaps = new MergeState.DocMap[reorderDocMaps.length];
