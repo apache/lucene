@@ -214,6 +214,8 @@ Bug Fixes
 
 * GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
 
+* GITHUB#12682: Scorer should sum up scores into a double. (Shubham Chaudhary)
+
 Build
 ---------------------
 
