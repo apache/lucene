@@ -137,6 +137,7 @@ final class IntersectTermsEnumFrame {
       transition.max = -1;
     }
   }
+
   void load(BytesRef frameIndexData) throws IOException {
     floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
     load(ite.fr.readVLongOutput(floorDataReader));

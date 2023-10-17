@@ -65,7 +65,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private BytesRef savedStartTerm;
 
-  private final SegmentTermsEnum.OutputAccumulator accumulator = new SegmentTermsEnum.OutputAccumulator();
+  private final SegmentTermsEnum.OutputAccumulator accumulator =
+      new SegmentTermsEnum.OutputAccumulator();
 
   // TODO: in some cases we can filter by length?  eg
   // regexp foo*bar must be at least length 6 bytes
@@ -183,7 +184,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
 
-    accumulator.reset();;
+    accumulator.reset();
+    ;
     accumulator.push(arc.output());
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;

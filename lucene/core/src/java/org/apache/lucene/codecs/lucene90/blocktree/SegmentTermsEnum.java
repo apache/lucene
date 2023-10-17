@@ -18,8 +18,6 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Arrays;
-
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
@@ -35,9 +33,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Util;
 
-/**
- * Iterates through terms in this field.
- */
+/** Iterates through terms in this field. */
 final class SegmentTermsEnum extends BaseTermsEnum {
 
   static final int OUT_PUT_INIT_LEN = 32;
@@ -122,9 +118,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
   }
 
-  /**
-   * Runs next() through the entire terms dict, computing aggregate statistics.
-   */
+  /** Runs next() through the entire terms dict, computing aggregate statistics. */
   public Stats computeBlockStats() throws IOException {
 
     Stats stats = new Stats(fr.parent.segment, fr.fieldInfo.name);
@@ -229,7 +223,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   private FST.Arc<BytesRef> getArc(int ord) {
     if (ord >= arcs.length) {
-      @SuppressWarnings({"rawtypes", "unchecked"}) final FST.Arc<BytesRef>[] next =
+      @SuppressWarnings({"rawtypes", "unchecked"})
+      final FST.Arc<BytesRef>[] next =
           new FST.Arc[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(arcs, 0, next, 0, arcs.length);
       for (int arcOrd = arcs.length; arcOrd < next.length; arcOrd++) {
@@ -402,9 +397,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = arcs[1 + targetUpto];
         assert arc.label() == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "arc.label="
-            + (char) arc.label()
-            + " targetLabel="
-            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+                + (char) arc.label()
+                + " targetLabel="
+                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
         accumulator.push(arc.output());
 
         if (arc.isFinal()) {
@@ -680,9 +675,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = arcs[1 + targetUpto];
         assert arc.label() == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "arc.label="
-            + (char) arc.label()
-            + " targetLabel="
-            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+                + (char) arc.label()
+                + " targetLabel="
+                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
         accumulator.push(arc.output());
         if (arc.isFinal()) {
@@ -933,8 +928,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.isFloor
                   + " code="
                   + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+                      + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+                      + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
                   + " isLastInFloor="
                   + f.isLastInFloor
                   + " mdUpto="
@@ -963,8 +958,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.isFloor
                   + " code="
                   + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+                      + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+                      + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
                   + " lastSubFP="
                   + f.lastSubFP
                   + " isLastInFloor="
@@ -1204,10 +1199,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   static class OutputAccumulator extends DataInput {
 
-    /**
-     * We could have at most 10 no-empty arcs: 9 for vLong and 1 for floor data.
-     */
+    /** We could have at most 10 no-empty arcs: 9 for vLong and 1 for floor data. */
     private static final int MAX_ARC = 10;
+
     BytesRef[] outputs = new BytesRef[MAX_ARC];
     BytesRef current;
     int num = 0;
@@ -1225,7 +1219,11 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
 
     void setFloorData(BytesRef floorData) {
-      assert outputIndex == num - 1 : "floor data should be stored in last arc, get outputIndex: " + outputIndex + ", num: " + num;
+      assert outputIndex == num - 1
+          : "floor data should be stored in last arc, get outputIndex: "
+              + outputIndex
+              + ", num: "
+              + num;
       BytesRef output = outputs[outputIndex];
       floorData.bytes = output.bytes;
       floorData.length = output.length - index;
