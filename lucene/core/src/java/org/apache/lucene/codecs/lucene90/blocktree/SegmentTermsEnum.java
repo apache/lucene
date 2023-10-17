@@ -18,12 +18,15 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Arrays;
+
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -32,7 +35,9 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.fst.FST;
 import org.apache.lucene.util.fst.Util;
 
-/** Iterates through terms in this field. */
+/**
+ * Iterates through terms in this field.
+ */
 final class SegmentTermsEnum extends BaseTermsEnum {
 
   static final int OUT_PUT_INIT_LEN = 32;
@@ -49,7 +54,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
-  private final BytesRef outputScratch = new BytesRef(OUT_PUT_INIT_LEN);
+  private final OutputAccumulator accumulator = new OutputAccumulator();
   private final ByteArrayDataInput scratchReader = new ByteArrayDataInput();
 
   // What prefix of the current term was present in the index; when we only next() through the
@@ -222,8 +227,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   private FST.Arc<BytesRef> getArc(int ord) {
     if (ord >= arcs.length) {
-      @SuppressWarnings({"rawtypes", "unchecked"})
-      final FST.Arc<BytesRef>[] next =
+      @SuppressWarnings({"rawtypes", "unchecked"}) final FST.Arc<BytesRef>[] next =
           new FST.Arc[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(arcs, 0, next, 0, arcs.length);
       for (int arcOrd = arcs.length; arcOrd < next.length; arcOrd++) {
@@ -234,7 +238,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return arcs[ord];
   }
 
-  // Pushes a frame we seek'd to
   SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, BytesRef frameData, int length)
       throws IOException {
     scratchReader.reset(frameData.bytes, frameData.offset, frameData.length);
@@ -246,6 +249,23 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     f.isFloor = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0;
     if (f.isFloor) {
       f.setFloorData(scratchReader, frameData);
+    }
+    pushFrame(arc, fpSeek, length);
+
+    return f;
+  }
+
+  // Pushes a frame we seek'd to
+  SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, int length)
+      throws IOException {
+    final long code = accumulator.code();
+    final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
+    final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
+    f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
+    f.hasTermsOrig = f.hasTerms;
+    f.isFloor = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0;
+    if (f.isFloor) {
+      f.setFloorData(accumulator);
     }
     pushFrame(arc, fpSeek, length);
 
@@ -346,10 +366,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = outputScratch;
-    output.length = 0;
 
     targetBeforeCurrentLength = currentFrame.ord;
+    accumulator.reset();
 
     if (currentFrame != staticFrame) {
 
@@ -366,7 +385,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      appendArc(output, arc.output());
+      accumulator.push(arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -391,10 +410,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = arcs[1 + targetUpto];
         assert arc.label() == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "arc.label="
-                + (char) arc.label()
-                + " targetLabel="
-                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
-        appendArc(output, arc.output());
+            + (char) arc.label()
+            + " targetLabel="
+            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+        accumulator.push(arc.output());
 
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
@@ -483,16 +502,15 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       //   System.out.println("    no seek state; push root frame");
       // }
 
-      appendArc(output, arc.output());
+      accumulator.push(arc.output());
 
       currentFrame = staticFrame;
 
       // term.length = 0;
       targetUpto = 0;
-      BytesRef nextFinalOutput = arc.nextFinalOutput();
-      appendArc(output, nextFinalOutput);
-      currentFrame = pushFrame(arc, output, 0);
-      output.length -= nextFinalOutput.length;
+      accumulator.push(arc.nextFinalOutput());
+      currentFrame = pushFrame(arc,  0);
+      accumulator.pop();
     }
 
     // if (DEBUG) {
@@ -554,7 +572,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         term.setByteAt(targetUpto, (byte) targetLabel);
         // Aggregate output as we go:
         assert arc.output() != null;
-        appendArc(output, arc.output());
+        accumulator.push(arc.output());
 
         // if (DEBUG) {
         //   System.out.println("    index: follow label=" + toHex(target.bytes[target.offset +
@@ -564,10 +582,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
-          BytesRef nextFinalOutput = arc.nextFinalOutput();
-          appendArc(output, nextFinalOutput);
-          currentFrame = pushFrame(arc, output, targetUpto);
-          output.length -= nextFinalOutput.length;
+          accumulator.push(arc.nextFinalOutput());
+          currentFrame = pushFrame(arc, targetUpto);
+          accumulator.pop();
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -627,9 +644,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output = outputScratch;
-    output.length = 0;
 
+    accumulator.reset();
     targetBeforeCurrentLength = currentFrame.ord;
 
     if (currentFrame != staticFrame) {
@@ -647,7 +663,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      appendArc(output, arc.output());
+      accumulator.push(arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -672,11 +688,11 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = arcs[1 + targetUpto];
         assert arc.label() == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "arc.label="
-                + (char) arc.label()
-                + " targetLabel="
-                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+            + (char) arc.label()
+            + " targetLabel="
+            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
-        appendArc(output, arc.output());
+        accumulator.push(arc.output());
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
@@ -758,16 +774,15 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // System.out.println("    no seek state; push root frame");
       // }
 
-      appendArc(output, arc.output());
+      accumulator.push(arc.output());
 
       currentFrame = staticFrame;
 
       // term.length = 0;
       targetUpto = 0;
-      BytesRef nextFinalOutput = arc.nextFinalOutput();
-      appendArc(output, nextFinalOutput);
-      currentFrame = pushFrame(arc, output, 0);
-      output.length -= nextFinalOutput.length;
+      accumulator.push(arc.nextFinalOutput());
+      currentFrame = pushFrame(arc,  0);
+      accumulator.pop();
     }
 
     // if (DEBUG) {
@@ -829,7 +844,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = nextArc;
         // Aggregate output as we go:
         assert arc.output() != null;
-        appendArc(output, arc.output());
+        accumulator.push(arc.output());
 
         // if (DEBUG) {
         // System.out.println("    index: follow label=" + (target.bytes[target.offset +
@@ -839,10 +854,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
-          BytesRef nextFinalOutput = arc.nextFinalOutput();
-          appendArc(output, nextFinalOutput);
-          currentFrame = pushFrame(arc, output, targetUpto);
-          output.length -= nextFinalOutput.length;
+          accumulator.push(arc.nextFinalOutput());
+          currentFrame = pushFrame(arc, targetUpto);
+          accumulator.pop();
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -927,8 +941,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.isFloor
                   + " code="
                   + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-                      + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-                      + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
                   + " isLastInFloor="
                   + f.isLastInFloor
                   + " mdUpto="
@@ -957,8 +971,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                   + f.isFloor
                   + " code="
                   + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-                      + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-                      + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
                   + " lastSubFP="
                   + f.lastSubFP
                   + " isLastInFloor="
@@ -1194,5 +1208,62 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   @Override
   public long ord() {
     throw new UnsupportedOperationException();
+  }
+
+  static class OutputAccumulator {
+
+    BytesRef[] outputs = new BytesRef[16];
+    int num = 0;
+    int outputIndex;
+    int index;
+
+    void push(BytesRef output) {
+      if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        outputs = ArrayUtil.grow(outputs, num + 1);
+        outputs[num++] = output;
+      }
+    }
+
+    void pop() {
+      this.num--;
+    }
+
+    long code() {
+      long code = 0;
+      for (int i = 0; i < num; i++) {
+        BytesRef output = outputs[i];
+        byte[] bytes = output.bytes;
+        for (int j = 0, len = output.length; j < len; j++) {
+          byte b = bytes[j];
+          code = (code << 7) | (b & 0x7FL);
+          if ((b & 0x80) == 0) {
+            this.outputIndex = i;
+            this.index = j + 1;
+            return code;
+          }
+        }
+      }
+      throw new AssertionError();
+    }
+
+    void setFloorData(BytesRef floorData) {
+      int off = 0;
+      while (outputIndex < num) {
+        BytesRef output = outputs[outputIndex];
+        int len = output.length - index;
+        floorData.bytes = ArrayUtil.grow(floorData.bytes, off + len);
+        System.arraycopy(output.bytes, output.offset + index, floorData.bytes, off, len);
+        off += len;
+        outputIndex++;
+        index = 0;
+      }
+      floorData.offset = 0;
+      floorData.length = off;
+    }
+
+    void reset() {
+      this.num = 0;
+    }
+
   }
 }

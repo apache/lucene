@@ -55,7 +55,7 @@ final class SegmentTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  byte[] floorData = new byte[32];
+  BytesRef floorData = new BytesRef(32);
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
@@ -104,13 +104,26 @@ final class SegmentTermsEnumFrame {
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
+  public void setFloorData(SegmentTermsEnum.OutputAccumulator accumulator) {
+    accumulator.setFloorData(floorData);
+    floorDataReader.reset(floorData.bytes, floorData.offset, floorData.length);
+    numFollowFloorBlocks = floorDataReader.readVInt();
+    nextFloorLabel = floorDataReader.readByte() & 0xff;
+    // if (DEBUG) {
+    // System.out.println("    setFloorData fpOrig=" + fpOrig + " bytes=" + new
+    // BytesRef(source.bytes, source.offset + in.getPosition(), numBytes) + " numFollowFloorBlocks="
+    // + numFollowFloorBlocks + " nextFloorLabel=" + toHex(nextFloorLabel));
+    // }
+  }
+
   public void setFloorData(ByteArrayDataInput in, BytesRef source) {
     final int numBytes = source.length - (in.getPosition() - source.offset);
     if (numBytes > floorData.length) {
-      floorData = new byte[ArrayUtil.oversize(numBytes, 1)];
+      floorData.bytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
-    System.arraycopy(source.bytes, source.offset + in.getPosition(), floorData, 0, numBytes);
-    floorDataReader.reset(floorData, 0, numBytes);
+    floorData.length = numBytes;
+    System.arraycopy(source.bytes, source.offset + in.getPosition(), floorData.bytes, 0, numBytes);
+    floorDataReader.reset(floorData.bytes, 0, numBytes);
     numFollowFloorBlocks = floorDataReader.readVInt();
     nextFloorLabel = floorDataReader.readByte() & 0xff;
     // if (DEBUG) {
