@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -152,6 +153,15 @@ public abstract class HnswGraph {
      * @return The number of integers written to `dest`
      */
     public abstract int consume(int[] dest);
+
+    public static int[] getSortedNodes(NodesIterator nodesOnLevel) {
+      int[] sortedNodes = new int[nodesOnLevel.size()];
+      for (int n = 0; nodesOnLevel.hasNext(); n++) {
+        sortedNodes[n] = nodesOnLevel.nextInt();
+      }
+      Arrays.sort(sortedNodes);
+      return sortedNodes;
+    }
   }
 
   /** NodesIterator that accepts nodes as an integer array. */

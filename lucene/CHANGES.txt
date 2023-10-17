@@ -226,7 +226,8 @@ Build
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
 
 ======================== Lucene 9.8.0 =======================
 
