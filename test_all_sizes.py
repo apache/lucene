@@ -5,7 +5,7 @@ import subprocess
 import re
 import pickle
 
-size = 0
+size = 4
 
 print('Build jars...')
 subprocess.check_call(['./gradlew', 'jar'])
@@ -26,9 +26,8 @@ while True:
   fst_mb = int(m.group(1))/1024/1024
   fst_build_sec = float(m.group(2))
 
-  # double barrel, long[size] -- note we can do better (using packed paged map like main):
-  ram_mb = (size * 8 * 2) / 1024 / 1024
-  
+  ram_mb = int(re.findall('^RAM: (\d+) bytes$', stdout, re.MULTILINE)[-1])/1024/1024
+
   print(f'{size}: {ram_mb:.2f} MB, {fst_build_sec:.3f} sec')
   fst_build_sec = float(fst_build_sec)
 
@@ -40,11 +39,8 @@ while True:
   for size, fst_mb, fst_build_sec, ram_mb in results:
     print(f'{size},{fst_mb:.3f},{fst_build_sec:.3f},{ram_mb:.3f}')
 
-  # don't test beyond 1 GB
+  # don't test beyond 1 B
   if size == 1073741824:
     break
 
-  if size == 0:
-    size = 4
-  else:
-    size *= 2
+  size *= 2

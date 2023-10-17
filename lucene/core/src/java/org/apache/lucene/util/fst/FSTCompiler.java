@@ -123,6 +123,7 @@ public class FSTCompiler<T> {
    * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
    * tuning and tweaking, see {@link Builder}.
    */
+  // nocommit remove this?  only use Builder?
   public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
     // nocommit what default for suffix hash size?
     this(inputType, 16384, outputs, true, 15, 1f);

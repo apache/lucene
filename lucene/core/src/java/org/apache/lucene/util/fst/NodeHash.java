@@ -53,6 +53,7 @@ final class NodeHash<T> {
   private final FST.BytesReader in;
 
   // nocommit just make huge tableSizeLimit to get minimality ... since it grows on demand, that's safe
+  // nocommit hmm should i take a ramMBLimit instead of count limit?  much more intuitive to user...
   
   /** If tableSizeLimit is -1, we hold all node suffixes in the hash, and the FST is purely minimal.  If it's 0, we don't hash anything and the
    *  FST shares no suffixes.  If it's > 0, we create a simple LRU cache and the FST is "somewhat" minimal, moreso the larger the tableSizeLimit. */
@@ -112,6 +113,7 @@ final class NodeHash<T> {
         if (node != 0) {
           // it was already in fallback -- promote to primary
           primaryTable.set(pos, node);
+          // System.out.println("promote; count=" + primaryTable.count);
         } else {
           // not in fallback either -- freeze & add the incoming node
         
@@ -125,14 +127,17 @@ final class NodeHash<T> {
           assert hash(node) == hash : "mismatch frozenHash=" + hash(node) + " vs hash=" + hash;
 
           primaryTable.set(pos, node);
+          // System.out.println("add not promote; count=" + primaryTable.count);
         }
 
-        if (primaryTable.count > tableSizeLimit / 2) {
+        if (primaryTable.count >= tableSizeLimit / 2) {
           // primary table is now too big -- swap to fallback table
           // nocommit -- when we do this, just allocate primary table to full hash size?  why pay cost of all the rehashing over and over?
           System.out.println("now fallback at count=" + primaryTable.count);
           fallbackTable = primaryTable;
-          primaryTable = new PagedGrowableHash();
+          primaryTable = new PagedGrowableHash(node, primaryTable.entries.size());
+          long ramBytesUsed = fallbackTable.entries.ramBytesUsed() + primaryTable.entries.ramBytesUsed();;
+          System.out.println("RAM: " + ramBytesUsed + " bytes");
         }
 
         return node;
@@ -259,6 +264,12 @@ final class NodeHash<T> {
       // nocommit this allocates a small block as the final block, but, what is the reallocation strategy as we append values beyond the end?
       entries = new PagedGrowableWriter(16, 1 << 27, 8, PackedInts.COMPACT);
       mask = 15;
+    }
+
+    public PagedGrowableHash(long lastNodeAddress, long size) {
+      entries = new PagedGrowableWriter(size, 1 << 27, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
+      mask = size - 1;
+      assert (mask % size) == 0;
     }
 
     public long get(long index) {
