@@ -22,8 +22,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -32,6 +34,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -42,8 +46,8 @@ public class TestTaskExecutor extends LuceneTestCase {
   @BeforeClass
   public static void createExecutor() {
     executorService =
-        Executors.newFixedThreadPool(
-            1, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
+            Executors.newFixedThreadPool(
+            random().nextBoolean() ? 1 : 2, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
   }
 
   @AfterClass
@@ -233,6 +237,7 @@ public class TestTaskExecutor extends LuceneTestCase {
     List<Callable<Void>> callables = new ArrayList<>();
     callables.add(
         () -> {
+          tasksExecuted.incrementAndGet();
           throw new RuntimeException();
         });
     int tasksWithNormalExit = 99;
@@ -244,7 +249,13 @@ public class TestTaskExecutor extends LuceneTestCase {
           });
     }
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
-    assertEquals(tasksWithNormalExit, tasksExecuted.get());
+    int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
+    if (maximumPoolSize == 1) {
+        assertEquals(1, tasksExecuted.get());
+    } else {
+        MatcherAssert.assertThat(tasksExecuted.get(), Matchers.greaterThanOrEqualTo(1));
+    }
+    assertEquals(0, ((ThreadPoolExecutor)executorService).getActiveCount());
   }
 
   /**
@@ -253,36 +264,82 @@ public class TestTaskExecutor extends LuceneTestCase {
    */
   public void testInvokeAllCatchesMultipleExceptions() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-    AtomicInteger tasksExecuted = new AtomicInteger(0);
-    List<Callable<Void>> callables = new ArrayList<>();
+      List<Callable<Void>> callables = new ArrayList<>();
+    int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
+    //if we have multiple threads, make sure both are started before an exception is thrown,
+    // otherwise there may or may not be a suppressed exception
+    CountDownLatch latchA = new CountDownLatch(1);
+    CountDownLatch latchB = new CountDownLatch(1);
     callables.add(
         () -> {
+            if (maximumPoolSize > 1) {
+                latchA.countDown();
+                latchB.await();
+            }
           throw new RuntimeException("exception A");
         });
-    int tasksWithNormalExit = 50;
-    for (int i = 0; i < tasksWithNormalExit; i++) {
-      callables.add(
-          () -> {
-            tasksExecuted.incrementAndGet();
-            return null;
-          });
-    }
     callables.add(
         () -> {
+            if (maximumPoolSize > 1) {
+                latchB.countDown();
+                latchA.await();
+            }
           throw new IllegalStateException("exception B");
         });
 
     RuntimeException exc =
         expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     Throwable[] suppressed = exc.getSuppressed();
-    assertEquals(1, suppressed.length);
-    if (exc.getMessage().equals("exception A")) {
-      assertEquals("exception B", suppressed[0].getMessage());
-    } else {
-      assertEquals("exception A", suppressed[0].getMessage());
-      assertEquals("exception B", exc.getMessage());
-    }
 
-    assertEquals(tasksWithNormalExit, tasksExecuted.get());
+    if (maximumPoolSize == 1) {
+        assertEquals(0, suppressed.length);
+    } else {
+        assertEquals(1, suppressed.length);
+        if (exc.getMessage().equals("exception A")) {
+            assertEquals("exception B", suppressed[0].getMessage());
+        } else {
+            assertEquals("exception A", suppressed[0].getMessage());
+            assertEquals("exception B", exc.getMessage());
+        }
+    }
+  }
+
+  public void testCancelTasksOnException() {
+      TaskExecutor taskExecutor = new TaskExecutor(executorService);
+      int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
+      final int numTasks = random().nextInt(10, 50);
+      final int throwingTask = random().nextInt(numTasks);
+      boolean error = random().nextBoolean();
+      List<Callable<Void>> tasks = new ArrayList<>(numTasks);
+      AtomicInteger executedTasks = new AtomicInteger(0);
+      for (int i = 0; i < numTasks; i++) {
+          final int index = i;
+          tasks.add(() -> {
+              if (index == throwingTask) {
+                  if (error) {
+                      throw new OutOfMemoryError();
+                  } else {
+                      throw new RuntimeException();
+                  }
+              }
+              if (index > throwingTask && maximumPoolSize == 1) {
+                  throw new AssertionError("task should not have started");
+              }
+              executedTasks.incrementAndGet();
+              return null;
+          });
+      }
+      Throwable throwable;
+      if (error) {
+          throwable = expectThrows(OutOfMemoryError.class, () -> taskExecutor.invokeAll(tasks));
+      } else {
+          throwable = expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(tasks));
+      }
+      assertEquals(0, throwable.getSuppressed().length);
+      if (maximumPoolSize == 1) {
+          assertEquals(throwingTask, executedTasks.get());
+      } else {
+          MatcherAssert.assertThat(executedTasks.get(), Matchers.greaterThanOrEqualTo(throwingTask));
+      }
   }
 }
