@@ -550,13 +550,14 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             initializerGraph,
             initializerOrdMap,
             BitSet.of(
-                DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1));
+                DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1),
+            totalSize);
 
     // When offset is 0, the graphs should be identical before vectors are added
     assertGraphEqual(initializerGraph, finalBuilder.getGraph());
 
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
-    assertGraphContainsGraph(finalGraph, initializerGraph, docIdOffset);
+    assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
   }
 
   public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() throws IOException {
@@ -587,60 +588,51 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
             initializerGraph,
             initializerOrdMap,
             BitSet.of(
-                DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1));
+                DocIdSetIterator.range(docIdOffset, initializerSize + docIdOffset), totalSize + 1),
+            totalSize);
 
-    assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, docIdOffset);
+    assertGraphInitializedFromGraph(finalBuilder.getGraph(), initializerGraph, initializerOrdMap);
 
     // Confirm that the graph is appropriately constructed by checking that the nodes in the old
     // graph are present in the levels of the new graph
     OnHeapHnswGraph finalGraph = finalBuilder.build(finalVectorValues.size());
-    assertGraphContainsGraph(finalGraph, initializerGraph, docIdOffset);
+    assertGraphContainsGraph(finalGraph, initializerGraph, initializerOrdMap);
   }
 
-  private void assertGraphContainsGraph(HnswGraph g, HnswGraph h, int offset) throws IOException {
-    for (int i = 0; i < h.numLevels(); i++) {
+  private void assertGraphContainsGraph(HnswGraph g, HnswGraph initializer, int[] newOrdinals)
+      throws IOException {
+    for (int i = 0; i < initializer.numLevels(); i++) {
       int[] finalGraphNodesOnLevel = nodesIteratorToArray(g.getNodesOnLevel(i));
       int[] initializerGraphNodesOnLevel =
-          mapArrayAndSort(nodesIteratorToArray(h.getNodesOnLevel(i)), offset);
+          mapArrayAndSort(nodesIteratorToArray(initializer.getNodesOnLevel(i)), newOrdinals);
       int overlap = computeOverlap(finalGraphNodesOnLevel, initializerGraphNodesOnLevel);
       assertEquals(initializerGraphNodesOnLevel.length, overlap);
     }
   }
 
   private void assertGraphInitializedFromGraph(
-      HnswGraph finalGraph, HnswGraph initialGraph, int offset) throws IOException {
+      HnswGraph g, HnswGraph initializer, int[] newOrdinals) throws IOException {
     assertEquals(
         "the number of levels in the graphs are different!",
-        finalGraph.numLevels(),
-        finalGraph.numLevels());
+        initializer.numLevels(),
+        g.numLevels());
     // Confirm that the size of the new graph includes all nodes up to an including the max new
     // ordinal in the old to
     // new ordinal mapping
-    assertEquals(
-        "the number of nodes in the graphs are different!",
-        finalGraph.size(),
-        initialGraph.size() + offset);
-
-    // assert the nodes from the previous graph are successfully to levels > 0 in the new graph
-    for (int level = 1; level < finalGraph.numLevels(); level++) {
-      List<Integer> nodesOnLevel = sortedNodesOnLevel(finalGraph, level);
-      List<Integer> nodesOnLevel2 =
-          sortedNodesOnLevel(initialGraph, level).stream().map(n -> n + offset).toList();
-      assertEquals(nodesOnLevel, nodesOnLevel2);
-    }
+    assertEquals("the number of nodes in the graphs are different!", initializer.size(), g.size());
 
     // assert that the neighbors from the old graph are successfully transferred to the new graph
-    for (int level = 0; level < finalGraph.numLevels(); level++) {
-      NodesIterator nodesOnLevel = initialGraph.getNodesOnLevel(level);
+    for (int level = 0; level < g.numLevels(); level++) {
+      NodesIterator nodesOnLevel = initializer.getNodesOnLevel(level);
       while (nodesOnLevel.hasNext()) {
         int node = nodesOnLevel.nextInt();
-        finalGraph.seek(level, node + offset);
-        initialGraph.seek(level, node);
+        g.seek(level, newOrdinals[node]);
+        initializer.seek(level, node);
         assertEquals(
             "arcs differ for node " + node,
-            getNeighborNodes(finalGraph),
-            getNeighborNodes(initialGraph).stream()
-                .map(n -> n + offset)
+            getNeighborNodes(g),
+            getNeighborNodes(initializer).stream()
+                .map(n -> newOrdinals[n])
                 .collect(Collectors.toSet()));
       }
     }
@@ -655,10 +647,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     return arr;
   }
 
-  private int[] mapArrayAndSort(int[] arr, int offset) {
+  private int[] mapArrayAndSort(int[] arr, int[] offset) {
     int[] mappedA = new int[arr.length];
     for (int i = 0; i < arr.length; i++) {
-      mappedA[i] = arr[i] + offset;
+      mappedA[i] = offset[arr[i]];
     }
     Arrays.sort(mappedA);
     return mappedA;

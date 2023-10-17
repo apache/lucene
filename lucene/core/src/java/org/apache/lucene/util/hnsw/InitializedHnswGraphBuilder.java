@@ -40,6 +40,8 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
    * @param initializerGraph the graph to initialize the new graph builder
    * @param newOrdMap a mapping from the old node ordinal to the new node ordinal
    * @param initializedNodes a bitset of nodes that are already initialized in the initializerGraph
+   * @param totalNumberOfVectors the total number of vectors in the new graph, this should include
+   *     all vectors expected to be added to the graph in the future
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */
@@ -50,10 +52,11 @@ public final class InitializedHnswGraphBuilder extends HnswGraphBuilder {
       long seed,
       HnswGraph initializerGraph,
       int[] newOrdMap,
-      BitSet initializedNodes)
+      BitSet initializedNodes,
+      int totalNumberOfVectors)
       throws IOException {
-    OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M);
-    for (int level = 0; level < initializerGraph.numLevels(); level++) {
+    OnHeapHnswGraph hnsw = new OnHeapHnswGraph(M, totalNumberOfVectors);
+    for (int level = initializerGraph.numLevels() - 1; level >= 0; level--) {
       HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
       while (it.hasNext()) {
         int oldOrd = it.nextInt();

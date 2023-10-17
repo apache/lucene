@@ -79,7 +79,7 @@ public class IncrementalHnswGraphMerger {
       currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
     }
 
-    if (!(currKnnVectorsReader instanceof HnswGraphProvider) || !allMatch(liveDocs)) {
+    if (!(currKnnVectorsReader instanceof HnswGraphProvider) || !noDeletes(liveDocs)) {
       return this;
     }
 
@@ -123,19 +123,39 @@ public class IncrementalHnswGraphMerger {
     }
 
     HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-    BitSet initializedNodes = new FixedBitSet(mergeState.segmentInfo.maxDoc() + 1);
-    int[] ordBaseline = getNewOrdOffset(mergeState, initializedNodes);
+    DocIdSetIterator mergedVectorIterator = null;
+    switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> mergedVectorIterator =
+          KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+      case FLOAT32 -> mergedVectorIterator =
+          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+    }
+    final int numVectors = Math.toIntExact(mergedVectorIterator.cost());
+
+    BitSet initializedNodes = new FixedBitSet(numVectors + 1);
+    int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
     return InitializedHnswGraphBuilder.fromGraph(
         scorerSupplier,
         M,
         beamWidth,
         HnswGraphBuilder.randSeed,
         initializerGraph,
-        ordBaseline,
-        initializedNodes);
+        oldToNewOrdinalMap,
+        initializedNodes,
+        numVectors);
   }
 
-  private int[] getNewOrdOffset(MergeState mergeState, BitSet initializedNodes) throws IOException {
+  /**
+   * Creates a new mapping from old ordinals to new ordinals and returns the total number of vectors
+   * in the newly merged segment.
+   *
+   * @param mergedVectorIterator iterator over the vectors in the merged segment
+   * @param initializedNodes track what nodes have been initialized
+   * @return the mapping from old ordinals to new ordinals
+   * @throws IOException If an error occurs while reading from the merge state
+   */
+  private int[] getNewOrdMapping(DocIdSetIterator mergedVectorIterator, BitSet initializedNodes)
+      throws IOException {
     DocIdSetIterator initializerIterator = null;
 
     switch (fieldInfo.getVectorEncoding()) {
@@ -158,21 +178,11 @@ public class IncrementalHnswGraphMerger {
     if (maxNewDocID == -1) {
       return new int[0];
     }
-
-    int[] oldToNewOrdinalMap = new int[initGraphSize];
-
-    DocIdSetIterator vectorIterator = null;
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> vectorIterator =
-          KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-      case FLOAT32 -> vectorIterator =
-          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-    }
-
+    final int[] oldToNewOrdinalMap = new int[initGraphSize];
     int newOrd = 0;
-    for (int newDocId = vectorIterator.nextDoc();
+    for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;
-        newDocId = vectorIterator.nextDoc()) {
+        newDocId = mergedVectorIterator.nextDoc()) {
       if (newIdToOldOrdinal.containsKey(newDocId)) {
         initializedNodes.set(newOrd);
         oldToNewOrdinalMap[newIdToOldOrdinal.get(newDocId)] = newOrd;
@@ -182,13 +192,13 @@ public class IncrementalHnswGraphMerger {
     return oldToNewOrdinalMap;
   }
 
-  private static boolean allMatch(Bits bits) {
-    if (bits == null) {
+  private static boolean noDeletes(Bits liveDocs) {
+    if (liveDocs == null) {
       return true;
     }
 
-    for (int i = 0; i < bits.length(); i++) {
-      if (!bits.get(i)) {
+    for (int i = 0; i < liveDocs.length(); i++) {
+      if (!liveDocs.get(i)) {
         return false;
       }
     }
