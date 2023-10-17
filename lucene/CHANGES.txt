@@ -50,6 +50,8 @@ Improvements
 * GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
   and test improvements. (Uwe Schindler, Robert Muir)
 
+* GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)

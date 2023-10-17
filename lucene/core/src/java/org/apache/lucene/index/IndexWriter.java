@@ -5368,11 +5368,6 @@ public class IndexWriter
     return docWriter.getBufferedDeleteTermsSize();
   }
 
-  // For test purposes.
-  final int getNumBufferedDeleteTerms() {
-    return docWriter.getNumBufferedDeleteTerms();
-  }
-
   // utility routines for tests
   synchronized SegmentCommitInfo newestSegment() {
     return segmentInfos.size() > 0 ? segmentInfos.info(segmentInfos.size() - 1) : null;
