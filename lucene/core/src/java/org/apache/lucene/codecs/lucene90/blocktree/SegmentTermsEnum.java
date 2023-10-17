@@ -36,7 +36,6 @@ import org.apache.lucene.util.fst.Util;
 /** Iterates through terms in this field. */
 final class SegmentTermsEnum extends BaseTermsEnum {
 
-  static final int OUT_PUT_INIT_LEN = 32;
   // Lazy init:
   IndexInput in;
 
@@ -875,24 +874,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     } else {
       return result;
     }
-  }
-
-  static void appendArc(BytesRef output, BytesRef arc) {
-    assert output.offset == 0;
-    assert output.bytes.length >= OUT_PUT_INIT_LEN;
-    // TODO: This should be wrapped by {@link org.apache.lucene.util.fst.Outputs} interface
-    if (arc == Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-      return;
-    }
-    byte[] outputBytes = output.bytes;
-    final int arcLen = arc.length;
-    final int outputLen = output.length;
-    final int newLen = arcLen + outputLen;
-    if (outputBytes.length < newLen) {
-      output.bytes = outputBytes = ArrayUtil.growExact(outputBytes, ArrayUtil.oversize(newLen, 1));
-    }
-    System.arraycopy(arc.bytes, arc.offset, outputBytes, outputLen, arcLen);
-    output.length = newLen;
   }
 
   @SuppressWarnings("unused")
