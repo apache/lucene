@@ -24,6 +24,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -102,7 +103,7 @@ public final class FieldReader extends Terms {
     */
   }
 
-  long readVLongOutput(ByteArrayDataInput in) throws IOException {
+  long readVLongOutput(DataInput in) throws IOException {
     if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
       return readMSBVLong(in);
     } else {
@@ -116,7 +117,7 @@ public final class FieldReader extends Terms {
    *
    * <p>Package private for testing.
    */
-  static long readMSBVLong(ByteArrayDataInput in) {
+  static long readMSBVLong(DataInput in) throws IOException {
     byte b = in.readByte();
     long l = b & 0x7FL;
     while (b < 0) {

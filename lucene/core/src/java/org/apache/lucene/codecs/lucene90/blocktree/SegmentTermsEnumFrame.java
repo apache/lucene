@@ -105,25 +105,8 @@ final class SegmentTermsEnumFrame {
   }
 
   public void setFloorData(SegmentTermsEnum.OutputAccumulator accumulator) {
-    accumulator.setFloorData(floorData);
+    accumulator.copyFloorData(floorData);
     floorDataReader.reset(floorData.bytes, floorData.offset, floorData.length);
-    numFollowFloorBlocks = floorDataReader.readVInt();
-    nextFloorLabel = floorDataReader.readByte() & 0xff;
-    // if (DEBUG) {
-    // System.out.println("    setFloorData fpOrig=" + fpOrig + " bytes=" + new
-    // BytesRef(source.bytes, source.offset + in.getPosition(), numBytes) + " numFollowFloorBlocks="
-    // + numFollowFloorBlocks + " nextFloorLabel=" + toHex(nextFloorLabel));
-    // }
-  }
-
-  public void setFloorData(ByteArrayDataInput in, BytesRef source) {
-    final int numBytes = source.length - (in.getPosition() - source.offset);
-    if (numBytes > floorData.length) {
-      floorData.bytes = new byte[ArrayUtil.oversize(numBytes, 1)];
-    }
-    floorData.length = numBytes;
-    System.arraycopy(source.bytes, source.offset + in.getPosition(), floorData.bytes, 0, numBytes);
-    floorDataReader.reset(floorData.bytes, 0, numBytes);
     numFollowFloorBlocks = floorDataReader.readVInt();
     nextFloorLabel = floorDataReader.readByte() & 0xff;
     // if (DEBUG) {

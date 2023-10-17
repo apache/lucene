@@ -122,7 +122,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
   }
 
-  /** Runs next() through the entire terms dict, computing aggregate statistics. */
+  /**
+   * Runs next() through the entire terms dict, computing aggregate statistics.
+   */
   public Stats computeBlockStats() throws IOException {
 
     Stats stats = new Stats(fr.parent.segment, fr.fieldInfo.name);
@@ -240,25 +242,15 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, BytesRef frameData, int length)
       throws IOException {
-    scratchReader.reset(frameData.bytes, frameData.offset, frameData.length);
-    final long code = fr.readVLongOutput(scratchReader);
-    final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-    final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
-    f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
-    f.hasTermsOrig = f.hasTerms;
-    f.isFloor = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0;
-    if (f.isFloor) {
-      f.setFloorData(scratchReader, frameData);
-    }
-    pushFrame(arc, fpSeek, length);
-
-    return f;
+    accumulator.reset();
+    accumulator.push(frameData);
+    return pushFrame(arc, length);
   }
 
   // Pushes a frame we seek'd to
-  SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, int length)
-      throws IOException {
-    final long code = accumulator.code();
+  SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, int length) throws IOException {
+    accumulator.prepareRead();
+    final long code = fr.readVLongOutput(accumulator);
     final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
@@ -509,7 +501,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // term.length = 0;
       targetUpto = 0;
       accumulator.push(arc.nextFinalOutput());
-      currentFrame = pushFrame(arc,  0);
+      currentFrame = pushFrame(arc, 0);
       accumulator.pop();
     }
 
@@ -781,7 +773,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // term.length = 0;
       targetUpto = 0;
       accumulator.push(arc.nextFinalOutput());
-      currentFrame = pushFrame(arc,  0);
+      currentFrame = pushFrame(arc, 0);
       accumulator.pop();
     }
 
@@ -1210,16 +1202,20 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     throw new UnsupportedOperationException();
   }
 
-  static class OutputAccumulator {
+  static class OutputAccumulator extends DataInput {
 
-    BytesRef[] outputs = new BytesRef[16];
+    /**
+     * We could have at most 10 no-empty arcs: 9 for vLong and 1 for floor data.
+     */
+    private static final int MAX_ARC = 10;
+    BytesRef[] outputs = new BytesRef[MAX_ARC];
+    BytesRef current;
     int num = 0;
-    int outputIndex;
-    int index;
+    int outputIndex = 0;
+    int index = 0;
 
     void push(BytesRef output) {
       if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-        outputs = ArrayUtil.grow(outputs, num + 1);
         outputs[num++] = output;
       }
     }
@@ -1228,42 +1224,49 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       this.num--;
     }
 
-    long code() {
-      long code = 0;
-      for (int i = 0; i < num; i++) {
-        BytesRef output = outputs[i];
-        byte[] bytes = output.bytes;
-        for (int j = 0, len = output.length; j < len; j++) {
-          byte b = bytes[j];
-          code = (code << 7) | (b & 0x7FL);
-          if ((b & 0x80) == 0) {
-            this.outputIndex = i;
-            this.index = j + 1;
-            return code;
-          }
-        }
-      }
-      throw new AssertionError();
+    void setFloorData(BytesRef floorData) {
+      assert outputIndex == num - 1 : "floor data should be stored in last arc, get outputIndex: " + outputIndex + ", num: " + num;
+      BytesRef output = outputs[outputIndex];
+      floorData.bytes = output.bytes;
+      floorData.length = output.length - index;
+      floorData.offset = output.offset + index;
     }
 
-    void setFloorData(BytesRef floorData) {
-      int off = 0;
-      while (outputIndex < num) {
-        BytesRef output = outputs[outputIndex];
-        int len = output.length - index;
-        floorData.bytes = ArrayUtil.grow(floorData.bytes, off + len);
-        System.arraycopy(output.bytes, output.offset + index, floorData.bytes, off, len);
-        off += len;
-        outputIndex++;
-        index = 0;
-      }
-      floorData.offset = 0;
-      floorData.length = off;
+    void copyFloorData(BytesRef floorData) {
+      assert outputIndex == num - 1 : "floor data should be stored in last arc, get outputIndex: " + outputIndex + ", num: " + num;
+      BytesRef output = outputs[outputIndex];
+      int len = floorData.length = output.length - index;
+      floorData.bytes = ArrayUtil.grow(floorData.bytes, len);
+      System.arraycopy(output.bytes, output.offset + index, floorData.bytes, 0, len);
     }
 
     void reset() {
       this.num = 0;
     }
 
+    void prepareRead() {
+      this.index = 0;
+      this.outputIndex = 0;
+      this.current = outputs[0];
+    }
+
+    @Override
+    public byte readByte() throws IOException {
+      if (index >= current.length) {
+        current = outputs[++outputIndex];
+        index = 0;
+      }
+      return current.bytes[current.offset + index++];
+    }
+
+    @Override
+    public void readBytes(byte[] b, int offset, int len) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void skipBytes(long numBytes) throws IOException {
+      throw new UnsupportedOperationException();
+    }
   }
 }
