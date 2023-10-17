@@ -39,25 +39,25 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * maxQuantile].
  *
  * <pre class="prettyprint">
- *   float = (maxQuantile - minQuantile)/127 * byte + minQuantile
  *   byte = (float - minQuantile) * 127/(maxQuantile - minQuantile)
+ *   float = (maxQuantile - minQuantile)/127 * byte + minQuantile
  * </pre>
  *
  * <p>This then means to multiply two float values together (e.g. dot_product) we can do the
  * following:
  *
  * <pre class="prettyprint">
- *   float1 * float2 = (byte1 * (maxQuantile - minQuantile)/127 + minQuantile) * (byte2 * (maxQuantile - minQuantile)/127 + minQuantile)
- *   float1 * float2 = (byte1 * byte2 * (maxQuantile - minQuantile)^2)/(127^2) + (byte1 * minQuantile * (maxQuantile - minQuantile)/127) + (byte2 * minQuantile * (maxQuantile - minQuantile)/127) + minQuantile^2
+ *   float1 * float2 ~= (byte1 * (maxQuantile - minQuantile)/127 + minQuantile) * (byte2 * (maxQuantile - minQuantile)/127 + minQuantile)
+ *   float1 * float2 ~= (byte1 * byte2 * (maxQuantile - minQuantile)^2)/(127^2) + (byte1 * minQuantile * (maxQuantile - minQuantile)/127) + (byte2 * minQuantile * (maxQuantile - minQuantile)/127) + minQuantile^2
  *   let alpha = (maxQuantile - minQuantile)/127
- *   float1 * float2 = (byte1 * byte2 * alpha^2) + (byte1 * minQuantile * alpha) + (byte2 * minQuantile * alpha) + minQuantile^2
+ *   float1 * float2 ~= (byte1 * byte2 * alpha^2) + (byte1 * minQuantile * alpha) + (byte2 * minQuantile * alpha) + minQuantile^2
  * </pre>
  *
  * <p>The expansion for square distance is much simpler:
  *
  * <pre class="prettyprint">
  *  square_distance = (float1 - float2)^2
- *  (float1 - float2)^2 = (byte1 * alpha + minQuantile - byte2 * alpha - minQuantile)^2
+ *  (float1 - float2)^2 ~= (byte1 * alpha + minQuantile - byte2 * alpha - minQuantile)^2
  *  = (alpha*byte1 + minQuantile)^2 + (alpha*byte2 + minQuantile)^2 - 2*(alpha*byte1 + minQuantile)(alpha*byte2 + minQuantile)
  *  this can be simplified to:
  *  = alpha^2 (byte1 - byte2)^2
@@ -249,6 +249,7 @@ public class ScalarQuantizer {
     int index = 0;
     for (int i : vectorsToTake) {
       while (index <= i) {
+        // We cannot use `advance(docId)` as MergedVectorValues does not support it
         floatVectorValues.nextDoc();
         index++;
       }

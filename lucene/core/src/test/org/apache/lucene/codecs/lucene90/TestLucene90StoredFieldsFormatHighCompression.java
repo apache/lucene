@@ -18,8 +18,8 @@ package org.apache.lucene.codecs.lucene90;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec.Mode;
+import org.apache.lucene.codecs.lucene95.Lucene95Codec;
+import org.apache.lucene.codecs.lucene95.Lucene95Codec.Mode;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DirectoryReader;
@@ -32,7 +32,7 @@ import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFieldsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene99Codec(Mode.BEST_COMPRESSION);
+    return new Lucene95Codec(Mode.BEST_COMPRESSION);
   }
 
   /**
@@ -43,7 +43,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     for (int i = 0; i < 10; i++) {
       IndexWriterConfig iwc = newIndexWriterConfig();
       iwc.setCodec(
-          new Lucene99Codec(RandomPicks.randomFrom(random(), Lucene99Codec.Mode.values())));
+          new Lucene95Codec(RandomPicks.randomFrom(random(), Lucene95Codec.Mode.values())));
       IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig());
       Document doc = new Document();
       doc.add(new StoredField("field1", "value1"));
@@ -73,7 +73,7 @@ public class TestLucene90StoredFieldsFormatHighCompression extends BaseStoredFie
     expectThrows(
         NullPointerException.class,
         () -> {
-          new Lucene99Codec(null);
+          new Lucene95Codec(null);
         });
 
     expectThrows(

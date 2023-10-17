@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -30,6 +31,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -40,7 +42,7 @@ import org.apache.lucene.util.ScalarQuantizer;
 public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene99Codec() {
+    return new Lucene95Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene99HnswVectorsFormat(
@@ -55,7 +57,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
     // create lucene directory with codec
     int numVectors = 1 + random().nextInt(50);
     VectorSimilarityFunction similarityFunction = randomSimilarity();
-    int dim = random().nextInt(100) + 1;
+    int dim = random().nextInt(64) + 1;
     List<float[]> vectors = new ArrayList<>(numVectors);
     for (int i = 0; i < numVectors; i++) {
       vectors.add(randomVector(dim));
@@ -78,9 +80,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
             new IndexWriter(
                 dir,
                 newIndexWriterConfig()
-                    // account for quantized vectors, hnsw, and raw vectors
-                    .setRAMBufferSizeMB(
-                        ((numVectors + 4) * dim + (numVectors + 32) * dim * 4.0) / 1024.0 / 1024.0)
+                    .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                     .setMergePolicy(NoMergePolicy.INSTANCE))) {
       for (int i = 0; i < numVectors; i++) {
         Document doc = new Document();
@@ -128,8 +128,8 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   }
 
   public void testToString() {
-    Lucene99Codec customCodec =
-        new Lucene99Codec() {
+    Lucene95Codec customCodec =
+        new Lucene95Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
             return new Lucene99HnswVectorsFormat(

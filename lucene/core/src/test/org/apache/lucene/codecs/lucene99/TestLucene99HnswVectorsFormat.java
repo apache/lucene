@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -28,8 +29,8 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   }
 
   public void testToString() {
-    Lucene99Codec customCodec =
-        new Lucene99Codec() {
+    Lucene95Codec customCodec =
+        new Lucene95Codec() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
             return new Lucene99HnswVectorsFormat(10, 20, null);

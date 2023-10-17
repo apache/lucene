@@ -27,19 +27,13 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -53,7 +47,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -62,6 +55,7 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -167,7 +161,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter quantizedVectorFieldWriter = null;
+    Lucene99ScalarQuantizedVectorsWriter.QuantizationFieldVectorWriter quantizedVectorFieldWriter =
+        null;
     // Quantization only supports FLOAT32 for now
     if (quantizedVectorsWriter != null
         && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
@@ -584,9 +579,20 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       int[][] vectorIndexNodeOffsets = null;
       if (docsWithField.cardinality() != 0) {
         // build graph
-        int initializerIndex = selectGraphForInitialization(mergeState, fieldInfo);
-        HnswGraphBuilder hnswGraphBuilder =
-            createHnswGraphBuilder(mergeState, fieldInfo, scorerSupplier, initializerIndex);
+        IncrementalHnswGraphMerger merger =
+            new IncrementalHnswGraphMerger(fieldInfo, scorerSupplier, M, beamWidth);
+        for (int i = 0; i < mergeState.liveDocs.length; i++) {
+          merger.addReader(
+              mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+        }
+        DocIdSetIterator mergedVectorIterator = null;
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE -> mergedVectorIterator =
+              KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+          case FLOAT32 -> mergedVectorIterator =
+              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+        }
+        HnswGraphBuilder hnswGraphBuilder = merger.createBuilder(mergedVectorIterator);
         hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
         graph = hnswGraphBuilder.build(docsWithField.cardinality());
         vectorIndexNodeOffsets = writeGraph(graph);
@@ -619,177 +625,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         }
       }
     }
-  }
-
-  private HnswGraphBuilder createHnswGraphBuilder(
-      MergeState mergeState,
-      FieldInfo fieldInfo,
-      RandomVectorScorerSupplier scorerSupplier,
-      int initializerIndex)
-      throws IOException {
-    if (initializerIndex == -1) {
-      return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
-    }
-
-    HnswGraph initializerGraph =
-        getHnswGraphFromReader(fieldInfo.name, mergeState.knnVectorsReaders[initializerIndex]);
-    Map<Integer, Integer> ordinalMapper =
-        getOldToNewOrdinalMap(mergeState, fieldInfo, initializerIndex);
-    return HnswGraphBuilder.create(
-        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed, initializerGraph, ordinalMapper);
-  }
-
-  private int selectGraphForInitialization(MergeState mergeState, FieldInfo fieldInfo)
-      throws IOException {
-    // Find the KnnVectorReader with the most docs that meets the following criteria:
-    //  1. Does not contain any deleted docs
-    //  2. Is a Lucene99HnswVectorsReader/PerFieldKnnVectorReader
-    // If no readers exist that meet this criteria, return -1. If they do, return their index in
-    // merge state
-    int maxCandidateVectorCount = 0;
-    int initializerIndex = -1;
-
-    for (int i = 0; i < mergeState.liveDocs.length; i++) {
-      KnnVectorsReader currKnnVectorsReader = mergeState.knnVectorsReaders[i];
-      if (mergeState.knnVectorsReaders[i]
-          instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-        currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
-      }
-
-      if (!allMatch(mergeState.liveDocs[i])
-          || !(currKnnVectorsReader instanceof HnswGraphProvider)) {
-        continue;
-      }
-
-      int candidateVectorCount = 0;
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> {
-          ByteVectorValues byteVectorValues =
-              currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
-          if (byteVectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = byteVectorValues.size();
-        }
-        case FLOAT32 -> {
-          FloatVectorValues vectorValues =
-              currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
-          if (vectorValues == null) {
-            continue;
-          }
-          candidateVectorCount = vectorValues.size();
-        }
-      }
-
-      if (candidateVectorCount > maxCandidateVectorCount) {
-        maxCandidateVectorCount = candidateVectorCount;
-        initializerIndex = i;
-      }
-    }
-    return initializerIndex;
-  }
-
-  private HnswGraph getHnswGraphFromReader(String fieldName, KnnVectorsReader knnVectorsReader)
-      throws IOException {
-    if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader
-        && perFieldReader.getFieldReader(fieldName) instanceof HnswGraphProvider fieldReader) {
-      return fieldReader.getGraph(fieldName);
-    }
-
-    if (knnVectorsReader instanceof HnswGraphProvider) {
-      return ((HnswGraphProvider) knnVectorsReader).getGraph(fieldName);
-    }
-
-    // We should not reach here because knnVectorsReader's type is checked in
-    // selectGraphForInitialization
-    throw new IllegalArgumentException(
-        "Invalid KnnVectorsReader type for field: "
-            + fieldName
-            + ". Must be Lucene95HnswVectorsReader or newer");
-  }
-
-  private Map<Integer, Integer> getOldToNewOrdinalMap(
-      MergeState mergeState, FieldInfo fieldInfo, int initializerIndex) throws IOException {
-
-    DocIdSetIterator initializerIterator = null;
-
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> initializerIterator =
-          mergeState.knnVectorsReaders[initializerIndex].getByteVectorValues(fieldInfo.name);
-      case FLOAT32 -> initializerIterator =
-          mergeState.knnVectorsReaders[initializerIndex].getFloatVectorValues(fieldInfo.name);
-    }
-
-    MergeState.DocMap initializerDocMap = mergeState.docMaps[initializerIndex];
-
-    Map<Integer, Integer> newIdToOldOrdinal = new HashMap<>();
-    int oldOrd = 0;
-    int maxNewDocID = -1;
-    for (int oldId = initializerIterator.nextDoc();
-        oldId != NO_MORE_DOCS;
-        oldId = initializerIterator.nextDoc()) {
-      if (isCurrentVectorNull(initializerIterator)) {
-        continue;
-      }
-      int newId = initializerDocMap.get(oldId);
-      maxNewDocID = Math.max(newId, maxNewDocID);
-      newIdToOldOrdinal.put(newId, oldOrd);
-      oldOrd++;
-    }
-
-    if (maxNewDocID == -1) {
-      return Collections.emptyMap();
-    }
-
-    Map<Integer, Integer> oldToNewOrdinalMap = new HashMap<>();
-
-    DocIdSetIterator vectorIterator = null;
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> vectorIterator = MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-      case FLOAT32 -> vectorIterator =
-          MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-    }
-
-    int newOrd = 0;
-    for (int newDocId = vectorIterator.nextDoc();
-        newDocId <= maxNewDocID;
-        newDocId = vectorIterator.nextDoc()) {
-      if (isCurrentVectorNull(vectorIterator)) {
-        continue;
-      }
-
-      if (newIdToOldOrdinal.containsKey(newDocId)) {
-        oldToNewOrdinalMap.put(newIdToOldOrdinal.get(newDocId), newOrd);
-      }
-      newOrd++;
-    }
-
-    return oldToNewOrdinalMap;
-  }
-
-  private boolean isCurrentVectorNull(DocIdSetIterator docIdSetIterator) throws IOException {
-    if (docIdSetIterator instanceof FloatVectorValues) {
-      return ((FloatVectorValues) docIdSetIterator).vectorValue() == null;
-    }
-
-    if (docIdSetIterator instanceof ByteVectorValues) {
-      return ((ByteVectorValues) docIdSetIterator).vectorValue() == null;
-    }
-
-    return true;
-  }
-
-  private boolean allMatch(Bits bits) {
-    if (bits == null) {
-      return true;
-    }
-
-    for (int i = 0; i < bits.length(); i++) {
-      if (!bits.get(i)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
@@ -992,7 +827,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
     private final HnswGraphBuilder hnswGraphBuilder;
-    private final Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter quantizedWriter;
+    private final Lucene99ScalarQuantizedVectorsWriter.QuantizationFieldVectorWriter
+        quantizedWriter;
 
     private int lastDocID = -1;
     private int node = 0;
@@ -1002,7 +838,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter writer)
+        Lucene99ScalarQuantizedVectorsWriter.QuantizationFieldVectorWriter writer)
         throws IOException {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
@@ -1027,7 +863,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int M,
         int beamWidth,
         InfoStream infoStream,
-        Lucene99ScalarQuantizedVectorsWriter.QuantizationVectorWriter quantizedWriter)
+        Lucene99ScalarQuantizedVectorsWriter.QuantizationFieldVectorWriter quantizedWriter)
         throws IOException {
       this.fieldInfo = fieldInfo;
       this.dim = fieldInfo.getVectorDimension();

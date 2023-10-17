@@ -73,7 +73,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     this.quantizedVectorData = quantizedVectorData;
   }
 
-  QuantizationVectorWriter addField(FieldInfo fieldInfo, InfoStream infoStream) {
+  QuantizationFieldVectorWriter addField(FieldInfo fieldInfo, InfoStream infoStream) {
     if (fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "Only float32 vector fields are supported for quantization");
@@ -92,11 +92,11 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
               + " quantile="
               + quantile);
     }
-    return QuantizationVectorWriter.create(fieldInfo, quantile, infoStream);
+    return QuantizationFieldVectorWriter.create(fieldInfo, quantile, infoStream);
   }
 
   long[] flush(
-      Sorter.DocMap sortMap, QuantizationVectorWriter field, DocsWithFieldSet docsWithField)
+      Sorter.DocMap sortMap, QuantizationFieldVectorWriter field, DocsWithFieldSet docsWithField)
       throws IOException {
     field.finish();
     return sortMap == null ? writeField(field) : writeSortingField(field, sortMap, docsWithField);
@@ -112,7 +112,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     }
   }
 
-  private long[] writeField(QuantizationVectorWriter fieldData) throws IOException {
+  private long[] writeField(QuantizationFieldVectorWriter fieldData) throws IOException {
     long quantizedVectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
     writeQuantizedVectors(fieldData);
     long quantizedVectorDataLength =
@@ -120,7 +120,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return new long[] {quantizedVectorDataOffset, quantizedVectorDataLength};
   }
 
-  private void writeQuantizedVectors(QuantizationVectorWriter fieldData) throws IOException {
+  private void writeQuantizedVectors(QuantizationFieldVectorWriter fieldData) throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.dim];
     final ByteBuffer offsetBuffer = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -135,7 +135,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
   }
 
   private long[] writeSortingField(
-      QuantizationVectorWriter fieldData, Sorter.DocMap sortMap, DocsWithFieldSet docsWithField)
+      QuantizationFieldVectorWriter fieldData,
+      Sorter.DocMap sortMap,
+      DocsWithFieldSet docsWithField)
       throws IOException {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
@@ -169,7 +171,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return new long[] {vectorDataOffset, quantizedVectorLength};
   }
 
-  void writeSortedQuantizedVectors(QuantizationVectorWriter fieldData, int[] ordMap)
+  void writeSortedQuantizedVectors(QuantizationFieldVectorWriter fieldData, int[] ordMap)
       throws IOException {
     ScalarQuantizer scalarQuantizer = fieldData.createQuantizer();
     byte[] vector = new byte[fieldData.dim];
@@ -370,8 +372,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return BASE_RAM_BYTES_USED;
   }
 
-  static class QuantizationVectorWriter implements Accountable {
-    private static final long SHALLOW_SIZE = shallowSizeOfInstance(QuantizationVectorWriter.class);
+  static class QuantizationFieldVectorWriter implements Accountable {
+    private static final long SHALLOW_SIZE =
+        shallowSizeOfInstance(QuantizationFieldVectorWriter.class);
     private final int dim;
     private final List<float[]> floatVectors;
     private final boolean normalize;
@@ -382,16 +385,16 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     private float maxQuantile = Float.NEGATIVE_INFINITY;
     private boolean finished;
 
-    static QuantizationVectorWriter create(
+    static QuantizationFieldVectorWriter create(
         FieldInfo fieldInfo, float quantile, InfoStream infoStream) {
-      return new QuantizationVectorWriter(
+      return new QuantizationFieldVectorWriter(
           fieldInfo.getVectorDimension(),
           quantile,
           fieldInfo.getVectorSimilarityFunction(),
           infoStream);
     }
 
-    QuantizationVectorWriter(
+    QuantizationFieldVectorWriter(
         int dim,
         float quantile,
         VectorSimilarityFunction vectorSimilarityFunction,
@@ -458,9 +461,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     @Override
     public long ramBytesUsed() {
       if (floatVectors.size() == 0) return SHALLOW_SIZE;
-      return SHALLOW_SIZE
-          + (long) floatVectors.size()
-              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER);
+      return SHALLOW_SIZE + (long) floatVectors.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     }
   }
 

@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
+import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -159,7 +159,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                   new Lucene95Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene95HnswVectorsFormat(M, beamWidth);
+                      return new Lucene99HnswVectorsFormat(M, beamWidth, null);
                     }
                   })
               // set a random merge policy
@@ -222,7 +222,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new Lucene99Codec() {
+                  new Lucene95Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                       return new Lucene99HnswVectorsFormat(M, beamWidth, null);
@@ -278,7 +278,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     IndexWriterConfig iwc =
         new IndexWriterConfig()
             .setCodec(
-                new Lucene99Codec() {
+                new Lucene95Codec() {
                   @Override
                   public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                     return new Lucene99HnswVectorsFormat(M, beamWidth, null);
@@ -287,7 +287,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     IndexWriterConfig iwc2 =
         new IndexWriterConfig()
             .setCodec(
-                new Lucene99Codec() {
+                new Lucene95Codec() {
                   @Override
                   public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
                     return new Lucene99HnswVectorsFormat(M, beamWidth, null);
