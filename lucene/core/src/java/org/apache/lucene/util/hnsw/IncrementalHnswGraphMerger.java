@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.Map;
 import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
@@ -113,23 +112,16 @@ public class IncrementalHnswGraphMerger {
    * Builds a new HnswGraphBuilder using the biggest graph from the merge state as a starting point.
    * If no valid readers were added to the merge state, a new graph is created.
    *
-   * @param mergeState MergeState for the merge
+   * @param mergedVectorIterator iterator over the vectors in the merged segment
    * @return HnswGraphBuilder
    * @throws IOException If an error occurs while reading from the merge state
    */
-  public HnswGraphBuilder createBuilder(MergeState mergeState) throws IOException {
+  public HnswGraphBuilder createBuilder(DocIdSetIterator mergedVectorIterator) throws IOException {
     if (initReader == null) {
       return HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
     }
 
     HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-    DocIdSetIterator mergedVectorIterator = null;
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> mergedVectorIterator =
-          KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-      case FLOAT32 -> mergedVectorIterator =
-          KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-    }
     final int numVectors = Math.toIntExact(mergedVectorIterator.cost());
 
     BitSet initializedNodes = new FixedBitSet(numVectors + 1);

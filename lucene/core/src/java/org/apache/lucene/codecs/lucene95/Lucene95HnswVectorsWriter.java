@@ -450,7 +450,14 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
           merger.addReader(
               mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
         }
-        HnswGraphBuilder hnswGraphBuilder = merger.createBuilder(mergeState);
+        DocIdSetIterator mergedVectorIterator = null;
+        switch (fieldInfo.getVectorEncoding()) {
+          case BYTE -> mergedVectorIterator =
+              KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+          case FLOAT32 -> mergedVectorIterator =
+              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+        }
+        HnswGraphBuilder hnswGraphBuilder = merger.createBuilder(mergedVectorIterator);
         hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
         graph = hnswGraphBuilder.build(docsWithField.cardinality());
         vectorIndexNodeOffsets = writeGraph(graph);
