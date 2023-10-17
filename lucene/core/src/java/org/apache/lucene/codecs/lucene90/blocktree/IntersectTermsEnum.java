@@ -65,6 +65,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private BytesRef savedStartTerm;
 
+  private final SegmentTermsEnum.OutputAccumulator accumulator = new SegmentTermsEnum.OutputAccumulator();
+
   // TODO: in some cases we can filter by length?  eg
   // regexp foo*bar must be at least length 6 bytes
   public IntersectTermsEnum(
@@ -111,7 +113,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.prefix = 0;
     f.setState(0);
     f.arc = arc;
-    f.outputPrefix = arc.output();
     f.load(fr.rootCode);
 
     // for assert:
@@ -182,9 +183,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
 
-    BytesRef output = f.floorDataReaderBytes;
-    output.length = 0;
-    SegmentTermsEnum.appendArc(output, currentFrame.outputPrefix);
+    accumulator.reset();;
+    accumulator.push(arc.output());
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -192,17 +192,14 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // passed to findTargetArc
       arc = fr.index.findTargetArc(target, arc, getArc(1 + idx), fstReader);
       assert arc != null;
-      SegmentTermsEnum.appendArc(output, arc.output());
+      accumulator.push(arc.output());
       idx++;
     }
 
     f.arc = arc;
-    f.outputPrefix = output;
     assert arc.isFinal();
-    BytesRef nextFinalOutput = arc.nextFinalOutput();
-    SegmentTermsEnum.appendArc(output, nextFinalOutput);
-    f.load(output);
-    output.length -= nextFinalOutput.length;
+    accumulator.push(arc.nextFinalOutput());
+    f.load(accumulator);
     return f;
   }
 

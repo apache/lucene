@@ -55,7 +55,7 @@ final class IntersectTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  final BytesRef floorDataReaderBytes = new BytesRef(SegmentTermsEnum.OUT_PUT_INIT_LEN);
+  final BytesRef floorData = new BytesRef(32);
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
@@ -90,9 +90,6 @@ final class IntersectTermsEnumFrame {
 
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
-  // Cumulative output so far
-  BytesRef outputPrefix;
-
   int startBytePos;
   int suffix;
 
@@ -120,7 +117,7 @@ final class IntersectTermsEnumFrame {
       }
     } while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min);
 
-    load(null);
+    load((BytesRef) null);
   }
 
   public void setState(int state) {
@@ -169,6 +166,98 @@ final class IntersectTermsEnumFrame {
         }
       }
     }
+
+    ite.in.seek(fp);
+    int code = ite.in.readVInt();
+    entCount = code >>> 1;
+    assert entCount > 0;
+    isLastInFloor = (code & 1) != 0;
+
+    // term suffixes:
+    final long codeL = ite.in.readVLong();
+    isLeafBlock = (codeL & 0x04) != 0;
+    final int numSuffixBytes = (int) (codeL >>> 3);
+    if (suffixBytes.length < numSuffixBytes) {
+      suffixBytes = new byte[ArrayUtil.oversize(numSuffixBytes, 1)];
+    }
+    final CompressionAlgorithm compressionAlg;
+    try {
+      compressionAlg = CompressionAlgorithm.byCode((int) codeL & 0x03);
+    } catch (IllegalArgumentException e) {
+      throw new CorruptIndexException(e.getMessage(), ite.in, e);
+    }
+    compressionAlg.read(ite.in, suffixBytes, numSuffixBytes);
+    suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
+
+    int numSuffixLengthBytes = ite.in.readVInt();
+    final boolean allEqual = (numSuffixLengthBytes & 0x01) != 0;
+    numSuffixLengthBytes >>>= 1;
+    if (suffixLengthBytes.length < numSuffixLengthBytes) {
+      suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
+    }
+    if (allEqual) {
+      Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ite.in.readByte());
+    } else {
+      ite.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+    }
+    suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
+
+    // stats
+    int numBytes = ite.in.readVInt();
+    if (statBytes.length < numBytes) {
+      statBytes = new byte[ArrayUtil.oversize(numBytes, 1)];
+    }
+    ite.in.readBytes(statBytes, 0, numBytes);
+    statsReader.reset(statBytes, 0, numBytes);
+    statsSingletonRunLength = 0;
+    metaDataUpto = 0;
+
+    termState.termBlockOrd = 0;
+    nextEnt = 0;
+
+    // metadata
+    numBytes = ite.in.readVInt();
+    if (bytes.length < numBytes) {
+      bytes = new byte[ArrayUtil.oversize(numBytes, 1)];
+    }
+    ite.in.readBytes(bytes, 0, numBytes);
+    bytesReader.reset(bytes, 0, numBytes);
+
+    if (!isLastInFloor) {
+      // Sub-blocks of a single floor block are always
+      // written one after another -- tail recurse:
+      fpEnd = ite.in.getFilePointer();
+    }
+  }
+
+  void load(SegmentTermsEnum.OutputAccumulator accumulator) throws IOException {
+    {
+      final long code = accumulator.code();
+      if ((code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
+        accumulator.setFloorData(floorData);
+        floorDataReader.reset(floorData.bytes, floorData.offset, floorData.length);
+        // Floor frame
+        numFollowFloorBlocks = floorDataReader.readVInt();
+        nextFloorLabel = floorDataReader.readByte() & 0xff;
+
+        // If current state is not accept, and has transitions, we must process
+        // first block in case it has empty suffix:
+        if (ite.runAutomaton.isAccept(state) == false && transitionCount != 0) {
+          // Maybe skip floor blocks:
+          assert transitionIndex == 0 : "transitionIndex=" + transitionIndex;
+          while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min) {
+            fp = fpOrig + (floorDataReader.readVLong() >>> 1);
+            numFollowFloorBlocks--;
+            if (numFollowFloorBlocks != 0) {
+              nextFloorLabel = floorDataReader.readByte() & 0xff;
+            } else {
+              nextFloorLabel = 256;
+            }
+          }
+        }
+      }
+    }
+
 
     ite.in.seek(fp);
     int code = ite.in.readVInt();
