@@ -540,6 +540,7 @@ public class QueryUtils {
     s.search(
         q,
         new SimpleCollector() {
+          private final Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
           private Scorable scorer;
           private int leafPtr;
           private long intervalTimes32 = 1 * 32;
@@ -553,12 +554,9 @@ public class QueryUtils {
           public void collect(int doc) throws IOException {
             float score = scorer.score();
             try {
-              // The below loop makes sure that both lastDoc+1 and doc get tested, plus some docs
-              // in-between depending on how many times this check has already been performed.
-              for (int i = lastDoc[0] + 1;
-                  i <= doc;
-                  i = Math.min(doc, (int) (i + intervalTimes32 / 32))) {
-                Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+              // The intervalTimes32 trick helps contain the runtime of this check: first we check
+              // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
+              for (int i = lastDoc[0] + 1; i <= doc; i += intervalTimes32++ / 1024) {
                 ScorerSupplier supplier = w.scorerSupplier(context.get(leafPtr));
                 Scorer scorer = supplier.get(1L); // only checking one doc, so leadCost = 1
                 assertTrue(
@@ -584,9 +582,6 @@ public class QueryUtils {
                     score,
                     advanceScore,
                     maxDiff);
-                // increase the interval between two checks over time to keep the runtime of this
-                // check under control
-                intervalTimes32++;
               }
               lastDoc[0] = doc;
             } catch (IOException e) {
