@@ -1232,14 +1232,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       floorData.offset = output.offset + index;
     }
 
-    void copyFloorData(BytesRef floorData) {
-      assert outputIndex == num - 1 : "floor data should be stored in last arc, get outputIndex: " + outputIndex + ", num: " + num;
-      BytesRef output = outputs[outputIndex];
-      int len = floorData.length = output.length - index;
-      floorData.bytes = ArrayUtil.grow(floorData.bytes, len);
-      System.arraycopy(output.bytes, output.offset + index, floorData.bytes, 0, len);
-    }
-
     void reset() {
       this.num = 0;
     }

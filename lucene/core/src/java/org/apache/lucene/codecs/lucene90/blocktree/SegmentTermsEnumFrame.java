@@ -105,7 +105,7 @@ final class SegmentTermsEnumFrame {
   }
 
   public void setFloorData(SegmentTermsEnum.OutputAccumulator accumulator) {
-    accumulator.copyFloorData(floorData);
+    accumulator.setFloorData(floorData);
     floorDataReader.reset(floorData.bytes, floorData.offset, floorData.length);
     numFollowFloorBlocks = floorDataReader.readVInt();
     nextFloorLabel = floorDataReader.readByte() & 0xff;
@@ -243,7 +243,7 @@ final class SegmentTermsEnumFrame {
     nextEnt = -1;
     hasTerms = hasTermsOrig;
     if (isFloor) {
-      floorDataReader.rewind();
+      floorDataReader.setPosition(floorData.offset);
       numFollowFloorBlocks = floorDataReader.readVInt();
       assert numFollowFloorBlocks > 0;
       nextFloorLabel = floorDataReader.readByte() & 0xff;
