@@ -46,8 +46,9 @@ public class TestTaskExecutor extends LuceneTestCase {
   @BeforeClass
   public static void createExecutor() {
     executorService =
-            Executors.newFixedThreadPool(
-            random().nextBoolean() ? 1 : 2, new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
+        Executors.newFixedThreadPool(
+            random().nextBoolean() ? 1 : 2,
+            new NamedThreadFactory(TestTaskExecutor.class.getSimpleName()));
   }
 
   @AfterClass
@@ -251,11 +252,11 @@ public class TestTaskExecutor extends LuceneTestCase {
     expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(callables));
     int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
     if (maximumPoolSize == 1) {
-        assertEquals(1, tasksExecuted.get());
+      assertEquals(1, tasksExecuted.get());
     } else {
-        MatcherAssert.assertThat(tasksExecuted.get(), Matchers.greaterThanOrEqualTo(1));
+      MatcherAssert.assertThat(tasksExecuted.get(), Matchers.greaterThanOrEqualTo(1));
     }
-    assertEquals(0, ((ThreadPoolExecutor)executorService).getActiveCount());
+    assertEquals(0, ((ThreadPoolExecutor) executorService).getActiveCount());
   }
 
   /**
@@ -264,26 +265,26 @@ public class TestTaskExecutor extends LuceneTestCase {
    */
   public void testInvokeAllCatchesMultipleExceptions() {
     TaskExecutor taskExecutor = new TaskExecutor(executorService);
-      List<Callable<Void>> callables = new ArrayList<>();
+    List<Callable<Void>> callables = new ArrayList<>();
     int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
-    //if we have multiple threads, make sure both are started before an exception is thrown,
+    // if we have multiple threads, make sure both are started before an exception is thrown,
     // otherwise there may or may not be a suppressed exception
     CountDownLatch latchA = new CountDownLatch(1);
     CountDownLatch latchB = new CountDownLatch(1);
     callables.add(
         () -> {
-            if (maximumPoolSize > 1) {
-                latchA.countDown();
-                latchB.await();
-            }
+          if (maximumPoolSize > 1) {
+            latchA.countDown();
+            latchB.await();
+          }
           throw new RuntimeException("exception A");
         });
     callables.add(
         () -> {
-            if (maximumPoolSize > 1) {
-                latchB.countDown();
-                latchA.await();
-            }
+          if (maximumPoolSize > 1) {
+            latchB.countDown();
+            latchA.await();
+          }
           throw new IllegalStateException("exception B");
         });
 
@@ -292,54 +293,55 @@ public class TestTaskExecutor extends LuceneTestCase {
     Throwable[] suppressed = exc.getSuppressed();
 
     if (maximumPoolSize == 1) {
-        assertEquals(0, suppressed.length);
+      assertEquals(0, suppressed.length);
     } else {
-        assertEquals(1, suppressed.length);
-        if (exc.getMessage().equals("exception A")) {
-            assertEquals("exception B", suppressed[0].getMessage());
-        } else {
-            assertEquals("exception A", suppressed[0].getMessage());
-            assertEquals("exception B", exc.getMessage());
-        }
+      assertEquals(1, suppressed.length);
+      if (exc.getMessage().equals("exception A")) {
+        assertEquals("exception B", suppressed[0].getMessage());
+      } else {
+        assertEquals("exception A", suppressed[0].getMessage());
+        assertEquals("exception B", exc.getMessage());
+      }
     }
   }
 
   public void testCancelTasksOnException() {
-      TaskExecutor taskExecutor = new TaskExecutor(executorService);
-      int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
-      final int numTasks = random().nextInt(10, 50);
-      final int throwingTask = random().nextInt(numTasks);
-      boolean error = random().nextBoolean();
-      List<Callable<Void>> tasks = new ArrayList<>(numTasks);
-      AtomicInteger executedTasks = new AtomicInteger(0);
-      for (int i = 0; i < numTasks; i++) {
-          final int index = i;
-          tasks.add(() -> {
-              if (index == throwingTask) {
-                  if (error) {
-                      throw new OutOfMemoryError();
-                  } else {
-                      throw new RuntimeException();
-                  }
+    TaskExecutor taskExecutor = new TaskExecutor(executorService);
+    int maximumPoolSize = ((ThreadPoolExecutor) executorService).getMaximumPoolSize();
+    final int numTasks = random().nextInt(10, 50);
+    final int throwingTask = random().nextInt(numTasks);
+    boolean error = random().nextBoolean();
+    List<Callable<Void>> tasks = new ArrayList<>(numTasks);
+    AtomicInteger executedTasks = new AtomicInteger(0);
+    for (int i = 0; i < numTasks; i++) {
+      final int index = i;
+      tasks.add(
+          () -> {
+            if (index == throwingTask) {
+              if (error) {
+                throw new OutOfMemoryError();
+              } else {
+                throw new RuntimeException();
               }
-              if (index > throwingTask && maximumPoolSize == 1) {
-                  throw new AssertionError("task should not have started");
-              }
-              executedTasks.incrementAndGet();
-              return null;
+            }
+            if (index > throwingTask && maximumPoolSize == 1) {
+              throw new AssertionError("task should not have started");
+            }
+            executedTasks.incrementAndGet();
+            return null;
           });
-      }
-      Throwable throwable;
-      if (error) {
-          throwable = expectThrows(OutOfMemoryError.class, () -> taskExecutor.invokeAll(tasks));
-      } else {
-          throwable = expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(tasks));
-      }
-      assertEquals(0, throwable.getSuppressed().length);
-      if (maximumPoolSize == 1) {
-          assertEquals(throwingTask, executedTasks.get());
-      } else {
-          MatcherAssert.assertThat(executedTasks.get(), Matchers.greaterThanOrEqualTo(throwingTask));
-      }
+    }
+    Throwable throwable;
+    if (error) {
+      throwable = expectThrows(OutOfMemoryError.class, () -> taskExecutor.invokeAll(tasks));
+    } else {
+      throwable = expectThrows(RuntimeException.class, () -> taskExecutor.invokeAll(tasks));
+    }
+    assertEquals(0, throwable.getSuppressed().length);
+    if (maximumPoolSize == 1) {
+      assertEquals(throwingTask, executedTasks.get());
+    } else {
+      MatcherAssert.assertThat(executedTasks.get(), Matchers.greaterThanOrEqualTo(throwingTask));
+    }
   }
 }

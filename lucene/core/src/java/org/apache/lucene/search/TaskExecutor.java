@@ -30,7 +30,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -73,15 +72,16 @@ public final class TaskExecutor {
   }
 
   /**
-   * Holds all the sub-tasks that a certain operation gets split into as it gets parallelized and exposes the ability to invoke such
-   * tasks and wait for them all to complete their execution and provide their results.
-   * Ensures that each task does not get parallelized further: this is important to avoid a deadlock in situations where one executor
-   * thread waits on other executor threads to complete before it can progress. This happens in situations where for instance
-   * {@link Query#createWeight(IndexSearcher, ScoreMode, float)} is called as part of searching each slice,
-   * like {@link TopFieldCollector#populateScores(ScoreDoc[], IndexSearcher, Query)} does.
-   * Additionally, if one task throws an exception, all other tasks from the same group are cancelled, to avoid needless computation as
-   * their results would not be exposed anyways.
-   * Creates one {@link FutureTask} for each {@link Callable} provided
+   * Holds all the sub-tasks that a certain operation gets split into as it gets parallelized and
+   * exposes the ability to invoke such tasks and wait for them all to complete their execution and
+   * provide their results. Ensures that each task does not get parallelized further: this is
+   * important to avoid a deadlock in situations where one executor thread waits on other executor
+   * threads to complete before it can progress. This happens in situations where for instance
+   * {@link Query#createWeight(IndexSearcher, ScoreMode, float)} is called as part of searching each
+   * slice, like {@link TopFieldCollector#populateScores(ScoreDoc[], IndexSearcher, Query)} does.
+   * Additionally, if one task throws an exception, all other tasks from the same group are
+   * cancelled, to avoid needless computation as their results would not be exposed anyways. Creates
+   * one {@link FutureTask} for each {@link Callable} provided
    *
    * @param <T> the return type of all the callables
    */
@@ -111,7 +111,8 @@ public final class TaskExecutor {
               numberOfRunningTasksInCurrentThread.set(counter - 1);
             }
           } else {
-            //task is cancelled hence it has no results to return. That's fine: they would be ignored anyway.
+            // task is cancelled hence it has no results to return. That's fine: they would be
+            // ignored anyway.
             set(null);
           }
         }
