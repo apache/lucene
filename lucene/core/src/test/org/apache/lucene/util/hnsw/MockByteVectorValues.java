@@ -24,7 +24,12 @@ class MockByteVectorValues extends AbstractMockVectorValues<byte[]> {
   private final byte[] scratch;
 
   static MockByteVectorValues fromValues(byte[][] values) {
-    int dimension = values[0].length;
+    byte[] firstNonNull = null;
+    int j = 0;
+    while (firstNonNull == null && j < values.length) {
+      firstNonNull = values[j++];
+    }
+    int dimension = firstNonNull.length;
     int maxDoc = values.length;
     byte[][] denseValues = new byte[maxDoc][];
     int count = 0;
