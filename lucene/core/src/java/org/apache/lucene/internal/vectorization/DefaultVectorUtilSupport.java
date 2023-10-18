@@ -148,6 +148,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int dotProductUnsigned(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      total += (a[i]&0xFF) * (b[i]&0xFF);
+    }
+    return total;
+  }
+
+  @Override
   public float cosine(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;
@@ -157,6 +166,23 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     for (int i = 0; i < a.length; i++) {
       byte elem1 = a[i];
       byte elem2 = b[i];
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
+  @Override
+  public float cosineUnsigned(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int sum = 0;
+    int norm1 = 0;
+    int norm2 = 0;
+
+    for (int i = 0; i < a.length; i++) {
+      int elem1 = a[i] & 0xFF;
+      int elem2 = b[i] & 0xFF;
       sum += elem1 * elem2;
       norm1 += elem1 * elem1;
       norm2 += elem2 * elem2;

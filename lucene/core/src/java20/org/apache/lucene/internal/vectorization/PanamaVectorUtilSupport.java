@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static jdk.incubator.vector.VectorOperators.AND;
 import static jdk.incubator.vector.VectorOperators.ADD;
 import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
@@ -324,14 +325,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.length);
-        res += dotProductBody512(a, b, i);
+        res += dotProductBody512(a, b, false, i);
       } else if (VECTOR_BITSIZE == 256) {
         i += BYTE_SPECIES.loopBound(a.length);
-        res += dotProductBody256(a, b, i);
+        res += dotProductBody256(a, b, false, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
         i += ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
-        res += dotProductBody128(a, b, i);
+        res += dotProductBody128(a, b, false, i);
       }
     }
 
@@ -342,8 +343,37 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res;
   }
 
+  @Override
+  public int dotProductUnsigned(byte[] a, byte[] b) {
+    int i = 0;
+    int res = 0;
+
+    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
+    // vectors (256-bit on intel to dodge performance landmines)
+    if (a.length >= 16 && HAS_FAST_INTEGER_VECTORS) {
+      // compute vectorized dot product consistent with VPDPBUSD instruction
+      if (VECTOR_BITSIZE >= 512) {
+        i += BYTE_SPECIES.loopBound(a.length);
+        res += dotProductBody512(a, b, true, i);
+      } else if (VECTOR_BITSIZE == 256) {
+        i += BYTE_SPECIES.loopBound(a.length);
+        res += dotProductBody256(a, b, true, i);
+      } else {
+        // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
+        i += ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
+        res += dotProductBody128(a, b, true, i);
+      }
+    }
+
+    // scalar tail
+    for (; i < a.length; i++) {
+      res += (b[i]&0xFF) * (a[i] & 0xFF);
+    }
+    return res;
+  }
+
   /** vectorized dot product body (512 bit vectors) */
-  private int dotProductBody512(byte[] a, byte[] b, int limit) {
+  private int dotProductBody512(byte[] a, byte[] b, boolean unsigned, int limit) {
     IntVector acc = IntVector.zero(INT_SPECIES);
     for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
       ByteVector va8 = ByteVector.fromArray(BYTE_SPECIES, a, i);
@@ -352,6 +382,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
       Vector<Short> vb16 = vb8.convertShape(B2S, SHORT_SPECIES, 0);
+      if (unsigned) {
+        // Broadcast transformation to unsigned byte
+        va16 = va16.lanewise(AND, 0xFF);
+        vb16 = vb16.lanewise(AND, 0xFF);
+      }
       Vector<Short> prod16 = va16.mul(vb16);
 
       // 32-bit add
@@ -363,7 +398,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (256 bit vectors) */
-  private int dotProductBody256(byte[] a, byte[] b, int limit) {
+  private int dotProductBody256(byte[] a, byte[] b, boolean unsigned, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_256);
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
       ByteVector va8 = ByteVector.fromArray(ByteVector.SPECIES_64, a, i);
@@ -372,6 +407,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // 32-bit multiply and add into accumulator
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
       Vector<Integer> vb32 = vb8.convertShape(B2I, IntVector.SPECIES_256, 0);
+      if (unsigned) {
+        // Broadcast transformation to unsigned byte
+        va32 = va32.lanewise(AND, 0xFF);
+        vb32 = vb32.lanewise(AND, 0xFF);
+      }
       acc = acc.add(va32.mul(vb32));
     }
     // reduce
@@ -379,7 +419,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized dot product body (128 bit vectors) */
-  private int dotProductBody128(byte[] a, byte[] b, int limit) {
+  private int dotProductBody128(byte[] a, byte[] b, boolean unsigned, int limit) {
     IntVector acc = IntVector.zero(IntVector.SPECIES_128);
     // 4 bytes at a time (re-loading half the vector each time!)
     for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
@@ -390,6 +430,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // process first "half" only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
       Vector<Short> vb16 = vb8.convert(B2S, 0);
+      if (unsigned) {
+        // Broadcast transformation to unsigned byte
+        va16 = va16.lanewise(AND, 0xFF);
+        vb16 = vb16.lanewise(AND, 0xFF);
+      }
       Vector<Short> prod16 = va16.mul(vb16);
 
       // 32-bit add
@@ -412,14 +457,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.length);
-        ret = cosineBody512(a, b, i);
+        ret = cosineBody512(a, b, false, i);
       } else if (VECTOR_BITSIZE == 256) {
         i += BYTE_SPECIES.loopBound(a.length);
-        ret = cosineBody256(a, b, i);
+        ret = cosineBody256(a, b, false, i);
       } else {
         // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
         i += ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
-        ret = cosineBody128(a, b, i);
+        ret = cosineBody128(a, b, false, i);
       }
       sum += ret[0];
       norm1 += ret[1];
@@ -437,8 +482,47 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
 
+  @Override
+  public float cosineUnsigned(byte[] a, byte[] b) {
+    int i = 0;
+    int sum = 0;
+    int norm1 = 0;
+    int norm2 = 0;
+
+    // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
+    // vectors (256-bit on intel to dodge performance landmines)
+    if (a.length >= 16 && HAS_FAST_INTEGER_VECTORS) {
+      final float[] ret;
+      if (VECTOR_BITSIZE >= 512) {
+        i += BYTE_SPECIES.loopBound(a.length);
+        ret = cosineBody512(a, b, true, i);
+      } else if (VECTOR_BITSIZE == 256) {
+        i += BYTE_SPECIES.loopBound(a.length);
+        ret = cosineBody256(a, b, true, i);
+      } else {
+        // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
+        i += ByteVector.SPECIES_64.loopBound(a.length - ByteVector.SPECIES_64.length());
+        ret = cosineBody128(a, b, true, i);
+      }
+      sum += ret[0];
+      norm1 += ret[1];
+      norm2 += ret[2];
+    }
+
+    // scalar tail
+    for (; i < a.length; i++) {
+      int elem1 = a[i] & 0xFF;
+      int elem2 = b[i] & 0xFF;
+      sum += elem1 * elem2;
+      norm1 += elem1 * elem1;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
+
   /** vectorized cosine body (512 bit vectors) */
-  private float[] cosineBody512(byte[] a, byte[] b, int limit) {
+  private float[] cosineBody512(byte[] a, byte[] b, boolean unsigned, int limit) {
     IntVector accSum = IntVector.zero(INT_SPECIES);
     IntVector accNorm1 = IntVector.zero(INT_SPECIES);
     IntVector accNorm2 = IntVector.zero(INT_SPECIES);
@@ -449,6 +533,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
       Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
       Vector<Short> vb16 = vb8.convertShape(B2S, SHORT_SPECIES, 0);
+      if (unsigned) {
+        // Broadcast transformation to unsigned byte
+        va16 = va16.lanewise(AND, 0xFF);
+        vb16 = vb16.lanewise(AND, 0xFF);
+      }
       Vector<Short> norm1_16 = va16.mul(va16);
       Vector<Short> norm2_16 = vb16.mul(vb16);
       Vector<Short> prod16 = va16.mul(vb16);
@@ -468,7 +557,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (256 bit vectors) */
-  private float[] cosineBody256(byte[] a, byte[] b, int limit) {
+  private float[] cosineBody256(byte[] a, byte[] b, boolean unsigned, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_256);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_256);
@@ -479,6 +568,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // 16-bit multiply, and add into accumulators
       Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
       Vector<Integer> vb32 = vb8.convertShape(B2I, IntVector.SPECIES_256, 0);
+      if (unsigned) {
+        // Broadcast transformation to unsigned byte
+        va32 = va32.lanewise(AND, 0xFF);
+        vb32 = vb32.lanewise(AND, 0xFF);
+      }
       Vector<Integer> norm1_32 = va32.mul(va32);
       Vector<Integer> norm2_32 = vb32.mul(vb32);
       Vector<Integer> prod32 = va32.mul(vb32);
@@ -493,7 +587,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   /** vectorized cosine body (128 bit vectors) */
-  private float[] cosineBody128(byte[] a, byte[] b, int limit) {
+  private float[] cosineBody128(byte[] a, byte[] b, boolean unsigned, int limit) {
     IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm1 = IntVector.zero(IntVector.SPECIES_128);
     IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
@@ -504,6 +598,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // process first half only: 16-bit multiply
       Vector<Short> va16 = va8.convert(B2S, 0);
       Vector<Short> vb16 = vb8.convert(B2S, 0);
+      if (unsigned) {
+        // Broadcast transformation to unsigned byte
+        va16 = va16.lanewise(AND, 0xFF);
+        vb16 = vb16.lanewise(AND, 0xFF);
+      }
       Vector<Short> norm1_16 = va16.mul(va16);
       Vector<Short> norm2_16 = vb16.mul(vb16);
       Vector<Short> prod16 = va16.mul(vb16);

@@ -36,8 +36,14 @@ public interface VectorUtilSupport {
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
 
-  /** Returns the cosine similarity between the two byte vectors. */
+  /** Returns the dot product computed over unsigned bytes. */
+  int dotProductUnsigned(byte[] a, byte[] b);
+
+  /** Returns the cosine similarity between the two signed byte vectors. */
   float cosine(byte[] a, byte[] b);
+
+  /** Returns the cosine similarity between the two unsigned byte vectors. */
+  float cosineUnsigned(byte[] a, byte[] b);
 
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);

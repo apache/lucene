@@ -33,7 +33,7 @@ public class VectorUtilBenchmark {
   private float[] floatsA;
   private float[] floatsB;
 
-  @Param({"1", "128", "207", "256", "300", "512", "702", "1024"})
+  @Param({"128", "207", "256", "1024"})
   int size;
 
   @Setup(Level.Trial)
@@ -71,6 +71,20 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   @Fork(value = 1)
+  public float binaryCosineUnsignedScalar() {
+    return VectorUtil.cosineUnsigned(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(
+    value = 1,
+    jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float binaryCosineUnsignedVector() {
+    return VectorUtil.cosineUnsigned(bytesA, bytesB);
+  }
+
+  @Benchmark
+  @Fork(value = 1)
   public int binaryDotProductScalar() {
     return VectorUtil.dotProduct(bytesA, bytesB);
   }
@@ -85,57 +99,77 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   @Fork(value = 1)
-  public int binarySquareScalar() {
-    return VectorUtil.squareDistance(bytesA, bytesB);
+  public int binaryDotProductUnsignedScalar() {
+    return VectorUtil.dotProductUnsigned(bytesA, bytesB);
   }
 
   @Benchmark
   @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public int binarySquareVector() {
-    return VectorUtil.squareDistance(bytesA, bytesB);
+    value = 1,
+    jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int binaryDotProductUnsignedVector() {
+    return VectorUtil.dotProductUnsigned(bytesA, bytesB);
   }
 
-  @Benchmark
-  @Fork(value = 1)
-  public float floatCosineScalar() {
-    return VectorUtil.cosine(floatsA, floatsB);
-  }
+//  @Benchmark
+//  @Fork(value = 1)
+//  public float floatSquareScalar() {
+//    return VectorUtil.squareDistance(floatsA, floatsB);
+//  }
 
-  @Benchmark
-  @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float floatCosineVector() {
-    return VectorUtil.cosine(floatsA, floatsB);
-  }
-
-  @Benchmark
-  @Fork(value = 1)
-  public float floatDotProductScalar() {
-    return VectorUtil.dotProduct(floatsA, floatsB);
-  }
-
-  @Benchmark
-  @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float floatDotProductVector() {
-    return VectorUtil.dotProduct(floatsA, floatsB);
-  }
-
-  @Benchmark
-  @Fork(value = 1)
-  public float floatSquareScalar() {
-    return VectorUtil.squareDistance(floatsA, floatsB);
-  }
-
-  @Benchmark
-  @Fork(
-      value = 1,
-      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public float floatSquareVector() {
-    return VectorUtil.squareDistance(floatsA, floatsB);
-  }
+//  @Benchmark
+//  @Fork(value = 1)
+//  public int binarySquareScalar() {
+//    return VectorUtil.squareDistance(bytesA, bytesB);
+//  }
+//
+//  @Benchmark
+//  @Fork(
+//      value = 1,
+//      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+//  public int binarySquareVector() {
+//    return VectorUtil.squareDistance(bytesA, bytesB);
+//  }
+//
+//  @Benchmark
+//  @Fork(value = 1)
+//  public float floatCosineScalar() {
+//    return VectorUtil.cosine(floatsA, floatsB);
+//  }
+//
+//  @Benchmark
+//  @Fork(
+//      value = 1,
+//      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+//  public float floatCosineVector() {
+//    return VectorUtil.cosine(floatsA, floatsB);
+//  }
+//
+//  @Benchmark
+//  @Fork(value = 1)
+//  public float floatDotProductScalar() {
+//    return VectorUtil.dotProduct(floatsA, floatsB);
+//  }
+//
+//  @Benchmark
+//  @Fork(
+//      value = 1,
+//      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+//  public float floatDotProductVector() {
+//    return VectorUtil.dotProduct(floatsA, floatsB);
+//  }
+//
+//  @Benchmark
+//  @Fork(value = 1)
+//  public float floatSquareScalar() {
+//    return VectorUtil.squareDistance(floatsA, floatsB);
+//  }
+//
+//  @Benchmark
+//  @Fork(
+//      value = 1,
+//      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+//  public float floatSquareVector() {
+//    return VectorUtil.squareDistance(floatsA, floatsB);
+//  }
 }
