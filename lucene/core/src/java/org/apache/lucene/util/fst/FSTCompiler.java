@@ -123,10 +123,9 @@ public class FSTCompiler<T> {
    * Instantiates an FST/FSA builder with default settings and pruning options turned off. For more
    * tuning and tweaking, see {@link Builder}.
    */
-  // nocommit remove this?  only use Builder?
+  // TODO: remove this?  Builder API should be the only entry point?
   public FSTCompiler(FST.INPUT_TYPE inputType, Outputs<T> outputs) {
-    // nocommit what default for suffix hash size?
-    this(inputType, 16.0, outputs, true, 15, 1f);
+    this(inputType, 32.0, outputs, true, 15, 1f);
   }
 
   private FSTCompiler(
@@ -168,8 +167,7 @@ public class FSTCompiler<T> {
 
     private final INPUT_TYPE inputType;
     private final Outputs<T> outputs;
-    // nocommit what default?
-    private double suffixRAMLimitMB = 16.0;
+    private double suffixRAMLimitMB = 32.0;
     private boolean allowFixedLengthArcs = true;
     private int bytesPageBits = 15;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
@@ -198,7 +196,7 @@ public class FSTCompiler<T> {
      * <p>Note that this is not a precise limit.  The current implementation uses hash tables to map the suffixes, and approximates the
      * rough overhead (unused slots) in the hash table.
      *
-     * <p>Default = {@code 16.0}.
+     * <p>Default = {@code 32.0} MB.
      */
     public Builder<T> suffixRAMLimitMB(double mb) {
       if (mb < 0) {
@@ -230,8 +228,6 @@ public class FSTCompiler<T> {
       this.bytesPageBits = bytesPageBits;
       return this;
     }
-
-    // nocommit maybe don't track inputCount anymore?
 
     /**
      * Overrides the default the maximum oversizing of fixed array allowed to enable direct
@@ -923,6 +919,9 @@ public class FSTCompiler<T> {
     // code here...
     T output;
     boolean isFinal;
+
+    // TODO: remove this tracking?  we used to use it for confusingly pruning NodeHash, but
+    // we switched to LRU by RAM usage instead:
     long inputCount;
 
     /** This node's depth, starting from the automaton root. */

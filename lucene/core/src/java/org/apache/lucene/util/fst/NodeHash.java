@@ -22,9 +22,6 @@ import java.util.Locale;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 import org.apache.lucene.util.packed.PackedInts;;
 
-// nocommit we could gradually grow the double-barrel hash size based on size of the growing FST?  hmm does not work so well since you
-// failed to use the larger hash in the beginning?  it's fundamentally needing two passes?
-
 // TODO: any way to make a reversee suffix lookup (msokolov's idea) instead of more costly hash?  hmmm, though, hash is not so wasteful
 // since it does not have to store value of each entry: the value is the node pointer in the FST.  actually, there is much to save
 // there -- we would not need any long per entry -- we'd be able to start at the FST end node and work backwards from the transitions
@@ -36,7 +33,7 @@ import org.apache.lucene.util.packed.PackedInts;;
 final class NodeHash<T> {
 
   // nocommit
-  private static final boolean DO_PRINT_HASH_RAM = true;
+  private static final boolean DO_PRINT_HASH_RAM = false;
 
   // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then we move it to fallback
   private PagedGrowableHash primaryTable;
@@ -91,8 +88,7 @@ final class NodeHash<T> {
         return node;
       }
 
-      // nocommit -- is this really quadratic probe?
-      // quadratic probe
+      // quadratic probe (but is it, really?)
       pos = (pos + (++c)) & fallbackTable.mask;
     }
   }
@@ -168,8 +164,7 @@ final class NodeHash<T> {
         return node;
       }
 
-      // nocommit -- is this really quadratic probe?
-      // quadratic probe
+      // quadratic probe (but is it, really?)
       pos = (pos + (++c)) & primaryTable.mask;
     }
   }
