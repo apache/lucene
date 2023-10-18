@@ -76,4 +76,14 @@ final class SingletonSortedNumericDocValues extends SortedNumericDocValues {
   public int docValueCount() {
     return 1;
   }
+
+  @Override
+  public long[] uniqueValues() {
+    return in.uniqueValues();
+  }
+
+  @Override
+  public boolean hasSingleValue() {
+    return in.hasSingleValue();
+  }
 }

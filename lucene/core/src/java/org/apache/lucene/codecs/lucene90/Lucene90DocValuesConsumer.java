@@ -185,17 +185,17 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     }
   }
 
-  private long[] writeValuesSoftDeleteField(FieldInfo field, DocValuesProducer valuesProducer)
+  private long[] writeValuesSingleValue(FieldInfo field, SortedNumericDocValues values)
       throws IOException {
     // we use IndexedDISI to cover numDocsWithValue == maxDoc (isFullyDeleted)
     long offset = data.getFilePointer();
     meta.writeLong(offset); // docsWithFieldOffset
-    SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     final int[] result = IndexedDISI.writeBitSetInternal(values, data, (byte) -1);
     meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
     meta.writeShort((short) result[0]); // jumpTableEntryCount
     meta.writeByte((byte) -1); // denseRankPower
-    meta.writeLong(result[1]); // numValues
+    // numValues. use numDocsWithValue as numValues because the values is singleton
+    meta.writeLong(result[1]);
     meta.writeInt(-1); // tablesize
 
     meta.writeByte((byte) 0); // numBitsPerValue
@@ -205,22 +205,24 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeLong(startOffset); // valueOffset
     meta.writeLong(data.getFilePointer() - startOffset); // valuesLength
     meta.writeLong(-1); // jumpTableOffset
-    return null;
+    return null; // not used for NumericField
   }
 
   private long[] writeValues(FieldInfo field, DocValuesProducer valuesProducer, boolean ords)
       throws IOException {
-    if (field.isSoftDeletesField()) {
-      return writeValuesSoftDeleteField(field, valuesProducer);
-    }
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     final long firstValue;
+    boolean hasValue = false;
     if (values.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       firstValue = values.nextValue();
+      hasValue = true;
     } else {
       firstValue = 0L;
     }
     values = valuesProducer.getSortedNumeric(field);
+    if (hasValue && DocValues.unwrapSingleton(values) != null && values.hasSingleValue()) {
+      return writeValuesSingleValue(field, values);
+    }
     int numDocsWithValue = 0;
     MinMaxTracker minMax = new MinMaxTracker();
     MinMaxTracker blockMinMax = new MinMaxTracker();

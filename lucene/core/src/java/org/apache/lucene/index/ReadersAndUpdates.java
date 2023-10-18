@@ -281,6 +281,27 @@ final class ReadersAndUpdates {
     return pendingDeletes.writeLiveDocs(dir);
   }
 
+  // Return a long[] with size of 1, if all updates has same value, otherwise return null
+  private long[] updatesHasSingleValue(List<DocValuesFieldUpdates> updates) {
+    long[] uniqueValues = null;
+    for (DocValuesFieldUpdates update : updates) {
+      if (update instanceof NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates) {
+        long v =
+            ((NumericDocValuesFieldUpdates.SingleValueNumericDocValuesFieldUpdates) update)
+                .longValue();
+        if (uniqueValues == null) {
+          uniqueValues = new long[1];
+          uniqueValues[0] = v;
+        } else if (v != uniqueValues[0]) { // just support single value only
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
+    return uniqueValues;
+  }
+
   private synchronized void handleDVUpdates(
       FieldInfos infos,
       Directory dir,
@@ -400,14 +421,34 @@ final class ReadersAndUpdates {
               new EmptyDocValuesProducer() {
                 @Override
                 public NumericDocValues getNumeric(FieldInfo fieldInfoIn) throws IOException {
+                  long[] updateHasSingleValue = updatesHasSingleValue(updatesToApply);
+                  NumericDocValues onDiskDocValues = reader.getNumericDocValues(field);
                   DocValuesFieldUpdates.Iterator iterator = updateSupplier.apply(fieldInfo);
                   final MergedDocValues<NumericDocValues> mergedDocValues =
                       new MergedDocValues<>(
-                          reader.getNumericDocValues(field),
+                          onDiskDocValues,
                           DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
                           iterator);
                   // Merge sort of the original doc values with updated doc values:
                   return new NumericDocValues() {
+                    @Override
+                    public boolean hasSingleValue() {
+                      long[] onDiskUniqueValues = null;
+                      if (onDiskDocValues != null) {
+                        onDiskUniqueValues = onDiskDocValues.uniqueValues();
+                      }
+                      if (onDiskUniqueValues != null && onDiskUniqueValues.length != 1) {
+                        return false;
+                      }
+                      if (onDiskUniqueValues == null && updateHasSingleValue == null) {
+                        return false;
+                      }
+                      if (onDiskUniqueValues != null && updateHasSingleValue != null) {
+                        return onDiskDocValues.uniqueValues()[0] == updateHasSingleValue[0];
+                      }
+                      return true;
+                    }
+
                     @Override
                     public long longValue() throws IOException {
                       return mergedDocValues.currentValuesSupplier.longValue();
