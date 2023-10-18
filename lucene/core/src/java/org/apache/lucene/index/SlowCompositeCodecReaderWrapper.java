@@ -595,7 +595,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       List<PointValuesSub> values = new ArrayList<>();
       for (int i = 0; i < readers.length; ++i) {
         FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);
-        if (fi.getPointDimensionCount() > 0) {
+        if (fi != null && fi.getPointDimensionCount() > 0) {
           PointValues v = readers[i].getValues(field);
           values.add(new PointValuesSub(v, docStarts[i]));
         }
