@@ -512,7 +512,6 @@ public class TestFSTs extends LuceneTestCase {
         Path dirOut,
         Path wordsFileIn,
         int inputMode,
-        int prune,
         Outputs<T> outputs,
         boolean noArcArrays) {
       this.dirOut = dirOut;
@@ -566,10 +565,6 @@ public class TestFSTs extends LuceneTestCase {
         long tEnd = System.nanoTime();
         System.out.println(
             ((tEnd - tMid) / (double) TimeUnit.SECONDS.toNanos(1)) + " sec to finish/pack");
-        if (fst == null) {
-          System.out.println("FST was fully pruned!");
-          System.exit(0);
-        }
 
         if (dirOut == null) {
           return;
@@ -663,8 +658,6 @@ public class TestFSTs extends LuceneTestCase {
   // java -cp
   // ../build/codecs/classes/java:../test-framework/lib/randomizedtesting-runner-*.jar:../build/core/classes/test:../build/core/classes/test-framework:../build/core/classes/java:../build/test-framework/classes/java:../test-framework/lib/junit-4.10.jar org.apache.lucene.util.fst.TestFSTs /xold/tmp/allTerms3.txt out
   public static void main(String[] args) throws IOException {
-    // nocommit get rid of prune
-    int prune = 0;
     int limit = Integer.MAX_VALUE;
     int inputMode = 0; // utf8
     boolean storeOrds = false;
@@ -676,10 +669,7 @@ public class TestFSTs extends LuceneTestCase {
 
     int idx = 0;
     while (idx < args.length) {
-      if (args[idx].equals("-prune")) {
-        prune = Integer.parseInt(args[1 + idx]);
-        idx++;
-      } else if (args[idx].equals("-limit")) {
+      if (args[idx].equals("-limit")) {
         limit = Integer.parseInt(args[1 + idx]);
         idx++;
       } else if (args[idx].equals("-utf8")) {
@@ -723,7 +713,7 @@ public class TestFSTs extends LuceneTestCase {
       final PositiveIntOutputs o2 = PositiveIntOutputs.getSingleton();
       final PairOutputs<Long, Long> outputs = new PairOutputs<>(o1, o2);
       new VisitTerms<PairOutputs.Pair<Long, Long>>(
-          dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+          dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         Random rand;
 
         @Override
@@ -737,7 +727,7 @@ public class TestFSTs extends LuceneTestCase {
     } else if (storeOrds) {
       // Store only ords
       final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         @Override
         public Long getOutput(IntsRef input, int ord) {
           return (long) ord;
@@ -746,7 +736,7 @@ public class TestFSTs extends LuceneTestCase {
     } else if (storeDocFreqs) {
       // Store only docFreq
       final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+      new VisitTerms<Long>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         Random rand;
 
         @Override
@@ -761,7 +751,7 @@ public class TestFSTs extends LuceneTestCase {
       // Store nothing
       final NoOutputs outputs = NoOutputs.getSingleton();
       final Object NO_OUTPUT = outputs.getNoOutput();
-      new VisitTerms<Object>(dirOut, wordsFileIn, inputMode, prune, outputs, noArcArrays) {
+      new VisitTerms<Object>(dirOut, wordsFileIn, inputMode, outputs, noArcArrays) {
         @Override
         public Object getOutput(IntsRef input, int ord) {
           return NO_OUTPUT;
