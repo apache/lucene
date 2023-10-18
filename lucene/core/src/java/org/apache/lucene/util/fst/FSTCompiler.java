@@ -160,7 +160,7 @@ public class FSTCompiler<T> {
     bytes = fst.bytes;
     assert bytes != null;
     if (doShareSuffix) {
-      dedupHash = new NodeHash<>(fst, bytes.getReverseReader(false));
+      dedupHash = new NodeHash<>(this, bytes.getReverseReader(false));
     } else {
       dedupHash = null;
     }
@@ -353,7 +353,7 @@ public class FSTCompiler<T> {
         node = addNode(nodeIn);
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(this, nodeIn);
+        node = dedupHash.add(nodeIn);
       }
     } else {
       node = addNode(nodeIn);

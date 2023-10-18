@@ -26,19 +26,19 @@ final class NodeHash<T> {
   private PagedGrowableWriter table;
   private long count;
   private long mask;
-  private final FST<T> fst;
+  private final FSTCompiler<T> fstCompiler;
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   private final FST.BytesReader in;
 
-  public NodeHash(FST<T> fst, FST.BytesReader in) {
+  public NodeHash(FSTCompiler<T> fstCompiler, FST.BytesReader in) {
     table = new PagedGrowableWriter(16, 1 << 27, 8, PackedInts.COMPACT);
     mask = 15;
-    this.fst = fst;
+    this.fstCompiler = fstCompiler;
     this.in = in;
   }
 
   private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
-    fst.readFirstRealTargetArc(address, scratchArc, in);
+    fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
 
     // Fail fast for a node with fixed length arcs.
     if (scratchArc.bytesPerArc() != 0) {
@@ -72,7 +72,7 @@ final class NodeHash<T> {
           return false;
         }
       }
-      fst.readNextRealArc(scratchArc, in);
+      fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
 
     return false;
@@ -108,7 +108,7 @@ final class NodeHash<T> {
     final int PRIME = 31;
     // System.out.println("hash frozen node=" + node);
     long h = 0;
-    fst.readFirstRealTargetArc(node, scratchArc, in);
+    fstCompiler.fst.readFirstRealTargetArc(node, scratchArc, in);
     while (true) {
       // System.out.println("  label=" + scratchArc.label + " target=" + scratchArc.target + " h=" +
       // h + " output=" + fst.outputs.outputToString(scratchArc.output) + " next?=" +
@@ -123,14 +123,13 @@ final class NodeHash<T> {
       if (scratchArc.isLast()) {
         break;
       }
-      fst.readNextRealArc(scratchArc, in);
+      fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
     // System.out.println("  ret " + (h&Integer.MAX_VALUE));
     return h & Long.MAX_VALUE;
   }
 
-  public long add(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)
-      throws IOException {
+  public long add(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
     // System.out.println("hash: add count=" + count + " vs " + table.size() + " mask=" + mask);
     final long h = hash(nodeIn);
     long pos = h & mask;
