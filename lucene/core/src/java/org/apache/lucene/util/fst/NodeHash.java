@@ -32,9 +32,6 @@ import org.apache.lucene.util.packed.PackedInts;;
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
 
-  // nocommit
-  private static final boolean DO_PRINT_HASH_RAM = false;
-
   // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then we move it to fallback
   private PagedGrowableHash primaryTable;
 
@@ -69,8 +66,6 @@ final class NodeHash<T> {
     this.in = in;
   }
 
-  // nocommit measure how wasteful/conflicty these hash tables are.  should we improve hash function?
-  
   private long getFallback(FSTCompiler.UnCompiledNode<T> nodeIn, long hash) throws IOException {
     if (fallbackTable == null) {
       // no fallback yet (primary table is not yet large enough to swap)
@@ -136,25 +131,15 @@ final class NodeHash<T> {
         // in smaller FSTs, even if the precise RAM used is not always under the limit.
         
         // divide limit by 2 because fallback gets half the RAM and primary gets the other half
-        // divide by 2 again to account for approximate hash table overhead halfway between 33.3% and 66.7% occupancy = 0.5%
+        // divide by 2 again to account for approximate hash table overhead halfway between 33.3% and 66.7% occupancy = 50%
         if (ramBytesUsed >= ramLimitBytes / (2 * 2)) {
           // time to fallback -- fallback is now used read-only to promote a node (suffix) to primary if we encounter it again
           fallbackTable = primaryTable;
           // size primary table the same size to reduce rehash cost
-          if (DO_PRINT_HASH_RAM) {
-            System.out.println("fallback: RAM " + (fallbackTable.entries.ramBytesUsed() + primaryTable.entries.ramBytesUsed()) + " bytes");
-          }
           primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()));
         } else if (primaryTable.count > primaryTable.entries.size() * (2f / 3)) {
           // rehash at 2/3 occupancy
           primaryTable.rehash(node);
-          if (DO_PRINT_HASH_RAM) {
-            ramBytesUsed = primaryTable.entries.ramBytesUsed();
-            if (fallbackTable != null) {
-              ramBytesUsed += fallbackTable.entries.ramBytesUsed();
-            }
-            System.out.println("rehash: RAM " + ramBytesUsed + " bytes");
-          }
         }
 
         return node;
@@ -306,10 +291,6 @@ final class NodeHash<T> {
                                                                BLOCK_SIZE_BYTES,
                                                                PackedInts.bitsRequired(lastNodeAddress),
                                                                PackedInts.COMPACT);
-      if (DO_PRINT_HASH_RAM) {
-        System.out.println("rehash primary to " + newEntries.size() + " entries");
-      }
-                         
       long newMask = newEntries.size() - 1;
       for (long idx = 0; idx < entries.size(); idx++) {
         long address = entries.get(idx);

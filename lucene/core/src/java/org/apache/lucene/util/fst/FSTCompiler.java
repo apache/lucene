@@ -694,7 +694,7 @@ public class FSTCompiler<T> {
       // FSTEnum, Util, etc., have trouble w/ non-final
       // dead-end states:
 
-      // nocommit -- removeme?  should never be promoted to final w/o pruning?
+      // TODO: is node.numArcs == 0 always false?  we no longer prune any nodes from FST:
       final boolean isFinal = node.isFinal || node.numArcs == 0;
 
       // this node makes it and we now compile it.  first,
