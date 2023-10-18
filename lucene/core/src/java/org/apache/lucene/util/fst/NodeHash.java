@@ -275,11 +275,8 @@ final class NodeHash<T> {
     private long count;
     private long mask;
 
-    // nocommi this used to be 1 << 27, which seems too big -- all values in a block must use the
-    // same bpv?
     // 256K blocks, but note that the final block is sized only as needed so it won't use the full
-    // block size when just a few elements were
-    // written to it
+    // block size when just a few elements were written to it
     private static final int BLOCK_SIZE_BYTES = 1 << 18;
 
     public PagedGrowableHash() {
