@@ -147,7 +147,9 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#12685: Lucene now records if documents have been indexed as blocks in SegmentInfo. This is recorded on a per
+  segment basis and will preserved across merges and is exposed via LeafReaderMetadata. (Simon Willnauer)
 
 Improvements
 ---------------------
