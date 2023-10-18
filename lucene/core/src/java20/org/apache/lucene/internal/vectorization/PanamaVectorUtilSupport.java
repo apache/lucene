@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static jdk.incubator.vector.VectorOperators.AND;
 import static jdk.incubator.vector.VectorOperators.ADD;
+import static jdk.incubator.vector.VectorOperators.AND;
 import static jdk.incubator.vector.VectorOperators.B2I;
 import static jdk.incubator.vector.VectorOperators.B2S;
 import static jdk.incubator.vector.VectorOperators.S2I;
@@ -367,7 +367,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // scalar tail
     for (; i < a.length; i++) {
-      res += (b[i]&0xFF) * (a[i] & 0xFF);
+      res += (b[i] & 0xFF) * (a[i] & 0xFF);
     }
     return res;
   }
@@ -519,7 +519,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
   }
-
 
   /** vectorized cosine body (512 bit vectors) */
   private float[] cosineBody512(byte[] a, byte[] b, boolean unsigned, int limit) {

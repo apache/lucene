@@ -64,9 +64,9 @@ public final class VectorUtil {
     return IMPL.cosine(a, b);
   }
 
-
   /**
    * The cosine similarity between two vectors, computed over unsigned bytes.
+   *
    * @param a bytes containing a vector
    * @param b bytes containing another vector, of the same dimension
    * @return the value of the cosine similarity of the two vectors
@@ -77,7 +77,6 @@ public final class VectorUtil {
     }
     return IMPL.cosineUnsigned(a, b);
   }
-
 
   /**
    * Returns the sum of squared differences of the two vectors.

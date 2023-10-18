@@ -77,8 +77,8 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   @Fork(
-    value = 1,
-    jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+      value = 1,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float binaryCosineUnsignedVector() {
     return VectorUtil.cosineUnsigned(bytesA, bytesB);
   }
@@ -105,8 +105,8 @@ public class VectorUtilBenchmark {
 
   @Benchmark
   @Fork(
-    value = 1,
-    jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+      value = 1,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binaryDotProductUnsignedVector() {
     return VectorUtil.dotProductUnsigned(bytesA, bytesB);
   }

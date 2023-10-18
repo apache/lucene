@@ -151,7 +151,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   public int dotProductUnsigned(byte[] a, byte[] b) {
     int total = 0;
     for (int i = 0; i < a.length; i++) {
-      total += (a[i]&0xFF) * (b[i]&0xFF);
+      total += (a[i] & 0xFF) * (b[i] & 0xFF);
     }
     return total;
   }
