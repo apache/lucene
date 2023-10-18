@@ -55,7 +55,6 @@ final class IntersectTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  byte[] floorData = new byte[32];
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
@@ -90,9 +89,6 @@ final class IntersectTermsEnumFrame {
 
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
-  // Cumulative output so far
-  BytesRef outputPrefix;
-
   int startBytePos;
   int suffix;
 
@@ -120,7 +116,7 @@ final class IntersectTermsEnumFrame {
       }
     } while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min);
 
-    load(null);
+    load((Long) null);
   }
 
   public void setState(int state) {
@@ -142,12 +138,20 @@ final class IntersectTermsEnumFrame {
   }
 
   void load(BytesRef frameIndexData) throws IOException {
-    if (frameIndexData != null) {
-      floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
-      // Skip first long -- has redundant fp, hasTerms
-      // flag, isFloor flag
-      final long code = ite.fr.readVLongOutput(floorDataReader);
-      if ((code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
+    floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
+    load(ite.fr.readVLongOutput(floorDataReader));
+  }
+
+  void load(SegmentTermsEnum.OutputAccumulator accumulator) throws IOException {
+    accumulator.prepareRead();
+    final long code = ite.fr.readVLongOutput(accumulator);
+    accumulator.setFloorData(floorDataReader);
+    load(code);
+  }
+
+  void load(Long boxCode) throws IOException {
+    if (boxCode != null) {
+      if ((boxCode & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
         // Floor frame
         numFollowFloorBlocks = floorDataReader.readVInt();
         nextFloorLabel = floorDataReader.readByte() & 0xff;

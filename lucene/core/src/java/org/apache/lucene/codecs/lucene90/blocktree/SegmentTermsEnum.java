@@ -24,6 +24,7 @@ import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -48,7 +49,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
-  private final ByteArrayDataInput scratchReader = new ByteArrayDataInput();
+  private final OutputAccumulator accumulator = new OutputAccumulator();
 
   // What prefix of the current term was present in the index; when we only next() through the
   // index, this stays at 0.  It's only set when
@@ -232,18 +233,24 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return arcs[ord];
   }
 
-  // Pushes a frame we seek'd to
   SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, BytesRef frameData, int length)
       throws IOException {
-    scratchReader.reset(frameData.bytes, frameData.offset, frameData.length);
-    final long code = fr.readVLongOutput(scratchReader);
+    accumulator.reset();
+    accumulator.push(frameData);
+    return pushFrame(arc, length);
+  }
+
+  // Pushes a frame we seek'd to
+  SegmentTermsEnumFrame pushFrame(FST.Arc<BytesRef> arc, int length) throws IOException {
+    accumulator.prepareRead();
+    final long code = fr.readVLongOutput(accumulator);
     final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
     f.hasTermsOrig = f.hasTerms;
     f.isFloor = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0;
     if (f.isFloor) {
-      f.setFloorData(scratchReader, frameData);
+      f.setFloorData(accumulator);
     }
     pushFrame(arc, fpSeek, length);
 
@@ -344,9 +351,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output;
 
     targetBeforeCurrentLength = currentFrame.ord;
+    accumulator.reset();
 
     if (currentFrame != staticFrame) {
 
@@ -363,7 +370,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      output = arc.output();
+      accumulator.push(arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -372,9 +379,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       final int targetLimit = Math.min(target.length, validIndexPrefix);
 
       int cmp = 0;
-
-      // TODO: reverse vLong byte order for better FST
-      // prefix output sharing
 
       // First compare up to valid seek frames:
       while (targetUpto < targetLimit) {
@@ -394,9 +398,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + (char) arc.label()
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
-        }
+        accumulator.push(arc.output());
+
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
@@ -484,15 +487,15 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       //   System.out.println("    no seek state; push root frame");
       // }
 
-      output = arc.output();
+      accumulator.push(arc.output());
 
       currentFrame = staticFrame;
 
       // term.length = 0;
       targetUpto = 0;
-      currentFrame =
-          pushFrame(
-              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()), 0);
+      accumulator.push(arc.nextFinalOutput());
+      currentFrame = pushFrame(arc, 0);
+      accumulator.pop();
     }
 
     // if (DEBUG) {
@@ -554,9 +557,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         term.setByteAt(targetUpto, (byte) targetLabel);
         // Aggregate output as we go:
         assert arc.output() != null;
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
-        }
+        accumulator.push(arc.output());
 
         // if (DEBUG) {
         //   System.out.println("    index: follow label=" + toHex(target.bytes[target.offset +
@@ -566,11 +567,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
-          currentFrame =
-              pushFrame(
-                  arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()),
-                  targetUpto);
+          accumulator.push(arc.nextFinalOutput());
+          currentFrame = pushFrame(arc, targetUpto);
+          accumulator.pop();
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -630,9 +629,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     FST.Arc<BytesRef> arc;
     int targetUpto;
-    BytesRef output;
 
     targetBeforeCurrentLength = currentFrame.ord;
+    accumulator.reset();
 
     if (currentFrame != staticFrame) {
 
@@ -649,7 +648,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       arc = arcs[0];
       assert arc.isFinal();
-      output = arc.output();
+      accumulator.push(arc.output());
       targetUpto = 0;
 
       SegmentTermsEnumFrame lastFrame = stack[0];
@@ -658,9 +657,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       final int targetLimit = Math.min(target.length, validIndexPrefix);
 
       int cmp = 0;
-
-      // TODO: we should write our vLong backwards (MSB
-      // first) to get better sharing from the FST
 
       // First compare up to valid seek frames:
       while (targetUpto < targetLimit) {
@@ -680,14 +676,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
                 + (char) arc.label()
                 + " targetLabel="
                 + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
-        // TODO: we could save the outputs in local
-        // byte[][] instead of making new objs ever
-        // seek; but, often the FST doesn't have any
-        // shared bytes (but this could change if we
-        // reverse vLong byte order)
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
-        }
+
+        accumulator.push(arc.output());
         if (arc.isFinal()) {
           lastFrame = stack[1 + lastFrame.ord];
         }
@@ -769,15 +759,15 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       // System.out.println("    no seek state; push root frame");
       // }
 
-      output = arc.output();
+      accumulator.push(arc.output());
 
       currentFrame = staticFrame;
 
       // term.length = 0;
       targetUpto = 0;
-      currentFrame =
-          pushFrame(
-              arc, Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()), 0);
+      accumulator.push(arc.nextFinalOutput());
+      currentFrame = pushFrame(arc, 0);
+      accumulator.pop();
     }
 
     // if (DEBUG) {
@@ -839,9 +829,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         arc = nextArc;
         // Aggregate output as we go:
         assert arc.output() != null;
-        if (arc.output() != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
-          output = Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.output());
-        }
+        accumulator.push(arc.output());
 
         // if (DEBUG) {
         // System.out.println("    index: follow label=" + (target.bytes[target.offset +
@@ -851,11 +839,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
         if (arc.isFinal()) {
           // if (DEBUG) System.out.println("    arc is final!");
-          currentFrame =
-              pushFrame(
-                  arc,
-                  Lucene90BlockTreeTermsReader.FST_OUTPUTS.add(output, arc.nextFinalOutput()),
-                  targetUpto);
+          accumulator.push(arc.nextFinalOutput());
+          currentFrame = pushFrame(arc, targetUpto);
+          accumulator.pop();
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
@@ -1189,5 +1175,66 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   @Override
   public long ord() {
     throw new UnsupportedOperationException();
+  }
+
+  static class OutputAccumulator extends DataInput {
+
+    /** We could have at most 10 no-empty arcs: 9 for vLong and 1 for floor data. */
+    private static final int MAX_ARC = 10;
+
+    BytesRef[] outputs = new BytesRef[MAX_ARC];
+    BytesRef current;
+    int num = 0;
+    int outputIndex = 0;
+    int index = 0;
+
+    void push(BytesRef output) {
+      if (output != Lucene90BlockTreeTermsReader.NO_OUTPUT) {
+        outputs[num++] = output;
+      }
+    }
+
+    void pop() {
+      this.num--;
+    }
+
+    void reset() {
+      this.num = 0;
+    }
+
+    void prepareRead() {
+      this.index = 0;
+      this.outputIndex = 0;
+      this.current = outputs[0];
+    }
+
+    void setFloorData(ByteArrayDataInput floorData) {
+      assert outputIndex == num - 1
+          : "floor data should be stored in last arc, get outputIndex: "
+              + outputIndex
+              + ", num: "
+              + num;
+      BytesRef output = outputs[outputIndex];
+      floorData.reset(output.bytes, output.offset + index, output.length - index);
+    }
+
+    @Override
+    public byte readByte() throws IOException {
+      if (index >= current.length) {
+        current = outputs[++outputIndex];
+        index = 0;
+      }
+      return current.bytes[current.offset + index++];
+    }
+
+    @Override
+    public void readBytes(byte[] b, int offset, int len) throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void skipBytes(long numBytes) throws IOException {
+      throw new UnsupportedOperationException();
+    }
   }
 }
