@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -1731,6 +1732,42 @@ public class TestIndexWriter extends LuceneTestCase {
 
     w1.close();
     d.close();
+  }
+
+  public void testHasBlocksMergeFullyDelSegments() throws IOException {
+    Supplier<Document> documentSupplier =
+        () -> {
+          Document doc = new Document();
+          doc.add(new StringField("foo", "bar", Field.Store.NO));
+          return doc;
+        };
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        final List<Document> docs = new ArrayList<>();
+        docs.add(documentSupplier.get());
+        docs.add(documentSupplier.get());
+        writer.updateDocuments(new Term("foo", "bar"), docs);
+        writer.commit();
+        if (random().nextBoolean()) {
+          writer.updateDocuments(new Term("foo", "bar"), docs);
+          writer.commit(); // second segment
+        }
+        writer.updateDocument(new Term("foo", "bar"), documentSupplier.get());
+        if (random().nextBoolean()) {
+          writer.forceMergeDeletes(true);
+        } else {
+          writer.forceMerge(1, true);
+        }
+        writer.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.leaves().size());
+          assertFalse(
+              "hasBlocks should be cleared",
+              reader.leaves().get(0).reader().getMetaData().hasBlocks());
+        }
+      }
+    }
   }
 
   public void testCarryOverHasBlocks() throws Exception {
