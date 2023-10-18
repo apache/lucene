@@ -17,6 +17,7 @@ jobs:
   # This runs all validation checks without tests.
   checks:
     name: gradle check -x test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -45,6 +46,7 @@ jobs:
   # This runs all tests without any other validation checks.
   tests:
     name: gradle test (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 30
     runs-on: ${{ matrix.os }}
 
     strategy:

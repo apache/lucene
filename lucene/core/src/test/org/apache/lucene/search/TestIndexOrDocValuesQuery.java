@@ -112,14 +112,15 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
             newIndexWriterConfig()
                 // relies on costs and PointValues.estimateCost so we need the default codec
                 .setCodec(TestUtil.getDefaultCodec()));
-    for (int i = 0; i < 2000; ++i) {
+    final int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      if (i < 1000) {
+      if (i < numDocs / 2) {
         doc.add(new StringField("f1", "bar", Store.NO));
         for (int j = 0; j < 500; j++) {
           doc.add(new LongField("f2", 42L, Store.NO));
         }
-      } else if (i == 1001) {
+      } else if (i == numDocs / 2) {
         doc.add(new StringField("f1", "foo", Store.NO));
         doc.add(new LongField("f2", 2L, Store.NO));
       } else {

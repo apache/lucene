@@ -446,9 +446,7 @@ public class MemoryIndex {
             + (maxBufferedIntBlocks * SlicedIntBlockPool.INT_BLOCK_SIZE * Integer.BYTES)
         <= maxReusedBytes;
     byteBlockPool =
-        new ByteBlockPool(
-            new RecyclingByteBlockAllocator(
-                ByteBlockPool.BYTE_BLOCK_SIZE, maxBufferedByteBlocks, bytesUsed));
+        new ByteBlockPool(new RecyclingByteBlockAllocator(maxBufferedByteBlocks, bytesUsed));
     slicedIntBlockPool =
         new SlicedIntBlockPool(
             new RecyclingIntBlockAllocator(
