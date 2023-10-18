@@ -105,6 +105,8 @@ Other
 
 * GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
 
+* GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
+
 ======================== Lucene 9.8.0 =======================
 
 API Changes
@@ -237,8 +239,6 @@ Other
   (Shubham Chaudhary)
 
 * GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
-
-* GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
 
 ======================== Lucene 9.7.0 =======================
 
