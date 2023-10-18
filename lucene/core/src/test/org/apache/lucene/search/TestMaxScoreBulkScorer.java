@@ -454,7 +454,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     fox.docID = 10;
     fox.maxScoreUpTo = 1_200;
 
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(0, scorer.firstEssentialScorer); // all clauses are essential
@@ -462,7 +462,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // less than the minimum score of every clause
     scorer.minCompetitiveScore = 0.09f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(0, scorer.firstEssentialScorer); // all clauses are still essential
@@ -470,7 +470,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // equal to the maximum score of `the`
     scorer.minCompetitiveScore = 0.1f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(0, scorer.firstEssentialScorer); // all clauses are still essential
@@ -478,7 +478,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // gt than the minimum score of `the`
     scorer.minCompetitiveScore = 0.11f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(1, scorer.firstEssentialScorer); // the is non essential
@@ -487,7 +487,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // equal to the sum of the max scores of the and quick
     scorer.minCompetitiveScore = 1.1f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(1, scorer.firstEssentialScorer); // the is non essential
@@ -496,7 +496,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // greater than the sum of the max scores of the and quick
     scorer.minCompetitiveScore = 1.11f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -507,7 +507,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // equal to the sum of the max scores of the and fox
     scorer.minCompetitiveScore = 1.2f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -518,7 +518,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // greater than the sum of the max scores of the and fox
     scorer.minCompetitiveScore = 1.21f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -529,7 +529,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // equal to the sum of the max scores of quick and fox
     scorer.minCompetitiveScore = 2.1f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -540,7 +540,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // greater than the sum of the max scores of quick and fox
     scorer.minCompetitiveScore = 2.11f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -551,7 +551,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // greater than the sum of the max scores of quick and fox
     scorer.minCompetitiveScore = 2.11f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -562,7 +562,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // equal to the sum of the max scores of all terms
     scorer.minCompetitiveScore = 2.2f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertTrue(scorer.partitionScorers());
     assertEquals(2, scorer.firstEssentialScorer); // the and quick are non essential
@@ -573,7 +573,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
     // greater than the sum of the max scores of all terms
     scorer.minCompetitiveScore = 2.21f;
-    Collections.shuffle(Arrays.asList(scorer.allScorers));
+    Collections.shuffle(Arrays.asList(scorer.allScorers), random());
     scorer.updateMaxWindowScores(4, 100);
     assertFalse(scorer.partitionScorers()); // no possible match in this window
   }
