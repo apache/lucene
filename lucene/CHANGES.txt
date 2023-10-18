@@ -363,6 +363,8 @@ Other
 
 * GITHUB#12512: Remove unused variable in BKDWriter. (Chao Zhang)
 
+* GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
+
 ======================== Lucene 9.7.0 =======================
 
 API Changes
