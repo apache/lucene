@@ -186,15 +186,18 @@ public class FSTCompiler<T> {
     }
 
     /**
-     * The approximate maximum amount of RAM (in MB) to use holding the suffix cache, which enables the FST to share common suffixes.
-     * Pass {@link Double#POSITIVE_INFINITY} to keep all suffixes and create an exactly minimal FST.  In this case, the amount of RAM actually used
-     * will be bounded by the number of unique suffixes.  If you pass a value smaller than the builder would use, the least recently used
-     * suffixes will be discarded, thus reducing suffix sharing and creating a non-minimal FST.  In this case, the larger the limit, the
-     * closer the FST will be to its true minimal size, with diminishing returns as you increasea the limit.  Pass {@code 0} to disable
-     * suffix sharing entirely, but note that the resulting FST can be substantially larger than the minimal FST.
+     * The approximate maximum amount of RAM (in MB) to use holding the suffix cache, which enables
+     * the FST to share common suffixes. Pass {@link Double#POSITIVE_INFINITY} to keep all suffixes
+     * and create an exactly minimal FST. In this case, the amount of RAM actually used will be
+     * bounded by the number of unique suffixes. If you pass a value smaller than the builder would
+     * use, the least recently used suffixes will be discarded, thus reducing suffix sharing and
+     * creating a non-minimal FST. In this case, the larger the limit, the closer the FST will be to
+     * its true minimal size, with diminishing returns as you increasea the limit. Pass {@code 0} to
+     * disable suffix sharing entirely, but note that the resulting FST can be substantially larger
+     * than the minimal FST.
      *
-     * <p>Note that this is not a precise limit.  The current implementation uses hash tables to map the suffixes, and approximates the
-     * rough overhead (unused slots) in the hash table.
+     * <p>Note that this is not a precise limit. The current implementation uses hash tables to map
+     * the suffixes, and approximates the rough overhead (unused slots) in the hash table.
      *
      * <p>Default = {@code 32.0} MB.
      */
@@ -678,7 +681,7 @@ public class FSTCompiler<T> {
   private void freezeTail(int prefixLenPlus1) throws IOException {
 
     final int downTo = Math.max(1, prefixLenPlus1);
-    
+
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       boolean doCompile = true;
@@ -701,10 +704,10 @@ public class FSTCompiler<T> {
       // compile any targets that were previously
       // undecided:
       parent.replaceLast(
-                         lastInput.intAt(idx - 1),
-                         compileNode(node, 1 + lastInput.length() - idx),
-                         nextFinalOutput,
-                         isFinal);
+          lastInput.intAt(idx - 1),
+          compileNode(node, 1 + lastInput.length() - idx),
+          nextFinalOutput,
+          isFinal);
     }
   }
 
@@ -854,7 +857,7 @@ public class FSTCompiler<T> {
         return null;
       }
     }
-    
+
     // if (DEBUG) System.out.println("  builder.finish root.isFinal=" + root.isFinal + "
     // root.output=" + root.output);
     fst.finish(compileNode(root, lastInput.length()).node);

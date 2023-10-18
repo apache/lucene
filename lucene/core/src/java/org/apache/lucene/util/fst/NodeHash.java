@@ -17,29 +17,34 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Locale;
+import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
-import org.apache.lucene.util.packed.PackedInts;;
 
-// TODO: any way to make a reversee suffix lookup (msokolov's idea) instead of more costly hash?  hmmm, though, hash is not so wasteful
-// since it does not have to store value of each entry: the value is the node pointer in the FST.  actually, there is much to save
-// there -- we would not need any long per entry -- we'd be able to start at the FST end node and work backwards from the transitions
+// TODO: any way to make a reversee suffix lookup (msokolov's idea) instead of more costly hash?
+// hmmm, though, hash is not so wasteful
+// since it does not have to store value of each entry: the value is the node pointer in the FST.
+// actually, there is much to save
+// there -- we would not need any long per entry -- we'd be able to start at the FST end node and
+// work backwards from the transitions
 
-// TODO: couldn't we prune natrually babck until we see a transition with an output?  it's highly unlikely (mostly impossible) such suffixes
+// TODO: couldn't we prune natrually babck until we see a transition with an output?  it's highly
+// unlikely (mostly impossible) such suffixes
 // can be shared?
 
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
 
-  // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then we move it to fallback
+  // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then
+  // we move it to fallback
   private PagedGrowableHash primaryTable;
 
-  // how many nodes are allowed to store in both primary and fallback tables; when primary gets full (tableSizeLimit/2), we move it to the
+  // how many nodes are allowed to store in both primary and fallback tables; when primary gets full
+  // (tableSizeLimit/2), we move it to the
   // fallback table
   private final long ramLimitBytes;
 
-  // fallback table.  if we fallback and find the frozen node here, we promote it to primary table, for a simplistic and lowish-RAM-overhead
+  // fallback table.  if we fallback and find the frozen node here, we promote it to primary table,
+  // for a simplistic and lowish-RAM-overhead
   // (compared to e.g. LinkedHashMap) LRU behaviour.  fallbackTable is read-only.
   private PagedGrowableHash fallbackTable;
 
@@ -47,8 +52,11 @@ final class NodeHash<T> {
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   private final FST.BytesReader in;
 
-  /** ramLimitMB is the max RAM we can use for recording suffixes. If we hit this limit, the least recently used suffixes are discarded, and
-   *  the FST is no longer minimalI.  Still, larger ramLimitMB will make the FST smaller (closer to minimal). */
+  /**
+   * ramLimitMB is the max RAM we can use for recording suffixes. If we hit this limit, the least
+   * recently used suffixes are discarded, and the FST is no longer minimalI. Still, larger
+   * ramLimitMB will make the FST smaller (closer to minimal).
+   */
   public NodeHash(FST<T> fst, double ramLimitMB, FST.BytesReader in) {
     if (ramLimitMB <= 0) {
       throw new IllegalArgumentException("ramLimitMB must be > 0; got: " + ramLimitMB);
@@ -60,7 +68,7 @@ final class NodeHash<T> {
     } else {
       ramLimitBytes = (long) asBytes;
     }
-    
+
     primaryTable = new PagedGrowableHash();
     this.fst = fst;
     this.in = in;
@@ -92,7 +100,7 @@ final class NodeHash<T> {
       throws IOException {
 
     long hash = hash(nodeIn);
-    
+
     long pos = hash & primaryTable.mask;
     int c = 0;
 
@@ -107,11 +115,12 @@ final class NodeHash<T> {
           primaryTable.set(pos, node);
         } else {
           // not in fallback either -- freeze & add the incoming node
-        
+
           // freeze & add
           node = fst.addNode(fstCompiler, nodeIn);
 
-          // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node at 0:
+          // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
+          // at 0:
           assert node != 0;
 
           // confirm frozen hash and unfrozen hash are the same
@@ -129,11 +138,13 @@ final class NodeHash<T> {
         // it drops.  With this approach (measuring "perfect" hash storage and approximating the
         // overhead), the behaviour is more strictly monotonic: larger RAM limits smoothly result
         // in smaller FSTs, even if the precise RAM used is not always under the limit.
-        
+
         // divide limit by 2 because fallback gets half the RAM and primary gets the other half
-        // divide by 2 again to account for approximate hash table overhead halfway between 33.3% and 66.7% occupancy = 50%
+        // divide by 2 again to account for approximate hash table overhead halfway between 33.3%
+        // and 66.7% occupancy = 50%
         if (ramBytesUsed >= ramLimitBytes / (2 * 2)) {
-          // time to fallback -- fallback is now used read-only to promote a node (suffix) to primary if we encounter it again
+          // time to fallback -- fallback is now used read-only to promote a node (suffix) to
+          // primary if we encounter it again
           fallbackTable = primaryTable;
           // size primary table the same size to reduce rehash cost
           primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()));
@@ -143,7 +154,7 @@ final class NodeHash<T> {
         }
 
         return node;
-        
+
       } else if (nodesEqual(nodeIn, node)) {
         // same node (in frozen form) is already in primary table
         return node;
@@ -175,7 +186,8 @@ final class NodeHash<T> {
     return h & Long.MAX_VALUE;
   }
 
-  // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen node!
+  // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
+  // node!
   private long hash(long node) throws IOException {
     final int PRIME = 31;
 
@@ -198,31 +210,35 @@ final class NodeHash<T> {
     return h & Long.MAX_VALUE;
   }
 
-  /** Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long), returning
-   *  true if they are equal. */
+  /**
+   * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long),
+   * returning true if they are equal.
+   */
   private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
     fst.readFirstRealTargetArc(address, scratchArc, in);
 
     // fail fast for a node with fixed length arcs
     if (scratchArc.bytesPerArc() != 0) {
       assert node.numArcs > 0;
-      // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be sparse or dense
+      // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be
+      // sparse or dense
       switch (scratchArc.nodeFlags()) {
-      case FST.ARCS_FOR_BINARY_SEARCH:
-        // sparse
-        if (node.numArcs != scratchArc.numArcs()) {
-          return false;
-        }
-        break;
-      case FST.ARCS_FOR_DIRECT_ADDRESSING:
-        // dense -- compare both the number of labels allocated in the array (some of which may not actually be arcs), and the number of arcs
-        if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
-            || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
-          return false;
-        }
-        break;
-      default:
-        throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
+        case FST.ARCS_FOR_BINARY_SEARCH:
+          // sparse
+          if (node.numArcs != scratchArc.numArcs()) {
+            return false;
+          }
+          break;
+        case FST.ARCS_FOR_DIRECT_ADDRESSING:
+          // dense -- compare both the number of labels allocated in the array (some of which may
+          // not actually be arcs), and the number of arcs
+          if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
+              || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
+            return false;
+          }
+          break;
+        default:
+          throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
       }
     }
 
@@ -249,7 +265,7 @@ final class NodeHash<T> {
     }
 
     // unfrozen node has fewer arcs than frozen node
-    
+
     return false;
   }
 
@@ -259,8 +275,10 @@ final class NodeHash<T> {
     private long count;
     private long mask;
 
-    // nocommi this used to be 1 << 27, which seems too big -- all values in a block must use the same bpv?
-    // 256K blocks, but note that the final block is sized only as needed so it won't use the full block size when just a few elements were
+    // nocommi this used to be 1 << 27, which seems too big -- all values in a block must use the
+    // same bpv?
+    // 256K blocks, but note that the final block is sized only as needed so it won't use the full
+    // block size when just a few elements were
     // written to it
     private static final int BLOCK_SIZE_BYTES = 1 << 18;
 
@@ -270,7 +288,9 @@ final class NodeHash<T> {
     }
 
     public PagedGrowableHash(long lastNodeAddress, long size) {
-      entries = new PagedGrowableWriter(size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
+      entries =
+          new PagedGrowableWriter(
+              size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
       mask = size - 1;
       assert (mask % size) == 0;
     }
@@ -286,11 +306,12 @@ final class NodeHash<T> {
 
     private void rehash(long lastNodeAddress) throws IOException {
       // double hash table size on each rehash
-      PagedGrowableWriter newEntries = new PagedGrowableWriter(
-                                                               2 * entries.size(),
-                                                               BLOCK_SIZE_BYTES,
-                                                               PackedInts.bitsRequired(lastNodeAddress),
-                                                               PackedInts.COMPACT);
+      PagedGrowableWriter newEntries =
+          new PagedGrowableWriter(
+              2 * entries.size(),
+              BLOCK_SIZE_BYTES,
+              PackedInts.bitsRequired(lastNodeAddress),
+              PackedInts.COMPACT);
       long newMask = newEntries.size() - 1;
       for (long idx = 0; idx < entries.size(); idx++) {
         long address = entries.get(idx);
@@ -314,4 +335,3 @@ final class NodeHash<T> {
     }
   }
 }
-

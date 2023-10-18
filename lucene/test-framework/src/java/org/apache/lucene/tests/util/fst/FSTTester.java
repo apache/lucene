@@ -254,8 +254,7 @@ public class FSTTester<T> {
     return output;
   }
 
-  public FST<T> doTest()
-      throws IOException {
+  public FST<T> doTest() throws IOException {
 
     final FSTCompiler<T> fstCompiler =
         new FSTCompiler.Builder<>(

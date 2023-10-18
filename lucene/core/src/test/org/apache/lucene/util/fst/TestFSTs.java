@@ -20,7 +20,6 @@ import static org.apache.lucene.tests.util.fst.FSTTester.getRandomString;
 import static org.apache.lucene.tests.util.fst.FSTTester.simpleRandomString;
 import static org.apache.lucene.tests.util.fst.FSTTester.toIntsRef;
 
-import org.junit.Ignore;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -83,6 +82,7 @@ import org.apache.lucene.util.fst.FST.Arc;
 import org.apache.lucene.util.fst.FST.BytesReader;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
 import org.apache.lucene.util.fst.Util.Result;
+import org.junit.Ignore;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 public class TestFSTs extends LuceneTestCase {
@@ -340,7 +340,7 @@ public class TestFSTs extends LuceneTestCase {
     FSTCompiler.Builder<Long> builder = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs);
 
     double suffixRAMLimitMB;
-    
+
     if (random().nextInt(10) == 4) {
       // no suffix sharing
       suffixRAMLimitMB = 0;
@@ -348,10 +348,10 @@ public class TestFSTs extends LuceneTestCase {
       // share all suffixes (minimal FST)
       suffixRAMLimitMB = Double.POSITIVE_INFINITY;
     } else {
-      suffixRAMLimitMB = (random().nextDouble()+0.01) * 10.0;
+      suffixRAMLimitMB = (random().nextDouble() + 0.01) * 10.0;
     }
     builder.suffixRAMLimitMB(suffixRAMLimitMB);
-      
+
     FSTCompiler<Long> fstCompiler = builder.build();
 
     boolean storeOrd = random().nextBoolean();
@@ -521,11 +521,7 @@ public class TestFSTs extends LuceneTestCase {
     private final FSTCompiler<T> fstCompiler;
 
     public VisitTerms(
-        Path dirOut,
-        Path wordsFileIn,
-        int inputMode,
-        Outputs<T> outputs,
-        boolean noArcArrays) {
+        Path dirOut, Path wordsFileIn, int inputMode, Outputs<T> outputs, boolean noArcArrays) {
       this.dirOut = dirOut;
       this.wordsFileIn = wordsFileIn;
       this.inputMode = inputMode;
