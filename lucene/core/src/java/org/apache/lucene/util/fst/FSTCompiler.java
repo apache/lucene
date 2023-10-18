@@ -684,8 +684,6 @@ public class FSTCompiler<T> {
 
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
-      boolean doCompile = true;
-
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parent = frontier[idx - 1];
 
@@ -863,22 +861,6 @@ public class FSTCompiler<T> {
     fst.finish(compileNode(root, lastInput.length()).node);
 
     return fst;
-  }
-
-  private void compileAllTargets(UnCompiledNode<T> node, int tailLength) throws IOException {
-    for (int arcIdx = 0; arcIdx < node.numArcs; arcIdx++) {
-      final Arc<T> arc = node.arcs[arcIdx];
-      if (!arc.target.isCompiled()) {
-        // not yet compiled
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        final UnCompiledNode<T> n = (UnCompiledNode<T>) arc.target;
-        if (n.numArcs == 0) {
-          // System.out.println("seg=" + segment + "        FORCE final arc=" + (char) arc.label);
-          arc.isFinal = n.isFinal = true;
-        }
-        arc.target = compileNode(n, tailLength - 1);
-      }
-    }
   }
 
   /** Expert: holds a pending (seen but not yet serialized) arc. */
