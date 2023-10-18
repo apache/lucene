@@ -345,6 +345,7 @@ public abstract class Analyzer implements Closeable {
   public static final class TokenStreamComponents {
     /** Original source of the tokens. */
     protected final Consumer<Reader> source;
+
     /**
      * Sink tokenstream, such as the outer tokenfilter decorating the chain. This can be the source
      * if there are no filters.

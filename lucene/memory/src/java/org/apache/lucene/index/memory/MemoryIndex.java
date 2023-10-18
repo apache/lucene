@@ -243,6 +243,7 @@ public class MemoryIndex {
       public SliceWriter(SlicedIntBlockPool slicedIntBlockPool) {
         this.slicedIntBlockPool = slicedIntBlockPool;
       }
+
       /** */
       public void reset(int sliceOffset) {
         this.offset = sliceOffset;

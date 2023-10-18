@@ -34,8 +34,10 @@ public class PassageScorer {
 
   /** BM25 k1 parameter, controls term frequency normalization */
   final float k1;
+
   /** BM25 b parameter, controls length normalization. */
   final float b;
+
   /** A pivot used for length normalization. */
   final float pivot;
 

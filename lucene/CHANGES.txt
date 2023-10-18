@@ -143,10 +143,12 @@ API Changes
 * GITHUB#12592: Add RandomAccessInput#length method to the RandomAccessInput interface. In addition deprecate
   ByteBuffersDataInput#size in favour of this new method. (Ignacio Vera)
 
+* GITHUB#12646: Move FST#addNode to FSTCompiler to avoid a circular dependency between FST and FSTCompiler
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#12548: Added similarityToQueryVector API to compute vector similarity scores
+  with DoubleValuesSource. (Shubham Chaudhary)
 
 Improvements
 ---------------------
@@ -162,6 +164,18 @@ Improvements
 * GITHUB#12606: Create a TaskExecutor when an executor is not provided to the IndexSearcher, in
   order to simplify consumer's code (Luca Cavanna)
 
+* GITHUB#12676: Improve logging of vector support if vector module was enabled but Java version
+  is too old. It also logs partial vectorization support if old CPU or disabled AVX.
+  (Uwe Schindler, Robert Muir)
+
+* GITHUB#12677: Better detect vector module in non-default setups (e.g., custom module layers).
+  (Uwe Schindler)
+
+* GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
+  and test improvements. (Uwe Schindler, Robert Muir)
+
+* GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -173,10 +187,20 @@ Optimizations
   
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
+* GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
+
 * GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
   to reduce GC load during indexing. (Guo Feng)
 
 * GITHUB#12623: Use a MergeSorter taking advantage of extra storage for StableMSBRadixSorter. (Guo Feng)
+
+* GITHUB#12631: Write MSB VLong for better outputs sharing in block tree index, decreasing ~14% size
+  of .tip file. (Guo Feng)
+
+* GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
+  (Adrien Grand)
+  
+* GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
 Changes in runtime behavior
 ---------------------
@@ -192,14 +216,18 @@ Bug Fixes
 
 * GITHUB#11556: HTMLStripCharFilter fails on '>' or '<' characters in attribute values. (Elliot Lin)
 
+* GITHUB#12642: Ensure #finish only gets called once on the base collector during drill-sideways (Greg Miller)
+
 Build
 ---------------------
 
 * GITHUB#12612: Upgrade forbiddenapis to version 3.6 and ASM for APIJAR extraction to 9.6.  (Uwe Schindler)
+* GITHUB#12655: Upgrade to Gradle 8.4 (Kevin Risden)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
 
 ======================== Lucene 9.8.0 =======================
 
