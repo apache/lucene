@@ -1876,8 +1876,8 @@ public class TestAddIndexes extends LuceneTestCase {
             assertEquals(1, reader.leaves().size());
             if (addHasBlocks || baseHasBlocks) {
               assertTrue(
-                      "addHasBlocks: " + addHasBlocks + " baseHasBlocks: " + baseHasBlocks,
-                      codecReader.getSegmentInfo().info.getHasBlocks());
+                  "addHasBlocks: " + addHasBlocks + " baseHasBlocks: " + baseHasBlocks,
+                  codecReader.getSegmentInfo().info.getHasBlocks());
             } else {
               assertFalse(codecReader.getSegmentInfo().info.getHasBlocks());
             }

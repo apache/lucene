@@ -78,16 +78,15 @@ public final class LeafMetaData {
   }
 
   /**
-   * Returns <code>true</code> iff this index contains blocks created with {@link IndexWriter#addDocument(Iterable)}
-   * or it's corresponding update methods with at least 2 or more documents per call.
-   * Note: This property was not recorded before {@link Version#LUCENE_9_9_0} this method will return false for all
-   * leaves written before {@link Version#LUCENE_9_9_0}
-   * 
+   * Returns <code>true</code> iff this index contains blocks created with {@link
+   * IndexWriter#addDocument(Iterable)} or it's corresponding update methods with at least 2 or more
+   * documents per call. Note: This property was not recorded before {@link Version#LUCENE_9_9_0}
+   * this method will return false for all leaves written before {@link Version#LUCENE_9_9_0}
    *
    * @see IndexWriter#updateDocuments(Term, Iterable)
-   * @see IndexWriter#updateDocuments(Query, Iterable) 
-   * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...) 
-   * @see IndexWriter#addDocuments(Iterable) 
+   * @see IndexWriter#updateDocuments(Query, Iterable)
+   * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...)
+   * @see IndexWriter#addDocuments(Iterable)
    */
   public boolean hasBlocks() {
     return hasBlocks;
