@@ -84,9 +84,6 @@ import org.apache.lucene.util.fst.FST.BytesReader;
 import org.apache.lucene.util.fst.PairOutputs.Pair;
 import org.apache.lucene.util.fst.Util.Result;
 
-// nocommit make random test that gives random suffixHashRAMLmitMB, and sometimes Double.POSITIVE_INFINITY too
-
-
 @SuppressCodecs({"SimpleText", "Direct"})
 public class TestFSTs extends LuceneTestCase {
 
@@ -340,7 +337,23 @@ public class TestFSTs extends LuceneTestCase {
     writer.close();
     final PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
 
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler.Builder<Long> builder = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs);
+
+    double suffixRAMLimitMB;
+    
+    if (random().nextInt(10) == 4) {
+      // no suffix sharing
+      suffixRAMLimitMB = 0;
+    } else if (random().nextInt(10) == 7) {
+      // share all suffixes (minimal FST)
+      suffixRAMLimitMB = Double.POSITIVE_INFINITY;
+    } else {
+      suffixRAMLimitMB = (random().nextDouble()+0.01) * 10.0;
+    }
+    builder.suffixRAMLimitMB(suffixRAMLimitMB);
+    System.out.println("RAM: " + suffixRAMLimitMB);
+      
+    FSTCompiler<Long> fstCompiler = builder.build();
 
     boolean storeOrd = random().nextBoolean();
     if (VERBOSE) {
