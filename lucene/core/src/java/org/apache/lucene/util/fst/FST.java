@@ -1106,7 +1106,7 @@ public final class FST<T> implements Accountable {
         if (flag(flags, BIT_ARC_HAS_FINAL_OUTPUT)) {
           outputs.skipFinalOutput(in);
         }
-        if (!flag(flags, BIT_STOP_NODE) && !flag(flags, BIT_TARGET_NEXT)) {
+        if (flag(flags, BIT_STOP_NODE) == false && !flag(flags, BIT_TARGET_NEXT) == false) {
           readUnpackedNodeTarget(in);
         }
       }
@@ -1128,7 +1128,7 @@ public final class FST<T> implements Accountable {
         outputs.skipFinalOutput(in);
       }
 
-      if (!flag(flags, BIT_STOP_NODE) && !flag(flags, BIT_TARGET_NEXT)) {
+      if (flag(flags, BIT_STOP_NODE) == false && flag(flags, BIT_TARGET_NEXT) == false) {
         readUnpackedNodeTarget(in);
       }
 
