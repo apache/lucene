@@ -746,7 +746,8 @@ public final class FST<T> implements Accountable {
     }
   }
 
-  private void readFirstArcInfo(long nodeAddress, Arc<T> arc, final BytesReader in) throws IOException {
+  private void readFirstArcInfo(long nodeAddress, Arc<T> arc, final BytesReader in)
+      throws IOException {
     in.setPosition(nodeAddress);
     // System.out.println("   flags=" + arc.flags);
 
