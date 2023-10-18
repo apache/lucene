@@ -24,29 +24,30 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * Search for all (approximate) vectors within a radius using the {@link RnnCollector}.
+ * Search for all (approximate) vectors above a similarity score using the {@link
+ * VectorSimilarityCollector}.
  *
  * @lucene.experimental
  */
-abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
-  protected final float traversalThreshold, resultThreshold;
+abstract class AbstractVectorSimilarityQuery extends AbstractKnnVectorQuery {
+  protected final float traversalSimilarity, resultSimilarity;
 
   /**
-   * Abstract query for performing radius-based vector searches.
+   * Abstract query for performing similarity-based vector searches.
    *
    * @param field a field that has been indexed as a vector field.
-   * @param traversalThreshold similarity score corresponding to outer radius of graph traversal.
-   * @param resultThreshold similarity score corresponding to inner radius of result collection.
+   * @param traversalSimilarity (lower) similarity score for graph traversal.
+   * @param resultSimilarity (higher) similarity score for result collection.
    * @param filter a filter applied before the vector search.
    */
-  public AbstractRnnVectorQuery(
-      String field, float traversalThreshold, float resultThreshold, Query filter) {
+  public AbstractVectorSimilarityQuery(
+      String field, float traversalSimilarity, float resultSimilarity, Query filter) {
     super(field, Integer.MAX_VALUE, filter);
-    if (traversalThreshold > resultThreshold) {
-      throw new IllegalArgumentException("traversalThreshold should be <= resultThreshold");
+    if (traversalSimilarity > resultSimilarity) {
+      throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
     }
-    this.traversalThreshold = traversalThreshold;
-    this.resultThreshold = resultThreshold;
+    this.traversalSimilarity = traversalSimilarity;
+    this.resultSimilarity = resultSimilarity;
   }
 
   @Override
@@ -68,7 +69,7 @@ abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
       assert advanced;
 
       float score = vectorScorer.score();
-      if (score >= resultThreshold) {
+      if (score >= resultSimilarity) {
         scoreDocList.add(new ScoreDoc(doc, score));
       }
     }
@@ -99,12 +100,15 @@ abstract class AbstractRnnVectorQuery extends AbstractKnnVectorQuery {
   @Override
   public boolean equals(Object o) {
     return sameClassAs(o)
-        && Float.compare(((AbstractRnnVectorQuery) o).traversalThreshold, traversalThreshold) == 0
-        && Float.compare(((AbstractRnnVectorQuery) o).resultThreshold, resultThreshold) == 0;
+        && Float.compare(
+                ((AbstractVectorSimilarityQuery) o).traversalSimilarity, traversalSimilarity)
+            == 0
+        && Float.compare(((AbstractVectorSimilarityQuery) o).resultSimilarity, resultSimilarity)
+            == 0;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), traversalThreshold, resultThreshold);
+    return Objects.hash(super.hashCode(), traversalSimilarity, resultSimilarity);
   }
 }

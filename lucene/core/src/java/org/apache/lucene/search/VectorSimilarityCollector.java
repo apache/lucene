@@ -20,35 +20,36 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A collector that performs radius-based vector searches. All vectors within an outer radius are
- * traversed, and those within an inner radius are collected.
+ * A collector that performs similarity-based vector searches. All vectors above a (lower) traversal
+ * similarity are visited, and those above a (higher) result similarity are collected.
  *
  * @lucene.experimental
  */
-public class RnnCollector extends AbstractKnnCollector {
-  private final float traversalThreshold, resultThreshold;
+public class VectorSimilarityCollector extends AbstractKnnCollector {
+  private final float traversalSimilarity, resultSimilarity;
   private final List<ScoreDoc> scoreDocList;
 
   /**
-   * Performs radius-based vector searches.
+   * Performs similarity-based vector searches.
    *
-   * @param traversalThreshold similarity score corresponding to outer radius of graph traversal.
-   * @param resultThreshold similarity score corresponding to inner radius of result collection.
+   * @param traversalSimilarity (lower) similarity score for graph traversal.
+   * @param resultSimilarity (higher) similarity score for result collection.
    * @param visitLimit limit of graph nodes to visit.
    */
-  public RnnCollector(float traversalThreshold, float resultThreshold, long visitLimit) {
+  public VectorSimilarityCollector(
+      float traversalSimilarity, float resultSimilarity, long visitLimit) {
     super(1, visitLimit);
-    if (traversalThreshold > resultThreshold) {
-      throw new IllegalArgumentException("traversalThreshold should be <= resultThreshold");
+    if (traversalSimilarity > resultSimilarity) {
+      throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
     }
-    this.traversalThreshold = traversalThreshold;
-    this.resultThreshold = resultThreshold;
+    this.traversalSimilarity = traversalSimilarity;
+    this.resultSimilarity = resultSimilarity;
     this.scoreDocList = new ArrayList<>();
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
-    if (similarity >= resultThreshold) {
+    if (similarity >= resultSimilarity) {
       return scoreDocList.add(new ScoreDoc(docId, similarity));
     }
     return false;
@@ -56,7 +57,7 @@ public class RnnCollector extends AbstractKnnCollector {
 
   @Override
   public float minCompetitiveSimilarity() {
-    return traversalThreshold;
+    return traversalSimilarity;
   }
 
   @Override

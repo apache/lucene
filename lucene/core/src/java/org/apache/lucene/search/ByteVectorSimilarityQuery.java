@@ -26,25 +26,30 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.util.Bits;
 
 /**
- * Search for all (approximate) byte vectors within a radius using the {@link RnnCollector}.
+ * Search for all (approximate) byte vectors above a similarity score using the {@link
+ * VectorSimilarityCollector}.
  *
  * @lucene.experimental
  */
-public class RnnByteVectorQuery extends AbstractRnnVectorQuery {
+public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   private final byte[] target;
 
   /**
-   * Performs radius-based byte vector searches using the {@link RnnCollector}.
+   * Performs similarity-based byte vector searches using the {@link VectorSimilarityCollector}.
    *
    * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search.
-   * @param traversalThreshold similarity score corresponding to outer radius of graph traversal.
-   * @param resultThreshold similarity score corresponding to inner radius of result collection.
+   * @param traversalSimilarity (lower) similarity score for graph traversal.
+   * @param resultSimilarity (higher) similarity score for result collection.
    * @param filter a filter applied before the vector search.
    */
-  public RnnByteVectorQuery(
-      String field, byte[] target, float traversalThreshold, float resultThreshold, Query filter) {
-    super(field, traversalThreshold, resultThreshold, filter);
+  public ByteVectorSimilarityQuery(
+      String field,
+      byte[] target,
+      float traversalSimilarity,
+      float resultSimilarity,
+      Query filter) {
+    super(field, traversalSimilarity, resultSimilarity, filter);
     this.target = Objects.requireNonNull(target, "target");
   }
 
@@ -52,9 +57,10 @@ public class RnnByteVectorQuery extends AbstractRnnVectorQuery {
   @SuppressWarnings("resource")
   protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
       throws IOException {
-    RnnCollector rnnCollector = new RnnCollector(traversalThreshold, resultThreshold, visitedLimit);
-    context.reader().searchNearestVectors(field, target, rnnCollector, acceptDocs);
-    return rnnCollector.topDocs();
+    VectorSimilarityCollector vectorSimilarityCollector =
+        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitedLimit);
+    context.reader().searchNearestVectors(field, target, vectorSimilarityCollector, acceptDocs);
+    return vectorSimilarityCollector.topDocs();
   }
 
   @Override
@@ -72,16 +78,16 @@ public class RnnByteVectorQuery extends AbstractRnnVectorQuery {
         + this.field
         + "["
         + target[0]
-        + ",...][traversalThreshold="
-        + traversalThreshold
-        + "][resultThreshold="
-        + resultThreshold
+        + ",...][traversalSimilarity="
+        + traversalSimilarity
+        + "][resultSimilarity="
+        + resultSimilarity
         + "]";
   }
 
   @Override
   public boolean equals(Object o) {
-    return sameClassAs(o) && Arrays.equals(target, ((RnnByteVectorQuery) o).target);
+    return sameClassAs(o) && Arrays.equals(target, ((ByteVectorSimilarityQuery) o).target);
   }
 
   @Override

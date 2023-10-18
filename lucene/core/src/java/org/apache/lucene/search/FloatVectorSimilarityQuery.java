@@ -27,25 +27,30 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Search for all (approximate) float vectors within a radius using the {@link RnnCollector}.
+ * Search for all (approximate) float vectors above a similarity score using the {@link
+ * VectorSimilarityCollector}.
  *
  * @lucene.experimental
  */
-public class RnnFloatVectorQuery extends AbstractRnnVectorQuery {
+public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   private final float[] target;
 
   /**
-   * Performs radius-based float vector searches using the {@link RnnCollector}.
+   * Performs similarity-based float vector searches using the {@link VectorSimilarityCollector}.
    *
    * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search.
-   * @param traversalThreshold similarity score corresponding to outer radius of graph traversal.
-   * @param resultThreshold similarity score corresponding to inner radius of result collection.
+   * @param traversalSimilarity (lower) similarity score for graph traversal.
+   * @param resultSimilarity (higher) similarity score for result collection.
    * @param filter a filter applied before the vector search.
    */
-  public RnnFloatVectorQuery(
-      String field, float[] target, float traversalThreshold, float resultThreshold, Query filter) {
-    super(field, traversalThreshold, resultThreshold, filter);
+  public FloatVectorSimilarityQuery(
+      String field,
+      float[] target,
+      float traversalSimilarity,
+      float resultSimilarity,
+      Query filter) {
+    super(field, traversalSimilarity, resultSimilarity, filter);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
   }
 
@@ -53,9 +58,10 @@ public class RnnFloatVectorQuery extends AbstractRnnVectorQuery {
   @SuppressWarnings("resource")
   protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitedLimit)
       throws IOException {
-    RnnCollector rnnCollector = new RnnCollector(traversalThreshold, resultThreshold, visitedLimit);
-    context.reader().searchNearestVectors(field, target, rnnCollector, acceptDocs);
-    return rnnCollector.topDocs();
+    VectorSimilarityCollector vectorSimilarityCollector =
+        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitedLimit);
+    context.reader().searchNearestVectors(field, target, vectorSimilarityCollector, acceptDocs);
+    return vectorSimilarityCollector.topDocs();
   }
 
   @Override
@@ -73,16 +79,16 @@ public class RnnFloatVectorQuery extends AbstractRnnVectorQuery {
         + this.field
         + "["
         + target[0]
-        + ",...][traversalThreshold="
-        + traversalThreshold
-        + "][resultThreshold="
-        + resultThreshold
+        + ",...][traversalSimilarity="
+        + traversalSimilarity
+        + "][resultSimilarity="
+        + resultSimilarity
         + "]";
   }
 
   @Override
   public boolean equals(Object o) {
-    return sameClassAs(o) && Arrays.equals(target, ((RnnFloatVectorQuery) o).target);
+    return sameClassAs(o) && Arrays.equals(target, ((FloatVectorSimilarityQuery) o).target);
   }
 
   @Override
