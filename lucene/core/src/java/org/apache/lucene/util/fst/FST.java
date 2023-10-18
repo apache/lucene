@@ -746,8 +746,7 @@ public final class FST<T> implements Accountable {
     }
   }
 
-  public Arc<T> readFirstRealTargetArc(long nodeAddress, Arc<T> arc, final BytesReader in)
-      throws IOException {
+  private void readFirstArcInfo(long nodeAddress, Arc<T> arc, final BytesReader in) throws IOException {
     in.setPosition(nodeAddress);
     // System.out.println("   flags=" + arc.flags);
 
@@ -770,7 +769,11 @@ public final class FST<T> implements Accountable {
       arc.nextArc = nodeAddress;
       arc.bytesPerArc = 0;
     }
+  }
 
+  public Arc<T> readFirstRealTargetArc(long nodeAddress, Arc<T> arc, final BytesReader in)
+      throws IOException {
+    readFirstArcInfo(nodeAddress, arc, in);
     return readNextRealArc(arc, in);
   }
 
@@ -1081,22 +1084,30 @@ public final class FST<T> implements Accountable {
     }
 
     // Linear scan
-    readFirstRealTargetArc(follow.target(), arc, in);
-
+    readFirstArcInfo(follow.target(), arc, in);
+    in.setPosition(arc.nextArc());
     while (true) {
-      // System.out.println("  non-bs cycle");
-      // TODO: we should fix this code to not have to create
-      // object for the output of every arc we scan... only
-      // for the matching arc, if found
-      if (arc.label() == labelToMatch) {
-        // System.out.println("    found!");
-        return arc;
-      } else if (arc.label() > labelToMatch) {
+      assert arc.bytesPerArc() == 0;
+      flags = arc.flags = in.readByte();
+      long pos = in.getPosition();
+      int label = readLabel(in);
+      if (label == labelToMatch) {
+        in.setPosition(pos);
+        return readArc(arc, in);
+      } else if (label > labelToMatch) {
         return null;
       } else if (arc.isLast()) {
         return null;
       } else {
-        readNextRealArc(arc, in);
+        if (flag(flags, BIT_ARC_HAS_OUTPUT)) {
+          outputs.skipOutput(in);
+        }
+        if (flag(flags, BIT_ARC_HAS_FINAL_OUTPUT)) {
+          outputs.skipFinalOutput(in);
+        }
+        if (!flag(flags, BIT_STOP_NODE) && !flag(flags, BIT_TARGET_NEXT)) {
+          readUnpackedNodeTarget(in);
+        }
       }
     }
   }
