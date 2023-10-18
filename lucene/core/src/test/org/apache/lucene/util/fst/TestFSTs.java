@@ -351,7 +351,6 @@ public class TestFSTs extends LuceneTestCase {
       suffixRAMLimitMB = (random().nextDouble()+0.01) * 10.0;
     }
     builder.suffixRAMLimitMB(suffixRAMLimitMB);
-    System.out.println("RAM: " + suffixRAMLimitMB);
       
     FSTCompiler<Long> fstCompiler = builder.build();
 
