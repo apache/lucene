@@ -157,7 +157,9 @@ public final class SegmentInfo {
     return isCompoundFile;
   }
 
-  /** Returns true if this segment contains documents written as blocks. */
+  /** Returns true if this segment contains documents written as blocks.
+   * @see LeafMetaData#hasBlocks()
+   */
   public boolean getHasBlocks() {
     return hasBlocks;
   }

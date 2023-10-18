@@ -3372,10 +3372,8 @@ public class IndexWriter
     for (MergePolicy.MergeReader reader : merge.getMergeReader()) {
       CodecReader leaf = reader.codecReader;
       numDocs += leaf.numDocs();
-      if (reader.reader == null) {
-        hasBlocks = true; // NOCOMMIT: can we just assume that it has blocks and go with worst case here?
-      } else {
-        hasBlocks |= reader.reader.getSegmentInfo().info.getHasBlocks();
+      for (LeafReaderContext context : reader.codecReader.leaves()) {
+        hasBlocks |= context.reader().getMetaData().hasBlocks();
       }
       if (softDeletesEnabled) {
         Bits liveDocs = reader.hardLiveDocs;

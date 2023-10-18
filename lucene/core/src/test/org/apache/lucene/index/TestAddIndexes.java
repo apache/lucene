@@ -1817,30 +1817,16 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   public void testAddIndicesWithBlocks() throws IOException {
-    boolean addHasBlocks = random().nextBoolean();
-    boolean baseHasBlocks = rarely();
-    try (Directory dir = newDirectory()) {
-      try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
-        int numBlocks = random().nextInt(1, 10);
-        for (int i = 0; i < numBlocks; i++) {
-          int numDocs = baseHasBlocks ? random().nextInt(2, 10) : 1;
-          List<Document> docs = new ArrayList<>();
-          for (int j = 0; j < numDocs; j++) {
-            Document doc = new Document();
-            int value = random().nextInt(5);
-            doc.add(new StringField("value", "" + value, Field.Store.YES));
-            docs.add(doc);
-          }
-          writer.addDocuments(docs);
-        }
-        writer.commit();
-      }
-
-      try (Directory addDir = newDirectory()) {
-        int numBlocks = random().nextInt(1, 10);
-        try (RandomIndexWriter writer = new RandomIndexWriter(random(), addDir)) {
+    boolean[] addHasBlocksPerm = {true, true, false, false};
+    boolean[] baseHasBlocksPerm = {true, false, true, false};
+    for (int perm = 0; perm < addHasBlocksPerm.length; perm++) {
+      boolean addHasBlocks = addHasBlocksPerm[perm];
+      boolean baseHasBlocks = baseHasBlocksPerm[perm];
+      try (Directory dir = newDirectory()) {
+        try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+          int numBlocks = random().nextInt(1, 10);
           for (int i = 0; i < numBlocks; i++) {
-            int numDocs = addHasBlocks ? random().nextInt(2, 10) : 1;
+            int numDocs = baseHasBlocks ? random().nextInt(2, 10) : 1;
             List<Document> docs = new ArrayList<>();
             for (int j = 0; j < numDocs; j++) {
               Document doc = new Document();
@@ -1853,30 +1839,48 @@ public class TestAddIndexes extends LuceneTestCase {
           writer.commit();
         }
 
-        try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
-          if (random().nextBoolean()) {
-            writer.addIndexes(addDir);
-          } else {
-            try (DirectoryReader reader = DirectoryReader.open(addDir)) {
-              CodecReader[] readers = new CodecReader[(reader.leaves().size())];
-              for (int i = 0; i < readers.length; i++) {
-                readers[i] = (CodecReader) reader.leaves().get(i).reader();
+        try (Directory addDir = newDirectory()) {
+          int numBlocks = random().nextInt(1, 10);
+          try (RandomIndexWriter writer = new RandomIndexWriter(random(), addDir)) {
+            for (int i = 0; i < numBlocks; i++) {
+              int numDocs = addHasBlocks ? random().nextInt(2, 10) : 1;
+              List<Document> docs = new ArrayList<>();
+              for (int j = 0; j < numDocs; j++) {
+                Document doc = new Document();
+                int value = random().nextInt(5);
+                doc.add(new StringField("value", "" + value, Field.Store.YES));
+                docs.add(doc);
               }
-              writer.addIndexes(readers);
+              writer.addDocuments(docs);
             }
+            writer.commit();
           }
-          writer.forceMerge(1, true);
-        }
 
-        try (DirectoryReader reader = DirectoryReader.open(dir)) {
-          SegmentReader codecReader = (SegmentReader) reader.leaves().get(0).reader();
-          assertEquals(1, reader.leaves().size());
-          if (addHasBlocks || baseHasBlocks) {
-            assertTrue(
-                "addHasBlocks: " + addHasBlocks + " baseHasBlocks: " + baseHasBlocks,
-                codecReader.getSegmentInfo().info.getHasBlocks());
-          } else {
-            assertFalse(codecReader.getSegmentInfo().info.getHasBlocks());
+          try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
+            if (random().nextBoolean()) {
+              writer.addIndexes(addDir);
+            } else {
+              try (DirectoryReader reader = DirectoryReader.open(addDir)) {
+                CodecReader[] readers = new CodecReader[(reader.leaves().size())];
+                for (int i = 0; i < readers.length; i++) {
+                  readers[i] = (CodecReader) reader.leaves().get(i).reader();
+                }
+                writer.addIndexes(readers);
+              }
+            }
+            writer.forceMerge(1, true);
+          }
+
+          try (DirectoryReader reader = DirectoryReader.open(dir)) {
+            SegmentReader codecReader = (SegmentReader) reader.leaves().get(0).reader();
+            assertEquals(1, reader.leaves().size());
+            if (addHasBlocks || baseHasBlocks) {
+              assertTrue(
+                      "addHasBlocks: " + addHasBlocks + " baseHasBlocks: " + baseHasBlocks,
+                      codecReader.getSegmentInfo().info.getHasBlocks());
+            } else {
+              assertFalse(codecReader.getSegmentInfo().info.getHasBlocks());
+            }
           }
         }
       }
