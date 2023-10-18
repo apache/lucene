@@ -131,7 +131,7 @@ public class FSTCompiler<T> {
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
-      double suffixHashRAMLimitMB, // pass 0 to disable suffix compression/trie; must be power of two
+      double suffixRAMLimitMB, // pass 0 to disable suffix compression/trie; must be power of two
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
@@ -141,10 +141,10 @@ public class FSTCompiler<T> {
     fst = new FST<>(inputType, outputs, bytesPageBits);
     bytes = fst.bytes;
     assert bytes != null;
-    if (suffixHashRAMLimitMB < 0) {
-      throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixHashRAMLimitMB);
-    } else if (suffixHashRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(fst, suffixHashRAMLimitMB, bytes.getReverseReader(false));
+    if (suffixRAMLimitMB < 0) {
+      throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
+    } else if (suffixRAMLimitMB > 0) {
+      dedupHash = new NodeHash<>(fst, suffixRAMLimitMB, bytes.getReverseReader(false));
     } else {
       dedupHash = null;
     }
@@ -169,7 +169,7 @@ public class FSTCompiler<T> {
     private final INPUT_TYPE inputType;
     private final Outputs<T> outputs;
     // nocommit what default?
-    private double suffixHashRAMLimitMB = 16.0;
+    private double suffixRAMLimitMB = 16.0;
     private boolean allowFixedLengthArcs = true;
     private int bytesPageBits = 15;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
@@ -188,20 +188,23 @@ public class FSTCompiler<T> {
     }
 
     /**
-     * The maximum amount of RAM (in MB) we are allowed to spend holding the suffix hash, which enables the FST to share common suffixes.
+     * The approximate maximum amount of RAM (in MB) to use holding the suffix cache, which enables the FST to share common suffixes.
      * Pass {@link Double#POSITIVE_INFINITY} to keep all suffixes and create an exactly minimal FST.  In this case, the amount of RAM actually used
-     * will be bounded by the number of unique suffixes.  If you pass a value smaller than the builder requires, the least recently used
+     * will be bounded by the number of unique suffixes.  If you pass a value smaller than the builder would use, the least recently used
      * suffixes will be discarded, thus reducing suffix sharing and creating a non-minimal FST.  In this case, the larger the limit, the
-     * closer the FST will be to itst minimal size.  Pass {@code 0} to disable suffix sharing entirely, but note that the resulting FST can
-     * be substantially larger than the minimal FST.
+     * closer the FST will be to its true minimal size, with diminishing returns as you increasea the limit.  Pass {@code 0} to disable
+     * suffix sharing entirely, but note that the resulting FST can be substantially larger than the minimal FST.
      *
-     * <p>Default = {@code 16384}.
+     * <p>Note that this is not a precise limit.  The current implementation uses hash tables to map the suffixes, and approximates the
+     * rough overhead (unused slots) in the hash table.
+     *
+     * <p>Default = {@code 16.0}.
      */
-    public Builder<T> suffixHashRAMLimitMB(double mb) {
+    public Builder<T> suffixRAMLimitMB(double mb) {
       if (mb < 0) {
-        throw new IllegalArgumentException("suffixHashRAMLimitMB must be >= 0; got: " + mb);
+        throw new IllegalArgumentException("suffixRAMLimitMB must be >= 0; got: " + mb);
       }
-      this.suffixHashRAMLimitMB = mb;
+      this.suffixRAMLimitMB = mb;
       return this;
     }
 
@@ -253,7 +256,7 @@ public class FSTCompiler<T> {
       FSTCompiler<T> fstCompiler =
           new FSTCompiler<>(
               inputType,
-              suffixHashRAMLimitMB,
+              suffixRAMLimitMB,
               outputs,
               allowFixedLengthArcs,
               bytesPageBits,

@@ -71,8 +71,14 @@ public class IndexToFST {
       System.err.println("Usage: IndexToFST <path-to-index-dir> <size-of-suffix-hash>");
       System.exit(1);
     }
+
+    double ramLimitMB;
     
-    double ramLimitMB = Double.parseDouble(args[1]);
+    if (args[1].equals("inf")) {
+      ramLimitMB = Double.POSITIVE_INFINITY;
+    } else {
+     ramLimitMB = Double.parseDouble(args[1]);
+    }
     
     try (Directory dir = FSDirectory.open(Paths.get(args[0]));
          IndexReader r = DirectoryReader.open(dir)) {
@@ -83,7 +89,7 @@ public class IndexToFST {
 
       Outputs<Long> outputs = PositiveIntOutputs.getSingleton();
       FSTCompiler.Builder<Long> builder = new FSTCompiler.Builder<Long>(FST.INPUT_TYPE.BYTE1, outputs);
-      builder.suffixHashRAMLimitMB(ramLimitMB);
+      builder.suffixRAMLimitMB(ramLimitMB);
 
       FSTCompiler<Long> fstBuilder = builder.build();
 

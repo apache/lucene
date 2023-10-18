@@ -46,7 +46,7 @@ final class NodeHash<T> {
   private final long ramLimitBytes;
 
   // fallback table.  if we fallback and find the frozen node here, we promote it to primary table, for a simplistic and lowish-RAM-overhead
-  // (compared to e.g. LinkedHashMap) LRU behaviour
+  // (compared to e.g. LinkedHashMap) LRU behaviour.  fallbackTable is read-only.
   private PagedGrowableHash fallbackTable;
 
   private final FST<T> fst;
@@ -129,41 +129,35 @@ final class NodeHash<T> {
           primaryTable.set(pos, node);
         }
 
-        if (primaryTable.count > primaryTable.entries.size() * (3f / 4)) {
-          // rehash at 3/4 occupancy
+        // how many bytes would be used if we had "perfect" hashing:
+        long ramBytesUsed = primaryTable.count * PackedInts.bitsRequired(node) / 8;
 
-          // NOTE that this is still not perfect, e.g. if we are able to rehash, but then bpv increases for newly inserted nodes into the
-          // primary hash), then the primary hash can use more than 2X its current RAM
-          
-          long ramUsedAfterRehash = 2 * primaryTable.entries.ramBytesUsed();
-          if (fallbackTable != null) {
-            ramUsedAfterRehash += fallbackTable.entries.ramBytesUsed();
-          } else {
-            // when primary becomes fallback after this pending rehash, both will use this much RAM: (because on fallback we size the
-            // new primary to 1/2 of the current primary)
-            ramUsedAfterRehash += 0.5 * primaryTable.entries.ramBytesUsed();;
+        // NOTE: we could instead use the more precise RAM used, but this leads to unpredictable
+        // quantized behavior due to 2X rehashing where for large ranges of the RAM limit, the
+        // size of the FST does not change, and then suddenly when you cross a secret threshold,
+        // it drops.  With this approach (measuring "perfect" hash storage and approximating the
+        // overhead), the behaviour is more strictly monotonic: larger RAM limits smoothly result
+        // in smaller FSTs, even if the precise RAM used is not always under the limit.
+        
+        // divide limit by 2 because fallback gets half the RAM and primary gets the other half
+        // divide by 2 again to account for approximate hash table overhead halfway between 33.3% and 66.7% occupancy = 0.5%
+        if (ramBytesUsed >= ramLimitBytes / (2 * 2)) {
+          // time to fallback -- fallback is now used read-only to promote a node (suffix) to primary if we encounter it again
+          fallbackTable = primaryTable;
+          // size primary table the same size to reduce rehash cost
+          if (DO_PRINT_HASH_RAM) {
+            System.out.println("fallback: RAM " + (fallbackTable.entries.ramBytesUsed() + primaryTable.entries.ramBytesUsed()) + " bytes");
           }
-          System.out.println("if we were to rehash from ram=" + primaryTable.entries.ramBytesUsed() + ": " + String.format(Locale.ROOT, "%.1f", (ramUsedAfterRehash / 1024. / 1024.)));
-          if (ramUsedAfterRehash >= ramLimitBytes) {
-            // rehashing will just immediately force fallback, so we just fallback now instead
-            fallbackTable = primaryTable;
-            // make the new primary table half sized to stay under the alloted RAM budget since fallbackTable will grow in RAM mb, even at
-            // fixed size, since bpv is increasing as node addresses get bigger
-            primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()/2));
-
-            long estNumBytesPrimary = primaryTable.entries.size() * PackedInts.bitsRequired(node) / 8;
-            
-            System.out.println("fallback: RAM " + (fallbackTable.entries.ramBytesUsed() + estNumBytesPrimary));
-          } else {
-            // we still have room to grow, so we rehash the primary table and do not drop any LRU entries, yet
-            primaryTable.rehash(node);
-            if (DO_PRINT_HASH_RAM) {
-              long ramUsed = primaryTable.entries.ramBytesUsed();
-              if (fallbackTable != null) {
-                ramUsed += fallbackTable.entries.ramBytesUsed();
-              }
-              System.out.println("rehash: RAM " + ramUsed + " bytes");
+          primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()));
+        } else if (primaryTable.count > primaryTable.entries.size() * (2f / 3)) {
+          // rehash at 2/3 occupancy
+          primaryTable.rehash(node);
+          if (DO_PRINT_HASH_RAM) {
+            ramBytesUsed = primaryTable.entries.ramBytesUsed();
+            if (fallbackTable != null) {
+              ramBytesUsed += fallbackTable.entries.ramBytesUsed();
             }
+            System.out.println("rehash: RAM " + ramBytesUsed + " bytes");
           }
         }
 
