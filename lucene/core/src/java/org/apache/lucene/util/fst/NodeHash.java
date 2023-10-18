@@ -117,7 +117,7 @@ final class NodeHash<T> {
           // not in fallback either -- freeze & add the incoming node
 
           // freeze & add
-          node = fst.addNode(fstCompiler, nodeIn);
+          node = fstCompiler.addNode(nodeIn);
 
           // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
           // at 0:
