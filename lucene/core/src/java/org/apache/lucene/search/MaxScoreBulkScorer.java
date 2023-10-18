@@ -43,8 +43,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
   int firstRequiredScorer;
   private final long cost;
   float minCompetitiveScore;
-  // A competitive score that is sufficiently high given the way scorers have been partitioned that we will want to partition again even though the current outer window is not over yet.
-  float nextInterestingMinCompetitiveScore;
   private Score scorable = new Score();
   final double[] maxScoreSums;
 
@@ -116,10 +114,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax);
-        if (minCompetitiveScore > nextInterestingMinCompetitiveScore) {
-          // Force re-partitioning scorers.
-          break;
-        }
         top = essentialQueue.top();
       }
 
@@ -140,7 +134,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
       if (top2 == null) {
         scoreInnerWindowSingleEssentialClause(collector, acceptDocs, max);
       } else if (top2.doc - INNER_WINDOW_SIZE / 2 >= top.doc) {
-        // The first half of the window would match a single clause. Let's collect this single clause
+        // The first half of the window would match a single clause. Let's collect this single
+        // clause
         // until the next doc ID of the next clause.
         scoreInnerWindowSingleEssentialClause(collector, acceptDocs, Math.min(max, top2.doc));
       } else {
@@ -167,46 +162,64 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void scoreInnerWindowAsConjunction(LeafCollector collector, Bits acceptDocs, int max)
       throws IOException {
+    assert firstEssentialScorer == allScorers.length - 1;
     assert firstRequiredScorer <= allScorers.length - 2;
-    DisiWrapper lead = allScorers[allScorers.length - 1];
+    DisiWrapper lead1 = allScorers[allScorers.length - 1];
     assert essentialQueue.size() == 1;
-    assert lead == essentialQueue.top();
+    assert lead1 == essentialQueue.top();
+    DisiWrapper lead2 = allScorers[allScorers.length - 2];
+    if (lead1.doc < lead2.doc) {
+      lead1.doc = lead1.iterator.advance(Math.min(lead2.doc, max));
+    }
+    // maximum score contribution of all scorers but the lead
+    double maxScoreSumAtLead2 = maxScoreSums[allScorers.length - 2];
 
     outer:
-    for (int leadDoc = lead.doc; leadDoc < max; ) {
-      double score = lead.scorer.score();
+    while (lead1.doc < max) {
 
-      for (int i = allScorers.length - 2; i >= firstRequiredScorer; --i) {
+      double score = lead1.scorer.score();
+
+      // We specialize handling the second best scorer, which seems to help a bit with performance.
+      // But this is the exact same logic as in the below for loop.
+      if ((float) MathUtil.sumUpperBound(score + maxScoreSumAtLead2, allScorers.length)
+          < minCompetitiveScore) {
+        // a competitive match is not possible according to max scores, skip to the next candidate
+        lead1.doc = lead1.iterator.nextDoc();
+        continue;
+      }
+
+      if (lead2.doc < lead1.doc) {
+        lead2.doc = lead2.iterator.advance(lead1.doc);
+      }
+      if (lead2.doc != lead1.doc) {
+        lead1.doc = lead1.iterator.advance(Math.min(lead2.doc, max));
+        continue;
+      }
+
+      score += lead2.scorer.score();
+
+      for (int i = allScorers.length - 3; i >= firstRequiredScorer; --i) {
         if ((float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length)
             < minCompetitiveScore) {
           // a competitive match is not possible according to max scores, skip to the next candidate
-          leadDoc = lead.iterator.nextDoc();
+          lead1.doc = lead1.iterator.nextDoc();
           continue outer;
         }
 
         DisiWrapper w = allScorers[i];
-        if (w.doc < leadDoc) {
-          w.doc = w.iterator.advance(leadDoc);
+        if (w.doc < lead1.doc) {
+          w.doc = w.iterator.advance(lead1.doc);
         }
-        if (w.doc > leadDoc) {
-          if (w.doc > max) {
-            lead.iterator.advance(max);
-            // don't advance to a doc that is outside of the window to make sure to not skip good
-            // candidates
-            break outer;
-          } else {
-            leadDoc = lead.iterator.advance(w.doc);
-            continue outer;
-          }
+        if (w.doc != lead1.doc) {
+          lead1.doc = lead1.iterator.advance(Math.min(w.doc, max));
+          continue outer;
         }
         score += w.scorer.score();
       }
 
-      scoreNonEssentialClauses(collector, leadDoc, score, firstRequiredScorer);
-      leadDoc = lead.iterator.nextDoc();
+      scoreNonEssentialClauses(collector, lead1.doc, score, firstRequiredScorer);
+      lead1.doc = lead1.iterator.nextDoc();
     }
-
-    lead.doc = lead.iterator.docID();
   }
 
   private void scoreInnerWindowMultipleEssentialClauses(
@@ -323,7 +336,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
             scorer -> (double) scorer.maxWindowScore / Math.max(1L, scorer.cost)));
     double maxScoreSum = 0;
     firstEssentialScorer = 0;
-    nextInterestingMinCompetitiveScore = Float.POSITIVE_INFINITY;
     for (int i = 0; i < allScorers.length; ++i) {
       final DisiWrapper w = scratch[i];
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
@@ -336,7 +348,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
         firstEssentialScorer++;
       } else {
         allScorers[allScorers.length - 1 - (i - firstEssentialScorer)] = w;
-        nextInterestingMinCompetitiveScore = Math.min(nextInterestingMinCompetitiveScore, maxScoreSumFloat);
       }
     }
 

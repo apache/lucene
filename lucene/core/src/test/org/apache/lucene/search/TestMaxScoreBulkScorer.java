@@ -48,7 +48,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     public float getMaxScore(int upTo) throws IOException {
       return in.getMaxScore(upTo);
     }
-
   }
 
   private void writeDocuments(Directory dir) throws IOException {
@@ -84,15 +83,23 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
 
-        Query clause1 = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
         Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "B")));
         LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
-        Scorer scorer1 = searcher.createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
-        Scorer scorer2 = searcher.createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
 
-        BulkScorer scorer = new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2));
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2));
 
         scorer.score(
             new LeafCollector() {
@@ -146,15 +153,23 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
 
-        Query clause1 = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
         Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "B")));
         LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
-        Scorer scorer1 = searcher.createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
-        Scorer scorer2 = searcher.createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
 
-        BulkScorer scorer = new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2));
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2));
 
         scorer.score(
             new LeafCollector() {
@@ -203,18 +218,31 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
 
-        Query clause1 = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
         Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "B")));
-        Query clause3 = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3);
+        Query clause3 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3);
         LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
-        Scorer scorer1 = searcher.createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
-        Scorer scorer2 = searcher.createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
-        Scorer scorer3 = searcher.createWeight(searcher.rewrite(clause3), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer3 =
+            searcher
+                .createWeight(searcher.rewrite(clause3), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer3 = new CapMaxScoreWindowAt2048Scorer(scorer3);
 
-        BulkScorer scorer = new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2, scorer3));
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2, scorer3));
 
         scorer.score(
             new LeafCollector() {
@@ -268,18 +296,31 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
 
-        Query clause1 = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
         Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "B")));
-        Query clause3 = new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3);
+        Query clause3 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3);
         LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
-        Scorer scorer1 = searcher.createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
-        Scorer scorer2 = searcher.createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
-        Scorer scorer3 = searcher.createWeight(searcher.rewrite(clause3), ScoreMode.TOP_SCORES, 1f).scorer(context);
+        Scorer scorer3 =
+            searcher
+                .createWeight(searcher.rewrite(clause3), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
         scorer3 = new CapMaxScoreWindowAt2048Scorer(scorer3);
 
-        BulkScorer scorer = new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2, scorer3));
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2, scorer3));
 
         scorer.score(
             new LeafCollector() {
@@ -418,7 +459,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertTrue(scorer.partitionScorers());
     assertEquals(0, scorer.firstEssentialScorer); // all clauses are essential
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
-    assertEquals(0.1f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // less than the minimum score of every clause
     scorer.minCompetitiveScore = 0.09f;
@@ -427,7 +467,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertTrue(scorer.partitionScorers());
     assertEquals(0, scorer.firstEssentialScorer); // all clauses are still essential
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
-    assertEquals(0.1f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // equal to the maximum score of `the`
     scorer.minCompetitiveScore = 0.1f;
@@ -436,7 +475,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertTrue(scorer.partitionScorers());
     assertEquals(0, scorer.firstEssentialScorer); // all clauses are still essential
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
-    assertEquals(0.1f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // gt than the minimum score of `the`
     scorer.minCompetitiveScore = 0.11f;
@@ -446,7 +484,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertEquals(1, scorer.firstEssentialScorer); // the is non essential
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
     assertSame(the, scorer.allScorers[0].scorer);
-    assertEquals(1.1f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // equal to the sum of the max scores of the and quick
     scorer.minCompetitiveScore = 1.1f;
@@ -456,7 +493,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertEquals(1, scorer.firstEssentialScorer); // the is non essential
     assertEquals(3, scorer.firstRequiredScorer); // no required clauses
     assertSame(the, scorer.allScorers[0].scorer);
-    assertEquals(1.1f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // greater than the sum of the max scores of the and quick
     scorer.minCompetitiveScore = 1.11f;
@@ -468,7 +504,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // equal to the sum of the max scores of the and fox
     scorer.minCompetitiveScore = 1.2f;
@@ -480,7 +515,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // greater than the sum of the max scores of the and fox
     scorer.minCompetitiveScore = 1.21f;
@@ -492,7 +526,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // equal to the sum of the max scores of quick and fox
     scorer.minCompetitiveScore = 2.1f;
@@ -504,7 +537,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // greater than the sum of the max scores of quick and fox
     scorer.minCompetitiveScore = 2.11f;
@@ -516,7 +548,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // greater than the sum of the max scores of quick and fox
     scorer.minCompetitiveScore = 2.11f;
@@ -528,7 +559,6 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // equal to the sum of the max scores of all terms
     scorer.minCompetitiveScore = 2.2f;
@@ -540,13 +570,11 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     assertSame(the, scorer.allScorers[0].scorer);
     assertSame(quick, scorer.allScorers[1].scorer);
     assertSame(fox, scorer.allScorers[2].scorer);
-    assertEquals(2.2f, scorer.nextInterestingMinCompetitiveScore, 0f);
 
     // greater than the sum of the max scores of all terms
     scorer.minCompetitiveScore = 2.21f;
     Collections.shuffle(Arrays.asList(scorer.allScorers));
     scorer.updateMaxWindowScores(4, 100);
     assertFalse(scorer.partitionScorers()); // no possible match in this window
-    assertEquals(Float.POSITIVE_INFINITY, scorer.nextInterestingMinCompetitiveScore, 0f);
   }
 }
