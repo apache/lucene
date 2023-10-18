@@ -1198,18 +1198,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       this.num--;
     }
 
-    void setFloorData(BytesRef floorData) {
-      assert outputIndex == num - 1
-          : "floor data should be stored in last arc, get outputIndex: "
-              + outputIndex
-              + ", num: "
-              + num;
-      BytesRef output = outputs[outputIndex];
-      floorData.bytes = output.bytes;
-      floorData.length = output.length - index;
-      floorData.offset = output.offset + index;
-    }
-
     void reset() {
       this.num = 0;
     }
@@ -1218,6 +1206,16 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       this.index = 0;
       this.outputIndex = 0;
       this.current = outputs[0];
+    }
+
+    void setFloorData(ByteArrayDataInput floorData) {
+      assert outputIndex == num - 1
+          : "floor data should be stored in last arc, get outputIndex: "
+              + outputIndex
+              + ", num: "
+              + num;
+      BytesRef output = outputs[outputIndex];
+      floorData.reset(output.bytes, output.offset + index, output.length - index);
     }
 
     @Override

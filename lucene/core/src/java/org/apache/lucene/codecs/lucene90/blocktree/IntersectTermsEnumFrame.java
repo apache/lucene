@@ -55,7 +55,6 @@ final class IntersectTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  final BytesRef floorData = new BytesRef(32);
   final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
 
   // Length of prefix shared by all terms in this block
@@ -146,8 +145,7 @@ final class IntersectTermsEnumFrame {
   void load(SegmentTermsEnum.OutputAccumulator accumulator) throws IOException {
     accumulator.prepareRead();
     final long code = ite.fr.readVLongOutput(accumulator);
-    accumulator.setFloorData(floorData);
-    floorDataReader.reset(floorData.bytes, floorData.offset, floorData.length);
+    accumulator.setFloorData(floorDataReader);
     load(code);
   }
 
