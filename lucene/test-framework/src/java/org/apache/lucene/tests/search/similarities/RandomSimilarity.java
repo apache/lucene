@@ -96,8 +96,10 @@ public class RandomSimilarity extends PerFieldSimilarityWrapper {
   static BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne(),
   };
+
   /** The DFR aftereffects to test. */
   static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
+
   /** The DFR normalizations to test. */
   static Normalization[] NORMALIZATIONS = {
     new NormalizationH1(), new NormalizationH2(),
@@ -106,10 +108,13 @@ public class RandomSimilarity extends PerFieldSimilarityWrapper {
     // a couple tests (e.g. TestDocBoost, TestSort) that expect length normalization
     // new Normalization.NoNormalization()
   };
+
   /** The distributions for IB. */
   static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+
   /** Lambdas for IB. */
   static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+
   /** Independence measures for DFI */
   static Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()

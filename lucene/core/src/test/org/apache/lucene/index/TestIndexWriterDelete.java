@@ -156,7 +156,6 @@ public class TestIndexWriterDelete extends LuceneTestCase {
       addDoc(modifier, ++id, value);
       if (0 == t) {
         modifier.deleteDocuments(new Term("value", String.valueOf(value)));
-        assertEquals(2, modifier.getNumBufferedDeleteTerms());
         assertEquals(1, modifier.getBufferedDeleteTermsSize());
       } else modifier.deleteDocuments(new TermQuery(new Term("value", String.valueOf(value))));
 

@@ -115,6 +115,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   /** The version at the time when 8.0 was released. */
   public static final int VERSION_74 = 9;
+
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
 
@@ -131,6 +132,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   private long generation; // generation of the "segments_N" for the next commit
   private long lastGeneration; // generation of the "segments_N" file we last successfully read
+
   // or wrote; this is normally the same as generation except if
   // there was an IOException that had interrupted a commit
 

@@ -37,11 +37,13 @@ public class GeoPoint extends Vector implements SerializableObject {
    * for thread safety, because depends wholly on immutable variables of this class.
    */
   protected volatile double magnitude = Double.NEGATIVE_INFINITY;
+
   /**
    * Lazily-evaluated latitude. Does not need to be synchronized for thread safety, because depends
    * wholly on immutable variables of this class.
    */
   protected volatile double latitude = Double.NEGATIVE_INFINITY;
+
   /**
    * Lazily-evaluated longitude. Does not need to be synchronized for thread safety, because depends
    * wholly on immutable variables of this class.
