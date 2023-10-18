@@ -113,7 +113,6 @@ public class TestBlockJoin extends LuceneTestCase {
     final Directory dir = newDirectory();
     final IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
     config.setMergePolicy(NoMergePolicy.INSTANCE);
-    config.setMergePolicy(newMergePolicy(random(), false));
     // we don't want to merge - since we rely on certain segment setup
     final IndexWriter w = new IndexWriter(dir, config);
 
