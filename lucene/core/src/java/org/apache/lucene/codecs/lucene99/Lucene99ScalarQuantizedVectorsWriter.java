@@ -63,7 +63,24 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
   private static final long BASE_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsWriter.class);
 
-  private static final float QUANTIZATION_RECOMPUTE_LIMIT = 32;
+  // Used for determining when merged quantiles shifted too far from individual segment quantiles.
+  // When merging quantiles from various segments, we need to ensure that the new quantiles
+  // are not exceptionally different from an individual segments quantiles.
+  // This would imply that the quantization buckets would shift too much
+  // for floating point values and justify recalculating the quantiles. This helps preserve
+  // accuracy of the calculated quantiles, even in adversarial cases such as vector clustering.
+  // This number was determined via empirical testing
+  private static final float QUANTILE_RECOMPUTE_LIMIT = 32;
+  // Used for determining if a new quantization state requires a re-quantization
+  // for a given segment.
+  // This ensures that in expectation 4/5 of the vector would be unchanged by requantization.
+  // Furthermore, only those values where the value is within 1/5 of the centre of a quantization
+  // bin will be changed. In these cases the error introduced by snapping one way or another
+  // is small compared to the error introduced by quantization in the first place. Furthermore,
+  // empirical testing showed that the relative error by not requantizing is small (compared to
+  // the quantization error) and the condition is sensitive enough to detect all adversarial cases,
+  // such as merging clustered data.
+  private static final float REQUANTIZATION_LIMIT = 0.2f;
   private final IndexOutput quantizedVectorData;
   private final Float quantile;
   private boolean finished;
@@ -268,11 +285,24 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return new ScalarQuantizer(lowerQuantile, upperQuantile, quantile);
   }
 
+  /**
+   * Returns true if the quantiles of the merged state are too far from the quantiles of the
+   * individual states.
+   *
+   * @param mergedQuantizationState The merged quantization state
+   * @param quantizationStates The quantization states of the individual segments
+   * @return true if the quantiles should be recomputed
+   */
   static boolean shouldRecomputeQuantiles(
       ScalarQuantizer mergedQuantizationState, List<ScalarQuantizer> quantizationStates) {
+    // calculate the limit for the quantiles to be considered too far apart
+    // We utilize upper & lower here to determine if the new upper and merged upper would
+    // drastically
+    // change the quantization buckets for floats
+    // This is a fairly conservative check.
     float limit =
         (mergedQuantizationState.getUpperQuantile() - mergedQuantizationState.getLowerQuantile())
-            / QUANTIZATION_RECOMPUTE_LIMIT;
+            / QUANTILE_RECOMPUTE_LIMIT;
     for (ScalarQuantizer quantizationState : quantizationStates) {
       if (Math.abs(
               quantizationState.getUpperQuantile() - mergedQuantizationState.getUpperQuantile())
@@ -338,9 +368,20 @@ public final class Lucene99ScalarQuantizedVectorsWriter implements Accountable {
     return mergedQuantiles;
   }
 
+  /**
+   * Returns true if the quantiles of the new quantization state are too far from the quantiles of
+   * the existing quantization state. This would imply that floating point values would slightly
+   * shift quantization buckets.
+   *
+   * @param existingQuantiles The existing quantiles for a segment
+   * @param newQuantiles The new quantiles for a segment, could be merged, or fully re-calculated
+   * @return true if the floating point values should be requantized
+   */
   static boolean shouldRequantize(ScalarQuantizer existingQuantiles, ScalarQuantizer newQuantiles) {
-    // Should this instead be 128f?
-    float tol = 0.2f * (newQuantiles.getUpperQuantile() - newQuantiles.getLowerQuantile()) / 128f;
+    float tol =
+        REQUANTIZATION_LIMIT
+            * (newQuantiles.getUpperQuantile() - newQuantiles.getLowerQuantile())
+            / 128f;
     if (Math.abs(existingQuantiles.getUpperQuantile() - newQuantiles.getUpperQuantile()) > tol) {
       return true;
     }

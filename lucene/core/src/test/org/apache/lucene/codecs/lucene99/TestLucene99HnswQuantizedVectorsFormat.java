@@ -79,7 +79,8 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
         IndexWriter w =
             new IndexWriter(
                 dir,
-                newIndexWriterConfig()
+                new IndexWriterConfig()
+                    .setMaxBufferedDocs(numVectors + 1)
                     .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                     .setMergePolicy(NoMergePolicy.INSTANCE))) {
       for (int i = 0; i < numVectors; i++) {
