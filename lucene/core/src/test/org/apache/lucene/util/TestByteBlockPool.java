@@ -44,6 +44,7 @@ public class TestByteBlockPool extends LuceneTestCase {
       }
       // verify
       long position = 0;
+      BytesRefBuilder builder = new BytesRefBuilder();
       for (BytesRef expected : list) {
         ref.grow(expected.length);
         ref.setLength(expected.length);
@@ -54,8 +55,7 @@ public class TestByteBlockPool extends LuceneTestCase {
             break;
           case 1:
             BytesRef scratch = new BytesRef();
-            scratch.length = ref.length();
-            pool.setRawBytesRef(scratch, position);
+            pool.setBytesRef(builder, scratch, position, ref.length());
             System.arraycopy(scratch.bytes, scratch.offset, ref.bytes(), 0, ref.length());
             break;
           default:
@@ -99,40 +99,6 @@ public class TestByteBlockPool extends LuceneTestCase {
       pool.readBytes(position, actual, 0, actual.length);
       assertTrue(Arrays.equals(expected, actual));
       position += expected.length;
-    }
-  }
-
-  public void testAllocKnowSizeSlice() throws IOException {
-    Counter bytesUsed = Counter.newCounter();
-    ByteBlockPool pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));
-    pool.nextBuffer();
-    for (int i = 0; i < 100; i++) {
-      int size;
-      if (random().nextBoolean()) {
-        size = TestUtil.nextInt(random(), 100, 1000);
-      } else {
-        size = TestUtil.nextInt(random(), 50000, 100000);
-      }
-      byte[] randomData = new byte[size];
-      random().nextBytes(randomData);
-
-      int upto = pool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
-
-      for (int offset = 0; offset < size; ) {
-        if ((pool.buffer[upto] & 16) == 0) {
-          pool.buffer[upto++] = randomData[offset++];
-        } else {
-          int offsetAndLength = pool.allocKnownSizeSlice(pool.buffer, upto);
-          int sliceLength = offsetAndLength & 0xff;
-          upto = offsetAndLength >> 8;
-          assertNotEquals(0, pool.buffer[upto + sliceLength - 1]);
-          assertEquals(0, pool.buffer[upto]);
-          int writeLength = Math.min(sliceLength - 1, size - offset);
-          System.arraycopy(randomData, offset, pool.buffer, upto, writeLength);
-          offset += writeLength;
-          upto += writeLength;
-        }
-      }
     }
   }
 
