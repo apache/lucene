@@ -160,6 +160,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                   new FilterCodec(
                       TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
 
+                    @Override
                     public KnnVectorsFormat knnVectorsFormat() {
                       return new PerFieldKnnVectorsFormat() {
                         @Override
