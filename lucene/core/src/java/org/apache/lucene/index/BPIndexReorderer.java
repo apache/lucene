@@ -111,7 +111,6 @@ public final class BPIndexReorderer {
   public static final int DEFAULT_MAX_ITERS = 20;
 
   private int minDocFreq;
-  private float maxDocFreq;
   private int minPartitionSize;
   private int maxIters;
   private ForkJoinPool forkJoinPool;
@@ -121,7 +120,6 @@ public final class BPIndexReorderer {
   /** Constructor. */
   public BPIndexReorderer() {
     setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
-    setMaxDocFreq(1f);
     setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
     setMaxIters(DEFAULT_MAX_ITERS);
     setForkJoinPool(null);
@@ -136,14 +134,6 @@ public final class BPIndexReorderer {
       throw new IllegalArgumentException("minDocFreq must be at least 1, got " + minDocFreq);
     }
     this.minDocFreq = minDocFreq;
-  }
-
-  /** Set the maximum document frequency for terms to be considered as a ratio of {@code maxDoc}. Must be in (0, 1]. 1 by default. */
-  public void setMaxDocFreq(float maxDocFreq) {
-    if (maxDocFreq > 0 == false || maxDocFreq <= 1 == false) {
-      throw new IllegalArgumentException("maxDocFreq must be in (0, 1], got " + maxDocFreq);
-    }
-    this.maxDocFreq = maxDocFreq;
   }
 
   /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
@@ -622,7 +612,6 @@ public final class BPIndexReorderer {
                 / getParallelism()
                 / termRAMRequirementsPerThreadPerTerm());
 
-    final int maxDocFreq = (int) (this.maxDocFreq * reader.maxDoc());
     int numTerms = 0;
     for (String field : fields) {
       Terms terms = reader.terms(field);
@@ -639,7 +628,7 @@ public final class BPIndexReorderer {
       TermsEnum iterator = terms.iterator();
       PostingsEnum postings = null;
       for (BytesRef term = iterator.next(); term != null; term = iterator.next()) {
-        if (iterator.docFreq() < minDocFreq || iterator.docFreq() > maxDocFreq) {
+        if (iterator.docFreq() < minDocFreq) {
           continue;
         }
         if (numTerms >= ArrayUtil.MAX_ARRAY_LENGTH) {
