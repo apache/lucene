@@ -130,9 +130,7 @@ public class LiveIndexWriterConfig {
       throw new NullPointerException();
     }
     infoStream = InfoStream.getDefault();
-    BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setMinDocFreq(16384);
-    mergePolicy = new BPReorderingMergePolicy(new TieredMergePolicy(), reorderer, 262_144);
+    mergePolicy = new TieredMergePolicy();
     flushPolicy = new FlushByRamOrCountsPolicy();
     readerPooling = IndexWriterConfig.DEFAULT_READER_POOLING;
     perThreadHardLimitMB = IndexWriterConfig.DEFAULT_RAM_PER_THREAD_HARD_LIMIT_MB;

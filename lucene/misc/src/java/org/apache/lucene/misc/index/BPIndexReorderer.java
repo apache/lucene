@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.misc.index;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -24,9 +24,17 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
-
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.Sorter.DocMap;
+import org.apache.lucene.index.SortingCodecReader;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
