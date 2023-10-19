@@ -80,6 +80,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
+import org.junit.Test;
 
 /** Tests HNSW KNN graphs */
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
@@ -157,10 +158,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new Lucene95Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene95HnswVectorsFormat(M, beamWidth);
+                  new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
+
+                    public KnnVectorsFormat knnVectorsFormat() {
+                      return new PerFieldKnnVectorsFormat() {
+                        @Override
+                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                          return new Lucene95HnswVectorsFormat(M, beamWidth);
+                        }
+                      };
                     }
                   })
               // set a random merge policy
