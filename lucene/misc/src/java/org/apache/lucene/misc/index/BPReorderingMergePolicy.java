@@ -38,7 +38,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
 
   private final BPIndexReorderer reorderer;
   private int minNaturalMergeNumDocs = 1;
-  private float minNaturalMergeRatio = 0f;
+  private float minNaturalMergeRatioFromBiggestSegment = 0f;
 
   /**
    * Sole constructor. It takes the merge policy that should be used to compute merges, and will
@@ -72,25 +72,41 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
 
   /**
    * Set the minimum number of docs that a merge must have for the resulting segment to be
-   * reordered, as a ratio of the total number of documents in the index.
+   * reordered, as a ratio of the total number of documents of the current biggest segment in the
+   * index. This parameter helps only enable reordering on segments that are large enough that they
+   * will significantly contribute to overall search performance.
    */
-  public void setMinNaturalMergeRatio(float minNaturalMergeRatio) {
-    if (minNaturalMergeRatio >= 0 == false || minNaturalMergeRatio < 1 == false) {
+  public void setMinNaturalMergeRatioFromBiggestSegment(
+      float minNaturalMergeRatioFromBiggestSegment) {
+    if (minNaturalMergeRatioFromBiggestSegment >= 0 == false
+        || minNaturalMergeRatioFromBiggestSegment < 1 == false) {
       throw new IllegalArgumentException(
-          "minNaturalMergeRatio must be in [0, 1), got " + minNaturalMergeRatio);
+          "minNaturalMergeRatioFromBiggestSegment must be in [0, 1), got "
+              + minNaturalMergeRatioFromBiggestSegment);
     }
-    this.minNaturalMergeRatio = minNaturalMergeRatio;
+    this.minNaturalMergeRatioFromBiggestSegment = minNaturalMergeRatioFromBiggestSegment;
   }
 
-  private MergeSpecification maybeReorder(MergeSpecification spec, boolean forced, int maxDoc) {
+  private MergeSpecification maybeReorder(
+      MergeSpecification spec, boolean forced, SegmentInfos infos) {
     if (spec == null) {
       return null;
     }
 
-    final int minNumDocs =
-        forced
-            ? 1
-            : Math.max(this.minNaturalMergeNumDocs, (int) ((double) minNaturalMergeRatio * maxDoc));
+    final int minNumDocs;
+    if (forced) {
+      // No minimum size for forced merges
+      minNumDocs = 1;
+    } else {
+      int maxMaxDoc = 0;
+      for (SegmentCommitInfo sci : infos) {
+        maxMaxDoc = Math.max(sci.info.maxDoc(), maxMaxDoc);
+      }
+      minNumDocs =
+          Math.max(
+              this.minNaturalMergeNumDocs,
+              (int) ((double) minNaturalMergeRatioFromBiggestSegment * maxMaxDoc));
+    }
 
     MergeSpecification newSpec = new MergeSpecification();
     for (OneMerge oneMerge : spec.merges) {
@@ -125,9 +141,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
     return maybeReorder(
-        super.findMerges(mergeTrigger, segmentInfos, mergeContext),
-        false,
-        segmentInfos.totalMaxDoc());
+        super.findMerges(mergeTrigger, segmentInfos, mergeContext), false, segmentInfos);
   }
 
   @Override
@@ -140,26 +154,23 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
     return maybeReorder(
         super.findForcedMerges(segmentInfos, maxSegmentCount, segmentsToMerge, mergeContext),
         true,
-        segmentInfos.totalMaxDoc());
+        segmentInfos);
   }
 
   @Override
   public MergeSpecification findForcedDeletesMerges(
       SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
     return maybeReorder(
-        super.findForcedDeletesMerges(segmentInfos, mergeContext),
-        true,
-        segmentInfos.totalMaxDoc());
+        super.findForcedDeletesMerges(segmentInfos, mergeContext), true, segmentInfos);
   }
 
   @Override
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
+    final int maxMaxDoc = segmentInfos.asList().stream().mapToInt(sci -> sci.info.maxDoc()).sum();
     return maybeReorder(
-        super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext),
-        false,
-        segmentInfos.totalMaxDoc());
+        super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext), false, segmentInfos);
   }
 
   @Override
@@ -169,6 +180,6 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
     for (CodecReader reader : readers) {
       totalMaxDoc += reader.maxDoc();
     }
-    return maybeReorder(super.findMerges(readers), true, totalMaxDoc);
+    return maybeReorder(super.findMerges(readers), true, null);
   }
 }
