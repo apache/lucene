@@ -21,6 +21,7 @@ import static org.apache.lucene.tests.util.fst.FSTTester.simpleRandomString;
 import static org.apache.lucene.tests.util.fst.FSTTester.toIntsRef;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -54,11 +55,13 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -1191,6 +1194,46 @@ public class TestFSTs extends LuceneTestCase {
     assertTrue(w.toString().contains("[label=\"t\" style=\"bold\""));
     // check for accept state at label n
     assertTrue(w.toString().contains("[label=\"n\" style=\"bold\""));
+  }
+
+  // https://github.com/apache/lucene/issues/12697
+  // Make sure the FST can be saved and loaded with different DataOutput for metadata
+  public void testSaveDifferentMetaOut() throws Exception {
+    PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+
+    // first build the FST from scratch
+    final IntsRefBuilder scratch = new IntsRefBuilder();
+    fstCompiler.add(Util.toIntsRef(newBytesRef("aab"), scratch), 22L);
+    fstCompiler.add(Util.toIntsRef(newBytesRef("aac"), scratch), 7L);
+    fstCompiler.add(Util.toIntsRef(newBytesRef("ax"), scratch), 17L);
+
+    FST<Long> fst = fstCompiler.compile();
+
+    // save the FST to DataOutput, here it would not matter whether we are saving to different DataOutput for meta or not
+    ByteArrayOutputStream outOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput out = new OutputStreamDataOutput(outOS);
+    fst.save(out, out);
+
+    // load the FST, which will force it to use FSTStore instead of BytesStore
+    ByteArrayDataInput in = new ByteArrayDataInput(outOS.toByteArray());
+    FST<Long> loadedFST = new FST<>(in, in, outputs);
+
+    // now save the FST again, this time to different DataOutput for meta
+    ByteArrayOutputStream metdataOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput metaOut = new OutputStreamDataOutput(metdataOS);
+    ByteArrayOutputStream dataOS = new ByteArrayOutputStream();
+    OutputStreamDataOutput dataOut = new OutputStreamDataOutput(dataOS);
+    loadedFST.save(metaOut, dataOut);
+
+    // finally load it again
+    ByteArrayDataInput metaIn = new ByteArrayDataInput(metdataOS.toByteArray());
+    ByteArrayDataInput dataIn = new ByteArrayDataInput(dataOS.toByteArray());
+    loadedFST = new FST<>(metaIn, dataIn, outputs);
+
+    assertEquals(22L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("aab"), scratch)).longValue());
+    assertEquals(7L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("aac"), scratch)).longValue());
+    assertEquals(17L, Util.get(loadedFST, Util.toIntsRef(newBytesRef("ax"), scratch)).longValue());
   }
 
   // Make sure raw FST can differentiate between final vs
