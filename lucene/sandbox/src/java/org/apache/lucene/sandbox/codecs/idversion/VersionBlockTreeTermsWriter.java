@@ -323,6 +323,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
     public final boolean hasTerms;
     public final boolean isFloor;
     public final int floorLeadByte;
+
     /** Max version for all terms in this block. */
     private final long maxVersion;
 

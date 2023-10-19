@@ -18,14 +18,10 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.KnnCollector;
@@ -37,7 +33,7 @@ import org.apache.lucene.util.InfoStream;
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
  * hyper-parameters.
  */
-public final class HnswGraphBuilder {
+public class HnswGraphBuilder {
 
   /** Default number of maximum connections per node */
   public static final int DEFAULT_MAX_CONN = 16;
@@ -67,29 +63,20 @@ public final class HnswGraphBuilder {
   private final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
 
-  final OnHeapHnswGraph hnsw;
+  protected final OnHeapHnswGraph hnsw;
 
   private InfoStream infoStream = InfoStream.getDefault();
-
-  private final Set<Integer> initializedNodes;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
       throws IOException {
-    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, -1);
   }
 
   public static HnswGraphBuilder create(
-      RandomVectorScorerSupplier scorerSupplier,
-      int M,
-      int beamWidth,
-      long seed,
-      HnswGraph initializerGraph,
-      Map<Integer, Integer> oldToNewOrdinalMap)
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
       throws IOException {
-    HnswGraphBuilder hnswGraphBuilder = new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed);
-    hnswGraphBuilder.initializeFromGraph(initializerGraph, oldToNewOrdinalMap);
-    return hnswGraphBuilder;
+    return new HnswGraphBuilder(scorerSupplier, M, beamWidth, seed, graphSize);
   }
 
   /**
@@ -102,9 +89,32 @@ public final class HnswGraphBuilder {
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
+   * @param graphSize size of graph, if unknown, pass in -1
    */
-  private HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
+  protected HnswGraphBuilder(
+      RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
+      throws IOException {
+    this(scorerSupplier, M, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
+  }
+
+  /**
+   * Reads all the vectors from vector values, builds a graph connecting them by their dense
+   * ordinals, using the given hyperparameter settings, and returns the resulting graph.
+   *
+   * @param scorerSupplier a supplier to create vector scorer from ordinals.
+   * @param M – graph fanout parameter used to calculate the maximum number of connections a node
+   *     can have – M on upper layers, and M * 2 on the lowest level.
+   * @param beamWidth the size of the beam search to use when finding nearest neighbors.
+   * @param seed the seed for a random number generator used during graph construction. Provide this
+   *     to ensure repeatable construction.
+   * @param hnsw the graph to build, can be previously initialized
+   */
+  protected HnswGraphBuilder(
+      RandomVectorScorerSupplier scorerSupplier,
+      int M,
+      int beamWidth,
+      long seed,
+      OnHeapHnswGraph hnsw)
       throws IOException {
     if (M <= 0) {
       throw new IllegalArgumentException("maxConn must be positive");
@@ -118,7 +128,7 @@ public final class HnswGraphBuilder {
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
-    this.hnsw = new OnHeapHnswGraph(M);
+    this.hnsw = hnsw;
     this.graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(beamWidth, true), new FixedBitSet(this.getGraph().size()));
@@ -126,7 +136,6 @@ public final class HnswGraphBuilder {
     scratch = new NeighborArray(Math.max(beamWidth, M + 1), false);
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
-    this.initializedNodes = new HashSet<>();
   }
 
   /**
@@ -142,45 +151,6 @@ public final class HnswGraphBuilder {
     return hnsw;
   }
 
-  /**
-   * Initializes the graph of this builder. Transfers the nodes and their neighbors from the
-   * initializer graph into the graph being produced by this builder, mapping ordinals from the
-   * initializer graph to their new ordinals in this builder's graph. The builder's graph must be
-   * empty before calling this method.
-   *
-   * @param initializerGraph graph used for initialization
-   * @param oldToNewOrdinalMap map for converting from ordinals in the initializerGraph to this
-   *     builder's graph
-   */
-  private void initializeFromGraph(
-      HnswGraph initializerGraph, Map<Integer, Integer> oldToNewOrdinalMap) throws IOException {
-    assert hnsw.size() == 0;
-    for (int level = 0; level < initializerGraph.numLevels(); level++) {
-      HnswGraph.NodesIterator it = initializerGraph.getNodesOnLevel(level);
-
-      while (it.hasNext()) {
-        int oldOrd = it.nextInt();
-        int newOrd = oldToNewOrdinalMap.get(oldOrd);
-
-        hnsw.addNode(level, newOrd);
-
-        if (level == 0) {
-          initializedNodes.add(newOrd);
-        }
-
-        NeighborArray newNeighbors = this.hnsw.getNeighbors(level, newOrd);
-        initializerGraph.seek(level, oldOrd);
-        for (int oldNeighbor = initializerGraph.nextNeighbor();
-            oldNeighbor != NO_MORE_DOCS;
-            oldNeighbor = initializerGraph.nextNeighbor()) {
-          int newNeighbor = oldToNewOrdinalMap.get(oldNeighbor);
-          // we will compute these scores later when we need to pop out the non-diverse nodes
-          newNeighbors.addOutOfOrder(newNeighbor, Float.NaN);
-        }
-      }
-    }
-  }
-
   /** Set info-stream to output debugging information * */
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
@@ -193,9 +163,6 @@ public final class HnswGraphBuilder {
   private void addVectors(int maxOrd) throws IOException {
     long start = System.nanoTime(), t = start;
     for (int node = 0; node < maxOrd; node++) {
-      if (initializedNodes.contains(node)) {
-        continue;
-      }
       addGraphNode(node);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
@@ -288,7 +255,7 @@ public final class HnswGraphBuilder {
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.node[i];
       float cScore = candidates.score[i];
-      assert cNode < hnsw.size();
+      assert cNode <= hnsw.maxNodeId();
       if (diversityCheck(cNode, cScore, neighbors)) {
         neighbors.addInOrder(cNode, cScore);
       }
@@ -398,6 +365,7 @@ public final class HnswGraphBuilder {
     private final NeighborQueue queue;
     private final int k;
     private long visitedCount;
+
     /**
      * @param k the number of neighbors to collect
      */
