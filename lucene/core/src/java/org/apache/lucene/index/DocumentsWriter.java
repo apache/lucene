@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -169,11 +168,11 @@ final class DocumentsWriter implements Closeable, Accountable {
     final DocumentsWriterDeleteQueue deleteQueue = this.deleteQueue;
 
     if (flushControl.isFullFlush() == false
-        // never apply deletes during full flush this breaks happens before relationship
+        // never apply deletes during full flush this breaks happens before relationship.
         && deleteQueue.isOpen()
         // if it's closed then it's already fully applied and we have a new delete queue
         && flushControl.getAndResetApplyAllDeletes()) {
-      if (ticketQueue.addDeletes(deleteQueue)) {
+      if (ticketQueue.addTicket(() -> maybeFreezeGlobalBuffer(deleteQueue)) != null) {
         flushNotifications.onDeletesApplied(); // apply deletes event forces a purge
         return true;
       }
@@ -241,15 +240,16 @@ final class DocumentsWriter implements Closeable, Accountable {
     if (infoStream.isEnabled("DW")) {
       infoStream.message("DW", "startFlushOneDWPT");
     }
-    // first check if there is one pending
-    DocumentsWriterPerThread documentsWriterPerThread = flushControl.nextPendingFlush();
-    if (documentsWriterPerThread == null) {
-      documentsWriterPerThread = flushControl.checkoutLargestNonPendingWriter();
+    if (maybeFlush() == false) {
+      DocumentsWriterPerThread documentsWriterPerThread =
+          flushControl.checkoutLargestNonPendingWriter();
+      if (documentsWriterPerThread != null) {
+        doFlush(documentsWriterPerThread);
+        return true;
+      }
+      return false;
     }
-    if (documentsWriterPerThread != null) {
-      return doFlush(documentsWriterPerThread);
-    }
-    return false; // we didn't flush anything here
+    return true;
   }
 
   /**
@@ -366,11 +366,6 @@ final class DocumentsWriter implements Closeable, Accountable {
     return deleteQueue.getBufferedUpdatesTermsSize();
   }
 
-  // for testing
-  int getNumBufferedDeleteTerms() {
-    return deleteQueue.numGlobalTermDeletes();
-  }
-
   boolean anyDeletions() {
     return deleteQueue.anyChanges();
   }
@@ -388,11 +383,8 @@ final class DocumentsWriter implements Closeable, Accountable {
         || (flushControl.numQueuedFlushes() > 0 && config.checkPendingFlushOnUpdate)) {
       // Help out flushing any queued DWPTs so we can un-stall:
       // Try pick up pending threads here if possible
-      DocumentsWriterPerThread flushingDWPT;
-      while ((flushingDWPT = flushControl.nextPendingFlush()) != null) {
-        // Don't push the delete here since the update could fail!
-        hasEvents |= doFlush(flushingDWPT);
-      }
+      // no need to loop over the next pending flushes... doFlush will take care of this
+      hasEvents |= maybeFlush();
       flushControl.waitIfStalled(); // block if stalled
     }
     return hasEvents;
@@ -402,14 +394,11 @@ final class DocumentsWriter implements Closeable, Accountable {
       throws IOException {
     hasEvents |= applyAllDeletes();
     if (flushingDWPT != null) {
-      hasEvents |= doFlush(flushingDWPT);
+      doFlush(flushingDWPT);
+      hasEvents = true;
     } else if (config.checkPendingFlushOnUpdate) {
-      final DocumentsWriterPerThread nextPendingFlush = flushControl.nextPendingFlush();
-      if (nextPendingFlush != null) {
-        hasEvents |= doFlush(nextPendingFlush);
-      }
+      hasEvents |= maybeFlush();
     }
-
     return hasEvents;
   }
 
@@ -451,11 +440,19 @@ final class DocumentsWriter implements Closeable, Accountable {
     return seqNo;
   }
 
-  private boolean doFlush(DocumentsWriterPerThread flushingDWPT) throws IOException {
-    boolean hasEvents = false;
-    while (flushingDWPT != null) {
+  private boolean maybeFlush() throws IOException {
+    final DocumentsWriterPerThread flushingDWPT = flushControl.nextPendingFlush();
+    if (flushingDWPT != null) {
+      doFlush(flushingDWPT);
+      return true;
+    }
+    return false;
+  }
+
+  private void doFlush(DocumentsWriterPerThread flushingDWPT) throws IOException {
+    assert flushingDWPT != null : "Flushing DWPT must not be null";
+    do {
       assert flushingDWPT.hasFlushed() == false;
-      hasEvents = true;
       boolean success = false;
       DocumentsWriterFlushQueue.FlushTicket ticket = null;
       try {
@@ -483,8 +480,11 @@ final class DocumentsWriter implements Closeable, Accountable {
          */
         try {
           assert assertTicketQueueModification(flushingDWPT.deleteQueue);
+          final DocumentsWriterPerThread dwpt = flushingDWPT;
           // Each flush is assigned a ticket in the order they acquire the ticketQueue lock
-          ticket = ticketQueue.addFlushTicket(flushingDWPT);
+          ticket =
+              ticketQueue.addTicket(
+                  () -> new DocumentsWriterFlushQueue.FlushTicket(dwpt.prepareFlush(), true));
           final int flushingDocsInRam = flushingDWPT.getNumDocsInRAM();
           boolean dwptSuccess = false;
           try {
@@ -497,11 +497,9 @@ final class DocumentsWriter implements Closeable, Accountable {
             if (flushingDWPT.pendingFilesToDelete().isEmpty() == false) {
               Set<String> files = flushingDWPT.pendingFilesToDelete();
               flushNotifications.deleteUnusedFiles(files);
-              hasEvents = true;
             }
             if (dwptSuccess == false) {
               flushNotifications.flushFailed(flushingDWPT.getSegmentInfo());
-              hasEvents = true;
             }
           }
           // flush was successful once we reached this point - new seg. has been assigned to the
@@ -525,42 +523,12 @@ final class DocumentsWriter implements Closeable, Accountable {
           // other threads flushing segments.  In this case
           // we forcefully stall the producers.
           flushNotifications.onTicketBacklog();
-          break;
         }
       } finally {
         flushControl.doAfterFlush(flushingDWPT);
       }
-
-      flushingDWPT = flushControl.nextPendingFlush();
-    }
-
-    if (hasEvents) {
-      flushNotifications.afterSegmentsFlushed();
-    }
-
-    // If deletes alone are consuming > 1/2 our RAM
-    // buffer, force them all to apply now. This is to
-    // prevent too-frequent flushing of a long tail of
-    // tiny segments:
-    final double ramBufferSizeMB = config.getRAMBufferSizeMB();
-    if (ramBufferSizeMB != IndexWriterConfig.DISABLE_AUTO_FLUSH
-        && flushControl.getDeleteBytesUsed() > (1024 * 1024 * ramBufferSizeMB / 2)) {
-      hasEvents = true;
-      if (applyAllDeletes() == false) {
-        if (infoStream.isEnabled("DW")) {
-          infoStream.message(
-              "DW",
-              String.format(
-                  Locale.ROOT,
-                  "force apply deletes after flush bytesUsed=%.1f MB vs ramBuffer=%.1f MB",
-                  flushControl.getDeleteBytesUsed() / (1024. * 1024.),
-                  ramBufferSizeMB));
-        }
-        flushNotifications.onDeletesApplied();
-      }
-    }
-
-    return hasEvents;
+    } while ((flushingDWPT = flushControl.nextPendingFlush()) != null);
+    flushNotifications.afterSegmentsFlushed();
   }
 
   synchronized long getNextSequenceNumber() {
@@ -665,11 +633,7 @@ final class DocumentsWriter implements Closeable, Accountable {
 
     boolean anythingFlushed = false;
     try {
-      DocumentsWriterPerThread flushingDWPT;
-      // Help out with flushing:
-      while ((flushingDWPT = flushControl.nextPendingFlush()) != null) {
-        anythingFlushed |= doFlush(flushingDWPT);
-      }
+      anythingFlushed |= maybeFlush();
       // If a concurrent flush is still in flight wait for it
       flushControl.waitForFlush();
       if (anythingFlushed == false
@@ -679,9 +643,9 @@ final class DocumentsWriter implements Closeable, Accountable {
               "DW", Thread.currentThread().getName() + ": flush naked frozen global deletes");
         }
         assert assertTicketQueueModification(flushingDeleteQueue);
-        ticketQueue.addDeletes(flushingDeleteQueue);
+        ticketQueue.addTicket(() -> maybeFreezeGlobalBuffer(flushingDeleteQueue));
       }
-      // we can't assert that we don't have any tickets in teh queue since we might add a
+      // we can't assert that we don't have any tickets in the queue since we might add a
       // DocumentsWriterDeleteQueue
       // concurrently if we have very small ram buffers this happens quite frequently
       assert !flushingDeleteQueue.anyChanges();
@@ -696,6 +660,16 @@ final class DocumentsWriter implements Closeable, Accountable {
     } else {
       return seqNo;
     }
+  }
+
+  private DocumentsWriterFlushQueue.FlushTicket maybeFreezeGlobalBuffer(
+      DocumentsWriterDeleteQueue deleteQueue) {
+    FrozenBufferedUpdates frozenBufferedUpdates = deleteQueue.maybeFreezeGlobalBuffer();
+    if (frozenBufferedUpdates != null) {
+      // no need to publish anything if we don't have any frozen updates
+      return new DocumentsWriterFlushQueue.FlushTicket(frozenBufferedUpdates, false);
+    }
+    return null;
   }
 
   void finishFullFlush(boolean success) throws IOException {

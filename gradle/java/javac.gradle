@@ -17,7 +17,7 @@
 
 // Configure Java project defaults.
 
-allprojects {
+allprojects { project ->
   plugins.withType(JavaPlugin) {
     sourceCompatibility = rootProject.minJavaVersion
     targetCompatibility = rootProject.minJavaVersion
@@ -69,12 +69,20 @@ allprojects {
         "-Xlint:preview",
         "-Xdoclint:all/protected",
         "-Xdoclint:-missing",
-        "-Xdoclint:-accessibility",
-        "-proc:none",  // proc:none was added because of LOG4J2-1925 / JDK-8186647
+        "-Xdoclint:-accessibility"
       ]
 
-      if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
-        options.compilerArgs += "-Werror"
+      if (project.path == ":lucene:benchmark-jmh") {
+        // JMH benchmarks use JMH preprocessor and incubating modules.
+      } else {
+        // proc:none was added because of LOG4J2-1925 / JDK-8186647
+        options.compilerArgs += [
+            "-proc:none"
+        ]
+
+        if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
+          options.compilerArgs += "-Werror"
+        }
       }
     }
   }
