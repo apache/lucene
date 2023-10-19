@@ -829,30 +829,27 @@ public final class FST<T> implements Accountable {
         }
       }
     } else {
-      if (arc.bytesPerArc() != 0) {
-        // System.out.println("    nextArc real array");
-        // Arcs have fixed length.
-        switch (arc.nodeFlags()) {
-          case ARCS_FOR_BINARY_SEARCH:
-            // Point to next arc, -1 to skip arc flags.
-            in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * (long) arc.bytesPerArc() - 1);
-            break;
-          case ARCS_FOR_DIRECT_ADDRESSING:
-            // Direct addressing node. The label is not stored but rather inferred
-            // based on first label and arc index in the range.
-            assert BitTable.assertIsValid(arc, in);
-            assert BitTable.isBitSet(arc.arcIdx(), arc, in);
-            int nextIndex = BitTable.nextBitSet(arc.arcIdx(), arc, in);
-            assert nextIndex != -1;
-            return arc.firstLabel() + nextIndex;
-          default:
-            throw new AssertionError("unexpected nodeFlags()=" + arc.nodeFlags());
-        }
-      } else {
-        // Arcs have variable length.
-        // System.out.println("    nextArc real list");
-        // Position to next arc, -1 to skip flags.
-        in.setPosition(arc.nextArc() - 1);
+      switch (arc.nodeFlags()) {
+        case ARCS_FOR_BINARY_SEARCH:
+          // Point to next arc, -1 to skip arc flags.
+          in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * (long) arc.bytesPerArc() - 1);
+          break;
+        case ARCS_FOR_DIRECT_ADDRESSING:
+          // Direct addressing node. The label is not stored but rather inferred
+          // based on first label and arc index in the range.
+          assert BitTable.assertIsValid(arc, in);
+          assert BitTable.isBitSet(arc.arcIdx(), arc, in);
+          int nextIndex = BitTable.nextBitSet(arc.arcIdx(), arc, in);
+          assert nextIndex != -1;
+          return arc.firstLabel() + nextIndex;
+        default:
+          // Variable length arcs - linear search.
+          assert arc.bytesPerArc() == 0;
+          // Arcs have variable length.
+          // System.out.println("    nextArc real list");
+          // Position to next arc, -1 to skip flags.
+          in.setPosition(arc.nextArc() - 1);
+          break;
       }
     }
     return readLabel(in);

@@ -20,7 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 
-// TODO: any way to make a reversee suffix lookup (msokolov's idea) instead of more costly hash?
+// TODO: any way to make a reverse suffix lookup (msokolov's idea) instead of more costly hash?
 // hmmm, though, hash is not so wasteful
 // since it does not have to store value of each entry: the value is the node pointer in the FST.
 // actually, there is much to save
@@ -147,6 +147,8 @@ final class NodeHash<T> {
           // primary if we encounter it again
           fallbackTable = primaryTable;
           // size primary table the same size to reduce rehash cost
+          // TODO: we could clear & reuse the previous fallbackTable, instead of allocating a new
+          //       to reduce GC load
           primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()));
         } else if (primaryTable.count > primaryTable.entries.size() * (2f / 3)) {
           // rehash at 2/3 occupancy

@@ -130,7 +130,8 @@ public class FSTCompiler<T> {
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
-      double suffixRAMLimitMB, // pass 0 to disable suffix compression/trie; must be power of two
+      double suffixRAMLimitMB, // pass 0 to disable suffix compression/trie; larger values create
+      // smaller FSTs
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
