@@ -23,7 +23,6 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -42,7 +41,8 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     BPIndexReorderer reorderer = new BPIndexReorderer();
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(2);
-    MergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer, 2);
+    BPReorderingMergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer);
+    mp.setMinNaturalMergeNumDocs(2);
     IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig().setMergePolicy(mp));
     Document doc = new Document();
     StringField idField = new StringField("id", "", Store.YES);
@@ -118,7 +118,8 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(2);
     reorderer.setRAMBudgetMB(Double.MIN_VALUE);
-    MergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer, 2);
+    BPReorderingMergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer);
+    mp.setMinNaturalMergeNumDocs(2);
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(mp));
     Document doc = new Document();
     StringField idField = new StringField("id", "", Store.YES);
