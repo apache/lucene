@@ -1210,7 +1210,8 @@ public class TestFSTs extends LuceneTestCase {
 
     FST<Long> fst = fstCompiler.compile();
 
-    // save the FST to DataOutput, here it would not matter whether we are saving to different DataOutput for meta or not
+    // save the FST to DataOutput, here it would not matter whether we are saving to different
+    // DataOutput for meta or not
     ByteArrayOutputStream outOS = new ByteArrayOutputStream();
     OutputStreamDataOutput out = new OutputStreamDataOutput(outOS);
     fst.save(out, out);
