@@ -14,18 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.misc.index;
+package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Map;
-import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.FilterMergePolicy;
-import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.MergeTrigger;
-import org.apache.lucene.index.SegmentCommitInfo;
-import org.apache.lucene.index.SegmentInfos;
-import org.apache.lucene.index.Sorter;
-import org.apache.lucene.misc.index.BPIndexReorderer.NotEnoughRAMException;
+
+import org.apache.lucene.index.BPIndexReorderer.NotEnoughRAMException;
 import org.apache.lucene.store.Directory;
 
 /**
