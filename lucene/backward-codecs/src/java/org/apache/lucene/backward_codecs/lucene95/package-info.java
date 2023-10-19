@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 9.9 file format.
+ * Lucene 9.5 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *
@@ -141,7 +141,7 @@
  * <p>Each segment index maintains the following:
  *
  * <ul>
- *   <li>{@link org.apache.lucene.codecs.lucene99.Lucene99SegmentInfoFormat Segment info}. This
+ *   <li>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90SegmentInfoFormat info}. This
  *       contains metadata about a segment, such as the number of documents, what files it uses, and
  *       information about how the segment is sorted
  *   <li>{@link org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat Field names}. This
@@ -229,7 +229,7 @@
  * file.</td>
  * </tr>
  * <tr>
- * <td>{@link org.apache.lucene.codecs.lucene99.Lucene99SegmentInfoFormat Segment Info}</td>
+ * <td>{@link org.apache.lucene.backward_codecs.lucene90.Lucene90SegmentInfoFormat Segment Info}</td>
  * <td>.si</td>
  * <td>Stores metadata about a segment</td>
  * </tr>
@@ -422,4 +422,4 @@
  * <code>UInt64</code> values, or better yet, {@link org.apache.lucene.store.DataOutput#writeVInt
  * VInt} values which have no limit. </div>
  */
-package org.apache.lucene.codecs.lucene99;
+package org.apache.lucene.backward_codecs.lucene95;
