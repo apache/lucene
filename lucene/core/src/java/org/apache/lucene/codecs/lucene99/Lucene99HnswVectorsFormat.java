@@ -186,14 +186,14 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
     super("Lucene99HnswVectorsFormat");
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
-          "maxConn must be postive and less than or equal to"
+          "maxConn must be positive and less than or equal to"
               + MAXIMUM_MAX_CONN
               + "; maxConn="
               + maxConn);
     }
     if (beamWidth <= 0 || beamWidth > MAXIMUM_BEAM_WIDTH) {
       throw new IllegalArgumentException(
-          "beamWidth must be postive and less than or equal to"
+          "beamWidth must be positive and less than or equal to"
               + MAXIMUM_BEAM_WIDTH
               + "; beamWidth="
               + beamWidth);

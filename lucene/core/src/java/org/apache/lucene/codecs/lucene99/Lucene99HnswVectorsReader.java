@@ -313,8 +313,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
       return;
     }
-    if (quantizedVectorsReader != null) {
-      OffHeapQuantizedByteVectorValues vectorValues = getQuantizedVectorValues(field);
+    if (fieldEntry.hasQuantizedVectors()) {
+      OffHeapQuantizedByteVectorValues vectorValues =
+          quantizedVectorsReader.getQuantizedVectorValues(
+              fieldEntry.quantizedOrdToDoc,
+              fieldEntry.dimension,
+              fieldEntry.size,
+              fieldEntry.quantizedVectorDataOffset,
+              fieldEntry.quantizedVectorDataLength);
       if (vectorValues == null) {
         return;
       }
