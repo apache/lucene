@@ -97,6 +97,7 @@ public final class OnHeapFSTStore implements FSTStore {
     if (bytes != null) {
       bytes.writeTo(out);
     } else {
+      assert bytesArray != null;
       out.writeBytes(bytesArray, 0, bytesArray.length);
     }
   }
