@@ -30,6 +30,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Ignore;
 
+// TODO: soon we will be able to run this test with small heaps!  Once #12633 and #12543
+// are done
 @Ignore("Requires tons of heap to run (30 GB hits OOME but 35 GB passes after ~4.5 hours)")
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFST extends LuceneTestCase {

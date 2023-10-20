@@ -290,7 +290,7 @@ final class NodeHash<T> {
           new PagedGrowableWriter(
               size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
       mask = size - 1;
-      assert (mask % size) == 0;
+      assert (mask & size) == 0 : "size must be a power-of-2; got size=" + size + " mask=" + mask;
     }
 
     public long get(long index) {
