@@ -156,9 +156,11 @@ public class FSTCompiler<T> {
     this.shareMaxTailLength = shareMaxTailLength;
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
-    fst = new FST<>(inputType, outputs, bytesPageBits);
-    bytes = fst.bytes;
-    assert bytes != null;
+    bytes = new BytesStore(bytesPageBits);
+    // pad: ensure no node gets address 0 which is reserved to mean
+    // the stop state w/ no arcs
+    bytes.writeByte((byte) 0);
+    fst = new FST<>(inputType, outputs, bytes);
     if (doShareSuffix) {
       dedupHash = new NodeHash<>(this, bytes.getReverseReader(false));
     } else {
@@ -377,8 +379,6 @@ public class FSTCompiler<T> {
   // serializes new node by appending its bytes to the end
   // of the current byte[]
   long addNode(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
-    T NO_OUTPUT = fst.outputs.getNoOutput();
-
     // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
     if (nodeIn.numArcs == 0) {
       if (nodeIn.isFinal) {
@@ -1004,6 +1004,7 @@ public class FSTCompiler<T> {
     // if (DEBUG) System.out.println("  builder.finish root.isFinal=" + root.isFinal + "
     // root.output=" + root.output);
     fst.finish(compileNode(root, lastInput.length()).node);
+    bytes.finish();
 
     return fst;
   }

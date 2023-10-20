@@ -120,9 +120,7 @@ public final class FST<T> implements Accountable {
    * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
    * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
    */
-  final BytesStore bytes;
-
-  private final FSTStore fstStore;
+  private final FSTWriter fstReader;
 
   private long startNode = -1;
 
@@ -395,15 +393,11 @@ public final class FST<T> implements Accountable {
   }
 
   // make a new empty FST, for building; Builder invokes this
-  FST(INPUT_TYPE inputType, Outputs<T> outputs, int bytesPageBits) {
+  FST(INPUT_TYPE inputType, Outputs<T> outputs, FSTWriter fstReader) {
     this.inputType = inputType;
     this.outputs = outputs;
-    fstStore = null;
-    bytes = new BytesStore(bytesPageBits);
-    // pad: ensure no node gets address 0 which is reserved to mean
-    // the stop state w/ no arcs
-    bytes.writeByte((byte) 0);
     emptyOutput = null;
+    this.fstReader = fstReader;
     this.version = VERSION_CURRENT;
   }
 
@@ -420,8 +414,6 @@ public final class FST<T> implements Accountable {
    */
   public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
       throws IOException {
-    bytes = null;
-    this.fstStore = fstStore;
     this.outputs = outputs;
 
     // NOTE: only reads formats VERSION_START up to VERSION_CURRENT; we don't have
@@ -435,7 +427,7 @@ public final class FST<T> implements Accountable {
       emptyBytes.copyBytes(metaIn, numBytes);
 
       // De-serialize empty-string output:
-      BytesReader reader = emptyBytes.getReverseReader();
+      BytesReader reader = emptyBytes.getReverseBytesReader();
       // NoOutputs uses 0 bytes when writing its output,
       // so we have to check here else BytesStore gets
       // angry:
@@ -463,19 +455,13 @@ public final class FST<T> implements Accountable {
     startNode = metaIn.readVLong();
 
     long numBytes = metaIn.readVLong();
-    this.fstStore.init(in, numBytes);
+    fstStore.init(in, numBytes);
+    this.fstReader = fstStore;
   }
 
   @Override
   public long ramBytesUsed() {
-    long size = BASE_RAM_BYTES_USED;
-    if (this.fstStore != null) {
-      size += this.fstStore.ramBytesUsed();
-    } else {
-      size += bytes.ramBytesUsed();
-    }
-
-    return size;
+    return BASE_RAM_BYTES_USED + fstReader.ramBytesUsed();
   }
 
   @Override
@@ -484,7 +470,7 @@ public final class FST<T> implements Accountable {
   }
 
   void finish(long newStartNode) throws IOException {
-    assert newStartNode <= bytes.getPosition();
+    assert newStartNode <= fstReader.size();
     if (startNode != -1) {
       throw new IllegalStateException("already finished");
     }
@@ -492,11 +478,10 @@ public final class FST<T> implements Accountable {
       newStartNode = 0;
     }
     startNode = newStartNode;
-    bytes.finish();
   }
 
   public long numBytes() {
-    return bytes.getPosition();
+    return fstReader.size();
   }
 
   public T getEmptyOutput() {
@@ -552,16 +537,8 @@ public final class FST<T> implements Accountable {
     }
     metaOut.writeByte(t);
     metaOut.writeVLong(startNode);
-    if (bytes != null) {
-      long numBytes = bytes.getPosition();
-      metaOut.writeVLong(numBytes);
-      bytes.writeTo(out);
-    } else {
-      assert fstStore != null;
-      long numBytes = fstStore.size();
-      metaOut.writeVLong(numBytes);
-      fstStore.writeTo(out);
-    }
+    metaOut.writeVLong(numBytes());
+    fstReader.writeTo(out);
   }
 
   /** Writes an automaton to a file. */
@@ -1130,11 +1107,7 @@ public final class FST<T> implements Accountable {
 
   /** Returns a {@link BytesReader} for this FST, positioned at position 0. */
   public BytesReader getBytesReader() {
-    if (this.fstStore != null) {
-      return this.fstStore.getReverseBytesReader();
-    } else {
-      return bytes.getReverseReader();
-    }
+    return fstReader.getReverseBytesReader();
   }
 
   /** Reads bytes stored in an FST. */

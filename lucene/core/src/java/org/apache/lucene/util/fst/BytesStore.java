@@ -27,7 +27,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 // TODO: merge with PagedBytes, except PagedBytes doesn't
 // let you read while writing which FST needs
 
-class BytesStore extends DataOutput implements Accountable {
+class BytesStore extends DataOutput implements Accountable, FSTWriter {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(BytesStore.class)
@@ -333,6 +333,11 @@ class BytesStore extends DataOutput implements Accountable {
     return ((long) blocks.size() - 1) * blockSize + nextWrite;
   }
 
+  @Override
+  public long size() {
+    return getPosition();
+  }
+
   /**
    * Pos must be less than the max position written so far! Ie, you cannot "grow" the file with
    * this!
@@ -437,7 +442,8 @@ class BytesStore extends DataOutput implements Accountable {
     };
   }
 
-  public FST.BytesReader getReverseReader() {
+  @Override
+  public FST.BytesReader getReverseBytesReader() {
     return getReverseReader(true);
   }
 
