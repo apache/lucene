@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
@@ -69,8 +70,8 @@ public class VectorUtilBenchmark {
     }
 
     dir = new MMapDirectory(Files.createTempDirectory("benchmark-floats"));
-    var aIndex = inputForFloats(floatsA, dir, "vector-a");
-    var bIndex = inputForFloats(floatsB, dir, "vector-b");
+    var aIndex = inputForFloats(floatsA, 0, 1, dir, "vector-a");
+    var bIndex = inputForFloats(floatsB, 0, 3, dir, "vector-b");
     floatValuesA =
         newDenseOffHeapFloatVectorValues(floatsA.length, 1, aIndex, floatsA.length * Float.BYTES);
     floatValuesB =
@@ -185,15 +186,27 @@ public class VectorUtilBenchmark {
     return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(dimension, size, slice, byteSize);
   }
 
-  public static IndexInput inputForFloats(float[] vector, Directory dir, String name)
+  static IndexInput inputForFloats(
+      float[] vector, int vectorPosition, int initialBytes, Directory dir, String name)
       throws IOException {
-    int lenBytes = vector.length * Float.BYTES;
+    int vectorLenBytes = vector.length * Float.BYTES;
     try (var out = dir.createOutput(name + ".data", IOContext.DEFAULT)) {
-      final ByteBuffer buffer = ByteBuffer.allocate(lenBytes).order(ByteOrder.LITTLE_ENDIAN);
-      buffer.asFloatBuffer().put(vector);
-      out.writeBytes(buffer.array(), lenBytes);
+      if (initialBytes != 0) {
+        out.writeBytes(new byte[initialBytes], initialBytes);
+      }
+      if (vectorPosition != 0) {
+        out.writeBytes(new byte[vectorPosition * vectorLenBytes], vectorPosition * vectorLenBytes);
+      }
+      writeFloat32(vector, out);
     }
     var in = dir.openInput(name + ".data", IOContext.DEFAULT);
-    return in.slice(name, 0, lenBytes);
+    return in.slice(name, initialBytes, (long) (vectorPosition + 1) * vectorLenBytes);
+  }
+
+  static void writeFloat32(float[] arr, IndexOutput out) throws IOException {
+    int lenBytes = arr.length * Float.BYTES;
+    final ByteBuffer buffer = ByteBuffer.allocate(lenBytes).order(ByteOrder.LITTLE_ENDIAN);
+    buffer.asFloatBuffer().put(arr);
+    out.writeBytes(buffer.array(), lenBytes);
   }
 }
