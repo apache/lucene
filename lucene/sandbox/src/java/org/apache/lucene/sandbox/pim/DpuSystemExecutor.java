@@ -231,6 +231,7 @@ class DpuSystemExecutor implements PimQueriesExecutor {
     // 3) results transfer from DPUs to CPU
     // first get the meta-data (index of query results in results array for each DPU)
     // This meta-data has one integer per query in the batch
+    // TODO: use Scatter Gather approach to gather the results
     ByteBuffer[] dpuQueryResultsAddr = new ByteBuffer[dpuSystem.dpus().size()];
     for (int i = 0; i < dpuQueryResultsAddr.length; ++i) {
       dpuQueryResultsAddr[i] =

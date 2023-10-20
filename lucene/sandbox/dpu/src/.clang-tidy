@@ -46,15 +46,15 @@ CheckOptions:
   - key: readability-identifier-naming.NamespaceCase
     value: lower_case
   - key: readability-identifier-naming.ParameterCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.TypeAliasCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.TypedefCase
     value: lower_case
   - key: readability-identifier-naming.TypeDefSuffix
     value: _t
   - key: readability-identifier-naming.VariableCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.IgnoreMainLikeFunctions
     value: 1
   - key: readability-identifier-naming.MethodCase
