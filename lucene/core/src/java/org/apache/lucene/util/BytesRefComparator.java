@@ -20,8 +20,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 /**
- * Specialized {@link BytesRef} comparator that {@link
- * FixedLengthBytesRefArray#iterator(Comparator)} has optimizations for.
+ * Specialized {@link BytesRef} comparator that {@link StringSorter} has optimizations for.
  *
  * @lucene.internal
  */

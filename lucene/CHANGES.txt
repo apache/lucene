@@ -174,6 +174,8 @@ Improvements
 * GITHUB#12634, GITHUB#12632, GITHUB#12680, GITHUB#12681: Speed up Panama vector support
   and test improvements. (Uwe Schindler, Robert Muir)
 
+* GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)
@@ -185,6 +187,8 @@ Optimizations
   
 * GITHUB#12591: Use stable radix sort to speed up the sorting of update terms. (Guo Feng)
 
+* GITHUB#12587: Use radix sort to speed up the sorting of terms in TermInSetQuery. (Guo Feng)
+
 * GITHUB#12604: Estimate the block size of FST BytesStore in BlockTreeTermsWriter
   to reduce GC load during indexing. (Guo Feng)
 
@@ -195,6 +199,8 @@ Optimizations
 
 * GITHUB#12668: ImpactsEnums now decode frequencies lazily like PostingsEnums.
   (Adrien Grand)
+  
+* GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
 Changes in runtime behavior
 ---------------------
@@ -220,7 +226,10 @@ Build
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#12657: Internal refactor of HNSW graph merging (Ben Trent).
+
+* GITHUB#12625: Refactor ByteBlockPool so it is just a "shift/mask big array". (Ignacio Vera)
 
 ======================== Lucene 9.8.0 =======================
 
