@@ -30,7 +30,7 @@ import org.apache.lucene.util.bkd.BKDWriter;
  */
 public abstract class PointsWriter implements Closeable {
 
-  /** If the docCount is provided, we can avoid using FixdedBitset */
+  /** If the docCount is provided, we can avoid using FixedBitSet. */
   protected int docCount = BKDWriter.UNKNOWN_DOC_COUNT;
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
