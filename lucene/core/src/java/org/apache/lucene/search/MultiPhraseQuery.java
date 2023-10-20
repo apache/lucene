@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -219,7 +218,6 @@ public class MultiPhraseQuery extends Query {
 
       @Override
       protected Similarity.SimScorer getStats(IndexSearcher searcher) throws IOException {
-        final IndexReaderContext context = searcher.getTopReaderContext();
 
         // compute idf
         ArrayList<TermStatistics> allTermStats = new ArrayList<>();
@@ -227,7 +225,7 @@ public class MultiPhraseQuery extends Query {
           for (Term term : terms) {
             TermStates ts = termStates.get(term);
             if (ts == null) {
-              ts = TermStates.build(context, term, scoreMode.needsScores());
+              ts = TermStates.build(searcher, term, scoreMode.needsScores());
               termStates.put(term, ts);
             }
             if (scoreMode.needsScores() && ts.docFreq() > 0) {
@@ -419,13 +417,16 @@ public class MultiPhraseQuery extends Query {
   public static class UnionPostingsEnum extends PostingsEnum {
     /** queue ordered by docid */
     final DocsQueue docsQueue;
+
     /** cost of this enum: sum of its subs */
     final long cost;
 
     /** queue ordered by position for current doc */
     final PositionsQueue posQueue = new PositionsQueue();
+
     /** current doc posQueue is working */
     int posQueueDoc = -2;
+
     /** list of subs (unordered) */
     final PostingsEnum[] subs;
 

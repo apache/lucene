@@ -91,6 +91,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
 
     private final long cost;
     private final Long leadCost;
+    private boolean topLevelScoringClause = false;
 
     FakeScorerSupplier(long cost) {
       this.cost = cost;
@@ -118,6 +119,11 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     @Override
     public String toString() {
       return "FakeLazyScorer(cost=" + cost + ",leadCost=" + leadCost + ")";
+    }
+
+    @Override
+    public void setTopLevelScoringClause() throws IOException {
+      topLevelScoringClause = true;
     }
   }
 
@@ -429,5 +435,90 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     subs.get(Occur.SHOULD).add(new FakeScorerSupplier(80, 20));
     new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.COMPLETE, 0)
         .get(20); // triggers assertions as a side-effect
+  }
+
+  public void testDisjunctionTopLevelScoringClause() throws Exception {
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    FakeScorerSupplier clause1 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.SHOULD).add(clause1);
+    FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.SHOULD).add(clause2);
+
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+        .setTopLevelScoringClause();
+    assertFalse(clause1.topLevelScoringClause);
+    assertFalse(clause2.topLevelScoringClause);
+  }
+
+  public void testConjunctionTopLevelScoringClause() throws Exception {
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    FakeScorerSupplier clause1 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.MUST).add(clause1);
+    FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.MUST).add(clause2);
+
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+        .setTopLevelScoringClause();
+    assertFalse(clause1.topLevelScoringClause);
+    assertFalse(clause2.topLevelScoringClause);
+  }
+
+  public void testFilterTopLevelScoringClause() throws Exception {
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    FakeScorerSupplier clause1 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.FILTER).add(clause1);
+    FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.FILTER).add(clause2);
+
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+        .setTopLevelScoringClause();
+    assertFalse(clause1.topLevelScoringClause);
+    assertFalse(clause2.topLevelScoringClause);
+  }
+
+  public void testSingleMustScoringClause() throws Exception {
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    FakeScorerSupplier clause1 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.MUST).add(clause1);
+    FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.FILTER).add(clause2);
+
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+        .setTopLevelScoringClause();
+    assertTrue(clause1.topLevelScoringClause);
+    assertFalse(clause2.topLevelScoringClause);
+  }
+
+  public void testSingleShouldScoringClause() throws Exception {
+    Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
+    for (Occur occur : Occur.values()) {
+      subs.put(occur, new ArrayList<>());
+    }
+
+    FakeScorerSupplier clause1 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.SHOULD).add(clause1);
+    FakeScorerSupplier clause2 = new FakeScorerSupplier(10, 10);
+    subs.get(Occur.MUST_NOT).add(clause2);
+
+    new Boolean2ScorerSupplier(new FakeWeight(), subs, ScoreMode.TOP_SCORES, 0)
+        .setTopLevelScoringClause();
+    assertTrue(clause1.topLevelScoringClause);
+    assertFalse(clause2.topLevelScoringClause);
   }
 }

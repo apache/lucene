@@ -20,6 +20,7 @@ package org.apache.lucene.search.spell;
 public class CombineSuggestion {
   /** The indexes from the passed-in array of terms used to make this word combination */
   public final int[] originalTermIndexes;
+
   /** The word combination suggestion */
   public final SuggestWord suggestion;
 

@@ -27,7 +27,6 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -86,6 +85,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  private int getVectorsMaxDimensions(String fieldName) {
+    return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
+  }
+
   public void testFieldConstructor() {
     float[] v = new float[1];
     KnnFloatVectorField field = new KnnFloatVectorField("f", v);
@@ -101,14 +104,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         IllegalArgumentException.class,
         () -> new KnnFloatVectorField("f", new float[1], (VectorSimilarityFunction) null));
     expectThrows(IllegalArgumentException.class, () -> new KnnFloatVectorField("f", new float[0]));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new KnnFloatVectorField("f", new float[FloatVectorValues.MAX_DIMENSIONS + 1]));
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            new KnnFloatVectorField(
-                "f", new float[FloatVectorValues.MAX_DIMENSIONS + 1], (FieldType) null));
   }
 
   public void testFieldSetValue() {
@@ -478,18 +473,45 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      expectThrows(
-          IllegalArgumentException.class,
-          () ->
-              doc.add(
-                  new KnnFloatVectorField(
-                      "f",
-                      new float[FloatVectorValues.MAX_DIMENSIONS + 1],
-                      VectorSimilarityFunction.DOT_PRODUCT)));
+      doc.add(
+          new KnnFloatVectorField(
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
+      Exception exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+      assertTrue(
+          exc.getMessage()
+              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
 
       Document doc2 = new Document();
-      doc2.add(new KnnFloatVectorField("f", new float[1], VectorSimilarityFunction.EUCLIDEAN));
+      doc2.add(new KnnFloatVectorField("f", new float[1], VectorSimilarityFunction.DOT_PRODUCT));
       w.addDocument(doc2);
+
+      Document doc3 = new Document();
+      doc3.add(
+          new KnnFloatVectorField(
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
+      exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc3));
+      assertTrue(
+          exc.getMessage()
+                  .contains("Inconsistency of field data structures across documents for field [f]")
+              || exc.getMessage()
+                  .contains(
+                      "vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
+      w.flush();
+
+      Document doc4 = new Document();
+      doc4.add(
+          new KnnFloatVectorField(
+              "f",
+              new float[getVectorsMaxDimensions("f") + 1],
+              VectorSimilarityFunction.DOT_PRODUCT));
+      exc = expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc4));
+      assertTrue(
+          exc.getMessage()
+              .contains("vector's dimensions must be <= [" + getVectorsMaxDimensions("f") + "]"));
     }
   }
 
@@ -1200,15 +1222,23 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   private float[] randomVector(int dim) {
+    assert dim > 0;
     float[] v = new float[dim];
-    for (int i = 0; i < dim; i++) {
-      v[i] = random().nextFloat();
+    double squareSum = 0.0;
+    // keep generating until we don't get a zero-length vector
+    while (squareSum == 0.0) {
+      squareSum = 0.0;
+      for (int i = 0; i < dim; i++) {
+        v[i] = random().nextFloat();
+        squareSum += v[i] * v[i];
+      }
     }
     VectorUtil.l2normalize(v);
     return v;
   }
 
   private byte[] randomVector8(int dim) {
+    assert dim > 0;
     float[] v = randomVector(dim);
     byte[] b = new byte[dim];
     for (int i = 0; i < dim; i++) {
@@ -1248,7 +1278,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(0, VectorSimilarityFunction.EUCLIDEAN.ordinal());
     assertEquals(1, VectorSimilarityFunction.DOT_PRODUCT.ordinal());
     assertEquals(2, VectorSimilarityFunction.COSINE.ordinal());
-    assertEquals(3, VectorSimilarityFunction.values().length);
+    assertEquals(3, VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT.ordinal());
+    assertEquals(4, VectorSimilarityFunction.values().length);
   }
 
   public void testVectorEncodingOrdinals() {

@@ -44,6 +44,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
@@ -717,7 +718,15 @@ public class CheckHits {
     // Check boundaries and max scores when iterating all matches
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       Scorer s1 = w1.scorer(ctx);
-      Scorer s2 = w2.scorer(ctx);
+      ScorerSupplier ss2 = w2.scorerSupplier(ctx);
+      Scorer s2;
+      if (ss2 == null) {
+        s2 = null;
+      } else {
+        // We'll call setMinCompetitiveScore on s2
+        ss2.setTopLevelScoringClause();
+        s2 = ss2.get(Long.MAX_VALUE);
+      }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;
@@ -765,7 +774,15 @@ public class CheckHits {
     // Now check advancing
     for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       Scorer s1 = w1.scorer(ctx);
-      Scorer s2 = w2.scorer(ctx);
+      ScorerSupplier ss2 = w2.scorerSupplier(ctx);
+      Scorer s2;
+      if (ss2 == null) {
+        s2 = null;
+      } else {
+        // We'll call setMinCompetitiveScore on s2
+        ss2.setTopLevelScoringClause();
+        s2 = ss2.get(Long.MAX_VALUE);
+      }
       if (s1 == null) {
         assertTrue(s2 == null || s2.iterator().nextDoc() == DocIdSetIterator.NO_MORE_DOCS);
         continue;

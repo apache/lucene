@@ -24,6 +24,7 @@ import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.comparators.DoubleComparator;
 
 /**
@@ -170,6 +171,52 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
     public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
       return inner.rewrite(searcher).toLongValuesSource();
     }
+  }
+
+  /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the byte query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector byte query vector
+   * @param vectorField knn byte field name
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
+    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
+        != VectorEncoding.BYTE) {
+      throw new IllegalArgumentException(
+          "Field "
+              + vectorField
+              + " does not have the expected vector encoding: "
+              + VectorEncoding.BYTE);
+    }
+    return new ByteVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
+  }
+
+  /**
+   * Returns a DoubleValues instance for computing the vector similarity score per document against
+   * the float query vector
+   *
+   * @param ctx the context for which to return the DoubleValues
+   * @param queryVector float query vector
+   * @param vectorField knn float field name
+   * @return DoubleValues instance
+   * @throws IOException if an {@link IOException} occurs
+   */
+  public static DoubleValues similarityToQueryVector(
+      LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
+    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
+        != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "Field "
+              + vectorField
+              + " does not have the expected vector encoding: "
+              + VectorEncoding.FLOAT32);
+    }
+    return new FloatVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
   }
 
   /**
@@ -328,8 +375,9 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    * Returns a DoubleValues instance that wraps scores returned by a Scorer.
    *
    * <p>Note: If you intend to call {@link Scorable#score()} on the provided {@code scorer}
-   * separately, you may want to consider wrapping it with {@link
-   * ScoreCachingWrappingScorer#wrap(Scorable)} to avoid computing the actual score multiple times.
+   * separately, you may want to consider wrapping the collector with {@link
+   * ScoreCachingWrappingScorer#wrap(LeafCollector)} to avoid computing the actual score multiple
+   * times.
    */
   public static DoubleValues fromScorer(Scorable scorer) {
     return new DoubleValues() {
@@ -340,7 +388,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
       @Override
       public boolean advanceExact(int doc) throws IOException {
-        assert scorer.docID() == doc;
         return true;
       }
     };

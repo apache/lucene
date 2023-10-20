@@ -260,6 +260,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertThat(mi.search(new TermQuery(new Term("field2", "text"))), is(0.0f));
     assertThat(mi.search(new TermQuery(new Term("field2", "untokenized text"))), not(0.0f));
 
+    assertThat(mi.search(new TermQuery(new Term("field1", "some more text"))), is(0.0f));
     assertThat(mi.search(new PhraseQuery("field1", "some", "more", "text")), not(0.0f));
     assertThat(mi.search(new PhraseQuery("field1", "some", "text")), not(0.0f));
     assertThat(mi.search(new PhraseQuery("field1", "text", "some")), is(0.0f));

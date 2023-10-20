@@ -58,7 +58,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.automaton.DaciukMihovAutomatonBuilder;
+import org.apache.lucene.util.automaton.Automata;
 import org.junit.After;
 import org.junit.Before;
 
@@ -1671,12 +1671,11 @@ public class TestUnifiedHighlighter extends LuceneTestCase {
     Query query =
         new BooleanQuery.Builder()
             .add(
-                new TermQuery(
-                    new Term("title", "a".repeat(DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH))),
+                new TermQuery(new Term("title", "a".repeat(Automata.MAX_STRING_UNION_TERM_LENGTH))),
                 BooleanClause.Occur.SHOULD)
             .add(
                 new TermQuery(
-                    new Term("title", "a".repeat(DaciukMihovAutomatonBuilder.MAX_TERM_LENGTH + 1))),
+                    new Term("title", "a".repeat(Automata.MAX_STRING_UNION_TERM_LENGTH + 1))),
                 BooleanClause.Occur.SHOULD)
             .add(new TermQuery(new Term("title", "title")), BooleanClause.Occur.SHOULD)
             .build();

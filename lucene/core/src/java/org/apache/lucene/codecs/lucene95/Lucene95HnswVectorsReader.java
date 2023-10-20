@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.HnswGraphProvider;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -34,20 +35,20 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
-import org.apache.lucene.util.hnsw.NeighborQueue;
+import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /**
@@ -55,7 +56,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  *
  * @lucene.experimental
  */
-public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
+public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene95HnswVectorsFormat.class);
@@ -247,7 +248,13 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    return OffHeapFloatVectorValues.load(
+        fieldEntry.ordToDocVectorValues,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
   }
 
   @Override
@@ -262,96 +269,73 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    return OffHeapByteVectorValues.load(fieldEntry, vectorData);
+    return OffHeapByteVectorValues.load(
+        fieldEntry.ordToDocVectorValues,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
   }
 
   @Override
-  public TopDocs search(String field, float[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
-    if (fieldEntry.size() == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-    }
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    if (fieldEntry.size() == 0
+        || knnCollector.k() == 0
+        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+      return;
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
-    OffHeapFloatVectorValues vectorValues = OffHeapFloatVectorValues.load(fieldEntry, vectorData);
-
-    NeighborQueue results =
-        HnswGraphSearcher.search(
-            target,
-            k,
-            vectorValues,
+    OffHeapFloatVectorValues vectorValues =
+        OffHeapFloatVectorValues.load(
+            fieldEntry.ordToDocVectorValues,
             fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData);
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createFloats(vectorValues, fieldEntry.similarityFunction, target);
+    HnswGraphSearcher.search(
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
+        getGraph(fieldEntry),
+        vectorValues.getAcceptOrds(acceptDocs));
   }
 
   @Override
-  public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit)
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
     FieldEntry fieldEntry = fields.get(field);
 
-    if (fieldEntry.size() == 0) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
-    }
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      return new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[0]);
+    if (fieldEntry.size() == 0
+        || knnCollector.k() == 0
+        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+      return;
     }
 
-    // bound k by total number of vectors to prevent oversizing data structures
-    k = Math.min(k, fieldEntry.size());
-    OffHeapByteVectorValues vectorValues = OffHeapByteVectorValues.load(fieldEntry, vectorData);
-
-    NeighborQueue results =
-        HnswGraphSearcher.search(
-            target,
-            k,
-            vectorValues,
+    OffHeapByteVectorValues vectorValues =
+        OffHeapByteVectorValues.load(
+            fieldEntry.ordToDocVectorValues,
             fieldEntry.vectorEncoding,
-            fieldEntry.similarityFunction,
-            getGraph(fieldEntry),
-            vectorValues.getAcceptOrds(acceptDocs),
-            visitedLimit);
-
-    int i = 0;
-    ScoreDoc[] scoreDocs = new ScoreDoc[Math.min(results.size(), k)];
-    while (results.size() > 0) {
-      int node = results.topNode();
-      float score = results.topScore();
-      results.pop();
-      scoreDocs[scoreDocs.length - ++i] = new ScoreDoc(vectorValues.ordToDoc(node), score);
-    }
-
-    TotalHits.Relation relation =
-        results.incomplete()
-            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-            : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(new TotalHits(results.visitedCount(), relation), scoreDocs);
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData);
+    RandomVectorScorer scorer =
+        RandomVectorScorer.createBytes(vectorValues, fieldEntry.similarityFunction, target);
+    HnswGraphSearcher.search(
+        scorer,
+        new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
+        getGraph(fieldEntry),
+        vectorValues.getAcceptOrds(acceptDocs));
   }
 
   /** Get knn graph values; used for testing */
+  @Override
   public HnswGraph getGraph(String field) throws IOException {
     FieldInfo info = fieldInfos.fieldInfo(field);
     if (info == null) {
@@ -394,22 +378,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     final int offsetsBlockShift;
     final long offsetsLength;
 
-    // the following four variables used to read docIds encoded by IndexDISI
-    // special values of docsWithFieldOffset are -1 and -2
-    // -1 : dense
-    // -2 : empty
-    // other: sparse
-    final long docsWithFieldOffset;
-    final long docsWithFieldLength;
-    final short jumpTableEntryCount;
-    final byte denseRankPower;
-
-    // the following four variables used to read ordToDoc encoded by DirectMonotonicWriter
-    // note that only spare case needs to store ordToDoc
-    final long addressesOffset;
-    final int blockShift;
-    final DirectMonotonicReader.Meta meta;
-    final long addressesLength;
+    // Contains the configuration for reading sparse vectors and translating vector ordinals to
+    // docId
+    OrdToDocDISIReaderConfiguration ordToDocVectorValues;
 
     FieldEntry(
         IndexInput input,
@@ -425,24 +396,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       dimension = input.readVInt();
       size = input.readInt();
 
-      docsWithFieldOffset = input.readLong();
-      docsWithFieldLength = input.readLong();
-      jumpTableEntryCount = input.readShort();
-      denseRankPower = input.readByte();
-
-      // dense or empty
-      if (docsWithFieldOffset == -1 || docsWithFieldOffset == -2) {
-        addressesOffset = 0;
-        blockShift = 0;
-        meta = null;
-        addressesLength = 0;
-      } else {
-        // sparse
-        addressesOffset = input.readLong();
-        blockShift = input.readVInt();
-        meta = DirectMonotonicReader.loadMeta(input, size, blockShift);
-        addressesLength = input.readLong();
-      }
+      ordToDocVectorValues = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
 
       // read nodes by level
       M = input.readVInt();
@@ -483,7 +437,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     public long ramBytesUsed() {
       return SHALLOW_SIZE
           + Arrays.stream(nodesByLevel).mapToLong(nodes -> RamUsageEstimator.sizeOf(nodes)).sum()
-          + RamUsageEstimator.sizeOf(meta)
+          + RamUsageEstimator.sizeOf(ordToDocVectorValues)
           + RamUsageEstimator.sizeOf(offsetsMeta);
     }
   }
@@ -502,7 +456,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
-    private final int[] currentNeighborsBuffer;
+    private int[] currentNeighborsBuffer;
 
     OffHeapHnswGraph(FieldEntry entry, IndexInput vectorIndex) throws IOException {
       this.dataIn =
@@ -536,6 +490,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader {
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
       if (arcCount > 0) {
+        if (arcCount > currentNeighborsBuffer.length) {
+          currentNeighborsBuffer = ArrayUtil.grow(currentNeighborsBuffer, arcCount);
+        }
         currentNeighborsBuffer[0] = dataIn.readVInt();
         for (int i = 1; i < arcCount; i++) {
           currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();

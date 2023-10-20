@@ -128,6 +128,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             "org.apache.lucene.analysis.stempel",
             "org.apache.lucene.backward_codecs",
             "org.apache.lucene.benchmark",
+            "org.apache.lucene.benchmark.jmh",
             "org.apache.lucene.classification",
             "org.apache.lucene.codecs",
             "org.apache.lucene.core",
@@ -206,7 +207,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               ClassLoader loader = layer.findLoader(coreModuleId);
 
-              final Set<Integer> jarVersions = Set.of(19, 20);
+              final Set<Integer> jarVersions = Set.of(19, 20, 21);
               for (var v : jarVersions) {
                 Assertions.assertThat(
                         loader.getResource(

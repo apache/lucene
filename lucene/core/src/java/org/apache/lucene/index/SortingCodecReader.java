@@ -31,9 +31,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOSupplier;
@@ -333,7 +333,7 @@ public final class SortingCodecReader extends FilterCodecReader {
    * Expert: same as {@link #wrap(org.apache.lucene.index.CodecReader, Sort)} but operates directly
    * on a {@link Sorter.DocMap}.
    */
-  static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
+  public static CodecReader wrap(CodecReader reader, Sorter.DocMap docMap, Sort sort) {
     LeafMetaData metaData = reader.getMetaData();
     LeafMetaData newMetaData =
         new LeafMetaData(metaData.getCreatedVersionMajor(), metaData.getMinVersion(), sort);
@@ -498,13 +498,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public TopDocs search(
-          String field, float[] target, int k, Bits acceptDocs, int visitedLimit) {
+      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public TopDocs search(String field, byte[] target, int k, Bits acceptDocs, int visitedLimit) {
+      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
         throw new UnsupportedOperationException();
       }
 

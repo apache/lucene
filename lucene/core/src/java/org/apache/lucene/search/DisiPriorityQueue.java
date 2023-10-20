@@ -57,6 +57,23 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     return heap[0];
   }
 
+  /** Return the 2nd least value in this heap, or null if the heap contains less than 2 values. */
+  public DisiWrapper top2() {
+    switch (size()) {
+      case 0:
+      case 1:
+        return null;
+      case 2:
+        return heap[1];
+      default:
+        if (heap[1].doc <= heap[2].doc) {
+          return heap[1];
+        } else {
+          return heap[2];
+        }
+    }
+  }
+
   /** Get the list of scorers which are on the current doc. */
   public DisiWrapper topList() {
     final DisiWrapper[] heap = this.heap;

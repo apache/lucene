@@ -61,9 +61,6 @@ public final class Operations {
    */
   public static final int DEFAULT_DETERMINIZE_WORK_LIMIT = 10000;
 
-  /** Maximum level of recursion allowed in recursive operations. */
-  public static final int MAX_RECURSION_LEVEL = 1000;
-
   private Operations() {}
 
   /**
@@ -1097,7 +1094,7 @@ public final class Operations {
       FixedBitSet tmp = current;
       current = next;
       next = tmp;
-      next.clear(0, next.length());
+      next.clear();
     }
     return builder.toString();
   }
@@ -1278,6 +1275,14 @@ public final class Operations {
    * if a cycle is detected. The CPU cost is O(numTransitions), and the implementation is
    * non-recursive, so it will not exhaust the java stack for automaton matching long strings. If
    * there are dead states in the automaton, they will be removed from the returned array.
+   *
+   * <p>Note: This method uses a deque to iterative the states, which could potentially consume a
+   * lot of heap space for some automatons. Specifically, automatons with a deep level of states
+   * (i.e., a large number of transitions from the initial state to the final state) may
+   * particularly contribute to high memory usage. The memory consumption of this method can be
+   * considered as O(N), where N is the depth of the automaton (the maximum number of transitions
+   * from the initial state to any state). However, as this method detects cycles, it will never
+   * attempt to use infinite RAM.
    *
    * @param a the Automaton to be sorted
    * @return the topologically sorted array of state ids

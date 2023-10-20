@@ -68,6 +68,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
@@ -539,6 +540,7 @@ public class TestJoinUtil extends LuceneTestCase {
       String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(lowestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
+    checkBoost(joinQuery, searcher);
 
     joinQuery =
         JoinUtil.createJoinQuery(
@@ -550,6 +552,7 @@ public class TestJoinUtil extends LuceneTestCase {
       String id = searcher.storedFields().document(scoreDoc.doc).get("id");
       assertEquals(highestScoresPerParent.get(id), scoreDoc.score, 0f);
     }
+    checkBoost(joinQuery, searcher);
 
     searcher.getIndexReader().close();
     dir.close();
@@ -689,6 +692,7 @@ public class TestJoinUtil extends LuceneTestCase {
         }
       }
       assertEquals(expectedCount, totalHits);
+      checkBoost(joinQuery, searcher);
     }
     searcher.getIndexReader().close();
     dir.close();
@@ -997,6 +1001,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(0, result.scoreDocs[0].doc);
     assertEquals(3, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     // Score mode max.
     joinQuery =
@@ -1011,6 +1016,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(3, result.scoreDocs[0].doc);
     assertEquals(0, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     // Score mode total
     joinQuery =
@@ -1025,6 +1031,7 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(0, result.scoreDocs[0].doc);
     assertEquals(3, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     // Score mode avg
     joinQuery =
@@ -1039,9 +1046,21 @@ public class TestJoinUtil extends LuceneTestCase {
     assertEquals(2, result.totalHits.value);
     assertEquals(3, result.scoreDocs[0].doc);
     assertEquals(0, result.scoreDocs[1].doc);
+    checkBoost(joinQuery, indexSearcher);
 
     indexSearcher.getIndexReader().close();
     dir.close();
+  }
+
+  private void checkBoost(Query query, IndexSearcher searcher) throws IOException {
+    TopDocs result = searcher.search(query, 10);
+    if (result.scoreDocs.length == 0) {
+      return;
+    }
+    Query boostedQuery = new BoostQuery(query, 10);
+    TopDocs boostedResult = searcher.search(boostedQuery, 10);
+    assertEquals(result.scoreDocs[0].score * 10, boostedResult.scoreDocs[0].score, 0.000001f);
+    QueryUtils.checkExplanations(boostedQuery, searcher);
   }
 
   public void testEquals() throws Exception {
