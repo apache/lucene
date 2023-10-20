@@ -83,13 +83,16 @@ public final class FST<T> implements Accountable {
 
   static final int BIT_ARC_HAS_FINAL_OUTPUT = 1 << 5;
 
-  /** Value of the arc flags to declare a node with fixed length arcs designed for binary search. */
+  /**
+   * Value of the arc flags to declare a node with fixed length (sparse) arcs designed for binary
+   * search.
+   */
   // We use this as a marker because this one flag is illegal by itself.
   public static final byte ARCS_FOR_BINARY_SEARCH = BIT_ARC_HAS_FINAL_OUTPUT;
 
   /**
-   * Value of the arc flags to declare a node with fixed length arcs and bit table designed for
-   * direct addressing.
+   * Value of the arc flags to declare a node with fixed length dense arcs and bit table designed
+   * for direct addressing.
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
@@ -751,11 +754,9 @@ public final class FST<T> implements Accountable {
   private void readFirstArcInfo(long nodeAddress, Arc<T> arc, final BytesReader in)
       throws IOException {
     in.setPosition(nodeAddress);
-    // System.out.println("   flags=" + arc.flags);
 
     byte flags = arc.nodeFlags = in.readByte();
     if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
-      // System.out.println("  fixed length arc");
       // Special arc which is actually a node header for fixed length arcs.
       arc.numArcs = in.readVInt();
       arc.bytesPerArc = in.readVInt();
@@ -766,8 +767,6 @@ public final class FST<T> implements Accountable {
         arc.presenceIndex = -1;
       }
       arc.posArcsStart = in.getPosition();
-      // System.out.println("  bytesPer=" + arc.bytesPerArc + " numArcs=" + arc.numArcs + "
-      // arcsStart=" + pos);
     } else {
       arc.nextArc = nodeAddress;
       arc.bytesPerArc = 0;
@@ -830,14 +829,12 @@ public final class FST<T> implements Accountable {
         }
       }
     } else {
-      if (arc.bytesPerArc() != 0) {
-        // System.out.println("    nextArc real array");
-        // Arcs have fixed length.
-        if (arc.nodeFlags() == ARCS_FOR_BINARY_SEARCH) {
+      switch (arc.nodeFlags()) {
+        case ARCS_FOR_BINARY_SEARCH:
           // Point to next arc, -1 to skip arc flags.
           in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * (long) arc.bytesPerArc() - 1);
-        } else {
-          assert arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING;
+          break;
+        case ARCS_FOR_DIRECT_ADDRESSING:
           // Direct addressing node. The label is not stored but rather inferred
           // based on first label and arc index in the range.
           assert BitTable.assertIsValid(arc, in);
@@ -845,12 +842,14 @@ public final class FST<T> implements Accountable {
           int nextIndex = BitTable.nextBitSet(arc.arcIdx(), arc, in);
           assert nextIndex != -1;
           return arc.firstLabel() + nextIndex;
-        }
-      } else {
-        // Arcs have variable length.
-        // System.out.println("    nextArc real list");
-        // Position to next arc, -1 to skip flags.
-        in.setPosition(arc.nextArc() - 1);
+        default:
+          // Variable length arcs - linear search.
+          assert arc.bytesPerArc() == 0;
+          // Arcs have variable length.
+          // System.out.println("    nextArc real list");
+          // Position to next arc, -1 to skip flags.
+          in.setPosition(arc.nextArc() - 1);
+          break;
       }
     }
     return readLabel(in);

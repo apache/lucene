@@ -82,6 +82,13 @@ Improvements
 
 * GITHUB#12447: Hunspell: speed up the dictionary enumeration on suggestion (Peter Gromov)
 
+* GITHUB#12542: FSTCompiler can now approximately limit how much RAM it uses to share
+  suffixes during FST construction using the suffixRAMLimitMB method.  Larger values
+  result in a more minimal FST (more common suffixes are shard).  Pass
+  Double.POSITIVE_INFINITY to use as much RAM as is needed to create a purely
+  minimal FST.  Inspired by this Rust FST implemention:
+  https://blog.burntsushi.net/transducers (Mike McCandless)
+
 Optimizations
 ---------------------
 
