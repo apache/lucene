@@ -120,7 +120,7 @@ public final class FST<T> implements Accountable {
    * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
    * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
    */
-  private final FSTWriter fstReader;
+  private final FSTWriter fstWriter;
 
   private long startNode = -1;
 
@@ -393,11 +393,11 @@ public final class FST<T> implements Accountable {
   }
 
   // make a new empty FST, for building; Builder invokes this
-  FST(INPUT_TYPE inputType, Outputs<T> outputs, FSTWriter fstReader) {
+  FST(INPUT_TYPE inputType, Outputs<T> outputs, FSTWriter fstWriter) {
     this.inputType = inputType;
     this.outputs = outputs;
     emptyOutput = null;
-    this.fstReader = fstReader;
+    this.fstWriter = fstWriter;
     this.version = VERSION_CURRENT;
   }
 
@@ -456,12 +456,12 @@ public final class FST<T> implements Accountable {
 
     long numBytes = metaIn.readVLong();
     fstStore.init(in, numBytes);
-    this.fstReader = fstStore;
+    this.fstWriter = fstStore;
   }
 
   @Override
   public long ramBytesUsed() {
-    return BASE_RAM_BYTES_USED + fstReader.ramBytesUsed();
+    return BASE_RAM_BYTES_USED + fstWriter.ramBytesUsed();
   }
 
   @Override
@@ -470,7 +470,7 @@ public final class FST<T> implements Accountable {
   }
 
   void finish(long newStartNode) throws IOException {
-    assert newStartNode <= fstReader.size();
+    assert newStartNode <= fstWriter.size();
     if (startNode != -1) {
       throw new IllegalStateException("already finished");
     }
@@ -481,7 +481,7 @@ public final class FST<T> implements Accountable {
   }
 
   public long numBytes() {
-    return fstReader.size();
+    return fstWriter.size();
   }
 
   public T getEmptyOutput() {
@@ -538,7 +538,7 @@ public final class FST<T> implements Accountable {
     metaOut.writeByte(t);
     metaOut.writeVLong(startNode);
     metaOut.writeVLong(numBytes());
-    fstReader.writeTo(out);
+    fstWriter.writeTo(out);
   }
 
   /** Writes an automaton to a file. */
@@ -1107,7 +1107,7 @@ public final class FST<T> implements Accountable {
 
   /** Returns a {@link BytesReader} for this FST, positioned at position 0. */
   public BytesReader getBytesReader() {
-    return fstReader.getReverseBytesReader();
+    return fstWriter.getReverseBytesReader();
   }
 
   /** Reads bytes stored in an FST. */
