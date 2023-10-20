@@ -558,6 +558,8 @@ public final class FST<T> implements Accountable {
       bytes.writeTo(out);
     } else {
       assert fstStore != null;
+      long numBytes = fstStore.size();
+      metaOut.writeVLong(numBytes);
       fstStore.writeTo(out);
     }
   }
