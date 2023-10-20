@@ -63,10 +63,13 @@ public class IntBlockPool {
 
   /** index into the buffers array pointing to the current buffer used as the head */
   private int bufferUpto = -1;
+
   /** Pointer to the current position in head buffer */
   public int intUpto = INT_BLOCK_SIZE;
+
   /** Current head buffer */
   public int[] buffer;
+
   /** Current head offset */
   public int intOffset = -INT_BLOCK_SIZE;
 

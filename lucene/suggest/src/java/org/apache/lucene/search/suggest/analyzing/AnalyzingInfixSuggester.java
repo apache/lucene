@@ -116,6 +116,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
 
   /** Analyzer used at search time */
   protected final Analyzer queryAnalyzer;
+
   /** Analyzer used at index time */
   protected final Analyzer indexAnalyzer;
 

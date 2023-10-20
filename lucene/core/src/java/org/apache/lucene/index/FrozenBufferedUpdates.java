@@ -70,7 +70,6 @@ final class FrozenBufferedUpdates {
   private final int fieldUpdatesCount;
 
   final int bytesUsed;
-  final int numTermDeletes;
 
   private long delGen = -1; // assigned by BufferedUpdatesStream once pushed
 
@@ -111,7 +110,6 @@ final class FrozenBufferedUpdates {
             ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
                 + updates.fieldUpdatesBytesUsed.get());
 
-    numTermDeletes = updates.numTermDeletes.get();
     if (infoStream != null && infoStream.isEnabled("BD")) {
       infoStream.message(
           "BD",
@@ -513,11 +511,8 @@ final class FrozenBufferedUpdates {
   @Override
   public String toString() {
     String s = "delGen=" + delGen;
-    if (numTermDeletes != 0) {
-      s += " numDeleteTerms=" + numTermDeletes;
-      if (numTermDeletes != deleteTerms.size()) {
-        s += " (" + deleteTerms.size() + " unique)";
-      }
+    if (deleteTerms.size() != 0) {
+      s += " unique deleteTerms=" + deleteTerms.size();
     }
     if (deleteQueries.length != 0) {
       s += " numDeleteQueries=" + deleteQueries.length;

@@ -88,6 +88,7 @@ public class BKDWriter implements Closeable {
 
   /** Number of splits before we compute the exact bounding box of an inner node. */
   private static final int SPLITS_BEFORE_EXACT_BOUNDS = 4;
+
   /** Default maximum heap to use, before spilling to (slower) disk */
   public static final float DEFAULT_MAX_MB_SORT_IN_HEAP = 16.0f;
 
@@ -242,10 +243,13 @@ public class BKDWriter implements Closeable {
     private final int packedBytesLength;
     private final MergeState.DocMap docMap;
     private final MergeIntersectsVisitor mergeIntersectsVisitor;
+
     /** Which doc in this block we are up to */
     private int docBlockUpto;
+
     /** Current doc ID */
     public int docID;
+
     /** Current packed value */
     public final byte[] packedValue;
 
@@ -392,17 +396,20 @@ public class BKDWriter implements Closeable {
   private interface BKDTreeLeafNodes {
     /** number of leaf nodes */
     int numLeaves();
+
     /**
      * pointer to the leaf node previously written. Leaves are order from left to right, so leaf at
      * {@code index} 0 is the leftmost leaf and the leaf at {@code numleaves()} -1 is the rightmost
      * leaf
      */
     long getLeafLP(int index);
+
     /**
      * split value between two leaves. The split value at position n corresponds to the leaves at (n
      * -1) and n.
      */
     BytesRef getSplitValue(int index);
+
     /**
      * split dimension between two leaves. The split dimension at position n corresponds to the
      * leaves at (n -1) and n.

@@ -310,10 +310,13 @@ public final class Version {
 
   /** Major version, the difference between stable and trunk */
   public final int major;
+
   /** Minor version, incremented within the stable branch */
   public final int minor;
+
   /** Bugfix number, incremented on release branches */
   public final int bugfix;
+
   /** Prerelease version, currently 0 (alpha), 1 (beta), or 2 (final) */
   public final int prerelease;
 

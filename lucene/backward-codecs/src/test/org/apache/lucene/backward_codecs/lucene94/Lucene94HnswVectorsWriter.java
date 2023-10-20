@@ -30,7 +30,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.codecs.lucene95.Lucene95HnswVectorsWriter;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -477,7 +476,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      int[] sortedNodes = Lucene95HnswVectorsWriter.getSortedNodes(graph.getNodesOnLevel(level));
+      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
       for (int node : sortedNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
@@ -565,7 +564,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        int[] sortedNodes = Lucene95HnswVectorsWriter.getSortedNodes(graph.getNodesOnLevel(level));
+        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
         meta.writeInt(sortedNodes.length); // number of nodes on a level
         if (level > 0) {
           for (int node : sortedNodes) {
