@@ -1502,7 +1502,6 @@ public class IndexWriter
    */
   public long addDocuments(Iterable<? extends Iterable<? extends IndexableField>> docs)
       throws IOException {
-    ensureNoIndexSorting();
     return updateDocuments((DocumentsWriterDeleteQueue.Node<?>) null, docs);
   }
 
@@ -1521,7 +1520,6 @@ public class IndexWriter
   public long updateDocuments(
       Term delTerm, Iterable<? extends Iterable<? extends IndexableField>> docs)
       throws IOException {
-    ensureNoIndexSorting();
     return updateDocuments(
         delTerm == null ? null : DocumentsWriterDeleteQueue.newNode(delTerm), docs);
   }
@@ -1535,17 +1533,8 @@ public class IndexWriter
   public long updateDocuments(
       Query delQuery, Iterable<? extends Iterable<? extends IndexableField>> docs)
       throws IOException {
-    ensureNoIndexSorting();
     return updateDocuments(
         delQuery == null ? null : DocumentsWriterDeleteQueue.newNode(delQuery), docs);
-  }
-
-  private void ensureNoIndexSorting() {
-    if (config.getIndexSort() != null) {
-      throw new IllegalStateException(
-          "Can't use index API with multiple documents when index sorting is used. Sort: "
-              + config.getIndexSort());
-    }
   }
 
   private long updateDocuments(
@@ -1600,7 +1589,6 @@ public class IndexWriter
     if (softDeletes == null || softDeletes.length == 0) {
       throw new IllegalArgumentException("at least one soft delete must be present");
     }
-    ensureNoIndexSorting();
     return updateDocuments(
         DocumentsWriterDeleteQueue.newNode(buildDocValuesUpdate(term, softDeletes)), docs);
   }

@@ -55,28 +55,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
-import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.SearcherFactory;
-import org.apache.lucene.search.SearcherManager;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.*;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -4790,5 +4771,51 @@ public class TestIndexWriter extends LuceneTestCase {
     Document doc = new Document();
     doc.add(newField(field, "value", storedTextType));
     writer.addDocument(doc);
+  }
+
+  public void testUseBlockAPIWithIndexSort() throws IOException {
+    try (Directory dir = newDirectory()) {
+      Sort sort = new Sort(new SortField("foo", SortField.Type.LONG));
+      try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig().setIndexSort(sort))) {
+        writer.addDocument(new Document()); // add a doc... no aborting exceptions should be thrown
+        expectThrows(
+            IllegalStateException.class,
+            () -> writer.addDocuments(Arrays.asList(new Document(), new Document())));
+
+        String msg =
+            "Can't use index API with multiple documents when index sorting is used. Sort: <long: \"foo\">";
+        assertEquals(
+            msg,
+            expectThrows(
+                    IllegalStateException.class,
+                    () ->
+                        writer.updateDocuments(
+                            new Term("foo", "bar"), Arrays.asList(new Document(), new Document())))
+                .getMessage());
+        assertEquals(
+            msg,
+            expectThrows(
+                    IllegalStateException.class,
+                    () ->
+                        writer.softUpdateDocuments(
+                            new Term("foo", "bar"),
+                            Arrays.asList(new Document(), new Document()),
+                            new NumericDocValuesField("id", 1)))
+                .getMessage());
+        assertEquals(
+            msg,
+            expectThrows(
+                    IllegalStateException.class,
+                    () ->
+                        writer.updateDocuments(
+                            new TermQuery(new Term("foo", "bar")),
+                            Arrays.asList(new Document(), new Document())))
+                .getMessage());
+        writer.commit();
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          assertEquals(1, reader.numDocs());
+        }
+      }
+    }
   }
 }

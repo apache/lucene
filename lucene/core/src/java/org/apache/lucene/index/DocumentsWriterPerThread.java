@@ -231,6 +231,11 @@ final class DocumentsWriterPerThread implements Accountable {
       boolean allDocsIndexed = false;
       try {
         for (Iterable<? extends IndexableField> doc : docs) {
+          if (indexWriterConfig.getIndexSort() != null && docsInRamBefore != numDocsInRAM) {
+            throw new IllegalStateException(
+                "Can't use index API with multiple documents when index sorting is used. Sort: "
+                    + indexWriterConfig.getIndexSort());
+          }
           // Even on exception, the document is still added (but marked
           // deleted), so we don't need to un-reserve at that point.
           // Aborting exceptions will actually "lose" more than one

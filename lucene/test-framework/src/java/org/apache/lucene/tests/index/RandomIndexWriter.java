@@ -19,7 +19,6 @@ package org.apache.lucene.tests.index;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -188,37 +187,7 @@ public class RandomIndexWriter implements Closeable {
       // (but we need to clone them), and only when
       // getReader, commit, etc. are called, we do an
       // addDocuments?  Would be better testing.
-      seqNo =
-          w.addDocuments(
-              new Iterable<Iterable<T>>() {
-
-                @Override
-                public Iterator<Iterable<T>> iterator() {
-                  return new Iterator<Iterable<T>>() {
-
-                    boolean done;
-
-                    @Override
-                    public boolean hasNext() {
-                      return !done;
-                    }
-
-                    @Override
-                    public void remove() {
-                      throw new UnsupportedOperationException();
-                    }
-
-                    @Override
-                    public Iterable<T> next() {
-                      if (done) {
-                        throw new IllegalStateException();
-                      }
-                      done = true;
-                      return doc;
-                    }
-                  };
-                }
-              });
+      seqNo = w.addDocuments(List.of(doc));
     } else {
       seqNo = w.addDocument(doc);
     }
