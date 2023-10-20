@@ -92,17 +92,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float dotProduct(float[] a, RandomAccessVectorValues<float[]> b, int bOffset)
-          throws IOException {
+      throws IOException {
     return dotProduct(a, b.vectorValue(bOffset));
   }
 
   @Override
   public float dotProduct(
-          RandomAccessVectorValues<float[]> a,
-          int aOffset,
-          RandomAccessVectorValues<float[]> b,
-          int bOffset)
-          throws IOException {
+      RandomAccessVectorValues<float[]> a,
+      int aOffset,
+      RandomAccessVectorValues<float[]> b,
+      int bOffset)
+      throws IOException {
     return dotProduct(a.vectorValue(aOffset), b.vectorValue(bOffset));
   }
 

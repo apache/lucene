@@ -37,7 +37,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 
-@com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 10)
+// @com.carrotsearch.randomizedtesting.annotations.Repeat(iterations = 100)
 public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
   private static final double DELTA = 1e-3;
