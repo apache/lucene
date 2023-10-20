@@ -130,8 +130,7 @@ public class FSTCompiler<T> {
 
   private FSTCompiler(
       FST.INPUT_TYPE inputType,
-      double suffixRAMLimitMB, // pass 0 to disable suffix compression/trie; larger values create
-      // smaller FSTs
+      double suffixRAMLimitMB,
       Outputs<T> outputs,
       boolean allowFixedLengthArcs,
       int bytesPageBits,
@@ -193,7 +192,7 @@ public class FSTCompiler<T> {
      * bounded by the number of unique suffixes. If you pass a value smaller than the builder would
      * use, the least recently used suffixes will be discarded, thus reducing suffix sharing and
      * creating a non-minimal FST. In this case, the larger the limit, the closer the FST will be to
-     * its true minimal size, with diminishing returns as you increasea the limit. Pass {@code 0} to
+     * its true minimal size, with diminishing returns as you increase the limit. Pass {@code 0} to
      * disable suffix sharing entirely, but note that the resulting FST can be substantially larger
      * than the minimal FST.
      *

@@ -27,9 +27,8 @@ import org.apache.lucene.util.packed.PagedGrowableWriter;
 // there -- we would not need any long per entry -- we'd be able to start at the FST end node and
 // work backwards from the transitions
 
-// TODO: couldn't we prune natrually babck until we see a transition with an output?  it's highly
-// unlikely (mostly impossible) such suffixes
-// can be shared?
+// TODO: couldn't we prune naturally back until we see a transition with an output?  it's highly
+// unlikely (mostly impossible) such suffixes can be shared?
 
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
@@ -185,7 +184,7 @@ final class NodeHash<T> {
       }
     }
 
-    return h & Long.MAX_VALUE;
+    return h;
   }
 
   // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
@@ -209,7 +208,7 @@ final class NodeHash<T> {
       fst.readNextRealArc(scratchArc, in);
     }
 
-    return h & Long.MAX_VALUE;
+    return h;
   }
 
   /**
