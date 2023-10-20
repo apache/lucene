@@ -38,7 +38,7 @@ import org.junit.Ignore;
 //    ./gradlew test --tests Test2BFST -Dtests.heapsize=32g -Dtests.verbose=true --max-workers=1
 
 @Ignore("Requires tons of heap to run (30 GB hits OOME but 35 GB passes after ~4.5 hours)")
-@SuppressSysoutChecks(bugUrl="test prints helpful progress reports with time")
+@SuppressSysoutChecks(bugUrl = "test prints helpful progress reports with time")
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFST extends LuceneTestCase {
 
