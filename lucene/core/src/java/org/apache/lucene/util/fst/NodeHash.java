@@ -95,8 +95,7 @@ final class NodeHash<T> {
     }
   }
 
-  public long add(FSTCompiler.UnCompiledNode<T> nodeIn)
-      throws IOException {
+  public long add(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
 
     long hash = hash(nodeIn);
 
