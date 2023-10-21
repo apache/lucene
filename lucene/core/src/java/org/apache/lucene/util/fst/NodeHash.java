@@ -20,76 +20,159 @@ import java.io.IOException;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
 
+// TODO: any way to make a reverse suffix lookup (msokolov's idea) instead of more costly hash?
+// hmmm, though, hash is not so wasteful
+// since it does not have to store value of each entry: the value is the node pointer in the FST.
+// actually, there is much to save
+// there -- we would not need any long per entry -- we'd be able to start at the FST end node and
+// work backwards from the transitions
+
+// TODO: couldn't we prune naturally back until we see a transition with an output?  it's highly
+// unlikely (mostly impossible) such suffixes can be shared?
+
 // Used to dedup states (lookup already-frozen states)
 final class NodeHash<T> {
 
-  private PagedGrowableWriter table;
-  private long count;
-  private long mask;
+  // primary table -- we add nodes into this until it reaches the requested tableSizeLimit/2, then
+  // we move it to fallback
+  private PagedGrowableHash primaryTable;
+
+  // how many nodes are allowed to store in both primary and fallback tables; when primary gets full
+  // (tableSizeLimit/2), we move it to the
+  // fallback table
+  private final long ramLimitBytes;
+
+  // fallback table.  if we fallback and find the frozen node here, we promote it to primary table,
+  // for a simplistic and lowish-RAM-overhead
+  // (compared to e.g. LinkedHashMap) LRU behaviour.  fallbackTable is read-only.
+  private PagedGrowableHash fallbackTable;
+
   private final FSTCompiler<T> fstCompiler;
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   private final FST.BytesReader in;
 
-  public NodeHash(FSTCompiler<T> fstCompiler, FST.BytesReader in) {
-    table = new PagedGrowableWriter(16, 1 << 27, 8, PackedInts.COMPACT);
-    mask = 15;
+  /**
+   * ramLimitMB is the max RAM we can use for recording suffixes. If we hit this limit, the least
+   * recently used suffixes are discarded, and the FST is no longer minimalI. Still, larger
+   * ramLimitMB will make the FST smaller (closer to minimal).
+   */
+  public NodeHash(FSTCompiler<T> fstCompiler, double ramLimitMB, FST.BytesReader in) {
+    if (ramLimitMB <= 0) {
+      throw new IllegalArgumentException("ramLimitMB must be > 0; got: " + ramLimitMB);
+    }
+    double asBytes = ramLimitMB * 1024 * 1024;
+    if (asBytes >= Long.MAX_VALUE) {
+      // quietly truncate to Long.MAX_VALUE in bytes too
+      ramLimitBytes = Long.MAX_VALUE;
+    } else {
+      ramLimitBytes = (long) asBytes;
+    }
+
+    primaryTable = new PagedGrowableHash();
     this.fstCompiler = fstCompiler;
     this.in = in;
   }
 
-  private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
-    fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
-
-    // Fail fast for a node with fixed length arcs.
-    if (scratchArc.bytesPerArc() != 0) {
-      if (scratchArc.nodeFlags() == FST.ARCS_FOR_BINARY_SEARCH) {
-        if (node.numArcs != scratchArc.numArcs()) {
-          return false;
-        }
-      } else {
-        assert scratchArc.nodeFlags() == FST.ARCS_FOR_DIRECT_ADDRESSING;
-        if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
-            || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
-          return false;
-        }
-      }
+  private long getFallback(FSTCompiler.UnCompiledNode<T> nodeIn, long hash) throws IOException {
+    if (fallbackTable == null) {
+      // no fallback yet (primary table is not yet large enough to swap)
+      return 0;
     }
-
-    for (int arcUpto = 0; arcUpto < node.numArcs; arcUpto++) {
-      final FSTCompiler.Arc<T> arc = node.arcs[arcUpto];
-      if (arc.label != scratchArc.label()
-          || !arc.output.equals(scratchArc.output())
-          || ((FSTCompiler.CompiledNode) arc.target).node != scratchArc.target()
-          || !arc.nextFinalOutput.equals(scratchArc.nextFinalOutput())
-          || arc.isFinal != scratchArc.isFinal()) {
-        return false;
+    long pos = hash & fallbackTable.mask;
+    int c = 0;
+    while (true) {
+      long node = fallbackTable.get(pos);
+      if (node == 0) {
+        // not found
+        return 0;
+      } else if (nodesEqual(nodeIn, node)) {
+        // frozen version of this node is already here
+        return node;
       }
 
-      if (scratchArc.isLast()) {
-        if (arcUpto == node.numArcs - 1) {
-          return true;
+      // quadratic probe (but is it, really?)
+      pos = (pos + (++c)) & fallbackTable.mask;
+    }
+  }
+
+  public long add(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
+
+    long hash = hash(nodeIn);
+
+    long pos = hash & primaryTable.mask;
+    int c = 0;
+
+    while (true) {
+
+      long node = primaryTable.get(pos);
+      if (node == 0) {
+        // node is not in primary table; is it in fallback table?
+        node = getFallback(nodeIn, hash);
+        if (node != 0) {
+          // it was already in fallback -- promote to primary
+          primaryTable.set(pos, node);
         } else {
-          return false;
-        }
-      }
-      fstCompiler.fst.readNextRealArc(scratchArc, in);
-    }
+          // not in fallback either -- freeze & add the incoming node
 
-    return false;
+          // freeze & add
+          node = fstCompiler.addNode(nodeIn);
+
+          // we use 0 as empty marker in hash table, so it better be impossible to get a frozen node
+          // at 0:
+          assert node != 0;
+
+          // confirm frozen hash and unfrozen hash are the same
+          assert hash(node) == hash : "mismatch frozenHash=" + hash(node) + " vs hash=" + hash;
+
+          primaryTable.set(pos, node);
+        }
+
+        // how many bytes would be used if we had "perfect" hashing:
+        long ramBytesUsed = primaryTable.count * PackedInts.bitsRequired(node) / 8;
+
+        // NOTE: we could instead use the more precise RAM used, but this leads to unpredictable
+        // quantized behavior due to 2X rehashing where for large ranges of the RAM limit, the
+        // size of the FST does not change, and then suddenly when you cross a secret threshold,
+        // it drops.  With this approach (measuring "perfect" hash storage and approximating the
+        // overhead), the behaviour is more strictly monotonic: larger RAM limits smoothly result
+        // in smaller FSTs, even if the precise RAM used is not always under the limit.
+
+        // divide limit by 2 because fallback gets half the RAM and primary gets the other half
+        // divide by 2 again to account for approximate hash table overhead halfway between 33.3%
+        // and 66.7% occupancy = 50%
+        if (ramBytesUsed >= ramLimitBytes / (2 * 2)) {
+          // time to fallback -- fallback is now used read-only to promote a node (suffix) to
+          // primary if we encounter it again
+          fallbackTable = primaryTable;
+          // size primary table the same size to reduce rehash cost
+          // TODO: we could clear & reuse the previous fallbackTable, instead of allocating a new
+          //       to reduce GC load
+          primaryTable = new PagedGrowableHash(node, Math.max(16, primaryTable.entries.size()));
+        } else if (primaryTable.count > primaryTable.entries.size() * (2f / 3)) {
+          // rehash at 2/3 occupancy
+          primaryTable.rehash(node);
+        }
+
+        return node;
+
+      } else if (nodesEqual(nodeIn, node)) {
+        // same node (in frozen form) is already in primary table
+        return node;
+      }
+
+      // quadratic probe (but is it, really?)
+      pos = (pos + (++c)) & primaryTable.mask;
+    }
   }
 
   // hash code for an unfrozen node.  This must be identical
   // to the frozen case (below)!!
   private long hash(FSTCompiler.UnCompiledNode<T> node) {
     final int PRIME = 31;
-    // System.out.println("hash unfrozen");
     long h = 0;
     // TODO: maybe if number of arcs is high we can safely subsample?
     for (int arcIdx = 0; arcIdx < node.numArcs; arcIdx++) {
       final FSTCompiler.Arc<T> arc = node.arcs[arcIdx];
-      // System.out.println("  label=" + arc.label + " target=" + ((Builder.CompiledNode)
-      // arc.target).node + " h=" + h + " output=" + fst.outputs.outputToString(arc.output) + "
-      // isFinal?=" + arc.isFinal);
       h = PRIME * h + arc.label;
       long n = ((FSTCompiler.CompiledNode) arc.target).node;
       h = PRIME * h + (int) (n ^ (n >> 32));
@@ -99,20 +182,18 @@ final class NodeHash<T> {
         h += 17;
       }
     }
-    // System.out.println("  ret " + (h&Integer.MAX_VALUE));
-    return h & Long.MAX_VALUE;
+
+    return h;
   }
 
-  // hash code for a frozen node
+  // hash code for a frozen node.  this must precisely match the hash computation of an unfrozen
+  // node!
   private long hash(long node) throws IOException {
     final int PRIME = 31;
-    // System.out.println("hash frozen node=" + node);
+
     long h = 0;
     fstCompiler.fst.readFirstRealTargetArc(node, scratchArc, in);
     while (true) {
-      // System.out.println("  label=" + scratchArc.label + " target=" + scratchArc.target + " h=" +
-      // h + " output=" + fst.outputs.outputToString(scratchArc.output) + " next?=" +
-      // scratchArc.flag(4) + " final?=" + scratchArc.isFinal() + " pos=" + in.getPosition());
       h = PRIME * h + scratchArc.label();
       h = PRIME * h + (int) (scratchArc.target() ^ (scratchArc.target() >> 32));
       h = PRIME * h + scratchArc.output().hashCode();
@@ -125,69 +206,129 @@ final class NodeHash<T> {
       }
       fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
-    // System.out.println("  ret " + (h&Integer.MAX_VALUE));
-    return h & Long.MAX_VALUE;
+
+    return h;
   }
 
-  public long add(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
-    // System.out.println("hash: add count=" + count + " vs " + table.size() + " mask=" + mask);
-    final long h = hash(nodeIn);
-    long pos = h & mask;
-    int c = 0;
-    while (true) {
-      final long v = table.get(pos);
-      if (v == 0) {
-        // freeze & add
-        final long node = fstCompiler.addNode(nodeIn);
-        // System.out.println("  now freeze node=" + node);
-        assert hash(node) == h : "frozenHash=" + hash(node) + " vs h=" + h;
-        count++;
-        table.set(pos, node);
-        // Rehash at 2/3 occupancy:
-        if (count > 2 * table.size() / 3) {
-          rehash(node);
+  /**
+   * Compares an unfrozen node (UnCompiledNode) with a frozen node at byte location address (long),
+   * returning true if they are equal.
+   */
+  private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
+    fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
+
+    // fail fast for a node with fixed length arcs
+    if (scratchArc.bytesPerArc() != 0) {
+      assert node.numArcs > 0;
+      // the frozen node uses fixed-with arc encoding (same number of bytes per arc), but may be
+      // sparse or dense
+      switch (scratchArc.nodeFlags()) {
+        case FST.ARCS_FOR_BINARY_SEARCH:
+          // sparse
+          if (node.numArcs != scratchArc.numArcs()) {
+            return false;
+          }
+          break;
+        case FST.ARCS_FOR_DIRECT_ADDRESSING:
+          // dense -- compare both the number of labels allocated in the array (some of which may
+          // not actually be arcs), and the number of arcs
+          if ((node.arcs[node.numArcs - 1].label - node.arcs[0].label + 1) != scratchArc.numArcs()
+              || node.numArcs != FST.Arc.BitTable.countBits(scratchArc, in)) {
+            return false;
+          }
+          break;
+        default:
+          throw new AssertionError("unhandled scratchArc.nodeFlag() " + scratchArc.nodeFlags());
+      }
+    }
+
+    // compare arc by arc to see if there is a difference
+    for (int arcUpto = 0; arcUpto < node.numArcs; arcUpto++) {
+      final FSTCompiler.Arc<T> arc = node.arcs[arcUpto];
+      if (arc.label != scratchArc.label()
+          || arc.output.equals(scratchArc.output()) == false
+          || ((FSTCompiler.CompiledNode) arc.target).node != scratchArc.target()
+          || arc.nextFinalOutput.equals(scratchArc.nextFinalOutput()) == false
+          || arc.isFinal != scratchArc.isFinal()) {
+        return false;
+      }
+
+      if (scratchArc.isLast()) {
+        if (arcUpto == node.numArcs - 1) {
+          return true;
+        } else {
+          return false;
         }
-        return node;
-      } else if (nodesEqual(nodeIn, v)) {
-        // same node is already here
-        return v;
       }
 
-      // quadratic probe
-      pos = (pos + (++c)) & mask;
+      fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
+
+    // unfrozen node has fewer arcs than frozen node
+
+    return false;
   }
 
-  // called only by rehash
-  private void addNew(long address) throws IOException {
-    long pos = hash(address) & mask;
-    int c = 0;
-    while (true) {
-      if (table.get(pos) == 0) {
-        table.set(pos, address);
-        break;
-      }
+  /** Inner class because it needs access to hash function and FST bytes. */
+  private class PagedGrowableHash {
+    private PagedGrowableWriter entries;
+    private long count;
+    private long mask;
 
-      // quadratic probe
-      pos = (pos + (++c)) & mask;
+    // 256K blocks, but note that the final block is sized only as needed so it won't use the full
+    // block size when just a few elements were written to it
+    private static final int BLOCK_SIZE_BYTES = 1 << 18;
+
+    public PagedGrowableHash() {
+      entries = new PagedGrowableWriter(16, BLOCK_SIZE_BYTES, 8, PackedInts.COMPACT);
+      mask = 15;
     }
-  }
 
-  private void rehash(long lastNodeAddress) throws IOException {
-    final PagedGrowableWriter oldTable = table;
+    public PagedGrowableHash(long lastNodeAddress, long size) {
+      entries =
+          new PagedGrowableWriter(
+              size, BLOCK_SIZE_BYTES, PackedInts.bitsRequired(lastNodeAddress), PackedInts.COMPACT);
+      mask = size - 1;
+      assert (mask & size) == 0 : "size must be a power-of-2; got size=" + size + " mask=" + mask;
+    }
 
-    table =
-        new PagedGrowableWriter(
-            2 * oldTable.size(),
-            1 << 27,
-            PackedInts.bitsRequired(lastNodeAddress),
-            PackedInts.COMPACT);
-    mask = table.size() - 1;
-    for (long idx = 0; idx < oldTable.size(); idx++) {
-      final long address = oldTable.get(idx);
-      if (address != 0) {
-        addNew(address);
+    public long get(long index) {
+      return entries.get(index);
+    }
+
+    public void set(long index, long pointer) throws IOException {
+      entries.set(index, pointer);
+      count++;
+    }
+
+    private void rehash(long lastNodeAddress) throws IOException {
+      // double hash table size on each rehash
+      PagedGrowableWriter newEntries =
+          new PagedGrowableWriter(
+              2 * entries.size(),
+              BLOCK_SIZE_BYTES,
+              PackedInts.bitsRequired(lastNodeAddress),
+              PackedInts.COMPACT);
+      long newMask = newEntries.size() - 1;
+      for (long idx = 0; idx < entries.size(); idx++) {
+        long address = entries.get(idx);
+        if (address != 0) {
+          long pos = hash(address) & newMask;
+          int c = 0;
+          while (true) {
+            if (newEntries.get(pos) == 0) {
+              newEntries.set(pos, address);
+              break;
+            }
+
+            // quadratic probe
+            pos = (pos + (++c)) & newMask;
+          }
+        }
       }
+
+      mask = newMask;
+      entries = newEntries;
     }
   }
 }
