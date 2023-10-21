@@ -47,7 +47,7 @@ final class NodeHash<T> {
   // (compared to e.g. LinkedHashMap) LRU behaviour.  fallbackTable is read-only.
   private PagedGrowableHash fallbackTable;
 
-  private final FST<T> fst;
+  private final FSTCompiler<T> fstCompiler;
   private final FST.Arc<T> scratchArc = new FST.Arc<>();
   private final FST.BytesReader in;
 
@@ -56,7 +56,7 @@ final class NodeHash<T> {
    * recently used suffixes are discarded, and the FST is no longer minimalI. Still, larger
    * ramLimitMB will make the FST smaller (closer to minimal).
    */
-  public NodeHash(FST<T> fst, double ramLimitMB, FST.BytesReader in) {
+  public NodeHash(FSTCompiler<T> fstCompiler, double ramLimitMB, FST.BytesReader in) {
     if (ramLimitMB <= 0) {
       throw new IllegalArgumentException("ramLimitMB must be > 0; got: " + ramLimitMB);
     }
@@ -69,7 +69,7 @@ final class NodeHash<T> {
     }
 
     primaryTable = new PagedGrowableHash();
-    this.fst = fst;
+    this.fstCompiler = fstCompiler;
     this.in = in;
   }
 
@@ -95,8 +95,7 @@ final class NodeHash<T> {
     }
   }
 
-  public long add(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)
-      throws IOException {
+  public long add(FSTCompiler.UnCompiledNode<T> nodeIn) throws IOException {
 
     long hash = hash(nodeIn);
 
@@ -193,7 +192,7 @@ final class NodeHash<T> {
     final int PRIME = 31;
 
     long h = 0;
-    fst.readFirstRealTargetArc(node, scratchArc, in);
+    fstCompiler.fst.readFirstRealTargetArc(node, scratchArc, in);
     while (true) {
       h = PRIME * h + scratchArc.label();
       h = PRIME * h + (int) (scratchArc.target() ^ (scratchArc.target() >> 32));
@@ -205,7 +204,7 @@ final class NodeHash<T> {
       if (scratchArc.isLast()) {
         break;
       }
-      fst.readNextRealArc(scratchArc, in);
+      fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
 
     return h;
@@ -216,7 +215,7 @@ final class NodeHash<T> {
    * returning true if they are equal.
    */
   private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
-    fst.readFirstRealTargetArc(address, scratchArc, in);
+    fstCompiler.fst.readFirstRealTargetArc(address, scratchArc, in);
 
     // fail fast for a node with fixed length arcs
     if (scratchArc.bytesPerArc() != 0) {
@@ -262,7 +261,7 @@ final class NodeHash<T> {
         }
       }
 
-      fst.readNextRealArc(scratchArc, in);
+      fstCompiler.fst.readNextRealArc(scratchArc, in);
     }
 
     // unfrozen node has fewer arcs than frozen node

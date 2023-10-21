@@ -143,7 +143,7 @@ public class FSTCompiler<T> {
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(fst, suffixRAMLimitMB, bytes.getReverseReader(false));
+      dedupHash = new NodeHash<>(this, suffixRAMLimitMB, bytes.getReverseReader(false));
     } else {
       dedupHash = null;
     }
@@ -293,7 +293,7 @@ public class FSTCompiler<T> {
         node = addNode(nodeIn);
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(this, nodeIn);
+        node = dedupHash.add(nodeIn);
       }
     } else {
       node = addNode(nodeIn);
