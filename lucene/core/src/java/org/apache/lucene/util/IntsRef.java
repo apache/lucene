@@ -30,8 +30,10 @@ public final class IntsRef implements Comparable<IntsRef>, Cloneable {
 
   /** The contents of the IntsRef. Should never be {@code null}. */
   public int[] ints;
+
   /** Offset of first valid integer. */
   public int offset;
+
   /** Length of used ints. */
   public int length;
 

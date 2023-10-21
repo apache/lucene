@@ -39,6 +39,7 @@ public abstract class MultiFloatFunction extends ValueSource {
   protected abstract String name();
 
   protected abstract float func(int doc, FunctionValues[] valsArr) throws IOException;
+
   /**
    * Called by {@link FunctionValues#exists} for each document.
    *

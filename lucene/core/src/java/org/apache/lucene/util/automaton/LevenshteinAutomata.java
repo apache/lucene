@@ -36,6 +36,7 @@ public class LevenshteinAutomata {
    * @lucene.internal
    */
   public static final int MAXIMUM_SUPPORTED_DISTANCE = 2;
+
   /* input word */
   final int[] word;
   /* the automata alphabet. */

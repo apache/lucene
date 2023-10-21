@@ -1,0 +1,51 @@
+benchmarks
+==========
+
+The :lucene:benchmark-jmh module contains can be used to compile
+and execute JMH (https://github.com/openjdk/jmh) micro-benchmarks.
+
+Look at existing classes and JMH documentation for inspiration on how
+to write good micro-benchmarks.
+
+build
+=====
+
+To compile the project and prepare JMH launcher, run:
+
+gradlew :lucene:benchmark-jmh:assemble
+
+The above target will display exact commands to execute JMH from
+command line.
+
+run
+===
+
+java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.lucene.benchmark.jmh
+
+You can pass any JMH options to the above command, for example:
+
+  -h               displays verbose help for all options
+  -l               list available benchmarks
+  -lp              list benchmarks that pass the filter and their parameters
+  -prof perfasm    use perfasm profiler to see assembly
+  -p size=1024     pass "size=1024" parameter to benchmark
+  regexp           execute all benchmark containing regexp
+
+Here is an example running a targeted benchmark:
+
+java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.lucene.benchmark.jmh VectorUtilBenchmark.binaryCosine -p size=1024
+
+Or running all methods and sizes of VectorUtilBenchmark
+
+java --module-path lucene/benchmark-jmh/build/benchmarks --module org.apache.lucene.benchmark.jmh VectorUtilBenchmark
+
+
+hsdis setup
+===========
+
+In order to see disassembled instructions and not just binary instructions when using '-prof perfasm':
+
+  $ git clone --depth 1 https://github.com/openjdk/jdk/
+  $ curl -f https://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.gz | tar -zxf -
+  $ (cd jdk && bash ./configure --with-hsdis=binutils --with-binutils-src=../binutils-2.38 && make build-hsdis)
+  $ cp jdk/build/linux-x86_64-server-release/support/hsdis/hsdis-amd64.so $JAVA_HOME/lib/server
