@@ -78,6 +78,8 @@ Optimizations
   
 * GITHUB#12651: Use 2d array for OnHeapHnswGraph representation. (Patrick Zhai)
 
+* GITHUB#12653: Optimize computing number of levels in MultiLevelSkipListWriter#bufferSkip. (Shubham Chaudhary)
+
 Changes in runtime behavior
 ---------------------
 
