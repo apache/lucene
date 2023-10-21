@@ -466,7 +466,7 @@ public abstract class ByteBufferIndexInput extends IndexInput implements RandomA
 
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
   protected ByteBufferIndexInput buildSlice(String sliceDescription, long offset, long length) {
-    if (buffers == null) {
+    if (buffers == null || guard.isInvalidated()) {
       throw alreadyClosed(null);
     }
 
