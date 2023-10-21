@@ -25,18 +25,21 @@ public interface FSTWriter extends Accountable {
 
   /**
    * The raw size in bytes of the FST
+   *
    * @return the FST size
    */
   long size();
 
   /**
    * Get the reverse BytesReader for this FST
+   *
    * @return the reverse BytesReader
    */
   FST.BytesReader getReverseBytesReader();
 
   /**
    * Write this FST to another DataOutput
+   *
    * @param out the DataOutput
    * @throws IOException if exception occurred during writing
    */
