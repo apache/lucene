@@ -48,9 +48,9 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
 
   public void testCorrectImplementation() {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion >= 19 && runtimeVersion <= 21) {
+    if (runtimeVersion >= 19) {
       assertTrue(
-          "on Java 19, 20, and 21 we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
+          "on Java 19 or later we should use MemorySegmentIndexInputProvider to create mmap IndexInputs",
           isMemorySegmentImpl());
     } else {
       assertSame(MappedByteBufferIndexInputProvider.class, MMapDirectory.PROVIDER.getClass());
