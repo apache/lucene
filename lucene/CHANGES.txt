@@ -52,8 +52,8 @@ Improvements
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
-* GITHUB#12705: Improve handling of NullPointerException in MMapDirectory's IndexInputs.
-  (Uwe Schindler, Michael Sokolov)
+* GITHUB#12705, GITHUB#12705: Improve handling of NullPointerException and IllegalStateException
+  in MMapDirectory's IndexInputs.  (Uwe Schindler, Michael Sokolov)
 
 Optimizations
 ---------------------
