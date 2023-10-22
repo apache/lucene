@@ -100,9 +100,17 @@ abstract class MemorySegmentIndexInput extends IndexInput implements RandomAcces
     }
   }
 
-  // the unused parameter is just to silence javac about unused variables
-  AlreadyClosedException alreadyClosed(RuntimeException unused) {
-    return new AlreadyClosedException("Already closed: " + this);
+  AlreadyClosedException alreadyClosed(RuntimeException e) {
+    // we use NPE to signal if this input is closed (to not have checks everywhere). If NPE happens,
+    // we check the "is closed" condition explicitly by checking that our "curSegment" is null.
+    // if it is an IllegalStateException, it can only come from MemorySegment API (other thread has
+    // closed input)
+    if (this.curSegment == null || e instanceof IllegalStateException) {
+      return new AlreadyClosedException("Already closed: " + this);
+    }
+    // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
+    // the IndexInput method):
+    throw e;
   }
 
   @Override
