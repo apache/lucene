@@ -183,6 +183,9 @@ Improvements
 
 * GITHUB#12586: Remove over-counting of deleted terms. (Guo Feng)
 
+* GITHUB#12705: Improve handling of NullPointerException in MMapDirectory's IndexInputs.
+  (Uwe Schindler, Michael Sokolov)
+
 Optimizations
 ---------------------
 * GITHUB#12183: Make TermStates#build concurrent. (Shubham Chaudhary)

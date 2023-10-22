@@ -104,4 +104,17 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
       dir.close();
     }
   }
+
+  public void testNullParamsIndexInput() throws Exception {
+    try (Directory mmapDir = getDirectory(createTempDir("testNullParamsIndexInput"))) {
+      try (IndexOutput out = mmapDir.createOutput("bytes", newIOContext(random()))) {
+        out.alignFilePointer(16);
+      }
+      try (IndexInput in = mmapDir.openInput("bytes", IOContext.DEFAULT)) {
+        assertThrows(NullPointerException.class, () -> in.readBytes(null, 0, 1));
+        assertThrows(NullPointerException.class, () -> in.readFloats(null, 0, 1));
+        assertThrows(NullPointerException.class, () -> in.readLongs(null, 0, 1));
+      }
+    }
+  }
 }
