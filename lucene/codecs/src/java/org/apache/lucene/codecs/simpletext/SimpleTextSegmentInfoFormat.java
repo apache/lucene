@@ -55,6 +55,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
   static final BytesRef SI_MIN_VERSION = new BytesRef("    min version ");
   static final BytesRef SI_DOCCOUNT = new BytesRef("    number of documents ");
   static final BytesRef SI_USECOMPOUND = new BytesRef("    uses compound file ");
+  static final BytesRef SI_HAS_BLOCKS = new BytesRef("    has blocks ");
   static final BytesRef SI_NUM_DIAG = new BytesRef("    diagnostics ");
   static final BytesRef SI_DIAG_KEY = new BytesRef("      key ");
   static final BytesRef SI_DIAG_VALUE = new BytesRef("      value ");
@@ -112,6 +113,10 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
       assert StringHelper.startsWith(scratch.get(), SI_USECOMPOUND);
       final boolean isCompoundFile =
           Boolean.parseBoolean(readString(SI_USECOMPOUND.length, scratch));
+
+      SimpleTextUtil.readLine(input, scratch);
+      assert StringHelper.startsWith(scratch.get(), SI_HAS_BLOCKS);
+      final boolean hasBlocks = Boolean.parseBoolean(readString(SI_HAS_BLOCKS.length, scratch));
 
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_NUM_DIAG);
@@ -204,6 +209,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
               segmentName,
               docCount,
               isCompoundFile,
+              hasBlocks,
               null,
               diagnostics,
               id,
@@ -247,6 +253,10 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
 
       SimpleTextUtil.write(output, SI_USECOMPOUND);
       SimpleTextUtil.write(output, Boolean.toString(si.getUseCompoundFile()), scratch);
+      SimpleTextUtil.writeNewline(output);
+
+      SimpleTextUtil.write(output, SI_HAS_BLOCKS);
+      SimpleTextUtil.write(output, Boolean.toString(si.getHasBlocks()), scratch);
       SimpleTextUtil.writeNewline(output);
 
       Map<String, String> diagnostics = si.getDiagnostics();

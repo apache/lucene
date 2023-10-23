@@ -401,6 +401,7 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
         name,
         10000,
         false,
+        false,
         Codec.getDefault(),
         Collections.emptyMap(),
         StringHelper.randomId(),

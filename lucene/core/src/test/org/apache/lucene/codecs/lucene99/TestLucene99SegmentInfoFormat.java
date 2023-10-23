@@ -15,5 +15,22 @@
  * limitations under the License.
  */
 
-/** Lucene 9.5 file format. */
-package org.apache.lucene.codecs.lucene95;
+package org.apache.lucene.codecs.lucene99;
+
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Version;
+
+public class TestLucene99SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
+
+  @Override
+  protected Version[] getVersions() {
+    return new Version[] {Version.LATEST};
+  }
+
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.getDefaultCodec();
+  }
+}
