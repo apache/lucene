@@ -20,7 +20,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 public class TestByteSlicePool extends LuceneTestCase {
-  public void testAllocKnowSizeSlice() {
+  public void testAllocKnownSizeSlice() {
     Counter bytesUsed = Counter.newCounter();
     ByteBlockPool blockPool =
         new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(bytesUsed));

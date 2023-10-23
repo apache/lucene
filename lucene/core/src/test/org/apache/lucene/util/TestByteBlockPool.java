@@ -43,7 +43,7 @@ public class TestByteBlockPool extends LuceneTestCase {
         pool.append(ref.get());
       }
       // verify
-      int position = 0;
+      long position = 0;
       BytesRefBuilder builder = new BytesRefBuilder();
       for (BytesRef expected : list) {
         ref.grow(expected.length);
@@ -93,7 +93,7 @@ public class TestByteBlockPool extends LuceneTestCase {
       pool.append(new BytesRef(bytes));
     }
 
-    int position = 0;
+    long position = 0;
     for (byte[] expected : items) {
       byte[] actual = new byte[expected.length];
       pool.readBytes(position, actual, 0, actual.length);

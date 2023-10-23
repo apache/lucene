@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * This class enables the allocation of fixed-size buffers and their management as part of a buffer
@@ -64,12 +63,6 @@ public final class ByteBlockPool implements Accountable {
     }
 
     public abstract void recycleByteBlocks(byte[][] blocks, int start, int end);
-
-    // TODO: This is not used. Can we remove?
-    public void recycleByteBlocks(List<byte[]> blocks) {
-      final byte[][] b = blocks.toArray(new byte[blocks.size()][]);
-      recycleByteBlocks(b, 0, b.length);
-    }
 
     public byte[] getByteBlock() {
       return new byte[blockSize];
@@ -215,12 +208,12 @@ public final class ByteBlockPool implements Accountable {
    * avoid copying the bytes if the slice fits into a single block; otherwise, it uses the provided
    * {@link BytesRefBuilder} to copy bytes over.
    */
-  void setBytesRef(BytesRefBuilder builder, BytesRef result, int offset, int length) {
+  void setBytesRef(BytesRefBuilder builder, BytesRef result, long offset, int length) {
     result.length = length;
 
-    int bufferIndex = offset >> BYTE_BLOCK_SHIFT;
+    int bufferIndex = Math.toIntExact(offset >> BYTE_BLOCK_SHIFT);
     byte[] buffer = buffers[bufferIndex];
-    int pos = offset & BYTE_BLOCK_MASK;
+    int pos = (int) (offset & BYTE_BLOCK_MASK);
     if (pos + length <= BYTE_BLOCK_SIZE) {
       // Common case: The slice lives in a single block. Reference the buffer directly.
       result.bytes = buffer;
@@ -263,10 +256,10 @@ public final class ByteBlockPool implements Accountable {
    *
    * <p>Note: this method allows to copy across block boundaries.
    */
-  public void readBytes(final int offset, final byte[] bytes, int bytesOffset, int bytesLength) {
+  public void readBytes(final long offset, final byte[] bytes, int bytesOffset, int bytesLength) {
     int bytesLeft = bytesLength;
-    int bufferIndex = offset >> BYTE_BLOCK_SHIFT;
-    int pos = offset & BYTE_BLOCK_MASK;
+    int bufferIndex = Math.toIntExact(offset >> BYTE_BLOCK_SHIFT);
+    int pos = (int) (offset & BYTE_BLOCK_MASK);
     while (bytesLeft > 0) {
       byte[] buffer = buffers[bufferIndex++];
       int chunk = Math.min(bytesLeft, BYTE_BLOCK_SIZE - pos);
