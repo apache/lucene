@@ -989,7 +989,7 @@ public final class BPIndexReorderer {
     private static long encode(long fpDelta) {
       assert (fpDelta & 0x07) == 0 : "fpDelta should be multiple of 8";
       if (fpDelta % BUFFER_BYTES == 0) {
-        return  ((fpDelta / BUFFER_BYTES) << 1) | 1;
+        return ((fpDelta / BUFFER_BYTES) << 1) | 1;
       } else {
         return fpDelta;
       }
