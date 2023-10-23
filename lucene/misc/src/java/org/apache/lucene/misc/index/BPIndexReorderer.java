@@ -24,12 +24,25 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
-
-import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.SortingCodecReader;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.store.*;
+import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.DataOutput;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
@@ -712,7 +725,7 @@ public final class BPIndexReorderer {
    * Reorder the given {@link CodecReader} into a reader that tries to minimize the log gap between
    * consecutive documents in postings, which usually helps improve space efficiency and query
    * evaluation efficiency. Note that the returned {@link CodecReader} is slow and should typically
-   * be used in a call to {@link IndexWriter#addIndexes(CodecReader...)}.
+   * be used in a call to {@link org.apache.lucene.index.IndexWriter#addIndexes(CodecReader...)}.
    *
    * @throws NotEnoughRAMException if not enough RAM is provided
    */

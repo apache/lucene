@@ -20,10 +20,8 @@ import static org.apache.lucene.misc.index.BPIndexReorderer.fastLog2;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Random;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -43,7 +41,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.fst.Outputs;
 
 public class TestBPIndexReorderer extends LuceneTestCase {
 
@@ -57,8 +54,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     // threads, so we need to create our own to avoid tests failing with FS-based directories.
     ForkJoinPool pool =
         new ForkJoinPool(
-            concurrency, p -> new ForkJoinWorkerThread(p) {
-        }, null, random().nextBoolean());
+            concurrency, p -> new ForkJoinWorkerThread(p) {}, null, random().nextBoolean());
     try {
       doTestSingleTerm(pool);
     } finally {
@@ -130,7 +126,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     assertArrayEquals(
         // All "lucene" docs, then all "search" docs, preserving the existing doc ID order in case
         // of tie
-        new String[]{"1", "2", "4", "6", "3", "5", "7", "8"}, ids);
+        new String[] {"1", "2", "4", "6", "3", "5", "7", "8"}, ids);
 
     reader.close();
     w.close();
@@ -200,7 +196,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     assertArrayEquals(
         // All "lucene" docs, then all "tomcat" docs, preserving the existing doc ID order in case
         // of tie
-        new String[]{"1", "2", "4", "6", "3", "5", "7", "8"}, ids);
+        new String[] {"1", "2", "4", "6", "3", "5", "7", "8"}, ids);
 
     reader.close();
     w.close();
@@ -268,7 +264,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
         int maxDoc = (1 << bits) - 1;
         int termNum = atLeast(1000);
         String fileName;
-        try (IndexOutput out = directory.createTempOutput("testForwardIndexSorter", "sort", IOContext.DEFAULT)) {
+        try (IndexOutput out =
+            directory.createTempOutput("testForwardIndexSorter", "sort", IOContext.DEFAULT)) {
           for (int termId = 0; termId < termNum; termId++) {
             int docNum = 0;
             int doc = 0;
@@ -281,29 +278,30 @@ public class TestBPIndexReorderer extends LuceneTestCase {
           }
           fileName = out.getName();
         }
-        new BPIndexReorderer.ForwardIndexSorter(directory).sortAndConsume(
-            fileName,
-            maxDoc,
-            new BPIndexReorderer.LongConsumer() {
+        new BPIndexReorderer.ForwardIndexSorter(directory)
+            .sortAndConsume(
+                fileName,
+                maxDoc,
+                new BPIndexReorderer.LongConsumer() {
 
-              long lastValue = -1;
+                  long lastValue = -1;
 
-              @Override
-              public void accept(long value) {
-                if (lastValue != -1) {
-                  int doc = (int) value;
-                  int term = (int) (value >>> 32);
-                  int lastDoc = (int) lastValue;
-                  int lastTerm = (int) (lastValue >>> 32);
-                  assertTrue("last doc: " + lastDoc + ", current doc: " + doc, lastDoc <= doc);
-                  if (lastDoc == doc) {
-                    assertTrue("last term: " + lastTerm + ", current term: " + term, lastTerm <= term);
+                  @Override
+                  public void accept(long value) {
+                    if (lastValue != -1) {
+                      int doc = (int) value;
+                      int term = (int) (value >>> 32);
+                      int lastDoc = (int) lastValue;
+                      int lastTerm = (int) (lastValue >>> 32);
+                      assertTrue("last doc: " + lastDoc + ", current doc: " + doc, lastDoc <= doc);
+                      if (lastDoc == doc) {
+                        assertTrue(
+                            "last term: " + lastTerm + ", current term: " + term, lastTerm <= term);
+                      }
+                    }
+                    lastValue = value;
                   }
-                }
-                lastValue = value;
-              }
-            }
-        );
+                });
       }
     }
   }
