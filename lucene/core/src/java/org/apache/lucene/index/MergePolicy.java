@@ -255,6 +255,15 @@ public abstract class MergePolicy {
       usesPooledReaders = false;
     }
 
+    /** Constructor for wrapping. */
+    protected OneMerge(OneMerge oneMerge) {
+      this.segments = oneMerge.segments;
+      this.mergeReaders = oneMerge.mergeReaders;
+      this.totalMaxDoc = oneMerge.totalMaxDoc;
+      this.mergeProgress = new OneMergeProgress();
+      this.usesPooledReaders = oneMerge.usesPooledReaders;
+    }
+
     /**
      * Called by {@link IndexWriter} after the merge started and from the thread that will be
      * executing the merge.

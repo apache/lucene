@@ -99,8 +99,10 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
       minNumDocs = 1;
     } else {
       int maxMaxDoc = 0;
-      for (SegmentCommitInfo sci : infos) {
-        maxMaxDoc = Math.max(sci.info.maxDoc(), maxMaxDoc);
+      if (infos != null) {
+        for (SegmentCommitInfo sci : infos) {
+          maxMaxDoc = Math.max(sci.info.maxDoc(), maxMaxDoc);
+        }
       }
       minNumDocs =
           Math.max(
@@ -111,7 +113,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
     MergeSpecification newSpec = new MergeSpecification();
     for (OneMerge oneMerge : spec.merges) {
       newSpec.add(
-          new OneMerge(oneMerge.segments) {
+          new OneMerge(oneMerge) {
             @Override
             public CodecReader wrapForMerge(CodecReader reader) throws IOException {
               return oneMerge.wrapForMerge(reader);
@@ -168,7 +170,6 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
-    final int maxMaxDoc = segmentInfos.asList().stream().mapToInt(sci -> sci.info.maxDoc()).sum();
     return maybeReorder(
         super.findFullFlushMerges(mergeTrigger, segmentInfos, mergeContext), false, segmentInfos);
   }
@@ -176,10 +177,6 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
   @Override
   public MergeSpecification findMerges(CodecReader... readers) throws IOException {
     // addIndexes is considered a forced merge
-    int totalMaxDoc = 0;
-    for (CodecReader reader : readers) {
-      totalMaxDoc += reader.maxDoc();
-    }
     return maybeReorder(super.findMerges(readers), true, null);
   }
 }

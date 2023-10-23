@@ -56,6 +56,8 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.index.MergePolicy.MergeReader;
+import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
@@ -3405,8 +3407,20 @@ public class IndexWriter
             Collections.emptyMap(),
             config.getIndexSort());
 
-    List<CodecReader> readers =
-        merge.getMergeReader().stream().map(r -> r.codecReader).collect(Collectors.toList());
+    List<CodecReader> readers = new ArrayList<>();
+    for (MergeReader mr : merge.getMergeReader()) {
+      CodecReader reader = merge.wrapForMerge(mr.codecReader);
+      readers.add(reader);
+    }
+
+    if (config.getIndexSort() == null) {
+      CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
+      DocMap docMap = merge.reorder(mergedReader, directory);
+      if (docMap != null) {
+        readers = Collections.singletonList(SortingCodecReader.wrap(mergedReader, docMap, null));
+      }
+    }
+
     SegmentMerger merger =
         new SegmentMerger(readers, segInfo, infoStream, trackingDir, globalFieldNumberMap, context);
 
