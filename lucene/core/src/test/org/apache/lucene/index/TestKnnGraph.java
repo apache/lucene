@@ -30,8 +30,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
@@ -50,6 +50,7 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -89,11 +90,16 @@ public class TestKnnGraph extends LuceneTestCase {
             : null;
 
     codec =
-        new Lucene95Codec() {
+        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene99HnswVectorsFormat(
-                M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new PerFieldKnnVectorsFormat() {
+              @Override
+              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                return new Lucene99HnswVectorsFormat(
+                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, scalarQuantizedVectorsFormat);
+              }
+            };
           }
         };
 
@@ -101,10 +107,16 @@ public class TestKnnGraph extends LuceneTestCase {
       float32Codec = codec;
     } else {
       float32Codec =
-          new Lucene95Codec() {
+          new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
             @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, null);
+            public KnnVectorsFormat knnVectorsFormat() {
+              return new PerFieldKnnVectorsFormat() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99HnswVectorsFormat(
+                      M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH, null);
+                }
+              };
             }
           };
     }

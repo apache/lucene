@@ -21,9 +21,9 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -42,7 +42,7 @@ import org.apache.lucene.util.ScalarQuantizer;
 public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene95Codec() {
+    return new Lucene99Codec() {
       @Override
       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
         return new Lucene99HnswVectorsFormat(
@@ -129,16 +129,16 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
   }
 
   public void testToString() {
-    Lucene95Codec customCodec =
-        new Lucene95Codec() {
+    FilterCodec customCodec =
+        new FilterCodec("foo", Codec.getDefault()) {
           @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+          public KnnVectorsFormat knnVectorsFormat() {
             return new Lucene99HnswVectorsFormat(
                 10, 20, new Lucene99ScalarQuantizedVectorsFormat(0.9f));
           }
         };
     String expectedString =
         "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, quantile=0.9))";
-    assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
+    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 }

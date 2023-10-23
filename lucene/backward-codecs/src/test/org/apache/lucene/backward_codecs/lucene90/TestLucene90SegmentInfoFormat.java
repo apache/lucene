@@ -15,22 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.codecs.lucene90;
+package org.apache.lucene.backward_codecs.lucene90;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
   @Override
   protected Version[] getVersions() {
-    return new Version[] {Version.LATEST};
+    return new Version[] {Version.LUCENE_9_0_0};
   }
 
   @Override
   protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
+    return new Lucene90RWCodec();
   }
 }

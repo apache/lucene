@@ -17,8 +17,8 @@
 package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene95.Lucene95Codec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -29,16 +29,16 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   }
 
   public void testToString() {
-    Lucene95Codec customCodec =
-        new Lucene95Codec() {
+    FilterCodec customCodec =
+        new FilterCodec("foo", Codec.getDefault()) {
           @Override
-          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+          public KnnVectorsFormat knnVectorsFormat() {
             return new Lucene99HnswVectorsFormat(10, 20, null);
           }
         };
     String expectedString =
         "Lucene99HnswVectorsFormat(name=Lucene99HnswVectorsFormat, maxConn=10, beamWidth=20, quantizer=none)";
-    assertEquals(expectedString, customCodec.getKnnVectorsFormatForField("bogus_field").toString());
+    assertEquals(expectedString, customCodec.knnVectorsFormat().toString());
   }
 
   public void testLimits() {

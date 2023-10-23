@@ -3368,9 +3368,13 @@ public class IndexWriter
     String mergedName = newSegmentName();
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
     int numSoftDeleted = 0;
+    boolean hasBlocks = false;
     for (MergePolicy.MergeReader reader : merge.getMergeReader()) {
       CodecReader leaf = reader.codecReader;
       numDocs += leaf.numDocs();
+      for (LeafReaderContext context : reader.codecReader.leaves()) {
+        hasBlocks |= context.reader().getMetaData().hasBlocks();
+      }
       if (softDeletesEnabled) {
         Bits liveDocs = reader.hardLiveDocs;
         numSoftDeleted +=
@@ -3398,6 +3402,7 @@ public class IndexWriter
             mergedName,
             -1,
             false,
+            hasBlocks,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -3479,6 +3484,7 @@ public class IndexWriter
             segName,
             info.info.maxDoc(),
             info.info.getUseCompoundFile(),
+            info.info.getHasBlocks(),
             info.info.getCodec(),
             info.info.getDiagnostics(),
             info.info.getId(),
@@ -4926,7 +4932,13 @@ public class IndexWriter
     if (readerPool.writeDocValuesUpdatesForMerge(merge.segments)) {
       checkpoint();
     }
-
+    boolean hasBlocks = false;
+    for (SegmentCommitInfo info : merge.segments) {
+      if (info.info.getHasBlocks()) {
+        hasBlocks = true;
+        break;
+      }
+    }
     // Bind a new segment name here so even with
     // ConcurrentMergePolicy we keep deterministic segment
     // names.
@@ -4940,6 +4952,7 @@ public class IndexWriter
             mergeSegmentName,
             -1,
             false,
+            hasBlocks,
             config.getCodec(),
             Collections.emptyMap(),
             StringHelper.randomId(),

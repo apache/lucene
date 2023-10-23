@@ -161,6 +161,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             "test",
             10,
             false,
+            false,
             Codec.getDefault(),
             Collections.emptyMap(),
             StringHelper.randomId(),
